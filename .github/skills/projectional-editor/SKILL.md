@@ -48,6 +48,9 @@ even if the build stays green.
    save -> load -> save producing identical bytes across the whole corpus.
 8. **Never drop data on load.** An unknown concept, unknown property or unresolvable reference
    is preserved as-is and reported as a diagnostic; loading does not fail because of it.
+   (M0 departs from this in one place - a property value the language refuses fails the load
+   instead of being kept - and that exception is documented in
+   `docs/architecture/persistence.md`.)
 9. **`net10.0` only**, no multi-targeting (ADR 0003).
 
 ## Working conventions (explicit user requirement)
@@ -130,6 +133,42 @@ Read its `<remarks>` before changing the replay path.
   merges. There is no time window — the host must clear the key when the burst ends.
 - The `UndoHistory` API is `Undo()`, `Redo()`, `CanUndo`, `CanRedo`, `UndoDepth`,
   `RedoDepth`, `CoalescingKey`, `Clear()`, plus `Dispose()` to unsubscribe.
+
+## How persistence works
+
+`Projectional.Persistence` is the only place that knows the stored form. It has
+`InternalsVisibleTo` from Core, which it needs for two loading seams; nothing else about
+it is special.
+
+- **Public API is two static classes.** `ModelXml.Serialize/WriteTo/Deserialize/ReadFrom`
+  for strings and streams, `ModelFile.Load/Save` for files. The reader and writer are
+  `internal` and reached only through these, so the determinism rules have one gate.
+- **Determinism lives in `ModelXmlWriter.CreateSettings()`** - LF, two-space indent,
+  UTF-8 without BOM. Change it there and nowhere else; the byte-identical corpus test
+  will fail otherwise.
+- `NewLineHandling.Entitize` is deliberate: a `\r` inside a property value is written as
+  `&#xD;` while indentation still uses `\n`, so values survive round trips byte-stably.
+- **The `name` attribute on `node` is written but never read.** It duplicates the name
+  property for greppability; the property is authoritative.
+- Two loading seams in Core exist only for persistence:
+  `Model.CreateDetached(NodeId, Concept)` (identity from the file) and
+  `Project.DiscardModel(Model)` (remove a half-built model). Only
+  `CreateDetached(Concept)` journals a rollback entry - picking the id-carrying overload
+  directly skips journaling, which is correct for loading and **wrong for a mutation**.
+  When you touch either overload, keep the journaling in the single-argument one.
+- **A failed load leaves nothing behind**: the reader remembers the model it created,
+  deletes what it built with `record: false`, calls `DiscardModel`, and throws
+  `ModelFormatException`. Both catch arms (its own format errors and wrapped
+  `XmlException`/`ModelInvariantException`/`FormatException`) must discard.
+- `ModelXml.WriteTo` refuses to write while `model.HasTransaction`; `ModelFile.Save` turns
+  that into "no target file and no temporary file created", because the temp file is
+  deleted in the `finally`.
+- Save writes `<name>.<guid>.tmp` next to the target, `Flush(flushToDisk: true)`, then
+  `File.Move(overwrite: true)`.
+- **Persistence tests live in `Projectional.Core.Tests`** (which references
+  `Projectional.Persistence`) so they can reuse `TestLanguage.cs` and no fixture is
+  duplicated. If a second test project ever needs that language, promote it to a
+  `Projectional.TestLanguage` library rather than copying it.
 
 ## Language level (explicit user requirement)
 
