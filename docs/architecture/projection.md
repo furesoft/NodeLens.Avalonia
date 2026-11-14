@@ -7,18 +7,20 @@ prototype (spike) before committing to the full implementation.
 ## Pipeline
 
 ```text
-Node ──(concept notation)──▶ EditorTree ──(measure)──▶ LayoutBox tree ──(render)──▶ GPU
-                                   ▲                          ▲
-                             cached per node           cached per node + width
+Node ──(concept notation)──▶ EditorTree ──(measure + arrange)──▶ CellLayout ──(render)──▶ GPU
 ```
 
-Three distinct structures, each with its own cache and invalidation rules:
+Three distinct structures:
 
 | Structure | Depends on | Invalidated by |
 | --- | --- | --- |
 | `EditorTree` | node data + concept notation + visibility aspects | any change on that node |
-| `LayoutBox` | editor tree + available width class | editor tree change or width class change |
-| Canvas | layout boxes + scroll offset | scroll, selection, focus, error markers |
+| `CellLayout` | editor tree + available width (for cells that need it) | editor tree change, or width change |
+| Canvas | placements + scroll offset | scroll, selection, focus, error markers |
+
+No structure is cached yet: the tree is built and laid out on demand, which is fast enough
+for a whole model. The invalidation column is the rule a cache has to honour once the
+control adds one.
 
 Separating the editor tree from layout is what makes the notation declarative: the
 tree is pure structure, layout is pure geometry, and neither knows about Avalonia.
@@ -37,6 +39,7 @@ Cells of the editor tree (namespace `Projectional.Projection`, folder `Tree/`):
 | `EditorCell` | abstract base: address, parent, children, `IsLeaf`/`IsCaretTarget` |
 | `StructureCell` | arranges other cells and claims them as children |
 | `ContainerCell` | `Line` → horizontal, `Sequence` → vertical, `Indent` → vertical + indented |
+| `TextCell` | abstract base for every cell whose content is one string |
 | `ConstantCell` | literal text (keyword, punctuation), with its `ConstantKind` |
 | `SpaceCell` | one column of blank the notation asked for |
 | `PropertyCell` | property text, its `PropertyType` and whether the slot is set |
@@ -58,6 +61,10 @@ Three notes on this shape, all of which were decided while building it:
 - **A concept without notation is a marker, not an exception.** A language is written
   concept by concept, and a model that uses a concept whose notation is missing must
   still open, save and show the rest of itself.
+- **Every text-bearing cell shares one base.** `TextCell` exists so that layout and
+  rendering ask a single type for the string to draw instead of switching over five
+  cell kinds; the kind still decides what the text *means* (a keyword versus a
+  reference target), not how wide it is.
 
 `TableCell` and `ErrorOverlay` are not part of M1: tables arrive with the table language
 in M2, and error markers are decorations drawn on top of the cell tree rather than cells
@@ -88,21 +95,49 @@ Language authors do not build trees imperatively; they declare notation and
 
 ## Layout
 
-Layout is a two-pass measure/arrange over the box tree, restricted to the viewport.
+Layout turns the cell tree into absolute positions. It is one measure/arrange pass over
+the tree, in abstract **layout units** rather than pixels.
 
-- **Line-oriented for text-like notation.** A line is the unit of vertical layout;
-  wrapping is only produced by cells that opt in (e.g. a long list). This matches how
-  MPS feels and keeps vertical position computation O(1).
-- **Virtualization by page.** Only visible lines plus a small overscan are laid out.
-  Line heights are cached and reused from the previous layout, so scrolling does not
-  re-measure.
-- **Width classes.** If a `LayoutBox` depends on available width (few notations do),
-  the cache is keyed by a quantised width class, not by exact pixel width. This
-  prevents cache thrash on window resize.
-- **Baseline snapping.** Text is drawn on integer device pixels to avoid blurred
-  glyphs; the caret and selection rectangles snap to the same grid.
+- **Units, not pixels.** `ITextMeasure` is the only component that knows what a unit is.
+  `MonospaceTextMeasure` makes one character one unit wide and one line one unit tall,
+  which is what lets the layout tests state their expectations by counting characters
+  off the notation. A measure backed by real font metrics (and DPI) plugs in without
+  touching the arrangement.
+- **A flat placement list, not a second box tree.** The pass produces a `CellLayout`:
+  the root size plus one `PlacedCell(cell, bounds)` per cell in document order. Nesting
+  stays observable because a container is placed before its children and covers the same
+  area, so both consumers - drawing the viewport and hit testing - read absolute
+  coordinates instead of walking the tree again.
+- **Two arrangement rules.** A horizontal container advances a cursor to the right and
+  grows downwards to its tallest child; a vertical container stacks its children and, when
+  it is an indent, shifts them right by `ITextMeasure.IndentWidth`. The width of a stacked
+  container is its widest child, not the sum of them.
+- **Continuation, not wrapping.** After a taller child inside a line, the cursor continues
+  on that child's *last* line. A nested block therefore keeps the cell that follows it -
+  typically a closing brace - beside its last line, which is the look MPS has. Nothing
+  reflows text.
+- **Nothing is zero width.** An empty text cell is measured as one space. An unset
+  property and an empty slot are still positions the caret can occupy, so they must
+  occupy a column. This is why `PropertyCell.Text` is the empty string when unset rather
+  than null.
+- **Lookups.** `BoundsOf(EditorCell)` and `BoundsOf(CellAddress)` scan document order and
+  answer with the outermost cell carrying that address; `Find(x, y)` scans in reverse and
+  answers with the innermost cell under the point. `LayoutRect.Contains` is half-open, so
+  a point on a border belongs to exactly one cell.
 
-Budget (targets, checked by a benchmark suite from M1):
+Arrangement is independent of available width in M1: none of the built cells changes its
+arrangement with width, so `Layout(tree)` takes no width and lays out the whole tree.
+
+Deferred on purpose, each with the milestone that needs it:
+
+| Deferred | Why it can wait |
+| --- | --- |
+| Viewport-only layout, line-height cache | needs a scrolling control (M1) |
+| Width-dependent arrangement, width classes | no built-in cell depends on available width |
+| Snapping to device pixels | needs a real text stack (M1 control) |
+| Re-arranging only the changed subtree | needs the diffing of a repeat layout (M1 control) |
+
+Budget (targets, to be measured by a benchmark suite once the control exists):
 
 | Operation | Target |
 | --- | --- |
