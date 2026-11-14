@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Projectional.Core;
 
 /// <summary>
@@ -39,7 +37,7 @@ public readonly record struct NodeId : IComparable<NodeId>
     /// </summary>
     public static bool TryParse(string? text, out NodeId id)
     {
-        if (Guid.TryParseExact(text, "D", out var value) && value != Guid.Empty)
+        if (GuidText.TryParse(text, out var value))
         {
             id = new NodeId(value);
             return true;
@@ -59,5 +57,5 @@ public readonly record struct NodeId : IComparable<NodeId>
 
     public static bool operator >=(NodeId left, NodeId right) => left.CompareTo(right) >= 0;
 
-    public override string ToString() => Value.ToString("D", CultureInfo.InvariantCulture);
+    public override string ToString() => GuidText.Format(Value);
 }
