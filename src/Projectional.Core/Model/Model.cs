@@ -198,14 +198,41 @@ public sealed class Model
     /// </summary>
     internal Node CreateDetached(Concept concept)
     {
-        var node = new Node(NodeId.New(), concept, this);
-        Project.Register(node);
+        ArgumentNullException.ThrowIfNull(concept);
+
+        var node = CreateDetached(NodeId.New(), concept);
 
         if (IsRecording)
         {
             _journal.Add(change: null, undo: () => Project.Unregister(node));
         }
 
+        return node;
+    }
+
+    /// <summary>
+    /// Creates a node whose identity comes from outside, which is what loading a stored model
+    /// needs: the id in the file is the id in the project, so that references and caret positions
+    /// in that file keep pointing where they did.
+    /// </summary>
+    /// <remarks>
+    /// Loading is the only caller, which is why nothing is journaled here: a model that is being
+    /// built has no subscribers yet, and a half-built one is taken out of the project again rather
+    /// than undone.
+    /// </remarks>
+    internal Node CreateDetached(NodeId id, Concept concept)
+    {
+        ArgumentNullException.ThrowIfNull(concept);
+
+        if (id.IsEmpty)
+        {
+            throw new ArgumentException("A node id must not be empty.", nameof(id));
+        }
+
+        RequireKnownConcept(concept);
+
+        var node = new Node(id, concept, this);
+        Project.Register(node);
         return node;
     }
 
