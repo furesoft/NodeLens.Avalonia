@@ -1,0 +1,63 @@
+# Open questions
+
+Decisions that are *intentionally* unresolved. Each row states the question, the
+recommendation, and the milestone by which it must be decided — deciding early is
+usually worse than deciding late, because most of these only become clear with a
+working editor.
+
+Status values: **Open** (undecided), **Leaning** (recommendation exists, not committed),
+**Decided** (promoted into an ADR).
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 1 | Does undo store inverse changes or replay commands? | Leaning | Inverse changes with typing-burst coalescing. Command replay breaks as soon as an action depends on completion/scope state. | M0 |
+| 2 | How are keyboard shortcuts assigned, and can languages add their own? | Leaning | Fixed core set, language-provided actions must bind to free keys or appear only in menus. Conflicts are a support nightmare. | M3 |
+| 3 | Is the caret allowed to sit inside a collapsed/abstract node? | Leaning | No — the caret always attaches to a visible leaf. Invisible caret positions produce unexplainable keystrokes. | M1 |
+| 4 | How much of MPS' *editor cell* model is adopted? | Open | Start with the cell set in [projection.md](architecture/projection.md); add primitives only when a real notation needs them. | M2 |
+| 5 | Do we support several editors/views on the same model simultaneously? | Leaning | Yes, but with one writer and one undo stack per model, not per view. Cheap now, expensive later. | M3 |
+| 6 | Clipboard: structural only, or also plain text? | Leaning | Both, structural preferred on paste. Text-only would make the editor unusable for non-users. | M3 |
+| 7 | What exactly is a "model" for scoping and file granularity? | Open | Model = file = import unit. Revisit only if projects grow beyond a few hundred models. | M2 |
+| 8 | Do declared languages get their own versioning independent of the project? | Leaning | Yes: `language.xml` carries the version; models record the version they were written with. | M2 |
+| 9 | Where do styles/themes live — language or host application? | Leaning | Split: language defines *semantic* tags, host maps tags to colours/fonts. Otherwise every DSL fights the host theme. | M2 |
+| 10 | How is generation triggered: manual, on save, on change? | Leaning | Manual plus on-demand; never on every keystroke. Generation on change is a performance trap. | M4 |
+| 11 | Does the interpreter support stepping with a caret in the model, or only a trace? | Leaning | Trace first (M4), stepping as a debugger UI later. Stepping needs its own UI vocabulary. | M4 |
+| 12 | Are generated artifacts written to disk by the framework? | Leaning | No. The framework returns text; the host decides where it goes. Keeps the component free of build-system opinions. | M4 |
+| 13 | How are project-wide renames implemented — dedicated refactoring or scripted edit actions? | Leaning | Edit-action programs, so they are undoable and testable like anything else. | M6 |
+| 14 | Model-aware 3-way merge: in the editor, in a CLI tool, or both? | Open | CLI first (usable in hooks), UI later. | M6 |
+| 15 | Is AOT/trimming a supported scenario or best-effort? | Open | Best-effort until M7; the reflection-free design keeps the door open. | M7 |
+| 16 | Localisation of the framework UI (menus, diagnostics)? | Leaning | English-only UI, but diagnostic messages are keys that a host can localise. | M5 |
+| 17 | Do languages ship with example models as tests? | Leaning | Yes — a language package without a golden corpus is untestable and will regress. | M6 |
+| 18 | Bidirectional text and CJK input: required for 1.0? | Open | CJK/IME yes (M7), bidi no. | M7 |
+
+## Scope honesty
+
+Two things should stay written down, because they are easy to talk oneself out of:
+
+1. **"Like MPS" is a direction, not a deliverable.** MPS is a multi-year, multi-person
+   product. Targeting its feature list with a part-time solo effort is the reliable
+   route to an unfinished framework. The gates in [roadmap.md](roadmap.md) exist to
+   keep the project at "usable subset" instead of "unusable whole".
+2. **The pilot DSL is a forcing function.** Rule/decision tables were chosen because
+   they stress the projection engine (rows, columns, alignment) and the semantics
+   (constraints, generation, interpretation) at the same time. If the pilot works, the
+   architecture is probably right; if it needs special cases, the architecture is
+   wrong and should be fixed before more languages exist.
+
+## Questions that were already decided
+
+Listed here so they are not reopened accidentally; the authoritative text is the ADR.
+
+| Topic | Decision | ADR |
+| --- | --- | --- |
+| UI stack | Avalonia | [0001](adr/0001-ui-stack-avalonia.md) |
+| Source of truth | model, never text | [0002](adr/0002-model-as-source-of-truth.md) |
+| Runtime and license | .NET 10 LTS, Apache-2.0 | [0003](adr/0003-runtime-and-license.md) |
+| Reference identity | stable IDs with `resolveInfo` fallback | [0004](adr/0004-stable-node-ids.md) |
+| Persistence | XML, MPS-like | [0005](adr/0005-xml-persistence.md) |
+| Change propagation | change events as backbone | [0006](adr/0006-change-event-backbone.md) |
+| Language definition | reflection-free, delegate-based aspects | [0007](adr/0007-reflection-free-language-definition.md) |
+| Bootstrap order | built-in languages before self-hosting | [0008](adr/0008-bootstrap-order.md) |
+| Editor control | custom-drawn, structural caret | [0009](adr/0009-custom-drawn-editor-control.md) |
+| Public API | `Core` + `Avalonia` only | [0010](adr/0010-public-api-surface.md) |
+| Execution | interpreter *and* text generation | ADR to be written (M4) |
+| Pilot DSL | rule/decision tables | ADR to be written (M4) |
