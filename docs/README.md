@@ -12,12 +12,13 @@ constraints it must satisfy, and which alternatives were rejected.
 3. [Language definition](architecture/language.md) — concepts, aspects, and the
    three bootstrap stages.
 4. [Projection](architecture/projection.md) — from model to pixels.
-5. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-6. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-7. [Integration](architecture/integration.md) — how host applications embed this.
-8. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-9. [Roadmap](roadmap.md) — milestones and acceptance gates.
-10. [Open questions](open-questions.md) — what is deliberately still undecided.
+5. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
+6. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+7. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+8. [Integration](architecture/integration.md) — how host applications embed this.
+9. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+10. [Roadmap](roadmap.md) — milestones and acceptance gates.
+11. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
