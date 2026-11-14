@@ -24,8 +24,11 @@ Consequences that drive the whole design:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│  Projectional.Workbench        language workbench app        │
-├──────────────────────────────────────────────────────────────┤
+│  Projectional.Workbench        standalone editor (host)      │
+│                                built only on public API      │
+└───────────────────────────────┬──────────────────────────────┘
+                                │ public API only
+┌───────────────────────────────▼──────────────────────────────┐
 │  Projectional.Avalonia         custom control, text layout,  │
 │                                hit testing, IME, clipboard   │
 ├──────────────────────────────────────────────────────────────┤
@@ -44,7 +47,10 @@ Consequences that drive the whole design:
 Dependency rule: **arrows point downward only.** `Projection` and `Editing` must not
 reference Avalonia, so that layout and editing behaviour are testable headlessly and
 a second front end (Blazor) stays possible. `Core` must not reference `Language`;
-languages are registered into Core's registries from above.
+languages are registered into Core's registries from above. `Workbench` sits *above*
+the public boundary: it sees exactly what any host application sees, which is what
+makes it a usable test of the integration surface
+([ADR 0011](../adr/0011-standalone-editor.md)).
 
 ## Projects
 
@@ -56,13 +62,15 @@ languages are registered into Core's registries from above.
 | `Projectional.Editing` | Structural edit actions, substitution/transformation menus, completion, undo | none |
 | `Projectional.Semantics` | Constraint evaluation, type checking, scope resolution, generation, interpretation | none |
 | `Projectional.Avalonia` | `ProjectionalEditorControl`, rendering of layout boxes, input, IME, clipboard, accessibility | Avalonia 12 |
-| `Projectional.Workbench` | Host application for authoring languages and models | Avalonia 12 |
+| `Projectional.Workbench` | Standalone desktop editor: document tabs, browsers, panels. **Consumer** of the public API — no internal access | Avalonia 12 |
 | `tests/*` | Unit and snapshot tests | none |
 | `samples/*` | Example languages and host integrations | varies |
 
 Only `Projectional.Core` and `Projectional.Avalonia` expose public API. Everything
 else is `internal` with `InternalsVisibleTo` for tests — see
-[ADR 0010](../adr/0010-public-api-surface.md).
+[ADR 0010](../adr/0010-public-api-surface.md). `Projectional.Workbench` deliberately
+has no such exemption: it is the reference consumer that keeps the public API honest
+([ADR 0011](../adr/0011-standalone-editor.md), [standalone.md](standalone.md)).
 
 ## Data flow of one keystroke
 

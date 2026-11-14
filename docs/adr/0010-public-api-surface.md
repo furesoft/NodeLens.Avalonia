@@ -27,11 +27,16 @@ have to reference the language-definition assembly at all.
 | --- | --- |
 | `Projectional.Core` | public: `Project`, `ModelHandle`, `INodeView`, `Diagnostic`, change/save events |
 | `Projectional.Avalonia` | public: `ProjectionalEditorControl`, `EditorSession`, theming entry points |
-| `Projectional.Language` | **internal** (`InternalsVisibleTo` tests and the workbench) |
+| `Projectional.Language` | **internal** (`InternalsVisibleTo` tests only) |
 | `Projectional.Projection` | **internal** |
 | `Projectional.Editing` | **internal** |
 | `Projectional.Semantics` | **internal** |
-| `Projectional.Workbench` | library surface is internal; shipped as an app |
+| `Projectional.Workbench` | library surface is internal; shipped as an app, consuming only the public API |
+
+This document originally listed the workbench alongside the tests as an
+`InternalsVisibleTo` recipient. [ADR 0011](0011-standalone-editor.md) removed that
+exemption: the app is the reference consumer of the public surface and cannot test
+that surface while holding keys to the internals.
 
 Additional rules:
 
