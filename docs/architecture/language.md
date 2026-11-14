@@ -33,22 +33,44 @@ Notation is a tree of **editor cells**. A cell is one of:
 | --- | --- | --- |
 | Constant | a keyword/punctuation string | not editable, participates in substitution menus |
 | Property | the property value | free text input, parsed to the property type |
-| Child | one node or an indented list of children | newline/indent semantics, inserts siblings |
+| Single child | the one child's notation, drawn where the cell sits | newline/indent semantics, inserts siblings |
+| Children | an indented list of child notations | |
 | Reference | the target's name, with a chooser | typed text resolves through scopes |
-| Collection | arbitrary child list layout | |
+| Collection | a child list with a separator cell between children | |
 | Table/Grid | rows (children) × columns (fixed or per-row roles) | cell-level caret |
-| Indent, Line, Space | layout modifiers | |
+| Line, Sequence, Indent, Space | layout modifiers | |
+
+The layout cells are the skeleton, and they come in two shapes that cannot be
+mixed up. A **line** runs its inline cells horizontally and is the unit of vertical
+layout; a **sequence** stacks blocks vertically unchanged; an **indent** stacks
+blocks one level deeper; a **space** separates two inline cells. Only inline cells
+(constants, properties, references, single children, spaces) may sit in a line, and
+only blocks (lines, sequences, indents, children, collections) may sit in a sequence
+or an indent. That split is expressed in the type hierarchy, so a notation that
+misplaces a cell fails to compile rather than at startup.
+
+Empty slots are never invisible: a slot-bearing cell carries the text it shows while
+it is empty (`<empty>`, `<none>`). The caret always needs something visible to
+attach to, and an empty list still has to be fillable.
 
 ```csharp
-.Notation(ed => ed.Line(
-      ed.Keyword("ruleset"), ed.Space, ed.Property("name"), ed.Space, ed.Punct("{"),
-      ed.Indent(ed.Children("rules")),
-      ed.Punct("}")))
+notation.Add("Sample.Ruleset", ed => ed.Sequence(
+    ed.Line(
+        ed.Keyword("ruleset"), ed.Space, ed.Property("name"),
+        ed.Space, ed.Punct("{")),
+    ed.Indent(ed.Children("rules")),
+    ed.Line(ed.Punct("}"))));
 ```
 
 Notation is **data, not code**, even in the built-in stage: it is a declarative
 structure that the projection engine walks. That is what allows stage C to edit the
 notation itself inside the editor.
+
+Notation is validated once, when it is registered: every cell is checked against the
+concept registry, so the projection engine can assume a cell only ever names a slot
+that exists. A concept without its own notation inherits the nearest one in its
+super-concept chain, which is how a language reuses a notation it only wants to
+extend.
 
 Language authors never write layout code. If a notation needs something the cell set
 cannot express, the cell set is incomplete — adding a cell primitive is a framework
