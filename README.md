@@ -25,6 +25,7 @@ shipped product.
 | [docs/architecture/persistence.md](docs/architecture/persistence.md) | XML format, project layout, migrations |
 | [docs/architecture/semantics.md](docs/architecture/semantics.md) | Constraints, types, scopes, generators, interpreter |
 | [docs/architecture/integration.md](docs/architecture/integration.md) | Embedding API, plugin model, packaging |
+| [docs/architecture/testing.md](docs/architecture/testing.md) | Round-trip corpus, snapshot harness, CI |
 | [docs/roadmap.md](docs/roadmap.md) | Milestones M0–M7 with acceptance gates |
 | [docs/open-questions.md](docs/open-questions.md) | Decision log for unresolved aspects |
 | [docs/adr/](docs/adr/) | Architecture decision records |

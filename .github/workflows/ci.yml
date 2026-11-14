@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-and-test:
+    name: build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One failing platform must not hide the state of the other.
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up the SDK the repository pins
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Projectional.slnx
+
+      - name: Build
+        run: dotnet build Projectional.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Projectional.slnx --configuration Release --no-build
+
+  byte-stability:
+    name: stored form is byte-stable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up the SDK the repository pins
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # The corpus is the wire format, and a diff here means older files would either
+      # change on save or stop loading. This runs the corpus alone so a failure names
+      # the contract that broke instead of the whole suite.
+      - name: Run the corpus
+        run: dotnet test tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj --filter-class "*CorpusTests"

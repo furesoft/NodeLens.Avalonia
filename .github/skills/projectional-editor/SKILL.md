@@ -11,7 +11,8 @@ A projectional editor for .NET, modelled on JetBrains MPS. The abstract syntax t
 the program. Notation is computed from the model by projections; there is no text buffer
 and no parser. Target users are people who build their own DSLs or embed a DSL editor as
 a component inside a host application. Planning is finished and lives in `docs/`;
-implementation has started at milestone M0.
+milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
+harness, CI). Next is M1: projection and editing, the highest-risk milestone.
 
 ## Status and where the truth lives
 
@@ -145,7 +146,7 @@ it is special.
   `internal` and reached only through these, so the determinism rules have one gate.
 - **Determinism lives in `ModelXmlWriter.CreateSettings()`** - LF, two-space indent,
   UTF-8 without BOM. Change it there and nowhere else; the byte-identical corpus test
-  will fail otherwise.
+  (`Corpus/` in the test project) will fail otherwise.
 - `NewLineHandling.Entitize` is deliberate: a `\r` inside a property value is written as
   `&#xD;` while indentation still uses `\n`, so values survive round trips byte-stably.
 - **The `name` attribute on `node` is written but never read.** It duplicates the name
@@ -169,6 +170,38 @@ it is special.
   `Projectional.Persistence`) so they can reuse `TestLanguage.cs` and no fixture is
   duplicated. If a second test project ever needs that language, promote it to a
   `Projectional.TestLanguage` library rather than copying it.
+
+## How the tests are organised
+
+`tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
+`Persistence` and `Projection` so that `TestLanguage.cs` (five concepts: `Test.Tag`,
+`Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) exists once. If a second test project
+ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
+it. **Baseline is 222 tests**; anything below that means tests were deleted.
+
+- **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
+  documents the writer produced once and that now have to load and save back to the same
+  bytes. They are copied to the output directory by a `<None Update="Corpus\**\*.mps"
+  CopyToOutputDirectory="PreserveNewest" />` item. **Never regenerate a corpus file to make
+  a test pass** - a byte that moves is a wire-format change and needs an ADR. The files must
+  stay LF, BOM-free and without a trailing newline.
+- **Notation is tested as text, not pixels.** `Projectional.Projection/Snapshot/` holds
+  `SnapshotGrid` (a character grid that refuses to draw past its edge rather than clipping)
+  and `LayoutSnapshot.Render(model, width)`. `Render` is the M0 stub: it prints one
+  indented line per node until projections exist. The signature is the contract; only the
+  body changes. Both types are `internal` per ADR 0010, reached from tests through
+  `InternalsVisibleTo`.
+- **CI runs both platforms.** `.github/workflows/ci.yml` builds Release and tests with
+  `--no-build` on `windows-latest` and `ubuntu-latest` (`fail-fast: false`), plus a
+  Linux-only job that runs just the corpus so a format regression names the contract that
+  broke. The SDK comes from `global.json`, so CI and this machine compile identically.
+- **xunit.v3 on Microsoft.Testing.Platform**, so a test project is an executable.
+  `--filter-class "*Name"` works; a comma-separated list does **not** ("wildcards may only
+  be at the beginning and/or end"). Exit code 8 means no tests ran, 2 means failures - and
+  on this console the run summary is printed in German.
+- One type per file applies to tests too: `TemporaryDirectory.cs` is its own file, not a
+  nested class.
+- See `docs/architecture/testing.md` for what each layer is expected to prove.
 
 ## Language level (explicit user requirement)
 
