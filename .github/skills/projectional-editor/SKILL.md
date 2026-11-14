@@ -13,9 +13,9 @@ and no parser. Target users are people who build their own DSLs or embed a DSL e
 a component inside a host application. Planning is finished and lives in `docs/`;
 milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
 harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
-in `Projectional.Language` and the runtime editor tree in `Projectional.Projection/Tree/` are
-done; layout, snapshot rendering, edit actions, the expressions language and the Avalonia
-control follow.
+in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/` and
+the measure/arrange layout in `Projectional.Projection/Layout/` are done; snapshot rendering,
+edit actions, the expressions language and the Avalonia control follow.
 
 ## Status and where the truth lives
 
@@ -256,6 +256,43 @@ into the other.
   outermost container carrying a node address. `EditorTreeWalker` is the single place that
   defines document order; a second walk that disagrees with it is a caret bug.
 
+## How layout works
+
+`Projectional.Projection/Layout/` turns a cell tree into absolute positions. One pass, no
+second tree.
+
+- **`ITextMeasure` is the only thing that knows what a layout unit is.**
+  `MonospaceTextMeasure` makes 1 character = 1 unit wide and 1 line = 1 unit tall, which is
+  why layout expectations in tests can be counted off the notation. Never measure a string
+  anywhere else, and never put pixels in this folder.
+- **`CellLayouter(measure).Layout(tree)` returns a `CellLayout`**: root `Size` plus a flat
+  `IReadOnlyList<PlacedCell>` in document order. A container is placed *before* its children
+  and covers the same area, which is what makes both consumers work without walking a tree:
+  `BoundsOf(cell)`/`BoundsOf(address)` scan forward and answer with the outermost cell,
+  `Find(x, y)` scans backward and answers with the innermost.
+- **The parent's slot is reserved before its children are arranged**
+  (`placed.Add(default); ...; placed[index] = ...`) because a container only learns its size
+  after arranging. Keep the reservation - it is what preserves document order.
+- **Horizontal arrangement uses hanging continuation.** After a taller child, the cursor
+  continues on that child's *last* line: `cursorX += w; bottom = max(bottom, cursorY + h);
+  cursorY += h - lineHeight;`. Compute `bottom` **before** bumping `cursorY`; swapping those
+  two lines is the bug that makes a closing brace float below its block.
+- **Vertical arrangement**: an `IsIndented` container shifts children right by
+  `ITextMeasure.IndentWidth` (monospace: 2); width is the widest child, height is the stack.
+- **Nothing is zero width.** Empty text is measured as one space, because an unset property
+  or empty slot must still be a column the caret can occupy. `PropertyCell.Text` is `""` when
+  unset for the same reason.
+- **`ChildCell` and `CollectionCell` both lay their content out inline**; only the surrounding
+  container decides whether that line stacks. `Many`-slot children are inline by nature, so a
+  vertical list needs `Sequence(...)` around the `Children(...)`.
+- **Unknown cell kind throws `ProjectionException`** - the cell set is closed, so a new cell
+  must be added to `CellLayouter` on purpose.
+- **Width-independent on purpose.** `Layout(tree)` takes no width because no built cell
+  rearranges with width. Viewport-only layout, width classes, line-height caching and
+  device-pixel snapping are deferred, not forgotten.
+- `TextCell` is the shared base of every cell whose content is one string, so layout asks one
+  type for `Text` instead of switching over five kinds. Add new text cells under it.
+
 ## How the tests are organised
 
 `tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
@@ -263,7 +300,7 @@ into the other.
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 261 tests**; anything below that means tests were deleted.
+it. **Baseline is 279 tests**; anything below that means tests were deleted.
 
 - **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
   documents the writer produced once and that now have to load and save back to the same

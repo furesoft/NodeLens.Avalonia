@@ -84,14 +84,14 @@ Core: transaction → node mutations → change events
   └─▶ Persistence: mark model dirty
   │
   ▼
-Projection: build editor tree → measure → layout boxes for the viewport
+Projection: build editor tree → measure and arrange → flat placements
   │
   ▼
-Avalonia control: render boxes, place caret, scroll into view
+Avalonia control: render placements, place caret, scroll into view
 ```
 
-Re-rendering is scoped to the visible viewport. Everything outside it is measured
-lazily and cached.
+Re-rendering is scoped to the visible viewport once the control exists; until then the
+whole tree is laid out, which is what the snapshot renderer draws.
 
 ## Three notions of "position"
 
