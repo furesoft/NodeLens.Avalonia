@@ -5,4 +5,8 @@
     <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Projectional.Core.Tests" />
+  </ItemGroup>
+
 </Project>
