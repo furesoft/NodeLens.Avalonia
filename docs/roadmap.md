@@ -26,7 +26,7 @@ produces something usable, and no milestone depends on a later one being finishe
 | Node/model/project model | slots, identity, invariants, registries |
 | Change events | transactions, inverse changes, coalescing |
 | XML persistence | deterministic writer/reader, project layout, atomic save |
-| Test harness | round-trip corpus, layout snapshot harness stub, CI |
+| Test harness | round-trip corpus, layout snapshot harness, CI |
 
 **Gate:** a model created in code survives save → load → save byte-identically; undo
 and redo restore exact model states; invariant violations fail debug assertions.
