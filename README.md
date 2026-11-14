@@ -38,4 +38,6 @@ shipped product.
 
 ## License
 
-Apache-2.0 (see [ADR 0003](docs/adr/0003-runtime-and-license.md)).
+Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). The rationale (patent
+grant, embedding in commercial host applications) is in
+[ADR 0003](docs/adr/0003-runtime-and-license.md).
