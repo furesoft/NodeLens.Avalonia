@@ -69,6 +69,39 @@ even if the build stays green.
   mechanism - the namespace stays flat, so consumers need no extra `using` directives.
 - Test files mirror this: one `<TypeUnderTest>Tests.cs` per type.
 
+## How `Projectional.Core` records change
+
+Understand this before touching `Model`, `Node` or anything under `Changes/`; the seams are
+deliberate and easy to break.
+
+- `Model` owns a private `ChangeJournal` (a `List<JournalEntry>`), a nesting depth `_depth`,
+  and the `Changed` event. `IsRecording` is `_depth > 0 || Changed is not null`, so a model
+  nobody watches allocates no rollback closures at all. Guard every `Record` call with
+  `if (Model.IsRecording)`.
+- Every mutation records an `IModelChange` **plus its own rollback closure**. Undo will reuse
+  exactly these closures, so they must be true inverses.
+- A journal entry with a `null` change is rollback-only. `CreateDetached` uses one so that
+  `NewChild` publishes a single `NodeAdded` at the final place instead of root-add plus
+  root-remove plus child-add.
+- `MutationScope` is the implicit path: `using var scope = Model.BeginMutation();` is a
+  no-op unless the model is recording, and it **commits on `Dispose`**. `ModelTransaction`
+  is the explicit path: `Complete()` keeps, `Dispose()` without `Complete()` rolls back.
+  Use an explicit transaction whenever a composite edit must not survive a partial failure.
+- Commit ordering in `EndTransaction`: decrement `_depth`, then on rollback call
+  `RollbackTo(mark)` and restore `Version` to the value captured at begin, on commit with
+  `_depth > 0` do nothing, and only on the outermost commit publish `ChangesFrom(mark)` and
+  clear the journal. The mark is therefore always 0 at publish time.
+- Rollback runs entries in reverse order. That is what makes a move work: the `NodeAdded`
+  rollback unlinks, then the `NodeRemoved` rollback re-attaches at the old place. Keep the
+  pair independent - do not make one closure depend on the other.
+- Deleting a subtree emits **one** `NodeRemoved` whose rollback is a `SubtreeSnapshot`
+  (placement plus every node in document order), then one `ReferenceChanged` per cleared
+  reference in survivors. Reference restores are order-independent dictionary writes, so
+  they are valid before the nodes are re-registered.
+- `NodeAdded.Parent` and `Role` are nullable on purpose: `null` means "model root".
+- Subscribers must be passive. Mutating from a `Changed` handler is a bug, and
+  reentrancy through `Model.Changed` is not guarded against.
+
 ## Language level (explicit user requirement)
 
 **Always use the newest C# that the pinned SDK offers; never settle for the syntax the

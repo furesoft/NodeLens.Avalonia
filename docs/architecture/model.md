@@ -83,11 +83,34 @@ changes; nothing mutates a node outside one.
 ```csharp
 public interface IModelChange { NodeId Target { get; } }
 
-sealed record NodeAdded(NodeId Parent, string Role, int Index, NodeId Child)      : IModelChange;
-sealed record NodeRemoved(NodeId Parent, string Role, int Index, NodeId Child)    : IModelChange;
-sealed record PropertyChanged(NodeId Target, string Name, string? Old, string? New): IModelChange;
+sealed record NodeAdded(NodeId Target, NodeId? Parent, string? Role, int Index)        : IModelChange;
+sealed record NodeRemoved(NodeId Target, NodeId? Parent, string? Role, int Index)      : IModelChange;
+sealed record PropertyChanged(NodeId Target, string Name, string? Old, string? New)     : IModelChange;
 sealed record ReferenceChanged(NodeId Target, string Name, NodeId? Old, NodeId? New, bool WasResolved) : IModelChange;
 ```
+
+`Parent` and `Role` are nullable because a node can be placed as a model root, which
+has no owning node and no slot. `null` therefore means "at the top of the model",
+never "unknown". `Index` is the position among the node's siblings in that slot (or
+among the model's roots). The same records describe creation and moves: moving a node
+is one `NodeRemoved` at the old place followed by one `NodeAdded` at the new one, so
+subscribers never need a third change kind.
+
+`WasResolved` records whether the *old* reference resolved to a node when it was
+replaced, which undo needs in order to restore the very same reference.
+
+A committed transaction publishes exactly one payload:
+
+```csharp
+sealed class ModelChangedEventArgs : EventArgs
+{
+    public ModelId Model { get; }
+    public long Version { get; }                  // Model.Version after the commit
+    public IReadOnlyList<IModelChange> Changes { get; }
+}
+```
+
+A transaction that changes nothing publishes nothing.
 
 Subscribers, all of which are mandatory from day one:
 
@@ -106,6 +129,9 @@ Design rules:
 - Transactions are nestable; only the outermost commits and publishes.
 - A transaction that throws leaves the model untouched (mutations are journaled and
   rolled back).
+- Deleting a subtree is **one** `NodeRemoved` for the whole tree, not one per node,
+  followed by one `ReferenceChanged` for every reference that was cleared in the
+  survivors. Undo restores the tree in one step and the references independently.
 - Bulk operations (migrations, generated insertions) run in a single transaction and
   publish one change set, so undo treats them as one step.
 
