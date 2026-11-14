@@ -78,8 +78,16 @@ deliberate and easy to break.
   and the `Changed` event. `IsRecording` is `_depth > 0 || Changed is not null`, so a model
   nobody watches allocates no rollback closures at all. Guard every `Record` call with
   `if (Model.IsRecording)`.
-- Every mutation records an `IModelChange` **plus its own rollback closure**. Undo will reuse
-  exactly these closures, so they must be true inverses.
+- Every mutation records an `IModelChange` **plus its own undo closure and, where the
+  operation has a forward direction, its redo closure**. Undo reuses exactly these
+  closures, so they must be true inverses.
+- Journal closures are **raw**: they call the unrecorded internals (`AttachPlacement`,
+  `UnlinkFromPlace`, `RestoreReference`, `UnsetReference`, `DeleteSubtree(node,
+  record: false)`) and never `Record`. A replay therefore journals nothing, and
+  `UndoHistory` publishes the change set itself (`Invert()` per entry in reverse for
+  undo, the original records in forward order for redo) through
+  `Model.PublishRestored`. When you add a mutation seam, add its redo too — a missing
+  redo makes redo silently skip the step.
 - A journal entry with a `null` change is rollback-only. `CreateDetached` uses one so that
   `NewChild` publishes a single `NodeAdded` at the final place instead of root-add plus
   root-remove plus child-add.
@@ -101,6 +109,27 @@ deliberate and easy to break.
 - `NodeAdded.Parent` and `Role` are nullable on purpose: `null` means "model root".
 - Subscribers must be passive. Mutating from a `Changed` handler is a bug, and
   reentrancy through `Model.Changed` is not guarded against.
+
+## How undo, redo and coalescing work
+
+`UndoHistory` (`src/Projectional.Core/Undo/`) subscribes to `Model.Changed`; it is not
+wired into the edit API, so anything that publishes a change set is undoable for free.
+Read its `<remarks>` before changing the replay path.
+
+- `UndoStep` bundles one committed transaction's `JournalEntry` list plus the
+  `CoalescingKey` it was committed under.
+- Undo plays the entries **in reverse** calling `Undo`; redo plays them **forward**
+  calling `Redo` (skipping the nulls).
+- `Replay` sets `_replaying`, opens a transaction, runs the closures, `MarkMutated()`,
+  `Complete()`, and then calls `PublishRestored` **while `_replaying` is still true** —
+  otherwise the history would record its own restoration and redo/undo would fight.
+- `OnModelChanged` bails out on `_replaying` or on `e.Steps.Count == 0` (undo/redo
+  publications carry no steps on purpose).
+- Any commit clears the redo stack. Coalescing only merges into the previous step when
+  the current `CoalescingKey` is non-null and equals that step's key; `null` never
+  merges. There is no time window — the host must clear the key when the burst ends.
+- The `UndoHistory` API is `Undo()`, `Redo()`, `CanUndo`, `CanRedo`, `UndoDepth`,
+  `RedoDepth`, `CoalescingKey`, `Clear()`, plus `Dispose()` to unsubscribe.
 
 ## Language level (explicit user requirement)
 

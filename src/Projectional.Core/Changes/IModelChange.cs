@@ -14,4 +14,15 @@ public interface IModelChange
 {
     /// <summary>The node the change is about: the node that appeared, disappeared or was written.</summary>
     NodeId Target { get; }
+
+    /// <summary>
+    /// The change that puts the model back the way it was before this one — what undo publishes so
+    /// that subscribers learn about a restoration instead of having to guess at it.
+    /// </summary>
+    /// <remarks>
+    /// Inverting is a pure record transformation, so it never looks at the tree. A move therefore
+    /// inverts into a <see cref="NodeAdded"/> followed by a <see cref="NodeRemoved"/>, which is the
+    /// move back.
+    /// </remarks>
+    IModelChange Invert();
 }

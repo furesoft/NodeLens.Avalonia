@@ -19,7 +19,8 @@ internal sealed class ChangeJournal
     public bool IsEmpty => _entries.Count == 0;
 
     /// <summary>Adds a step. <paramref name="change"/> is what subscribers will see.</summary>
-    public void Add(IModelChange? change, Action rollback) => _entries.Add(new JournalEntry(change, rollback));
+    public void Add(IModelChange? change, Action undo, Action? redo = null) =>
+        _entries.Add(new JournalEntry(change, undo, redo));
 
     /// <summary>Everything recorded since <paramref name="mark"/>, in order.</summary>
     public IReadOnlyList<IModelChange> ChangesFrom(int mark)
@@ -36,12 +37,26 @@ internal sealed class ChangeJournal
         return changes;
     }
 
+    /// <summary>
+    /// Every step since <paramref name="mark"/>, in the order the steps happened.
+    /// </summary>
+    public IReadOnlyList<JournalEntry> StepsFrom(int mark)
+    {
+        var steps = new List<JournalEntry>(_entries.Count - mark);
+        for (var i = mark; i < _entries.Count; i++)
+        {
+            steps.Add(_entries[i]);
+        }
+
+        return steps;
+    }
+
     /// <summary>Undoes every step back to <paramref name="mark"/> and forgets them.</summary>
     public void RollbackTo(int mark)
     {
         for (var i = _entries.Count - 1; i >= mark; i--)
         {
-            _entries[i].Rollback();
+            _entries[i].Undo();
         }
 
         _entries.RemoveRange(mark, _entries.Count - mark);

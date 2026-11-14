@@ -13,4 +13,14 @@ public sealed record ReferenceChanged(
     string Name,
     NodeId? Old,
     NodeId? New,
-    bool WasResolved) : IModelChange;
+    bool WasResolved) : IModelChange
+{
+    /// <inheritdoc />
+    /// <remarks>
+    /// The inverse treats the value it puts back as live whenever there is one. A reference that a
+    /// deletion cleared comes back together with the subtree that held it, and that deletion reports
+    /// its own reference changes, so a wrong guess here would be corrected by a sibling record
+    /// rather than by silence.
+    /// </remarks>
+    public IModelChange Invert() => this with { Old = New, New = Old, WasResolved = New is not null };
+}
