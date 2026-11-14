@@ -1,60 +1,124 @@
 using Projectional.Core;
+using Projectional.Language;
 
 namespace Projectional.Projection;
 
 /// <summary>
-/// Renders a model into a text grid, which is how notation tests are meant to assert on layout.
+/// Renders a model, or a single node, into a text grid by laying out the cells its notation
+/// produces and drawing every text-bearing cell at the position layout gave it.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the harness stub from the M0 roadmap, not the projection engine. Until projections
-/// exist there is no notation to draw, so the body walks the tree and prints one indented line per
-/// node. That is small, but it is real: it fixes the signature the engine will keep, and it gives
-/// notation tests something to compare against before any cell is placed.
+/// This is the headless half of the editor: no window, no font, no Avalonia. That is what lets
+/// notation be tested as text, and it draws from the same placement data the real control will use,
+/// so a snapshot failure is a layout failure rather than a snapshot-only artefact.
 /// </para>
 /// <para>
-/// When the engine arrives, only this body changes. The contract stays: same input, same text, on
-/// every machine, with no window and no font.
+/// One layout unit is one character cell and one row, which is exactly what
+/// <see cref="MonospaceTextMeasure"/> promises. A cell that carries no text - a container - draws
+/// nothing and only ever contributes position, so drawing in document order cannot bury a child
+/// under its parent.
 /// </para>
 /// </remarks>
 internal static class LayoutSnapshot
 {
-    private const int IndentPerLevel = 2;
-
-    /// <summary>Renders <paramref name="model"/> as at most <paramref name="width"/> columns of text.</summary>
-    internal static string Render(Model model, int width)
+    /// <summary>Renders one node exactly as its concept's notation draws it.</summary>
+    internal static string Render(Node node, NotationRegistry notations, int width)
     {
-        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        var lines = new List<string>();
-        foreach (var root in model.Roots)
+        return Render([LayoutOf(node, notations)], width);
+    }
+
+    /// <summary>
+    /// Renders every root of <paramref name="model"/> into at most <paramref name="width"/> columns,
+    /// one below the other in document order.
+    /// </summary>
+    internal static string Render(Model model, NotationRegistry notations, int width)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(notations);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+
+        return Render([.. model.Roots.Select(root => LayoutOf(root, notations))], width);
+    }
+
+    private static CellLayout LayoutOf(Node node, NotationRegistry notations) =>
+        new CellLayouter(MonospaceTextMeasure.Instance).Layout(new EditorTreeBuilder(notations).Build(node));
+
+    private static string Render(IReadOnlyList<CellLayout> layouts, int width)
+    {
+        // Roots are stacked with no gap between them: vertical spacing is something a notation
+        // decides, so the renderer must not invent any between two documents.
+        var rowOffsets = new int[layouts.Count];
+        var height = 0;
+
+        for (var i = 0; i < layouts.Count; i++)
         {
-            Outline(lines, root, depth: 0);
+            rowOffsets[i] = height;
+            height += Rows(layouts[i]);
         }
 
         // A grid needs at least one row, so an empty model renders through a blank one and comes
         // out of ToString as the empty string.
-        var grid = new SnapshotGrid(width, Math.Max(1, lines.Count));
+        var grid = new SnapshotGrid(width, Math.Max(1, height));
 
-        for (var row = 0; row < lines.Count; row++)
+        for (var i = 0; i < layouts.Count; i++)
         {
-            // A line wider than the snapshot is cut, not wrapped: the width was asked for.
-            var line = lines[row].Length > width ? lines[row][..width] : lines[row];
-            grid.Write(row, 0, line);
+            Draw(grid, layouts[i], rowOffsets[i], width);
         }
 
         return grid.ToString();
     }
 
-    private static void Outline(List<string> lines, Node node, int depth)
+    private static int Rows(CellLayout layout)
     {
-        var label = node.Name is { Length: > 0 } name ? $"{node.Concept.Key} {name}" : $"{node.Concept.Key}";
-        lines.Add(new string(' ', depth * IndentPerLevel) + label);
+        var bottom = 0;
 
-        foreach (var child in node.ChildrenInDocumentOrder())
+        foreach (var placed in layout.Cells)
         {
-            Outline(lines, child, depth + 1);
+            bottom = Math.Max(bottom, (int)Math.Ceiling(placed.Bounds.Bottom));
+        }
+
+        return bottom;
+    }
+
+    private static void Draw(SnapshotGrid grid, CellLayout layout, int rowOffset, int width)
+    {
+        foreach (var placed in layout.Cells)
+        {
+            // A text cell is one line tall, so the height layout reported only ever moves it.
+            if (TextOf(placed.Cell) is not { Length: > 0 } text)
+            {
+                continue;
+            }
+
+            var column = (int)Math.Round(placed.Bounds.X);
+            var available = width - column;
+
+            if (available <= 0)
+            {
+                continue;
+            }
+
+            // Text wider than the snapshot is cut, not wrapped: the width was asked for.
+            var visible = text.Length > available ? text[..available] : text;
+            grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, visible);
         }
     }
+
+    /// <summary>
+    /// What a cell shows. An empty slot draws its placeholder rather than nothing, because layout has
+    /// already reserved room for <see cref="ChildCell.EmptyText"/> and a language that shows nothing
+    /// at all leaves the reader unable to see that the slot exists.
+    /// </summary>
+    private static string TextOf(EditorCell cell) => cell switch
+    {
+        TextCell text => text.Text,
+        ChildCell { IsEmpty: true } empty => empty.EmptyText,
+        CollectionCell { IsEmpty: true } empty => empty.EmptyText,
+        _ => string.Empty,
+    };
 }
