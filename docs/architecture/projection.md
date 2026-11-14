@@ -119,7 +119,8 @@ the tree, in abstract **layout units** rather than pixels.
 - **Nothing is zero width.** An empty text cell is measured as one space. An unset
   property and an empty slot are still positions the caret can occupy, so they must
   occupy a column. This is why `PropertyCell.Text` is the empty string when unset rather
-  than null.
+  than null, and why an empty `ChildCell` or `CollectionCell` is measured to its
+  `EmptyText`: the placeholder is what fills the slot, so it is also what sizes it.
 - **Lookups.** `BoundsOf(EditorCell)` and `BoundsOf(CellAddress)` scan document order and
   answer with the outermost cell carrying that address; `Find(x, y)` scans in reverse and
   answers with the innermost cell under the point. `LayoutRect.Contains` is half-open, so
@@ -251,8 +252,12 @@ On a change event:
 The projection engine can render into a text grid without Avalonia:
 
 ```csharp
-string ascii = LayoutSnapshot.Render(model, width: 80);
+string ascii = LayoutSnapshot.Render(model, notations, width: 80);
+string oneNode = LayoutSnapshot.Render(node, notations, width: 80);
 ```
 
-This one function carries most of the notation regression tests and is a hard
-requirement for M1, not a nice-to-have.
+It builds the tree, lays it out with a monospace measure and draws each text-bearing cell
+at its placement, so what it prints is what layout decided rather than a second opinion
+about it. One layout unit is one character and one row, text wider than the requested
+width is cut, and an empty slot shows its `EmptyText`. This one function carries most of the
+notation regression tests and is a hard requirement for M1, not a nice-to-have.

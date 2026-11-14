@@ -14,8 +14,9 @@ a component inside a host application. Planning is finished and lives in `docs/`
 milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
 harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
 in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/` and
-the measure/arrange layout in `Projectional.Projection/Layout/` are done; snapshot rendering,
-edit actions, the expressions language and the Avalonia control follow.
+the measure/arrange layout in `Projectional.Projection/Layout/` and the headless snapshot
+renderer in `Projectional.Projection/Snapshot/` are done; edit actions, the expressions
+language and the Avalonia control follow.
 
 ## Status and where the truth lives
 
@@ -293,6 +294,29 @@ second tree.
 - `TextCell` is the shared base of every cell whose content is one string, so layout asks one
   type for `Text` instead of switching over five kinds. Add new text cells under it.
 
+## How the snapshot renderer works
+
+`Projectional.Projection/Snapshot/LayoutSnapshot` is the headless half of the editor: it
+turns a model into text with no window, no font and no Avalonia, which is how notation gets
+tested.
+
+- **Two entry points.** `Render(node, notations, width)` for one node (what notation tests
+  use) and `Render(model, notations, width)` for all roots. Both build with one
+  `EditorTreeBuilder`, lay out with `MonospaceTextMeasure`, then draw.
+- **It draws layout, it does not re-derive it.** Each `PlacedCell` is drawn at
+  `round(Bounds.X/Y)`; nothing recomputes a position. A snapshot failure is therefore a
+  layout failure, not an artifact of the harness. Keep it that way - the moment this file
+  starts measuring strings it becomes a second layout implementation.
+- **Draw only what has text**: `TextCell.Text`, plus the `EmptyText` of an empty `ChildCell`
+  or `CollectionCell`. Containers carry no text, so drawing in document order can never bury
+  a child under its parent, and one `Write` per cell is enough because every text cell is one
+  line tall.
+- **Empty slots must show their placeholder.** Layout already reserves `EmptyText`'s width;
+  a renderer that skipped it would print a projectional language with invisible slots.
+- **Width is a cut, not a wrap**, because the caller asked for that width. `SnapshotGrid`
+  throws on overflow instead of clipping, so clipping has to happen here, deliberately.
+- **Roots stack with no gap** - vertical spacing is a notation's business, not the renderer's.
+
 ## How the tests are organised
 
 `tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
@@ -300,7 +324,7 @@ second tree.
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 279 tests**; anything below that means tests were deleted.
+it. **Baseline is 285 tests**; anything below that means tests were deleted.
 
 - **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
   documents the writer produced once and that now have to load and save back to the same
@@ -310,10 +334,10 @@ it. **Baseline is 279 tests**; anything below that means tests were deleted.
   stay LF, BOM-free and without a trailing newline.
 - **Notation is tested as text, not pixels.** `Projectional.Projection/Snapshot/` holds
   `SnapshotGrid` (a character grid that refuses to draw past its edge rather than clipping)
-  and `LayoutSnapshot.Render(model, width)`. `Render` is the M0 stub: it prints one
-  indented line per node until projections exist. The signature is the contract; only the
-  body changes. Both types are `internal` per ADR 0010, reached from tests through
-  `InternalsVisibleTo`.
+  and `LayoutSnapshot.Render(model|node, notations, width)`, which lays the cells out and
+  draws every text-bearing one where layout put it. So a notation test asserts a whole
+  drawing: layout bugs show up as text. Both types are `internal` per ADR 0010, reached from
+  tests through `InternalsVisibleTo`.
 - **CI runs both platforms.** `.github/workflows/ci.yml` builds Release and tests with
   `--no-build` on `windows-latest` and `ubuntu-latest` (`fail-fast: false`), plus a
   Linux-only job that runs just the corpus so a format regression names the contract that

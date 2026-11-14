@@ -51,12 +51,20 @@ that is `Projectional.Projection/Snapshot/`:
   instead of clipping, because a layout test that silently loses the end of a line passes
   for the wrong reason. `ToString` trims trailing blanks and drops trailing blank lines, so
   a snapshot shows what was drawn rather than how much room was reserved.
-- `LayoutSnapshot.Render(model, width)` is the entry point every notation test will use.
-  It is the stub from the M0 roadmap, not the projection engine: with no projections
-  defined yet there is no notation to draw, so it walks the tree and prints one indented
-  line per node. That fixes the signature the engine keeps and gives notation tests
-  something real to compare against before a single cell is placed. When the engine lands,
-  only the body changes.
+- `LayoutSnapshot.Render(model, notations, width)` renders every root of a model, one below
+  the other, and `Render(node, notations, width)` renders a single node. Both build the
+  editor tree, lay it out with `MonospaceTextMeasure`, and draw each cell that has text at
+  the place layout put it - which means a snapshot failure is a layout failure, not an
+  artefact of the harness.
+- Text wider than `width` is cut rather than wrapped, because the width was asked for.
+  Roots are stacked with no gap between them: vertical spacing is something a notation
+  decides, so the renderer does not invent any.
+- An empty slot draws the `EmptyText` of its `ChildCell` or `CollectionCell`. Layout has
+  already reserved room for that text, and a projection that shows nothing at all would
+  hide the fact that the slot is there to be edited into.
+- One layout unit is one character and one row, which is exactly what
+  `MonospaceTextMeasure` promises. The renderer knows nothing else about units, so it stays
+  a consumer of layout rather than a second layout implementation.
 
 Both types are `internal` with `InternalsVisibleTo` to the test projects, per
 [ADR 0010](../adr/0010-public-api-surface.md): only `Core` and `Avalonia` are public, and a
