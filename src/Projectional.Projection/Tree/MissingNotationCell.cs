@@ -10,10 +10,10 @@ namespace Projectional.Projection;
 /// the gap is diagnosable from the editor itself, and the node stays reachable through its address so
 /// that a notation added later needs no model change.
 /// </remarks>
-public sealed class MissingNotationCell : EditorCell
+public sealed class MissingNotationCell : TextCell
 {
     public MissingNotationCell(CellAddress address, string conceptKey)
-        : base(address)
+        : base(address, $"<no notation for {conceptKey}>")
     {
         ArgumentException.ThrowIfNullOrEmpty(conceptKey);
         ConceptKey = conceptKey;

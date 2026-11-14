@@ -11,17 +11,13 @@ namespace Projectional.Projection;
 /// where the language says words go, which is also what makes the projection read like source
 /// instead of like a form.
 /// </remarks>
-public sealed class ConstantCell : EditorCell
+public sealed class ConstantCell : TextCell
 {
     public ConstantCell(CellAddress address, string text, ConstantKind kind)
-        : base(address)
+        : base(address, text)
     {
-        ArgumentNullException.ThrowIfNull(text);
-        Text = text;
         Kind = kind;
     }
-
-    public string Text { get; }
 
     /// <summary>What the text is made of, which is what styles key off.</summary>
     public ConstantKind Kind { get; }

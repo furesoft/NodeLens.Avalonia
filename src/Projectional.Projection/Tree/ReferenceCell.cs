@@ -11,7 +11,7 @@ namespace Projectional.Projection;
 /// navigating to it is a separate action. <see cref="Target"/> is kept so that the editor can follow
 /// the link without asking the model again during rendering.
 /// </remarks>
-public sealed class ReferenceCell : EditorCell
+public sealed class ReferenceCell : TextCell
 {
     public ReferenceCell(
         CellAddress address,
@@ -19,10 +19,9 @@ public sealed class ReferenceCell : EditorCell
         string text,
         ReferenceState state,
         NodeId? target = null)
-        : base(address)
+        : base(address, text)
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
-        ArgumentNullException.ThrowIfNull(text);
 
         if (state is ReferenceState.Resolved && target is null)
         {
@@ -31,15 +30,11 @@ public sealed class ReferenceCell : EditorCell
         }
 
         Slot = slot;
-        Text = text;
         State = state;
         Target = target;
     }
 
     public string Slot { get; }
-
-    /// <summary>What the editor draws: the target's name, the notation's unset text, or a marker.</summary>
-    public string Text { get; }
 
     public ReferenceState State { get; }
 

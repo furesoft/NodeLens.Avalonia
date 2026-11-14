@@ -12,18 +12,16 @@ namespace Projectional.Projection;
 /// travels with the text because editing a property means parsing what the user typed, and that parse
 /// needs to know what is legal without asking the model again.
 /// </remarks>
-public sealed class PropertyCell : EditorCell
+public sealed class PropertyCell : TextCell
 {
     public PropertyCell(CellAddress address, string slot, PropertyType type, string text, bool isSet)
-        : base(address)
+        : base(address, text)
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
         ArgumentNullException.ThrowIfNull(type);
-        ArgumentNullException.ThrowIfNull(text);
 
         Slot = slot;
         Type = type;
-        Text = text;
         IsSet = isSet;
     }
 
@@ -31,9 +29,6 @@ public sealed class PropertyCell : EditorCell
 
     /// <summary>What the text has to parse as, which is also what completion and validation read.</summary>
     public PropertyType Type { get; }
-
-    /// <summary>The stored text, or the empty string while the slot has no value.</summary>
-    public string Text { get; }
 
     /// <summary>Whether the slot holds a value, as opposed to being empty and waiting for input.</summary>
     public bool IsSet { get; }
