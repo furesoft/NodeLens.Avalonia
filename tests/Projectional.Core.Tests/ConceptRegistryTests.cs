@@ -231,8 +231,12 @@ public sealed class ConceptRegistryTests
     {
         Assert.False(new ReferenceSlot("next", "Rules.Rule").AllowOwnSubtree);
         Assert.True(new ReferenceSlot("next", "Rules.Rule", allowOwnSubtree: true).AllowOwnSubtree);
-        Assert.Equal(Cardinality.One, new ReferenceSlot("next", "Rules.Rule").Cardinality);
-        Assert.Equal(Cardinality.Many, new ReferenceSlot("next", "Rules.Rule", Cardinality.Many).Cardinality);
+    }
+
+    [Fact]
+    public void ChildSlotsDefaultToManyAndCanBeDeclaredSingle()
+    {
         Assert.Equal(Cardinality.Many, new ChildSlot("kids", "Rules.Rule").Cardinality);
+        Assert.Equal(Cardinality.One, new ChildSlot("body", "Rules.Rule", Cardinality.One).Cardinality);
     }
 }
