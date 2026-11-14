@@ -127,7 +127,16 @@ Semantics runs against an immutable snapshot so validation never sees a torn mod
 - Taking a snapshot is O(1) via a version counter; only mutated nodes are copied.
 - A snapshot is only valid within one generation; stale results are dropped.
 
-## Invariants (asserted in debug builds)
+## Invariants (enforced on every mutation)
+
+These are not debug-only assertions. Identity, placement and reference rules are checked by the
+operation that would break them and reported as `ModelInvariantException`, because a projectional
+editor builds its tree from user gestures rather than from a parser — a rejected edit is a normal
+outcome that the UI has to explain, not a programming error to hide behind an assert.
+
+Two of them need no separate check because a data structure already decides them: invariant 1 is
+what the project's node index asserts on insert, and invariant 2 is what a single parent link per
+node makes impossible to violate.
 
 1. Every node's ID is unique within a project.
 2. A node belongs to exactly one child slot of exactly one parent, or is a model root.

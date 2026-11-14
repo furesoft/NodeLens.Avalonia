@@ -69,6 +69,34 @@ even if the build stays green.
   mechanism - the namespace stays flat, so consumers need no extra `using` directives.
 - Test files mirror this: one `<TypeUnderTest>Tests.cs` per type.
 
+## Language level (explicit user requirement)
+
+**Always use the newest C# that the pinned SDK offers; never settle for the syntax the
+project already happens to use.** `Directory.Build.props` sets `<LangVersion>latest</LangVersion>`,
+which on SDK 10.0.403 resolves to **C# 14** (confirm with `dotnet build -v:diag` and look for
+`_MaxAvailableLangVersion`). Do not pin a numbered `LangVersion` and do not enable `preview`
+features - `latest` already means "the newest shipped version", and `preview` would make the
+build depend on unreleased behaviour.
+
+Features that are in active use and should be the default choice:
+
+- **Collection expressions** `[]`, `[a, b]` for every list, array, span and dictionary creation.
+- **`params ReadOnlySpan<T>`** instead of `params T[]` for variadic APIs that only read their
+  arguments. See `PropertyType.Enum` and `EnumPropertyType` - the compiler passes string
+  literals without allocating an array.
+- **The `field` keyword** to remove a hand-written backing field, most often for a lazily built
+  read-only view: `public IReadOnlyList<Node> Roots => field ??= _roots.AsReadOnly();`
+  (`Model`, `Project`). Do not reach for `field` when the property is set from a constructor
+  and the compiler would then report CS8618 - keep an explicit field there.
+- **Primary constructors** on small types that only capture their arguments.
+- **Pattern matching** (`is { } x`, property patterns, list patterns) instead of chains of
+  null checks and casts.
+- **`ArgumentNullException.ThrowIfNull`** and the other `ArgumentException` throw helpers.
+- **`readonly record struct`** for small value types; `sealed class` otherwise.
+
+If a newer compiler ships a feature that replaces something here, add it to this list in the
+same commit that starts using it.
+
 ## Build and verify
 
 `global.json` pins SDK **10.0.403** with `rollForward: latestFeature` because SDK 11 is the
@@ -119,7 +147,10 @@ dotnet test
 - Markdown links **and anchors** must both resolve. Anchors break silently when a heading is
   renamed, so validate `#fragment` targets against generated heading slugs, not just file paths.
 - The persistence test is byte equality after a full round trip, not "it deserialized".
-- Whenever a change touches the model, check the debug invariants still hold: unique ID per
-  project, exactly one parent or the root, child slot conforms to the concept, no reference
-  into the referencing node's own subtree unless allowed, removing a node clears incoming
-  references, and every property value parses.
+- Whenever a change touches the model, check the six invariants in
+  `docs/architecture/model.md` still hold: unique ID per project, exactly one parent or the
+  root, child slot conforms to the concept, no reference into the referencing node's own
+  subtree unless allowed, removing a node clears incoming references, and every property value
+  parses. They are enforced on every mutation (`ModelInvariantException`), not merely asserted
+  in debug builds, so a green test run means the checked ones hold - the structural ones
+  (invariants 1 and 2) still need a thought.
