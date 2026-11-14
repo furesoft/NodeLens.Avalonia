@@ -60,6 +60,15 @@ even if the build stays green.
   *why*, not *what*.
 - Never mix an unrelated pre-existing fix into a commit that is about something else.
 
+## Code layout (explicit user requirement)
+
+- **One type per file.** A file is named after the single type it declares; nested or
+  helper types get their own file rather than sharing one.
+- **Group by concern, not by kind.** Files live in a folder named after the concept they
+  belong to (`Identity/`, `Language/`, `Model/`, ...), and the folder is the only grouping
+  mechanism - the namespace stays flat, so consumers need no extra `using` directives.
+- Test files mirror this: one `<TypeUnderTest>Tests.cs` per type.
+
 ## Build and verify
 
 `global.json` pins SDK **10.0.403** with `rollForward: latestFeature` because SDK 11 is the
