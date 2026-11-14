@@ -21,6 +21,14 @@ constraints it must satisfy, and which alternatives were rejected.
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
 
+## Working with an AI agent
+
+The repository ships a project skill at
+[.github/skills/projectional-editor/SKILL.md](../.github/skills/projectional-editor/SKILL.md)
+that condenses the invariants, the branch and commit workflow, the build commands and the
+Windows tooling pitfalls. It is the entry point for an agent picking up work here. This
+directory stays authoritative whenever the two disagree.
+
 ## Conventions
 
 - Documents describe the intended system, not the current state. Where the
