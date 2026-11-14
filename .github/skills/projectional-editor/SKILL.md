@@ -12,7 +12,9 @@ the program. Notation is computed from the model by projections; there is no tex
 and no parser. Target users are people who build their own DSLs or embed a DSL editor as
 a component inside a host application. Planning is finished and lives in `docs/`;
 milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
-harness, CI). Next is M1: projection and editing, the highest-risk milestone.
+harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
+in `Projectional.Language` is done; the editor tree, layout, snapshot rendering, edit actions,
+the expressions language and the Avalonia control follow.
 
 ## Status and where the truth lives
 
@@ -171,13 +173,50 @@ it is special.
   duplicated. If a second test project ever needs that language, promote it to a
   `Projectional.TestLanguage` library rather than copying it.
 
+## How notation is declared
+
+`Projectional.Language` is where notation lives: declarative data that the projection engine
+walks, validated once at registration against the `ConceptRegistry`. Nothing about it is code,
+and nothing about it lives on `Concept` - Core must not know that projection exists.
+
+- **The inline/block split is carried by the type hierarchy, not by validation.**
+  `NotationCell` is abstract; `InlineNotationCell` runs horizontally inside a line, and
+  `BlockNotationCell` occupies whole lines. `LineNotationCell` takes `ReadOnlyList<InlineNotationCell>`
+  and `SequenceNotationCell`/`IndentNotationCell` take `ReadOnlyList<BlockNotationCell>`, so
+  `ed.Line(ed.Indent(...))` does not compile. Do not weaken a collection type to make a
+  notation convenient; the compile error is the feature.
+- **`Sequence` vs `Indent`.** A sequence stacks blocks unchanged and is usually the root of a
+  notation; an indent stacks them one level deeper. They are separate on purpose, so a
+  notation says exactly one thing at a time.
+- **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
+  (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
+  `ChildNotationCell`, `CollectionNotationCell`, `LineNotationCell`, `SequenceNotationCell`,
+  `IndentNotationCell`, `SpaceNotationCell`) precisely so they cannot be confused with the
+  runtime cells `docs/architecture/projection.md` names (`ConstantCell`, `PropertyCell`, ...).
+- **Every slot-bearing cell has an `EmptyText`** (`<empty>`, `<none>`). Empty is never
+  invisible: the caret needs something visible to attach to, and an empty list must stay
+  fillable. Do not make it empty-string to "tidy up" a rendering.
+- `NotationWalker.ChildrenOf` is the **single** place that knows a cell's children. Anything
+  that walks notation goes through it - adding a cell type without adding it there makes the
+  cell invisible to validation and to `Notation.SelfAndDescendants()`.
+- `NotationRegistry.Add` is the only validator, and it is total: unknown concept, duplicate
+  notation, property/reference/child cells naming slots that do not exist, and a
+  `SingleChildNotationCell` on a many-child slot (it would hide the siblings). A rejected
+  notation is not half-added - the registry stays clean.
+- `NotationRegistry.FindFor(concept)` inherits: own notation first, then the super concepts in
+  declaration order, so a concept that only extends a language reuses its notation.
+- `NotationEditor`'s members touch no instance state and therefore trip CA1822, which is an
+  error here. The suppression is class-level and deliberate: the documented surface is
+  `ed.Keyword("if")`, which a static class cannot express.
+
 ## How the tests are organised
 
 `tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
-`Persistence` and `Projection` so that `TestLanguage.cs` (five concepts: `Test.Tag`,
-`Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) exists once. If a second test project
+`Language`, `Persistence` and `Projection` so that `TestLanguage.cs` (five concepts: `Test.Tag`,
+`Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
+the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 222 tests**; anything below that means tests were deleted.
+it. **Baseline is 241 tests**; anything below that means tests were deleted.
 
 - **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
   documents the writer produced once and that now have to load and save back to the same
