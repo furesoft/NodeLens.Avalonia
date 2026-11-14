@@ -5,13 +5,17 @@ namespace Projectional.Core;
 /// unit that is saved to a file, opened in an editor tab and put under version control.
 /// </summary>
 /// <remarks>
-/// <see cref="Version"/> counts mutations so that the layers above — projections, snapshots,
-/// dirty tracking — can tell "nothing changed" from "changed and changed back" without
-/// comparing trees.
+/// <see cref="Version"/> counts mutations so that the layers above — projections, snapshots, dirty
+/// tracking — can tell "nothing changed" from "changed and changed back" without comparing trees.
+/// Every mutation is also journalled, so that it can be described to subscribers in a
+/// <see cref="ModelChangedEventArgs"/> and taken back if the transaction around it never commits.
 /// </remarks>
 public sealed class Model
 {
     private readonly List<Node> _roots = [];
+    private readonly ChangeJournal _journal = new();
+    private int _depth;
+    private EventHandler<ModelChangedEventArgs>? _changed;
 
     internal Model(Project project, ModelId id, string? name)
     {
@@ -27,6 +31,13 @@ public sealed class Model
         Name = name;
     }
 
+    /// <summary>Raised once per committed transaction, with everything it changed.</summary>
+    public event EventHandler<ModelChangedEventArgs>? Changed
+    {
+        add => _changed += value;
+        remove => _changed -= value;
+    }
+
     public ModelId Id { get; }
 
     public string? Name { get; private set; }
@@ -40,6 +51,28 @@ public sealed class Model
     /// <summary>Increases with every mutation of this model.</summary>
     public long Version { get; private set; }
 
+    /// <summary>Whether a transaction is open, so that the next edit joins it instead of publishing.</summary>
+    public bool HasTransaction => _depth > 0;
+
+    /// <summary>
+    /// Whether edits have to be journalled: either an open transaction needs to be able to roll them
+    /// back, or a subscriber will want to hear about them.
+    /// </summary>
+    internal bool IsRecording => _depth > 0 || _changed is not null;
+
+    internal int JournalCount => _journal.Count;
+
+    /// <summary>
+    /// Opens a transaction that groups the edits made inside it into one <see cref="ModelChangedEventArgs"/>
+    /// and that is rolled back if it is disposed without <see cref="ModelTransaction.Complete"/>.
+    /// </summary>
+    public ModelTransaction BeginTransaction()
+    {
+        var transaction = new ModelTransaction(this, _journal.Count, Version);
+        _depth++;
+        return transaction;
+    }
+
     public void Rename(string? name) => Name = name;
 
     /// <summary>
@@ -51,37 +84,32 @@ public sealed class Model
     public Node NewNode(Concept concept)
     {
         ArgumentNullException.ThrowIfNull(concept);
+        RequireKnownConcept(concept);
 
-        if (!Project.Concepts.TryGet(concept.Key, out var known) || !ReferenceEquals(known, concept))
-        {
-            throw new ModelInvariantException(
-                $"Concept '{concept.Key}' is not part of the language of this project.");
-        }
-
-        var node = new Node(NodeId.New(), concept, this);
-        Project.Register(node);
-        _roots.Add(node);
-        node.IndexInParent = _roots.Count - 1;
+        using var transaction = BeginTransaction();
+        var node = CreateDetached(concept);
+        InsertRootAt(_roots.Count, node);
+        RecordAdded(node, parent: null, role: null, index: node.IndexInParent);
         MarkMutated();
+        transaction.Complete();
         return node;
     }
 
     /// <summary>Creates a node and immediately hangs it into <paramref name="parent"/>.</summary>
+    /// <remarks>
+    /// The node is created detached and only then placed, so that the whole operation is one
+    /// <see cref="NodeAdded"/>: a caller creating and inserting should not have to subscribe to the
+    /// intermediate state where the node was briefly a root.
+    /// </remarks>
     public Node NewChild(Node parent, string slot, string conceptKey)
     {
         ArgumentNullException.ThrowIfNull(parent);
 
-        var node = NewNode(conceptKey);
-        try
-        {
-            parent.AddChild(slot, node);
-        }
-        catch
-        {
-            DeleteSubtree(node);
-            throw;
-        }
-
+        using var transaction = BeginTransaction();
+        var node = CreateDetached(Project.Concepts.Get(conceptKey));
+        parent.AddChild(slot, node);
+        MarkMutated();
+        transaction.Complete();
         return node;
     }
 
@@ -100,50 +128,124 @@ public sealed class Model
             return;
         }
 
+        using var scope = MutationScope.Begin(this);
         node.Detach();
-        _roots.Add(node);
-        node.IndexInParent = _roots.Count - 1;
+        InsertRootAt(_roots.Count, node);
+        RecordAdded(node, parent: null, role: null, index: node.IndexInParent);
         MarkMutated();
     }
 
     public override string ToString() => Name ?? Id.ToString();
 
-    internal void RemoveRootInternal(Node node)
-    {
-        var index = _roots.IndexOf(node);
-        if (index < 0)
-        {
-            throw new ModelInvariantException($"Node {node.Id} is not a root of model {Id}.");
-        }
-
-        _roots.RemoveAt(index);
-        Node.ReindexFrom(_roots, index);
-    }
-
     /// <summary>
     /// Deletes a node and its subtree from the project and clears the references that pointed at
     /// them, so that a deletion never leaves a dangling target behind.
     /// </summary>
-    internal void DeleteSubtree(Node node)
+    /// <returns>What it would take to put the subtree back.</returns>
+    internal SubtreeSnapshot DeleteSubtree(Node node)
     {
-        var deleted = node.SelfAndDescendants().ToList();
-        var ids = new HashSet<NodeId>(deleted.Count);
-        foreach (var each in deleted)
+        ArgumentNullException.ThrowIfNull(node);
+
+        var snapshot = SubtreeSnapshot.Capture(node);
+        node.UnlinkFromPlace();
+
+        var ids = new HashSet<NodeId>(snapshot.Nodes.Count);
+        foreach (var each in snapshot.Nodes)
         {
             ids.Add(each.Id);
             Project.Unregister(each);
             RemoveRootIfPresent(each);
         }
 
-        foreach (var survivor in Project.Nodes)
-        {
-            survivor.ClearReferencesTo(ids);
-        }
+        RecordRemoval(snapshot, ids);
+        return snapshot;
+    }
+
+    /// <summary>Puts <paramref name="node"/> at <paramref name="index"/> among the model roots.</summary>
+    internal void InsertRootAt(int index, Node node)
+    {
+        index = Math.Min(index, _roots.Count);
+        _roots.Insert(index, node);
+        node.Parent = null;
+        node.ParentSlot = null;
+        Node.ReindexFrom(_roots, index);
     }
 
     internal void MarkMutated() => Version++;
 
-    private void RemoveRootIfPresent(Node node)
+    /// <summary>Opens the implicit transaction a single public edit runs in.</summary>
+    internal MutationScope BeginMutation() => MutationScope.Begin(this);
+
+    /// <summary>
+    /// Registers a node that is not in the tree yet and remembers to unregister it again, so that a
+    /// placement which never happens leaves no orphan in the project index.
+    /// </summary>
+    internal Node CreateDetached(Concept concept)
+    {
+        var node = new Node(NodeId.New(), concept, this);
+        Project.Register(node);
+
+        if (IsRecording)
+        {
+            _journal.Add(change: null, rollback: () => Project.Unregister(node));
+        }
+
+        return node;
+    }
+
+    /// <summary>Journals a step so that it reaches subscribers and can be undone.</summary>
+    internal void Record(IModelChange change, Action rollback)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(rollback);
+
+        if (IsRecording)
+        {
+            _journal.Add(change, rollback);
+        }
+    }
+
+    internal void RecordAdded(Node node, Node? parent, string? role, int index)
+    {
+        if (IsRecording)
+        {
+            Record(new NodeAdded(node.Id, parent?.Id, role, index), node.MakeUnlinkRollback());
+        }
+    }
+
+    internal void BeginImplicitTransaction() => _depth++;
+
+    /// <summary>
+    /// Ends one level of nesting. The outermost commit publishes; a rollback undoes the journal
+    /// back to the mark and puts the version counter back, because a rolled-back edit is not a
+    /// version the rest of the system should ever have seen.
+    /// </summary>
+    internal void EndTransaction(int mark, long versionBefore, bool commit)
+    {
+        _depth--;
+
+        if (!commit)
+        {
+            _journal.RollbackTo(mark);
+            Version = versionBefore;
+            return;
+        }
+
+        if (_depth > 0)
+        {
+            return;
+        }
+
+        var changes = _journal.ChangesFrom(mark);
+        _journal.Clear();
+
+        if (changes.Count > 0 && _changed is { } handler)
+        {
+            handler(this, new ModelChangedEventArgs(Id, Version, changes));
+        }
+    }
+
+    internal void RemoveRootIfPresent(Node node)
     {
         var index = _roots.IndexOf(node);
         if (index < 0)
@@ -154,5 +256,46 @@ public sealed class Model
         _roots.RemoveAt(index);
         Node.ReindexFrom(_roots, index);
         node.IndexInParent = -1;
+    }
+
+    private void RecordRemoval(SubtreeSnapshot snapshot, HashSet<NodeId> deleted)
+    {
+        if (!IsRecording)
+        {
+            foreach (var survivor in Project.Nodes)
+            {
+                survivor.ClearReferencesTo(deleted);
+            }
+
+            return;
+        }
+
+        Record(
+            new NodeRemoved(snapshot.Root.Id, snapshot.Parent?.Id, snapshot.Slot, snapshot.Index),
+            snapshot.Restore);
+
+        foreach (var survivor in Project.Nodes)
+        {
+            if (survivor.ClearReferencesTo(deleted) is not { } cleared)
+            {
+                continue;
+            }
+
+            foreach (var (slot, reference) in cleared)
+            {
+                Record(
+                    new ReferenceChanged(survivor.Id, slot, reference.Target, null, WasResolved: true),
+                    () => survivor.RestoreReference(slot, reference));
+            }
+        }
+    }
+
+    private void RequireKnownConcept(Concept concept)
+    {
+        if (!Project.Concepts.TryGet(concept.Key, out var known) || !ReferenceEquals(known, concept))
+        {
+            throw new ModelInvariantException(
+                $"Concept '{concept.Key}' is not part of the language of this project.");
+        }
     }
 }
