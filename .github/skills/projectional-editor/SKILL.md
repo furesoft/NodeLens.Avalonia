@@ -21,8 +21,8 @@ language and the Avalonia control follow.
 ## Status and where the truth lives
 
 - `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates.
-- `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration.
-- `docs/adr/` - 10 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
+- `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone.
+- `docs/adr/` - 11 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
 - `docs/open-questions.md` - open items, each with a recommendation and a decide-by milestone.
 
 A milestone is done when its acceptance gate passes, not when the code compiles.
@@ -351,6 +351,44 @@ dependency, so every action is testable headlessly.
   `KeyNotFoundException` ("declares no property slot named ...").
 - Text actions edit inside a single `PropertyCell`; a multi-cell selection degrades to caret
   behaviour. `Ctrl+Home`/`Ctrl+End` are not routed in M1.
+
+## How the standalone app fits
+
+The repository ships two front ends and **one** public surface:
+
+- `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).
+- `Projectional.Workbench` is the standalone desktop editor. It references **only**
+  `Projectional.Avalonia` and has **no** `InternalsVisibleTo` entry, on purpose
+  ([ADR 0011](../../../docs/adr/0011-standalone-editor.md), `docs/architecture/standalone.md`).
+
+Rules that follow from that, and are easy to break by accident:
+
+1. **Never add a `ProjectReference` from `Projectional.Workbench` to `Core`-adjacent internal
+   projects** (`Language`, `Projection`, `Editing`, `Semantics`, `Persistence`). It used to
+   reference `Semantics`; that was removed when ADR 0011 was written. If the app seems to need
+   an internal type, the public API is missing something — widen `Projectional.Avalonia`'s
+   surface instead.
+2. **Never grant the workbench `InternalsVisibleTo`.** It is the reference consumer; an
+   exemption makes it prove nothing.
+3. **Never put a feature in the app that a host cannot reach.** Shell concerns that legitimately
+   belong to the app: windows, tabs, menus and dialogs, recent files, settings, file watching,
+   dirty prompting, command registry and shortcut table, command-line parsing.
+4. **The shell is plain classes plus wiring.** Documents, `CanExecute` and lifecycle live in
+   non-Avalonia types so they are testable headlessly; only `App`, `MainWindow` and the two
+   controls touch Avalonia. A UI test harness (`Avalonia.Headless.XUnit`) is added when there is
+   wiring worth asserting on, not before.
+5. **The dirty flag is derived from the change journal**, never a boolean the app sets on edit and
+   clears on save — otherwise undo back to the saved state still claims "modified".
+6. **Undo belongs to the session, not to the tab.** A document keeps its session while open and
+   disposes it when the document closes; forgetting the dispose leaks undo state.
+
+Scope by milestone, so the app does not compete with the libraries: M1 = open project, tabs,
+edit, save, dirty prompt. M2 = model browser, problems panel, single-file build. M4 = output
+panel. M5 = language browser, live preview, language creation (the MPS moment). M7 = installers
+and file association.
+
+Work that touches any of this also touches a doc; the app's plan lives in
+`docs/architecture/standalone.md`, and the milestone scope in `docs/roadmap.md` M1/M2/M4/M5/M7.
 
 ## How the tests are organised
 
