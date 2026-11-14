@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Projectional.Workbench.MainWindow"
+        Title="Projectional Workbench"
+        Width="1200"
+        Height="800">
+  <TextBlock Text="Projectional workbench shell"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
+</Window>
