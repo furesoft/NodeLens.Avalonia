@@ -149,16 +149,19 @@ Budget (targets, to be measured by a benchmark suite once the control exists):
 
 ## Caret and selection
 
-The caret is a **structural address**, never a character index:
+The caret is a **structural address plus a cell discriminator**, never a character index:
 
 ```text
-CaretPosition(nodeId, role, index, offsetInCellText)
+CaretPosition(address, offsetInCellText, documentOrderOfCell)
 ```
 
 Rules:
 
-- Multiple positions with the same address are equivalent, and adjacent cells
-  collapse — so a caret between `then` and `Accept` is one position, not two.
+- An address alone does **not** identify a cell: every constant keyword, punctuation mark
+  and space of a node carries that node's address, so `rule` at the start of a line and the
+  `{` at its end share one. The document-order index of the cell is what disambiguates
+  them. [editing.md](editing.md#the-caret-is-a-cell-not-an-address) owns this rule.
+- Adjacent cells collapse — a caret between `then` and `Accept` is one position, not two.
 - When bounds are missing (empty list, abstract node), the caret attaches to the
   nearest *visible* leaf cell, not to an invisible structural node. A caret must
   always correspond to something the user can see.
@@ -176,15 +179,16 @@ Input is routed through the touched cell:
 | --- | --- |
 | Printable character | the cell decides: replace selection, append to property text, filter completion, or trigger substitution |
 | Arrow keys | structural movement between cells along the logical line, then lines |
-| Tab | next slot in the current concept, in declaration order |
-| Enter | newline/sibling per the list strategy of the enclosing cell |
+| Tab / Shift+Tab | next / previous slot of the current node in declaration order; a filled child or collection is entered rather than skipped, because only its leaves are caret stops |
+| Enter | fill the empty slot at the caret; per the list strategy of the enclosing cell |
 | Space | same as a printable character; there are no whitespace semantics |
 | Delete/Backspace | per cell: shrink text, remove child, delete node, or nothing when the slot is mandatory |
 | Escape | close completion, clear selection |
 
 Every action is expressed as an **edit action** object, not as a direct mutation. This
 keeps the input layer testable headlessly and gives the substitution menu the same
-entry point as the keyboard.
+entry point as the keyboard. [editing.md](editing.md) describes the action model, the
+caret place rules and the session cycle.
 
 ## Substitutions and transformations
 
