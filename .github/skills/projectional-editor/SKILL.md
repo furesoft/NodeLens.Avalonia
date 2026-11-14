@@ -13,8 +13,9 @@ and no parser. Target users are people who build their own DSLs or embed a DSL e
 a component inside a host application. Planning is finished and lives in `docs/`;
 milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
 harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
-in `Projectional.Language` is done; the editor tree, layout, snapshot rendering, edit actions,
-the expressions language and the Avalonia control follow.
+in `Projectional.Language` and the runtime editor tree in `Projectional.Projection/Tree/` are
+done; layout, snapshot rendering, edit actions, the expressions language and the Avalonia
+control follow.
 
 ## Status and where the truth lives
 
@@ -209,6 +210,52 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   error here. The suppression is class-level and deliberate: the documented surface is
   `ed.Keyword("if")`, which a static class cannot express.
 
+## How the editor tree is built
+
+`Projectional.Projection/Tree/` is the runtime tree: notation cells are *data describing* what
+to show, these cells *are* what is shown. `EditorTreeBuilder` is the only thing that turns one
+into the other.
+
+- **`EditorTreeBuilder(NotationRegistry).Build(node)` is the only public entry point.**
+  `EditorTree`'s constructor is `internal` so no caller can invent a tree that was not built
+  from notation; if a second construction path is ever needed, add it to the builder.
+- **One tree per node, not one per model.** A change to a node rebuilds that node's tree and
+  leaves every other tree alone. Child trees are nested through the child cells, and the
+  child's root cell is the same object as the content of its `ChildCell`.
+- **There is deliberately no inline/block split at runtime.** `ContainerCell` carries
+  `Orientation` (`Line` -> horizontal, `Sequence`/`Indent` -> vertical), and `ChildCell` /
+  `CollectionCell` are orientation-free. An inline child whose notation root is vertical
+  breaks the line; do not push the orientation down onto the child, because the parent cannot
+  see the child's notation.
+- **Addresses come from the model, never from the notation.** Three shapes: node address
+  (`slot` null) for constants, spaces and containers; slot address (`index` -1) for a cell
+  showing a property/reference/child/collection; element address (`index` >= 0) for the root of
+  one child's projection. Adding a keyword to a notation therefore moves no address, which is
+  what keeps the caret stable across a rebuild.
+- **Element addresses name the parent, not the child.** Deleting a child shifts the addresses
+  of the ones after it without renumbering anything on the child side. Below a child's root,
+  addresses belong to the child itself.
+- **`Children` is fixed at construction and a cell is claimed by its parent.** `StructureCell`
+  throws `ProjectionException` if a cell already has a parent, so assembling bottom-up makes
+  "one cell, one place" a construction invariant rather than a convention. This is why the
+  builder passes a root address *into* the recursive build instead of fixing addresses up
+  afterwards.
+- **A missing notation is a `MissingNotationCell`, not an exception.** A language is written
+  concept by concept, so a model using a concept whose notation is not written yet must still
+  open, save and display. `ProjectionException` is reserved for broken combinations - a
+  duplicate cell, a slot the concept does not declare, a collection with the wrong number of
+  separators.
+- **Reference cells show text, never the target's subtree**, and have three states: `Unset`
+  (notation's `UnsetText`), `Unresolved` (`<unresolved>`, target kept for repair) and `Resolved`
+  (target's `Name`, or `<Concept.Key>` when the concept declares no name slot). A resolved
+  `ReferenceCell` without a `Target` throws.
+- **`CollectionCell` owns the interleaving.** `Content` is document order including
+  separators; `Items` and `Separators` are kept because navigation and layout want different
+  questions answered. Separators are never shared between gaps.
+- `EditorTree.Find(address)` returns the **first** match in document order - usually the
+  outermost container carrying a node address. `EditorTreeWalker` is the single place that
+  defines document order; a second walk that disagrees with it is a caret bug.
+
 ## How the tests are organised
 
 `tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
@@ -216,7 +263,7 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 241 tests**; anything below that means tests were deleted.
+it. **Baseline is 261 tests**; anything below that means tests were deleted.
 
 - **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
   documents the writer produced once and that now have to load and save back to the same

@@ -25,25 +25,65 @@ tree is pure structure, layout is pure geometry, and neither knows about Avaloni
 
 ## Editor tree
 
-Nodes of the editor tree:
+An editor tree is built from one node and its concept's notation, and it is disposable:
+it describes the model as it was at build time and is dropped when either changes.
+Nothing in the model points at a cell, so anything that must survive a rebuild — the
+caret, a selection, a scroll anchor — holds a `CellAddress` instead.
 
-| Kind | Content |
+Cells of the editor tree (namespace `Projectional.Projection`, folder `Tree/`):
+
+| Cell | Content |
 | --- | --- |
-| `ConstantCell` | literal text (keyword, punctuation, brackets) |
-| `PropertyCell` | property name + current text + a parser for the property type |
-| `ChildCell` | one child node, or a list of children rendered by a list strategy |
-| `ReferenceCell` | target name or `<unresolved>`, plus the reference role |
-| `CollectionCell` | children with explicit separator/delimiter |
-| `TableCell` | rows from a child list, columns from roles |
-| `IndentCell`, `LineCell`, `SpaceCell` | layout modifiers, no text |
-| `ErrorOverlay` | marker decoration attached to any cell |
+| `EditorCell` | abstract base: address, parent, children, `IsLeaf`/`IsCaretTarget` |
+| `StructureCell` | arranges other cells and claims them as children |
+| `ContainerCell` | `Line` → horizontal, `Sequence` → vertical, `Indent` → vertical + indented |
+| `ConstantCell` | literal text (keyword, punctuation), with its `ConstantKind` |
+| `SpaceCell` | one column of blank the notation asked for |
+| `PropertyCell` | property text, its `PropertyType` and whether the slot is set |
+| `ChildCell` | one child slot: the child's projection, or its empty text |
+| `CollectionCell` | a list slot: items interleaved with separators |
+| `ReferenceCell` | target name, `<unresolved>`, or the notation's unset text |
+| `MissingNotationCell` | marker for a concept whose notation is not written yet |
 
-Every cell carries its **address**: `(owning NodeId, role, index in list)`. Addresses
-are what caret, hit testing, completion and undo use — the tree itself is disposable
-and rebuilt freely.
+Three notes on this shape, all of which were decided while building it:
 
-Language authors do not build trees imperatively; they declare notation and the
-projection engine builds the tree (see
+- **There is no inline/block split at runtime.** A layout container decides whether its
+  content runs horizontally or vertically, so the same `ChildCell` can be stacked in one
+  notation and run on a line in another. The inline/block distinction lives in the
+  notation types, where it is checked once at registration.
+- **Orientation is on the container, not on the child.** An inline child whose notation
+  root is vertical breaks the line, exactly as `[ ... ]` does in MPS. Deciding this per
+  child at runtime cannot work, because the child's notation is not visible from the
+  parent's tree.
+- **A concept without notation is a marker, not an exception.** A language is written
+  concept by concept, and a model that uses a concept whose notation is missing must
+  still open, save and show the rest of itself.
+
+`TableCell` and `ErrorOverlay` are not part of M1: tables arrive with the table language
+in M2, and error markers are decorations drawn on top of the cell tree rather than cells
+inside it.
+
+### Addresses
+
+Every cell carries its **address**: `(owning NodeId, slot, index in list)`, which is what
+caret, hit testing, completion and undo use. There are three shapes:
+
+| Shape | Carries | Given to |
+| --- | --- | --- |
+| node address (`slot` null) | the node | constants, spaces and the containers in between |
+| slot address (`index` -1) | node + slot | the cell that shows a property, reference, child or collection |
+| element address (`index` ≥ 0) | parent + slot + position | the root of one child's own projection |
+
+Addresses come from the model, never from the shape of the notation, so adding a keyword
+to a notation changes the tree without moving a single address. Element addresses name
+the *parent*, so deleting a child shifts the addresses of the ones after it without
+anything being renumbered on the child side.
+
+Below a child's root cell, addresses belong to the child itself: reaching `body` at
+`(rule, body, 0)` says nothing about the addresses of the cells inside `body`.
+
+Language authors do not build trees imperatively; they declare notation and
+`EditorTreeBuilder` builds the tree (see
 [language.md](language.md#notation)).
 
 ## Layout

@@ -1,0 +1,30 @@
+using Projectional.Language;
+
+namespace Projectional.Projection;
+
+/// <summary>
+/// Text the notation wrote down: a keyword, punctuation, or whatever stands in for a node that has
+/// no notation of its own.
+/// </summary>
+/// <remarks>
+/// The text is not editable and holds no value. It is here so that the line has something to show
+/// where the language says words go, which is also what makes the projection read like source
+/// instead of like a form.
+/// </remarks>
+public sealed class ConstantCell : EditorCell
+{
+    public ConstantCell(CellAddress address, string text, ConstantKind kind)
+        : base(address)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        Text = text;
+        Kind = kind;
+    }
+
+    public string Text { get; }
+
+    /// <summary>What the text is made of, which is what styles key off.</summary>
+    public ConstantKind Kind { get; }
+
+    internal override string Describe() => $"'{Text}'";
+}
