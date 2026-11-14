@@ -16,9 +16,11 @@ constraints it must satisfy, and which alternatives were rejected.
 6. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
 7. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
 8. [Integration](architecture/integration.md) — how host applications embed this.
-9. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-10. [Roadmap](roadmap.md) — milestones and acceptance gates.
-11. [Open questions](open-questions.md) — what is deliberately still undecided.
+9. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+   and why it has no privileged access.
+10. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+11. [Roadmap](roadmap.md) — milestones and acceptance gates.
+12. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
@@ -54,3 +56,4 @@ directory stays authoritative whenever the two disagree.
 | [0008](adr/0008-bootstrap-order.md) | Built-in languages before self-hosting |
 | [0009](adr/0009-custom-drawn-editor-control.md) | Custom-drawn control with structural caret |
 | [0010](adr/0010-public-api-surface.md) | Public API limited to `Core` and `Avalonia` |
+| [0011](adr/0011-standalone-editor.md) | A standalone editor ships, as a plain consumer of the public API |

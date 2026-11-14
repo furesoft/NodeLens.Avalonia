@@ -44,14 +44,18 @@ and [testing.md](architecture/testing.md).
 | Delivers | Details |
 | --- | --- |
 | Editor tree + layout | cells, measure/arrange, line-based layout |
-| Headless snapshot render | ASCII grid, used by all notation tests |
+| Editing layer | caret, edit actions, key routing, undo/redo — **delivered** |
+| Headless snapshot render | ASCII grid, used by all notation tests — **delivered** |
 | Avalonia control | rendering, scrolling, virtualization, caret, selection |
 | Input | typing, arrows, tab, enter, delete, undo/redo |
 | Built-in language | minimal `Projectional.Expressions` + a toy block language |
+| Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) |
 
 **Gate:** a user can edit a nested model with a text-like look, using only the
 keyboard, without the caret ever getting lost; typing latency and incremental layout
-are within budget on a 1000-line model.
+are within budget on a 1000-line model. Additionally: **the standalone app opens the
+toy language, edits a model and saves it, without referencing an internal assembly** —
+the first end-to-end check of the embedding API.
 *Effort: 6–10 weeks. Highest technical risk — spike custom text layout and hit testing
 first.*
 
@@ -66,10 +70,12 @@ first.*
 | Generic renderer | renders any declared concept |
 | Tables | grid cell, column sizing, cell caret, add-row affordance |
 | Language loading | declared languages from the project directory |
+| Shell grows | model browser, problems panel, find/replace, recent projects, self-contained single-file build |
 
 **Gate:** a small DSL (including a table) is defined entirely in project files and is
 editable with correct completion-free structural editing; deleting the language's C#
-code changes nothing about what the user sees.
+code changes nothing about what the user sees. The declared DSL can be opened, edited
+and saved in the standalone app, which no longer needs C# to know the language.
 *Effort: 6–8 weeks.*
 
 ### M3 — References, scopes and completion
@@ -102,8 +108,8 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Cross-check tests | generated code and interpreter agree on the corpus |
 
 **Gate:** a user writes a decision table, sees errors immediately, runs it in the
-preview and generates C# from it — all within the embedded control in a small host
-application.
+preview and generates C# from it — both inside the embedded control in a small host
+application and in the standalone app, proving the two front ends share the behaviour.
 *Effort: 6–8 weeks.*
 
 ### M5 — Self-hosting
@@ -116,10 +122,12 @@ application.
 | Editor language (stage C) | notation and styles as an editable model |
 | Live preview | edit a language definition, see the effect on a model next to it |
 | Bootstrap | versioned bootstrap XML, migrated with user data |
-| Workbench shell | model browser, language browser, tabs, error list |
+| Workbench shell | the standalone app grows into the workbench: language browser, live preview, output panel, language project creation |
 
 **Gate:** a new DSL is created from an empty project inside the workbench, including
-its notation, and used immediately — no C# and no restart.
+its notation, and used immediately — no C# and no restart. The workbench is the same
+application that shipped in M1, not a second one
+([ADR 0011](adr/0011-standalone-editor.md)).
 *Effort: 10–14 weeks. Second-highest risk: bootstrap breakage can lock the workbench
 out of its own languages, so the bootstrap corpus gets the strictest tests.*
 
@@ -149,9 +157,11 @@ branches editing different parts of one model merge without hand-editing XML.
 | IME | `TextInputMethodClient`, composition handling, CJK testing |
 | Docs and samples | tutorial DSL, embedding guide, language-author guide |
 | Packaging | NuGet, CI matrix, public API baseline, AOT/trimming validation |
+| App distribution | self-contained installers per OS, file association for `.prj`, winget/Homebrew manifests |
 
 **Gate:** a developer unfamiliar with the project builds a small DSL by following the
-tutorial, without asking questions.
+tutorial, without asking questions — and a user who does not write C# can install the
+standalone editor and work with an existing DSL.
 
 ## What 1.0 means
 
@@ -161,6 +171,8 @@ tutorial, without asking questions.
   generator, without touching framework internals;
 - a host application can embed the editor as a documented component and rely on its
   public API;
+- **there is a standalone editor you can download, install and run** — the framework is
+  usable without writing a host app at all;
 - models survive editing by hand in git, including non-overlapping merges;
 - the known gaps are documented ([open-questions.md](open-questions.md)) instead of
   being surprises.
@@ -184,4 +196,5 @@ tutorial, without asking questions.
 | Scope creep from "make it like MPS" | never reaches usable state | milestones with hard gates; non-goals list fixed |
 | Incremental validation complexity | correctness bugs, phantom errors | dependency sets kept coarse first, refined only with profiling data |
 | Bootstrap self-lockout | workbench cannot open its own languages | bootstrap corpus tested in CI from M2, before self-hosting exists |
+| The standalone app competes with the libraries for time | slower core progress, two bug backlogs | app scope is gated per milestone, and every app feature that needs an internal fails the public-API check ([ADR 0011](adr/0011-standalone-editor.md)) |
 | Solo project loses momentum | abandoned mid-way | each milestone ships something usable and demoable |

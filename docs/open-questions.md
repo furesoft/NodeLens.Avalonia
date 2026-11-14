@@ -29,6 +29,22 @@ Status values: **Open** (undecided), **Leaning** (recommendation exists, not com
 | 17 | Do languages ship with example models as tests? | Leaning | Yes — a language package without a golden corpus is untestable and will regress. | M6 |
 | 18 | Bidirectional text and CJK input: required for 1.0? | Open | CJK/IME yes (M7), bidi no. | M7 |
 
+## Standalone editor
+
+[ADR 0011](adr/0011-standalone-editor.md) decided that a standalone app ships and is an
+ordinary consumer of the public API. What that app *is* in detail is not decided, and
+should not be decided before the shell exists.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 19 | MVVM toolkit, hand-written view models, or code-behind? | Leaning | View models without a toolkit: the shell is small, and a source-generator dependency is hard to justify for a dozen commands. Revisit if binding boilerplate dominates. | M1 |
+| 20 | Where do settings live — per user, per project, or both? | Leaning | Both, with project settings in the project directory (portable, reviewable) and user settings per user (window layout, recent list). Project settings must never contain machine paths. | M2 |
+| 21 | Does the app auto-update? | Open | No updater before 1.0. An updater is a security surface and an unsigned-binary problem; ship a version check that links to a download page instead. | M7 |
+| 22 | Single-file self-contained build, framework-dependent build, or both? | Leaning | Both: single-file for evaluation, framework-dependent for users with the runtime. Installer at M7. | M2 |
+| 23 | What happens when a file changes on disk while it is open? | Leaning | Prompt: reload from disk / keep my version. Silent reload destroys work; silent ignore hides conflicts. | M2 |
+| 24 | Is the app allowed features the library cannot express — e.g. a search across models? | Leaning | Only through a public API that any host could call. A search that needs internals becomes a public search API, not an app-private one. | M2 |
+| 25 | Does the shell logic get its own test project? | Leaning | Yes, once the shell exceeds trivial wiring — headless tests over documents, commands and command-line parsing. Add only then, not in advance. | M2 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
@@ -42,6 +58,10 @@ Two things should stay written down, because they are easy to talk oneself out o
    (constraints, generation, interpretation) at the same time. If the pilot works, the
    architecture is probably right; if it needs special cases, the architecture is
    wrong and should be fixed before more languages exist.
+3. **The standalone app is a second product.** It exists to keep the public API honest
+   and to make the framework tryable, not to grow a feature list of its own. The moment
+   it has a capability the library cannot express, the framework has two front ends and
+   the embedding path becomes the untested one.
 
 ## Questions that were already decided
 
@@ -59,5 +79,6 @@ Listed here so they are not reopened accidentally; the authoritative text is the
 | Bootstrap order | built-in languages before self-hosting | [0008](adr/0008-bootstrap-order.md) |
 | Editor control | custom-drawn, structural caret | [0009](adr/0009-custom-drawn-editor-control.md) |
 | Public API | `Core` + `Avalonia` only | [0010](adr/0010-public-api-surface.md) |
+| Standalone editor | ships, and is a plain consumer of the public API | [0011](adr/0011-standalone-editor.md) |
 | Execution | interpreter *and* text generation | ADR to be written (M4) |
 | Pilot DSL | rule/decision tables | ADR to be written (M4) |
