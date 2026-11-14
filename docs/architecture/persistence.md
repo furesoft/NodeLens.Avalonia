@@ -4,9 +4,70 @@ Models are trees, so the stored form is a tree too — but the file format is
 constrained by three things that are not obvious: **git diffs should be readable**,
 **IDs must be stable**, and **old files must stay loadable**.
 
+## What M0 implements
+
+`Projectional.Persistence` stores and reads the core model tree. The shape below is
+final for that scope; everything this document describes beyond it (imports, project
+layout, migrations, diagnostics on load) is still design and marked as such.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<model formatVersion="1" id="11111111-..." name="Payroll">
+  <nodes>
+    <node id="22222222-..." concept="Test.Rule" name="Payroll">
+      <properties>
+        <name>Payroll</name>
+        <enabled>true</enabled>
+      </properties>
+      <references role="tag" target="33333333-..." resolveInfo="Salary" />
+      <children role="body">
+        <node id="44444444-..." concept="Test.Body">
+          <children role="steps">
+            <node id="55555555-..." concept="Test.Step">
+              <properties>
+                <text>Pay</text>
+              </properties>
+            </node>
+          </children>
+        </node>
+      </children>
+    </node>
+  </nodes>
+</model>
+```
+
+As built, and worth knowing:
+
+- **The public surface is two static classes.** [`ModelXml`](../../src/Projectional.Persistence/ModelXml.cs)
+  converts between a model and a string or stream; [`ModelFile`](../../src/Projectional.Persistence/ModelFile.cs)
+  adds the file and the atomic replace. There is no separate serializer object to keep
+  in sync.
+- **`formatVersion` is written as `1` and validated on read.** A newer version fails
+  with a message naming the version; a *missing* attribute is read as the oldest
+  format, so a hand-written file without it still opens.
+- **The `name` attribute on `node` duplicates the name property.** It is written for
+  greppability (`grep 'concept="Test.Rule"'` shows the name) but never read back: the
+  property is authoritative, so the two can never disagree silently — a hand-edited
+  `name` is simply ignored.
+- **`version` and `imports` are not written yet.** `Model.Version` is a mutation
+  counter, not a schema version, and import bookkeeping only becomes meaningful with
+  the language module (M2). The reader tolerates their absence.
+- **A failed load leaves nothing behind.** The reader builds into the project and, on
+  any error, deletes what it built (recording nothing) and removes the model again, so
+  a broken file cannot leave a half-model in the project index. Every failure is a
+  [`ModelFormatException`](../../src/Projectional.Persistence/ModelFormatException.cs).
+- **Values are validated while reading.** Property values go through `Node.Set`, so a
+  value the language refuses fails the load instead of being kept as a string for later
+  diagnostics. This is the one place where M0 deliberately departs from the
+  "never drop data on load" rule below: the tolerant path arrives with the diagnostics
+  milestone, and until then a bad value is a loud failure rather than silent loss.
+
 ## File format
 
 XML, MPS-like. Human-readable, diffable, streamable.
+
+The sample below is the target shape once languages and imports exist; the part that
+M0 writes is shown in the previous section.
 
 ```xml
 <model id="a1f3c0de-..." name="Payroll" language="Rules" version="3">

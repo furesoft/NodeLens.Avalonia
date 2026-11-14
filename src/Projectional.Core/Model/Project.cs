@@ -45,6 +45,12 @@ public sealed class Project
         return model;
     }
 
+    /// <summary>
+    /// Removes a model that never became usable, as a load that failed halfway does. The nodes are
+    /// expected to be gone already; this only takes the model out of the order on disk.
+    /// </summary>
+    internal void DiscardModel(Model model) => _models.Remove(model);
+
     internal void Register(Node node)
     {
         if (!_nodes.TryAdd(node.Id, node))
