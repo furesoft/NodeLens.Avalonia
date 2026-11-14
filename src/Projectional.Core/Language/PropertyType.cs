@@ -39,7 +39,7 @@ public abstract class PropertyType : IEquatable<PropertyType>
     public static PropertyType Date { get; } = new DatePropertyType();
 
     /// <summary>Creates an enumeration over <paramref name="symbols"/>.</summary>
-    public static PropertyType Enum(params string[] symbols) => new EnumPropertyType(symbols);
+    public static PropertyType Enum(params ReadOnlySpan<string> symbols) => new EnumPropertyType(symbols);
 
     /// <summary>
     /// Parses a stored property value. This is what makes invariant 6 — every stored value

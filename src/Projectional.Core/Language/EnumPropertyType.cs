@@ -4,10 +4,14 @@ internal sealed class EnumPropertyType : PropertyType
 {
     private readonly HashSet<string> _symbols;
 
-    public EnumPropertyType(params string[] symbols)
+    public EnumPropertyType(params ReadOnlySpan<string> symbols)
         : base(NameFor(symbols))
     {
-        _symbols = new HashSet<string>(symbols, StringComparer.Ordinal);
+        _symbols = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var symbol in symbols)
+        {
+            _symbols.Add(symbol);
+        }
     }
 
     public override bool TryParse(string? text, out object? value)
@@ -31,10 +35,8 @@ internal sealed class EnumPropertyType : PropertyType
     /// Validates the symbols and renders the name in declaration order, so that two enumerations
     /// are equal exactly when they offer the same symbols in the same order.
     /// </summary>
-    private static string NameFor(string[] symbols)
+    private static string NameFor(ReadOnlySpan<string> symbols)
     {
-        ArgumentNullException.ThrowIfNull(symbols);
-
         if (symbols.Length == 0)
         {
             throw new ArgumentException("An enumeration needs at least one symbol.", nameof(symbols));
