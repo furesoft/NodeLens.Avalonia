@@ -1,0 +1,29 @@
+* text=auto eol=lf
+
+# Visual Studio rewrites solution files with CRLF on save; keep the churn out of diffs.
+*.sln    text eol=crlf
+*.slnx   text eol=crlf
+
+*.cs     text diff=csharp
+*.csproj text
+*.props  text
+*.targets text
+*.axaml  text
+*.xaml   text
+*.json   text
+*.md     text
+
+# The license text must stay byte-identical to the canonical version published
+# at https://www.apache.org/licenses/LICENSE-2.0.txt (202 lines, LF, no BOM).
+LICENSE  text eol=lf
+NOTICE   text eol=lf
+
+# Model files follow a byte-stable format so that save round-trips produce no
+# spurious diffs; determinism requires "\n" line endings (ADR 0005).
+*.mps    text eol=lf
+*.xml    text eol=lf
+
+*.png    binary
+*.ico    binary
+*.snk    binary
+*.pfx    binary
