@@ -54,10 +54,10 @@ public sealed class Node
     public Model Model { get; }
 
     /// <summary>The owning node, or <see langword="null"/> for a model root.</summary>
-    public Node? Parent { get; private set; }
+    public Node? Parent { get; internal set; }
 
     /// <summary>The child slot this node sits in, or <see langword="null"/> for a model root.</summary>
-    public string? ParentSlot { get; private set; }
+    public string? ParentSlot { get; internal set; }
 
     /// <summary>
     /// Position among siblings, or in the model's roots for a root. <c>-1</c> only while a node
@@ -121,6 +121,8 @@ public sealed class Node
             throw new ModelInvariantException($"Slot '{name}' of concept '{Concept.Key}' holds at most one child.");
         }
 
+        using var scope = Model.BeginMutation();
+
         // Moving a node out of its current place first keeps the "one parent or root" rule true
         // at every intermediate step, and removes it from this very list when it was a sibling.
         child.Detach();
@@ -131,6 +133,7 @@ public sealed class Node
         child.Parent = this;
         child.ParentSlot = name;
         ReindexFrom(siblings, index);
+        Model.RecordAdded(child, this, name, index);
         Model.MarkMutated();
         return child;
     }
@@ -154,6 +157,10 @@ public sealed class Node
             return;
         }
 
+        // Replacing a child deletes the old one; if the new one cannot be placed, the whole
+        // replacement has to come back, which is what the transaction is for.
+        using var transaction = Model.BeginTransaction();
+
         if (children.Count > 0)
         {
             RemoveChild(name, children[0]);
@@ -163,6 +170,8 @@ public sealed class Node
         {
             AddChild(name, child);
         }
+
+        transaction.Complete();
     }
 
     /// <summary>Unlinks a child and deletes it together with its subtree.</summary>
@@ -171,18 +180,12 @@ public sealed class Node
         RequireChildSlot(name);
         ArgumentNullException.ThrowIfNull(child);
 
-        var siblings = _children[name];
-        var index = siblings.IndexOf(child);
-        if (index < 0)
+        if (!_children[name].Contains(child))
         {
             throw new ModelInvariantException($"Node {child.Id} is not a child in slot '{name}' of node {Id}.");
         }
 
-        siblings.RemoveAt(index);
-        ReindexFrom(siblings, index);
-        child.Parent = null;
-        child.ParentSlot = null;
-        child.IndexInParent = -1;
+        using var scope = Model.BeginMutation();
         Model.DeleteSubtree(child);
         Model.MarkMutated();
     }
@@ -207,11 +210,7 @@ public sealed class Node
 
         if (target is null)
         {
-            if (_references.Remove(name))
-            {
-                Model.MarkMutated();
-            }
-
+            SetReferenceCore(name, reference: null);
             return;
         }
 
@@ -233,7 +232,7 @@ public sealed class Node
                 $"Reference '{name}' of node {Id} must not point into its own subtree.");
         }
 
-        SetReference(name, target.Id, target.Name);
+        SetReferenceCore(name, new NodeReference(target.Id, target.Name));
     }
 
     /// <summary>
@@ -248,14 +247,7 @@ public sealed class Node
             throw new ArgumentException("A reference target must not be empty.", nameof(target));
         }
 
-        var reference = new NodeReference(target, resolveInfo);
-        if (_references.TryGetValue(name, out var existing) && existing.Equals(reference))
-        {
-            return;
-        }
-
-        _references[name] = reference;
-        Model.MarkMutated();
+        SetReferenceCore(name, new NodeReference(target, resolveInfo));
     }
 
     /// <summary>Whether this node is a strict ancestor of <paramref name="node"/>.</summary>
@@ -356,10 +348,33 @@ public sealed class Node
     }
 
     /// <summary>
-    /// Unlinks this node from its parent or from the model roots without deleting it. Version
-    /// bookkeeping is left to the public operation that called it, so one move counts once.
+    /// Unlinks this node from its parent or from the model roots without deleting it, and reports it
+    /// as a <see cref="NodeRemoved"/>: the node left its place and the caller is about to give it
+    /// another one. Version bookkeeping is left to that caller, so one move counts once.
     /// </summary>
     internal void Detach()
+    {
+        var parent = Parent;
+        var slot = ParentSlot;
+        var index = IndexInParent;
+
+        if (parent is null && !IsRoot)
+        {
+            return;
+        }
+
+        UnlinkFromPlace();
+
+        if (Model.IsRecording)
+        {
+            Model.Record(
+                new NodeRemoved(Id, parent?.Id, slot, index),
+                MakeAttachRollback(parent, slot, index));
+        }
+    }
+
+    /// <summary>Removes this node from its place without reporting anything.</summary>
+    internal void UnlinkFromPlace()
     {
         if (Parent is { } parent)
         {
@@ -381,29 +396,67 @@ public sealed class Node
 
         if (IsRoot)
         {
-            Model.RemoveRootInternal(this);
-            IndexInParent = -1;
+            Model.RemoveRootIfPresent(this);
         }
     }
 
-    internal void ClearReferencesTo(HashSet<NodeId> deleted)
+    /// <summary>Undoes a placement: takes the node out of wherever it is now.</summary>
+    internal Action MakeUnlinkRollback() => UnlinkFromPlace;
+
+    /// <summary>Undoes a removal: puts the node back at the place it left.</summary>
+    internal Action MakeAttachRollback(Node? parent, string? slot, int index) =>
+        parent is null
+            ? () => Model.InsertRootAt(index, this)
+            : () => parent.InsertChildAt(slot!, index, this);
+
+    /// <summary>Puts a child into a slot at a known index, as restoring a deletion needs.</summary>
+    internal void InsertChildAt(string name, int index, Node child)
     {
-        List<string>? dangling = null;
+        var siblings = _children[name];
+        index = Math.Min(index, siblings.Count);
+        siblings.Insert(index, child);
+        child.Parent = this;
+        child.ParentSlot = name;
+        ReindexFrom(siblings, index);
+    }
+
+    /// <summary>
+    /// Removes every reference that pointed into <paramref name="deleted"/>, and returns what was
+    /// removed so that the deletion can be reported and undone.
+    /// </summary>
+    internal List<(string Slot, NodeReference Reference)>? ClearReferencesTo(HashSet<NodeId> deleted)
+    {
+        List<(string Slot, NodeReference Reference)>? cleared = null;
 
         foreach (var pair in _references)
         {
             if (deleted.Contains(pair.Value.Target))
             {
-                (dangling ??= []).Add(pair.Key);
+                (cleared ??= []).Add((pair.Key, pair.Value));
             }
         }
 
-        if (dangling is null)
+        if (cleared is null)
         {
-            return;
+            return null;
         }
 
-        foreach (var name in dangling)
+        foreach (var (slot, _) in cleared)
+        {
+            _references.Remove(slot);
+        }
+
+        return cleared;
+    }
+
+    /// <summary>Puts a reference slot back to a previous value, or unsets it.</summary>
+    internal void RestoreReference(string name, NodeReference? reference)
+    {
+        if (reference is { } value)
+        {
+            _references[name] = value;
+        }
+        else
         {
             _references.Remove(name);
         }
@@ -438,12 +491,62 @@ public sealed class Node
                 $"'{value}' is not a valid {property.Type.Name} value for slot '{property.Name}'.");
         }
 
-        if (_properties[property.Name] == value)
+        var previous = _properties[property.Name];
+        if (previous == value)
         {
             return;
         }
 
+        using var scope = Model.BeginMutation();
         _properties[property.Name] = value;
+
+        if (Model.IsRecording)
+        {
+            Model.Record(
+                new PropertyChanged(Id, property.Name, previous, value),
+                () => _properties[property.Name] = previous);
+        }
+
+        Model.MarkMutated();
+    }
+
+    private void SetReferenceCore(string name, NodeReference? reference)
+    {
+        NodeReference? previous = _references.TryGetValue(name, out var stored) ? stored : null;
+
+        if (previous is { } old && reference is { } next && old.Equals(next))
+        {
+            return;
+        }
+
+        if (previous is null && reference is null)
+        {
+            return;
+        }
+
+        using var scope = Model.BeginMutation();
+
+        if (reference is { } written)
+        {
+            _references[name] = written;
+        }
+        else
+        {
+            _references.Remove(name);
+        }
+
+        if (Model.IsRecording)
+        {
+            Model.Record(
+                new ReferenceChanged(
+                    Id,
+                    name,
+                    previous?.Target,
+                    reference?.Target,
+                    previous?.IsResolvedIn(Model.Project) ?? false),
+                () => RestoreReference(name, previous));
+        }
+
         Model.MarkMutated();
     }
 
