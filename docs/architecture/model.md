@@ -81,12 +81,16 @@ Every mutation goes through a transaction. A transaction yields a list of typed
 changes; nothing mutates a node outside one.
 
 ```csharp
-public interface IModelChange { NodeId Target { get; } }
+public interface IModelChange
+{
+    NodeId Target { get; }
+    IModelChange Invert();      // the record that undoes this one
+}
 
-sealed record NodeAdded(NodeId Target, NodeId? Parent, string? Role, int Index)        : IModelChange;
-sealed record NodeRemoved(NodeId Target, NodeId? Parent, string? Role, int Index)      : IModelChange;
-sealed record PropertyChanged(NodeId Target, string Name, string? Old, string? New)     : IModelChange;
-sealed record ReferenceChanged(NodeId Target, string Name, NodeId? Old, NodeId? New, bool WasResolved) : IModelChange;
+public sealed record NodeAdded(NodeId Target, NodeId? Parent, string? Role, int Index)        : IModelChange;
+public sealed record NodeRemoved(NodeId Target, NodeId? Parent, string? Role, int Index)      : IModelChange;
+public sealed record PropertyChanged(NodeId Target, string Name, string? Old, string? New)     : IModelChange;
+public sealed record ReferenceChanged(NodeId Target, string Name, NodeId? Old, NodeId? New, bool WasResolved) : IModelChange;
 ```
 
 `Parent` and `Role` are nullable because a node can be placed as a model root, which
@@ -98,6 +102,11 @@ subscribers never need a third change kind.
 
 `WasResolved` records whether the *old* reference resolved to a node when it was
 replaced, which undo needs in order to restore the very same reference.
+
+`Invert()` is what makes a restoration audible. `NodeAdded` and `NodeRemoved` swap into
+each other, `PropertyChanged` swaps old and new, and `ReferenceChanged` swaps old and
+new and treats whatever it puts back as resolved — a cleared reference comes back
+together with the subtree that held it.
 
 A committed transaction publishes exactly one payload:
 
@@ -111,6 +120,13 @@ sealed class ModelChangedEventArgs : EventArgs
 ```
 
 A transaction that changes nothing publishes nothing.
+
+Alongside the published records the commit hands the journal's *steps* to the
+`UndoHistory` — one entry per mutation, each with an undo closure and a redo closure.
+Those steps are internal to `Projectional.Core`: a host application that could reach
+them could rewrite a model without going through a transaction and lose the records
+that projection, semantics and persistence depend on. They are empty when the change
+set comes from an undo or a redo, because the history already owns those steps.
 
 Subscribers, all of which are mandatory from day one:
 
@@ -137,13 +153,44 @@ Design rules:
 
 ## Undo
 
-Inverse changes, not command replay. Replay breaks as soon as an operation depends on
-external state (completion candidates, scope contents, generated IDs). Inverse
-changes are exact and cheap.
+`UndoHistory` listens to `Model.Changed` and owns two stacks of `UndoStep`. It never
+wraps the edit API, so nothing in the model has to know undo exists, and every path
+that journals an edit is undoable for free — a keystroke, a generated block of a
+hundred nodes, a drag that moved a subtree, a transaction the host defined itself.
 
-Coalescing: consecutive property edits on the same node and property within a typing
-burst collapse into one undo step, as do repeated sibling insertions of the same
-concept.
+Undo is **captured closures, not replay of the published records**. Replay breaks as
+soon as an operation depends on external state, and it breaks on ordinary edits too: a
+move publishes `NodeRemoved` + `NodeAdded`, so replaying the records would delete the
+subtree (unregistering it) and then add it again by id. Instead each journal entry
+holds the way back *and* the way forward from the mutation site, where all the state is
+still at hand:
+
+```csharp
+readonly record struct JournalEntry(IModelChange? Change, Action Undo, Action? Redo);
+```
+
+- `Change` is `null` for a step that is an implementation detail (creating a detached
+  node); such a step is undoable but not reportable.
+- `Redo` is `null` when the step has no forward direction of its own. A detached
+  creation is only the undo of an unregistration, because the placement that follows
+  it is a separate step with its own redo.
+- Redo re-runs the operation — the same `AttachPlacement`, the same `UnlinkFromPlace`,
+  the same reference write — so redo is exactly as faithful as undo.
+
+Closures are **raw**: they never call `Record`. A replay therefore journals nothing,
+and `UndoHistory` publishes the change set itself, as `Change.Invert()` per entry in
+reverse order for undo and as the original `Change` in forward order for redo. That is
+why a projection invalidates views twice for the same edit and only once for a
+restoration, and it is `IModelChange.Invert()`'s reason to exist.
+
+Coalescing groups steps; it is not a time window. A step joins the previous one when
+`UndoHistory.CoalescingKey` is non-null and equals the previous step's key, so typing
+into a slot becomes one undo instead of one per keystroke. Consequence for the caller:
+clear the key when the burst ends, otherwise the next transaction that forgets to set
+a key of its own joins the burst. `null` never merges.
+
+`Clear()` forgets both directions and the key, which is what loading a model needs. Any
+new committed transaction drops the redo stack, as usual.
 
 ## Snapshots
 
