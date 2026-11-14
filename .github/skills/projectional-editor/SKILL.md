@@ -317,14 +317,49 @@ tested.
   throws on overflow instead of clipping, so clipping has to happen here, deliberately.
 - **Roots stack with no gap** - vertical spacing is a notation's business, not the renderer's.
 
+## How the edit actions work
+
+`Projectional.Editing` is the layer between a keystroke and the model. It has no UI
+dependency, so every action is testable headlessly.
+
+- **An address does not identify a cell.** Constants, punctuation and spaces all carry the
+  address of the *node* they belong to, so the `{` at the end of a line and the `rule`
+  keyword at its start share one address and one offset range. `CaretPosition` therefore
+  also carries the **document-order index** of the cell (`Order`, `internal`): `>= 0` means
+  "the closest caret place with this address", `< 0` means "the first place with it". Never
+  resolve a caret by address alone - that is exactly the bug this hint exists for.
+- **Corollary: `CaretPosition.ToString()` is `"{Address}:{Offset}"`, so it cannot be used to
+  dedupe cells.** Several cells print the same string. When a test needs to know *which*
+  same-address cell the caret is on, ask `CaretNavigation.PlaceAt(tree, position)` and compare
+  `CaretPlace.Cell`.
+- **`CaretPlace` is a `struct`.** `CaretNavigation.PlaceAt(...)` returns `CaretPlace?`, but
+  `if (x is null) return;` does **not** narrow it - use `x.Value` afterwards.
+- **A filled slot produces no caret place of its own** - only its leaves do. So Tab past a
+  body that already has a step lands on the step's `index`, not on the collection.
+- `EditorSession` owns the rebuild cycle: after every change it rebuilds tree *and* layout,
+  then re-resolves the caret against the new generation, and hands the coalescing key back to
+  the caller so a run of typed characters stays one undoable step. Rebuilding everything on
+  every keystroke is deliberate M1 policy, not an oversight.
+- **Enter appends.** `Model.NewChild` adds to the end of a list; there is no insert-at-index
+  API yet, so Enter on a slot in the middle of a list puts the child last.
+- **Typing into a defaulted property inserts, it does not replace.** Defaults are
+  materialized values (`name` = `"unnamed"`, `enabled` = `"true"`), and the model cannot tell
+  an unset property from a set one, so `"unnamed"` + `"P"` gives `"Punnamed"`. Accepted
+  limitation until a `Node.Unset`/placeholder concept exists (future `feat/property-defaults`).
+- `Node.GetOrNull`/`Set` handle **properties only**. A reference slot needs `GetReference`,
+  `GetReferenceTarget` or `SetReference`; asking `GetOrNull` for one throws
+  `KeyNotFoundException` ("declares no property slot named ...").
+- Text actions edit inside a single `PropertyCell`; a multi-cell selection degrades to caret
+  behaviour. `Ctrl+Home`/`Ctrl+End` are not routed in M1.
+
 ## How the tests are organised
 
 `tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
-`Language`, `Persistence` and `Projection` so that `TestLanguage.cs` (five concepts: `Test.Tag`,
+`Language`, `Persistence`, `Projection` and `Editing` so that `TestLanguage.cs` (five concepts: `Test.Tag`,
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 285 tests**; anything below that means tests were deleted.
+it. **Baseline is 325 tests**; anything below that means tests were deleted.
 
 - **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
   documents the writer produced once and that now have to load and save back to the same
