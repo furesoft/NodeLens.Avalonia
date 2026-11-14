@@ -8,4 +8,7 @@
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj" />
+  </Folder>
 </Solution>
