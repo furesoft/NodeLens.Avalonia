@@ -14,4 +14,8 @@
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Corpus\**\*.mps" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
