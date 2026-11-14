@@ -13,4 +13,8 @@ namespace Projectional.Core;
 /// reached any more, so there is nothing incremental to gain from naming those nodes. A subscriber
 /// that needs them walks the tree before the change is applied, which it has to do anyway.
 /// </remarks>
-public sealed record NodeRemoved(NodeId Target, NodeId? Parent, string? Role, int Index) : IModelChange;
+public sealed record NodeRemoved(NodeId Target, NodeId? Parent, string? Role, int Index) : IModelChange
+{
+    /// <inheritdoc />
+    public IModelChange Invert() => new NodeAdded(Target, Parent, Role, Index);
+}
