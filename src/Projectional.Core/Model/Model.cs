@@ -141,8 +141,13 @@ public sealed class Model
     /// Deletes a node and its subtree from the project and clears the references that pointed at
     /// them, so that a deletion never leaves a dangling target behind.
     /// </summary>
+    /// <param name="node">The subtree to take out.</param>
+    /// <param name="record">
+    /// Whether to report the deletion. Redoing one repeats the removal without reporting it, because
+    /// the undo stack publishes the change set for a restoration itself.
+    /// </param>
     /// <returns>What it would take to put the subtree back.</returns>
-    internal SubtreeSnapshot DeleteSubtree(Node node)
+    internal SubtreeSnapshot DeleteSubtree(Node node, bool record = true)
     {
         ArgumentNullException.ThrowIfNull(node);
 
@@ -157,7 +162,18 @@ public sealed class Model
             RemoveRootIfPresent(each);
         }
 
-        RecordRemoval(snapshot, ids);
+        if (record)
+        {
+            RecordRemoval(snapshot, ids);
+        }
+        else
+        {
+            foreach (var survivor in Project.Nodes)
+            {
+                survivor.ClearReferencesTo(ids);
+            }
+        }
+
         return snapshot;
     }
 
@@ -187,29 +203,67 @@ public sealed class Model
 
         if (IsRecording)
         {
-            _journal.Add(change: null, rollback: () => Project.Unregister(node));
+            _journal.Add(change: null, undo: () => Project.Unregister(node));
         }
 
         return node;
     }
 
-    /// <summary>Journals a step so that it reaches subscribers and can be undone.</summary>
-    internal void Record(IModelChange change, Action rollback)
+    /// <summary>Journals a step so that it reaches subscribers and can be undone and redone.</summary>
+    internal void Record(IModelChange change, Action undo, Action? redo = null)
     {
         ArgumentNullException.ThrowIfNull(change);
-        ArgumentNullException.ThrowIfNull(rollback);
+        ArgumentNullException.ThrowIfNull(undo);
 
         if (IsRecording)
         {
-            _journal.Add(change, rollback);
+            _journal.Add(change, undo, redo);
         }
     }
 
     internal void RecordAdded(Node node, Node? parent, string? role, int index)
     {
-        if (IsRecording)
+        if (!IsRecording)
         {
-            Record(new NodeAdded(node.Id, parent?.Id, role, index), node.MakeUnlinkRollback());
+            return;
+        }
+
+        _journal.Add(
+            new NodeAdded(node.Id, parent?.Id, role, index),
+            node.MakeUnlinkRollback(),
+            () => AttachPlacement(node, parent, role, index));
+    }
+
+    /// <summary>
+    /// Puts a node back at a known place, registering it again if a step took it out of the project
+    /// index, and reports nothing — this is the redo of a placement, and the undo stack publishes
+    /// the change set for it.
+    /// </summary>
+    internal void AttachPlacement(Node node, Node? parent, string? role, int index)
+    {
+        if (Project.FindNode(node.Id) is null)
+        {
+            Project.Register(node);
+        }
+
+        if (parent is null)
+        {
+            InsertRootAt(index, node);
+        }
+        else
+        {
+            parent.InsertChildAt(role!, index, node);
+        }
+    }
+
+    /// <summary>Publishes a change set that was not produced by the journal, as undo and redo do.</summary>
+    internal void PublishRestored(IReadOnlyList<IModelChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+
+        if (changes.Count > 0 && _changed is { } handler)
+        {
+            handler(this, new ModelChangedEventArgs(Id, Version, changes, []));
         }
     }
 
@@ -237,11 +291,12 @@ public sealed class Model
         }
 
         var changes = _journal.ChangesFrom(mark);
+        var steps = _journal.StepsFrom(mark);
         _journal.Clear();
 
         if (changes.Count > 0 && _changed is { } handler)
         {
-            handler(this, new ModelChangedEventArgs(Id, Version, changes));
+            handler(this, new ModelChangedEventArgs(Id, Version, changes, steps));
         }
     }
 
@@ -272,7 +327,8 @@ public sealed class Model
 
         Record(
             new NodeRemoved(snapshot.Root.Id, snapshot.Parent?.Id, snapshot.Slot, snapshot.Index),
-            snapshot.Restore);
+            snapshot.Restore,
+            () => DeleteSubtree(snapshot.Root, record: false));
 
         foreach (var survivor in Project.Nodes)
         {
@@ -285,7 +341,8 @@ public sealed class Model
             {
                 Record(
                     new ReferenceChanged(survivor.Id, slot, reference.Target, null, WasResolved: true),
-                    () => survivor.RestoreReference(slot, reference));
+                    () => survivor.RestoreReference(slot, reference),
+                    () => survivor.UnsetReference(slot));
             }
         }
     }

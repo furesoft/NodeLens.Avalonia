@@ -10,13 +10,19 @@ namespace Projectional.Core;
 /// </remarks>
 public sealed class ModelChangedEventArgs : EventArgs
 {
-    public ModelChangedEventArgs(ModelId model, long version, IReadOnlyList<IModelChange> changes)
+    internal ModelChangedEventArgs(
+        ModelId model,
+        long version,
+        IReadOnlyList<IModelChange> changes,
+        IReadOnlyList<JournalEntry> steps)
     {
         ArgumentNullException.ThrowIfNull(changes);
+        ArgumentNullException.ThrowIfNull(steps);
 
         Model = model;
         Version = version;
         Changes = changes;
+        Steps = steps;
     }
 
     public ModelId Model { get; }
@@ -26,4 +32,21 @@ public sealed class ModelChangedEventArgs : EventArgs
 
     /// <summary>The changes in the order they happened.</summary>
     public IReadOnlyList<IModelChange> Changes { get; }
+
+    /// <summary>
+    /// The steps that produced <see cref="Changes"/>, in the order they happened, each with the way
+    /// back and the way forward.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Deliberately internal: undo is the only legitimate consumer. A host application that could
+    /// reach these closures could rewrite a model without going through a transaction, losing the
+    /// change records that projection, semantics and persistence rely on.
+    /// </para>
+    /// <para>
+    /// Empty when the set comes from an undo or a redo: the history already holds those steps and
+    /// does not want them handed back to it.
+    /// </para>
+    /// </remarks>
+    internal IReadOnlyList<JournalEntry> Steps { get; }
 }

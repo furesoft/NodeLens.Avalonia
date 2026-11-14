@@ -369,7 +369,8 @@ public sealed class Node
         {
             Model.Record(
                 new NodeRemoved(Id, parent?.Id, slot, index),
-                MakeAttachRollback(parent, slot, index));
+                MakeAttachRollback(parent, slot, index),
+                UnlinkFromPlace);
         }
     }
 
@@ -462,6 +463,9 @@ public sealed class Node
         }
     }
 
+    /// <summary>Empties a reference slot without reporting it, as redoing a deletion needs.</summary>
+    internal void UnsetReference(string name) => _references.Remove(name);
+
     internal static void ReindexFrom(List<Node> siblings, int start)
     {
         for (var i = start; i < siblings.Count; i++)
@@ -504,7 +508,8 @@ public sealed class Node
         {
             Model.Record(
                 new PropertyChanged(Id, property.Name, previous, value),
-                () => _properties[property.Name] = previous);
+                () => _properties[property.Name] = previous,
+                () => _properties[property.Name] = value);
         }
 
         Model.MarkMutated();
@@ -544,7 +549,8 @@ public sealed class Node
                     previous?.Target,
                     reference?.Target,
                     previous?.IsResolvedIn(Model.Project) ?? false),
-                () => RestoreReference(name, previous));
+                () => RestoreReference(name, previous),
+                () => RestoreReference(name, reference));
         }
 
         Model.MarkMutated();
