@@ -32,6 +32,11 @@ produces something usable, and no milestone depends on a later one being finishe
 and redo restore exact model states; invariant violations fail debug assertions.
 *Effort: 2–3 weeks.*
 
+**Delivered.** Invariants are enforced on every mutation rather than by assertion, and the
+stored form is pinned by a round-trip corpus that CI runs on every push. What M0 actually
+implements is recorded in [persistence.md](architecture/persistence.md#what-m0-implements)
+and [testing.md](architecture/testing.md).
+
 ### M1 — Projection and editing on a built-in language
 
 *Goal: an editable editor with a text-like notation, no language authoring yet.*
