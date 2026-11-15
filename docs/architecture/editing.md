@@ -144,7 +144,7 @@ produced it, and the editing layer never has to remember anything for undo.
 | `SelectCompletionAction` | Up, Down | move the highlight in the open list |
 | `AcceptCompletionAction` | Enter, Tab, while a list is open | create the highlighted concept in the slot |
 | `DismissCompletionAction` | Escape | close the list and leave the model alone |
-| `SelectAllAction` | Ctrl+A | select the whole text of the property cell the caret is in |
+| `SelectAllAction` | Ctrl+A | widen the selection: the property, then the node, then the document |
 | `CopyAction` | Ctrl+C | put the selected text on the clipboard |
 | `CutAction` | Ctrl+X | copy the selected text, then delete it |
 | `PasteAction` | Ctrl+V | type the clipboard text at the caret |
@@ -322,15 +322,32 @@ The lifetime rule is the important one: a selection only exists as long as the n
 involved do. If a selected node disappears, the selection shrinks to what is left — it never
 silently moves to a different node.
 
-In M1 a selection is structural only: the text actions edit one property cell at a time, and
-a multi-cell selection degrades to caret behaviour. Text replacement across cells arrives
-with the substitution actions, because that is the first feature that actually needs it.
+A selection comes in two shapes, and the shape is what the actions downstream key on:
 
-`Selection.HasText` is the predicate the clipboard reads: a selection holds text exactly when
-it is empty-but-not-empty — one cell, anchor and caret apart. That is why `Ctrl+A` selects the
-property the caret stands in rather than the document (see [clipboard.md](clipboard.md)):
-"everything" cannot mean more than one cell, because nothing downstream could act on a range
-that spans two.
+- **inside one cell** — anchor and caret name the same `CellAddress`, so `IsSingleCell` is
+  true and `HasText` is true. This is the shape every text action edits: typing replaces the
+  range, Backspace and Delete shorten it, Copy takes it.
+- **across cells** — anchor and caret name different addresses, so the range covers every
+  caret place between them in document order. `IsSingleCell` and `HasText` are both false, so
+  no text action mistakes it for one. It is the shape a node is selected in, and
+  `SelectionRects` has always drawn it: the two end cells are trimmed to their offsets and
+  every cell between them is highlighted whole, one rectangle per line.
+
+`SelectionRanges` (`Projectional.Editing/SelectionRanges.cs`) is the only place that computes
+those ranges. It answers three questions — the value at the caret (`OfProperty`), the cells
+one node shows together with its descendants (`OfNode`), and the whole document
+(`OfDocument`) — and returns `null` when the unit does not exist, which is how the `Ctrl+A`
+ladder knows to skip a rung instead of stalling on it. [clipboard.md](clipboard.md) explains
+the ladder itself.
+
+Node membership is decided by `CellAddress.Owner`, not by address equality. A child's
+projection root carries the *parent's* element address, and a collection's gaps and separators
+carry the owning node's address, so the test "is this caret place inside that subtree" has to
+be asked of the owner id — otherwise a selected list would have holes where its separators are.
+
+Acting on a cross-cell selection is not yet implemented: the text actions fall back to caret
+behaviour, and Delete, Cut and Paste leave the model alone. That is the next change, and
+`SelectionRanges` is where its "which nodes are covered" inverse belongs.
 
 ## The clipboard
 
