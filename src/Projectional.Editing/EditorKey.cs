@@ -66,7 +66,7 @@ public enum EditorKey
     /// <summary>Escape, which closes an open completion list.</summary>
     Escape,
 
-    /// <summary>Ctrl+A, which selects the whole text of the cell at the caret.</summary>
+    /// <summary>Ctrl+A, which widens the selection: the value, then the node, then the document.</summary>
     SelectAll,
 
     /// <summary>Ctrl+C, which copies the selected text.</summary>

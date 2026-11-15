@@ -62,21 +62,43 @@ without a clipboard (an embedded editor in a test, a headless build) gets for fr
 
 | Action | Key | Effect |
 | --- | --- | --- |
-| `SelectAllAction` | `Ctrl+A` | select the whole text of the property cell the caret is in |
+| `SelectAllAction` | `Ctrl+A` | widen the selection: the property, then the node, then the document |
 | `CopyAction` | `Ctrl+C` | put the selected text on the clipboard, leave the document alone |
 | `CutAction` | `Ctrl+X` | copy, then delete the selection |
 | `PasteAction` | `Ctrl+V` | type the clipboard text at the caret |
 
-### Select all means one cell
+### Select all is a ladder
 
-`Ctrl+A` cannot mean the document. A selection is a range inside one property cell, and a
-range spanning two cells would have nothing to act on - the text actions all edit one cell at
-a time. So `SelectAllAction` selects the property the caret stands in, with the caret at its
-end, which is what makes the next keystroke replace that property's whole value. Pressing it
-again is a no-op rather than a third state, because a selection has nowhere to widen to.
+`Ctrl+A` cannot mean one thing. A projectional document nests three units, and which one the
+user means depends on how far the selection has already widened, so the gesture climbs one
+rung per press:
 
-A caret in a keyword, a space or an empty slot changes nothing: those cells have no editable
-text, and selecting the notation's own word would produce a selection no later action can use.
+| Rung | Range | Why that rung exists |
+| --- | --- | --- |
+| the value | the whole text of the property cell at the caret | it is what the next keystroke replaces and what `Copy` takes |
+| the node | every cell the node under the caret shows, and those of its descendants | it is what `Delete` removes and `Alt+Up` moves |
+| the document | the first caret place at offset 0 to the last at its length | it is what a host saves or copies as a whole |
+
+A rung with nothing to offer is skipped, not treated as an obstacle. A caret in a keyword or
+in an empty slot has no value, so the first press selects the node; a concept whose notation
+is a single property produces the same range for the value and the node, so the second press
+reaches the document. A caret in an empty `ChildCell` or `CollectionCell` names the node that
+owns the slot, so the press selects the enclosing node - which is the unit that slot belongs
+to. The top rung is a no-op, because the document is already selected.
+
+The node rung is what makes a multi-cell selection a first-class state rather than a
+degraded one. `SelectionRects` already drew a range across cells, so no rendering work was
+needed: a node's cells are contiguous in document order, and its range is the run from the
+first caret place whose `CellAddress.Owner` belongs to the node's subtree to the last.
+
+The text actions are unaffected. `Selection.HasText` is false for a range across cells, so
+`Copy`, `Cut`, `Paste` and typing keep their one-cell behaviour and a node selection simply
+has no text to hand them. Acting on a node selection is a structural edit, which is the
+subject of its own change.
+
+`SelectionRanges` (`Projectional.Editing/SelectionRanges.cs`) is the single place that
+answers "what range covers this value, this node, this document", so a host that wants to
+offer only the document rung can ask for it directly instead of pressing three times.
 
 ### Copy leaves the document alone
 
@@ -146,9 +168,12 @@ returns `null` for `A`/`C`/`X`/`V` without Control. Alt and Meta leave them to t
 `EditorMenu.For(session)` offers `Select All`, `Copy`, `Cut` and `Paste` after the history and
 the structural edits. Availability is decided before the entry is shown:
 
-- `Select All`, `Copy` and `Cut` are enabled only when the selection has text **and** the
-  caret's cell is a `PropertyCell` - the same predicate, `CanCopyText`, for all three, because
-  a selection that cannot be copied cannot be cut either;
+- `Select All` is always enabled: the ladder always has a rung left until the document is
+  selected, and a host that hides the entry could not reach the node rung at all;
+- `Copy` and `Cut` are enabled only when the selection has text **and** the caret's cell is a
+  `PropertyCell` - the same predicate, `CanCopyText`, for both, because a selection that cannot
+  be copied cannot be cut either. A node selection has no text, so those two entries go grey
+  while `Select All` has widened past the value - structural copy is a later change;
 - `Paste` is enabled only when `session.Clipboard.Text` is non-empty.
 
 The commands *are* the actions, so the gesture the menu prints cannot drift from the binding.

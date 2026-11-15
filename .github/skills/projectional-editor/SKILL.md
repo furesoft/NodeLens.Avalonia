@@ -469,6 +469,22 @@ dependency, so every action is testable headlessly.
   `KeyNotFoundException` ("declares no property slot named ...").
 - Text actions edit inside a single `PropertyCell`; a multi-cell selection degrades to caret
   behaviour. `Ctrl+Home`/`Ctrl+End` are not routed in M1.
+- **`Ctrl+A` is a ladder, not one answer.** `SelectAllAction` widens one unit per press:
+  the property at the caret, then the node under it (plus its descendants), then the
+  document. `SelectionRanges` (`SelectionRanges.cs`) computes all three and returns `null`
+  for a unit that does not exist, so a rung is *skipped* rather than blocking - a caret in a
+  keyword has no value, so its first press selects the node. `SelectAllAction` compares
+  candidate ranges with `Address`+`Offset` only, **ignoring `CaretPosition.Order`**: a
+  position named by address alone has `Order == -1`, so record equality would call the same
+  range different and the ladder would stall on one rung forever.
+- **Node membership is `CellAddress.Owner`, never address equality.** A child's projection
+  root carries the *parent's* element address, and a collection's gaps and separators carry
+  the owning node's address, so "is this place inside that subtree" must be asked of the
+  owner id or a selected list ends up with holes where its separators are.
+- A cross-cell selection reports `IsSingleCell == false` and `HasText == false`, so no text
+  action mistakes it for one. `SelectionRects.Of` already draws it correctly (both ends
+  trimmed, intermediate cells whole, one rect per line) - the rendering needed no change.
+  Delete/Cut on a cross-cell selection is **not** implemented.
 
 ## How the control paints and takes input
 
@@ -675,10 +691,11 @@ contract; the invariants that are easy to break are these.
 
 ## How the clipboard works
 
-`Ctrl+A`/`Ctrl+C`/`Ctrl+X`/`Ctrl+V` select all, copy, cut and paste **text inside one property
-cell**. `docs/architecture/clipboard.md` is the contract. The clipboard is text and not
-structure on purpose: a structural copy (a subtree, a slot's children) is a different feature
-with a different payload and a different paste rule, and it is scheduled for M3.
+`Ctrl+A`/`Ctrl+C`/`Ctrl+X`/`Ctrl+V` select all, copy, cut and paste. Copy, cut and paste are
+**text inside one property cell**; select-all widens. `docs/architecture/clipboard.md` is the
+contract. The clipboard is text and not structure on purpose: a structural copy (a subtree, a
+slot's children) is a different feature with a different payload and a different paste rule,
+and it is scheduled for M3.
 
 - **The seam is `ITextClipboard`**: one `string? Text` property and one default
   `Task RefreshAsync() => Task.CompletedTask`. Nothing else. `null` means "the clipboard holds
@@ -701,12 +718,12 @@ with a different payload and a different paste rule, and it is scheduled for M3.
   `PropertyCell`. Every text action goes through it; a second reading of the selection is a bug
   waiting to happen. Because `EditorSession.Select` already clamps, the clamp is unreachable
   through the public API - cover it through `CopyAction`/`CutAction`, not by calling it.
-- **The four actions are in `Projectional.Editing/Clipboard/`.** `SelectAllAction` selects the
-  whole property cell's text with the caret at the end. `CopyAction` writes the text and returns
-  `EditResult.Unchanged` - a copy never changes the document. `CutAction` writes, then applies
-  `DeleteTextAction(DeleteDirection.Forward)`. `PasteAction` hands the text to `TypeTextAction`,
-  so a paste gets exactly the same validation and the same refusal as typing; an empty or null
-  clipboard is `Unchanged` ("nothing to do"), never a rejection.
+- **The four actions are in `Projectional.Editing/Clipboard/`.** `SelectAllAction` climbs the
+  ladder (see the editing section above) rather than selecting one cell. `CopyAction` writes the
+  text and returns `EditResult.Unchanged` - a copy never changes the document. `CutAction`
+  writes, then applies `DeleteTextAction(DeleteDirection.Forward)`. `PasteAction` hands the text
+  to `TypeTextAction`, so a paste gets exactly the same validation and the same refusal as
+  typing; an empty or null clipboard is `Unchanged` ("nothing to do"), never a rejection.
 - **A paste never coalesces.** `PasteAction.CoalescingKey` is `null` (and `CutAction`'s too), so
   a paste is its own undo step and never merges into the typing around it. `ToString()` returns
   `"paste"`, which is what the undo label shows.
@@ -715,10 +732,12 @@ with a different payload and a different paste rule, and it is scheduled for M3.
   `Left`/`Right`/`Space` in that list. Shift does not change them: `Ctrl+Shift+C` is still Copy.
   A bare letter is never in the key map - it is text input, not a routed key.
 - **The menu decides availability from state, not from a flag.** `EditorMenu.For` lists
-  `Select All`, `Copy`, `Cut`, `Paste` after the edit entries. `CanCopyText(session)` is true
-  only when the selection has text *and* the caret resolves to a `PropertyCell`;
-  `CanPasteText(session)` is true only when `session.Clipboard.Text` has length. Copy and Cut
-  share one predicate because they are the same read.
+  `Select All`, `Copy`, `Cut`, `Paste` after the edit entries. `Select All` has **no** predicate
+  - the ladder always has a rung left until the document is selected, and greying it out would
+  make the node rung unreachable. `CanCopyText(session)` is true only when the selection has
+  text *and* the caret resolves to a `PropertyCell`, so Copy and Cut go grey while a node
+  selection is in force; they share one predicate because they are the same read.
+  `CanPasteText(session)` is true only when `session.Clipboard.Text` has length.
 - **The Avalonia adapter resolves the platform clipboard lazily and swallows its failures.** A
   control that is not yet in a visual tree has no `TopLevel`, and a platform clipboard that
   refuses must not take the editor down with it - a copy that cannot reach the platform leaves
@@ -729,8 +748,9 @@ with a different payload and a different paste rule, and it is scheduled for M3.
 Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
 - **Text only, one cell.** Copying across cells, copying a subtree, and pasting a structural
-  fragment all wait for M3. A multi-cell selection degrades to caret behaviour, exactly as it
-  does for typing.
+  fragment all wait for M3. A multi-cell selection degrades to caret behaviour for every text
+  action, exactly as it does for typing - so `Ctrl+A` twice selects a node but `Delete` then
+  does nothing to it yet.
 - **No rich payloads.** No HTML, no images, no custom MIME types. The model is the source of
   truth and a formatted payload would be a second representation to keep in sync.
 - **Cross-editor fragment paste is not supported.** Two editors in one process share the text
@@ -787,7 +807,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 768 tests**; anything below that means tests were deleted.
+it. **Baseline is 770 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
