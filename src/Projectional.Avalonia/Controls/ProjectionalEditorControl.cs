@@ -145,11 +145,63 @@ public sealed class ProjectionalEditorControl : Control
     /// The measure that turns text into distances for this control.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A session must be opened with this measure, or the layout will be in units that are not pixels
     /// and the text will be drawn at the wrong width. <see cref="OpenSession"/> does that; a session
     /// built elsewhere has to be given it explicitly.
+    /// </para>
+    /// <para>
+    /// Replaced, never mutated, when the font size changes: <see cref="AvaloniaTextMeasure"/> caches
+    /// shapes and distances keyed on the font it was built with, and the rest of the control treats the
+    /// identity of a measure as "which layout is this" - so a new size means a new measure.
+    /// </para>
     /// </remarks>
-    public AvaloniaTextMeasure TextMeasure { get; }
+    public AvaloniaTextMeasure TextMeasure { get; private set; }
+
+    /// <summary>The em size the document is drawn at, in device pixels.</summary>
+    /// <remarks>
+    /// <para>
+    /// Setting it rebuilds the measure, re-lays-out the open document and re-measures the control, which
+    /// is the whole feature: a bigger font is a projection that gives every character more room, so the
+    /// caret, the hit test, the gutter width and the completion list all follow without knowing that a
+    /// size exists.
+    /// </para>
+    /// <para>
+    /// Only positivity is checked here. What range of sizes is comfortable, and how far one step goes, is
+    /// the host's opinion - this control renders at whatever it is given, exactly as it accepts any
+    /// <see cref="Typeface"/>.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero or negative.</exception>
+    public double FontSize
+    {
+        get => TextMeasure.FontSize;
+
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+
+            if (value == TextMeasure.FontSize)
+            {
+                return;
+            }
+
+            TextMeasure = new AvaloniaTextMeasure(TextMeasure.Typeface, value, TextMeasure.Foreground);
+
+            // The list is drawn on this surface and must keep the editor's line height, or its rows stop
+            // matching the text they are offering to fill.
+            _completion.TextMeasure = TextMeasure;
+
+            if (Session is { } session)
+            {
+                session.Measure = TextMeasure;
+            }
+
+            InvalidateMeasure();
+            ScrollToCaret();
+            InvalidateVisual();
+        }
+    }
 
     /// <summary>The document being edited, or <see langword="null"/> when the control is empty.</summary>
     public EditorSession? Session

@@ -37,7 +37,7 @@ public sealed class CompletionPresenter
     /// <summary>The narrowest the list is drawn, so a short label does not produce a stamp-sized popup.</summary>
     private const double MinimumWidth = 120;
 
-    private readonly AvaloniaTextMeasure _measure;
+    private AvaloniaTextMeasure _measure;
 
     private CompletionPalette _palette;
 
@@ -61,6 +61,24 @@ public sealed class CompletionPresenter
     /// unusual - the proposals are the concepts a slot accepts, not a vocabulary.
     /// </remarks>
     public int VisibleRows { get; set; } = 12;
+
+    /// <summary>The measure labels are shaped with.</summary>
+    /// <remarks>
+    /// The editor hands over the measure it lays out with, so a row is as tall as a line of text and a
+    /// label is as wide as the cell it names. A host that changes the font size has to set this too,
+    /// or the list keeps the old row height and the rows stop lining up with the text.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public AvaloniaTextMeasure TextMeasure
+    {
+        get => _measure;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            _measure = value;
+        }
+    }
 
     /// <summary>What the list and its icons look like.</summary>
     /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
