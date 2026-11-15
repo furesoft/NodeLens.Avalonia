@@ -3,19 +3,21 @@ using Projectional.Projection;
 namespace Projectional.Editing;
 
 /// <summary>
-/// Enter or Tab while a completion list is open: creates the highlighted concept in the slot.
+/// Enter or Tab while a completion list is open: creates the highlighted concept in the slot, or writes the
+/// highlighted value into the property cell.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the only completion gesture that changes the model, and it changes it the way Enter would:
-/// one child in the slot, the caret resolved into what was created. Filling a slot is therefore one
-/// undoable step whether the user typed the concept's name into a list or let Enter pick the default.
+/// This is the only completion gesture that changes the model, and it changes it the way the plain key
+/// would: for a slot, one child in it and the caret resolved into what was created; for a property, the
+/// value written in place of the old one and the caret left where it is, because the user is still looking
+/// at the cell they just filled. Either way accepting is one undoable step.
 /// </para>
 /// <para>
-/// The slot and the proposal are both re-derived when the key is pressed rather than trusted from the
+/// The place and the proposal are both re-derived when the key is pressed rather than trusted from the
 /// list, because the list survives between keystrokes and the model does not - an undo, a variant switch
-/// or a reload can leave a list naming a slot that no longer exists. A proposal that the slot no longer
-/// accepts closes the list instead of creating a node the language would reject.
+/// or a reload can leave a list naming a place that no longer exists. A proposal the place no longer
+/// accepts closes the list instead of writing something the language would reject.
 /// </para>
 /// <para>
 /// With nothing matching the filter there is nothing to accept, so the key dismisses the list and leaves
@@ -33,8 +35,23 @@ public sealed class AcceptCompletionAction : CompletionAction
         var selection = context.Selection;
 
         if (context.Completion is not { Selected: { } item }
-            || CompletionSlot.At(context) is not { } slot
-            || !Accepts(context, slot, item))
+            || CompletionSlot.At(context) is not { } slot)
+        {
+            context.Completion = null;
+
+            return EditResult.Unchanged(selection);
+        }
+
+        if (slot.Property is { } property)
+        {
+            context.Completion = null;
+
+            return Accepts(property, item) && context.SetProperty(property, item.ConceptKey)
+                ? EditResult.Applied(selection)
+                : EditResult.Unchanged(selection);
+        }
+
+        if (!Accepts(context, slot, item))
         {
             context.Completion = null;
 
@@ -61,6 +78,14 @@ public sealed class AcceptCompletionAction : CompletionAction
 
         return false;
     }
+
+    /// <summary>Whether the property still allows <paramref name="item"/> as one of its values.</summary>
+    /// <remarks>
+    /// The cell's own parse is the authority, not the list: a type that has been re-declared since the list
+    /// opened (a reload, a variant switch) must not be written a symbol it no longer spells.
+    /// </remarks>
+    private static bool Accepts(PropertyCell property, CompletionItem item) =>
+        item.Kind == CompletionKind.Value && property.Type.IsValid(item.ConceptKey);
 
     public override string ToString() => "accept completion";
 }

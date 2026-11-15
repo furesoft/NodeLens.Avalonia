@@ -124,8 +124,12 @@ public sealed class EditorSession : IDisposable
     /// </para>
     /// <para>
     /// It is cleared by anything that is not a completion gesture, by a move of the caret, and by a
-    /// rebuild - a list describes the empty slot at a caret, and none of those leave that description
-    /// true.
+    /// rebuild - a list describes the place at a caret, and none of those leave that description true.
+    /// </para>
+    /// <para>
+    /// A list can also appear without a completion gesture: when the caret <em>arrives</em> in a property
+    /// whose type names its values, the values are offered, because that is the one place where the
+    /// editor knows the whole answer without being asked. See <see cref="OfferValues"/>.
     /// </para>
     /// </remarks>
     public CompletionList? Completion { get; private set; }
@@ -291,6 +295,7 @@ public sealed class EditorSession : IDisposable
         };
 
         var previous = History.CoalescingKey;
+        var before = Selection.Caret;
         var result = EditResult.Unchanged(Selection);
 
         try
@@ -317,7 +322,47 @@ public sealed class EditorSession : IDisposable
             SelectLandedValue();
         }
 
+        if (action is not CompletionAction && !Selection.Caret.Equals(before))
+        {
+            OfferValues();
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// Opens the value list when the caret stands in a property whose type names its values.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An enumeration is the only kind of slot whose whole answer is known without typing, so arriving in
+    /// one offers the values instead of waiting for Ctrl+Space. That also repairs the one property a user
+    /// could not retype at all: every prefix of a symbol is an illegal value, so typing over the word was
+    /// refused, and the list is what turns those keystrokes into a filter.
+    /// </para>
+    /// <para>
+    /// Only arrival opens a list - the caller has already decided that the caret moved, and no completion
+    /// gesture is involved. A keystroke that leaves the caret where it is therefore cannot reopen a list
+    /// the user dismissed with Escape, and accepting a value leaves the caret in the same place, so the
+    /// list closes and stays closed until the caret leaves the cell and comes back.
+    /// </para>
+    /// <para>
+    /// A selection inside the cell does not suppress the list, because selecting the value is exactly how a
+    /// user says "I am about to retype this" - and for an enumeration that is the only gesture left, since
+    /// every prefix of a symbol is an illegal value. A selection that spans cells is left alone: the caret
+    /// then stands for a range, and a list describing one cell would answer a question nobody asked.
+    /// </para>
+    /// </remarks>
+    private void OfferValues()
+    {
+        if (Completion is not null
+            || !Selection.IsSingleCell
+            || CaretNavigation.PlaceAt(Tree, Selection.Caret) is not { Cell: PropertyCell property })
+        {
+            return;
+        }
+
+        Completion = CompletionSource.Values(property);
     }
 
     /// <summary>Widens the caret to the whole value of the cell it landed in, when that cell has text.</summary>
@@ -341,7 +386,10 @@ public sealed class EditorSession : IDisposable
     /// <remarks>
     /// Both ends are coerced, so a selection whose anchor was in a deleted node collapses onto the
     /// caret instead of pointing at a cell that no longer exists. Moving the caret also closes any open
-    /// completion list, because the proposals describe the slot the caret was in.
+    /// completion list, because the proposals describe the place the caret was in - and then offers the
+    /// values of the property it arrived in, which is the same arrival <see cref="Apply"/> acts on. A
+    /// click is a move the session was told about rather than one an action performed, so it cannot rely
+    /// on an action having reported it.
     /// </remarks>
     public void Select(Selection selection)
     {
@@ -350,6 +398,8 @@ public sealed class EditorSession : IDisposable
 
         Selection = new Selection(anchor, caret);
         Completion = null;
+
+        OfferValues();
     }
 
     /// <summary>Undoes one step of the model's history, keeping the caret on the nearest cell.</summary>

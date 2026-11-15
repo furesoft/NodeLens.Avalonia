@@ -42,6 +42,24 @@ public abstract class PropertyType : IEquatable<PropertyType>
     public static PropertyType Enum(params ReadOnlySpan<string> symbols) => new EnumPropertyType(symbols);
 
     /// <summary>
+    /// The values this type spells out, in declaration order - empty for a type whose values are not a
+    /// closed set.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An enumeration is the one property type whose legal values are known without parsing anything, which
+    /// is exactly what completion needs: the editor can offer them instead of asking the user to remember
+    /// the spelling. A string or a number answers with nothing, so a caller reads "no symbols" rather than
+    /// special-casing the type.
+    /// </para>
+    /// <para>
+    /// Declaration order, not sorted and not a set: it is the language author's ranking, and it is what a
+    /// list of proposals shows before the user has typed anything.
+    /// </para>
+    /// </remarks>
+    public virtual IReadOnlyList<string> Symbols => [];
+
+    /// <summary>
     /// Parses a stored property value. This is what makes invariant 6 — every stored value
     /// parses against its declared type — checkable on every write.
     /// </summary>
