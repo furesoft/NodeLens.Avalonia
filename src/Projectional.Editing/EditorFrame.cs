@@ -100,7 +100,7 @@ public sealed class EditorFrame
         return new EditorFrame(
             window,
             measure,
-            TextRunsOf(window, styler ?? CellStyler.Default),
+            TextRunsOf(window, layout, styler ?? CellStyler.Default, measure),
             SelectionRects.Of(places, layout, selection, measure),
             CaretBounds.Of(places, layout, selection.Caret, measure),
             selection.Caret);
@@ -109,20 +109,50 @@ public sealed class EditorFrame
     public override string ToString() =>
         $"{TextRuns.Count} runs, {Highlights.Count} highlights, caret at {Caret} in {Viewport}";
 
-    private static List<TextRun> TextRunsOf(LayoutViewport viewport, ICellStyler styler)
+    /// <summary>One run per drawn line, so a cell that wraps is painted line by line.</summary>
+    /// <remarks>
+    /// A cell of one line keeps its own bounds rather than a rect measured from its text: the bounds are
+    /// what the cell occupies, and a run that shrank to the glyphs would leave the rest of the cell
+    /// unpainted. Only a cell of several lines is split, because there is no single rect that covers its
+    /// lines without also covering the gap the break left.
+    /// </remarks>
+    private static List<TextRun> TextRunsOf(
+        LayoutViewport viewport,
+        CellLayout layout,
+        ICellStyler styler,
+        ITextMeasure measure)
     {
         var runs = new List<TextRun>(viewport.Cells.Count);
 
         foreach (var placed in viewport.Cells)
         {
-            if (CellText.IsVisible(placed.Cell))
+            if (!CellText.IsVisible(placed.Cell))
+            {
+                continue;
+            }
+
+            var style = styler.StyleOf(placed.Cell);
+            var emphasis = placed.Cell is TextCell text ? text.Emphasis : TextEmphasis.None;
+            var lines = layout.LinesOf(placed.Cell);
+
+            if (lines is null || lines.IsSingleLine)
+            {
+                runs.Add(new TextRun(placed.Cell, CellText.Of(placed.Cell), placed.Bounds, style, emphasis));
+                continue;
+            }
+
+            for (var index = 0; index < lines.LineCount; index++)
             {
                 runs.Add(new TextRun(
                     placed.Cell,
-                    CellText.Of(placed.Cell),
-                    placed.Bounds,
-                    styler.StyleOf(placed.Cell),
-                    placed.Cell is TextCell text ? text.Emphasis : TextEmphasis.None));
+                    lines.ContentOf(index),
+                    new LayoutRect(
+                        placed.Bounds.X,
+                        placed.Bounds.Y + (index * lines.LineHeight),
+                        lines.Lines[index].Width,
+                        lines.LineHeight),
+                    style,
+                    emphasis));
             }
         }
 

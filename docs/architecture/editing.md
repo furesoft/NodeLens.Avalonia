@@ -70,7 +70,7 @@ so what is clickable and what is reachable by keyboard cannot drift apart.
 | Left / Right | previous / next **cell** in document order, arriving at the end of the previous or the start of the next one; clamps at the ends instead of wrapping |
 | Ctrl+Left / Ctrl+Right | one character, crossing into the neighbour at the edge of a cell — the character step the cell move takes away |
 | Home / End | start / end of the cell's line, using `LineHeight / 2` as the tolerance so a caret that is vertically centred still counts as being on the line |
-| Up / Down | nearest non-empty line in that direction, then the place with the smallest distance to the old column, ties going to document order |
+| Up / Down | nearest **line** in that direction — a line of a multi-line value before the neighbouring cell — then the place with the smallest distance to the old column, ties going to document order |
 | Tab / Shift+Tab | next / previous slot of the same node in declaration order, then out to the parent |
 
 Horizontal motion is **by cell**, vertical motion is **geometric**, and the difference is the
@@ -134,7 +134,8 @@ and the editing layer never has to remember anything for undo.
 | --- | --- | --- |
 | `TypeTextAction` | printable character | insert into the property cell, or reject when the type refuses the value |
 | `DeleteTextAction` | Backspace, Delete | shrink the cell's text, using `DeleteDirection` to say which side |
-| `InsertNodeAction` | Enter | fill the empty slot the caret is on with a new child |
+| `InsertNodeAction` | Enter, outside a value of text | fill the empty slot the caret is on with a new child |
+| `InsertLineBreakAction` | Enter, inside a value of text | open a line at the caret, which is a `TypeTextAction` of `"\n"` |
 | `TabAction` | Tab, Shift+Tab | move the caret to the next / previous slot |
 | `MoveCaretAction` | the arrow keys, Home, End | move the caret, never the model |
 
@@ -146,6 +147,13 @@ nothing here must leave both the model and the undo stack alone.
 
 The router is a table from `EditorKey` to action, not a `switch`. A host can bind a key
 differently or add an action without the editing layer learning about it.
+
+Enter is the one key the table cannot decide alone, because it means two things: it fills an
+empty slot with a node, and inside a value of text it opens a line — a break is text, and only
+a value whose type can hold a break can take one. `KeyRouter.For(session, key)` therefore asks
+the caret first and falls back to the plain table; the plain `For(key)` stays for the host that
+has no document to ask. The test for "text" is the property type, not `CaretPlace.IsEditable`,
+because a number and a date are editable and refuse a break.
 
 ## The session
 

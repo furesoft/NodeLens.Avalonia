@@ -352,9 +352,21 @@ public sealed class ProjectionalEditorControl : Control
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The measure pass is where the editor learns how much room it has, so it publishes the width it is
+    /// given as the page a text cell wraps at. An unbounded width means there is no page: the document is
+    /// laid out one long line at a time, which is what a host inside a scrolling panel asks for.
+    /// </remarks>
     protected override Size MeasureOverride(Size availableSize)
     {
-        var content = Session?.Layout.Size;
+        var session = Session;
+
+        if (session is not null && !double.IsInfinity(availableSize.Width))
+        {
+            session.WrapWidth = availableSize.Width;
+        }
+
+        var content = session?.Layout.Size;
 
         // A control that fills its parent: the viewport is whatever the host gives it, and a document
         // shorter than the window still occupies the window so clicks below it land somewhere.
@@ -502,7 +514,7 @@ public sealed class ProjectionalEditorControl : Control
             return;
         }
 
-        AfterEdit(session.Apply(KeyRouter.For(key)));
+        AfterEdit(session.Apply(KeyRouter.For(session, key)));
         e.Handled = true;
     }
 

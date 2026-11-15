@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -19,15 +21,23 @@ namespace Projectional.Projection;
 public sealed class CellLayout
 {
     private readonly Dictionary<EditorCell, LayoutRect> _bounds;
+    private readonly Dictionary<EditorCell, LaidOutText> _text;
 
-    internal CellLayout(EditorTree tree, LayoutSize size, IReadOnlyList<PlacedCell> cells)
+    internal CellLayout(
+        EditorTree tree,
+        LayoutSize size,
+        IReadOnlyList<PlacedCell> cells,
+        IReadOnlyDictionary<EditorCell, LaidOutText> text)
     {
         ArgumentNullException.ThrowIfNull(tree);
         ArgumentNullException.ThrowIfNull(cells);
+        ArgumentNullException.ThrowIfNull(text);
 
         Tree = tree;
         Size = size;
         Cells = cells;
+        _text = new Dictionary<EditorCell, LaidOutText>(text);
+
         _bounds = new Dictionary<EditorCell, LayoutRect>(cells.Count);
 
         foreach (var placed in cells)
@@ -71,6 +81,30 @@ public sealed class CellLayout
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// How the text of <paramref name="cell"/> was broken into lines, or <see langword="null"/> when this
+    /// layout drew no text for it.
+    /// </summary>
+    /// <remarks>
+    /// Only the cells that draw a text of their own are in here: a cell that is empty on purpose - a slot
+    /// waiting for a node - draws its marker on a single line without measuring it as text.
+    /// </remarks>
+    public LaidOutText? LinesOf(EditorCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        return _text.TryGetValue(cell, out var lines) ? lines : null;
+    }
+
+    /// <summary>How the text of <paramref name="cell"/> is broken into lines, measured if need be.</summary>
+    public LaidOutText TextOf(EditorCell cell, ITextMeasure measure)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        ArgumentNullException.ThrowIfNull(measure);
+
+        return LinesOf(cell)
+            ?? LaidOutText.OneLine(CellText.Of(cell), (cell as TextCell)?.Emphasis ?? TextEmphasis.None, measure);
     }
 
     /// <summary>

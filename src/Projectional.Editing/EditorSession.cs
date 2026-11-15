@@ -32,7 +32,8 @@ public sealed class EditorSession : IDisposable
 {
     private readonly NotationRegistry _notations;
     private readonly ICellEmphasis? _emphasis;
-    private readonly CellLayouter _layouter;
+    private CellLayouter _layouter;
+    private double? _wrapWidth;
 
     private EditorTreeBuilder _builder;
 
@@ -99,6 +100,38 @@ public sealed class EditorSession : IDisposable
     /// state: two sessions can hold different choices over one document and edit the same model.
     /// </summary>
     public INotationChoice Choice { get; private set; }
+
+    /// <summary>
+    /// How wide the room a text cell may fill is, or <see langword="null"/> when it may run on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A text is wrapped at the room left to this edge, measured from the start of its line, so the
+    /// width is the host's page and not a column count: a value that starts further right has less room
+    /// before it breaks, which is what makes the wrapping follow the indentation instead of ignoring it.
+    /// </para>
+    /// <para>
+    /// View state, like <see cref="Choice"/>: two hosts can show the same document at different widths
+    /// and edit the same model. Setting it re-lays-out the document, so a control publishes it from its
+    /// measure pass - it is the only way the projection learns how much room there is.
+    /// </para>
+    /// </remarks>
+    public double? WrapWidth
+    {
+        get => _wrapWidth;
+
+        set
+        {
+            if (Nullable.Equals(_wrapWidth, value))
+            {
+                return;
+            }
+
+            _wrapWidth = value;
+            _layouter = new CellLayouter(Measure, value);
+            Refresh();
+        }
+    }
 
     /// <summary>
     /// Draws the document with <paramref name="choice"/> from now on.

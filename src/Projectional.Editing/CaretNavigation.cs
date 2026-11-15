@@ -162,8 +162,8 @@ public static class CaretNavigation
             CaretMove.RightCharacter => Character(places, index, offset, direction: 1),
             CaretMove.Up => Vertical(layout, measure, places, index, offset, direction: -1),
             CaretMove.Down => Vertical(layout, measure, places, index, offset, direction: 1),
-            CaretMove.LineStart => LineEdge(layout, measure, places, index, start: true),
-            CaretMove.LineEnd => LineEdge(layout, measure, places, index, start: false),
+            CaretMove.LineStart => LineEdge(layout, measure, places, index, offset, start: true),
+            CaretMove.LineEnd => LineEdge(layout, measure, places, index, offset, start: false),
             CaretMove.DocumentStart => CaretPosition.At(places[0], 0),
             CaretMove.DocumentEnd => CaretPosition.At(places[^1], places[^1].Length),
             _ => throw new ArgumentOutOfRangeException(nameof(move), move, "The move is not a known caret move."),
@@ -222,12 +222,13 @@ public static class CaretNavigation
             : CaretPosition.At(place, place.Length);
     }
 
-    /// <summary>The cell on the nearest line in <paramref name="direction"/> that keeps the column.</summary>
+    /// <summary>The line nearest in <paramref name="direction"/> that keeps the column as well as it can.</summary>
     /// <remarks>
-    /// The column is compared against the whole width of a candidate cell rather than against its
-    /// start, so a line that is indented further still receives the caret when the column falls inside
-    /// one of its cells. Ties go to the cell that comes first in document order, which is the leftmost
-    /// one on that line.
+    /// Lines, not cells: a wrapped value is several lines of one cell, and pressing down in the middle of
+    /// it has to move one line down rather than jumping over the whole cell. The column is compared
+    /// against the whole width of a candidate cell rather than against its start, so a line that is
+    /// indented further still receives the caret when the column falls inside one of its cells. Ties go
+    /// to the place that comes first in document order, which is the leftmost one on that line.
     /// </remarks>
     private static CaretPosition Vertical(
         CellLayout layout,
@@ -244,10 +245,13 @@ public static class CaretNavigation
             return CaretPosition.At(place, offset);
         }
 
-        var column = origin.X + CaretBounds.PrefixWidth(place, offset, measure);
-        var line = MiddleOf(origin);
+        var lines = CaretGeometry.LinesOf(place, layout, measure);
+        var lineIndex = CaretGeometry.LineIndexOf(lines, offset);
+        var column = origin.X + CaretGeometry.LeftOn(place, lines, lineIndex, offset, measure);
+        var line = CaretGeometry.TopOf(origin, lineIndex, measure) + (measure.LineHeight / 2);
         var target = double.NaN;
         var best = -1;
+        var bestLine = 0;
         var distance = double.MaxValue;
 
         for (var candidate = 0; candidate < places.Count; candidate++)
@@ -257,90 +261,107 @@ public static class CaretNavigation
                 continue;
             }
 
-            var middle = MiddleOf(bounds);
+            var candidateLines = CaretGeometry.LinesOf(places[candidate], layout, measure);
 
-            if (direction < 0 ? middle >= line : middle <= line)
+            for (var row = 0; row < candidateLines.LineCount; row++)
             {
-                continue;
-            }
+                var middle = CaretGeometry.TopOf(bounds, row, measure) + (measure.LineHeight / 2);
 
-            var candidateDistance = DistanceTo(bounds, column);
+                if (direction < 0 ? middle >= line : middle <= line)
+                {
+                    continue;
+                }
 
-            if (double.IsNaN(target) || (direction < 0 ? middle > target : middle < target))
-            {
-                target = middle;
-                best = candidate;
-                distance = candidateDistance;
-            }
-            else if (Math.Abs(middle - target) < measure.LineHeight / 2 && candidateDistance < distance)
-            {
-                best = candidate;
-                distance = candidateDistance;
+                var candidateDistance = DistanceTo(bounds, column);
+
+                if (double.IsNaN(target) || (direction < 0 ? middle > target : middle < target))
+                {
+                    target = middle;
+                    best = candidate;
+                    bestLine = row;
+                    distance = candidateDistance;
+                }
+                else if (Math.Abs(middle - target) < measure.LineHeight / 2 && candidateDistance < distance)
+                {
+                    best = candidate;
+                    bestLine = row;
+                    distance = candidateDistance;
+                }
             }
         }
 
-        return best < 0 || layout.BoundsOf(places[best].Cell) is not { } landing
-            ? CaretPosition.At(place, offset)
-            : CaretPosition.At(places[best], OffsetAt(measure, places[best], column - landing.X));
+        if (best < 0 || layout.BoundsOf(places[best].Cell) is not { } landing)
+        {
+            return CaretPosition.At(place, offset);
+        }
+
+        var landingLines = CaretGeometry.LinesOf(places[best], layout, measure);
+
+        return CaretPosition.At(
+            places[best],
+            CaretGeometry.OffsetAt(places[best], landingLines, bestLine, column - landing.X, measure));
     }
 
     /// <summary>The start or the end of the line the caret is on.</summary>
+    /// <remarks>
+    /// The edge of a line, not of the cell: at the end of the second line of a wrapped value the caret
+    /// stays in the value rather than jumping over the rest of it.
+    /// </remarks>
     private static CaretPosition LineEdge(
         CellLayout layout,
         ITextMeasure measure,
         IReadOnlyList<CaretPlace> places,
         int index,
+        int offset,
         bool start)
     {
-        if (layout.BoundsOf(places[index].Cell) is not { } origin)
+        var place = places[index];
+
+        if (layout.BoundsOf(place.Cell) is not { } origin)
         {
-            return CaretPosition.At(places[index], start ? 0 : places[index].Length);
+            return CaretPosition.At(place, start ? 0 : place.Length);
         }
 
-        var line = MiddleOf(origin);
+        var lines = CaretGeometry.LinesOf(place, layout, measure);
+        var top = CaretGeometry.TopOf(origin, CaretGeometry.LineIndexOf(lines, offset), measure);
         var tolerance = measure.LineHeight / 2;
         var found = -1;
+        var foundLine = 0;
 
         for (var candidate = 0; candidate < places.Count; candidate++)
         {
-            if (layout.BoundsOf(places[candidate].Cell) is { } bounds &&
-                Math.Abs(MiddleOf(bounds) - line) < tolerance)
+            if (layout.BoundsOf(places[candidate].Cell) is not { } bounds)
             {
-                found = candidate;
+                continue;
+            }
 
-                if (start)
-                {
-                    break;
-                }
+            var candidateLines = CaretGeometry.LinesOf(places[candidate], layout, measure);
+            var row = CaretGeometry.RowAt(candidateLines, bounds, top, tolerance, measure);
+
+            if (row < 0)
+            {
+                continue;
+            }
+
+            found = candidate;
+            foundLine = row;
+
+            if (start)
+            {
+                break;
             }
         }
 
-        return found < 0
-            ? CaretPosition.At(places[index], start ? 0 : places[index].Length)
-            : CaretPosition.At(places[found], start ? 0 : places[found].Length);
-    }
-
-    /// <summary>The offset into <paramref name="place"/>'s text whose caret is closest to <paramref name="x"/>.</summary>
-    private static int OffsetAt(ITextMeasure measure, CaretPlace place, double x)
-    {
-        var best = 0;
-        var distance = Math.Abs(x);
-
-        for (var offset = 1; offset <= place.Length; offset++)
+        if (found < 0)
         {
-            var candidate = Math.Abs(CaretBounds.PrefixWidth(place, offset, measure) - x);
-
-            if (candidate < distance)
-            {
-                best = offset;
-                distance = candidate;
-            }
+            return CaretPosition.At(place, start ? 0 : place.Length);
         }
 
-        return best;
-    }
+        var foundLines = CaretGeometry.LinesOf(places[found], layout, measure);
+        var line = foundLines.Lines[foundLine];
 
-    private static double MiddleOf(LayoutRect bounds) => bounds.Y + (bounds.Height / 2);
+        return CaretPosition.At(places[found], start ? line.Start : line.ContentEnd);
+    }
 
     private static double DistanceTo(LayoutRect bounds, double x) =>
         x < bounds.X ? bounds.X - x : x > bounds.Right ? x - bounds.Right : 0;

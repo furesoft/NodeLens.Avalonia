@@ -1,3 +1,6 @@
+using Projectional.Core;
+using Projectional.Projection;
+
 namespace Projectional.Editing;
 
 /// <summary>
@@ -19,6 +22,11 @@ namespace Projectional.Editing;
 public static class KeyRouter
 {
     /// <summary>The action <paramref name="key"/> stands for.</summary>
+    /// <remarks>
+    /// Enter is routed as an insertion here, which is what the key does wherever the caret is not in a
+    /// value of text. A host with a document open should ask <see cref="For(EditorSession, EditorKey)"/>
+    /// instead, because only that one can tell the two cases apart.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="key"/> is not a routed key.</exception>
     public static EditAction For(EditorKey key) => key switch
     {
@@ -37,6 +45,33 @@ public static class KeyRouter
         EditorKey.Delete => new DeleteTextAction(DeleteDirection.Forward),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown editor key."),
     };
+
+    /// <summary>The action <paramref name="key"/> stands for, given where the caret currently is.</summary>
+    /// <param name="session">The session whose caret decides what Enter means.</param>
+    /// <param name="key">The key that was pressed.</param>
+    /// <remarks>
+    /// Enter is the only key that is not decided by the key alone: in the text of a property it opens a
+    /// line, and everywhere else it inserts a node. The distinction needs the caret, so a host that has
+    /// a document open uses this overload and a host that does not uses the one above.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="session"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="key"/> is not a routed key.</exception>
+    public static EditAction For(EditorSession session, EditorKey key)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        return key == EditorKey.Enter && IsTextPlace(session) ? new InsertLineBreakAction() : For(key);
+    }
+
+    /// <summary>Whether the caret of <paramref name="session"/> stands in text that can hold a line.</summary>
+    /// <remarks>
+    /// Editable is not enough: an integer or a date is typed but not broken, and a break in one of those
+    /// would be a rejected edit the user never asked for. The property has to be a text, which is the
+    /// only type whose value can contain a line.
+    /// </remarks>
+    private static bool IsTextPlace(EditorSession session) =>
+        CaretNavigation.PlaceAt(session.Tree, session.Selection.Caret)?.Cell is PropertyCell cell
+        && cell.Type.Equals(PropertyType.String);
 
     /// <summary>The action for typed text, which is one burst of characters.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is <see langword="null"/>.</exception>

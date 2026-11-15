@@ -83,6 +83,19 @@ that are not settled by mechanics.
 | 37 | Is a marker attached to a node, or to a range inside a cell? | Leaning | Both: a node id always, an optional range inside one property's text. A constraint usually knows the node, not the offset, and geometry should still be able to underline three characters of a long cell. | M4 |
 | 38 | Do markers get a list of their own ("problems"), or only appear where they are? | Open | Where they are, first: hovering explains, and the shell shows the caret line's message in a status bar. A problems list is a document-wide report with navigation and filtering, which is a feature of its own and should come after squiggles prove they are enough. | M5 |
 
+## Multi-line text
+
+A value of text is laid out as lines and breaks itself when the page does not reach
+([projection.md](architecture/projection.md)). What that leaves open is how far the
+breaking, and the editing of a broken value, may go.
+
+| # | Question | State | Answer | Decide by |
+|---|----------|-------|--------|-----------|
+| 39 | Is a break the user typed stored as `\n` in the value, or as a list of lines in the model? | Leaning | `\n` in the value. A text property stays one string, so a language never has to decide whether its value is one or many, and the file format does not grow a shape per property. | M3 |
+| 40 | Does the caret stop at a soft wrap the way it stops at a hard break? | Leaning | Yes, and that is what is implemented: a position names a line, and a line is a line whichever broke it. The model is the only place that knows which is which. | M3 |
+| 41 | Is the wrap width a per-host view setting, a per-document setting, or a per-cell notation setting? | Leaning | Per host in M1, published as `EditorSession.WrapWidth`. Per document once settings exist, per cell only if a notation asks for a fixed narrow cell. | M3 |
+| 42 | Should a long value be soft-wrapped at all, or scrolled horizontally like a code editor? | Open | Soft-wrap for text, horizontal scroll for a notation that is a grid. Wrapping a table row would destroy the alignment that makes the table readable. | M5 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
