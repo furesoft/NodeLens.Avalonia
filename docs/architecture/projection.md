@@ -300,7 +300,8 @@ of painting half a grid.
 ### What M1 implements
 
 `ProjectionalEditorControl` is one `Control` that paints the whole frame itself:
-background, selection rectangles, one `FormattedText` per text run, then the caret bar.
+background, selection rectangles, one `FormattedText` per text run, then the caret bar — which
+is skipped while its blink phase is off, so a repaint can mean "same picture minus the caret".
 It asks `EditorFrame` what to paint and shapes glyphs with `AvaloniaTextMeasure`, so
 nothing about *what* is on screen is decided in the control.
 

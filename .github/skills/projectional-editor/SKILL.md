@@ -475,6 +475,12 @@ dependency, so every action is testable headlessly.
 - **A refused edit stays unconsumed.** `e.Handled` is set from the outcome, not
   unconditionally: `EditOutcome.Rejected` (a letter typed into a number) leaves the event
   open so the host can beep or reroute it.
+- **The caret blinks only inside a property cell and only while focused.** `CaretBlink` (in
+  `Projectional.Editing`) holds the phase and the predicate; the control owns a
+  `DispatcherTimer` that calls `Advance(blinking)` each tick and repaints only when it returns
+  `true`. `Render` skips the caret bar while `IsVisible` is false. Every edit/move/click path
+  goes through `Show()`, which calls `Reset()` - do not invalidate the control directly from a
+  new input path or the caret can be dark at the moment of typing.
 - **Undo/redo report whether they did anything.** `Ctrl+Z`, `Ctrl+Shift+Z`/`Ctrl+Y` call
   `session.Undo()`/`Redo()` and only set `Handled` when the history had a step.
 - **`EditorSession` raises no event.** The host invalidates: `InvalidateMeasure()` when
@@ -630,7 +636,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 595 tests**; anything below that means tests were deleted.
+it. **Baseline is 602 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

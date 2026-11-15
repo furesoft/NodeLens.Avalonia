@@ -92,6 +92,27 @@ Because a property can be many characters long, the character-wise step stays re
 move rather than a modifier flag on the same one, so a host that wants different keys — or a
 different definition of "cell" — only has to bind another key to it.
 
+## The caret
+
+The caret is a position between two characters, so it has no width in the layout and the
+renderer gives it one (`ProjectionalEditorControl.CaretThickness`). Two rules decide how it
+behaves rather than where it is:
+
+- **It blinks inside a property cell and nowhere else.** A caret standing on a keyword has
+  nowhere to type, and a blinking bar there would promise an insertion point that does not
+  exist. `CaretBlink.Blinks` asks the place list, so the rule cannot drift from what the
+  notation actually projects.
+- **It holds still while the editor does not have the focus.** A blinking caret in a window
+  the user is not working in is noise, and it costs a repaint every half second for nothing.
+  A steady caret is still visible, so the position is never lost.
+
+The phase is state in the editing layer (`CaretBlink`), not a trick in the control: the control
+owning a `DispatcherTimer` that calls `Advance` once per tick and repaints only when it reports
+a change, and every edit, move and click calls `Reset` so the caret is never invisible at the
+moment the user types. Keeping the decision out of the control is what lets a test say "the
+caret is off at this moment" without a window, and what lets a host with its own renderer blink
+at the same speed — `CaretBlink.Interval` is public for that reason.
+
 ## The action model
 
 Every input is an `EditAction`:
