@@ -275,6 +275,16 @@ give is a `DrawingContext`, a pen and a geometry, which is all a wave needs.
   solid waves, `Info` and `Hint` are dotted (dash style on the same path). A colour-blind
   user, a greyscale print and a high-contrast theme all still distinguish "wrong" from
   "noteworthy". This is the accessibility answer and it costs no extra code.
+- **The dash is two thicknesses long, not one.** A one-unit dash on a one-unit-thick stroke
+  falls between pixel centres and antialiases to roughly half the brush's opacity, which makes
+  the two *mild* severities look fainter than the serious ones - the opposite of what the
+  pattern is for. Measured on a rendered frame, a one-unit dash reached 68 % (hint) and 50 %
+  (info) coverage of the brush colour; two units reach 94 % and 77 %. The dash length is
+  therefore a rendering constant with a reason, not a taste.
+- **The context is clipped to the text area for the whole pass**, and a run entirely outside the
+  viewport is skipped before its geometry is built. So scrolling costs nothing extra and a
+  squiggle can never spill into the gutter or past the edge; a run that is partly visible still
+  builds its full path and is trimmed by the clip.
 - **The colour comes from the palette**, never from the model:
   `MarkerPalette.Error/Warning/Info/Hint`, carried on `SyntaxTheme` next to the text and
   caret colours. Defaults: error `#E51400` (light) / `#F14C4C` (dark), warning `#BF8803` /
@@ -312,7 +322,7 @@ long before a real one exists:
 | --- | --- | --- |
 | A ✓ | `feat/marker-model` | `DiagnosticSeverity`, `Diagnostic`, `CharacterRange`, `MarkerSet`, `EditorSession.Markers`, `MarkerCells` (node ids to cells), tests for stale nodes, replacement versus `Concat`, the node-versus-container rule |
 | B ✓ | `feat/marker-geometry` | `MarkerLine`, `MarkerGeometry`, per-line splitting, clipping, reading order, tests over wrapped and hard-broken cells |
-| C | `feat/marker-paint` | `MarkerPalette` on `SyntaxTheme`, the wave in the control's `Render`, light and dark defaults, pattern-per-severity |
+| C ✓ | `feat/marker-paint` | `MarkerPalette` on `SyntaxTheme`, `MarkerRuns` (overlap merge), the wave in the control's `Render`, light and dark defaults, pattern-per-severity |
 | D | `feat/marker-hover` | the tooltip, the click-to-caret hit test, and `F8` ordering in the editing layer |
 | E | (M4) `feat/validation-markers` | the constraint runner publishes diagnostics through `Markers`, incrementally, off the UI thread |
 | F | (M4) `feat/quick-fixes` | a diagnostic's fixes reach the light bulb, which is a change in [context-actions.md](context-actions.md) rather than here |
@@ -384,6 +394,43 @@ re-litigated by accident:
    now on screen marks what is left; a range entirely past the end marks the whole cell. A
    diagnostic that is still in the set has to be visible, or a fixable problem looks fixed.
 
+## Decisions frozen with slice C
+
+Painting settled four things. They are here rather than in a new ADR for the same reason as
+slice B's - none is expensive to reverse, and none should be re-litigated by accident.
+
+1. **The overlap merge is a separate, headless step, and it merges *strict* overlaps only.**
+   `MarkerRuns.Of(markerLines)` sorts by `(Y, X)`, sweeps each line, and merges two rectangles
+   only when they genuinely overlap - touching is not overlapping, so `0..10` and `10..20` stay
+   two runs and the user sees two marks, not one long one. The worst severity wins, the tallest
+   height wins, and the output is in reading order. It lives in `Projectional.Editing` because
+   deciding which finding is drawn is not a toolkit's business, and it is testable there with
+   fourteen cases instead of a screenshot.
+2. **`MarkerGeometry` and `MarkerRuns` are public.** `Projectional.Avalonia` has no
+   `InternalsVisibleTo` - and granting it one would be worse than widening the surface, because
+   the control is the reference consumer of the editing layer. A host that draws its own
+   markers (a second frontend, a print view, a test that asserts rectangles) needs exactly
+   these two functions and nothing else, so they are public with a `<remarks>` saying why.
+3. **The palette property is `MarkerColors`, not `MarkerPalette`.** A member named like a type
+   in the same namespace shadows it, so `public MarkerPalette MarkerPalette { get; set; }` does
+   not compile. The precedents are `Palette`/`SyntaxPalette` and `ListPalette`/
+   `CompletionPalette`; the pattern is "the type keeps the domain word, the property says what
+   it holds".
+4. **The wave is drawn by the control, not by a text decoration and not by the theme.** A
+   `TextDecoration` applies to a whole run and has no wave; a palette that could change the
+   amplitude or thickness would let a host draw outside the line the layout reserved. So the
+   geometry constants are `internal` to the control and only the colours are themeable.
+
+Two smaller consequences worth knowing:
+
+- **Severity is a pattern as well as a colour, and the dash length is a rendering constant with
+  a measured reason** (see [Painting](#painting)). A colour-blind reader, a greyscale print and a
+  high-contrast theme all still separate "wrong" from "noteworthy".
+- **The run list is cached against `(layout, marker set, measure)` identity.** The caret blink
+  repaints twice a second, and recomputing geometry on every blink would be the one way this
+  feature could make typing feel slow. `MarkerSet` is immutable, so reference identity is a
+  sound key.
+
 ## Testing
 
 - **Model, headless.** Done in `MarkerSetTests`: replacement versus `Concat`, duplicates kept,
@@ -400,8 +447,23 @@ re-litigated by accident:
   marked on every line it occupies; a cell that draws no characters still getting a visible
   marker; two findings on one range both surviving, because which one is drawn is a painting
   decision and the other must stay reachable; and reading order across two markers.
-- **Palette, headless.** Every severity has a brush in both themes, and the wave constants
-  keep the wave inside a `LineHeight` row.
+- **Merge, headless.** Done in `MarkerRunsTests` (14 cases): one marker is one run; two findings
+  on the same text are one run; overlapping markers merge; a contained marker does not widen the
+  run; a chain of three collapses to one; the worse severity wins and a milder one does not
+  downgrade a run; markers that merely *touch* stay two runs; separate stretches on one line stay
+  separate; markers on different lines are different runs; a merge keeps the tallest line; runs
+  come back in reading order; nothing marked is an empty answer; and a `null` list is rejected.
+- **Palette and wave constants, by inspection.** `MarkerPalette` is four brushes with a
+  `BrushOf` switch and `Light`/`Dark` presets; it has no arithmetic to get wrong, and the
+  wave constants keep the wave inside a `LineHeight` row by construction
+  (`amplitude = min(2, height - thickness)`).
+- **Rendered truth, by probe.** A throwaway Avalonia window marked the payroll sample with all
+  four severities and rasterised the frame. Checked: the four patterns are visually distinct;
+  the sampled colour of each stroke is the palette's (error and warning land within a few units
+  of the exact hex, the two dotted ones are antialiased blends of it); a `Warning` and a `Hint`
+  on the same range collapse to one run and the warning is drawn; clearing the set removes every
+  squiggle. This is the check that a geometry assertion cannot make - the rectangles were right
+  the whole time the picture was wrong.
 - **Control, when `tests/Projectional.Avalonia.Tests` exists.** A rendered wave for one
   error; the tooltip opening inside the band and not over the text; `F8` moving the caret to
   the next marker.
