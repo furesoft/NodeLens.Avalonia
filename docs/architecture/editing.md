@@ -113,6 +113,13 @@ moment the user types. Keeping the decision out of the control is what lets a te
 caret is off at this moment" without a window, and what lets a host with its own renderer blink
 at the same speed — `CaretBlink.Interval` is public for that reason.
 
+The pointer makes the same promise one level earlier. The control sets an I-beam cursor over
+its whole surface (`Cursor = new Cursor(StandardCursorType.Ibeam)` in its constructor), because
+every cell of a projection is a place the user can write into: the notation, not the geometry,
+decides where text is entered, so there is no region of the surface where an arrow would be
+telling the truth. It is an ordinary inherited `Control` property, so a host that wants a
+different pointer can still set one.
+
 ## The action model
 
 Every input is an `EditAction`:
