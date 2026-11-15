@@ -53,4 +53,10 @@ public sealed class NotationEditor
         InlineNotationCell? separator = null,
         string emptyText = "<empty>") =>
         new(slot) { Separator = separator, EmptyText = emptyText };
+
+    public TableColumn Column(string slot, InlineNotationCell header, string emptyText = "<empty>") =>
+        new(slot, header) { EmptyText = emptyText };
+
+    public TableNotationCell Table(string slot, params ReadOnlySpan<TableColumn> columns) =>
+        new(slot, columns);
 }

@@ -195,7 +195,7 @@ public sealed class NotationRegistry
         return null;
     }
 
-    private static void ValidateCell(Concept concept, NotationCell cell)
+    private void ValidateCell(Concept concept, NotationCell cell)
     {
         switch (cell)
         {
@@ -238,6 +238,51 @@ public sealed class NotationRegistry
             case CollectionNotationCell collection:
                 RequireChildSlotExists(concept, collection.Slot);
                 break;
+
+            case TableNotationCell table:
+                ValidateTable(concept, table);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Checks a table against the concept its rows are drawn from, which the cell itself cannot do
+    /// because it names slots of a <em>different</em> concept.
+    /// </summary>
+    private void ValidateTable(Concept concept, TableNotationCell table)
+    {
+        var rows = concept.FindChild(table.Slot)
+            ?? throw new NotationException(
+                $"The notation of '{concept.Key}' draws a table over '{table.Slot}', but the concept declares no such child.");
+
+        if (!_concepts.TryGet(rows.ChildConceptKey, out var rowConcept))
+        {
+            throw new NotationException(
+                $"The notation of '{concept.Key}' draws a table over '{table.Slot}', whose children are '{rows.ChildConceptKey}', but no such concept is declared.");
+        }
+
+        foreach (var column in table.Columns)
+        {
+            if (rowConcept.FindProperty(column.Slot) is not null)
+            {
+                continue;
+            }
+
+            if (rowConcept.FindChild(column.Slot) is { } child)
+            {
+                // A cell holds one child, so a list column would silently drop every row item after
+                // the first - the same reason an inline child cell refuses a many-valued slot.
+                if (child.Cardinality != Cardinality.One)
+                {
+                    throw new NotationException(
+                        $"The table of '{concept.Key}' shows column '{column.Slot}', but '{rowConcept.Key}' declares that child as many-valued; a cell can only show one child.");
+                }
+
+                continue;
+            }
+
+            throw new NotationException(
+                $"The table of '{concept.Key}' shows column '{column.Slot}', but '{rowConcept.Key}' declares neither a property nor a child of that name.");
         }
     }
 
