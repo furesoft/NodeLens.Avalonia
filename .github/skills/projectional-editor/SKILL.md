@@ -19,8 +19,9 @@ measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapsh
 two real languages (`Projectional.Expressions`, `Projectional.Samples`), the embeddable
 `Projectional.Avalonia` control (which paints real glyphs, hit-tests clicks and handles keys),
 syntax highlighting from the meaning on a run to a host-swappable palette, model-defined text
-decorations, cell-wise caret motion with a blinking caret and a context menu described by the
-editing layer are done. The standalone shell (tabs, menu bar, status bar) is being delivered.
+decorations, cell-wise caret motion with a blinking caret, a context menu described by the
+editing layer, and concept-driven completion (Ctrl+Space, icons as host images) are done. The
+standalone shell (tabs, menu bar, status bar) is being delivered.
 
 ## Status and where the truth lives
 
@@ -470,13 +471,18 @@ dependency, so every action is testable headlessly.
   typed string, and the place IME will hook in later); navigation and deletion come from
   `OnKeyDown`. A letter therefore never appears in `EditorKeyMap` - it is not a key the
   editor routes.
-- **Keys held with Control/Alt/Meta are the host's**, with two exceptions. `EditorKeyMap.Map`
+- **Keys held with Control/Alt/Meta are the host's**, with three exceptions. `EditorKeyMap.Map`
   returns `null` for them on purpose: Ctrl+Left is a word jump in the surrounding app,
   Ctrl+Delete deletes a file in a file manager. The exceptions are Ctrl+Left/Ctrl+Right, which
-  map to `EditorKey.ControlLeft`/`ControlRight` because the plain arrows move a whole cell, and
+  map to `EditorKey.ControlLeft`/`ControlRight` because the plain arrows move a whole cell,
   Alt+Up/Alt+Down, which reorder the node under the caret - the vertical arrows do nothing
-  else, so the host loses no gesture it had. Shift is not in that list because Shift+Tab is the
-  editor's.
+  else, so the host loses no gesture it had - and Ctrl+Space, which opens completion. Shift is
+  not in that list because Shift+Tab is the editor's.
+- **Escape always reaches the editor and is always consumed**, with or without a list open:
+  `EditorKey.Escape` routes to `DismissCompletionAction`, which closes an open list and is a
+  no-op otherwise. A host that wanted "Escape leaves the editor" therefore has to check
+  `session.Completion` itself; `args.Handled` cannot tell the two cases apart, because the
+  control marks every mapped key handled.
 - **The arrows move by cell, Ctrl+arrows by character.** `CaretMove.Left`/`Right` land on the
   neighbouring caret place at the end/start of its text, so a press never leaves the caret in
   the gap between two cells and never creeps through a seven-character property one letter at
@@ -609,6 +615,52 @@ rejects a null brush and a kind mentioned twice - checked by hand, because
 `ToFrozenDictionary` will not tell you which of two brushes won), `BrushOf` (falls back to
 `Default`) and `With` (returns a new palette, never mutates).
 
+## How completion works
+
+Ctrl+Space offers the concepts that could fill the slot at the caret. The list is **view
+state**, like the representation choice: it lives on `EditorSession.Completion`, is never
+persisted and never becomes its own undo step. `docs/architecture/completion.md` is the
+contract; the invariants that are easy to break are these.
+
+- **Proposals come from the model, not from text.** The caret must sit in an **empty** slot;
+  the slot declares the concept its children must conform to; every non-abstract concept below
+  it in the registry, in declaration order, is one entry. There is no word list, no frequency
+  ranking and no learned order - declaration order is the language author's ranking, and the
+  first entry is what Enter would have created anyway.
+- **`CompletionSlot.At` is the only place that decides "can this caret be completed"**, and it
+  accepts exactly two cell shapes: an empty `ChildCell` and an empty `CollectionCell`. A filled
+  slot, a property cell or a constant gets nothing. Substitution (replacing a filled child) is
+  deliberately out of this slice.
+- **Any non-completion action closes the list.** `EditorSession.Apply` hands the list to the
+  action through `EditContext.Completion` only when the action *is* a `CompletionAction`, and
+  drops it afterwards. So moving the caret, typing somewhere else and undoing all dismiss the
+  list without any of them knowing completion exists. Do not add a second dismissal path.
+- **Typing while a list is open filters, it does not edit.** `KeyRouter.Type(session, text)`
+  routes to `NarrowCompletionAction` instead of inserting; Backspace with a non-empty prefix
+  is `WidenCompletionAction`, and with an empty prefix it falls through, which closes the list.
+  This is why the control must call the **session-aware** `Type` overload - the plain one would
+  type into the model behind an open list.
+- **An empty match keeps the list open.** `EditorSession.Completion` stays non-null so Backspace
+  can widen it again; the host hides a zero-row list instead. Hiding and closing are different
+  states and the distinction is what makes backspacing past a wrong prefix feel right.
+- **Icons are host `IImage`s, and the built-in set is vector geometry.** `CompletionItem`
+  carries no palette and no colour, exactly like `TextStyleKind`: `CompletionKind` is a
+  vocabulary of meanings and `CompletionPalette` maps it to a `CompletionIcon(IImage, size)`.
+  The bundled icons are paths drawn by `GeometryImage` - a ~30-line `IImage` that applies its
+  own translate/scale/clip - **not** `DrawingImage`.
+- **Never go back to `DrawingImage` for these.** Measured on Avalonia 12.1.6: consecutive
+  `DrawImage` calls with a `DrawingImage` came out translated a few pixels further right each
+  time and then blank, and the icon column of every row after the first was empty on screen.
+  `GeometryImage` and `RenderTargetBitmap` both paint correctly. A host that supplies a
+  `Bitmap` (a real PNG) is fine - the bug is specific to `DrawingImage` reused across draws.
+- **The list is painted in the editor's own surface, not in a toolkit popup.** The control is a
+  single `Control`, and `Popup.Open()` needs a visual-tree parent it does not have.
+  `CompletionPresenter` is a plain painter (`Measure`, `Render`, `RowAt`) and the control
+  positions it from `CaretBounds` minus the scroll offset, flipping above the caret when it would
+  overflow the bottom and clamping both axes. Pointer presses are tested against `RowAt`
+  *before* the document hit test, and a clicked row runs `SelectCompletionAction` then
+  `AcceptCompletionAction` - the same actions the keyboard would run.
+
 ## How the standalone app fits
 
 The repository ships two front ends and **one** public surface:
@@ -660,13 +712,15 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 678 tests**; anything below that means tests were deleted.
+it. **Baseline is 707 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
 
-- `Projectional.Expressions` - an abstract `Expression` plus eight concrete concepts
+- `Projectional.Expressions` - an abstract `Expression` plus seven concrete concepts
   (`IntLiteral`, `BoolLiteral`, `StringLiteral`, `Name`, `Binary`, `Unary`, `Parenthesized`).
+  That count is what completion offers for an empty `condition`, so it is worth counting
+  rather than trusting.
   A host borrows its declarations with `[.. ExpressionsLanguage.ConceptDeclarations, .. own]`;
   it never inherits from them. Operators are `PropertyType.Enum` symbols so the typed value
   *is* the notation.

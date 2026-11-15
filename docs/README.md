@@ -15,18 +15,20 @@ constraints it must satisfy, and which alternatives were rejected.
 5. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
 6. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
    the first slice is implemented.
-7. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
+7. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
+   the first slice is implemented.
+8. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned).
-8. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+9. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (planned).
-9. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-10. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-11. [Integration](architecture/integration.md) — how host applications embed this.
-12. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+10. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+11. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+12. [Integration](architecture/integration.md) — how host applications embed this.
+13. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-13. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-14. [Roadmap](roadmap.md) — milestones and acceptance gates.
-15. [Open questions](open-questions.md) — what is deliberately still undecided.
+14. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+15. [Roadmap](roadmap.md) — milestones and acceptance gates.
+16. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
