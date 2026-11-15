@@ -26,6 +26,15 @@
           ToggleType="CheckBox"
           Click="OnToggleLineNumbers" />
         <Separator />
+        <!--
+          The gesture is written into the header rather than declared as a HotKey: the key that types
+          "+" is OemPlus with Shift, so one registered gesture cannot match both the shifted and the
+          unshifted press, and KeyGesture would print the enum name ("Ctrl+OemPlus") to the user.
+        -->
+        <MenuItem Header="_Increase font size (Ctrl+=)" Click="OnIncreaseFontSize" />
+        <MenuItem Header="_Decrease font size (Ctrl+-)" Click="OnDecreaseFontSize" />
+        <MenuItem Header="_Reset font size (Ctrl+0)" Click="OnResetFontSize" />
+        <Separator />
         <MenuItem Header="_Light theme" Click="OnLightTheme" />
         <MenuItem Header="_Dark theme" Click="OnDarkTheme" />
       </MenuItem>
