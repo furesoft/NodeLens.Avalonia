@@ -50,6 +50,31 @@ would otherwise have no way to produce a literal at all. The flag is per declara
 like `isAbstract`, is not inherited: a language whose literals descend from a shared base
 repeats it on each one. See [completion.md](completion.md) for the query that applies it.
 
+## The two designated slots
+
+A concept may nominate one of its own properties as carrying a framework-wide meaning. There
+are two such nominations today, and they work identically:
+
+| Designation | Parameter | Meaning |
+| --- | --- | --- |
+| name slot | `nameSlot: "name"` | the property references display instead of `<Concept.Key>` |
+| collapse slot | `collapseSlot: "collapsed"` | whether a node of this concept may be folded in the editor ([collapsing.md](collapsing.md), planned) |
+
+The rules are the same for both, and they are checked once at registration rather than trusted:
+
+- **The named slot must be declared and must be the right type** — a string for the name slot, a
+  boolean for the collapse slot. A missing slot or the wrong type is a
+  `ConceptDefinitionException`, thrown where the language author still sees the message.
+- **The designation inherits.** A concept that declares none takes the first of its super
+  concepts, in declaration order, that declares one — so a subconcept is named, and foldable, by
+  default, and a language re-declares the slot only to override that.
+- **The name slot is read from the model; the collapse slot is a *value* its own concept reads.**
+  Nothing in the framework tests "was it set" — property defaults are materialised, so an unset
+  `bool` defaulting to `true` reads as `true`.
+
+Nominating a slot is model data, so it is language design, not a preference: a document cannot
+change it, and a model saved before the nomination existed loads unchanged.
+
 ## Notation
 
 Notation is a tree of **editor cells**. A cell is one of:
