@@ -107,6 +107,10 @@ public sealed class ProjectionalEditorControl : Control
 
         Focusable = true;
         ClipToBounds = true;
+
+        // The whole surface is text the user can type into, so the pointer says so everywhere on it -
+        // the arrow would read as "this is a panel you look at" rather than "this is where you write".
+        Cursor = new Cursor(StandardCursorType.Ibeam);
     }
 
     /// <summary>
