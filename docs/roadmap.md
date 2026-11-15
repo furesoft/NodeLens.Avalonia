@@ -46,7 +46,7 @@ and [testing.md](architecture/testing.md).
 | Editor tree + layout | cells, measure/arrange, line-based layout |
 | Editing layer | caret, edit actions, key routing, undo/redo — **delivered** |
 | Headless snapshot render | ASCII grid, used by all notation tests — **delivered** |
-| Avalonia control | rendering, caret, selection, wheel scrolling — **delivered**; host scrollbars and virtualization are planned ([scrolling.md](architecture/scrolling.md)) |
+| Avalonia control | rendering, caret, selection, wheel scrolling — **delivered**; host scrollbars via `ILogicalScrollable` ([scrolling.md](architecture/scrolling.md)) — **delivered**; virtualization is planned |
 | Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
 | Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) — **delivered** |
 | Clipboard | Ctrl+A/C/X/V: Ctrl+A widens the selection from the value to the node to the document, the other three copy, cut and paste text within one property cell through a host-supplied `ITextClipboard` ([clipboard.md](architecture/clipboard.md)) — **delivered** (text only) |

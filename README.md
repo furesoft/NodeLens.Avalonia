@@ -33,10 +33,11 @@ Two consequences are the reason this exists:
 What that means in practice: you can declare a language, project it, open a document,
 edit it structurally with keyboard and mouse, copy and paste, undo and redo, complete
 slots, switch a concept's representation, see diagnostics as squiggles, show line numbers,
-zoom the font, save to XML and load it back byte-identically.
+zoom the font, scroll a document larger than the window with real scrollbars, save to XML
+and load it back byte-identically.
 
-Not there yet: scrollbars (content larger than the control is clipped), a model browser, a
-problems panel, generators and interpreters. See the [roadmap](docs/roadmap.md).
+Not there yet: a model browser, a problems panel, generators and interpreters. See the
+[roadmap](docs/roadmap.md).
 
 ## Why projectional
 
@@ -335,7 +336,7 @@ lands.
 | [docs/architecture/integration.md](docs/architecture/integration.md) | Embedding API, plugin model, packaging |
 | [docs/architecture/standalone.md](docs/architecture/standalone.md) | The standalone editor |
 | [docs/architecture/testing.md](docs/architecture/testing.md) | Round-trip corpus, snapshot harness, CI |
-| [docs/architecture/scrolling.md](docs/architecture/scrolling.md) | Viewport and scrollbars (planned) |
+| [docs/architecture/scrolling.md](docs/architecture/scrolling.md) | Viewport, `ILogicalScrollable`, host scrollbars |
 | [docs/architecture/import.md](docs/architecture/import.md) | Importing text into a model (planned) |
 | [docs/architecture/csharp.md](docs/architecture/csharp.md) | Projected C# as the logic language (planned) |
 | [docs/roadmap.md](docs/roadmap.md) | Milestones M0–M7 with acceptance gates |
@@ -367,8 +368,10 @@ dotnet test
 
 Honest list, so nothing here surprises an adopter:
 
-- **No scrollbars.** Content wider or taller than the control is clipped; viewport layout is
-  an M1 remainder described in [docs/architecture/scrolling.md](docs/architecture/scrolling.md).
+- **Host scrollbars, not ours.** The control implements `ILogicalScrollable`, so a host wraps
+  it in a `ScrollViewer` to get bars; the workbench does. A host that embeds the control in a
+  plain `Panel` gets no bars - the content is clipped, and the wheel scrolls the control but
+  nothing shows where it is. See [docs/architecture/scrolling.md](docs/architecture/scrolling.md).
 - **A list slot projects inline.** `ed.Children("items")` runs the children horizontally
   until a `Sequence` or `Indent` around it stacks them, which is why the block screenshot
   shows a single rule and the table is the multi-row form.
