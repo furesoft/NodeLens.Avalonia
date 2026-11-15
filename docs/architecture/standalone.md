@@ -299,9 +299,26 @@ when the shell first has wiring worth asserting on, not in advance.
 
 ## Limits of this document
 
-This is a plan, not a specification of current behaviour. At the time of writing
-`Projectional.Workbench` is a `WinExe` scaffold whose `MainWindow` shows a centred
-placeholder; the layers below it — projection, layout and editing — are implemented
-and tested, but the Avalonia control they feed does not exist yet. The shell is
-therefore scheduled after the control, in M1
-([roadmap](../roadmap.md#m1--projection-and-editing-on-a-built-in-language)).
+This is a plan and a record, not a specification of every current behaviour. What is
+delivered is the M1 shell described under
+[What the thin shell implements](#what-the-thin-shell-implements): a tabbed window with a menu
+bar and a status bar, dirty prompting, Save / Save as / Open / Close, the View preferences
+(theme, line numbers, font size, representation) and one published set of findings, all on top
+of the Avalonia control, which paints real glyphs, hit-tests clicks, routes keys and draws the
+markers.
+
+The rest is scheduled rather than described as existing:
+
+- **Not wired at all.** The `## Command line` table above is a target: the args reach
+  `StartWithClassicDesktopLifetime` and nothing reads them, so `projectional <model-file>`
+  opens an empty shell. There are no recent files either.
+- **M2.** Model browser, problems panel, self-contained single-file build.
+- **M3.** Projects — everything here is still one model per file.
+- **M4.** Output panel, and the validation that produces the markers a reader would want a
+  panel for.
+- **M5.** Language browser and live preview: a language is still declared in C# and compiled,
+  not authored in the app.
+- **M7.** Installers and file association.
+
+Where a table row is implemented, the prose says so; where it is not, the roadmap's milestone
+is the answer to when.
