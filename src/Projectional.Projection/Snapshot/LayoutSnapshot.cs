@@ -109,7 +109,6 @@ internal static class LayoutSnapshot
     {
         foreach (var placed in layout.Cells)
         {
-            // A text cell is one line tall, so the height layout reported only ever moves it.
             if (CellText.Of(placed.Cell) is not { Length: > 0 } text)
             {
                 continue;
@@ -123,9 +122,31 @@ internal static class LayoutSnapshot
                 continue;
             }
 
-            // Text wider than the snapshot is cut, not wrapped: the width was asked for.
-            var visible = text.Length > available ? text[..available] : text;
-            grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, visible);
+            // Text wider than the snapshot is cut, not wrapped: the width was asked for, and this
+            // renderer places no page edge of its own for anything to wrap at.
+            if (layout.LinesOf(placed.Cell) is not { } lines)
+            {
+                grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, Cut(text, available));
+                continue;
+            }
+
+            for (var index = 0; index < lines.LineCount; index++)
+            {
+                var line = lines.Lines[index];
+
+                // A blank line draws nothing, and the row it occupies is already accounted for by the
+                // height of the cell.
+                if (line.IsEmpty)
+                {
+                    continue;
+                }
+
+                var row = rowOffset + (int)Math.Round(placed.Bounds.Y + (index * lines.LineHeight));
+
+                grid.Write(row, column, Cut(text.Substring(line.Start, line.ContentLength), available));
+            }
         }
     }
+
+    private static string Cut(string text, int available) => text.Length > available ? text[..available] : text;
 }
