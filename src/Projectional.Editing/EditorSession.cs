@@ -116,6 +116,76 @@ public sealed class EditorSession : IDisposable
         Refresh();
     }
 
+    /// <summary>
+    /// The concepts of this document that declare more than one notation, in the order the document
+    /// first uses them.
+    /// </summary>
+    /// <remarks>
+    /// Only concepts the document actually holds are listed, because a representation can only be
+    /// switched for a node that is there; the variants of a concept's super concepts are included,
+    /// because a variant resolves up the chain. A document whose concepts all declare a single notation
+    /// returns nothing, which is how a host knows there is no representation to offer.
+    /// </remarks>
+    public IReadOnlyList<ConceptVariants> Alternatives()
+    {
+        var alternatives = new List<ConceptVariants>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var node in SelfAndDescendants(Document))
+        {
+            if (!seen.Add(node.Concept.Key))
+            {
+                continue;
+            }
+
+            var variants = VariantsOf(node.Concept);
+
+            if (variants.Count > 1)
+            {
+                alternatives.Add(new ConceptVariants(
+                    node.Concept.Key,
+                    variants,
+                    Choice.VariantOf(node.Concept.Key) ?? Notation.DefaultVariant));
+            }
+        }
+
+        return alternatives;
+    }
+
+    /// <summary>Draws the nodes of <paramref name="conceptKey"/> in <paramref name="variant"/> from now on.</summary>
+    /// <param name="conceptKey">A concept the document holds.</param>
+    /// <param name="variant">A variant that applies to it, its own or one it inherits.</param>
+    /// <remarks>
+    /// The choice is one more opinion on top of the one in force, so a document can be read as a table
+    /// in one place and as a block in another. Both arguments are checked against the document, because
+    /// a menu that offers a variant the notation does not declare would otherwise re-project to
+    /// something that looks like nothing happened.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// The document holds no node of <paramref name="conceptKey"/>, or it declares no such variant.
+    /// </exception>
+    public void ChooseVariant(string conceptKey, string variant)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(conceptKey);
+        ArgumentException.ThrowIfNullOrEmpty(variant);
+
+        var concept = SelfAndDescendants(Document)
+            .Select(node => node.Concept)
+            .FirstOrDefault(candidate => string.Equals(candidate.Key, conceptKey, StringComparison.Ordinal))
+            ?? throw new ArgumentException(
+                $"The document holds no node of concept '{conceptKey}', so there is nothing to re-project.",
+                nameof(conceptKey));
+
+        if (!VariantsOf(concept).Contains(variant, StringComparer.Ordinal))
+        {
+            throw new ArgumentException(
+                $"Concept '{conceptKey}' declares no '{variant}' notation.",
+                nameof(variant));
+        }
+
+        Choose((Choice as NotationChoice ?? NotationChoice.Default).With(conceptKey, variant));
+    }
+
     /// <summary>Applies <paramref name="action"/> and leaves the session consistent with the result.</summary>
     /// <remarks>
     /// The caret the action asks for is resolved against the tree the action produced, so an action may
@@ -219,4 +289,41 @@ public sealed class EditorSession : IDisposable
     }
 
     private void MoveTo(CaretPosition caret) => Selection = new Selection(caret, caret);
+
+    private static IEnumerable<Node> SelfAndDescendants(Node node)
+    {
+        yield return node;
+
+        foreach (var child in node.ChildrenInDocumentOrder())
+        {
+            foreach (var descendant in SelfAndDescendants(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private List<string> VariantsOf(Concept concept)
+    {
+        var variants = new List<string>();
+
+        Collect(concept);
+        return variants;
+
+        void Collect(Concept current)
+        {
+            foreach (var variant in _notations.VariantsOf(current.Key))
+            {
+                if (!variants.Contains(variant, StringComparer.Ordinal))
+                {
+                    variants.Add(variant);
+                }
+            }
+
+            foreach (var super in current.SuperConcepts)
+            {
+                Collect(super);
+            }
+        }
+    }
 }
