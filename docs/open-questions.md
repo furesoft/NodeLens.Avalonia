@@ -53,10 +53,10 @@ far the choice, and the representations, may go.
 
 | # | Question | Status | Recommendation | Decide by |
 | --- | --- | --- | --- | --- |
-| 26 | Is a variant chosen per concept or per node? | Leaning | Per concept in M1 (one `INotationChoice` per view). Per node needs a choice keyed by node id and a reason a single node should differ â€” take it up when a real DSL asks. | M4 |
+| 26 | Is a variant chosen per concept or per node? | Leaning | Per concept in M1 — implemented: `NotationChoice` keys variants by concept key and one choice per session. Per node needs a choice keyed by node id and a reason a single node should differ — take it up when a real DSL asks. | M4 |
 | 27 | Is the choice persisted per document, and where? | Leaning | Per document in project settings, keyed by model URI and concept key. Never in the model file, never in a path that breaks portability. | M3 |
-| 28 | How do custom representations that a declarative notation cannot express (charts, images, maps) plug in? | Open | A separate cell-provider contract that must still report addresses and caret places. Do not open it before the declarative table cell has been used in anger. | M5 |
-| 29 | Do tables get column-aware navigation (down a column, next row), a header row that stays visible when scrolling, and resizable columns? | Leaning | Yes to navigation and a sticky header; resizing only if a language asks. Document-order navigation is correct but not what a user expects in a grid. | M3 |
+| 28 | How do custom representations that a declarative notation cannot express (charts, images, maps) plug in? | Open | A separate cell-provider contract that must still report addresses and caret places. The declarative table cell is the reference implementation of "a cell that is a grid but not a grid of lines", so the contract should be derived from it rather than designed before it. | M5 |
+| 29 | Do tables get column-aware navigation (down a column, next row), a header row that stays visible when scrolling, and resizable columns? | Leaning | Yes to navigation and a sticky header; resizing only if a language asks. M1 navigates the flattened grid in document order, which is correct but not what a user expects in a grid. | M3 |
 
 ## Scope honesty
 

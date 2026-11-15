@@ -25,7 +25,7 @@ standalone shell follows.
 
 - `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates.
 - `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone.
-- `docs/adr/` - 11 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
+- `docs/adr/` - 12 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
 - `docs/open-questions.md` - open items, each with a recommendation and a decide-by milestone.
 
 A milestone is done when its acceptance gate passes, not when the code compiles.
@@ -226,6 +226,63 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   error here. The suppression is class-level and deliberate: the documented surface is
   `ed.Keyword("if")`, which a static class cannot express.
 
+## How notation variants work
+
+A concept may be drawn more than one way - the same ruleset as a block and as a table - so
+notation is registered per concept **and** variant
+([ADR 0012](../../../docs/adr/0012-concept-rendered-more-than-one-way.md),
+`docs/architecture/language.md` §Variants, `docs/architecture/editing.md` §Representations).
+
+- **A variant is view state, never model state.** One variant is drawn at a time; the choice
+  lives on `EditorSession.Choice` as an `INotationChoice`/`NotationChoice`, is never persisted
+  and never creates an undo step. Do not move it onto `Node`, `Model` or the notation.
+- **`Notation.Variant` defaults to `Notation.DefaultVariant`** (`"default"`), so the
+  single-variant case is written exactly as before and every existing language keeps working.
+- **Resolution is a chain walk with three fallbacks**: requested variant (own notation, then
+  supers in declaration order) -> the default (own, then supers) -> the first declared variant
+  of the chain -> `MissingNotationCell`. `FindFor(concept, choice)` is the only resolver
+  (private `FindVariant`/`FindAny` do the walking); `VariantsOf(conceptKey)` answers "what is
+  this concept declared as" from its *own* notations only. Do not add a second lookup that
+  resolves differently.
+- **`NotationChoice` is an immutable map from concept key to variant name** (`With`, `Without`,
+  `VariantOf`, `IsEmpty`, `ToString` -> `"Rules.Ruleset=table"`). It is keyed by concept, not by
+  node: per-node choice is open question 26.
+- **`EditorSession.Alternatives()` walks the document, not the registry.** It returns the
+  concepts the document actually uses that resolve to more than one variant, in document order,
+  with the variant in force. A menu built from the registry would offer forms for concepts
+  nobody wrote.
+- **`ChooseVariant(conceptKey, variant)` validates twice** - the concept must occur in the
+  document and the variant must apply to it - then `Choose`s and rebuilds. It throws
+  `ArgumentException` with `ParamName` `"conceptKey"` or `"variant"`, because a bad menu entry
+  is a programming error, not a user outcome.
+- **A variant may hide slots; a shown slot keeps its natural address.** That single rule is why
+  caret, selection, hit test and undo need no knowledge of variants at all. Never give a
+  variant-carrying cell a synthetic address.
+- **`ConceptVariants` (`ConceptKey`, `Variants`, `Selected`)** is the public, Avalonia-free shape
+  a host binds a menu to. It is public because `Projectional.Editing` has no
+  `InternalsVisibleTo`.
+
+### Tables
+
+`TableNotationCell`/`TableColumn` are the first variant that is not a rearrangement of lines
+(`docs/architecture/projection.md` §Tables).
+
+- **A column names a slot of the *row* concept**, it does not carry a cell: a property column
+  becomes a property cell, a single-child column a child cell. That is what lets one table draw
+  rows of different concepts that declare the same slot.
+- **A header is a cell of the table's own notation** and the `TableColumn` constructor refuses
+  anything but a constant or a space. A header that named a slot would silently depend on
+  whichever row came first.
+- **The row concept comes from the rows slot**, so `NotationRegistry.ValidateTable` checks the
+  columns against the child concept of the `Slot` - not against the concept owning the table.
+  A column naming no slot, a name that is neither property nor child, and a many-valued child
+  are all rejected at registration.
+- **An empty table has no header**: the builder passes no headers and `TableCell.Flatten` throws
+  if it is handed headers with no rows. `EmptyText` is what an empty slot shows, exactly like
+  `CollectionCell`.
+- **Headers are projected from the node that owns the table, not from a row**, so a table with
+  zero rows still knows its shape and a header can never be answered by a row.
+
 ## How the editor tree is built
 
 `Projectional.Projection/Tree/` is the runtime tree: notation cells are *data describing* what
@@ -268,6 +325,16 @@ into the other.
 - **`CollectionCell` owns the interleaving.** `Content` is document order including
   separators; `Items` and `Separators` are kept because navigation and layout want different
   questions answered. Separators are never shared between gaps.
+- **`TableCell` is a `StructureCell` whose content is the flattened grid** (headers, then rows,
+  row-major), so every existing walk - caret, snapshot, style - sees table cells in drawn order
+  without knowing what a table is. `Headers`, `Rows`, `ColumnCount` and `IsEmpty` exist because
+  layout needs the grid, not the flat list. One cell per column always exists, even when the row
+  has nothing there, so a column width is computed once. `Flatten` throws `ProjectionException`
+  for headers without rows and for a ragged row - do not "repair" a grid in layout.
+- **Table row cells are addressed exactly as the row's own notation would address them**
+  (`CellAddress.OfSlot`/`OfElement` against the row node), which is why a table needs no address
+  scheme of its own. Headers carry the *table's* node address, `ColumnCount` is `Headers.Count`,
+  and a header may only be built from constants and spaces.
 - `EditorTree.Find(address)` returns the **first** match in document order - usually the
   outermost container carrying a node address. `EditorTreeWalker` is the single place that
   defines document order; a second walk that disagrees with it is a caret bug.
@@ -301,6 +368,15 @@ second tree.
 - **`ChildCell` and `CollectionCell` both lay their content out inline**; only the surrounding
   container decides whether that line stacks. `Many`-slot children are inline by nature, so a
   vertical list needs `Sequence(...)` around the `Children(...)`.
+- **A table is measured cell by cell, detached, and then translated.** `ArrangeTable` arranges
+  each grid cell at the origin into a list of its own (`ArrangeDetached`), records the max width
+  per column and the max height per row, computes the column lefts (one space gap) and row tops
+  (no gap), and only then copies the placed cells into the real list with an offset. Never
+  arrange grid cells in place: a cell's position depends on the widths of cells to its right in
+  the same column, which are not known yet.
+- **An empty `TableCell` lays out like an empty `CollectionCell`** - the `EmptyText`, one line -
+  because `IsEmpty` is a separate case in `Arrange` before the table branch. Forget that branch
+  and an empty table arranges as a zero-column grid.
 - **Unknown cell kind throws `ProjectionException`** - the cell set is closed, so a new cell
   must be added to `CellLayouter` on purpose.
 - **Width-independent on purpose.** `Layout(tree)` takes no width because no built cell
@@ -525,6 +601,11 @@ Rules that follow from that, and are easy to break by accident:
    clears on save — otherwise undo back to the saved state still claims "modified".
 6. **Undo belongs to the session, not to the tab.** A document keeps its session while open and
    disposes it when the document closes; forgetting the dispose leaks undo state.
+7. **View ▸ Representation is built from the active document, not from the registry.** It binds
+   `EditorSession.Alternatives()` (concepts the document uses that have more than one variant) to
+   one submenu per concept with radio items, and clicking one calls `ChooseVariant` + `Refresh()`
+   on that tab's control. The menu is refreshed from `UpdateStatus()`, holds no state of its own
+   and must stay disabled when there is nothing to switch.
 
 Scope by milestone, so the app does not compete with the libraries: M1 = open project, tabs,
 edit, save, dirty prompt. M2 = model browser, problems panel, single-file build. M4 = output
@@ -542,7 +623,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 530 tests**; anything below that means tests were deleted.
+it. **Baseline is 589 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

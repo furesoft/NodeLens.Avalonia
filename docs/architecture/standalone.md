@@ -135,6 +135,22 @@ Routing rule: the **focused session** receives editing commands; application com
 also trigger a command, which is why the control reports unhandled keys rather than
 swallowing them.
 
+### Representations
+
+The one command the shell has that is a projection and not a document operation lives in
+**View ▸ Representation**. Its submenu is built from the active document, not from the
+registry: `EditorSession.Alternatives()` answers which concepts the document actually uses
+that resolve to more than one notation variant, so a menu never offers a table form for a
+concept nobody wrote. Each concept gets one submenu, each variant one radio item, and the
+selected one is checked. Picking another calls `ChooseVariant` and refreshes that document's
+control; the model, the history and the caret are untouched, because a variant is view state
+and the shown slots keep their addresses.
+
+Consequence for the shell: two tabs can show the same concept differently, and nothing in
+the document has to be saved to remember it. A future slice may persist the preference per
+file, which is a session-level setting rather than a model property — the same reason
+dark/light is not written into the model.
+
 ## Command line
 
 | Invocation | Behaviour |

@@ -132,6 +132,30 @@ Undo and redo are the model's, not the session's: the session only supplies the 
 key. This is why a keystroke, an Enter and a future refactoring are undoable by the same
 mechanism without the editing layer knowing about any of them.
 
+## Representations
+
+A concept may have more than one notation variant, so the session carries a
+`NotationChoice` next to the model ([ADR 0012](../adr/0012-concept-rendered-more-than-one-way.md)).
+The choice is view state and part of the session, not of the document: it is never
+serialized, it does not enter the history, and two sessions over the same document may hold
+different choices.
+
+- `Alternatives()` walks the document and returns one entry per concept that actually occurs
+  and resolves to more than one variant, with the variant currently in force. Walking the
+  document rather than the registry is what keeps a host's menu honest: it offers a table
+  form only for a concept somebody wrote.
+- `ChooseVariant(conceptKey, variant)` refuses a concept the document does not use and a
+  variant that does not apply to it, so a menu cannot put the projection into a state no
+  notation can answer.
+- `Choose(choice)` replaces the choice and rebuilds tree and layout immediately. The model is
+  untouched, so no undo step is created, and the caret address is resolved against the new
+  tree — a variant that hides the cell the caret was in moves the caret to the nearest
+  surviving cell instead of losing it.
+
+The constraining rule for language authors is that a variant keeps every shown slot's
+natural address, so the tables, undo, selection and hit testing layers never learn that
+variants exist.
+
 ## Selection
 
 A selection is a pair of `CaretPosition`s plus a rule for resolving it to model elements.
