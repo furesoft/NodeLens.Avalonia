@@ -349,7 +349,9 @@ Three deltas from the design above, each deliberate and each a later slice:
 - **No `ScrollViewer` yet.** The control clamps its own offsets through
   `LayoutViewport.Clamp` and scrolls on wheel and on caret movement, which is enough for
   a keyboard-driven editor. `ILogicalScrollable` is what makes host scrollbars and
-  smooth kinetic scrolling behave, so it is additive rather than a rewrite.
+  smooth kinetic scrolling behave, so it is additive rather than a rewrite. The plan for
+  it, including the property mapping and why the bars belong to a `ScrollViewer` the host
+  owns rather than to the control, is [scrolling.md](scrolling.md).
 - **No incremental invalidation yet.** A changed model rebuilds the tree and the layout,
   which is correct and fast enough at the size M1 targets; the invalidation scheme below
   is a performance slice, gated by the M1 latency budget.

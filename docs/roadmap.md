@@ -150,11 +150,32 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
 | Model-to-model generation | optional second generator stage |
+| Text import | JSON and XML reference languages behind an `ITextImporter` ([import.md](architecture/import.md)) |
+| Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
 | Plugin packaging | one NuGet per language, versioned |
 
 **Gate:** a model can be renamed project-wide without breaking references, and two
 branches editing different parts of one model merge without hand-editing XML.
 *Effort: several months, split into independently shippable slices.*
+
+#### Text import
+
+Import is the only path by which text becomes a model, and it runs once: the host passes a
+string, the framework builds nodes inside one transaction, the string is discarded. It is
+therefore not the text buffer [ADR 0002](adr/0002-model-as-source-of-truth.md) forbids - nothing
+writes text back. Two reference languages ship with it, JSON and XML, because a language that
+imports and generates a format everyone already has is the cheapest possible proof that the
+mapping layer is sound. Details, including why a construct the language does not model is kept
+as raw text rather than dropped: [import.md](architecture/import.md).
+
+#### Projected C#
+
+MPS's Java base language, for .NET: the logic inside a behaviour or a generator is written in
+the editor as model data, so it is undoable, completable, validated and diffable, and the
+generator emits C# that the **host's** build compiles. The framework never compiles or executes
+it. The subset, the precedence rule, the composition with the delivered expression language and
+the gate (compiled output and the interpreter must agree on the corpus):
+[csharp.md](architecture/csharp.md).
 
 ### M7 — Release hardening
 
@@ -192,7 +213,7 @@ standalone editor and work with an existing DSL.
 | Multi-user / real-time collaboration | changes the whole model layer; nothing about it is cheap |
 | Graphical notation (diagrams, edges) | a second projection engine; different interaction model |
 | Bidirectional text | caret math implication, no user demand yet |
-| User-defined executable logic | trust boundary; would require a sandbox |
+| User-defined executable logic | trust boundary; would require a sandbox. **Generating** source the host compiles is in scope ([csharp.md](architecture/csharp.md)); the framework compiling or loading an assembly is not |
 | Mobile / touch editing | projection assumes a keyboard and a caret |
 | Language interop with external IDEs | out of the component's remit |
 
@@ -204,5 +225,6 @@ standalone editor and work with an existing DSL.
 | Scope creep from "make it like MPS" | never reaches usable state | milestones with hard gates; non-goals list fixed |
 | Incremental validation complexity | correctness bugs, phantom errors | dependency sets kept coarse first, refined only with profiling data |
 | Bootstrap self-lockout | workbench cannot open its own languages | bootstrap corpus tested in CI from M2, before self-hosting exists |
+| Import becomes a second source of truth | the editor silently rewrites a file the user thinks it is showing | import is one-shot and the text is discarded ([import.md](architecture/import.md)); the model is what is saved, and no watcher or sync path exists |
 | The standalone app competes with the libraries for time | slower core progress, two bug backlogs | app scope is gated per milestone, and every app feature that needs an internal fails the public-API check ([ADR 0011](adr/0011-standalone-editor.md)) |
 | Solo project loses momentum | abandoned mid-way | each milestone ships something usable and demoable |
