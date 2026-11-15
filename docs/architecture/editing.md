@@ -226,6 +226,11 @@ Only entries whose actions exist are offered. Node deletion and slot-targeted in
 missing because `EditContext` has no remove and no insert-at-index yet — an entry that
 silently did nothing would be worse than no entry.
 
+The menu is one of the two places the editor asks "what can I do at this caret". The other is
+the light bulb, which offers what no key binding can express; it is planned in
+[context-actions.md](context-actions.md), and its entries are meant to appear in this menu as
+well, from the same list.
+
 ## Selection
 
 A selection is a pair of `CaretPosition`s plus a rule for resolving it to model elements.
@@ -253,6 +258,7 @@ errors, such as opening a session on a node that is not in a model.
 | `Ctrl+Home` / `Ctrl+End` | not routed; document start and end are reached with Home/End on the first and last line | M3 |
 | Completion and substitution | a key can only type, delete, move or create | M3 |
 | Multi-cell text editing | a selection behaves like a caret for text input | M3 |
+| Intentions (light bulb) | the menu offers only what a key binding could already do | M3 ([context-actions.md](context-actions.md)) |
 | Incremental rebuild | every keystroke rebuilds tree and layout | M7 |
 
 The default-materialization item is a real defect rather than a scoping decision: a default
