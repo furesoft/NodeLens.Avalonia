@@ -45,16 +45,26 @@ public static class KeyRouter
         EditorKey.Enter => new InsertNodeAction(),
         EditorKey.Backspace => new DeleteTextAction(DeleteDirection.Backward),
         EditorKey.Delete => new DeleteTextAction(DeleteDirection.Forward),
+        EditorKey.ControlSpace => new OpenCompletionAction(),
+        EditorKey.Escape => new DismissCompletionAction(),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown editor key."),
     };
 
     /// <summary>The action <paramref name="key"/> stands for, given where the caret currently is.</summary>
-    /// <param name="session">The session whose caret decides what Enter means.</param>
+    /// <param name="session">The session whose caret and completion list decide what the key means.</param>
     /// <param name="key">The key that was pressed.</param>
     /// <remarks>
-    /// Enter is the only key that is not decided by the key alone: in the text of a property it opens a
-    /// line, and everywhere else it inserts a node. The distinction needs the caret, so a host that has
-    /// a document open uses this overload and a host that does not uses the one above.
+    /// <para>
+    /// A key is not always the same action, and the difference needs state this table cannot see alone.
+    /// Enter opens a line in the text of a property and inserts a node everywhere else; while a
+    /// completion list is open, Enter and Tab accept the highlighted proposal, the arrows move the
+    /// highlight, and Backspace drops the last filter character instead of deleting text.
+    /// </para>
+    /// <para>
+    /// Everything else falls through to the plain table and therefore closes an open list, because a
+    /// non-completion action is exactly "the user did something else". That is one rule instead of a
+    /// list of keys to close on.
+    /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="session"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="key"/> is not a routed key.</exception>
@@ -62,8 +72,24 @@ public static class KeyRouter
     {
         ArgumentNullException.ThrowIfNull(session);
 
+        if (session.Completion is { } list && Listed(list, key) is { } listed)
+        {
+            return listed;
+        }
+
         return key == EditorKey.Enter && IsTextPlace(session) ? new InsertLineBreakAction() : For(key);
     }
+
+    /// <summary>What <paramref name="key"/> means while <paramref name="list"/> is open, if anything.</summary>
+    private static EditAction? Listed(CompletionList list, EditorKey key) => key switch
+    {
+        EditorKey.Up => new SelectCompletionAction(-1),
+        EditorKey.Down => new SelectCompletionAction(1),
+        EditorKey.Enter or EditorKey.Tab => new AcceptCompletionAction(),
+        EditorKey.Escape => new DismissCompletionAction(),
+        EditorKey.Backspace when list.Prefix.Length > 0 => new WidenCompletionAction(),
+        _ => null,
+    };
 
     /// <summary>Whether the caret of <paramref name="session"/> stands in text that can hold a line.</summary>
     /// <remarks>
@@ -82,5 +108,23 @@ public static class KeyRouter
         ArgumentNullException.ThrowIfNull(text);
 
         return new TypeTextAction(text);
+    }
+
+    /// <summary>The action for typed text, given whether a completion list is open.</summary>
+    /// <param name="session">The session whose completion list decides what the text is for.</param>
+    /// <param name="text">The characters that arrived.</param>
+    /// <remarks>
+    /// While a list is open the characters filter it instead of being typed, which is why this overload
+    /// exists at all: the caret is standing in an empty slot, so there is nowhere to put a character,
+    /// and the user is spelling out the concept they want.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="session"/> or <paramref name="text"/> is <see langword="null"/>.
+    /// </exception>
+    public static EditAction Type(EditorSession session, string text)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        return session.Completion is not null ? new NarrowCompletionAction(text) : Type(text);
     }
 }
