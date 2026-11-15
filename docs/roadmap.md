@@ -48,6 +48,7 @@ and [testing.md](architecture/testing.md).
 | Headless snapshot render | ASCII grid, used by all notation tests — **delivered** |
 | Avalonia control | rendering, scrolling, virtualization, caret, selection — **delivered** |
 | Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
+| Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) — **delivered** |
 | Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
 | Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |
 | Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) — **delivered** |

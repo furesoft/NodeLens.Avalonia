@@ -125,10 +125,10 @@ public abstract class EditAction
 ```
 
 `EditContext` is a view of one apply, not a service bag. It exposes the tree and layout the
-caret was resolved against, plus exactly three mutations — resolve a node, set a property,
-add a child — and every one of them goes through the model's own validated mutator. That is
-why undo works for free: the change journal sees every edit because the model produced it,
-and the editing layer never has to remember anything for undo.
+caret was resolved against, plus exactly four mutations — resolve a node, set a property, add
+a child, move a child — and every one of them goes through the model's own validated mutator.
+That is why undo works for free: the change journal sees every edit because the model
+produced it, and the editing layer never has to remember anything for undo.
 
 | Action | Input | Effect |
 | --- | --- | --- |
@@ -138,6 +138,7 @@ and the editing layer never has to remember anything for undo.
 | `InsertLineBreakAction` | Enter, inside a value of text | open a line at the caret, which is a `TypeTextAction` of `"\n"` |
 | `TabAction` | Tab, Shift+Tab | move the caret to the next / previous slot |
 | `MoveCaretAction` | the arrow keys, Home, End | move the caret, never the model |
+| `MoveNodeAction` | Alt+Up, Alt+Down | reorder the node the caret is in among its siblings |
 
 The result of an apply is an `EditResult`: an `EditOutcome` (`Changed`, `Unchanged`,
 `Rejected`) plus the caret to place afterwards and the **coalescing key**. Two consecutive
@@ -154,6 +155,33 @@ a value whose type can hold a break can take one. `KeyRouter.For(session, key)` 
 the caret first and falls back to the plain table; the plain `For(key)` stays for the host that
 has no document to ask. The test for "text" is the property type, not `CaretPlace.IsEditable`,
 because a number and a date are editable and refuse a break.
+
+## Moving nodes
+
+Reordering is the first edit that changes neither text nor a value but the *order* of the
+model, and it is the reason `EditContext` grew a fourth mutation. `MoveNodeAction` takes the
+node the caret is in — resolved by address, like every action — and asks the context to put it
+one place earlier or later among the children of its slot:
+
+```csharp
+context.MoveChild(parent, slot, node, target);
+```
+
+`MoveChild` calls `InsertChild`, and `InsertChild` detaches a node that is already attached
+before inserting it. That is the whole identity story: the moved node keeps its id, so every
+reference into its subtree keeps resolving and every caret address that names one of its cells
+still names a cell. It is also why a move is one undo step — the model journals `NodeRemoved`
+and `NodeAdded` inside one mutation, so the journal sees one change event — and why the caret
+does not have to be corrected afterwards: `CellAddress` carries a `NodeId`, so a caret in the
+moved node's `name` is in that same cell after the move, one line further up.
+
+`RemoveChild` is the wrong tool and is not used: it deletes the subtree. A move with no sibling
+to trade places with returns `Unchanged`, the same answer `TabAction` gives at the ends, so a
+control can treat "nothing happened" as "the key is free".
+
+The gesture is Alt+Up / Alt+Down. [Node moves](node-moves.md) states why that Alt combination
+is taken while the rest stay with the host, and what the remaining slices are — moving across
+slots, dragging with the mouse, moving a range of siblings.
 
 ## The session
 

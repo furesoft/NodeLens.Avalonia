@@ -13,18 +13,20 @@ constraints it must satisfy, and which alternatives were rejected.
    three bootstrap stages.
 4. [Projection](architecture/projection.md) — from model to pixels.
 5. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
-6. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
+6. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
+   the first slice is implemented.
+7. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned).
-7. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+8. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (planned).
-8. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-9. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-10. [Integration](architecture/integration.md) — how host applications embed this.
-11. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+9. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+10. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+11. [Integration](architecture/integration.md) — how host applications embed this.
+12. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-12. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-13. [Roadmap](roadmap.md) — milestones and acceptance gates.
-14. [Open questions](open-questions.md) — what is deliberately still undecided.
+13. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+14. [Roadmap](roadmap.md) — milestones and acceptance gates.
+15. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.

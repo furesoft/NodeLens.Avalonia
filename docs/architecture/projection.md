@@ -213,6 +213,7 @@ Input is routed through the touched cell:
 | Arrow keys | structural movement between cells along the logical line, then lines |
 | Ctrl+Left / Ctrl+Right | one character inside the current cell, because the plain arrows move a whole cell |
 | Tab / Shift+Tab | next / previous slot of the current node in declaration order; a filled child or collection is entered rather than skipped, because only its leaves are caret stops |
+| Alt+Up / Alt+Down | move the node the caret is in one place earlier / later among its siblings, identity and caret preserved ([node-moves.md](node-moves.md)) |
 | Enter | in a value of text, opens a line at the caret; everywhere else, fills the empty slot at the caret per the list strategy of the enclosing cell |
 | Space | same as a printable character; there are no whitespace semantics |
 | Delete/Backspace | per cell: shrink text, remove child, delete node, or nothing when the slot is mandatory |
@@ -237,14 +238,16 @@ worth knowing because they are the seams every later feature attaches to:
 
 Two rules fall out of having those three layers instead of one event handler:
 
-- **A key held with Control, Alt or Meta is not the editor's**, with one deliberate
-  exception. Ctrl+Left is a word jump in the host application and Ctrl+Delete deletes a
+- **A key held with Control, Alt or Meta is not the editor's**, with two deliberate
+  exceptions. Ctrl+Left is a word jump in the host application and Ctrl+Delete deletes a
   file in a file manager; consuming them because the bare key happens to be routed would
-  take shortcuts away from the very program that embeds the editor. The exception is
+  take shortcuts away from the very program that embeds the editor. The first exception is
   Ctrl+Left / Ctrl+Right: the plain arrows move a whole cell, so the character step has to
   stay reachable, and no host is likely to want those two keys more than a text editor
-  wants them. Shift is different as well — Shift+Tab walks slots backwards, so it belongs
-  to the editor.
+  wants them. The second is Alt+Up / Alt+Down, which reorder the node under the caret: the
+  vertical arrows carry no meaning without a modifier, so the gesture costs the host
+  nothing it could have been using. Shift is different as well — Shift+Tab walks slots
+  backwards, so it belongs to the editor.
 - **A refused character is not consumed.** Typing a letter into a number yields
   `EditOutcome.Rejected`, the model is untouched, and the event stays unhandled so the
   host can beep, report it or reroute it. The three outcomes exist for exactly this:
