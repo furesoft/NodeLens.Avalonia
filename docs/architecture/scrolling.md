@@ -135,14 +135,37 @@ Notes that are easy to get wrong:
   unless the value the `ScrollViewer` would read actually changed - a guarded raise, not an
   unconditional one.
 
-### The one thing to verify first
+### Arranged at the viewport, not at the extent
 
-A `ScrollContentPresenter` arranges a *logical* scrollable at the viewport rectangle, not at
-its extent. If it ever arranges the control at its extent, `Bounds` becomes the content size,
-`ViewportSize` becomes the document, and the mapping above silently inverts. That is the first
-thing to check in the slice that wires it up: put a document larger than the window in a
-`ScrollViewer`, read back `control.Bounds.Size` and `session.Layout.Size`, and confirm the
-first is the window and the second is the document.
+The whole mapping rests on one assumption: a `ScrollContentPresenter` arranges a *logical*
+scrollable at the viewport rectangle, not at its extent. If it arranged the control at its
+extent, `Bounds` would become the content size, `ViewportSize` would become the document, and
+the table above would silently invert.
+
+Verified against Avalonia 12.1.6 with a probe window of 240x120 holding a document that lays
+out to 963x319:
+
+| Read back | Value |
+| --- | --- |
+| `control.Bounds.Size` | 240x120 - the viewport |
+| `session.Layout.Size` | 963x319 - the document |
+| `ScrollViewer.Extent` | 963x319 |
+| `ScrollViewer.Viewport` | 240x120 |
+
+Setting `ScrollViewer.Offset` to `(60, 40)` moved `OffsetX`/`OffsetY` to exactly `(60, 40)`,
+and resetting it to `(0, 0)` moved them back, so the two-way path works in both directions.
+A document shorter than the window on one axis is clamped to zero on that axis and no bar
+appears, which is the `Extent < Viewport` behaviour the mapping relies on.
+
+### Bar space is automatic
+
+The control never reserves room for a bar and does not need to. With `AllowAutoHide` at its
+default the Fluent bars are overlaid on the content, so the control keeps the full viewport;
+with `AllowAutoHide = false` the presenter is arranged 16 pixels narrower and shorter and the
+control's `Bounds` shrinks with it. Either way the resize is picked up by the `Bounds` hook, the
+`WrapWidth` re-lay-out happens in the same measure pass, and the raised `ScrollInvalidated`
+carries the new extent and viewport. Nothing in this plan has to know which mode the host's
+theme uses.
 
 ## Wheel and keys
 
@@ -171,10 +194,12 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
 
 ## Hosts and embedding
 
-- **The workbench wraps each tab's control.** `TabItem.Content` currently *is* the
-  `ProjectionalEditorControl`, and three places in `MainWindow` rely on that
-  (`tab.Content is ProjectionalEditorControl`). Those checks become one helper that unwraps
-  the `ScrollViewer`, so a second shape of tab content does not spread through the file.
+- **The workbench wraps each tab's control.** `TabItem.Content` was the
+  `ProjectionalEditorControl` itself, and six places in `MainWindow` relied on that
+  (`tab.Content is ProjectionalEditorControl`, plus one `as`). Those become one helper that
+  unwraps the `ScrollViewer`, so a second shape of tab content does not spread through the
+  file. The helper answers `null` rather than throwing, because a tab whose content is
+  something else is not an error - it is a tab the theme loop should skip.
 - **`ScrollBarVisibility` is the host's.** Default `Auto` on both axes. The control keeps no
   policy property: an embedded editor whose host wants `Disabled` says so on its own
   `ScrollViewer`, and the control keeps scrolling by wheel and by caret either way.
@@ -213,8 +238,8 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
   need invalidating at exactly the raise sites where a stale number would hide. No behaviour
   change without a host.
 - **S3 - the workbench.** Wrap each tab's control in a `ScrollViewer` with `Auto` visibility,
-  replace the three `tab.Content is ProjectionalEditorControl` checks with one unwrapping
-  helper, and set `Focusable = false` on the wrapper.
+  replace the `tab.Content is ProjectionalEditorControl` checks with one unwrapping helper, and set
+  `Focusable = false` on the wrapper.
 - **S4 - gestures.** Hand the wheel back when nothing moved, add Shift+wheel, route
   `PageUp`/`PageDown`/`Ctrl+Home`/`Ctrl+End` as caret moves, and set `LargeChange` behaviour
   through `PageScrollSize`.

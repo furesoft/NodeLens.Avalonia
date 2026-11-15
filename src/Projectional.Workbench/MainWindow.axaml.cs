@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -165,7 +166,7 @@ public sealed partial class MainWindow : Window, IDisposable
         // is the notification: an edit anywhere in it changes the dirty state.
         model.Changed += OnDocumentChanged;
 
-        var tab = new TabItem { Header = document.Title, Content = editor };
+        var tab = new TabItem { Header = document.Title, Content = ScrollSurface(editor) };
         _documents.Add(document);
         _tabs.Add(document, tab);
 
@@ -174,6 +175,37 @@ public sealed partial class MainWindow : Window, IDisposable
 
         UpdateStatus();
     }
+
+    /// <summary>Puts <paramref name="editor"/> behind platform scroll bars.</summary>
+    /// <remarks>
+    /// <para>
+    /// The editor implements the logical scroll protocol and owns no bar of its own, so this is the one
+    /// place the app decides that a document is scrollable and how a bar looks: the bar is drawn by the
+    /// toolkit, in the host's theme, which is right - a bar in the document's palette would be chrome
+    /// pretending to be content.
+    /// </para>
+    /// <para>
+    /// <c>Focusable = false</c> on the wrapper because the keyboard belongs to the editor. A focusable
+    /// <c>ScrollViewer</c> takes the Tab key for itself, which would stop the caret moving between slots,
+    /// and the editor already answers every scrolling gesture a bar could offer.
+    /// </para>
+    /// </remarks>
+    private static ScrollViewer ScrollSurface(ProjectionalEditorControl editor) => new()
+    {
+        Content = editor,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        Focusable = false,
+    };
+
+    /// <summary>The editor inside <paramref name="tab"/>, or nothing when the tab holds something else.</summary>
+    /// <remarks>
+    /// A tab's content is the scroll wrapper, not the editor, so every one of the six places that need the
+    /// editor goes through this rather than repeating the cast - a second shape of wrapper would otherwise
+    /// have to be found and understood in each of them.
+    /// </remarks>
+    private static ProjectionalEditorControl? EditorOf(TabItem tab) =>
+        tab.Content is ScrollViewer { Content: ProjectionalEditorControl editor } ? editor : null;
 
     private async void CloseActiveDocument()
     {
@@ -270,7 +302,7 @@ public sealed partial class MainWindow : Window, IDisposable
         if (sender is Model model
             && _documents.Find(model) is { } document
             && _tabs.TryGetValue(document, out var tab)
-            && tab.Content is ProjectionalEditorControl editor)
+            && EditorOf(tab) is { } editor)
         {
             PublishFindings(document, editor);
         }
@@ -300,7 +332,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         foreach (var tab in _tabs.Values)
         {
-            if (tab.Content is ProjectionalEditorControl editor)
+            if (EditorOf(tab) is { } editor)
             {
                 ApplyThemeTo(editor, theme);
             }
@@ -379,7 +411,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         if (_documents.Active is { } document
             && _tabs.TryGetValue(document, out var tab)
-            && tab.Content is ProjectionalEditorControl editor)
+            && EditorOf(tab) is { } editor)
         {
             editor.Refresh();
         }
@@ -392,7 +424,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         if (_documents.Active is { } document && _tabs.TryGetValue(document, out var tab))
         {
-            (tab.Content as ProjectionalEditorControl)?.Focus();
+            EditorOf(tab)?.Focus();
         }
     }
 
@@ -538,7 +570,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         foreach (var tab in _tabs.Values)
         {
-            if (tab.Content is ProjectionalEditorControl editor)
+            if (EditorOf(tab) is { } editor)
             {
                 editor.ShowLineNumbers = _showLineNumbers;
             }
@@ -604,7 +636,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         foreach (var tab in _tabs.Values)
         {
-            if (tab.Content is ProjectionalEditorControl editor)
+            if (EditorOf(tab) is { } editor)
             {
                 editor.FontSize = _fontSize;
             }
