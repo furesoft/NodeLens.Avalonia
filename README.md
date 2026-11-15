@@ -246,7 +246,7 @@ More than one key is a real feature here rather than a courtesy:
 | Emphasis | Bold, italic, underline and strikethrough, declared by the notation and/or resolved per node by the language. Emphasis changes glyph advances, so it is known when the tree is built, never added at paint time. |
 | Line numbers | An optional gutter that aligns with the projected lines; the width follows the digit count. |
 | Markers | Diagnostics drawn as coloured squiggles — solid for error and warning, dotted for info and hint — under the exact cell a diagnostic points at. |
-| Font size | `6`–`48`, settable from code or from the View menu; layout, caret, hit test and squiggles all follow. |
+| Font size | Settable from code at any positive size; the View menu zooms between `6` and `48`. Layout, caret, hit test and squiggles all follow. |
 | Themes | Light and dark palettes, both presets and a `Create` factory for a host's own colours. |
 | Representations | A concept can be drawn more than one way. Switching is a view action: no undo step, nothing persisted. |
 
