@@ -56,6 +56,9 @@ public sealed class EditContext
     /// <summary>The selection as it was when the action started.</summary>
     public Selection Selection { get; }
 
+    /// <summary>The concepts of the language the document is written in.</summary>
+    public ConceptRegistry Concepts => _document.Model.Concepts;
+
     /// <summary>Every cell the caret can stand in, in document order.</summary>
     public IReadOnlyList<CaretPlace> Places => _places;
 

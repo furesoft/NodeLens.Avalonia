@@ -315,6 +315,38 @@ public sealed class EditActionTests
     }
 
     [Fact]
+    public void EnterInASlotDeclaredOverAnAbstractConceptCreatesTheLanguagesDefault()
+    {
+        var holder = AbstractSlotLanguage.NewHolder();
+        using var session = AbstractSlotLanguage.Open(holder);
+
+        session.Select(Selection.At(CellAddress.OfSlot(holder.Id, "value")));
+        var result = session.Apply(KeyRouter.For(EditorKey.Enter));
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+
+        var created = Assert.Single(holder.GetChildren("value"));
+        Assert.Equal(AbstractSlotLanguage.Number, created.Concept.Key);
+
+        // The caret still lands inside what was created, and the created node's own first slot is an
+        // integer property, so the next keystroke types a number.
+        Assert.Equal(CellAddress.OfSlot(created.Id, "number"), session.Selection.Caret.Address);
+    }
+
+    [Fact]
+    public void EnterInASlotWithNoConcreteConceptDoesNotInventANode()
+    {
+        var holder = AbstractSlotLanguage.NewHolder();
+        using var session = AbstractSlotLanguage.Open(holder);
+
+        session.Select(Selection.At(CellAddress.OfSlot(holder.Id, "sealed")));
+        var result = session.Apply(KeyRouter.For(EditorKey.Enter));
+
+        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
+        Assert.Empty(holder.GetChildren("sealed"));
+    }
+
+    [Fact]
     public void AnActionNeedsAContext()
     {
         Assert.Throws<ArgumentNullException>(() => new TypeTextAction("a").Apply(null!));
