@@ -12,7 +12,7 @@ Status values: **Open** (undecided), **Leaning** (recommendation exists, not com
 | --- | --- | --- | --- | --- |
 | 1 | Does undo store inverse changes or replay commands? | Leaning | Inverse changes with typing-burst coalescing. Command replay breaks as soon as an action depends on completion/scope state. | M0 |
 | 2 | How are keyboard shortcuts assigned, and can languages add their own? | Leaning | Fixed core set, language-provided actions must bind to free keys or appear only in menus. Conflicts are a support nightmare. | M3 |
-| 3 | Is the caret allowed to sit inside a collapsed/abstract node? | Leaning | No — the caret always attaches to a visible leaf. Invisible caret positions produce unexplainable keystrokes. | M1 |
+| 3 | Is the caret allowed to sit inside a collapsed/abstract node? | Decided by design | No — the caret always attaches to a visible leaf. Invisible caret positions produce unexplainable keystrokes. A folded node is drawn as a *visible leaf* carrying the node's own address, so the caret lands on it instead of vanishing; see [collapsing.md](architecture/collapsing.md). | M1 |
 | 4 | How much of MPS' *editor cell* model is adopted? | Open | Start with the cell set in [projection.md](architecture/projection.md); add primitives only when a real notation needs them. | M2 |
 | 5 | Do we support several editors/views on the same model simultaneously? | Leaning | Yes, but with one writer and one undo stack per model, not per view. Cheap now, expensive later. | M3 |
 | 6 | Clipboard: structural only, or also plain text? | Leaning | Both, structural preferred on paste. Text-only would make the editor unusable for non-users. | M3 |
@@ -123,6 +123,21 @@ questions are about scope rather than about whether parsing is acceptable.
 | 50 | Should a JSON number be a `double`, an `int`, or its source text? | Leaning | Its source text. `1`, `1.0` and `1e3` are three different files to a consumer, and a numeric property would rewrite all three on the next generation. | M6 |
 | 51 | Is an XML document with a DTD or external entity importable? | Decided by design | No, refused with a diagnostic. An editor that dereferences a `SYSTEM` identifier on import is an XXE vulnerability in every host that embeds it, so this is not a limitation to lift later. | - |
 | 52 | Do import errors appear in the problems panel? | Open | Not as model diagnostics: a syntax error has no node, which is exactly the problem. The result carries its own line/column records and the host decides where to show them. | M6 |
+
+## Folding
+
+Folding is planned in [collapsing.md](architecture/collapsing.md): a node whose concept
+nominates a boolean collapse slot can be folded to a one-cell summary, and the fold set is view
+state on the session, so it is never persisted and never undoable. What is deliberately left open
+is how far the summary and the gesture go beyond "fold this node, show an arrow in the gutter".
+
+| # | Question | State | Answer | Decide by |
+|---|----------|-------|--------|-----------|
+| 53 | Does the collapsed summary carry a count of what is hidden ("3 steps")? | Open | Not in the first slice. A count needs the subtree built before layout, and the builder only builds what it is about to draw, so the count would mean building a subtree whose cells are then discarded. An ellipsis is enough for a first editor. | M2 |
+| 54 | Can a user peek inside a fold without unfolding it? | Leaning | A hover preview, not a second click state. Unfolding is reversible and undoable, so the preview is a convenience for "which rule is this", not a way to recover lost text. | M2 |
+| 55 | Is foldability a designated slot, or a framework base concept? | Leaning | A designated slot, mirroring the name slot. A `Collapsible` base concept would tie foldability to concept inheritance, which cannot express "this rule folds, that one does not" inside a single concept — and the user's requirement is precisely "only when the node has the property set". | M2 |
+| 56 | Is the fold set persisted per document? | Leaning | Per document in project settings, keyed by model URI and node id, the same place variants go (question 27). Never in the model file: a fold is not model state, and a saved fold set in the document would make the file change on hover. | M3 |
+| 57 | Can a single child slot fold, rather than the whole node? | Open | Only if a real language asks. It needs the caret and layout to agree on a slot whose cell is a node address, which the current cell model does not have — that is a projection-layer change, not a gutter feature. | M5 |
 
 ## Scope honesty
 
