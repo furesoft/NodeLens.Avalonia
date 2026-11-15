@@ -161,6 +161,29 @@ the document has to be saved to remember it. A future slice may persist the pref
 file, which is a session-level setting rather than a model property — the same reason
 dark/light is not written into the model.
 
+### Theme
+
+**View ▸ Follow system theme / Light theme / Dark theme** is one group of three radio items,
+and the shell starts on the first of them: a window that has just opened should look like the
+desktop it opened on, not like a guess. The status bar names the decision rather than the
+result, so `dark theme (system)` says the window is dark *because the desktop is* - the user
+who wonders why the editor turned dark at sunset finds the answer where they were already
+looking. A manual choice pins the variant and keeps it through an OS switch, which is the
+point of offering the choice at all.
+
+Two rules make this cheap enough to be a shell preference rather than a document property:
+
+- **The shell decides the variant, the editor decides the colours.** `RequestedThemeVariant` is
+  set on the window, so the toolkit's own chrome follows along, and the editor is then asked
+  for the palette that matches the *resolved* variant: `SyntaxTheme.Of(ActualThemeVariant)`.
+  Reading the resolved variant rather than the requested one is what makes pinning light on a
+  dark desktop produce a light window **and** a light document from one call.
+- **Nothing about a theme reaches the model, the history or the file.** A theme is view state
+  for the same reason a notation variant is, so switching one repaints and does not dirty the
+  document. `SyntaxTheme.Of` is public in `Projectional.Avalonia`, so a host that embeds the
+  control gets the same mapping - including the inheritance walk that reads a host-defined
+  `new ThemeVariant("Midnight", ThemeVariant.Dark)` as dark.
+
 ### Line numbers
 
 **View ▸ Line numbers** is a checkable item, off at first, that sets `ShowLineNumbers` on
@@ -303,7 +326,7 @@ This is a plan and a record, not a specification of every current behaviour. Wha
 delivered is the M1 shell described under
 [What the thin shell implements](#what-the-thin-shell-implements): a tabbed window with a menu
 bar and a status bar, dirty prompting, Save / Save as / Open / Close, the View preferences
-(theme, line numbers, font size, representation) and one published set of findings, all on top
+(theme choice, line numbers, font size, representation) and one published set of findings, all on top
 of the Avalonia control, which paints real glyphs, hit-tests clicks, routes keys and draws the
 markers.
 

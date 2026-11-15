@@ -50,6 +50,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
+    private ThemeVariant _themeChoice = ThemeVariant.Default;
     private bool _showLineNumbers;
     private double _fontSize = DefaultFontSize;
     private string? _error;
@@ -61,13 +62,16 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         InitializeComponent();
 
-        ApplyTheme(_theme);
+        // Following the desktop is the choice the window starts with: opening light on a dark system looks
+        // broken before the user has done anything.
+        ApplyThemeChoice(ThemeVariant.Default);
         OpenSample();
 
         // Tunnelling, because the editor control would otherwise see the key first and could claim it:
         // zoom is a property of the shell, not of one document.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
 
+        ActualThemeVariantChanged += OnActualThemeVariantChanged;
         Documents.SelectionChanged += OnSelectionChanged;
         Opened += (_, _) => FocusActiveDocument();
     }
@@ -320,6 +324,54 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Markers = new MarkerSet([.. DefaultNames.Of(document.Model)]);
     }
 
+    /// <summary>Applies a theme choice to the window, its chrome and every tab's control.</summary>
+    /// <param name="choice">
+    /// <see cref="ThemeVariant.Default"/> to follow the operating system, or a variant to pin.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// The variant is <em>requested</em> rather than assumed, so picking light on a dark desktop gives a
+    /// light window rather than a light document inside a dark frame - the palette and the tab strip are
+    /// painted from the same variant, which is why one call does both.
+    /// </para>
+    /// <para>
+    /// A request may be resolved later than this call, which is what
+    /// <see cref="OnActualThemeVariantChanged"/> is for. That handler only acts while the choice is
+    /// <see cref="ThemeVariant.Default"/>, and this method never re-raises the event by applying colours,
+    /// so the two cannot chase each other.
+    /// </para>
+    /// </remarks>
+    private void ApplyThemeChoice(ThemeVariant choice)
+    {
+        _themeChoice = choice;
+        RequestedThemeVariant = choice;
+
+        ApplyTheme(SyntaxTheme.Of(ActualThemeVariant));
+
+        FollowSystemItem.IsChecked = choice == ThemeVariant.Default;
+        LightThemeItem.IsChecked = choice == ThemeVariant.Light;
+        DarkThemeItem.IsChecked = choice == ThemeVariant.Dark;
+
+        UpdateStatus();
+    }
+
+    /// <summary>Repaints the window when the desktop switches between light and dark.</summary>
+    /// <remarks>
+    /// Only while the window follows the system: a user who pinned a theme keeps it when the desktop
+    /// changes, which is the whole difference between the three menu entries. Colours are all that is
+    /// applied here - the request is already the one the user made - so this cannot re-enter itself.
+    /// </remarks>
+    private void OnActualThemeVariantChanged(object? sender, EventArgs e)
+    {
+        if (_themeChoice != ThemeVariant.Default)
+        {
+            return;
+        }
+
+        ApplyTheme(SyntaxTheme.Of(ActualThemeVariant));
+        UpdateStatus();
+    }
+
     private void ApplyTheme(SyntaxTheme theme)
     {
         _theme = theme;
@@ -327,7 +379,6 @@ public sealed partial class MainWindow : Window, IDisposable
         // The window chrome follows the document rather than the operating system, because the shell
         // offers a theme switch: asking for a dark palette and getting a white tab strip would be a
         // bug the user can see.
-        RequestedThemeVariant = theme.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
         Background = theme.Chrome;
 
         foreach (var tab in _tabs.Values)
@@ -361,7 +412,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         var position = _documents.Active is not { } active
             ? "No document open"
-            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {(_theme.IsDark ? "dark" : "light")} theme | {_fontSize:0} px";
+            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {ThemeText()} | {_fontSize:0} px";
 
         // The message goes last and is not cleared here: it is the answer to the command the user just
         // ran, and the next command clears it, so it cannot go stale while the user reads it.
@@ -369,6 +420,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
         UpdateRepresentations();
     }
+
+    /// <summary>The theme as the status bar names it, saying so when the desktop chose it.</summary>
+    /// <remarks>
+    /// "dark theme (system)" and "dark theme" describe different states: the first will follow the
+    /// desktop when it changes, the second will not. Without the suffix the user cannot tell which one
+    /// they are looking at, and picking dark by hand while the desktop is dark would look like nothing
+    /// happened.
+    /// </remarks>
+    private string ThemeText() =>
+        _themeChoice == ThemeVariant.Default
+            ? $"{(_theme.IsDark ? "dark" : "light")} theme (system)"
+            : $"{(_theme.IsDark ? "dark" : "light")} theme";
 
     /// <summary>Fills the representation submenu from the active document's alternatives.</summary>
     /// <remarks>
@@ -552,17 +615,12 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();
 
-    private void OnLightTheme(object? sender, RoutedEventArgs e)
-    {
-        ApplyTheme(SyntaxTheme.Light);
-        UpdateStatus();
-    }
+    private void OnLightTheme(object? sender, RoutedEventArgs e) => ApplyThemeChoice(ThemeVariant.Light);
 
-    private void OnDarkTheme(object? sender, RoutedEventArgs e)
-    {
-        ApplyTheme(SyntaxTheme.Dark);
-        UpdateStatus();
-    }
+    private void OnDarkTheme(object? sender, RoutedEventArgs e) => ApplyThemeChoice(ThemeVariant.Dark);
+
+    private void OnFollowSystemTheme(object? sender, RoutedEventArgs e) =>
+        ApplyThemeChoice(ThemeVariant.Default);
 
     private void OnToggleLineNumbers(object? sender, RoutedEventArgs e)
     {
