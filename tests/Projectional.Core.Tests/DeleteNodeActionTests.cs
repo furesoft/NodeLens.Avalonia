@@ -20,7 +20,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void BackspaceOnAKeywordDeletesTheNodeTheKeywordBelongsTo()
     {
-        var (body, steps) = BodyWithSteps("first", "second");
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
         using var session = TestEditor.Open(body);
 
         // The step's own address resolves to its first caret place, which is the "index" property.
@@ -35,7 +35,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void DeletingANodeLandsTheCaretOnTheSiblingBeforeIt()
     {
-        var (body, steps) = BodyWithSteps("first", "second", "third");
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second", "third");
         using var session = TestEditor.Open(body);
 
         session.Select(Selection.At(new CellAddress(steps[1].Id)));
@@ -52,7 +52,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void DeletingTheFirstNodeLandsTheCaretOnTheOneThatTakesItsIndex()
     {
-        var (body, steps) = BodyWithSteps("first", "second");
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
         using var session = TestEditor.Open(body);
 
         session.Select(Selection.At(new CellAddress(steps[0].Id)));
@@ -68,7 +68,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void DeletingTheOnlyNodeLandsTheCaretOnTheEmptySlot()
     {
-        var (body, steps) = BodyWithSteps("only");
+        var (body, steps) = TestEditor.BodyWithSteps("only");
         using var session = TestEditor.Open(body);
 
         session.Select(Selection.At(new CellAddress(steps[0].Id)));
@@ -101,7 +101,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void DeleteAtTheEndOfAValueDeletesTheNode()
     {
-        var (body, steps) = BodyWithSteps("first", "second");
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
         using var session = TestEditor.Open(body);
         var text = CellAddress.OfSlot(steps[0].Id, "text");
 
@@ -116,7 +116,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void BackspaceInsideAValueStillDeletesACharacter()
     {
-        var (body, steps) = BodyWithSteps("first");
+        var (body, steps) = TestEditor.BodyWithSteps("first");
         using var session = TestEditor.Open(body);
         var text = CellAddress.OfSlot(steps[0].Id, "text");
 
@@ -132,7 +132,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void BackspaceWithNoTextLeftDeletesTheNodeInsteadOfDoingNothing()
     {
-        var (body, steps) = BodyWithSteps("first", "second");
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
         using var session = TestEditor.Open(body);
         var text = CellAddress.OfSlot(steps[0].Id, "text");
 
@@ -163,7 +163,7 @@ public sealed class DeleteNodeActionTests
     [Fact]
     public void DeletingANodeIsOneUndoableStepThatRestoresTheSubtree()
     {
-        var (body, steps) = BodyWithSteps("first", "second");
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
         using var session = TestEditor.Open(body);
 
         // A nested child makes the deleted node a subtree rather than a single node.
@@ -185,18 +185,5 @@ public sealed class DeleteNodeActionTests
     public void DeleteNodeActionRejectsANullContext()
     {
         Assert.Throws<ArgumentNullException>(() => new DeleteNodeAction().Apply(null!));
-    }
-
-    private static (Node Body, IReadOnlyList<Node> Steps) BodyWithSteps(params string[] texts)
-    {
-        var (_, body) = TestEditor.RuleWithBody();
-
-        return (body, [.. texts.Select(text =>
-        {
-            var step = body.Model.NewChild(body, "steps", TestLanguage.Step);
-            step.Set("text", text);
-
-            return step;
-        })]);
     }
 }
