@@ -139,6 +139,40 @@ public sealed class DocumentSetTests
         Assert.Equal(0, second.Session.History.UndoDepth);
     }
 
+    [Fact]
+    public void ADocumentIsFoundByTheFileItCameFrom()
+    {
+        using var documents = new DocumentSet();
+        var tab = OpenTab();
+        tab.MarkSaved(@"C:\models\payroll.mps");
+        documents.Add(tab);
+
+        Assert.Same(tab, documents.Find(@"C:\models\payroll.mps"));
+        Assert.Null(documents.Find(@"C:\models\other.mps"));
+    }
+
+    [Fact]
+    public void ANewDocumentIsNotTheFileItHasNotBeenSavedToYet()
+    {
+        using var documents = new DocumentSet();
+        documents.Add(OpenTab());
+
+        Assert.Null(documents.Find(@"C:\models\payroll.mps"));
+    }
+
+    [Fact]
+    public void OneFileSpelledTwoWaysIsTheSameDocument()
+    {
+        using var documents = new DocumentSet();
+        var tab = OpenTab();
+        tab.MarkSaved(@"C:\models\payroll.mps");
+        documents.Add(tab);
+
+        // The picker and the tab can disagree about case and about a redundant segment; both name the
+        // same file, and two tabs on one file would each overwrite the other's work.
+        Assert.Same(tab, documents.Find(@"C:\models\.\PAYROLL.MPS"));
+    }
+
     private static DocumentTab OpenTab()
     {
         var model = TestLanguage.NewModel();
