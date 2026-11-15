@@ -631,9 +631,12 @@ dependency, so every action is testable headlessly.
   rather than `TextLayout` because one run is one *cell's* text, not a line.
 - **`Refresh`-free layout.** A changed model rebuilds tree *and* layout in
   `EditorSession.Apply`; the control only schedules a measure/visual invalidation.
-- **Pointer input cannot be synthesised in a probe** (`PointerPressedEventArgs` has no public
-  constructor), so click/drag is verified through `HitTest` directly, and only the keyboard
-  path through `RaiseEvent`. See the verification habits below.
+- **Only some pointer input can be synthesised in a probe.** `PointerPressedEventArgs` has no
+  public constructor, so click/drag is verified through `HitTest` directly. The **wheel** is
+  different: `PointerWheelEventArgs` is constructible, so `OnPointerWheelChanged` - and with it
+  "the wheel moves the offset" and "a fitting document hands the event back" - can be driven
+  end to end with `control.RaiseEvent(args)` and asserted on `args.Handled`. See the
+  verification habits below.
 
 ## How highlighting works
 
@@ -909,7 +912,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 940 tests**; anything below that means tests were deleted.
+it. **Baseline is 975 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
@@ -1090,8 +1093,14 @@ Facts that came out of doing this, and cost time to rediscover:
 - **Key and text events are public and raisable**: `new KeyEventArgs { RoutedEvent =
   InputElement.KeyDownEvent, Key = ..., KeyModifiers = ..., Source = control }` and
   `new TextInputEventArgs { RoutedEvent = InputElement.TextInputEvent, Text = "..." }`, then
-  `control.RaiseEvent(args)`, then read `args.Handled`. Pointer events are **not**
-  constructible - `PointerPressedEventArgs` has no public parameterless constructor.
+  `control.RaiseEvent(args)`, then read `args.Handled`.
+- **The wheel is raisable too**, even though a press is not. `PointerPressedEventArgs` has no
+  public constructor, but `PointerWheelEventArgs` does:
+  `new PointerWheelEventArgs(control, new Pointer(1, PointerType.Mouse, true), control,
+  new Point(20, 20), 0, new PointerPointProperties(), KeyModifiers.None,
+  new Vector(0, -1))` - `-1` is one notch down, `Shift` makes it horizontal, and `Handled`
+  afterwards is the assertion. That is how `ScrollTo`'s "did the offset move" answer is tested
+  from the outside.
 - **`RaiseEvent` bubbles to ancestors**, so `Handled` can be `true` because `TopLevel` or a
   parent handled it, not because the control did. To isolate the control, raise the same event
   at a control that is in **no** visual tree.
