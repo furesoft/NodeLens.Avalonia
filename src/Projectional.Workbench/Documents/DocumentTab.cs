@@ -43,12 +43,18 @@ internal sealed class DocumentTab : IDisposable
     /// every cell in the wrong place. A host passes its editor's <c>TextMeasure</c>.
     /// </param>
     /// <param name="filePath">The file the model was read from, or <see langword="null"/> if it is new.</param>
+    /// <param name="emphasis">
+    /// What decorates this model beyond its notation, or <see langword="null"/> for nothing. It is a
+    /// property of the language rather than of the tab, so the caller passes it once on opening and the
+    /// session asks it again on every rebuild.
+    /// </param>
     /// <exception cref="InvalidOperationException">The model has no root to edit.</exception>
     internal DocumentTab(
         Model model,
         NotationRegistry notations,
         ITextMeasure measure,
-        string? filePath = null)
+        string? filePath = null,
+        ICellEmphasis? emphasis = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
@@ -62,7 +68,7 @@ internal sealed class DocumentTab : IDisposable
 
         Model = model;
         FilePath = filePath;
-        Session = new EditorSession(model.Roots[0], notations, measure);
+        Session = new EditorSession(model.Roots[0], notations, measure, emphasis);
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.

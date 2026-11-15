@@ -82,10 +82,14 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts));
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), emphasis: RulesLanguage.Emphasis);
     }
 
-    private void OpenDocument(Model model, NotationRegistry notations, string? filePath = null)
+    private void OpenDocument(
+        Model model,
+        NotationRegistry notations,
+        string? filePath = null,
+        ICellEmphasis? emphasis = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -95,7 +99,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         var editor = new ProjectionalEditorControl();
-        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath);
+        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
 
