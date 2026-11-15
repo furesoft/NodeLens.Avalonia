@@ -194,4 +194,26 @@ public sealed class ModelTests
 
         Assert.Throws<KeyNotFoundException>(() => model.NewNode("Test.Nope"));
     }
+
+    [Fact]
+    public void AnAbstractConceptCannotBecomeANode()
+    {
+        var registry = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Lit", superConcepts: ["Expr"]),
+            new ConceptDeclaration("Holder", [new ChildSlot("value", "Expr", Cardinality.One)]),
+        ]);
+
+        var model = new Project(registry).NewModel("Abstract");
+
+        var exception = Assert.Throws<ModelInvariantException>(() => model.NewNode(registry.Get("Expr")));
+        Assert.Contains("abstract", exception.Message, StringComparison.OrdinalIgnoreCase);
+
+        var holder = model.NewNode("Holder");
+        Assert.Throws<ModelInvariantException>(() => model.NewChild(holder, "value", "Expr"));
+
+        var value = model.NewChild(holder, "value", "Lit");
+        Assert.Equal("Lit", value.Concept.Key);
+    }
 }

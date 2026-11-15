@@ -117,6 +117,40 @@ public sealed class ConceptRegistry
         return false;
     }
 
+    /// <summary>
+    /// What to create when something asks for a <paramref name="conceptKey"/>: that concept itself
+    /// when it can be instantiated, or else the first concept that extends it.
+    /// </summary>
+    /// <returns><see langword="null"/> when the concept is unknown or every concept that extends it is abstract too.</returns>
+    /// <remarks>
+    /// Declaration order is the language author's own order, so "first concrete concept below this
+    /// one" is a decision a notation author can make by ordering declarations rather than one the
+    /// editor has to guess. It is what filling an empty slot does, which is why there has to be an
+    /// answer at all: a slot declared over an abstract concept names a set, not a node.
+    /// </remarks>
+    public Concept? DefaultInstantiableFor(string conceptKey)
+    {
+        if (!TryGet(conceptKey, out var requested))
+        {
+            return null;
+        }
+
+        if (!requested.IsAbstract)
+        {
+            return requested;
+        }
+
+        foreach (var candidate in _ordered)
+        {
+            if (!candidate.IsAbstract && candidate.IsKindOf(conceptKey))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
     private static Concept Build(ConceptDeclaration declaration, Concept[] supers)
     {
         var slots = new List<SlotDeclaration>();
@@ -181,6 +215,6 @@ public sealed class ConceptRegistry
             nameSlot = property;
         }
 
-        return new Concept(declaration.Key, supers, slots, nameSlot);
+        return new Concept(declaration.Key, supers, slots, nameSlot, declaration.IsAbstract);
     }
 }

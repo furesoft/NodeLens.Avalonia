@@ -381,5 +381,11 @@ public sealed class Model
             throw new ModelInvariantException(
                 $"Concept '{concept.Key}' is not part of the language of this project.");
         }
+
+        if (concept.IsAbstract)
+        {
+            throw new ModelInvariantException(
+                $"Concept '{concept.Key}' is abstract, so no node can be an instance of it.");
+        }
     }
 }
