@@ -134,6 +134,27 @@ public sealed class EditorSession : IDisposable
     /// </remarks>
     public CompletionList? Completion { get; private set; }
 
+    /// <summary>What a check found wrong with the document, or <see cref="MarkerSet.Empty"/> when nothing did.</summary>
+    /// <remarks>
+    /// <para>
+    /// View state, like <see cref="Choice"/> and <see cref="WrapWidth"/>: never part of the model, never
+    /// persisted, never an undo step. Two sessions can draw the same document with different findings, and
+    /// a host that runs no checks at all keeps the empty set and pays nothing.
+    /// </para>
+    /// <para>
+    /// The set is replaced, never appended to, because a check describes a state of the model: after an
+    /// edit the previous findings are about text that is no longer there. Publishing a whole new set is
+    /// therefore the only correct way to use this, and it is what makes the property safe to assign from
+    /// a background check while the editor is drawing.
+    /// </para>
+    /// <para>
+    /// Assigning it does not rebuild the tree, the layout or the caret: a marker is decoration, so the
+    /// control only needs to repaint. That is the whole reason the geometry is computed at paint time from
+    /// the current layout instead of being baked into the frame.
+    /// </para>
+    /// </remarks>
+    public MarkerSet Markers { get; set; } = MarkerSet.Empty;
+
     /// <summary>Where Copy, Cut and Paste put and take their text.</summary>
     /// <remarks>
     /// <para>

@@ -70,3 +70,4 @@ directory stays authoritative whenever the two disagree.
 | [0010](adr/0010-public-api-surface.md) | Public API limited to `Core` and `Avalonia` |
 | [0011](adr/0011-standalone-editor.md) | A standalone editor ships, as a plain consumer of the public API |
 | [0012](adr/0012-concept-rendered-more-than-one-way.md) | A concept may be rendered more than one way |
+| [0013](adr/0013-markers-are-view-state.md) | Markers are view state: the frame never carries them |
