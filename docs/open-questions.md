@@ -58,6 +58,19 @@ far the choice, and the representations, may go.
 | 28 | How do custom representations that a declarative notation cannot express (charts, images, maps) plug in? | Open | A separate cell-provider contract that must still report addresses and caret places. The declarative table cell is the reference implementation of "a cell that is a grid but not a grid of lines", so the contract should be derived from it rather than designed before it. | M5 |
 | 29 | Do tables get column-aware navigation (down a column, next row), a header row that stays visible when scrolling, and resizable columns? | Leaning | Yes to navigation and a sticky header; resizing only if a language asks. M1 navigates the flattened grid in document order, which is correct but not what a user expects in a grid. | M3 |
 
+## Context actions
+
+The light bulb is planned in [context-actions.md](architecture/context-actions.md). These are
+the parts of that plan that are choices rather than mechanics.
+
+| # | Question | State | Answer | Decide by |
+|---|----------|-------|--------|-----------|
+| 30 | Where does the intention contract live? | Open | Defined in `Projectional.Editing` next to the action model it reuses, and promoted into the public surface of `Projectional.Avalonia` in the same commit as the first language that ships an intention. ADR 0010 says only `Core` and `Avalonia` carry a promise, so a type a host must implement has to end up there — but promoting a contract before a second consumer exists is how a public API gets the wrong shape. | M3 |
+| 31 | Does an intention come from the concept, from a host registration, or both? | Leaning | Both, and the aspect comes first: a language's intentions travel with the language, and a host registers what only it can know (generate this, open that, run the interpreter). One list, ordered host, language, quick fixes. | M3 |
+| 32 | Is the bulb shown only at the caret, or also on lines that are merely marked? | Leaning | Caret only in M3. From M4 the bulb appears once per line that has a diagnostic, and the caret's line wins when the caret stands on one — a marked line with no offer is the case users complain about, but a bulb on every line of a document full of warnings is noise. | M4 |
+| 33 | Are intentions also in the context menu, or only on the bulb? | Leaning | Both, from one list: a submenu at the top of the menu, the same entries the bulb shows. The menu answers "what can I do here" with the mouse, and the bulb answers it at the keyboard; two independent lists would drift. | M3 |
+| 34 | Does an intention ever preview its effect before applying? | Leaning | No. A one-sentence description and a single undo step instead — in a projectional editor the effect is visible text, so a preview dialog shows what the editor is about to show anyway. Reopen this at M6, where a refactoring that touches several files is not visible at a glance. | M3 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:

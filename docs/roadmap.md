@@ -91,6 +91,7 @@ and saved in the standalone app, which no longer needs C# to know the language.
 | Reference cells | resolve, create-on-the-fly, unresolved state, chooser popup |
 | Completion | scope-driven, prefix filtering, insert-and-continue |
 | Substitutions | transformation menus, wrapping, keyword-triggered insertion |
+| Intentions (light bulb) | actions offered at the caret by the language and by the host, applied as one undo step ([context-actions.md](architecture/context-actions.md)) |
 
 **Gate:** referencing an element in another model works; renaming a target does not
 break models thanks to `resolveInfo`; wrapping a selection in an `if` is one undo step.
@@ -105,6 +106,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Delivers | Details |
 | --- | --- |
 | Constraints | incremental validation, markers, quick fixes |
+| Quick fixes | a diagnostic carries its own fixes, and they appear in the same light bulb as intentions ([context-actions.md](architecture/context-actions.md)) |
 | Types | basic type system with `Unknown` semantics |
 | Text generation | template trees, traceability map |
 | Interpreter | evaluation with trace and step budget |
