@@ -14,8 +14,14 @@ namespace Projectional.Projection;
 /// edge.
 /// </para>
 /// <para>
-/// A single word longer than the limit is broken between two of its characters rather than allowed to
-/// run past the edge, because a page whose text sticks out sideways cannot be read at all.
+/// A soft break is only ever taken at a space. A word wider than the limit - a keyword, a name, a token
+/// that happens to start near the page's edge - is drawn whole and runs past the edge instead of being
+/// broken between two of its characters, and the reader scrolls to it. Breaking it puts as little as one
+/// character on each line, so a cell that is one token tall becomes a cell of six rows the moment the
+/// window narrows, and the line numbers beside it count a document of three lines as eight. Running past
+/// the edge is also what a cell starting <em>past</em> the edge already does, so both sides of the edge
+/// agree. A wrapped cell can therefore end up wider than the limit, and the layout's width grows with
+/// it - which is exactly what the horizontal scrollbar is for.
 /// </para>
 /// <para>
 /// Measuring is not additive - a character's width depends on the text around it in a proportional font
@@ -25,13 +31,17 @@ namespace Projectional.Projection;
 /// </remarks>
 internal static class TextWrapper
 {
-    /// <summary>Splits <paramref name="text"/> into lines that are at most <paramref name="limit"/> wide.</summary>
+    /// <summary>
+    /// Splits <paramref name="text"/> into the lines it is drawn in, breaking softly at spaces where
+    /// <paramref name="limit"/> does not reach.
+    /// </summary>
     /// <param name="text">The text to break.</param>
     /// <param name="emphasis">How the text is drawn, which is how wide it is.</param>
     /// <param name="measure">Measures the text.</param>
     /// <param name="limit">
-    /// The widest line allowed, or <see langword="null"/> to honour hard breaks only - which is what a
-    /// cell whose width the layout has yet to decide on asks for.
+    /// The room a line has before it runs past the page's edge, or <see langword="null"/> to honour hard
+    /// breaks only - which is what a cell whose width the layout has yet to decide on asks for. It is a
+    /// place to break at, not a cap: a line holding a word wider than this is wider than this.
     /// </param>
     /// <returns>The lines, in the order they are drawn.</returns>
     internal static IReadOnlyList<TextLine> Lines(
@@ -117,9 +127,10 @@ internal static class TextWrapper
             var space = LastSpaceBetween(text, cursor, fit);
 
             // A break at a space draws everything before it and consumes the space, so the next line
-            // starts at a word rather than at the blank the wrap was taken for.
-            var contentBreak = space > cursor ? space : fit;
-            var next = space > cursor ? space + 1 : fit;
+            // starts at a word rather than at the blank the wrap was taken for. With no space to break
+            // at, the line's first word is wider than the limit: it is drawn whole, past the edge.
+            var contentBreak = space > cursor ? space : WordEnd(text, cursor, contentEnd);
+            var next = space > cursor ? space + 1 : contentBreak;
 
             // The run of blanks the break landed on belongs to the line it ended, which keeps the lines
             // covering the text without a gap.
@@ -139,6 +150,14 @@ internal static class TextWrapper
             var last = lines[^1];
             lines[^1] = new TextLine(last.Start, consumedEnd - last.Start, last.ContentLength, last.Width);
         }
+    }
+
+    /// <summary>The index of the first space at or after <paramref name="start"/>, or <paramref name="end"/>.</summary>
+    private static int WordEnd(string text, int start, int end)
+    {
+        var space = text.IndexOf(' ', start, end - start);
+
+        return space < 0 ? end : space;
     }
 
     /// <summary>The end of the longest prefix of a segment that fits, and never less than one character.</summary>

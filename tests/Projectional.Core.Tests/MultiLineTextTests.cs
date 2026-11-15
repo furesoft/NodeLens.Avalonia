@@ -12,8 +12,8 @@ namespace Projectional.Core.Tests;
 /// <remarks>
 /// Everything here is measured by <see cref="MonospaceTextMeasure"/>, so a line's width is counted in
 /// characters and can be checked against the text it was cut from. The wrapping rules themselves live in
-/// one place - a hard break always ends a line, a soft break is taken at a space, and a word longer than
-/// the line is broken between two of its characters - and each of them is pinned down here.
+/// one place - a hard break always ends a line, a soft break is only ever taken at a space, and a word
+/// wider than the line is drawn whole, past the edge - and each of them is pinned down here.
 /// </remarks>
 public sealed class MultiLineTextTests
 {
@@ -106,15 +106,32 @@ public sealed class MultiLineTextTests
     }
 
     [Fact]
-    public void AWordLongerThanTheLineIsBrokenBetweenItsCharacters()
+    public void AWordWiderThanTheLineRunsPastTheEdgeInsteadOfBeingBroken()
     {
         var text = Wrap("abcdefg", limit: 3);
 
-        Assert.Equal(3, text.LineCount);
-        Assert.Equal("abc", Content(text, 0));
-        Assert.Equal("def", Content(text, 1));
-        Assert.Equal("g", Content(text, 2));
-        Assert.Equal(3, text.Width);
+        // Breaking it would give one character per line, which turns a one-row cell into a cell of
+        // seven rows and makes the gutter count a document it does not have. The word is drawn whole
+        // and the reader scrolls to it.
+        var line = Assert.Single(text.Lines);
+
+        Assert.Equal("abcdefg", Content(text, 0));
+        Assert.Equal(7, line.Width);
+        Assert.Equal(7, text.Width);
+        Assert.Equal(1, text.Height);
+    }
+
+    [Fact]
+    public void AWordWithAlmostNoRoomLeftIsStillDrawnWhole()
+    {
+        // This is the shape of the bug: the last token of a line starts just inside the page's edge,
+        // so the room left holds about one character.
+        var text = Wrap("Accept", limit: 1);
+
+        var line = Assert.Single(text.Lines);
+
+        Assert.Equal("Accept", Content(text, 0));
+        Assert.Equal(6, line.Width);
     }
 
     [Fact]
@@ -160,10 +177,11 @@ public sealed class MultiLineTextTests
     [Fact]
     public void ALongerTextMakesItsCellTallerAndPushesTheRestOntoItsLastLine()
     {
-        // "rule " is five wide, so the name has seven characters of room before the page's edge.
+        // "rule " is five wide, so the name has seven characters of room before the page's edge. Its
+        // first word is eight wide and does not fit, so the wrap is taken at the space after it.
         var layouter = new CellLayouter(Measure, wrapWidth: 12);
         var rule = TestLanguage.NewModel().NewNode(TestLanguage.Rule);
-        rule.Set("name", "abcdefghij");
+        rule.Set("name", "abcdefgh ijkl");
         var tree = new EditorTreeBuilder(TestNotations.Registry).Build(rule);
         var line = tree.Root.Children[0];
 
