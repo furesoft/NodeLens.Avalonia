@@ -244,6 +244,11 @@ More than one key is a real feature here rather than a courtesy:
 - **A selection ladder.** `Ctrl`+`A` cannot mean one thing in a document that nests three
   units, so it climbs: the value under the caret, then the whole node, then the document.
   `Delete` acts on whatever rung is selected, removing the covered nodes in one undo step.
+- **Double click selects a word, triple click the whole value.** Clicking twice on an editable
+  cell — a name, a number, an enumeration symbol — selects the word under the pointer, and a
+  third click widens to the cell's whole text, so one keystroke replaces just that much instead
+  of inserting into the middle of a word. Clicking twice on a keyword or a placeholder is left
+  alone rather than widening to the node.
 - **A working clipboard.** Copy and cut take the selected text; paste types the clipboard
   text at the caret through the same validation a keystroke goes through, so a number cell
   refuses `"abc"` instead of storing it. Structural paste of a whole subtree is M3 — it

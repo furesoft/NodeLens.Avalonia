@@ -4,8 +4,8 @@ using Projectional.Projection;
 namespace Projectional.Editing;
 
 /// <summary>
-/// The ranges a selection can have, and the nodes a range covers: one property's text, everything one
-/// node shows, the whole document - and back again.
+/// The ranges a selection can have, and the nodes a range covers: a word inside one property's text, the
+/// whole of it, everything one node shows, the whole document - and back again.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -54,6 +54,44 @@ internal static class SelectionRanges
         return new Selection(CaretPosition.At(place, 0), CaretPosition.At(place, cell.Text.Length));
     }
 
+    /// <summary>The word the caret stands on, or <see langword="null"/> when there is no editable text.</summary>
+    /// <param name="context">The apply being run.</param>
+    /// <remarks>
+    /// <para>
+    /// A word is the maximal run of characters of one kind around the offset: letters, digits and
+    /// underscores are one kind, whitespace another, and every other character a third. So
+    /// <c>total_amount</c> is one word, <c>42.5</c> is three, and a run of punctuation such as
+    /// <c>-&gt;</c> is one - the kinds are what a reader would call a word, not what a tokenizer would.
+    /// </para>
+    /// <para>
+    /// The kind is taken from the character after the caret when that character is a letter or a digit,
+    /// otherwise from the character before it, otherwise from the character at the caret. That single rule
+    /// is what makes a click on either half of a letter select that letter's word: a caret placed after a
+    /// word is still "on" the word, because the user pointed at the glyph they just clicked.
+    /// </para>
+    /// <para>
+    /// This is a range <em>inside</em> a value, so a cell with nothing to select answers
+    /// <see langword="null"/> rather than falling back to the whole value. Widening is the caller's
+    /// decision, never this method's.
+    /// </para>
+    /// </remarks>
+    public static Selection? OfWord(EditContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (context.PlaceAt(context.Selection.Caret) is not { } place ||
+            place.Cell is not PropertyCell cell ||
+            cell.Text.Length == 0)
+        {
+            return null;
+        }
+
+        var offset = Math.Clamp(context.Selection.Caret.Offset, 0, cell.Text.Length);
+        var (start, end) = RunAt(cell.Text, offset);
+
+        return new Selection(CaretPosition.At(place, start), CaretPosition.At(place, end));
+    }
+
     /// <summary>Everything <paramref name="node"/> shows, or <see langword="null"/> if it shows no cells.</summary>
     /// <param name="context">The apply being run.</param>
     /// <param name="node">The node to select, which is usually the one the caret stands in.</param>
@@ -98,6 +136,58 @@ internal static class SelectionRanges
 
         return new Selection(CaretPosition.At(first, 0), CaretPosition.At(last, last.Length));
     }
+
+    /// <summary>
+    /// The run of same-kind characters that <paramref name="offset"/> falls in or beside.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="offset"/> is a caret offset into a non-empty string, so <c>0</c> and
+    /// <paramref name="text"/>'s length are both valid and both mean "the first" and "the last" run.
+    /// The answer is never empty: every offset is adjacent to at least one character.
+    /// </remarks>
+    private static (int Start, int End) RunAt(string text, int offset)
+    {
+        int index;
+
+        if (offset < text.Length && IsWord(text[offset]))
+        {
+            index = offset;
+        }
+        else if (offset > 0 && IsWord(text[offset - 1]))
+        {
+            index = offset - 1;
+        }
+        else
+        {
+            index = Math.Min(offset, text.Length - 1);
+        }
+
+        var start = index;
+        var end = index + 1;
+
+        while (start > 0 && SameKind(text[start - 1], text[index]))
+        {
+            start--;
+        }
+
+        while (end < text.Length && SameKind(text[end], text[index]))
+        {
+            end++;
+        }
+
+        return (start, end);
+    }
+
+    /// <summary>Whether <paramref name="c"/> is a character a word is made of.</summary>
+    /// <remarks>
+    /// Underscore counts, so <c>total_amount</c> stays one word; a camel hump does not split, because
+    /// <c>totalAmount</c> is one identifier to every reader who did not ask for humps.
+    /// </remarks>
+    private static bool IsWord(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+    /// <summary>Whether two characters belong to the same kind of run: word, whitespace or punctuation.</summary>
+    private static bool SameKind(char left, char right) =>
+        IsWord(left) == IsWord(right) && char.IsWhiteSpace(left) == char.IsWhiteSpace(right);
 
     /// <summary>
     /// The nodes the current selection covers completely, outermost first, in document order.
