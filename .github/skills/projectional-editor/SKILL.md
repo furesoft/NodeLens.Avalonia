@@ -16,9 +16,10 @@ harness, CI). **M1 (projection and editing) is in progress**: the declarative no
 in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/`, the
 measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapshot renderer in
 `Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/`, the first
-two real languages (`Projectional.Expressions`, `Projectional.Samples`) and the embeddable
-`Projectional.Avalonia` control - which paints real glyphs, hit-tests clicks and handles
-keys - are done. Syntax highlighting and the standalone shell follow.
+two real languages (`Projectional.Expressions`, `Projectional.Samples`), the embeddable
+`Projectional.Avalonia` control (which paints real glyphs, hit-tests clicks and handles keys)
+and syntax highlighting from the meaning on a run to a host-swappable palette are done. The
+standalone shell follows.
 
 ## Status and where the truth lives
 
@@ -408,6 +409,56 @@ dependency, so every action is testable headlessly.
   constructor), so click/drag is verified through `HitTest` directly, and only the keyboard
   path through `RaiseEvent`. See the verification habits below.
 
+## How highlighting works
+
+Three layers, and the seam between them is the whole design:
+
+| Layer | Owns | Types |
+| --- | --- | --- |
+| `Projectional.Projection` | what a cell's text *means* | `TextStyleKind`, `ICellStyler`, `CellStyler` (in `Tree/`) |
+| `Projectional.Editing` | which run carries which kind | `TextRun.Style`, `EditorFrame.Build(..., ICellStyler?)` |
+| `Projectional.Avalonia` | what a kind *looks like* | `SyntaxPalette` (in `Text/`), `ProjectionalEditorControl.Palette` |
+
+Invariants that are cheap now and expensive later:
+
+- **No colour ever enters the model, the language or `Projection`.** `TextStyleKind` is a
+  vocabulary of meanings; a saved model carries no formatting, so it cannot go out of sync
+  with the concept that produced it. `Projection` must not reference Avalonia (ADR 0010) and
+  colour is an Avalonia type, so the layering enforces this by itself - keep it that way.
+- **`ICellStyler` must be pure.** Layout measures a cell's text *before* the frame is built,
+  so a styler that consulted the model, or answered differently on a second call, would
+  produce a frame whose colours describe text other than what its bounds were computed from.
+  Read the cell, never the node.
+- **`SyntaxPalette` varies the brush only - never weight, style or size.** A bold keyword
+  would be wider than the box the layout handed it, and the caret, hit test and selection
+  rectangles would all sit a few pixels off. Colour is the one property that changes no number.
+- **Swapping a palette is a repaint, not a re-projection.** `Palette` only invalidates the
+  visual; the model, tree, layout and every bound stay as they were. A change that needed a
+  re-projection would mean the palette had leaked into meaning.
+
+`CellStyler.Default` reads only the cell: `ConstantCell` uses the notation's `ConstantKind`,
+`PropertyCell` switches on `PropertyType.Name` (`"int"`/`"date"` -> `Number`, `"string"` ->
+`Text`, bool and every enumeration -> `Keyword`), references use `ReferenceState`, an empty
+child/collection is `Placeholder`, `MissingNotationCell` is `Missing`. It never emits
+`Identifier` - that kind exists for a host styler that knows a cell is a name, and the
+palettes are expected to be complete anyway.
+
+Two performance facts worth keeping:
+
+- **The shape cache is keyed on `(text, brush)`** (`ShapedTextKey`), not on text alone. The
+  same word is a keyword in one place and an identifier in another, so text alone stopped
+  being a correct key the moment two brushes existed.
+- **Measuring shapes at the default brush.** `ProjectionalEditorControl.Palette` also points
+  `TextMeasure.Foreground` at the palette's `Default` brush, so a `Default` run is painted
+  from text that has already been shaped for measuring. Only genuinely coloured runs pay for
+  a second shape. Do not drop that line as redundant.
+
+`SyntaxPalette` is `FrozenDictionary`-backed with `ImmutableSolidColorBrush` values (cheap
+reference equality for the cache key), `Light`/`Dark` presets, `Create` (requires `Default`,
+rejects a null brush and a kind mentioned twice - checked by hand, because
+`ToFrozenDictionary` will not tell you which of two brushes won), `BrushOf` (falls back to
+`Default`) and `With` (returns a new palette, never mutates).
+
 ## How the standalone app fits
 
 The repository ships two front ends and **one** public surface:
@@ -454,7 +505,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 422 tests**; anything below that means tests were deleted.
+it. **Baseline is 469 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
@@ -557,6 +608,32 @@ dotnet test
   ```powershell
   [IO.File]::WriteAllText($path, ($text -replace "`r`n", "`n"), (New-Object System.Text.UTF8Encoding($false)))
   ```
+- **A member named like an inherited Avalonia member is a compile error, not a shadow.**
+  `Theme` on a `Control` collides with `StyledElement.Theme` (CS0108), so the palette property
+  had to be called `Palette` and the type `SyntaxPalette` rather than `SyntaxTheme`. Before
+  naming a new public property, check the base class first - renaming later touches the tests
+  and the prose.
+- **Non-ASCII in tool output is unreliable.** The console mangles UTF-8, so an em dash typed
+  into a file can be silently stored as three characters (U+00E2, U+20AC, U+201D) instead of
+  the single U+2014 that was meant, and nothing shows the difference. Never diagnose encoding
+  by eye: read the character codes
+  (`$t.Substring($i, $n).ToCharArray() | ForEach-Object { '{0:X4}' -f [int]$_ }`) and expect
+  `2014` for an em dash. After authoring prose, scan the tree for that triple, building the
+  pattern from code points so the scan never matches itself:
+  ```powershell
+  $bad = [string][char]0x00E2 + [char]0x20AC
+  Get-ChildItem -Recurse -File -Include *.cs,*.md,*.csproj,*.axaml,*.yml src,tests,docs,.github |
+    Where-Object { $_.FullName -notmatch '\\obj\\|\\bin\\' } |
+    Where-Object { [IO.File]::ReadAllText($_.FullName).Contains($bad) }
+  ```
+- **`git show file > out` writes UTF-16 in PS 5.1**, so byte-level checks on committed files
+  are useless through it. Use `runInTerminal` for a clean `git diff`, or check the working
+  tree instead.
+- **A local function named after a type shadows it.** A probe helper called `Key(...)` broke
+  every later `Key.Right` with CS0119. Name helpers `Combo`, `Press`, `Chord`.
+- **`Stop-Process -Id` needs a literal PID** in this environment; a `$pid` variable makes the
+  whole command be refused. Design one-shot probes so they close their own window and exit.
+
 
 ## Do not
 
@@ -614,6 +691,19 @@ Facts that came out of doing this, and cost time to rediscover:
 - **Widgets are laid out lazily**, so a probe must `await Task.Delay` *after* the window opens
   before `Bounds` has a real size; `InvalidateVisual()` alone does not run a render pass in a
   probe - `RenderTargetBitmap.Render` forces one.
+- **Attach the `Opened` handler before `base.OnFrameworkInitializationCompleted()`.**
+  `Application.OnFrameworkInitializationCompleted` is what shows `MainWindow`, so a handler
+  subscribed after the base call never fires and the probe exits having written nothing. The
+  shape is `Application.Prepare(...)` before the base call, window content assigned there too,
+  and the whole sequence wrapped in `try`/`catch` that logs the exception - a silent empty log
+  means the handler did not run, not that the assertion failed.
+- **Sampling a glyph colour needs the extreme pixel.** The centre of a glyph is
+  antialiased against the background, so a mid-glyph sample returns a blend that matches
+  neither the palette nor the background. Per run, take the pixel **farthest from the
+  background colour** in that run's rect; that pixel is the brush. This is also how the
+  "enumeration symbols are keywords" consequence was found and confirmed: `>` and `Accept`
+  came back blue, not punctuation-grey and not identifier-black.
+
 
 ### Avalonia 12.1.6 facts worth having
 
