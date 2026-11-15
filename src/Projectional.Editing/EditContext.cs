@@ -57,6 +57,24 @@ public sealed class EditContext
     /// <summary>The selection as it was when the action started.</summary>
     public Selection Selection { get; }
 
+    /// <summary>
+    /// The completion list that was open when the action started, and the one that will be open when it
+    /// ends.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// View state, like the notation variant: it is never persisted and never produces an undo step of
+    /// its own. An action reads it to decide what a keystroke means while a list is open, and writes it
+    /// to narrow, move, accept or dismiss.
+    /// </para>
+    /// <para>
+    /// The session seeds this before running any action and reads it back afterwards, which is what makes
+    /// "anything but a completion gesture closes the list" one rule in <see cref="EditorSession"/> rather
+    /// than a rule every action has to remember.
+    /// </para>
+    /// </remarks>
+    public CompletionList? Completion { get; internal set; }
+
     /// <summary>The concepts of the language the document is written in.</summary>
     public ConceptRegistry Concepts => _document.Model.Concepts;
 

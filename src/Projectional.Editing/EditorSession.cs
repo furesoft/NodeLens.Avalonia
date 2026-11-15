@@ -102,6 +102,23 @@ public sealed class EditorSession : IDisposable
     public INotationChoice Choice { get; private set; }
 
     /// <summary>
+    /// The completion list open at the caret, or <see langword="null"/> when none is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// View state, like <see cref="Choice"/>: opening a document shows no list, no list is persisted and
+    /// no list is an undo step. A host reads this after every <see cref="Apply"/> to draw or hide its
+    /// popup, which is why the property is public while the gestures that set it are ordinary actions.
+    /// </para>
+    /// <para>
+    /// It is cleared by anything that is not a completion gesture, by a move of the caret, and by a
+    /// rebuild - a list describes the empty slot at a caret, and none of those leave that description
+    /// true.
+    /// </para>
+    /// </remarks>
+    public CompletionList? Completion { get; private set; }
+
+    /// <summary>
     /// How wide the room a text cell may fill is, or <see langword="null"/> when it may run on.
     /// </summary>
     /// <remarks>
@@ -230,7 +247,11 @@ public sealed class EditorSession : IDisposable
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        var context = new EditContext(Document, Tree, Layout, Measure, Selection);
+        var context = new EditContext(Document, Tree, Layout, Measure, Selection)
+        {
+            Completion = action is CompletionAction ? Completion : null,
+        };
+
         var previous = History.CoalescingKey;
         var result = EditResult.Unchanged(Selection);
 
@@ -243,6 +264,8 @@ public sealed class EditorSession : IDisposable
         {
             History.CoalescingKey = previous;
         }
+
+        Completion = context.Completion;
 
         if (result.Changed)
         {
@@ -257,7 +280,8 @@ public sealed class EditorSession : IDisposable
     /// <summary>Moves the caret, dropping any selection that does not fit the tree.</summary>
     /// <remarks>
     /// Both ends are coerced, so a selection whose anchor was in a deleted node collapses onto the
-    /// caret instead of pointing at a cell that no longer exists.
+    /// caret instead of pointing at a cell that no longer exists. Moving the caret also closes any open
+    /// completion list, because the proposals describe the slot the caret was in.
     /// </remarks>
     public void Select(Selection selection)
     {
@@ -265,6 +289,7 @@ public sealed class EditorSession : IDisposable
         var caret = CaretNavigation.Nearest(Tree, selection.Caret);
 
         Selection = new Selection(anchor, caret);
+        Completion = null;
     }
 
     /// <summary>Undoes one step of the model's history, keeping the caret on the nearest cell.</summary>
@@ -304,10 +329,12 @@ public sealed class EditorSession : IDisposable
     /// <remarks>
     /// For changes the session did not make - a substitution, a background transformation, a test that
     /// wrote to the model directly. The selection is collapsed, because a selection spans cells that may
-    /// no longer be there and there is nothing better to do than keep the caret's end.
+    /// no longer be there and there is nothing better to do than keep the caret's end. An open completion
+    /// list is closed for the same reason: it names a slot of the tree that was just replaced.
     /// </remarks>
     public void Refresh()
     {
+        Completion = null;
         Rebuild();
         MoveTo(CaretNavigation.Nearest(Tree, Selection.Caret));
     }
