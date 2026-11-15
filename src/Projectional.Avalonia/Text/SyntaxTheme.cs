@@ -30,6 +30,7 @@ public sealed class SyntaxTheme
         IBrush highlight,
         IBrush gutter,
         IBrush lineNumber,
+        MarkerPalette markers,
         bool isDark)
     {
         Palette = palette;
@@ -39,6 +40,7 @@ public sealed class SyntaxTheme
         Highlight = highlight;
         Gutter = gutter;
         LineNumber = lineNumber;
+        Markers = markers;
         IsDark = isDark;
     }
 
@@ -51,6 +53,7 @@ public sealed class SyntaxTheme
         new SolidColorBrush(Color.FromArgb(0x40, 0x26, 0x8B, 0xD2)),
         new SolidColorBrush(Color.FromRgb(0xF7, 0xF7, 0xF7)),
         new SolidColorBrush(Color.FromRgb(0x23, 0x78, 0x93)),
+        MarkerPalette.Light,
         isDark: false);
 
     /// <summary>Light text on black, for a host whose surroundings are dark.</summary>
@@ -62,6 +65,7 @@ public sealed class SyntaxTheme
         new SolidColorBrush(Color.FromArgb(0x50, 0x26, 0x4F, 0x78)),
         new SolidColorBrush(Color.FromRgb(0x18, 0x18, 0x18)),
         new SolidColorBrush(Color.FromRgb(0x85, 0x85, 0x85)),
+        MarkerPalette.Dark,
         isDark: true);
 
     /// <summary>The colours of the text itself.</summary>
@@ -103,9 +107,16 @@ public sealed class SyntaxTheme
     /// </remarks>
     public IBrush LineNumber { get; }
 
+    /// <summary>The colours a finding is stroked in, one per severity.</summary>
+    /// <remarks>
+    /// Part of the theme rather than of the text palette, because a squiggle is a mark <em>around</em> the
+    /// document - the same layer as the caret and the selection - and it has to stay legible against the
+    /// background, not against the glyphs.
+    /// </remarks>
+    public MarkerPalette Markers { get; }
+
     /// <summary>Whether this is one of the dark themes, for a toolkit that asks light or dark.</summary>
     public bool IsDark { get; }
-
     /// <summary>The text colour of one meaning, as a palette lookup.</summary>
     /// <param name="kind">What a run means.</param>
     /// <returns>The brush this theme paints that meaning in.</returns>

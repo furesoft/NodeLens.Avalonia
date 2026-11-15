@@ -27,8 +27,13 @@ namespace Projectional.Editing;
 /// a renderer that only wants the visible part filters this list, which is a comparison on
 /// <see cref="MarkerLine.Y"/>.
 /// </para>
+/// <para>
+/// It is public because the control that draws these lives in another assembly and there is no
+/// <c>InternalsVisibleTo</c> across the frontend boundary - the same reason <see cref="EditorFrame"/> is
+/// public. A host that paints its own page needs exactly this conversion too.
+/// </para>
 /// </remarks>
-internal static class MarkerGeometry
+public static class MarkerGeometry
 {
     /// <summary>The markers of <paramref name="markers"/> as drawn lines of <paramref name="layout"/>.</summary>
     /// <param name="layout">The layout the markers are placed in.</param>
@@ -39,7 +44,7 @@ internal static class MarkerGeometry
     /// a caller that walks it visits markers the way the eye does. Findings on nodes the layout does not
     /// contain contribute nothing, and no marker is ever zero wide.
     /// </remarks>
-    internal static IReadOnlyList<MarkerLine> Of(CellLayout layout, MarkerSet markers, ITextMeasure measure)
+    public static IReadOnlyList<MarkerLine> Of(CellLayout layout, MarkerSet markers, ITextMeasure measure)
     {
         ArgumentNullException.ThrowIfNull(layout);
         ArgumentNullException.ThrowIfNull(markers);
