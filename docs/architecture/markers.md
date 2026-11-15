@@ -1,6 +1,6 @@
 # Markers
 
-*Slices A and B implemented; C–F planned.* This document is the design for the wavy underline
+Status: **delivered** for M1, slices A–C. Slices D–F are planned. This document is the design for the wavy underline
 under a cell that is wrong: the error and warning squiggles every code editor has, with an
 error in red and a warning in orange, drawn under exactly the text the diagnostic is about. It
 is written before the code because the feature is the first one that has to answer a question
@@ -220,8 +220,8 @@ internal static class MarkerGeometry
 
 `MarkerLine` is public while its producer is internal, which follows the same split as
 `EditorCell` and `MarkerCells`: the rectangle is a value a frontend is handed, and resolving is
-the editor's business. Slice C makes `MarkerGeometry` public at the moment the control - a
-separate assembly - starts calling it, exactly as `EditorFrame` is public for the same reason.
+the editor's business. `MarkerGeometry` became public with slice C, when the control - a
+separate assembly - started calling it, exactly as `EditorFrame` is public for the same reason.
 
 The rules, in the order they matter:
 

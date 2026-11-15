@@ -1,8 +1,10 @@
 # Documentation
 
-This directory holds the design baseline for the .NET projectional editor. It is
-written *before* the implementation: each document states what will be built, which
-constraints it must satisfy, and which alternatives were rejected.
+This directory holds the design baseline for the .NET projectional editor. Most documents
+are written *before* the implementation: each states what will be built, which constraints it
+must satisfy, and which alternatives were rejected. A document whose feature has shipped says
+so — a `Status: **delivered**` line under the title, or "(delivered)" in the list below — and
+records what was actually verified.
 
 ## Reading order
 
@@ -20,13 +22,13 @@ constraints it must satisfy, and which alternatives were rejected.
 8. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned).
 9. [Markers](architecture/markers.md) — wavy severity underlines under what validation
-   reports (planned).
+   reports (delivered).
 10. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
 11. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
     (delivered).
 12. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
-    text clipboard; the first slice is implemented.
+    text clipboard (delivered).
 13. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
 14. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
 15. [Integration](architecture/integration.md) — how host applications embed this.
