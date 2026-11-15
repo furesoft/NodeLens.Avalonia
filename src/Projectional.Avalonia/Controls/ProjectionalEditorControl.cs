@@ -76,6 +76,10 @@ public sealed class ProjectionalEditorControl : Control
     // timer, and stopped on detach because a hidden control has nothing to animate.
     private DispatcherTimer? _blinkTimer;
 
+    // The menu that is open, if any. Held so a second right-click closes the first instead of stacking
+    // a popup on a popup; the entries themselves are built per opening and never cached.
+    private ContextMenu? _menu;
+
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
         : this(new Typeface(FontFamily.Default), 14)
@@ -339,6 +343,11 @@ public sealed class ProjectionalEditorControl : Control
             _blinkTimer = null;
         }
 
+        // A popup outlives the visual tree it was opened from, so a control that is detached (closed
+        // tab, disposed window) has to take its menu with it.
+        _menu?.Close();
+        _menu = null;
+
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -382,7 +391,20 @@ public sealed class ProjectionalEditorControl : Control
 
         var session = Session;
 
-        if (session is null || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        if (session is null)
+        {
+            return;
+        }
+
+        var properties = e.GetCurrentPoint(this).Properties;
+
+        if (properties.IsRightButtonPressed)
+        {
+            OpenContextMenu(session, e);
+            return;
+        }
+
+        if (!properties.IsLeftButtonPressed)
         {
             return;
         }
@@ -533,6 +555,58 @@ public sealed class ProjectionalEditorControl : Control
             InvalidateMeasure();
         }
 
+        Show();
+    }
+
+    /// <summary>Opens the context menu for the caret as the right button found it.</summary>
+    /// <remarks>
+    /// The caret follows the click unless the click landed inside an existing selection, because
+    /// dragging a range and then right-clicking it must keep the range - that is what every editor does
+    /// and what makes "delete this" possible. The entries are built now rather than when the menu is
+    /// first needed, so what the user sees is the state the click produced.
+    /// </remarks>
+    private void OpenContextMenu(EditorSession session, PointerPressedEventArgs e)
+    {
+        Focus();
+
+        if (CaretAt(e) is { } position)
+        {
+            MoveCaretUnlessSelected(session, position);
+        }
+
+        _menu?.Close();
+        _menu = EditorMenuPresenter.Menu(EditorMenu.For(session), AfterMenuCommand);
+        _menu.Open(this);
+
+        e.Handled = true;
+    }
+
+    private void MoveCaretUnlessSelected(EditorSession session, CaretPosition position)
+    {
+        var selection = session.Selection;
+        var inside = selection.HasText
+            && selection.Caret.Address.Equals(position.Address)
+            && position.Offset >= selection.Start
+            && position.Offset <= selection.End;
+
+        if (!inside)
+        {
+            session.Select(Selection.At(position));
+            Show();
+        }
+    }
+
+    private void AfterMenuCommand()
+    {
+        // A command is a command however the user picked it, so the menu goes away here rather than
+        // waiting for the toolkit: a click would close it, but a click is not the only way in.
+        _menu?.Close();
+        _menu = null;
+
+        // A command runs the session directly, so no EditResult comes back to say whether the document
+        // changed size. Measuring again is the safe answer and the cheap one: it costs nothing visible
+        // and it is what an inserted node needs.
+        InvalidateMeasure();
         Show();
     }
 

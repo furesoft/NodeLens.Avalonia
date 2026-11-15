@@ -156,7 +156,7 @@ public sealed class EditorMenuTests
         Assert.Equal("Ctrl+Z", Entry(session, "Undo").Gesture);
         Assert.Equal("Ctrl+Y", Entry(session, "Redo").Gesture);
         Assert.Equal("Enter", Entry(session, "Insert").Gesture);
-        Assert.Equal("Del", Entry(session, "Delete").Gesture);
+        Assert.Equal("Delete", Entry(session, "Delete").Gesture);
     }
 
     [Fact]

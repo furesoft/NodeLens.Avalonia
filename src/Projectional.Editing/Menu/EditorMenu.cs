@@ -25,7 +25,7 @@ public static class EditorMenu
     private const string UndoGesture = "Ctrl+Z";
     private const string RedoGesture = "Ctrl+Y";
     private const string InsertGesture = "Enter";
-    private const string DeleteGesture = "Del";
+    private const string DeleteGesture = "Delete";
 
     /// <summary>The entries the context menu shows for <paramref name="session"/>.</summary>
     /// <param name="session">The session whose caret and history the menu describes.</param>

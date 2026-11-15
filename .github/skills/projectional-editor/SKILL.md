@@ -17,9 +17,10 @@ in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/
 measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapshot renderer in
 `Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/`, the first
 two real languages (`Projectional.Expressions`, `Projectional.Samples`), the embeddable
-`Projectional.Avalonia` control (which paints real glyphs, hit-tests clicks and handles keys)
-and syntax highlighting from the meaning on a run to a host-swappable palette are done. The
-standalone shell follows.
+`Projectional.Avalonia` control (which paints real glyphs, hit-tests clicks and handles keys),
+syntax highlighting from the meaning on a run to a host-swappable palette, model-defined text
+decorations, cell-wise caret motion with a blinking caret and a context menu described by the
+editing layer are done. The standalone shell (tabs, menu bar, status bar) is being delivered.
 
 ## Status and where the truth lives
 
@@ -490,7 +491,13 @@ dependency, so every action is testable headlessly.
   entry is shown (`History.CanUndo`, "is there a character right of the caret"), and
   `EditorMenuItem.Execute` refuses a disabled entry as well, so a stale menu cannot edit.
   A host that renders this needs no editing knowledge - it maps labels, gestures, check marks
-  and commands onto its own items and calls `Execute`.
+  and commands onto its own items and calls `Execute`. `EditorMenuPresenter`
+  (`Projectional.Avalonia/Menu/`) is that mapping for Avalonia and is public, so the shell's
+  menu bar and the control's context menu share one implementation. Two rules the control
+  keeps: a right click moves the caret unless it lands inside a selection (otherwise the
+  entries would describe a caret the user is not looking at), and after an entry runs the
+  control repaints *and* closes the menu itself - the toolkit's own close only happens on a
+  pointer release, so a keyboard-activated entry would leave it open.
 - **`EditorSession` raises no event.** The host invalidates: `InvalidateMeasure()` when
   `result.Changed` (the document's size changed), `InvalidateVisual()` plus
   `ScrollToCaret()` always. There is no observable collection to subscribe to, by design.

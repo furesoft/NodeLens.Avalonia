@@ -197,13 +197,26 @@ variants exist.
 state and the command each one runs. It is a description, not a widget, and it is derived
 fresh on every opening: nothing is stored, so no edit has to remember to refresh a menu.
 That is what keeps it in the editing layer instead of an Avalonia one; the control only maps
-entries onto toolkit items.
+entries onto toolkit items, and `EditorMenuPresenter` is the one place that does the mapping:
+it turns a submenu into a toolkit submenu, an option into a radio item and a gesture string
+into the toolkit's own gesture, so a host that wants the same entries elsewhere — the sample
+shell's menu bar — calls it rather than binding the model to its own controls.
 
 - An entry's command is the same action the keyboard would run, so the menu cannot drift
   from the key bindings. The gesture it displays is documentation of that agreement.
+  Gestures are written as text and parsed by the toolkit, so they are spelled the way a
+  toolkit parses them (`Delete`, not `Del`); a host that cannot parse one loses the
+  accelerator hint, not the command.
 - Availability is a question about state, answered before the entry is shown: Undo asks the
   history, Delete asks the caret whether a character lies to its right or a selection exists.
   `EditorMenuItem.Execute` also refuses a disabled entry, so a stale menu cannot edit.
+- The caret follows the right button, because every other entry describes the caret: clicking
+  outside a selection moves it, clicking inside one keeps the range, which is what makes a
+  range right-clickable in the first place.
+- A command runs the session directly, so no `EditResult` comes back to say whether the
+  document changed size. The control therefore measures and repaints itself after any entry
+  runs, closes the menu itself rather than waiting for the toolkit, and keeps exactly one
+  menu: opening a second one closes the first, and detaching the control closes it too.
 - `Representations(session)` is public because the representation choice belongs to the
   document, not to the context menu: the sample shell offers the same list from its menu bar.
   The variant in force is marked, and picking an option sets the choice through
