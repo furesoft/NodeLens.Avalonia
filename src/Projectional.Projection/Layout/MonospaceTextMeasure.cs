@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -27,7 +29,15 @@ public sealed class MonospaceTextMeasure : ITextMeasure
     /// <summary>The one instance: the measure holds no state, so callers need no identity.</summary>
     public static MonospaceTextMeasure Instance { get; } = new();
 
-    public double Measure(string text)
+    /// <summary>
+    /// One column per character, whatever the emphasis.
+    /// </summary>
+    /// <remarks>
+    /// A monospaced face keeps its advance when it is made bold, so a bold cell is the same width as a
+    /// regular one. Ignoring the emphasis here therefore describes the same geometry the real measure
+    /// produces for a monospaced font, and keeps a snapshot grid readable.
+    /// </remarks>
+    public double Measure(string text, TextEmphasis emphasis)
     {
         ArgumentNullException.ThrowIfNull(text);
         return text.Length;

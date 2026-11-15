@@ -374,4 +374,106 @@ public sealed class UndoRedoTests
         Assert.False(history.CanUndo);
         Assert.Equal(0, history.UndoDepth);
     }
+
+    [Fact]
+    public void AFreshHistoryIsAtRevisionZero()
+    {
+        var model = TestLanguage.NewModel();
+        using var history = new UndoHistory(model);
+
+        Assert.Equal(0, history.Revision);
+
+        model.NewNode(TestLanguage.Step);
+
+        Assert.NotEqual(0, history.Revision);
+    }
+
+    [Fact]
+    public void UndoingAndRedoingComeBackToTheSameRevision()
+    {
+        var model = TestLanguage.NewModel();
+        var node = model.NewNode(TestLanguage.Step);
+        using var history = new UndoHistory(model);
+
+        node.Set("text", "a");
+        var saved = history.Revision;
+
+        history.Undo();
+        Assert.NotEqual(saved, history.Revision);
+
+        history.Redo();
+        Assert.Equal(saved, history.Revision);
+    }
+
+    [Fact]
+    public void ADifferentEditAfterAnUndoIsADifferentRevisionEvenAtTheSameDepth()
+    {
+        var model = TestLanguage.NewModel();
+        var node = model.NewNode(TestLanguage.Step);
+        using var history = new UndoHistory(model);
+
+        node.Set("text", "a");
+        var saved = history.Revision;
+
+        history.Undo();
+        node.Set("text", "b");
+
+        // The hole a depth comparison would fall into: same count, different document.
+        Assert.Equal(1, history.UndoDepth);
+        Assert.NotEqual(saved, history.Revision);
+    }
+
+    [Fact]
+    public void ClearedHistoryGoesBackToRevisionZero()
+    {
+        var model = TestLanguage.NewModel();
+        using var history = new UndoHistory(model);
+
+        model.NewNode(TestLanguage.Step);
+        history.Clear();
+
+        Assert.Equal(0, history.Revision);
+    }
+
+    [Fact]
+    public void ARevisionIsNeverHandedOutTwiceInOneHistory()
+    {
+        var model = TestLanguage.NewModel();
+        var node = model.NewNode(TestLanguage.Step);
+        using var history = new UndoHistory(model);
+
+        var seen = new HashSet<long> { history.Revision };
+
+        for (var i = 0; i < 3; i++)
+        {
+            node.Set("text", $"v{i}");
+            Assert.True(seen.Add(history.Revision));
+
+            history.Undo();
+            node.Set("text", $"w{i}");
+            Assert.True(seen.Add(history.Revision));
+        }
+    }
+
+    [Fact]
+    public void ACoalescedBurstMovesTheRevisionOnEveryTransactionItSwallows()
+    {
+        var model = TestLanguage.NewModel();
+        var node = model.NewNode(TestLanguage.Step);
+        using var history = new UndoHistory(model);
+
+        history.CoalescingKey = "typing";
+        node.Set("text", "a");
+        var afterFirstKeystroke = history.Revision;
+
+        node.Set("text", "ab");
+
+        // One undo step, but not the state that step stood for a keystroke ago: a save recorded
+        // between the two would have missed the second keystroke without this.
+        Assert.Equal(1, history.UndoDepth);
+        Assert.NotEqual(afterFirstKeystroke, history.Revision);
+
+        history.Undo();
+        Assert.Equal(0, history.Revision);
+    }
 }

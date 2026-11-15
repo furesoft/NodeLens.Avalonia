@@ -19,16 +19,22 @@ public sealed class NotationEditor
 {
     public static NotationEditor Create() => new();
 
-    public ConstantNotationCell Keyword(string text) => new(text, ConstantKind.Keyword);
+    public ConstantNotationCell Keyword(string text, TextEmphasis emphasis = TextEmphasis.None) =>
+        new(text, ConstantKind.Keyword, emphasis);
 
-    public ConstantNotationCell Punct(string text) => new(text, ConstantKind.Punctuation);
+    public ConstantNotationCell Punct(string text, TextEmphasis emphasis = TextEmphasis.None) =>
+        new(text, ConstantKind.Punctuation, emphasis);
 
     public SpaceNotationCell Space => SpaceNotationCell.Instance;
 
-    public PropertyNotationCell Property(string slot) => new(slot);
+    public PropertyNotationCell Property(string slot, TextEmphasis emphasis = TextEmphasis.None) =>
+        new(slot, emphasis);
 
-    public ReferenceNotationCell Reference(string slot, string unsetText = "<none>") =>
-        new(slot) { UnsetText = unsetText };
+    public ReferenceNotationCell Reference(
+        string slot,
+        string unsetText = "<none>",
+        TextEmphasis emphasis = TextEmphasis.None) =>
+        new(slot, emphasis) { UnsetText = unsetText };
 
     public SingleChildNotationCell ChildInline(string slot, string emptyText = "<empty>") =>
         new(slot) { EmptyText = emptyText };

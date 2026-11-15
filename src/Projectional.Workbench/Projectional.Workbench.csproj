@@ -12,6 +12,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Projectional.Avalonia\Projectional.Avalonia.csproj" />
+    <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
+    <ProjectReference Include="..\Projectional.Samples\Projectional.Samples.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Projectional.Core.Tests" />
   </ItemGroup>
 
 </Project>

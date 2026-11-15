@@ -2,6 +2,7 @@ using System.Globalization;
 
 using Avalonia.Media;
 
+using Projectional.Language;
 using Projectional.Projection;
 
 namespace Projectional.Avalonia;
@@ -22,8 +23,8 @@ namespace Projectional.Avalonia;
 /// Shaping is expensive - roughly an order of magnitude more than a dictionary lookup - and a frame
 /// asks for the width of every cell it draws plus a prefix width for the caret. The cache is what keeps
 /// rendering proportional to the cells on screen rather than to the cost of shaping them, and it is
-/// keyed on the string and the brush - the only two things about a shaped run that vary - because
-/// anything else is fixed by the constructor.
+/// keyed on the three things about a shaped run that vary - the string, the brush and the emphasis -
+/// because anything else is fixed by the constructor.
 /// </para>
 /// <para>
 /// Widths are measured including trailing whitespace, because the layout deliberately renders spaces as
@@ -127,7 +128,7 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
         {
             if (_indentWidth <= 0)
             {
-                _indentWidth = Measure("  ");
+                _indentWidth = Measure("  ", TextEmphasis.None);
             }
 
             return _indentWidth;
@@ -135,7 +136,8 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
     }
 
     /// <inheritdoc />
-    public double Measure(string text) => Shaped(text).WidthIncludingTrailingWhitespace;
+    public double Measure(string text, TextEmphasis emphasis) =>
+        Shaped(text, _foreground, emphasis).WidthIncludingTrailingWhitespace;
 
     /// <summary>The shaped form of <paramref name="text"/>, for drawing.</summary>
     /// <remarks>
@@ -144,19 +146,20 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
     /// A highlighted run is shaped once more in its own colour, which colour cannot change the width of,
     /// so the layout stays right either way.
     /// </remarks>
-    public FormattedText Shaped(string text) => Shaped(text, _foreground);
+    public FormattedText Shaped(string text) => Shaped(text, _foreground, TextEmphasis.None);
 
-    /// <summary>The shaped form of <paramref name="text"/> in a particular brush, for drawing.</summary>
+    /// <summary>The shaped form of <paramref name="text"/> as it is to be painted.</summary>
     /// <param name="text">The text to shape.</param>
     /// <param name="brush">The brush to paint it with.</param>
+    /// <param name="emphasis">The face and the lines to draw it with.</param>
     /// <returns>The shaped run.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> or <paramref name="brush"/> is <see langword="null"/>.</exception>
-    public FormattedText Shaped(string text, IBrush brush)
+    public FormattedText Shaped(string text, IBrush brush, TextEmphasis emphasis)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(brush);
 
-        var key = new ShapedTextKey(text, brush);
+        var key = new ShapedTextKey(text, brush, emphasis);
 
         if (_shaped.TryGetValue(key, out var cached))
         {
@@ -172,7 +175,7 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
             text,
             Culture,
             FlowDirection.LeftToRight,
-            _typeface,
+            TypefaceOf(emphasis),
             _fontSize,
             brush)
         {
@@ -182,9 +185,61 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
             Trimming = TextTrimming.None,
         };
 
+        if (DecorationsOf(emphasis) is { } decorations)
+        {
+            formatted.SetTextDecorations(decorations);
+        }
+
         _shaped.Add(key, formatted);
 
         return formatted;
+    }
+
+    /// <summary>
+    /// The face to shape with: the measure's own typeface, made heavier or slanted as asked.
+    /// </summary>
+    /// <remarks>
+    /// Only the style and the weight vary, and both are taken from the family the host configured, so a
+    /// bold keyword comes from the same font as the text around it rather than from a default.
+    /// </remarks>
+    private Typeface TypefaceOf(TextEmphasis emphasis)
+    {
+        var weight = emphasis.HasFlag(TextEmphasis.Bold) ? FontWeight.Bold : _typeface.Weight;
+        var style = emphasis.HasFlag(TextEmphasis.Italic) ? FontStyle.Italic : _typeface.Style;
+
+        return weight == _typeface.Weight && style == _typeface.Style
+            ? _typeface
+            : new Typeface(_typeface.FontFamily, style, weight, _typeface.Stretch);
+    }
+
+    /// <summary>The lines to draw under or through the text, or <see langword="null"/> for none.</summary>
+    /// <remarks>
+    /// A <see cref="TextDecorationCollection"/> cannot be empty and still mean something, so the case of
+    /// no lines is answered with nothing at all and the run is left undecorated.
+    /// </remarks>
+    private static TextDecorationCollection? DecorationsOf(TextEmphasis emphasis)
+    {
+        var underline = emphasis.HasFlag(TextEmphasis.Underline);
+        var strikethrough = emphasis.HasFlag(TextEmphasis.Strikethrough);
+
+        if (!underline && !strikethrough)
+        {
+            return null;
+        }
+
+        var decorations = new TextDecorationCollection();
+
+        if (underline)
+        {
+            decorations.Add(new TextDecoration { Location = TextDecorationLocation.Underline });
+        }
+
+        if (strikethrough)
+        {
+            decorations.Add(new TextDecoration { Location = TextDecorationLocation.Strikethrough });
+        }
+
+        return decorations;
     }
 
     public override string ToString() => $"{_typeface.FontFamily} {_fontSize}";

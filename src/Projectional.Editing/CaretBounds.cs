@@ -77,6 +77,8 @@ public static class CaretBounds
     {
         var clamped = Math.Clamp(length, 0, place.Text.Length);
 
-        return clamped == place.Text.Length ? measure.Measure(place.Text) : measure.Measure(place.Text[..clamped]);
+        return clamped == place.Text.Length
+            ? measure.Measure(place.Text, place.Emphasis)
+            : measure.Measure(place.Text[..clamped], place.Emphasis);
     }
 }

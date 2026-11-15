@@ -298,7 +298,9 @@ public sealed class ProjectionalEditorControl : Control
         {
             var bounds = frame.Viewport.ToViewport(run.Bounds);
 
-            context.DrawText(TextMeasure.Shaped(run.Text, _palette.BrushOf(run.Style)), new Point(bounds.X, bounds.Y));
+            context.DrawText(
+                TextMeasure.Shaped(run.Text, _palette.BrushOf(run.Style), run.Emphasis),
+                new Point(bounds.X, bounds.Y));
         }
 
         if (frame.CaretRect is { } caret)

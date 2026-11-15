@@ -44,6 +44,15 @@ public static class RulesLanguage
     /// <summary>A project whose language is <see cref="Concepts"/>.</summary>
     public static Project NewProject() => new(Concepts);
 
+    /// <summary>
+    /// What decorates a model of this language beyond what its notation already says.
+    /// </summary>
+    /// <remarks>
+    /// A host passes this to the session; it is optional, because a language whose looks never depend
+    /// on what the model holds needs nothing here.
+    /// </remarks>
+    public static ICellEmphasis Emphasis => RejectedRuleEmphasis.Instance;
+
     private static List<ConceptDeclaration> CreateDeclarations() =>
     [
         new ConceptDeclaration(

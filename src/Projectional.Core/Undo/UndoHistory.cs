@@ -25,6 +25,7 @@ public sealed class UndoHistory : IDisposable
     private readonly List<UndoStep> _redo = [];
     private bool _replaying;
     private bool _disposed;
+    private long _revision;
 
     public UndoHistory(Model model)
     {
@@ -45,6 +46,24 @@ public sealed class UndoHistory : IDisposable
 
     /// <summary>How many redo presses are left.</summary>
     public int RedoDepth => _redo.Count;
+
+    /// <summary>
+    /// Which state of the history is current, as a number that is equal only for the very same state.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A host that has to answer "is this document modified" needs more than <see cref="UndoDepth"/>,
+    /// because depth is a count and not an identity: edit, save, undo, then edit something
+    /// <em>different</em> leaves the depth where the save left it while the document is no longer the
+    /// saved one. Comparing this number against the one recorded at the last save has no such hole.
+    /// </para>
+    /// <para>
+    /// Undoing and redoing move between states without inventing new ones, so a redo back to the
+    /// saved step is clean again. The number is zero exactly when there is nothing to undo, which
+    /// makes a freshly opened document clean without recording anything.
+    /// </para>
+    /// </remarks>
+    public long Revision => _undo.Count > 0 ? _undo[^1].Revision : 0;
 
     /// <summary>
     /// The key the next committed transaction is grouped under, or <see langword="null"/> to keep it
@@ -120,11 +139,11 @@ public sealed class UndoHistory : IDisposable
 
         if (CoalescingKey is { } key && _undo.Count > 0 && _undo[^1].CoalescingKey == key)
         {
-            _undo[^1].Merge(e.Steps);
+            _undo[^1].Merge(e.Steps, ++_revision);
             return;
         }
 
-        _undo.Add(new UndoStep(e.Steps, CoalescingKey));
+        _undo.Add(new UndoStep(e.Steps, CoalescingKey, ++_revision));
     }
 
     private void Replay(UndoStep step, bool backwards)

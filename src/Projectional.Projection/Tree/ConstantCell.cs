@@ -13,8 +13,12 @@ namespace Projectional.Projection;
 /// </remarks>
 public sealed class ConstantCell : TextCell
 {
-    public ConstantCell(CellAddress address, string text, ConstantKind kind)
-        : base(address, text)
+    public ConstantCell(
+        CellAddress address,
+        string text,
+        ConstantKind kind,
+        TextEmphasis emphasis = TextEmphasis.None)
+        : base(address, text, emphasis)
     {
         Kind = kind;
     }

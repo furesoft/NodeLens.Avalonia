@@ -88,13 +88,25 @@ closed ──open──▶ loading ──▶ clean ⇄ dirty
 | --- | --- | --- |
 | `loading` | project and model read from disk | success → `clean`; failure → error dialog, back to `closed` |
 | `clean` | session exists, no unsaved change | first change → `dirty` |
-| `dirty` | change journal has entries since the last save | save → `clean` |
+| `dirty` | the history is at a state no save has recorded | save → `clean` |
 | `prompt` | close requested on a dirty document | save / discard / cancel |
 
-The dirty flag is **derived from the change journal**, not set by a flag the app
-maintains, so undo back to the saved state returns to `clean`. A boolean "dirty" flag
-that is set on any edit and cleared on save is the classic bug: undo to the original
-state still claims the document is modified.
+The dirty flag is **derived from the session**, not set by a flag the app maintains, so
+undo back to the saved state returns to `clean`. A boolean "dirty" flag that is set on
+any edit and cleared on save is the classic bug: undo to the original state still claims
+the document is modified.
+
+The derivation compares `UndoHistory.Revision` against the number recorded at the last
+save. The count of undo steps is not enough: edit, save, undo, then edit something
+different leaves the depth where the save left it while the document is no longer the
+saved one. Revision identifies the state instead of counting changes to it, so a redo
+back onto the saved step is clean again.
+
+A transaction that coalesces into the last step moves that step's revision on, so a save
+in the middle of a typing burst is not mistaken for a clean document: the burst goes on
+to change content the file never saw. Saving clears the pending coalescing key as well,
+so the next keystroke starts a step of its own instead of silently joining the saved one
+— a save is an undo boundary like any other.
 
 External changes are detected by a file watcher and answered with a prompt ("reload
 from disk / keep my version"), never silently — see

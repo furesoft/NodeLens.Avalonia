@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -18,13 +20,26 @@ namespace Projectional.Projection;
 /// </remarks>
 public abstract class TextCell : EditorCell
 {
-    private protected TextCell(CellAddress address, string text)
+    private protected TextCell(CellAddress address, string text, TextEmphasis emphasis = TextEmphasis.None)
         : base(address)
     {
         ArgumentNullException.ThrowIfNull(text);
         Text = text;
+        Emphasis = emphasis;
     }
 
     /// <summary>What the reader sees. May be empty when the slot holds no value yet.</summary>
     public string Text { get; }
+
+    /// <summary>
+    /// How the text is decorated - bold, italic, underlined, struck through, or a combination.
+    /// </summary>
+    /// <remarks>
+    /// It lives on the cell rather than being decided while painting because two of the decorations
+    /// change the width of the glyphs. Everything that turns text into a rectangle - the layout, the
+    /// caret, the hit test, the selection - measures through <see cref="ITextMeasure"/> with this
+    /// value, so the boxes and the glyphs inside them agree. A decoration invented at paint time
+    /// would be drawn inside a box measured for a different face.
+    /// </remarks>
+    public TextEmphasis Emphasis { get; }
 }

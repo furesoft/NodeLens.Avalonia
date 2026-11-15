@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 
 namespace Projectional.Projection;
 
@@ -14,8 +15,14 @@ namespace Projectional.Projection;
 /// </remarks>
 public sealed class PropertyCell : TextCell
 {
-    public PropertyCell(CellAddress address, string slot, PropertyType type, string text, bool isSet)
-        : base(address, text)
+    public PropertyCell(
+        CellAddress address,
+        string slot,
+        PropertyType type,
+        string text,
+        bool isSet,
+        TextEmphasis emphasis = TextEmphasis.None)
+        : base(address, text, emphasis)
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
         ArgumentNullException.ThrowIfNull(type);

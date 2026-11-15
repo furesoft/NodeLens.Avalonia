@@ -29,27 +29,34 @@ namespace Projectional.Projection;
 public sealed class EditorTreeBuilder
 {
     private readonly NotationRegistry _notations;
+    private readonly ICellEmphasis? _emphasis;
 
-    public EditorTreeBuilder(NotationRegistry notations)
+    public EditorTreeBuilder(NotationRegistry notations, ICellEmphasis? emphasis = null)
     {
         ArgumentNullException.ThrowIfNull(notations);
         _notations = notations;
+        _emphasis = emphasis;
     }
 
     /// <summary>Builds the tree for <paramref name="node"/>.</summary>
     public EditorTree Build(Node node)
     {
         ArgumentNullException.ThrowIfNull(node);
-        return new EditorTree(node, BuildNode(node, new CellAddress(node.Id)));
+        return new EditorTree(node, BuildNode(node, new CellAddress(node.Id), TextEmphasis.None));
     }
 
-    private EditorCell BuildNode(Node node, CellAddress rootAddress)
+    /// <summary>
+    /// Builds one node. <paramref name="inherited"/> is what the nodes above already asked for, and it
+    /// is passed on to every cell of this node so that a decoration applies to a whole subtree.
+    /// </summary>
+    private EditorCell BuildNode(Node node, CellAddress rootAddress, TextEmphasis inherited)
     {
+        var emphasis = inherited | (_emphasis?.EmphasisOf(node) ?? TextEmphasis.None);
         var notation = _notations.FindFor(node.Concept);
 
         return notation is null
             ? new MissingNotationCell(rootAddress, node.Concept.Key)
-            : BuildBlock(notation.Root, node, rootAddress);
+            : BuildBlock(notation.Root, node, emphasis, rootAddress);
     }
 
     /// <summary>
@@ -57,59 +64,79 @@ public sealed class EditorTreeBuilder
     /// node's projection, where the cell has to keep the address it was given instead of deriving one
     /// from the slot it shows.
     /// </summary>
-    private EditorCell BuildBlock(BlockNotationCell cell, Node node, CellAddress? rootAddress = null)
+    private EditorCell BuildBlock(
+        BlockNotationCell cell,
+        Node node,
+        TextEmphasis emphasis,
+        CellAddress? rootAddress = null)
     {
         var address = rootAddress ?? new CellAddress(node.Id);
 
         return cell switch
         {
-            LineNotationCell line => new ContainerCell(address, CellOrientation.Horizontal, BuildInline(line.Content, node)),
-            SequenceNotationCell sequence => new ContainerCell(address, CellOrientation.Vertical, BuildBlocks(sequence.Content, node)),
-            IndentNotationCell indent => new ContainerCell(address, CellOrientation.Vertical, isIndented: true, BuildBlocks(indent.Content, node)),
-            ChildNotationCell children => BuildChildren(children.Slot, children.EmptyText, node, rootAddress),
-            CollectionNotationCell collection => BuildCollection(collection, node, rootAddress),
+            LineNotationCell line => new ContainerCell(
+                address,
+                CellOrientation.Horizontal,
+                BuildInline(line.Content, node, emphasis)),
+            SequenceNotationCell sequence => new ContainerCell(
+                address,
+                CellOrientation.Vertical,
+                BuildBlocks(sequence.Content, node, emphasis)),
+            IndentNotationCell indent => new ContainerCell(
+                address,
+                CellOrientation.Vertical,
+                isIndented: true,
+                BuildBlocks(indent.Content, node, emphasis)),
+            ChildNotationCell children => BuildChildren(children.Slot, children.EmptyText, node, emphasis, rootAddress),
+            CollectionNotationCell collection => BuildCollection(collection, node, emphasis, rootAddress),
             _ => throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' uses a block cell of unknown kind '{cell.GetType().Name}'."),
         };
     }
 
-    private EditorCell[] BuildBlocks(IReadOnlyList<BlockNotationCell> cells, Node node)
+    private EditorCell[] BuildBlocks(IReadOnlyList<BlockNotationCell> cells, Node node, TextEmphasis emphasis)
     {
         var built = new EditorCell[cells.Count];
 
         for (var i = 0; i < cells.Count; i++)
         {
-            built[i] = BuildBlock(cells[i], node);
+            built[i] = BuildBlock(cells[i], node, emphasis);
         }
 
         return built;
     }
 
-    private EditorCell[] BuildInline(IReadOnlyList<InlineNotationCell> cells, Node node)
+    private EditorCell[] BuildInline(IReadOnlyList<InlineNotationCell> cells, Node node, TextEmphasis emphasis)
     {
         var built = new EditorCell[cells.Count];
 
         for (var i = 0; i < cells.Count; i++)
         {
-            built[i] = BuildInline(cells[i], node);
+            built[i] = BuildInline(cells[i], node, emphasis);
         }
 
         return built;
     }
 
-    private EditorCell BuildInline(InlineNotationCell cell, Node node) => cell switch
+    private EditorCell BuildInline(InlineNotationCell cell, Node node, TextEmphasis emphasis) => cell switch
     {
-        ConstantNotationCell constant => new ConstantCell(new CellAddress(node.Id), constant.Text, constant.Kind),
+        ConstantNotationCell constant => new ConstantCell(
+            new CellAddress(node.Id),
+            constant.Text,
+            constant.Kind,
+            emphasis | constant.Emphasis),
         SpaceNotationCell => new SpaceCell(new CellAddress(node.Id)),
-        PropertyNotationCell property => BuildProperty(property.Slot, node),
-        ReferenceNotationCell reference => BuildReference(reference, node),
-        SingleChildNotationCell single => BuildChildren(single.Slot, single.EmptyText, node, rootAddress: null),
+        PropertyNotationCell property => BuildProperty(property, node, emphasis),
+        ReferenceNotationCell reference => BuildReference(reference, node, emphasis),
+        SingleChildNotationCell single => BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null),
         _ => throw new ProjectionException(
             $"The notation of '{node.Concept.Key}' uses an inline cell of unknown kind '{cell.GetType().Name}'."),
     };
 
-    private static PropertyCell BuildProperty(string slot, Node node)
+    private static PropertyCell BuildProperty(PropertyNotationCell notation, Node node, TextEmphasis emphasis)
     {
+        var slot = notation.Slot;
+
         var declaration = node.Concept.FindProperty(slot)
             ?? throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' shows property '{slot}', but the concept declares no such property.");
@@ -119,10 +146,11 @@ public sealed class EditorTreeBuilder
             slot,
             declaration.Type,
             node.GetOrNull(slot) ?? string.Empty,
-            node.IsSet(slot));
+            node.IsSet(slot),
+            emphasis | notation.Emphasis);
     }
 
-    private static ReferenceCell BuildReference(ReferenceNotationCell notation, Node node)
+    private static ReferenceCell BuildReference(ReferenceNotationCell notation, Node node, TextEmphasis emphasis)
     {
         var slot = notation.Slot;
 
@@ -134,18 +162,31 @@ public sealed class EditorTreeBuilder
 
         var address = CellAddress.OfSlot(node.Id, slot);
         var reference = node.GetReference(slot);
+        var decoration = emphasis | notation.Emphasis;
 
         if (reference is not { } stored)
         {
-            return new ReferenceCell(address, slot, notation.UnsetText, ReferenceState.Unset);
+            return new ReferenceCell(address, slot, notation.UnsetText, ReferenceState.Unset, emphasis: decoration);
         }
 
         if (node.GetReferenceTarget(slot) is not { } target)
         {
-            return new ReferenceCell(address, slot, "<unresolved>", ReferenceState.Unresolved, stored.Target);
+            return new ReferenceCell(
+                address,
+                slot,
+                "<unresolved>",
+                ReferenceState.Unresolved,
+                stored.Target,
+                decoration);
         }
 
-        return new ReferenceCell(address, slot, target.Name ?? $"<{target.Concept.Key}>", ReferenceState.Resolved, target.Id);
+        return new ReferenceCell(
+            address,
+            slot,
+            target.Name ?? $"<{target.Concept.Key}>",
+            ReferenceState.Resolved,
+            target.Id,
+            decoration);
     }
 
     /// <summary>
@@ -153,7 +194,12 @@ public sealed class EditorTreeBuilder
     /// only in where the notation puts them, not in what they project: every matching child becomes a
     /// root at its element address, and the slot's empty text covers the case of none.
     /// </summary>
-    private ChildCell BuildChildren(string slot, string emptyText, Node node, CellAddress? rootAddress)
+    private ChildCell BuildChildren(
+        string slot,
+        string emptyText,
+        Node node,
+        TextEmphasis emphasis,
+        CellAddress? rootAddress)
     {
         if (node.Concept.FindChild(slot) is null)
         {
@@ -166,13 +212,17 @@ public sealed class EditorTreeBuilder
 
         for (var i = 0; i < children.Count; i++)
         {
-            content[i] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i));
+            content[i] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
         }
 
         return new ChildCell(rootAddress ?? CellAddress.OfSlot(node.Id, slot), slot, emptyText, content);
     }
 
-    private CollectionCell BuildCollection(CollectionNotationCell notation, Node node, CellAddress? rootAddress)
+    private CollectionCell BuildCollection(
+        CollectionNotationCell notation,
+        Node node,
+        TextEmphasis emphasis,
+        CellAddress? rootAddress)
     {
         var slot = notation.Slot;
 
@@ -187,7 +237,7 @@ public sealed class EditorTreeBuilder
 
         for (var i = 0; i < children.Count; i++)
         {
-            items[i] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i));
+            items[i] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
         }
 
         var separators = new EditorCell[Math.Max(0, children.Count - 1)];
@@ -195,7 +245,7 @@ public sealed class EditorTreeBuilder
         for (var i = 0; i < separators.Length; i++)
         {
             separators[i] = notation.Separator is { } separator
-                ? BuildInline(separator, node)
+                ? BuildInline(separator, node, emphasis)
                 : new SpaceCell(new CellAddress(node.Id));
         }
 
