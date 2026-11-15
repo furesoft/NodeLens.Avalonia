@@ -20,23 +20,25 @@ records what was actually verified.
 7. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
    the first slice is implemented.
 8. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
-   at the caret (planned).
+   at the caret (planned; after quick fixes).
 9. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (delivered).
-10. [Line numbers](architecture/line-numbers.md) — numbering the rows a
+10. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
+    reach the user (planned; next).
+11. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
-11. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
+12. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
     (delivered).
-12. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+13. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard (delivered).
-13. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-14. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-15. [Integration](architecture/integration.md) — how host applications embed this.
-16. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+14. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+15. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+16. [Integration](architecture/integration.md) — how host applications embed this.
+17. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-17. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-18. [Roadmap](roadmap.md) — milestones and acceptance gates.
-19. [Open questions](open-questions.md) — what is deliberately still undecided.
+18. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+19. [Roadmap](roadmap.md) — milestones and acceptance gates.
+20. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
