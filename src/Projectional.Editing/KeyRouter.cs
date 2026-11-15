@@ -94,30 +94,30 @@ public static class KeyRouter
 
     /// <summary>The delete <paramref name="key"/> means where the caret currently is.</summary>
     /// <remarks>
-    /// Backspace and Delete reach for text first, because that is what they do wherever there is any:
-    /// inside a value they remove a character, and with a selection they remove it. Where there is no
-    /// text to remove - the caret stands on a keyword, a separator, a space, or at the edge of a value
-    /// that has none left - they remove the node instead, because the neighbouring cell is a node and
-    /// there is nothing smaller to take away.
+    /// A selection that spans cells reaches first, because it is the most specific thing the user has
+    /// said: it names nodes, and <see cref="DeleteSelectionAction"/> removes exactly those. Only a caret
+    /// reaches for text, and only where there is any: inside a value a character goes, and at a cell
+    /// boundary the node does, because the neighbouring cell is a node and there is nothing smaller to
+    /// take away.
     /// </remarks>
     private static EditAction Delete(EditorSession session, DeleteDirection direction) =>
-        RemovesText(session, direction)
-            ? new DeleteTextAction(direction)
-            : new DeleteNodeAction();
+        session.Selection.SpansCells ? new DeleteSelectionAction()
+        : RemovesText(session, direction) ? new DeleteTextAction(direction)
+        : new DeleteNodeAction();
 
     /// <summary>Whether a text delete in <paramref name="direction"/> has something to remove.</summary>
     private static bool RemovesText(EditorSession session, DeleteDirection direction)
     {
         var selection = session.Selection;
 
-        if (selection.HasText)
-        {
-            return true;
-        }
-
         if (CaretNavigation.PlaceAt(session.Tree, selection.Caret)?.Cell is not PropertyCell cell)
         {
             return false;
+        }
+
+        if (selection.HasText)
+        {
+            return true;
         }
 
         var offset = Math.Clamp(selection.Caret.Offset, 0, cell.Text.Length);
