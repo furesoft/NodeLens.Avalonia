@@ -1,17 +1,19 @@
 # Markers
 
-*Slice A implemented; B–F planned.* This document is the design for the wavy underline under
-a cell that is wrong: the error and warning squiggles every code editor has, with an error in
-red and a warning in orange, drawn under exactly the text the diagnostic is about. It is
-written before the code because the feature is the first one that has to answer a question the
-projection layer has never had to answer — *what does the editor know that the model does
+*Slices A and B implemented; C–F planned.* This document is the design for the wavy underline
+under a cell that is wrong: the error and warning squiggles every code editor has, with an
+error in red and a warning in orange, drawn under exactly the text the diagnostic is about. It
+is written before the code because the feature is the first one that has to answer a question
+the projection layer has never had to answer — *what does the editor know that the model does
 not* — and because the answer decides where validation, geometry and colour may each live.
 
 Slice A — the vocabulary, the set, and the resolution of a diagnostic to cells — is delivered
 in `Projectional.Semantics/Diagnostics/` and `Projectional.Editing/Markers/`, and its decisions
-are frozen in [ADR 0013](../adr/0013-markers-are-view-state.md). Two things in this document
-were changed by writing it and are marked *superseded* below: the frame does not carry markers,
-and a marker set is resolved against the layout at paint time rather than during a frame build.
+are frozen in [ADR 0013](../adr/0013-markers-are-view-state.md). Slice B — turning a diagnostic
+into the rectangles a page can draw — is `MarkerLine` and `MarkerGeometry` in the same folder.
+Two things in this document were changed by writing the code and are marked *superseded* below:
+the frame does not carry markers, and a marker set is resolved against the layout at paint time
+rather than during a frame build.
 
 The vocabulary is deliberately split in two:
 
@@ -216,6 +218,11 @@ internal static class MarkerGeometry
 }
 ```
 
+`MarkerLine` is public while its producer is internal, which follows the same split as
+`EditorCell` and `MarkerCells`: the rectangle is a value a frontend is handed, and resolving is
+the editor's business. Slice C makes `MarkerGeometry` public at the moment the control - a
+separate assembly - starts calling it, exactly as `EditorFrame` is public for the same reason.
+
 The rules, in the order they matter:
 
 1. **Resolve the diagnostic to cells first** (above), then each of those cells to its lines.
@@ -223,17 +230,26 @@ The rules, in the order they matter:
    lines the cell was laid out into: the first line's part, the middle lines in full, the last
    line's part. One `MarkerLine` each. This is exactly what a wrapped word or a hard `\n`
    requires, and it is why the geometry exists at all instead of a text decoration.
-3. **A range that is out of bounds is clipped, not dropped.** A stale range past the end of the
-   text (the user deleted characters and validation has not caught up) marks the last character
-   instead of vanishing; a range that is entirely past the end marks the cell.
-4. **Empty ranges mark one character**, or the whole cell when the cell is empty — a squiggle of
-   zero width would be invisible, and "there is an error here" has to be visible.
-5. **Only visible lines produce geometry.** The control clips to the viewport before building the
-   wave path, so a document with ten thousand diagnostics paints the thirty lines on screen.
-   Filtering by row is not an optimisation to add later; it is the default.
+3. **A range that is out of bounds is clipped, not dropped.** A stale range that now overhangs
+   the end of the text (the user deleted characters and validation has not caught up) marks what
+   is left instead of vanishing; a range that starts entirely past the end marks the whole cell.
+4. **Empty ranges mark one character.** A squiggle of zero width would be invisible, and "there
+   is an error here" has to be visible; a cell that draws no characters of its own - a concept
+   whose notation is only a child slot - gets a marker one character wide at its start, which is
+   inside the box layout reserved for it.
+5. **Every line produces geometry, and the renderer filters.** The result covers the whole
+   document: a page that scrolled has to draw a marker it did not draw a moment ago, and
+   re-resolving because the viewport moved would give the editing layer a reason to know about
+   scrolling. A control that wants only the rows on screen compares `MarkerLine.Y` against its
+   viewport - a filter on a list it already holds - so a document with ten thousand diagnostics
+   still paints the thirty lines on screen. Filtering by row is not an optimisation to add
+   later; it is the default.
 6. **The wave lives under the baseline**, inside the line's box, so it changes no bounds and no
    hit test. Its thickness is a renderer constant, not a measure constant: a squiggle must not
    make a line taller.
+7. **The list comes back in reading order** - by `Y`, then `X` - because both of its consumers
+   need an order the user can predict: the painter draws top to bottom, and `F8` walks the same
+   list. Geometry sorts once; nobody downstream has to.
 
 ### Superseded: the frame does not carry markers
 
@@ -295,7 +311,7 @@ long before a real one exists:
 | Slice | Branch | Delivers |
 | --- | --- | --- |
 | A ✓ | `feat/marker-model` | `DiagnosticSeverity`, `Diagnostic`, `CharacterRange`, `MarkerSet`, `EditorSession.Markers`, `MarkerCells` (node ids to cells), tests for stale nodes, replacement versus `Concat`, the node-versus-container rule |
-| B | `feat/marker-geometry` | `MarkerLine`, `MarkerGeometry`, per-line splitting, clipping, the visible-lines rule, tests over wrapped and hard-broken cells |
+| B ✓ | `feat/marker-geometry` | `MarkerLine`, `MarkerGeometry`, per-line splitting, clipping, reading order, tests over wrapped and hard-broken cells |
 | C | `feat/marker-paint` | `MarkerPalette` on `SyntaxTheme`, the wave in the control's `Render`, light and dark defaults, pattern-per-severity |
 | D | `feat/marker-hover` | the tooltip, the click-to-caret hit test, and `F8` ordering in the editing layer |
 | E | (M4) `feat/validation-markers` | the constraint runner publishes diagnostics through `Markers`, incrementally, off the UI thread |
@@ -351,6 +367,23 @@ budgets rather than as wishes:
 6. When markers overlap, the **highest severity is drawn** and all of them are discoverable
    through the tooltip and the light bulb.
 
+## Decisions frozen with slice B
+
+Writing the geometry settled three things the plan had left open. They are in this document
+rather than a new ADR because none of them is expensive to reverse, but they should not be
+re-litigated by accident:
+
+1. **Geometry reports every marker line, including duplicates on one rectangle.** Dropping the
+   loser of an overlap here would make it unreachable: `MarkerLine` carries its `Diagnostic`, and
+   that is what a tooltip and the light bulb read. Collapsing is therefore a painting decision,
+   made where the palette is known, and slice C does it.
+2. **The answer is document-wide, not viewport-filtered.** Filtering by scroll position would
+   make the same call return different lists for the same model, and the layer that produced it
+   would have to know what scrolling is.
+3. **A stale range is clipped, never dropped.** A check that measured a longer value than the one
+   now on screen marks what is left; a range entirely past the end marks the whole cell. A
+   diagnostic that is still in the set has to be visible, or a fixable problem looks fixed.
+
 ## Testing
 
 - **Model, headless.** Done in `MarkerSetTests`: replacement versus `Concat`, duplicates kept,
@@ -359,10 +392,14 @@ budgets rather than as wishes:
   property, a slot that names a child, an index naming one element, a range narrowing to one
   cell, a stale node marking nothing, an unknown slot falling back to the node, and a node with
   no text of its own falling back to its container.
-- **Geometry, headless.** A range inside a wrapped line (one segment per line, correct
-  widths); a range spanning a hard `\n`; a range that starts before and ends after a break;
-  a range past the end of the text; an empty cell; a marker whose line is scrolled out of the
-  viewport (no geometry); two markers on one range (one drawn).
+- **Geometry, headless.** Done in `MarkerGeometryTests`: a range inside a wrapped value (one
+  segment per line, with the continuation line starting at the cell's own left edge); a range
+  spanning a hard `\n`; a range that starts on the first line and ends on the last, marking the
+  middle lines whole; a range that overhangs the end, clipped to what is left; a range entirely
+  past the end, marking the cell; an empty range marking one character; a value with no range
+  marked on every line it occupies; a cell that draws no characters still getting a visible
+  marker; two findings on one range both surviving, because which one is drawn is a painting
+  decision and the other must stay reachable; and reading order across two markers.
 - **Palette, headless.** Every severity has a brush in both themes, and the wave constants
   keep the wave inside a `LineHeight` row.
 - **Control, when `tests/Projectional.Avalonia.Tests` exists.** A rendered wave for one
