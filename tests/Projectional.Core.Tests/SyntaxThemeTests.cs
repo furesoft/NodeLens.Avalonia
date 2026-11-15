@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using Avalonia.Styling;
 
 using Projectional.Avalonia;
 using Projectional.Projection;
@@ -87,6 +88,41 @@ public sealed class SyntaxThemeTests
     {
         Assert.Same(SyntaxTheme.Light.Palette.BrushOf(kind), SyntaxTheme.Light.BrushOf(kind));
         Assert.Same(SyntaxTheme.Dark.Palette.BrushOf(kind), SyntaxTheme.Dark.BrushOf(kind));
+    }
+
+    [Fact]
+    public void TheDarkVariantPicksTheDarkTheme()
+    {
+        Assert.Same(SyntaxTheme.Dark, SyntaxTheme.Of(ThemeVariant.Dark));
+    }
+
+    [Fact]
+    public void TheLightVariantPicksTheLightTheme()
+    {
+        Assert.Same(SyntaxTheme.Light, SyntaxTheme.Of(ThemeVariant.Light));
+    }
+
+    [Fact]
+    public void AnUnresolvedVariantPicksTheLightTheme()
+    {
+        // Default means "whatever the desktop says", which is not an answer. A host that has not resolved
+        // it yet gets the theme that is readable on most desktops rather than an exception.
+        Assert.Same(SyntaxTheme.Light, SyntaxTheme.Of(ThemeVariant.Default));
+    }
+
+    [Fact]
+    public void AVariantDerivedFromDarkPicksTheDarkTheme()
+    {
+        // A host may name its own variant; one that says it inherits from dark means dark. The theme must
+        // follow the chain rather than compare with the two shipped variants, or that host gets a light
+        // palette on a dark window.
+        Assert.Same(SyntaxTheme.Dark, SyntaxTheme.Of(new ThemeVariant("Midnight", ThemeVariant.Dark)));
+    }
+
+    [Fact]
+    public void AVariantDerivedFromLightPicksTheLightTheme()
+    {
+        Assert.Same(SyntaxTheme.Light, SyntaxTheme.Of(new ThemeVariant("Sepia", ThemeVariant.Light)));
     }
 
     private static double Luminance(IBrush brush)

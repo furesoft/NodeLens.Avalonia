@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using Avalonia.Styling;
 
 using Projectional.Projection;
 
@@ -117,8 +118,32 @@ public sealed class SyntaxTheme
 
     /// <summary>Whether this is one of the dark themes, for a toolkit that asks light or dark.</summary>
     public bool IsDark { get; }
+
+    /// <summary>The theme that goes with a theme variant, which is how a host follows the desktop.</summary>
+    /// <param name="variant">
+    /// A variant as the toolkit resolved it, not as it was requested - a host that follows the operating
+    /// system asks for the <em>actual</em> variant and passes that.
+    /// </param>
+    /// <returns>
+    /// <see cref="Dark"/> for a variant derived from dark, <see cref="Light"/> otherwise, which includes
+    /// the unresolved default: a host with no opinion about its surroundings gets the theme that is
+    /// readable on most of them.
+    /// </returns>
+    /// <remarks>
+    /// The variant is walked up its inheritance chain rather than compared with
+    /// <see cref="ThemeVariant.Dark"/>, because a host is allowed to define its own variant
+    /// (<c>new ThemeVariant("Midnight", ThemeVariant.Dark)</c>) and one that says it derives from dark
+    /// means dark. This is the only place that decides, so a host and the shell cannot disagree.
+    /// </remarks>
+    public static SyntaxTheme Of(ThemeVariant variant) =>
+        IsDarkVariant(variant) ? Dark : Light;
+
     /// <summary>The text colour of one meaning, as a palette lookup.</summary>
     /// <param name="kind">What a run means.</param>
     /// <returns>The brush this theme paints that meaning in.</returns>
     public IBrush BrushOf(TextStyleKind kind) => Palette.BrushOf(kind);
+
+    private static bool IsDarkVariant(ThemeVariant? variant) =>
+        variant is not null
+        && (variant == ThemeVariant.Dark || IsDarkVariant(variant.InheritVariant));
 }

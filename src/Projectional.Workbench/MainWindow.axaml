@@ -35,8 +35,29 @@
         <MenuItem Header="_Decrease font size (Ctrl+-)" Click="OnDecreaseFontSize" />
         <MenuItem Header="_Reset font size (Ctrl+0)" Click="OnResetFontSize" />
         <Separator />
-        <MenuItem Header="_Light theme" Click="OnLightTheme" />
-        <MenuItem Header="_Dark theme" Click="OnDarkTheme" />
+        <!--
+          One group of three rather than three toggles, because the choice is exclusive and "follow the
+          system" is one of the choices - a checkbox would let a user tick two themes at once.
+        -->
+        <MenuItem
+          x:Name="FollowSystemItem"
+          GroupName="Theme"
+          Header="Follow _system theme"
+          ToggleType="Radio"
+          IsChecked="True"
+          Click="OnFollowSystemTheme" />
+        <MenuItem
+          x:Name="LightThemeItem"
+          GroupName="Theme"
+          Header="_Light theme"
+          ToggleType="Radio"
+          Click="OnLightTheme" />
+        <MenuItem
+          x:Name="DarkThemeItem"
+          GroupName="Theme"
+          Header="_Dark theme"
+          ToggleType="Radio"
+          Click="OnDarkTheme" />
       </MenuItem>
     </Menu>
 
