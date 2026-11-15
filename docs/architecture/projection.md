@@ -300,8 +300,9 @@ time from what a cell already is:
 | Layer | Decides | Type |
 | --- | --- | --- |
 | `Projectional.Projection` | what a cell's text *is* | `TextStyleKind` + `ICellStyler` |
-| `Projectional.Editing` | which run carries which kind | `TextRun.Style` |
-| `Projectional.Avalonia` | what that kind *looks like* | `SyntaxPalette` |
+| `Projectional.Projection` | how a cell's text is *set* | `TextEmphasis` on the cell |
+| `Projectional.Editing` | which run carries which kind and setting | `TextRun.Style` + `TextRun.Emphasis` |
+| `Projectional.Avalonia` | what that kind and setting *look like* | `SyntaxPalette` + the shaped text |
 
 `CellStyler.Default` reads the cell and nothing else: a `ConstantCell` is a keyword or
 punctuation as the notation declared it, an `int` or `date` property is a number, a
@@ -317,24 +318,66 @@ because it is pure. **Purity is a requirement, not a nicety**: layout measures a
 text before the frame is built, so a styler that changed its answer between two calls
 would produce a frame whose colours describe different text than its bounds.
 
-The palette varies **the brush only, never the font**. Layout runs first and its bounds are
-what the caret, the hit test and the selection rectangles are computed from; a bold keyword
-would be wider than the box the layout handed it and every one of those would sit a few
-pixels off. Colour is the one property of text that changes no number, so colour is all a
-palette may change.
+The two axes are separated by what they cost. **Colour changes no number, so a palette may
+change it; emphasis changes the advance of a glyph, so only the projection may decide it.**
+Layout runs before any palette is consulted and its bounds are what the caret, the hit test
+and the selection rectangles are computed from. A palette that set a keyword bold would
+draw a word wider than the box the layout handed it, and every one of those would sit a few
+pixels off. Emphasis is therefore not a palette decision at all: it is on the cell, and the
+frame is measured with it.
 
 Two consequences worth knowing:
 
 - **Swapping a palette is a repaint, not a re-projection.** The model, the tree, the layout
   and every bound in it stay exactly as they were. This is the whole point of separating
   meaning from appearance.
-- **Shaping is cached per `(text, brush)`.** Measuring shapes at the default brush, so a
-  `Default` run is painted from text that has already been shaped; the control points its
-  measure at the palette's default brush to keep it that way, and only genuinely coloured
-  runs pay for a second shape.
+- **Shaping is cached per `(text, brush, emphasis)`.** Measuring shapes at the default brush,
+  so a `Default` run is painted from text that has already been shaped; the control points
+  its measure at the palette's default brush to keep it that way, and only genuinely coloured
+  runs pay for a second shape. Emphasis is part of the key because the same word in two
+  settings is two different shapes.
 
 A palette that omits a kind falls back to `Default` rather than throwing, which makes a
 partial palette usable: a host that wants its own keyword colour says just that.
+
+### Emphasis
+
+`TextEmphasis` is a `[Flags]` set of the four settings a run can carry: bold, italic,
+underline and strikethrough. It has two sources, and both are consulted while the tree is
+built rather than while it is painted:
+
+| Source | Says | Declared in |
+| --- | --- | --- |
+| The notation | how this concept *always* reads | `NotationEditor.Keyword("rule", TextEmphasis.Bold)` |
+| `ICellEmphasis` | how *this node* reads today | a resolver the host hands to the session |
+
+The notation is the language's own statement, so it is where a keyword that is bold in every
+document belongs. `ICellEmphasis` is the model-driven statement: `EmphasisOf(Node)` is asked
+once per rebuild for every node, and the sample answers "struck through" for a rule whose
+outcome is `Reject`. Nothing is stored, nothing is persisted, and changing the outcome back
+undoes the decoration on the next rebuild - which is exactly the difference between "a rule
+always reads like this" and "this rule reads like this right now".
+
+Three rules make the two compose predictably:
+
+- **A resolver's answer inherits into the subtree.** Asking for a struck-through rule strikes
+  its keyword, its name, its condition and its outcome word, because the rule answered for
+  everything drawn inside it. A resolver only has to name the node it cares about.
+- **The notation's emphasis is added on top at each leaf**, so a struck-through rule keeps
+  its bold `rule` keyword: the cell carries `Bold | Strikethrough`.
+- **`ICellEmphasis` is not `ICellStyler`.** A styler is pure and may be swapped by a palette;
+  an emphasis resolver is consulted during a rebuild and its answer is measured. Folding them
+  together would let a "styler" silently change the layout.
+
+`ICellEmphasis` lives in `Projectional.Language` beside the notation rather than in
+`Projectional.Projection`. A resolver is the same kind of statement as a notation - how this
+language reads - and a language package must be able to declare one without referencing the
+projection layer.
+
+The measure takes the emphasis because it has to: `ITextMeasure.Measure(string, TextEmphasis)`
+has no default, so a host cannot forget that a cell's width depends on how it is set. The
+monospace measure ignores emphasis on purpose - a monospaced face keeps its advance when bold,
+and pretending otherwise would make the headless snapshot disagree with every real editor.
 
 ## Incremental invalidation
 

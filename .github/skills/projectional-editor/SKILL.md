@@ -432,9 +432,45 @@ Invariants that are cheap now and expensive later:
 - **`SyntaxPalette` varies the brush only - never weight, style or size.** A bold keyword
   would be wider than the box the layout handed it, and the caret, hit test and selection
   rectangles would all sit a few pixels off. Colour is the one property that changes no number.
+  Emphasis that *does* change metrics lives on the cell instead (see below).
 - **Swapping a palette is a repaint, not a re-projection.** `Palette` only invalidates the
   visual; the model, tree, layout and every bound stay as they were. A change that needed a
   re-projection would mean the palette had leaked into meaning.
+
+### Emphasis (bold, italic, underline, strikethrough)
+
+A second, orthogonal axis: `TextEmphasis` is a `[Flags]` enum in
+`Projectional.Language/Style/TextEmphasis.cs`. Both axes travel together on a run
+(`TextRun.Style` + `TextRun.Emphasis`), but only one of them may be decided late.
+
+- **Emphasis must be known when the tree is built, not when it is painted.** Bold and italic
+  change glyph advances; a paint-time-only decoration would desynchronise drawing from the
+  rectangles the caret and hit test were computed from. So it sits on `TextCell.Emphasis` and
+  is threaded through every `TextCell` subclass, `CellLayouter.TextSize` and
+  `ITextMeasure.Measure(string, TextEmphasis)`.
+- **`ITextMeasure.Measure` has no default for the emphasis parameter, on purpose.** A host
+  must not be able to forget that a cell's width depends on how it is set. Adding a default
+  would silence the compiler precisely where it is useful.
+- **Two sources, composed at build time.** The notation declares permanent emphasis
+  (`NotationEditor.Keyword("rule", TextEmphasis.Bold)`); a host-supplied `ICellEmphasis`
+  resolves per node per rebuild. `EditorTreeBuilder.BuildNode` computes
+  `inherited | (resolver.EmphasisOf(node) ?? None)`, and a leaf ORs the notation's own
+  emphasis on top - hence a struck-through rule still shows a bold `rule` keyword
+  (`Bold | Strikethrough`).
+- **A resolver's answer inherits into the whole subtree.** Name the node you care about, not
+  every descendant.
+- **`ICellEmphasis` is not `ICellStyler`, and lives in `Projectional.Language`, not
+  `Projection`.** It is a statement about how a language reads, like the notation, so a
+  language package (`Projectional.Samples`) must be able to declare one without referencing
+  the projection layer. `Projectional.Samples` references only `Expressions` and `Language` -
+  that is the whole reason for the file's location; do not "tidy" it back into `Projection`.
+- **Nothing is stored or persisted.** The sample decorates a rule whose `outcome` is
+  `Reject`; changing the outcome back removes the decoration on the next rebuild. Verified
+  with a rendered probe: every word keeps its exact x and width, only the replaced outcome
+  word differs.
+- `MonospaceTextMeasure` ignores emphasis deliberately (a monospaced face keeps its advance
+  when bold) so headless snapshots stay in agreement with the real editor. Tests use
+  `WideBoldTextMeasure` (bold char = 2 units) to prove geometry actually follows emphasis.
 
 `CellStyler.Default` reads only the cell: `ConstantCell` uses the notation's `ConstantKind`,
 `PropertyCell` switches on `PropertyType.Name` (`"int"`/`"date"` -> `Number`, `"string"` ->
@@ -445,9 +481,10 @@ palettes are expected to be complete anyway.
 
 Two performance facts worth keeping:
 
-- **The shape cache is keyed on `(text, brush)`** (`ShapedTextKey`), not on text alone. The
-  same word is a keyword in one place and an identifier in another, so text alone stopped
-  being a correct key the moment two brushes existed.
+- **The shape cache is keyed on `(text, brush, emphasis)`** (`ShapedTextKey`), not on text
+  alone. The same word is a keyword in one place and an identifier in another, and the same
+  word set bold is a different shape again, so text alone stopped being a correct key the
+  moment either axis existed.
 - **Measuring shapes at the default brush.** `ProjectionalEditorControl.Palette` also points
   `TextMeasure.Foreground` at the palette's `Default` brush, so a `Default` run is painted
   from text that has already been shaped for measuring. Only genuinely coloured runs pay for
@@ -505,7 +542,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 469 tests**; anything below that means tests were deleted.
+it. **Baseline is 530 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
@@ -717,3 +754,8 @@ Facts that came out of doing this, and cost time to rediscover:
   `using` directives at the top of the file and use unqualified names in the body.
 - `FontFamily.Default`, `Typeface(FontFamily, FontStyle, FontWeight, FontStretch)`,
   `Brushes.Black/White`, `Color.FromArgb`.
+- **`FormattedText` has no `textDecorations` constructor parameter** in 12.1.6. Underline and
+  strikethrough come from `formattedText.SetTextDecorations(TextDecorationCollection)` after
+  construction, which is what `AvaloniaTextMeasure.DecorationsOf` does. Weight and style, by
+  contrast, *are* constructor state (`Typeface`) - which is exactly why emphasis has to reach
+  the measure and cannot be a paint-time add-on.
