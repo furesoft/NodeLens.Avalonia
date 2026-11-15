@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Core\Projectional.Core.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />

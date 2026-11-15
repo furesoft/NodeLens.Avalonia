@@ -1,0 +1,55 @@
+using Projectional.Language;
+
+namespace Projectional.Expressions;
+
+/// <summary>
+/// The notation of every concept <see cref="ExpressionsLanguage"/> declares.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Every notation is a single <see cref="NotationEditor.Line"/>, which is what lets a host place an
+/// expression inline in its own line: <c>when amount &gt; 1000</c> is one line of one rule, not a
+/// block of its own. A language that gave its expressions a multi-line notation could only ever place
+/// them as children on their own lines.
+/// </para>
+/// <para>
+/// The parenthesized form draws its parentheses instead of hiding them, even though the tree already
+/// carries the grouping: the text a user reads should be the text the tree means, and a tree whose
+/// rendering is <c>1 + 2 * 3</c> whether it groups the addition or the multiplication is a projection
+/// that loses information.
+/// </para>
+/// </remarks>
+internal static class ExpressionsNotations
+{
+    public static void AddTo(NotationRegistry notations)
+    {
+        ArgumentNullException.ThrowIfNull(notations);
+
+        notations.Add(ExpressionsConceptKeys.IntLiteral, ed => ed.Line(ed.Property("value")));
+
+        notations.Add(ExpressionsConceptKeys.BoolLiteral, ed => ed.Line(ed.Property("value")));
+
+        notations.Add(ExpressionsConceptKeys.StringLiteral, ed => ed.Line(
+            ed.Punct("\""),
+            ed.Property("value"),
+            ed.Punct("\"")));
+
+        notations.Add(ExpressionsConceptKeys.Name, ed => ed.Line(ed.Property("name")));
+
+        notations.Add(ExpressionsConceptKeys.Binary, ed => ed.Line(
+            ed.ChildInline("left"),
+            ed.Space,
+            ed.Property("operator"),
+            ed.Space,
+            ed.ChildInline("right")));
+
+        notations.Add(ExpressionsConceptKeys.Unary, ed => ed.Line(
+            ed.Property("operator"),
+            ed.ChildInline("operand")));
+
+        notations.Add(ExpressionsConceptKeys.Parenthesized, ed => ed.Line(
+            ed.Punct("("),
+            ed.ChildInline("inner"),
+            ed.Punct(")")));
+    }
+}
