@@ -62,6 +62,15 @@ public static class CaretNavigation
     /// reaches. Both cases fall back to the first caret target at or after the place the address had,
     /// because that is where the text the caret was next to moved to; a position that names nothing
     /// left in the document falls back to its first cell.
+    /// </para>
+    /// <para>
+    /// An address that names a cell which arranges others - a node, a container, the element of a child
+    /// slot - is read as "start here", and the first thing inside it that can be typed into wins over
+    /// the first thing it shows. That is the same rule an empty document opens with, and it is what
+    /// makes an edit that creates a node usable: the action reports the address of what it created,
+    /// and the caret has to end up on the property the user is going to type, not on the keyword the
+    /// notation happens to render in front of it.
+    /// </para>
     /// </remarks>
     /// <exception cref="EditingException">The tree has no cell the caret could stand in.</exception>
     public static CaretPosition Nearest(EditorTree tree, CaretPosition position)
@@ -87,15 +96,7 @@ public static class CaretNavigation
             return CaretPosition.At(places[0], 0);
         }
 
-        foreach (var place in places)
-        {
-            if (place.Order >= order)
-            {
-                return CaretPosition.At(place, 0);
-            }
-        }
-
-        return CaretPosition.At(places[^1], 0);
+        return CaretPosition.At(places[Landing(tree, places, position.Address, order)], 0);
     }
 
     /// <summary>
@@ -381,5 +382,66 @@ public static class CaretNavigation
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// The place a position lands on when its address names a cell that arranges others rather than a
+    /// cell the caret could stand in.
+    /// </summary>
+    /// <param name="tree">The tree the position has to be valid in.</param>
+    /// <param name="places">The places of <paramref name="tree"/>.</param>
+    /// <param name="address">The address that does not name a place of its own.</param>
+    /// <param name="order">Where that address sits in document order.</param>
+    /// <remarks>
+    /// Everything a cell arranges is one uninterrupted run of document order, so the subtree the
+    /// address names is a range of orders and needs no second walk. Inside that range the first slot
+    /// wins, because a slot is what can be typed into; a subtree that offers none falls back to its
+    /// first place, which is the keyword or bracket the notation puts in front.
+    /// </remarks>
+    private static int Landing(EditorTree tree, IReadOnlyList<CaretPlace> places, CellAddress address, int order)
+    {
+        var first = FirstAtOrAfter(places, order);
+
+        if (first < 0)
+        {
+            return places.Count - 1;
+        }
+
+        var end = tree.Find(address) is { } subtree ? order + CountOf(subtree) : order;
+
+        for (var index = first; index < places.Count && places[index].Order < end; index++)
+        {
+            if (places[index].IsSlot)
+            {
+                return index;
+            }
+        }
+
+        return first;
+    }
+
+    private static int FirstAtOrAfter(IReadOnlyList<CaretPlace> places, int order)
+    {
+        for (var index = 0; index < places.Count; index++)
+        {
+            if (places[index].Order >= order)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static int CountOf(EditorCell cell)
+    {
+        var count = 1;
+
+        foreach (var child in cell.Children)
+        {
+            count += CountOf(child);
+        }
+
+        return count;
     }
 }

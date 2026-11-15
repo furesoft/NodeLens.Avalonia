@@ -17,8 +17,9 @@ namespace Projectional.Editing;
 /// <para>
 /// The caret ends up inside what was created, so pressing Enter twice adds two children rather than
 /// re-entering the same slot. It is aimed at the new child's own cell address, which is not a caret
-/// stop, and the session resolves it to the first stop inside the new subtree: the action says what it
-/// created, and the tree says where in it the user can type.
+/// stop, and the session resolves it to the first stop inside the new subtree that can be typed into:
+/// the action says what it created, and the tree says where in it the user can type. That is why
+/// pressing Enter and then typing a name lands in the name instead of on the keyword in front of it.
 /// </para>
 /// <para>
 /// A single-valued slot that already has its child and a node that is a root have nothing to add. Enter

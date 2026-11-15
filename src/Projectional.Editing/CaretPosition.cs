@@ -17,9 +17,10 @@ namespace Projectional.Editing;
 /// <para>
 /// That order is a hint and not an identity. A position named by address alone carries none, and
 /// <see cref="CaretNavigation.Nearest"/> then falls back to the first cell with that address - which
-/// is precisely what an edit action means when it reports "the caret ends up at this address". After
-/// a rebuild the order of a surviving cell is at worst slightly off, and the nearest cell with the
-/// same address is still the one that was meant.
+/// is precisely what an edit action means when it reports "the caret ends up at this address" - and
+/// to the first slot inside it when that cell arranges others, because a slot is what can be typed
+/// into. After a rebuild the order of a surviving cell is at worst slightly off, and the nearest cell
+/// with the same address is still the one that was meant.
 /// </para>
 /// <para>
 /// The offset counts characters, not pixels, which keeps positions independent of fonts and zoom
