@@ -43,8 +43,8 @@ Cells of the editor tree (namespace `Projectional.Projection`, folder `Tree/`):
 | `ConstantCell` | literal text (keyword, punctuation), with its `ConstantKind` |
 | `SpaceCell` | one column of blank the notation asked for |
 | `PropertyCell` | property text, its `PropertyType` and whether the slot is set |
-| `ChildCell` | one child slot: the child's projection, or its empty text |
-| `CollectionCell` | a list slot: items interleaved with separators |
+| `ChildCell` | one child slot: the child's projection, or its empty text, spaced apart |
+| `CollectionCell` | a list slot: items interleaved with separators and spacing |
 | `ReferenceCell` | target name, `<unresolved>`, or the notation's unset text |
 | `MissingNotationCell` | marker for a concept whose notation is not written yet |
 
@@ -115,6 +115,14 @@ the tree, in abstract **layout units** rather than pixels.
 - **Continuation.** After a taller child inside a line, the cursor continues on that
   child's *last* line. A nested block therefore keeps the cell that follows it - typically
   a closing brace - beside its last line, which is the look MPS has.
+- **A list slot says how wide its gaps are, and the gap comes after the separator.**
+  `CollectionNotationCell.Spacing` and `ChildNotationCell.Spacing` (one column by default)
+  are the blank that *follows* each separator, or the whole gap when the notation declares
+  no separator. Nothing is inserted in front of a separator, because whether a token wants
+  a space before it belongs to the token - a comma does not, `and` does - so that space is
+  written into the separator notation itself (`Punct(",")` beside `Line(Space, Keyword("and"))`).
+  There is no trailing gap after the last item. A gap is real cells, not padding applied by
+  the layout, so a wide gap is several `SpaceCell`s and every one of them is a caret stop.
 - **A text cell is laid out as lines, and breaks itself when the page does not reach.**
   The text of a property is broken into `TextLine`s by `TextWrapper` before it is measured:
   a `\n` in the value always ends a line, and when a wrap width is known the wrapper also

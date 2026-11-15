@@ -45,14 +45,15 @@ public sealed class NotationEditor
 
     public IndentNotationCell Indent(params ReadOnlySpan<BlockNotationCell> content) => new(content);
 
-    public ChildNotationCell Children(string slot, string emptyText = "<empty>") =>
-        new(slot) { EmptyText = emptyText };
+    public ChildNotationCell Children(string slot, string emptyText = "<empty>", int spacing = 1) =>
+        new(slot) { EmptyText = emptyText, Spacing = spacing };
 
     public CollectionNotationCell Collection(
         string slot,
         InlineNotationCell? separator = null,
-        string emptyText = "<empty>") =>
-        new(slot) { Separator = separator, EmptyText = emptyText };
+        string emptyText = "<empty>",
+        int spacing = 1) =>
+        new(slot) { Separator = separator, EmptyText = emptyText, Spacing = spacing };
 
     public TableColumn Column(string slot, InlineNotationCell header, string emptyText = "<empty>") =>
         new(slot, header) { EmptyText = emptyText };

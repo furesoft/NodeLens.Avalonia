@@ -93,7 +93,7 @@ public sealed class EditorTreeBuilder
                 CellOrientation.Vertical,
                 isIndented: true,
                 BuildBlocks(indent.Content, node, emphasis)),
-            ChildNotationCell children => BuildChildren(children.Slot, children.EmptyText, node, emphasis, rootAddress),
+            ChildNotationCell children => BuildChildren(children.Slot, children.EmptyText, node, emphasis, rootAddress, children.Spacing),
             CollectionNotationCell collection => BuildCollection(collection, node, emphasis, rootAddress),
             TableNotationCell table => BuildTable(table, node, emphasis, rootAddress),
             _ => throw new ProjectionException(
@@ -135,7 +135,7 @@ public sealed class EditorTreeBuilder
         SpaceNotationCell => new SpaceCell(new CellAddress(node.Id)),
         PropertyNotationCell property => BuildProperty(property, node, emphasis),
         ReferenceNotationCell reference => BuildReference(reference, node, emphasis),
-        SingleChildNotationCell single => BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null),
+        SingleChildNotationCell single => BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null, spacing: 0),
         _ => throw new ProjectionException(
             $"The notation of '{node.Concept.Key}' uses an inline cell of unknown kind '{cell.GetType().Name}'."),
     };
@@ -208,7 +208,8 @@ public sealed class EditorTreeBuilder
         string emptyText,
         Node node,
         TextEmphasis emphasis,
-        CellAddress? rootAddress)
+        CellAddress? rootAddress,
+        int spacing)
     {
         if (node.Concept.FindChild(slot) is null)
         {
@@ -217,14 +218,24 @@ public sealed class EditorTreeBuilder
         }
 
         var children = node.GetChildren(slot);
-        var content = new EditorCell[children.Count];
+        var address = rootAddress ?? CellAddress.OfSlot(node.Id, slot);
+        var content = new EditorCell[children.Count + (Math.Max(0, children.Count - 1) * spacing)];
+        var next = 0;
 
         for (var i = 0; i < children.Count; i++)
         {
-            content[i] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
+            if (i > 0)
+            {
+                for (var space = 0; space < spacing; space++)
+                {
+                    content[next++] = new SpaceCell(address);
+                }
+            }
+
+            content[next++] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
         }
 
-        return new ChildCell(rootAddress ?? CellAddress.OfSlot(node.Id, slot), slot, emptyText, content);
+        return new ChildCell(address, slot, emptyText, content);
     }
 
     private CollectionCell BuildCollection(
@@ -249,13 +260,16 @@ public sealed class EditorTreeBuilder
             items[i] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
         }
 
-        var separators = new EditorCell[Math.Max(0, children.Count - 1)];
+        var separators = Array.Empty<EditorCell>();
 
-        for (var i = 0; i < separators.Length; i++)
+        if (notation.Separator is { } separatorNotation && children.Count > 1)
         {
-            separators[i] = notation.Separator is { } separator
-                ? BuildInline(separator, node, emphasis)
-                : new SpaceCell(new CellAddress(node.Id));
+            separators = new EditorCell[children.Count - 1];
+
+            for (var i = 0; i < separators.Length; i++)
+            {
+                separators[i] = BuildInline(separatorNotation, node, emphasis);
+            }
         }
 
         return new CollectionCell(
@@ -263,7 +277,8 @@ public sealed class EditorTreeBuilder
             slot,
             notation.EmptyText,
             items,
-            separators);
+            separators,
+            notation.Spacing);
     }
 
     /// <summary>
@@ -335,7 +350,7 @@ public sealed class EditorTreeBuilder
                     $"The table of '{row.Concept.Key}' shows column '{column.Slot}', but that child holds many; a cell can only show one child.");
             }
 
-            return BuildChildren(column.Slot, column.EmptyText, row, emphasis, rootAddress: null);
+            return BuildChildren(column.Slot, column.EmptyText, row, emphasis, rootAddress: null, spacing: 0);
         }
 
         throw new ProjectionException(
