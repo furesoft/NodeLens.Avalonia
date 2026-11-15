@@ -102,6 +102,18 @@ public sealed class ProjectionalEditorControl : Control
     private IBrush _lineNumberBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x80, 0x80, 0x80));
     private IBrush? _gutterBackground;
 
+    // The type is MarkerPalette; the property below cannot carry that name, because an instance member
+    // shadows a type of the same name everywhere inside this class.
+    private MarkerPalette _markerColors = MarkerPalette.Light;
+
+    // The waves as last computed. Geometry walks the document's findings and the whole layout, and the
+    // caret blink repaints twice a second, so the result is kept until one of its three inputs is replaced.
+    // A MarkerSet is immutable and the layout is a new object after every rebuild, so identity is enough.
+    private IReadOnlyList<MarkerRun>? _runs;
+    private CellLayout? _runsOfLayout;
+    private MarkerSet? _runsOfMarkers;
+    private ITextMeasure? _runsOfMeasure;
+
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
         : this(new Typeface(FontFamily.Default), 14)
@@ -311,6 +323,60 @@ public sealed class ProjectionalEditorControl : Control
         }
     }
 
+    /// <summary>What a check found wrong with the document, or the empty set when nothing did.</summary>
+    /// <remarks>
+    /// <para>
+    /// Forwards to <see cref="EditorSession.Markers"/>, which owns the value; the control only repaints.
+    /// Assigning here invalidates the visual, so a host that goes through this property never has to ask
+    /// for a repaint itself. Assigning <c>Session.Markers</c> directly still works and still costs no
+    /// rebuild - it just needs the host to call <see cref="Visual.InvalidateVisual"/> afterwards.
+    /// </para>
+    /// <para>
+    /// Nothing is resolved here: a marker is decoration, so the tree, the layout and the caret are
+    /// untouched, and the wave is computed from the layout that is already on screen.
+    /// </para>
+    /// </remarks>
+    public MarkerSet Markers
+    {
+        get => Session?.Markers ?? MarkerSet.Empty;
+
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (Session is not { } session || ReferenceEquals(session.Markers, value))
+            {
+                return;
+            }
+
+            session.Markers = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The colour each severity is stroked in.</summary>
+    /// <remarks>
+    /// Named for what it colours rather than for its type, following <see cref="Palette"/> and
+    /// <see cref="ListPalette"/>: a member called <c>MarkerPalette</c> would shadow the type of that name
+    /// inside this class. Recolouring is a repaint - no severity reaches the model, so no rectangle moves.
+    /// </remarks>
+    public MarkerPalette MarkerColors
+    {
+        get => _markerColors;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_markerColors, value))
+            {
+                return;
+            }
+
+            _markerColors = value;
+            InvalidateVisual();
+        }
+    }
+
     /// <summary>How much room the row numbers take on the left edge, in device pixels.</summary>
     /// <remarks>
     /// The width is the widest number the document needs plus the blank that separates it from the text,
@@ -319,6 +385,7 @@ public sealed class ProjectionalEditorControl : Control
     /// way a code editor's does not.
     /// </remarks>
     public double GutterWidth => _showLineNumbers
+
         ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
         : 0;
 
@@ -484,6 +551,10 @@ public sealed class ProjectionalEditorControl : Control
                 TextMeasure.Shaped(run.Text, _palette.BrushOf(run.Style), run.Emphasis),
                 new Point(bounds.X, bounds.Y));
         }
+
+        // After the text, so a squiggle is never buried by a glyph, and before the caret, so a caret that
+        // stands on a marked character is still visible.
+        PaintMarkers(context);
 
         if (frame.CaretRect is { } caret && _blink.IsVisible)
         {
@@ -1038,6 +1109,80 @@ public sealed class ProjectionalEditorControl : Control
                 TextEmphasis.None);
 
             context.DrawText(text, new Point(right - text.WidthIncludingTrailingWhitespace, top));
+        }
+    }
+
+    /// <summary>The stretches of text to stroke, computed at most once per layout and marker set.</summary>
+    /// <remarks>
+    /// Both passes walk the document rather than the visible part of it, so neither may run per repaint.
+    /// The marker set is immutable and the layout is a fresh object after every rebuild, so identity on
+    /// the pair answers "is this still the same drawing" - and the measure is in the key because a cell's
+    /// position depends on it.
+    /// </remarks>
+    private IReadOnlyList<MarkerRun> Runs
+    {
+        get
+        {
+            var session = Session;
+
+            if (session is null)
+            {
+                return [];
+            }
+
+            if (_runs is null
+                || !ReferenceEquals(_runsOfLayout, session.Layout)
+                || !ReferenceEquals(_runsOfMarkers, session.Markers)
+                || !ReferenceEquals(_runsOfMeasure, session.Measure))
+            {
+                _runs = MarkerRuns.Of(MarkerGeometry.Of(session.Layout, session.Markers, session.Measure));
+                _runsOfLayout = session.Layout;
+                _runsOfMarkers = session.Markers;
+                _runsOfMeasure = session.Measure;
+            }
+
+            return _runs;
+        }
+    }
+
+    /// <summary>Paints a wave under every marked stretch that is on screen.</summary>
+    /// <remarks>
+    /// <para>
+    /// Clipped to the text area, so a marker that is scrolled half out of the window is cut at the gutter
+    /// rather than drawn over it - the numbers are the host's chrome and nothing of the page may cover
+    /// them. The cull is per run and cheap, so a document with thousands of findings still costs only the
+    /// waves in the window.
+    /// </para>
+    /// <para>
+    /// One pass over the runs in reading order; a later run can never overlap an earlier one, because
+    /// <see cref="MarkerRuns"/> already merged the overlapping ones.
+    /// </para>
+    /// </remarks>
+    private void PaintMarkers(DrawingContext context)
+    {
+        var runs = Runs;
+
+        if (runs.Count == 0)
+        {
+            return;
+        }
+
+        var width = Bounds.Width;
+        var height = Bounds.Height;
+        var gutter = GutterWidth;
+
+        using var clip = context.PushClip(new Rect(gutter, 0, Math.Max(0, width - gutter), height));
+
+        foreach (var run in runs)
+        {
+            var bounds = new Rect(run.X - _offsetX + gutter, run.Y - _offsetY, run.Width, run.Height);
+
+            if (bounds.Bottom <= 0 || bounds.Y >= height || bounds.Right <= gutter || bounds.X >= width)
+            {
+                continue;
+            }
+
+            MarkerWave.Draw(context, _markerColors.BrushOf(run.Severity), run.Severity, bounds);
         }
     }
 }
