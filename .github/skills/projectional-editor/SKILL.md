@@ -13,10 +13,11 @@ and no parser. Target users are people who build their own DSLs or embed a DSL e
 a component inside a host application. Planning is finished and lives in `docs/`;
 milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
 harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
-in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/` and
-the measure/arrange layout in `Projectional.Projection/Layout/` and the headless snapshot
-renderer in `Projectional.Projection/Snapshot/` are done; edit actions, the expressions
-language and the Avalonia control follow.
+in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/`, the
+measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapshot renderer in
+`Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/` and the
+first two real languages (`Projectional.Expressions`, `Projectional.Samples`) are done; the
+Avalonia control and the standalone shell follow.
 
 ## Status and where the truth lives
 
@@ -38,6 +39,9 @@ even if the build stays green.
    `Core` -> `Language` -> `Projection` -> `Editing` -> `Avalonia` -> `Workbench`.
    `Projection` and `Editing` must **never** reference Avalonia. That keeps layout and
    editing testable headlessly and leaves a second frontend possible.
+   The shipped languages hang off `Language`, not off each other's callers:
+   `Expressions` -> `Language`, `Samples` -> `Expressions` + `Language`. `Core` must never
+   reference `Language`; languages register into Core's registries from above.
 3. **Only `Projectional.Core` and `Projectional.Avalonia` expose public API.** Every other
    assembly is `internal` plus `InternalsVisibleTo`.
 4. **All mutation happens inside a transaction** and emits change events. Subscribers must
@@ -57,6 +61,15 @@ even if the build stays green.
    instead of being kept - and that exception is documented in
    `docs/architecture/persistence.md`.)
 9. **`net10.0` only**, no multi-targeting (ADR 0003).
+10. **A concept is concrete or abstract, and only concrete concepts can be nodes.**
+    `ConceptDeclaration(..., isAbstract: true)` names a *set* that a slot can be declared over;
+    `Model.NewNode` rejects it, so no code path can produce a bare base node. The single consumer
+    is `ConceptRegistry.DefaultInstantiableFor(key)`, which returns the concept itself when
+    concrete and otherwise the first non-abstract concept below it in **declaration order** -
+    that order is the language author's answer to "what does the user most likely want here",
+    and `InsertNodeAction.FillSlot` uses it to fill an empty slot (returning `EditResult.Unchanged`
+    when no concept can exist). An abstract concept may therefore have no notation; every
+    concrete one needs its own or an inherited one.
 
 ## Working conventions (explicit user requirement)
 
@@ -342,6 +355,12 @@ dependency, so every action is testable headlessly.
   every keystroke is deliberate M1 policy, not an oversight.
 - **Enter appends.** `Model.NewChild` adds to the end of a list; there is no insert-at-index
   API yet, so Enter on a slot in the middle of a list puts the child last.
+- **An empty single-child slot renders one cell** whose address is
+  `CellAddress.OfSlot(ownerId, slot)` - that is the address Enter fills. Collection slots with
+  no children produce no cell at all, so Enter there has nothing to act on.
+- **An `EditorSession` must be created after the nodes it should show exist.** It builds tree
+  and layout in its constructor; nodes added to a live model afterwards need `Refresh()`. In
+  tests this bites when a fixture builds the session before `model.AddRoot(...)`.
 - **Typing into a defaulted property inserts, it does not replace.** Defaults are
   materialized values (`name` = `"unnamed"`, `enabled` = `"true"`), and the model cannot tell
   an unset property from a set one, so `"unnamed"` + `"P"` gives `"Punnamed"`. Accepted
@@ -397,7 +416,22 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 325 tests**; anything below that means tests were deleted.
+it. **Baseline is 349 tests**; anything below that means tests were deleted.
+
+Two *real* languages sit next to the fixture and are the executable proof that the language
+layer composes:
+
+- `Projectional.Expressions` - an abstract `Expression` plus eight concrete concepts
+  (`IntLiteral`, `BoolLiteral`, `StringLiteral`, `Name`, `Binary`, `Unary`, `Parenthesized`).
+  A host borrows its declarations with `[.. ExpressionsLanguage.ConceptDeclarations, .. own]`;
+  it never inherits from them. Operators are `PropertyType.Enum` symbols so the typed value
+  *is* the notation.
+- `Projectional.Samples` - the toy rules language (`Ruleset`, `Rule`, condition over
+  `Expressions.Expression`) and `PayrollSample`, the shared document used by notation tests
+  and (later) the standalone app.
+
+Every expression notation must stay a **single `Line`**, because `ChildInline(slot)` refuses
+anything else - a two-line expression concept silently breaks inline children.
 
 - **The corpus is the file format.** `tests/Projectional.Core.Tests/Corpus/*.mps` are
   documents the writer produced once and that now have to load and save back to the same

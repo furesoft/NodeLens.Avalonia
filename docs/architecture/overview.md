@@ -58,13 +58,14 @@ makes it a usable test of the integration surface
 | --- | --- | --- |
 | `Projectional.Core` | Node/model/project containers, change events, XML persistence, migrations, registries | none |
 | `Projectional.Language` | Concept descriptors, notation descriptors, aspect registration, built-in bootstrap languages | none |
+| `Projectional.Expressions` | Shared expression/name sub-language (literals, operators, parentheses) that a DSL composes instead of re-declaring | none |
 | `Projectional.Projection` | Editor tree construction, measurement, layout boxes, hit testing, caret positions | none |
 | `Projectional.Editing` | Structural edit actions, substitution/transformation menus, completion, undo | none |
 | `Projectional.Semantics` | Constraint evaluation, type checking, scope resolution, generation, interpretation | none |
 | `Projectional.Avalonia` | `ProjectionalEditorControl`, rendering of layout boxes, input, IME, clipboard, accessibility | Avalonia 12 |
 | `Projectional.Workbench` | Standalone desktop editor: document tabs, browsers, panels. **Consumer** of the public API — no internal access | Avalonia 12 |
+| `Projectional.Samples` | The toy rules language and its sample document: the working example of composing `Expressions` | none |
 | `tests/*` | Unit and snapshot tests | none |
-| `samples/*` | Example languages and host integrations | varies |
 
 Only `Projectional.Core` and `Projectional.Avalonia` expose public API. Everything
 else is `internal` with `InternalsVisibleTo` for tests — see

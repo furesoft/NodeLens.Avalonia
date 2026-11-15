@@ -48,7 +48,7 @@ and [testing.md](architecture/testing.md).
 | Headless snapshot render | ASCII grid, used by all notation tests — **delivered** |
 | Avalonia control | rendering, scrolling, virtualization, caret, selection |
 | Input | typing, arrows, tab, enter, delete, undo/redo |
-| Built-in language | minimal `Projectional.Expressions` + a toy block language |
+| Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) — **delivered** |
 | Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) |
 
 **Gate:** a user can edit a nested model with a text-like look, using only the
