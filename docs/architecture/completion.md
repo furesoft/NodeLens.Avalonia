@@ -1,12 +1,18 @@
 # Completion
 
-*Slice A — concepts into an empty slot — is implemented. The rest of this document is the plan.*
+*Slice A — concepts into an empty slot — and slice A2 — the values of an enumeration — are
+implemented. The rest of this document is the plan.*
 
 In a text editor, completion guesses what word the user is typing and offers vocabulary from
 the file, the project or a language server. Here there is nothing to guess: the caret is in an
 **empty slot**, and the slot already says which concepts may fill it. Completion therefore does
 not offer words, it offers *the model's own possibilities*, and the list is derived from the
 language rather than assembled from text.
+
+The one place where a cell *does* have text and the list still offers no guess is a property
+whose type names its values. An enumeration is closed, so "what may be here" is answered by the
+type alone — no vocabulary to collect, no prefix to infer, nothing to score
+(see [Values](#values)).
 
 That difference is the whole design. Everything below is either a consequence of it or a
 deliberate limit of the first slice.
@@ -34,19 +40,26 @@ something to type into". A literal belongs only to the second answer.
 public sealed class CompletionItem
 {
     public CompletionItem(string conceptKey, CompletionKind kind);
-    public string ConceptKey { get; }
+    public string ConceptKey { get; }                                  // the payload
     public CompletionKind Kind { get; }
-    public string Label => field ??= LabelOf(ConceptKey);
+    public string Label => field ??= Kind == CompletionKind.Value
+        ? ConceptKey
+        : LabelOf(ConceptKey);
+    public static CompletionItem ForValue(string symbol);
 }
 ```
 
-- **The item carries the concept key and nothing derived.** `Label` is the last segment of
-  `Expressions.IntLiteral` — `IntLiteral` — because a list of fully qualified keys reads as
-  noise, and the short name is what the declaration itself calls the concept, so no language
-  needs a second, display-only name.
-- **`Kind` is the vocabulary a host picks an icon by.** Slice A has exactly one member, `Node`,
-  because concepts are the only thing it proposes. References, slots and keywords slot into the
-  same enum later without changing the item.
+- **The item carries the payload and nothing derived.** `ConceptKey` is that payload, and its
+  meaning is the kind's: a concept key for `Node`, a symbol for `Value`. Two names for one field
+  would be a second thing to keep in step, and the kind is already the discriminator.
+- **`Label` is the last segment of a concept key** — `Expressions.IntLiteral` becomes
+  `IntLiteral` — because a list of fully qualified keys reads as noise, and the short name is
+  what the declaration itself calls the concept, so no language needs a second, display-only
+  name. A **value** keeps its symbol verbatim, dots included: it is already the exact text the
+  property stores, so shortening it would show a word the user cannot type.
+- **`Kind` is the vocabulary a host picks an icon by.** Two members today: `Node`, for a concept
+  that fills a slot, and `Value`, for a symbol that replaces a cell's text. References and
+  keywords slot into the same enum later without changing the item.
 - **No colour, no glyph, no picture.** What an item looks like is the host's decision, for the
   same reason the syntax palette lives above this layer: a model carrying a picture would have
   to be persisted with one.
@@ -69,6 +82,67 @@ keeping them separate is what lets `Expressions` hide its literals without makin
 unreachable. A slot declared **directly** over a hidden concept therefore proposes nothing at
 all, and the user fills it with Enter — a slot that can offer no choice is a slot where a list
 would have nothing to say.
+
+## Values
+
+The second kind of proposal is not a concept at all. A property whose type is an enumeration
+knows **every legal value without parsing anything**, so the list can name the whole answer:
+
+```csharp
+PropertySlot("outcome", PropertyType.Enum(RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject))
+```
+
+```csharp
+public abstract class PropertyType
+{
+    public virtual IReadOnlyList<string> Symbols => [];   // declaration order
+}
+```
+
+- **`Symbols` is on the base type, empty by default.** Only an enumeration has a closed set, so
+  every other type answers with nothing and needs no override. Reading the symbols out of an
+  `EnumPropertyType`'s private store was the alternative; asking the type is the one shape that
+  does not depend on knowing which subclass it is.
+- **Declaration order is the ranking**, exactly as it is for concepts, and it is the same order
+  the type uses when it validates. No second sort, no frequency table.
+- **The current value is preselected**, so Enter without choosing rewrites what is already there
+  and changes nothing — the list opens *agreeing* with the model instead of proposing an edit.
+
+A value list is opened by the same `CompletionSource` and claimed by the same keys, but it is a
+different kind of question, which shows in three places:
+
+| | Node proposals | Value proposals |
+| --- | --- | --- |
+| The slot | empty child / collection slot | a property cell, which usually **has** text |
+| Accepting | creates a node, resolves the caret into it | writes the property, leaves the caret alone |
+| Everything else | unchanged: prefix, arrows, wrap, Escape, click | |
+
+Because the cell already holds text, the two gestures the node path does not need become the
+whole point: typing **filters** and Backspace **widens**. That is not a convenience here, it is
+the repair of a cell that could not be retyped at all: every prefix of a symbol is an illegal
+value, so a user typing `A` over `Review` was refused, and the list is what turns those
+keystrokes into a narrowing filter (`docs/architecture/editing.md`).
+
+### The list opens when the caret arrives
+
+A node list needs a request: the slot is empty, so there is nothing to be curious about until the
+user asks. An enumeration is the opposite — arriving in the cell *is* the request, because the
+editor knows the whole answer and a user cannot type any of it character by character. So
+`EditorSession` offers the values by itself:
+
+- **`Apply` compares the caret before and after the action**, and offers when an action that is
+  not a `CompletionAction` left it somewhere else. Arrival is therefore a property of what
+  happened, not a guess about intent.
+- **`Select` offers unconditionally**, because a pointer click is a move the session was told
+  about rather than one an action reported.
+- **The session constructor and `Refresh` do not offer.** Opening a document must not pop a list,
+  and neither must an undo: a restored model is not a caret the user moved.
+- **A dismissed list stays dismissed.** Escape closes it, and a keystroke that is refused leaves
+  the caret where it is, so nothing reopens what the user closed until the caret really leaves
+  the cell and comes back.
+- **A selection inside the cell does not suppress the list**, because selecting the value is how
+  a user says "I am about to retype this" — and for an enumeration that is now a working gesture.
+  A selection that spans cells does suppress it: the caret then stands for a range.
 
 ## The list is view state
 
@@ -100,6 +174,8 @@ the characters the user types while the list is open are not an edit at all; the
 filter, and they disappear with the list. Closing the list hands the next character back to
 `TypeTextAction`, which may then create a concept from it
 ([editing.md](editing.md#typing-into-an-empty-slot)) — the prefix itself is still never stored.
+Over a value list the same rule buys something a text editor cannot offer: a prefix that is not
+itself a legal value still filters the list, so the half-typed word costs the model nothing.
 
 Routing an edit through the session is what keeps this honest. `EditContext.Completion` is the
 handle an action uses, `EditorSession.Apply` copies it back onto the session after every apply,
@@ -110,9 +186,10 @@ outlive the caret that justified it, and no action has to remember to dismiss it
 
 | Key | Effect | `EditorKey` |
 | --- | --- | --- |
-| Ctrl+Space | open the list for the empty slot at the caret | `ControlSpace` |
+| Ctrl+Space | open the list for the slot or property at the caret | `ControlSpace` |
+| (none) | the list also opens by itself when the caret arrives in a property whose type names its values | — |
 | Up / Down | move the highlight, wrapping at both ends | `Up` / `Down` |
-| Enter / Tab | create the highlighted concept in the slot and close the list | `Enter` / `Tab` |
+| Enter / Tab | take the highlighted item: create the concept, or write the symbol | `Enter` / `Tab` |
 | Escape | close the list, leave the model alone | `Escape` |
 | Backspace | drop one character of the prefix, which widens the filter | `Backspace` |
 | any printable character | append to the prefix, which narrows the filter | (text input, not a key) |
@@ -201,9 +278,10 @@ a host is free to use pictures instead.
 
 ## Filling the slot
 
-`AcceptCompletionAction` is the only completion gesture that changes the model, and it changes
-it the way Enter would: one child in the slot, the caret resolved into what was created. Filling
-a slot is one undoable step whether the user picked from a list or let Enter take the default.
+`AcceptCompletionAction` is the only completion gesture that changes the model. For a concept it
+changes it the way Enter would: one child in the slot, the caret resolved into what was created.
+Filling a slot is one undoable step whether the user picked from a list or let Enter take the
+default.
 
 It re-derives both the slot and the proposal when the key is pressed rather than trusting the
 list, because **the list survives between keystrokes and the model does not**: an undo, a
@@ -217,11 +295,18 @@ leaves the model alone. Pressing Enter again then takes the ordinary path and cr
 default, which is what the user would have had without a list open — a graceful degradation and
 not a special case.
 
+**A value is written, not created.** `AcceptCompletionAction` branches before the node path:
+when the list describes a property cell, accepting is `EditContext.SetProperty` with the symbol,
+guarded by `property.Type.IsValid` so a stale list cannot store what the type would reject. It
+is the same single undoable step, and the caret does not move — a value replaces the text it
+stands for, so there is nothing created to resolve the caret into.
+
 ## Slices
 
 | Slice | Branch | Delivers |
 | --- | --- | --- |
 | A | `feat/completion` | `CompletionKind`/`Item`/`List`/`Slot`/`Source`, the six actions, `EditorSession.Completion`, `EditorKey.ControlSpace`/`Escape`, the two mappings, `CompletionPalette`/`Icon`/`GeometryImage`/`Presenter`, the control's painting and click handling, tests |
+| A2 | `feat/enum-completion` | `CompletionKind.Value`, `PropertyType.Symbols`, `CompletionSource.Values`, the value branch of accept, arrival-based offers from `EditorSession`, tests |
 | B | `feat/completion-references` | `Kind.Reference` and reference targets as proposals, which needs a *scope* to answer "what may be referenced here" — the first completion that reads the model rather than the registry |
 | C | `feat/completion-fill` | completing a **filled** slot: replacing the child a caret is inside, which is the MPS `Substitute` action and needs the substitution rules a language declares |
 | D | `feat/completion-words` | narrowing over a *typed* prefix in a property cell, which is the VS Code behaviour users expect and which slice A deliberately does not do |
@@ -237,12 +322,12 @@ node in the document would have to be thrown away.
 | Left out | Why |
 | --- | --- |
 | Completing a slot that already has a child | it destroys what is there, so it is a substitution with replacement rules, not an insertion |
-| Word-based completion inside a property cell | the model has no vocabulary to complete from; the text of a cell is a value, not a token stream |
+| Word-based completion inside a property cell | the model has no vocabulary to complete from; the text of a cell is a value, not a token stream. A cell whose *type* names its values is the opposite case and is implemented — see [Values](#values) |
 | Fuzzy matching | the filter is `Contains` over a short name; a scoring function is a user-experience feature that needs a list long enough to matter |
 | Sorting by relevance | declaration order *is* the relevance, and reordering it would contradict what Enter does without a list |
 | A list that follows the caret while it is open | any edit closes the list, so the caret cannot move under it |
 | Insertion at the caret's index in a many-child slot | `Model.NewChild` adds to the end and there is no insert-at-index API; that arrives with node moves slice B |
-| Auto-open while typing | an editor that pops a list on the first character needs a suppression heuristic, which is a policy the host should own |
+| Auto-open while *typing* | an editor that pops a list on the first character needs a suppression heuristic, which is a policy the host should own. Opening on caret arrival is a different thing and is implemented, because arrival is a move the session observed and can therefore recognise exactly |
 | Remembering a "recently used" order | it would be per-user state the session does not have, and it would contradict declaration order |
 
 ## Decisions this plan proposes
@@ -256,16 +341,19 @@ node in the document would have to be thrown away.
 | D5 | Text typed into an open list is a filter, not an edit, and is routed through the session-aware `Type` overload |
 | D6 | An item's icon is an `IImage` from a host palette; the built-in set is vector geometry drawn by `GeometryImage`, so no binary asset is committed |
 | D7 | The list is painted inside the editor's surface, never in a toolkit popup |
+| D8 | A property type may name its legal values (`Symbols`), and such a cell offers them **without a request**: arriving in the cell is the request. The offer is derived from a caret move the session observed, never from a timer, and never on open, undo or redo |
 
 ## Testing
 
-Two files, both in the single test project, and neither can reach the internal
-`CompletionSlot`/`CompletionSource` (`Projectional.Editing` grants no internals), so both drive
+Three files, all in the single test project, and none can reach the internal
+`CompletionSlot`/`CompletionSource` (`Projectional.Editing` grants no internals), so all drive
 the public path — `EditorSession` plus `KeyRouter`:
 
 - `CompletionListTests` covers the pure list: filtering, the prefix, wrapping `Move`, widening
   one character at a time, and the selection resetting to the first match after a change of
   filter.
+- `CompletionItemTests` covers the two labelling rules a value introduces: a symbol is its own
+  label with its dots intact, and the kind survives construction.
 - `CompletionActionTests` covers the gestures end to end over the rules sample, whose `condition`
   slot is declared over an abstract concept with four offered concrete ones: Ctrl+Space opens
   four in declaration order; Down wraps; typing narrows; Backspace widens and then closes; Enter
@@ -273,6 +361,22 @@ the public path — `EditorSession` plus `KeyRouter`:
   key the list does not claim closes it and the key still reaches the model. One test pins the
   asymmetry the flag introduces: the three literals are absent from the list *and* still created
   by a plain Enter in the same slot.
+
+The same file carries the six value tests, over the rule's `outcome` property, which names
+`Accept`/`Review`/`Reject` in that order and starts on `Review`:
+
+| Test | What it pins |
+| --- | --- |
+| `ArrivingInAPropertyThatNamesItsValuesOffersThem` | the list opens by itself, in declaration order, with the current value preselected |
+| `AClickIntoAPropertyThatNamesItsValuesOffersThemToo` | `Select` offers as well, so a pointer move behaves like a caret move |
+| `TypingFiltersTheValuesAndEnterWritesTheMatch` | typing selects without editing, Enter writes the symbol, and it is one undo step that undoes back to the old value |
+| `AValueIsWrittenInPlaceAndLeavesTheCaretInTheCell` | Down then Enter rewrites the property and moves nothing |
+| `ADismissedListStaysClosedUntilTheCaretLeavesAndComesBack` | Escape is not undone by a refused keystroke; a real move away and back reopens it |
+| `ArrivingInAPropertyThatNamesNoValuesOpensNothing` | the offer is a property of the type, not of "being in a property" |
+
+Arriving is done by a **walk**, not by a counted number of presses: a helper presses Right until
+the caret's address is the target's. A fixed count would turn every future notation edit into a
+test failure, and the path to a cell in the middle of a line is already four stops.
 
 `EditorKeyMapTests` covers the input side: Ctrl+Space and Escape map, and neither is claimed
 under a different modifier.
@@ -285,9 +389,18 @@ wrong. Geometry assertions would have missed it.
 
 ## Open questions
 
-- **What should Ctrl+Space do inside a property cell?** Nothing today, because only empty slots
-  have proposals. Slice D would answer it with word completion; until then a host that wants the
-  key free can check `session.Completion` after the key.
+- **What should Ctrl+Space do inside a property cell?** In an enumerated property it opens the
+  values, because `CompletionSlot.At` resolves a property cell and the offer is the same one
+  arrival makes. In a *free-text* property it still does nothing, because the model has no
+  vocabulary to offer; slice D is what would answer it, and until then a host that wants the key
+  free can check `session.Completion` after the key.
+- **Does the arrival offer need a delay?** It opens synchronously, so a caret that passes through
+  a property cell on its way somewhere else opens a list the user did not ask for. Today every
+  move is one cell, so a pass-through is a deliberate press; if word-jump or scrolling movement
+  ever lands mid-line, a deferral becomes necessary.
+- **Should a value list be reachable when the caret cannot be in the cell?** A cell hidden by a
+  variant has no caret place, so its values are unreachable by design. A host that wants to edit
+  a hidden slot needs a form, which is a different feature.
 - **Should the list filter on the caret's surrounding text when it opens?** A cell next to an
   empty slot often holds the beginning of what the user meant. It is a guess, and a wrong guess
   hides the entry the user wanted.
