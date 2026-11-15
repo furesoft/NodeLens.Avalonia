@@ -93,12 +93,20 @@ first caret place whose `CellAddress.Owner` belongs to the node's subtree to the
 
 The text actions are unaffected. `Selection.HasText` is false for a range across cells, so
 `Copy`, `Cut`, `Paste` and typing keep their one-cell behaviour and a node selection simply
-has no text to hand them. Acting on a node selection is a structural edit, which is the
-subject of its own change.
+has no text to hand them. `Delete` does act on it: `DeleteSelectionAction` asks
+`SelectionRanges.NodesIn` which nodes the range fully covers and removes them in one
+transaction, so from a property value `Ctrl+A Ctrl+A Delete` removes the node that value
+belongs to, and the document rung removes every node it covers in one undo step - the
+document root itself stays, because it is the document, not its own child. A range that
+covers a node only partly removes nothing, because guessing which half was meant is worse
+than doing nothing. Cut stays text-only for now: it would have to write `SelectedText`,
+which is `null` for a node selection, so it would silently lose data.
+[editing.md](editing.md#selection) records the action; structural copy and cut are M3.
 
 `SelectionRanges` (`Projectional.Editing/SelectionRanges.cs`) is the single place that
 answers "what range covers this value, this node, this document", so a host that wants to
-offer only the document rung can ask for it directly instead of pressing three times.
+offer only the document rung can ask for it directly instead of pressing three times. Its
+inverse, `NodesIn`, is the same for the other direction.
 
 ### Copy leaves the document alone
 

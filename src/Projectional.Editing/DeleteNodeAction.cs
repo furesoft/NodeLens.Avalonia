@@ -49,13 +49,19 @@ public sealed class DeleteNodeAction : EditAction
 
     /// <summary>Where the caret goes once <paramref name="node"/> is gone.</summary>
     /// <remarks>
+    /// <para>
     /// Element addresses name the parent, so deleting a child renumbers the ones after it without
     /// touching the child itself. The sibling before the deleted node keeps its index; the sibling after
     /// it moves into the deleted node's index. Landing on the earlier one therefore needs no arithmetic,
     /// and landing on the later one is index <c>0</c> in the degenerate case where the deleted node was
     /// first.
+    /// </para>
+    /// <para>
+    /// Shared with <see cref="DeleteSelectionAction"/>, which deletes several nodes at once and lands on
+    /// the place the first of them came from - the same question, asked before any of them is removed.
+    /// </para>
     /// </remarks>
-    private static Selection Landing(Node parent, string slot, Node node)
+    internal static Selection Landing(Node parent, string slot, Node node)
     {
         var index = node.IndexInParent;
 

@@ -16,8 +16,9 @@ namespace Projectional.Editing;
 /// <para>
 /// It offers what MPS offers at this point of the roadmap: the two history steps, inserting where the
 /// caret stands, deleting what it can reach, the clipboard group and switching the representation of a
-/// concept. Node deletion and slot-targeted insertion are absent because the actions behind them do not
-/// exist yet; a menu entry that silently did nothing would be worse than no entry at all.
+/// concept. Deleting reaches as far as the selection does, so a node selection removes nodes; copying one
+/// is still absent because a structural clipboard does not exist yet, and a menu entry that silently did
+/// nothing would be worse than no entry at all.
 /// </para>
 /// <para>
 /// The clipboard entries are the same actions the Control-key gestures run, so the gesture an entry
@@ -57,9 +58,9 @@ public static class EditorMenu
                 InsertGesture),
             EditorMenuItem.Run(
                 "Delete",
-                () => session.Apply(new DeleteTextAction(DeleteDirection.Forward)),
+                () => session.Apply(KeyRouter.For(session, EditorKey.Delete)),
                 DeleteGesture,
-                CanDeleteText(session)),
+                CanDelete(session)),
             EditorMenuSeparator.Instance,
             EditorMenuItem.Run("Select All", () => session.Apply(new SelectAllAction()), SelectAllGesture),
             EditorMenuItem.Run("Copy", () => session.Apply(new CopyAction()), CopyGesture, CanCopyText(session)),
@@ -114,19 +115,24 @@ public static class EditorMenu
     }
 
     /// <summary>
-    /// Whether Delete has a character to remove, which is what makes the entry available.
+    /// Whether Delete has something to remove, which is what makes the entry available.
     /// </summary>
     /// <remarks>
-    /// The question is asked of the caret, not of the action, because the action answers it by editing:
-    /// forward delete needs a character to the right, and outside a property there is no text at all.
-    /// A selection counts even when the caret sits at the end of its cell, since deleting the selection
-    /// does not care where the caret is.
+    /// <para>
+    /// The question is asked of the caret, not of the action, because the action answers it by editing.
+    /// Three things can be removed and all three count: a selection inside one cell, a selection that
+    /// spans cells (the nodes it covers), and the character to the right of the caret.
+    /// </para>
+    /// <para>
+    /// The entry runs the same routing the Delete key does rather than one fixed action, so the menu and
+    /// the keyboard cannot disagree about what Delete means where the caret stands.
+    /// </para>
     /// </remarks>
-    private static bool CanDeleteText(EditorSession session)
+    private static bool CanDelete(EditorSession session)
     {
         var selection = session.Selection;
 
-        if (selection.HasText)
+        if (selection.HasText || selection.SpansCells)
         {
             return true;
         }

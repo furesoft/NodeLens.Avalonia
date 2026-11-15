@@ -19,7 +19,8 @@ namespace Projectional.Editing;
 /// Select All widens from one property's text to everything the node under the caret shows, so the
 /// range that names a node is the run of caret places from its first cell to its last. What a
 /// multi-cell selection cannot do is hand text to the text actions: <see cref="HasText"/> is false and
-/// they fall back to caret behaviour. Structural actions read the range itself.
+/// they fall back to caret behaviour. Structural actions read the range itself - Delete asks
+/// <see cref="SelectionRanges"/> which nodes it covers.
 /// </para>
 /// </remarks>
 public readonly record struct Selection
@@ -47,10 +48,28 @@ public readonly record struct Selection
     public bool IsEmpty => Anchor.Equals(Caret);
 
     /// <summary>Whether both ends are inside one cell, which is what makes the range meaningful.</summary>
-    public bool IsSingleCell => Anchor.Address.Equals(Caret.Address);
+    /// <remarks>
+    /// An equal address is not enough. Every keyword and every space of a node carries that node's
+    /// address, so a selection from the <c>rule</c> keyword to the closing brace of the same rule has two
+    /// ends that name the same address and two different cells. The document-order hint on
+    /// <see cref="CaretPosition"/> is what tells them apart; a position named by address alone carries
+    /// none, and then the address is all there is to go on.
+    /// </remarks>
+    public bool IsSingleCell =>
+        Anchor.Address.Equals(Caret.Address) &&
+        (Anchor.Order < 0 || Caret.Order < 0 || Anchor.Order == Caret.Order);
 
     /// <summary>Whether something is selected inside one cell.</summary>
     public bool HasText => IsSingleCell && !IsEmpty;
+
+    /// <summary>Whether the two ends are in different cells, which is how a node is selected.</summary>
+    /// <remarks>
+    /// The complement of <see cref="HasText"/> among the non-empty selections, and the question a
+    /// structural action asks before it acts on a range instead of on a value. Nothing about the range is
+    /// meaningful while this is false: <see cref="Start"/> and <see cref="End"/> are offsets inside one
+    /// cell, so a reader that spans cells has to compare caret places rather than offsets.
+    /// </remarks>
+    public bool SpansCells => !IsSingleCell && !IsEmpty;
 
     /// <summary>The smaller offset of the two ends; only meaningful for a single-cell selection.</summary>
     public int Start => Math.Min(Anchor.Offset, Caret.Offset);

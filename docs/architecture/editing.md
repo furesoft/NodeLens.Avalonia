@@ -327,27 +327,40 @@ A selection comes in two shapes, and the shape is what the actions downstream ke
 - **inside one cell** — anchor and caret name the same `CellAddress`, so `IsSingleCell` is
   true and `HasText` is true. This is the shape every text action edits: typing replaces the
   range, Backspace and Delete shorten it, Copy takes it.
-- **across cells** — anchor and caret name different addresses, so the range covers every
-  caret place between them in document order. `IsSingleCell` and `HasText` are both false, so
-  no text action mistakes it for one. It is the shape a node is selected in, and
+- **across cells** — anchor and caret name different cells, so the range covers every caret
+  place between them in document order. `IsSingleCell` and `HasText` are both false, so no
+  text action mistakes it for one. It is the shape a node is selected in, and
   `SelectionRects` has always drawn it: the two end cells are trimmed to their offsets and
   every cell between them is highlighted whole, one rectangle per line.
 
+**An equal address is not the same cell.** Every keyword and every space of a node carries
+that node's address, so a selection from a rule's `rule` keyword to its closing brace has two
+ends that name one address and two different cells. `IsSingleCell` therefore compares the
+document-order hint `CaretPosition.Order` as well, and falls back to address equality when a
+position carries none (`< 0`), which is what a position named by address alone gets. Without
+that, "select the whole rule, press Delete" routed to the text action — a constant is not
+editable, so the key did nothing. The same hint is why a caret is never resolved by address
+alone; see [the caret is a cell, not an address](#the-caret-is-a-cell-not-an-address).
+
 `SelectionRanges` (`Projectional.Editing/SelectionRanges.cs`) is the only place that computes
-those ranges. It answers three questions — the value at the caret (`OfProperty`), the cells
-one node shows together with its descendants (`OfNode`), and the whole document
-(`OfDocument`) — and returns `null` when the unit does not exist, which is how the `Ctrl+A`
-ladder knows to skip a rung instead of stalling on it. [clipboard.md](clipboard.md) explains
-the ladder itself.
+those ranges. It answers four questions — the value at the caret (`OfProperty`), the cells
+one node shows together with its descendants (`OfNode`), the whole document (`OfDocument`),
+and the inverse of a range, the nodes it covers (`NodesIn`) — and returns `null` when the unit
+does not exist, which is how the `Ctrl+A` ladder knows to skip a rung instead of stalling on
+it. [clipboard.md](clipboard.md) explains the ladder itself.
 
 Node membership is decided by `CellAddress.Owner`, not by address equality. A child's
 projection root carries the *parent's* element address, and a collection's gaps and separators
 carry the owning node's address, so the test "is this caret place inside that subtree" has to
 be asked of the owner id — otherwise a selected list would have holes where its separators are.
 
-Acting on a cross-cell selection is not yet implemented: the text actions fall back to caret
-behaviour, and Delete, Cut and Paste leave the model alone. That is the next change, and
-`SelectionRanges` is where its "which nodes are covered" inverse belongs.
+**Delete acts on a cross-cell selection; the other actions do not yet.** `NodesIn` returns the
+*outermost* nodes a range fully covers, and `DeleteSelectionAction` removes them in one
+transaction, so a multi-node delete is a single undo step. A partly covered node is left alone:
+a selection that starts halfway through a rule deletes nothing rather than guessing which half
+was meant. Cut, Copy and Paste still fall back to caret behaviour, because a structural copy
+needs a clipboard format that can hold a subtree — that is M3, and
+[clipboard.md](clipboard.md) records why.
 
 ## The clipboard
 

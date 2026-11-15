@@ -454,8 +454,13 @@ dependency, so every action is testable headlessly.
   property of the *creating* edit only: if typing re-selected what it had just written, the next
   keystroke would replace it and no name longer than one character could be typed.
 - **An empty single-child slot renders one cell** whose address is
-  `CellAddress.OfSlot(ownerId, slot)` - that is the address Enter fills. Collection slots with
-  no children produce no cell at all, so Enter there has nothing to act on.
+  `CellAddress.OfSlot(ownerId, slot)` - that is the address Enter fills. **An empty collection
+  slot renders one cell too**, showing its `EmptyText`; it has no `Content`, so it is a leaf
+  and therefore a caret stop, which is why Enter and completion can fill it
+  (`CaretPlace.IsEmptySlot` covers both `ChildCell { IsEmpty: true }` and
+  `CollectionCell { IsEmpty: true }`). What produces *no* cell is a slot the notation does not
+  draw - a concept with no notation, or a variant that hides the slot - and that is the only
+  case where a keystroke has nothing to act on.
 - **An `EditorSession` must be created after the nodes it should show exist.** It builds tree
   and layout in its constructor; nodes added to a live model afterwards need `Refresh()`. In
   tests this bites when a fixture builds the session before `model.AddRoot(...)`.
@@ -481,10 +486,33 @@ dependency, so every action is testable headlessly.
   root carries the *parent's* element address, and a collection's gaps and separators carry
   the owning node's address, so "is this place inside that subtree" must be asked of the
   owner id or a selected list ends up with holes where its separators are.
+- **`Selection.IsSingleCell` is address equality *plus* the order hint.** This is the trap the
+  whole selection feature tripped over: `OfNode(rule)` for a `Rule` whose notation starts with
+  the `rule` keyword and ends with `}` produces `Anchor = (rule.Id, 0)` and
+  `Caret = (rule.Id, 1)` - equal addresses, different cells - so `IsSingleCell` was true,
+  `HasText` was true, `SpansCells` was false, and `KeyRouter.Delete` sent the keystroke to
+  `DeleteTextAction`, which refuses a `ConstantCell`. "Ctrl+A twice then Delete does nothing"
+  was that. It now reads
+  `Anchor.Address.Equals(Caret.Address) && (Anchor.Order < 0 || Caret.Order < 0 || Anchor.Order == Caret.Order)`,
+  so a position named by address alone still compares by address. Do not "simplify" it back to
+  an address comparison.
+- **`KeyRouter.RemovesText` checks for a `PropertyCell` first, then `HasText`.** The order
+  matters: a `HasText` selection on a non-editable cell must not reach a text action that is
+  guaranteed to refuse it.
+- **Delete acts on a cross-cell selection, through `DeleteSelectionAction`.** It asks
+  `SelectionRanges.NodesIn` for the nodes the range *fully* covers (outermost only, never the
+  document root) and removes them in one `Model.BeginTransaction()`, because `EditorSession.Apply`
+  opens none and each `DeleteChild` journals its own step. A partly covered node removes
+  nothing. `DeleteNodeAction.Landing` is `internal static` and shared, so both deletes land the
+  caret in the same place. Cut/Copy on a cross-cell selection are still not implemented - a
+  structural clipboard needs a payload that can hold a subtree (M3).
+- **`Model.DeleteSubtree` unlinks the top node only.** Descendants stay attached to each other
+  and are merely unregistered from the project index, which is exactly what lets one
+  `SubtreeSnapshot` undo restore the whole thing. So `body.GetChildren("steps")` still answers
+  after `body` was deleted - a test asserting a deleted parent's children are gone is wrong.
 - A cross-cell selection reports `IsSingleCell == false` and `HasText == false`, so no text
   action mistakes it for one. `SelectionRects.Of` already draws it correctly (both ends
   trimmed, intermediate cells whole, one rect per line) - the rendering needed no change.
-  Delete/Cut on a cross-cell selection is **not** implemented.
 
 ## How the control paints and takes input
 
@@ -749,8 +777,9 @@ Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
 - **Text only, one cell.** Copying across cells, copying a subtree, and pasting a structural
   fragment all wait for M3. A multi-cell selection degrades to caret behaviour for every text
-  action, exactly as it does for typing - so `Ctrl+A` twice selects a node but `Delete` then
-  does nothing to it yet.
+  action, exactly as it does for typing. `Delete` is the exception: `DeleteSelectionAction`
+  removes the nodes a range fully covers in one transaction, so `Ctrl+A` twice then `Delete`
+  removes the node - it used to do nothing, which is what made the editor feel broken.
 - **No rich payloads.** No HTML, no images, no custom MIME types. The model is the source of
   truth and a formatted payload would be a second representation to keep in sync.
 - **Cross-editor fragment paste is not supported.** Two editors in one process share the text
@@ -807,7 +836,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 770 tests**; anything below that means tests were deleted.
+it. **Baseline is 781 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

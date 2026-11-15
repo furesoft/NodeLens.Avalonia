@@ -52,6 +52,20 @@ internal static class TestEditor
         return (rule, body, body.Model.NewChild(body, "steps", TestLanguage.Step));
     }
 
+    /// <summary>A body holding one step per entry of <paramref name="texts"/>, in that order.</summary>
+    public static (Node Body, IReadOnlyList<Node> Steps) BodyWithSteps(params string[] texts)
+    {
+        var (_, body) = RuleWithBody();
+
+        return (body, [.. texts.Select(text =>
+        {
+            var step = body.Model.NewChild(body, "steps", TestLanguage.Step);
+            step.Set("text", text);
+
+            return step;
+        })]);
+    }
+
     /// <summary>A bare step, optionally already holding <paramref name="text"/>.</summary>
     public static Node BareStep(string? text = null)
     {
