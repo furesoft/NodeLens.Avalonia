@@ -45,6 +45,19 @@ should not be decided before the shell exists.
 | 24 | Is the app allowed features the library cannot express — e.g. a search across models? | Leaning | Only through a public API that any host could call. A search that needs internals becomes a public search API, not an app-private one. | M2 |
 | 25 | Does the shell logic get its own test project? | Leaning | Yes, once the shell exceeds trivial wiring — headless tests over documents, commands and command-line parsing. Add only then, not in advance. | M2 |
 
+## Multiple representations
+
+[ADR 0012](adr/0012-concept-rendered-more-than-one-way.md) decided that a concept may declare
+several notations and that the projection picks one per concept. What that leaves open is how
+far the choice, and the representations, may go.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 26 | Is a variant chosen per concept or per node? | Leaning | Per concept in M1 (one `INotationChoice` per view). Per node needs a choice keyed by node id and a reason a single node should differ â€” take it up when a real DSL asks. | M4 |
+| 27 | Is the choice persisted per document, and where? | Leaning | Per document in project settings, keyed by model URI and concept key. Never in the model file, never in a path that breaks portability. | M3 |
+| 28 | How do custom representations that a declarative notation cannot express (charts, images, maps) plug in? | Open | A separate cell-provider contract that must still report addresses and caret places. Do not open it before the declarative table cell has been used in anger. | M5 |
+| 29 | Do tables get column-aware navigation (down a column, next row), a header row that stays visible when scrolling, and resizable columns? | Leaning | Yes to navigation and a sticky header; resizing only if a language asks. Document-order navigation is correct but not what a user expects in a grid. | M3 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
