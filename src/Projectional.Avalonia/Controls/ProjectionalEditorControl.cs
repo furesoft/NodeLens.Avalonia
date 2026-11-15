@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 using Projectional.Core;
 using Projectional.Editing;
@@ -69,6 +70,12 @@ public sealed class ProjectionalEditorControl : Control
 
     private bool _dragging;
 
+    private readonly CaretBlink _blink = new();
+
+    // The tick that makes the caret blink. Created on attach so a control that is never shown costs no
+    // timer, and stopped on detach because a hidden control has nothing to animate.
+    private DispatcherTimer? _blinkTimer;
+
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
         : this(new Typeface(FontFamily.Default), 14)
@@ -114,6 +121,7 @@ public sealed class ProjectionalEditorControl : Control
             field = value;
             _offsetX = 0;
             _offsetY = 0;
+            _blink.Reset();
 
             InvalidateMeasure();
             ScrollToCaret();
@@ -303,12 +311,35 @@ public sealed class ProjectionalEditorControl : Control
                 new Point(bounds.X, bounds.Y));
         }
 
-        if (frame.CaretRect is { } caret)
+        if (frame.CaretRect is { } caret && _blink.IsVisible)
         {
             var bounds = frame.Viewport.ToViewport(caret);
 
             context.FillRectangle(CaretBrush, new Rect(bounds.X, bounds.Y, CaretThickness, bounds.Height));
         }
+    }
+
+    /// <inheritdoc />
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        _blinkTimer = new DispatcherTimer { Interval = CaretBlink.Interval };
+        _blinkTimer.Tick += OnBlinkTick;
+        _blinkTimer.Start();
+    }
+
+    /// <inheritdoc />
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_blinkTimer is { } timer)
+        {
+            timer.Stop();
+            timer.Tick -= OnBlinkTick;
+            _blinkTimer = null;
+        }
+
+        base.OnDetachedFromVisualTree(e);
     }
 
     /// <inheritdoc />
@@ -507,8 +538,24 @@ public sealed class ProjectionalEditorControl : Control
 
     private void Show()
     {
+        _blink.Reset();
         ScrollToCaret();
         InvalidateVisual();
+    }
+
+    private void OnBlinkTick(object? sender, EventArgs e)
+    {
+        // The caret blinks only while the editor has the focus and stands inside something typeable. A
+        // control that lost the focus keeps a steady caret, which is what every platform does: a blinking
+        // caret in a window the user is not working in is noise.
+        var blinking = IsFocused
+            && Session is { } session
+            && CaretBlink.Blinks(session.Tree, session.Selection.Caret);
+
+        if (_blink.Advance(blinking))
+        {
+            InvalidateVisual();
+        }
     }
 
     private CaretPosition? CaretAt(PointerEventArgs e)

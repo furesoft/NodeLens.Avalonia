@@ -179,6 +179,7 @@ Input is routed through the touched cell:
 | --- | --- |
 | Printable character | the cell decides: replace selection, append to property text, filter completion, or trigger substitution |
 | Arrow keys | structural movement between cells along the logical line, then lines |
+| Ctrl+Left / Ctrl+Right | one character inside the current cell, because the plain arrows move a whole cell |
 | Tab / Shift+Tab | next / previous slot of the current node in declaration order; a filled child or collection is entered rather than skipped, because only its leaves are caret stops |
 | Enter | fill the empty slot at the caret; per the list strategy of the enclosing cell |
 | Space | same as a printable character; there are no whitespace semantics |
@@ -204,11 +205,14 @@ worth knowing because they are the seams every later feature attaches to:
 
 Two rules fall out of having those three layers instead of one event handler:
 
-- **A key held with Control, Alt or Meta is not the editor's.** Ctrl+Left is a word jump in
-  the host application and Ctrl+Delete deletes a file in a file manager; consuming them
-  because the bare key happens to be routed would take shortcuts away from the very
-  program that embeds the editor. Shift is different — Shift+Tab walks slots backwards,
-  so it belongs to the editor.
+- **A key held with Control, Alt or Meta is not the editor's**, with one deliberate
+  exception. Ctrl+Left is a word jump in the host application and Ctrl+Delete deletes a
+  file in a file manager; consuming them because the bare key happens to be routed would
+  take shortcuts away from the very program that embeds the editor. The exception is
+  Ctrl+Left / Ctrl+Right: the plain arrows move a whole cell, so the character step has to
+  stay reachable, and no host is likely to want those two keys more than a text editor
+  wants them. Shift is different as well — Shift+Tab walks slots backwards, so it belongs
+  to the editor.
 - **A refused character is not consumed.** Typing a letter into a number yields
   `EditOutcome.Rejected`, the model is untouched, and the event stays unhandled so the
   host can beep, report it or reroute it. The three outcomes exist for exactly this:
@@ -296,7 +300,8 @@ of painting half a grid.
 ### What M1 implements
 
 `ProjectionalEditorControl` is one `Control` that paints the whole frame itself:
-background, selection rectangles, one `FormattedText` per text run, then the caret bar.
+background, selection rectangles, one `FormattedText` per text run, then the caret bar — which
+is skipped while its blink phase is off, so a repaint can mean "same picture minus the caret".
 It asks `EditorFrame` what to paint and shapes glyphs with `AvaloniaTextMeasure`, so
 nothing about *what* is on screen is decided in the control.
 

@@ -300,6 +300,35 @@ public sealed class EditActionTests
     }
 
     [Fact]
+    public void TheArrowsWalkCellsAndControlMakesThemStepCharacters()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+
+        Assert.Equal(name, session.Selection.Caret.Address);
+
+        // Right leaves the property for whatever the notation put after it, at the start of it.
+        session.Apply(KeyRouter.For(EditorKey.Right));
+        Assert.NotEqual(name, session.Selection.Caret.Address);
+        Assert.Equal(0, session.Selection.Caret.Offset);
+
+        session.Apply(KeyRouter.For(EditorKey.Left));
+        Assert.Equal(name, session.Selection.Caret.Address);
+        Assert.Equal(rule.GetOrNull("name")?.Length ?? 0, session.Selection.Caret.Offset);
+
+        // Ctrl takes the cell back apart into characters.
+        session.Select(Selection.At(CaretPosition.At(name, 0)));
+        session.Apply(KeyRouter.For(EditorKey.ControlRight));
+        Assert.Equal(name, session.Selection.Caret.Address);
+        Assert.Equal(1, session.Selection.Caret.Offset);
+
+        session.Apply(KeyRouter.For(EditorKey.ControlLeft));
+        Assert.Equal(name, session.Selection.Caret.Address);
+        Assert.Equal(0, session.Selection.Caret.Offset);
+    }
+
+    [Fact]
     public void TabEntersAFilledBodyInsteadOfStoppingAtIt()
     {
         var (rule, _, step) = TestEditor.RuleWithStep();

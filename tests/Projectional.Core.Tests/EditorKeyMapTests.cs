@@ -43,14 +43,26 @@ public sealed class EditorKeyMapTests
     }
 
     [Theory]
-    [InlineData(KeyModifiers.Control)]
     [InlineData(KeyModifiers.Alt)]
     [InlineData(KeyModifiers.Meta)]
-    [InlineData(KeyModifiers.Control | KeyModifiers.Shift)]
+    [InlineData(KeyModifiers.Alt | KeyModifiers.Shift)]
     public void HostModifiersLeaveTheKeyToTheHost(KeyModifiers modifiers)
     {
         Assert.Null(EditorKeyMap.Map(Key.Left, modifiers));
         Assert.Null(EditorKeyMap.Map(Key.Back, modifiers));
+    }
+
+    [Theory]
+    [InlineData(KeyModifiers.Control)]
+    [InlineData(KeyModifiers.Control | KeyModifiers.Shift)]
+    public void ControlReachesOnlyTheArrows(KeyModifiers modifiers)
+    {
+        // The arrows move a cell at a time, so the character step has to stay reachable.
+        Assert.Equal(EditorKey.ControlLeft, EditorKeyMap.Map(Key.Left, modifiers));
+        Assert.Equal(EditorKey.ControlRight, EditorKeyMap.Map(Key.Right, modifiers));
+
+        Assert.Null(EditorKeyMap.Map(Key.Back, modifiers));
+        Assert.Null(EditorKeyMap.Map(Key.Home, modifiers));
     }
 
     [Theory]

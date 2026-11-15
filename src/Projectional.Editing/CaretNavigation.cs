@@ -8,8 +8,10 @@ namespace Projectional.Editing;
 /// <remarks>
 /// <para>
 /// Horizontal movement is structural: it steps from one cell to the next in document order, so the
-/// caret never lands in the gaps that alignment leaves between cells, and pressing left at the start
-/// of a keyword continues at the end of whatever the notation put before it. Vertical movement is
+/// caret never lands in the gaps that alignment leaves between cells, and one press left at the start
+/// of a keyword continues at the end of whatever the notation put before it. A cell can be several
+/// characters long - a property usually is - so the character-wise moves stay available as their own
+/// moves for the host that wants to let the user fix a typo in the middle of one. Vertical movement is
 /// geometric instead, because there is no structure that says which cell is above which - lines are a
 /// result of layout, not of the notation. It therefore looks for the cell on the nearest line in the
 /// requested direction and keeps the column as well as it can, which is what a reader expects and
@@ -154,8 +156,10 @@ public static class CaretNavigation
 
         return move switch
         {
-            CaretMove.Left => Step(places, index, offset, direction: -1),
-            CaretMove.Right => Step(places, index, offset, direction: 1),
+            CaretMove.Left => Cell(places, index, direction: -1),
+            CaretMove.Right => Cell(places, index, direction: 1),
+            CaretMove.LeftCharacter => Character(places, index, offset, direction: -1),
+            CaretMove.RightCharacter => Character(places, index, offset, direction: 1),
             CaretMove.Up => Vertical(layout, measure, places, index, offset, direction: -1),
             CaretMove.Down => Vertical(layout, measure, places, index, offset, direction: 1),
             CaretMove.LineStart => LineEdge(layout, measure, places, index, start: true),
@@ -166,8 +170,33 @@ public static class CaretNavigation
         };
     }
 
-    /// <summary>The neighbouring cell in document order, or this one when there is none.</summary>
-    private static CaretPosition Step(IReadOnlyList<CaretPlace> places, int index, int offset, int direction)
+    /// <summary>
+    /// The neighbouring cell in document order, or this one at the edge of the document.
+    /// </summary>
+    /// <remarks>
+    /// The arrival offset is the one a reader would expect from a structural move: going right lands on
+    /// the first character of the next cell, going left on the end of the previous one. That makes two
+    /// presses in opposite directions return to the same place, which a move that kept the offset would
+    /// not.
+    /// </remarks>
+    private static CaretPosition Cell(IReadOnlyList<CaretPlace> places, int index, int direction)
+    {
+        var place = places[index];
+
+        if (direction < 0)
+        {
+            return index > 0
+                ? CaretPosition.At(places[index - 1], places[index - 1].Length)
+                : CaretPosition.At(place, 0);
+        }
+
+        return index < places.Count - 1
+            ? CaretPosition.At(places[index + 1], 0)
+            : CaretPosition.At(place, place.Length);
+    }
+
+    /// <summary>The neighbouring offset, crossing into the next or previous cell at the edge of this one.</summary>
+    private static CaretPosition Character(IReadOnlyList<CaretPlace> places, int index, int offset, int direction)
     {
         var place = places[index];
 

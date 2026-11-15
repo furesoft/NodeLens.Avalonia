@@ -82,14 +82,69 @@ public sealed class CaretNavigationTests
     }
 
     [Fact]
-    public void RightStepsWithinACellBeforeLeavingIt()
+    public void RightMovesToTheNextCellEvenFromTheMiddleOfOne()
     {
         var rule = TestEditor.BareRule();
         using var session = TestEditor.Open(rule);
 
         var moved = Move(session, CaretMove.Right);
 
+        Assert.Equal(" ", Place(session, moved).Text);
+        Assert.Equal(0, moved.Offset);
+    }
+
+    [Fact]
+    public void LeftFromTheMiddleOfACellMovesAWholeCell()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+
+        var moved = CaretNavigation.Move(
+            session.Layout,
+            session.Measure,
+            CaretPosition.At(name, 3),
+            CaretMove.Left);
+
+        Assert.Equal(" ", Place(session, moved).Text);
+        Assert.Equal(1, moved.Offset);
+    }
+
+    [Fact]
+    public void RightCharacterStepsInsideTheCell()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        var moved = Move(session, CaretMove.RightCharacter);
+
         Assert.Equal(CellAddress.OfSlot(rule.Id, "name"), moved.Address);
+        Assert.Equal(1, moved.Offset);
+    }
+
+    [Fact]
+    public void LeftCharacterCrossesIntoThePreviousCellAtItsStart()
+    {
+        using var session = TestEditor.Open(TestEditor.BareRule());
+
+        var moved = Move(session, CaretMove.LeftCharacter);
+
+        Assert.Equal(" ", Place(session, moved).Text);
+        Assert.Equal(1, moved.Offset);
+    }
+
+    [Fact]
+    public void ACharacterMoveStaysAtTheEndOfTheLastCell()
+    {
+        using var session = TestEditor.Open(TestEditor.BareRule());
+
+        var moved = CaretNavigation.Move(
+            session.Layout,
+            session.Measure,
+            CaretNavigation.Last(session.Tree),
+            CaretMove.RightCharacter);
+
+        Assert.Equal("}", Place(session, moved).Text);
         Assert.Equal(1, moved.Offset);
     }
 
