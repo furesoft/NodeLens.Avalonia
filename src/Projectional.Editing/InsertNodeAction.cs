@@ -19,7 +19,9 @@ namespace Projectional.Editing;
 /// re-entering the same slot. It is aimed at the new child's own cell address, which is not a caret
 /// stop, and the session resolves it to the first stop inside the new subtree that can be typed into:
 /// the action says what it created, and the tree says where in it the user can type. That is why
-/// pressing Enter and then typing a name lands in the name instead of on the keyword in front of it.
+/// pressing Enter and then typing a name lands in the name instead of on the keyword in front of it,
+/// and why the value found there arrives selected - a new rule is already called <c>"unnamed"</c>, so a
+/// caret in front of that name would make the first keystroke append to it.
 /// </para>
 /// <para>
 /// A single-valued slot that already has its child and a node that is a root have nothing to add. Enter
@@ -29,6 +31,9 @@ namespace Projectional.Editing;
 /// </remarks>
 public sealed class InsertNodeAction : EditAction
 {
+    /// <inheritdoc/>
+    public override bool SelectsLandedValue => true;
+
     /// <inheritdoc/>
     public override EditResult Apply(EditContext context)
     {

@@ -262,7 +262,9 @@ public sealed class EditorSession : IDisposable
     /// The selection the action asks for - both ends of it - is resolved against the tree the action
     /// produced, so an action may return an address that only exists after it ran, which is exactly what
     /// adding a child needs. An action that reports no change still gets to move the selection, because
-    /// that is how the caret moves at all and how Select All selects anything.
+    /// that is how the caret moves at all and how Select All selects anything. An action that created
+    /// something to be named gets the value the caret landed in selected; see
+    /// <see cref="EditAction.SelectsLandedValue"/>.
     /// </remarks>
     public EditResult Apply(EditAction action)
     {
@@ -295,7 +297,29 @@ public sealed class EditorSession : IDisposable
 
         Settle(result.Selection);
 
+        if (action.SelectsLandedValue)
+        {
+            SelectLandedValue();
+        }
+
         return result;
+    }
+
+    /// <summary>Widens the caret to the whole value of the cell it landed in, when that cell has text.</summary>
+    /// <remarks>
+    /// Read from the tree the edit produced rather than predicted by the action: the coercion has
+    /// already decided which cell the caret lands in, so all that is left to say is that the value found
+    /// there is the one the user is about to type over. A cell with nothing in it keeps a bare caret,
+    /// because selecting an empty range and leaving the caret where it is are the same thing.
+    /// </remarks>
+    private void SelectLandedValue()
+    {
+        if (CaretNavigation.PlaceAt(Tree, Selection.Caret) is not { IsEditable: true, Length: > 0 } place)
+        {
+            return;
+        }
+
+        Selection = new Selection(CaretPosition.At(place, 0), CaretPosition.At(place, place.Length));
     }
 
     /// <summary>Moves the caret, dropping any selection that does not fit the tree.</summary>
