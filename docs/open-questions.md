@@ -71,6 +71,18 @@ the parts of that plan that are choices rather than mechanics.
 | 33 | Are intentions also in the context menu, or only on the bulb? | Leaning | Both, from one list: a submenu at the top of the menu, the same entries the bulb shows. The menu answers "what can I do here" with the mouse, and the bulb answers it at the keyboard; two independent lists would drift. | M3 |
 | 34 | Does an intention ever preview its effect before applying? | Leaning | No. A one-sentence description and a single undo step instead — in a projectional editor the effect is visible text, so a preview dialog shows what the editor is about to show anyway. Reopen this at M6, where a refactoring that touches several files is not visible at a glance. | M3 |
 
+## Markers
+
+Squiggles are planned in [markers.md](architecture/markers.md); these are the choices in it
+that are not settled by mechanics.
+
+| # | Question | State | Answer | Decide by |
+|---|----------|-------|--------|-----------|
+| 35 | Is a marker part of the model, or transient state supplied by the host? | Leaning | Transient. A squiggle is a computed diagnostic, so it is recomputed rather than persisted: undo cannot resurrect a stale error, and a model file stays free of editor state. Persistent annotations ("this is a TODO") are a different feature with a different lifetime. | M4 |
+| 36 | Does severity change the shape of the underline, or only its colour? | Leaning | Both, minimally: every severity is a wave, and info and hint are dotted instead of solid. Colour alone carries nothing for a colour-blind user or a greyscale print. | M4 |
+| 37 | Is a marker attached to a node, or to a range inside a cell? | Leaning | Both: a node id always, an optional range inside one property's text. A constraint usually knows the node, not the offset, and geometry should still be able to underline three characters of a long cell. | M4 |
+| 38 | Do markers get a list of their own ("problems"), or only appear where they are? | Open | Where they are, first: hovering explains, and the shell shows the caret line's message in a status bar. A problems list is a document-wide report with navigation and filtering, which is a feature of its own and should come after squiggles prove they are enough. | M5 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:

@@ -25,12 +25,18 @@ One diagnostics model for everything the user sees:
 
 ```csharp
 sealed record Diagnostic(
-    DiagnosticSeverity Severity,   // Info | Warning | Error
+    DiagnosticSeverity Severity,   // Hint | Info | Warning | Error
     NodeId Target,
     string? Role,                  // null = whole node
     int? Index,
     string Message,
-    string? QuickFixId);
+    string? Code,                  // stable identity, e.g. "RULE_002"
+    CharacterRange? Range,         // null = the whole target; otherwise part of one text
+    IReadOnlyList<DiagnosticFix>? Fixes);  // null = nothing to offer
+
+// A fix is an intention addressed to one diagnostic: it names the intention by id, and the
+// diagnostic carries the label so the menu can be built without resolving it first.
+sealed record DiagnosticFix(string IntentionId, string Label);
 ```
 
 - Diagnostics are rendered as markers/underlines, never as blocking dialogs.
@@ -39,6 +45,13 @@ sealed record Diagnostic(
 - Generation and interpretation refuse to run when errors exist in the affected
   subtree — but still run for unaffected subtrees, so a large model can be partially
   generated while being edited.
+
+The record says *what is wrong*; it says nothing about where on screen that is or what it
+looks like. Turning a diagnostic into a squiggle is the editing layer's job, and the plan for
+it is [markers.md](markers.md). Two properties in the record exist for that: `Range` narrows
+the complaint to a slice of one property's text when the constraint knows which characters
+are wrong, and `Code` is what a test and a documentation page refer to without matching prose
+that will be reworded.
 
 ## Constraints
 
