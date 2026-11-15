@@ -271,6 +271,155 @@ public sealed class CompletionActionTests
         Assert.Null(session.Completion);
     }
 
+    [Fact]
+    public void ArrivingInAPropertyThatNamesItsValuesOffersThem()
+    {
+        var (session, rule) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            ArriveAtOutcome(session, rule);
+
+            var list = Assert.IsType<CompletionList>(session.Completion);
+            string[] expected = [RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject];
+
+            Assert.Equal(expected, list.Matches.Select(item => item.Label));
+            Assert.All(list.Matches, item => Assert.Equal(CompletionKind.Value, item.Kind));
+
+            // The value already in the cell is highlighted, so Enter without choosing edits nothing.
+            Assert.Equal(RuleOutcomes.Review, list.Selected?.ConceptKey);
+        }
+    }
+
+    [Fact]
+    public void AClickIntoAPropertyThatNamesItsValuesOffersThemToo()
+    {
+        var (session, rule) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            // A pointer click arrives through Select rather than through an edit action, so the move and
+            // the offer have to be the same thing in both paths.
+            session.Select(Selection.At(CellAddress.OfSlot(rule.Id, "outcome")));
+
+            Assert.Equal(3, session.Completion?.Count);
+        }
+    }
+
+    [Fact]
+    public void TypingFiltersTheValuesAndEnterWritesTheMatch()
+    {
+        var (session, rule) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            ArriveAtOutcome(session, rule);
+
+            // Characters narrow the list instead of being typed, which is the only way to retype an
+            // enumeration: every prefix of a symbol is itself an illegal value.
+            session.Apply(KeyRouter.Type(session, "A"));
+
+            Assert.Equal(RuleOutcomes.Accept, session.Completion?.Selected?.ConceptKey);
+            Assert.Equal(RuleOutcomes.Review, rule.GetOrNull("outcome"));
+
+            var result = session.Apply(KeyRouter.For(session, EditorKey.Enter));
+
+            Assert.Equal(EditOutcome.Applied, result.Outcome);
+            Assert.Equal(RuleOutcomes.Accept, rule.GetOrNull("outcome"));
+            Assert.Null(session.Completion);
+            Assert.Equal(1, session.History.UndoDepth);
+
+            Assert.True(session.Undo());
+
+            Assert.Equal(RuleOutcomes.Review, rule.GetOrNull("outcome"));
+        }
+    }
+
+    [Fact]
+    public void AValueIsWrittenInPlaceAndLeavesTheCaretInTheCell()
+    {
+        var (session, rule) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            ArriveAtOutcome(session, rule);
+
+            var before = session.Selection.Caret;
+
+            session.Apply(KeyRouter.For(session, EditorKey.Down));
+            session.Apply(KeyRouter.For(session, EditorKey.Enter));
+
+            // Rejecting rather than inserting: a value replaces the text it stands for, so there is
+            // nothing to resolve the caret into, and it stays where the user left it.
+            Assert.Equal(RuleOutcomes.Reject, rule.GetOrNull("outcome"));
+            Assert.Equal(before, session.Selection.Caret);
+            Assert.True(session.Selection.IsEmpty);
+        }
+    }
+
+    [Fact]
+    public void ADismissedListStaysClosedUntilTheCaretLeavesAndComesBack()
+    {
+        var (session, rule) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            ArriveAtOutcome(session, rule);
+
+            session.Apply(KeyRouter.For(session, EditorKey.Escape));
+
+            Assert.Null(session.Completion);
+
+            // A letter the enumeration does not contain is refused, so the caret does not move - and a
+            // list the user dismissed must not come back because a keystroke failed.
+            session.Apply(KeyRouter.Type(session, "Z"));
+
+            Assert.Null(session.Completion);
+            Assert.Equal(RuleOutcomes.Review, rule.GetOrNull("outcome"));
+
+            session.Apply(KeyRouter.For(session, EditorKey.Left));
+            session.Apply(KeyRouter.For(session, EditorKey.Right));
+
+            Assert.Equal(RuleOutcomes.Review, session.Completion?.Selected?.ConceptKey);
+        }
+    }
+
+    [Fact]
+    public void ArrivingInAPropertyThatNamesNoValuesOpensNothing()
+    {
+        var model = PayrollSample.NewEmptyModel();
+        var ruleset = model.Roots[0];
+        var rule = model.NewChild(ruleset, "rules", RulesConceptKeys.Rule);
+        var literal = model.NewChild(rule, "condition", ExpressionsConceptKeys.IntLiteral);
+
+        using var session = new EditorSession(ruleset, Notations);
+
+        // Free text and numbers have no closed set of values to offer, so arriving in one is silent -
+        // an empty list would be a popup with nothing in it.
+        session.Select(Selection.At(CellAddress.OfSlot(literal.Id, "value")));
+
+        Assert.Null(session.Completion);
+    }
+
+    /// <summary>
+    /// Walks the caret right until it arrives in the <c>outcome</c> property of <paramref name="rule"/>.
+    /// </summary>
+    /// <remarks>
+    /// A walk rather than a fixed number of presses: every constant and every space on the line is its own
+    /// caret stop, so counting them here would turn a notation edit into a test failure.
+    /// </remarks>
+    private static void ArriveAtOutcome(EditorSession session, Node rule)
+    {
+        var target = CellAddress.OfSlot(rule.Id, "outcome");
+
+        for (var step = 0; step < 12 && !session.Selection.Caret.Address.Equals(target); step++)
+        {
+            session.Apply(KeyRouter.For(session, EditorKey.Right));
+        }
+
+        Assert.Equal(target, session.Selection.Caret.Address);
+    }
+
     private static (EditorSession Session, Node Rule) OpenRuleWithEmptyCondition()
     {
         var model = PayrollSample.NewEmptyModel();
