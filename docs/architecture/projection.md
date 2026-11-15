@@ -420,6 +420,20 @@ has no default, so a host cannot forget that a cell's width depends on how it is
 monospace measure ignores emphasis on purpose - a monospaced face keeps its advance when bold,
 and pretending otherwise would make the headless snapshot disagree with every real editor.
 
+### Diagnostics are not emphasis
+
+A squiggle under a mistaken cell looks like an underline and is not one. Emphasis is a
+property of the projection: it is decided while the tree is built, it is measured into the
+layout, and it is stable as long as the model is. A diagnostic is a claim from the last
+validation pass — it arrives asynchronously, it is recomputed rather than stored, and it must
+not touch the tree, because a tree that carried it would have to be rebuilt every time a
+diagnostic came in.
+
+So markers are painted from a channel beside the frame rather than from the cell: the editing
+layer resolves a diagnostic's node to rectangles per line, and the control draws a wave in a
+colour the theme supplies. Nothing about the projection changes, and a palette swap still moves
+no number. The plan is [markers.md](markers.md).
+
 ## Incremental invalidation
 
 On a change event:

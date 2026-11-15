@@ -169,7 +169,8 @@ host runs its own command from the same id; the bulb is then a launcher, not an 
 ## Error markers and quick fixes
 
 Once constraints produce diagnostics (M4), a diagnostic carries an optional list of fixes,
-and a fix is an intention with the diagnostic as its source. The two meet at the bulb:
+and a fix is an intention with the diagnostic as its source. The two meet at the bulb —
+how the diagnostic is *shown* is [markers.md](markers.md):
 
 - the bulb for the caret's line reports the highest-severity marker on that line;
 - opening it lists the diagnostic's fixes first, then the intentions, separated;

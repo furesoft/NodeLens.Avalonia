@@ -105,7 +105,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 
 | Delivers | Details |
 | --- | --- |
-| Constraints | incremental validation, markers, quick fixes |
+| Constraints | incremental validation, and diagnostics as wavy severity underlines ([markers.md](architecture/markers.md)) |
 | Quick fixes | a diagnostic carries its own fixes, and they appear in the same light bulb as intentions ([context-actions.md](architecture/context-actions.md)) |
 | Types | basic type system with `Unknown` semantics |
 | Text generation | template trees, traceability map |

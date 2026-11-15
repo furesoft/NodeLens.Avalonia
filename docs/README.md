@@ -15,14 +15,16 @@ constraints it must satisfy, and which alternatives were rejected.
 5. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
 6. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned).
-7. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-8. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-9. [Integration](architecture/integration.md) — how host applications embed this.
-10. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+7. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+   reports (planned).
+8. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+9. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+10. [Integration](architecture/integration.md) — how host applications embed this.
+11. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-11. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-12. [Roadmap](roadmap.md) — milestones and acceptance gates.
-13. [Open questions](open-questions.md) — what is deliberately still undecided.
+12. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+13. [Roadmap](roadmap.md) — milestones and acceptance gates.
+14. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
