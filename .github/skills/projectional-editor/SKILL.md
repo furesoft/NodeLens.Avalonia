@@ -120,7 +120,7 @@ deliberate and easy to break.
   record: false)`) and never `Record`. A replay therefore journals nothing, and
   `UndoHistory` publishes the change set itself (`Invert()` per entry in reverse for
   undo, the original records in forward order for redo) through
-  `Model.PublishRestored`. When you add a mutation seam, add its redo too â€” a missing
+  `Model.PublishRestored`. When you add a mutation seam, add its redo too — a missing
   redo makes redo silently skip the step.
 - A journal entry with a `null` change is rollback-only. `CreateDetached` uses one so that
   `NewChild` publishes a single `NodeAdded` at the final place instead of root-add plus
@@ -155,13 +155,13 @@ Read its `<remarks>` before changing the replay path.
 - Undo plays the entries **in reverse** calling `Undo`; redo plays them **forward**
   calling `Redo` (skipping the nulls).
 - `Replay` sets `_replaying`, opens a transaction, runs the closures, `MarkMutated()`,
-  `Complete()`, and then calls `PublishRestored` **while `_replaying` is still true** â€”
+  `Complete()`, and then calls `PublishRestored` **while `_replaying` is still true** —
   otherwise the history would record its own restoration and redo/undo would fight.
 - `OnModelChanged` bails out on `_replaying` or on `e.Steps.Count == 0` (undo/redo
   publications carry no steps on purpose).
 - Any commit clears the redo stack. Coalescing only merges into the previous step when
   the current `CoalescingKey` is non-null and equals that step's key; `null` never
-  merges. There is no time window â€” the host must clear the key when the burst ends.
+  merges. There is no time window — the host must clear the key when the burst ends.
 - The `UndoHistory` API is `Undo()`, `Redo()`, `CanUndo`, `CanRedo`, `UndoDepth`,
   `RedoDepth`, `CoalescingKey`, `Clear()`, plus `Dispose()` to unsubscribe.
 
@@ -216,7 +216,7 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 - **`Sequence` vs `Indent`.** A sequence stacks blocks unchanged and is usually the root of a
   notation; an indent stacks them one level deeper. They are separate on purpose, so a
   notation says exactly one thing at a time.
-- **The runtime editor tree is a different vocabulary.** Notation cells are `â€¦NotationCell`
+- **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
   (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
   `ChildNotationCell`, `CollectionNotationCell`, `LineNotationCell`, `SequenceNotationCell`,
   `IndentNotationCell`, `SpaceNotationCell`) precisely so they cannot be confused with the
@@ -545,8 +545,8 @@ dependency, so every action is testable headlessly.
 (`AvaloniaTextMeasure`). Everything that decides *what* is on screen lives in
 `Projectional.Editing`, which is why the control is small enough to trust without a UI test.
 
-- **The control owns no editing rule.** Pointer â†’ `HitTest.Caret`, key â†’ `EditorKeyMap` â†’
-  `KeyRouter` â†’ `EditorSession.Apply`. If you are about to write `if (key == ...)` in the
+- **The control owns no editing rule.** Pointer → `HitTest.Caret`, key → `EditorKeyMap` →
+  `KeyRouter` → `EditorSession.Apply`. If you are about to write `if (key == ...)` in the
   control, the rule belongs in `KeyRouter` instead.
 - **Input arrives in two streams.** Characters come from `OnTextInput` (one edit for a whole
   typed string, and the place IME will hook in later); navigation and deletion come from
@@ -869,10 +869,10 @@ Rules that follow from that, and are easy to break by accident:
    controls touch Avalonia. A UI test harness (`Avalonia.Headless.XUnit`) is added when there is
    wiring worth asserting on, not before.
 5. **The dirty flag is derived from the change journal**, never a boolean the app sets on edit and
-   clears on save â€” otherwise undo back to the saved state still claims "modified".
+   clears on save — otherwise undo back to the saved state still claims "modified".
 6. **Undo belongs to the session, not to the tab.** A document keeps its session while open and
    disposes it when the document closes; forgetting the dispose leaks undo state.
-7. **View â–¸ Representation is built from the active document, not from the registry.** It binds
+7. **View ▸ Representation is built from the active document, not from the registry.** It binds
    `EditorSession.Alternatives()` (concepts the document uses that have more than one variant) to
    one submenu per concept with radio items, and clicking one calls `ChooseVariant` + `Refresh()`
    on that tab's control. The menu is refreshed from `UpdateStatus()`, holds no state of its own
