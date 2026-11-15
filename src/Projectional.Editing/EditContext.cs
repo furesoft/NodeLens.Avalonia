@@ -159,6 +159,31 @@ public sealed class EditContext
     }
 
     /// <summary>
+    /// Removes <paramref name="child"/> from <paramref name="slot"/> of <paramref name="parent"/> and
+    /// deletes its subtree.
+    /// </summary>
+    /// <exception cref="EditingException"><paramref name="parent"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// The model's own removal is used rather than a re-parenting of the node, so the subtree leaves the
+    /// document as one journalled step: undo puts every node of it back at the place it came from, with
+    /// its identity intact.
+    /// </remarks>
+    public void DeleteChild(Node parent, string slot, Node child)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentNullException.ThrowIfNull(child);
+
+        if (!ReferenceEquals(parent.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {parent.Id} belongs to another model than the document being edited.");
+        }
+
+        parent.RemoveChild(slot, child);
+    }
+
+    /// <summary>
     /// Moves <paramref name="child"/> to <paramref name="index"/> among the children of
     /// <paramref name="slot"/> of <paramref name="parent"/>.
     /// </summary>

@@ -24,8 +24,10 @@ public static class KeyRouter
     /// <summary>The action <paramref name="key"/> stands for.</summary>
     /// <remarks>
     /// Enter is routed as an insertion here, which is what the key does wherever the caret is not in a
-    /// value of text. A host with a document open should ask <see cref="For(EditorSession, EditorKey)"/>
-    /// instead, because only that one can tell the two cases apart.
+    /// value of text. Backspace and Delete are routed as text deletes, which is what they do wherever
+    /// there is text to delete. A host with a document open should ask
+    /// <see cref="For(EditorSession, EditorKey)"/> instead, because only that one can tell the two cases
+    /// apart and reach the node behind them.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="key"/> is not a routed key.</exception>
     public static EditAction For(EditorKey key) => key switch
@@ -81,7 +83,48 @@ public static class KeyRouter
             return listed;
         }
 
-        return key == EditorKey.Enter && IsTextPlace(session) ? new InsertLineBreakAction() : For(key);
+        return key switch
+        {
+            EditorKey.Enter when IsTextPlace(session) => new InsertLineBreakAction(),
+            EditorKey.Backspace => Delete(session, DeleteDirection.Backward),
+            EditorKey.Delete => Delete(session, DeleteDirection.Forward),
+            _ => For(key),
+        };
+    }
+
+    /// <summary>The delete <paramref name="key"/> means where the caret currently is.</summary>
+    /// <remarks>
+    /// Backspace and Delete reach for text first, because that is what they do wherever there is any:
+    /// inside a value they remove a character, and with a selection they remove it. Where there is no
+    /// text to remove - the caret stands on a keyword, a separator, a space, or at the edge of a value
+    /// that has none left - they remove the node instead, because the neighbouring cell is a node and
+    /// there is nothing smaller to take away.
+    /// </remarks>
+    private static EditAction Delete(EditorSession session, DeleteDirection direction) =>
+        RemovesText(session, direction)
+            ? new DeleteTextAction(direction)
+            : new DeleteNodeAction();
+
+    /// <summary>Whether a text delete in <paramref name="direction"/> has something to remove.</summary>
+    private static bool RemovesText(EditorSession session, DeleteDirection direction)
+    {
+        var selection = session.Selection;
+
+        if (selection.HasText)
+        {
+            return true;
+        }
+
+        if (CaretNavigation.PlaceAt(session.Tree, selection.Caret)?.Cell is not PropertyCell cell)
+        {
+            return false;
+        }
+
+        var offset = Math.Clamp(selection.Caret.Offset, 0, cell.Text.Length);
+
+        return direction == DeleteDirection.Backward
+            ? offset > 0
+            : offset < cell.Text.Length;
     }
 
     /// <summary>What <paramref name="key"/> means while <paramref name="list"/> is open, if anything.</summary>
