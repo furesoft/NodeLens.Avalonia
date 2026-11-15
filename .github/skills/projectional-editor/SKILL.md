@@ -573,6 +573,15 @@ dependency, so every action is testable headlessly.
   `true`. `Render` skips the caret bar while `IsVisible` is false. Every edit/move/click path
   goes through `Show()`, which calls `Reset()` - do not invalidate the control directly from a
   new input path or the caret can be dark at the moment of typing.
+- **The pointer over the editor is an I-beam.** The constructor sets
+  `Cursor = new Cursor(StandardCursorType.Ibeam)` because the whole surface is text the user can
+  type into; an arrow would read as "a panel you look at". It is set once in the constructor and
+  never touched again, so a host may still override `Cursor` on the instance or an ancestor.
+  `Cursor` exposes no public getter for the standard type (only `ToString`, which prints
+  `Ibeam`), and the control cannot be constructed headlessly at all - its completion palette
+  builds `StreamGeometry` from platform services - so this is verified through a real-window
+  probe, not a unit test. Do not add a test that compares `Cursor.ToString()`; it would fail in
+  the constructor before reaching the assertion.
 - **Undo/redo report whether they did anything.** `Ctrl+Z`, `Ctrl+Shift+Z`/`Ctrl+Y` call
   `session.Undo()`/`Redo()` and only set `Handled` when the history had a step.
 - **The context menu is a description, not a widget.** `EditorMenu.For(session)` (in
