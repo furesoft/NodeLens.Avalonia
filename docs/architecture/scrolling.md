@@ -94,13 +94,13 @@ Nothing here is new arithmetic - each property is a number the viewport already 
 | `IScrollable` / `ILogicalScrollable` member | Value |
 | --- | --- |
 | `Extent` | `layout.Size` - the laid-out document, in layout units |
-| `Viewport` | `Bounds.Size` - what is on screen, i.e. today's `ViewportSize` |
-| `Offset` | `new Vector(_offsetX, _offsetY)` |
+| `Viewport` | `ViewportSize` - the text area, so the gutter is excluded |
+| `Offset` | `new Vector(_offsetX, _offsetY)`, clamped by `LayoutViewport.Clamp` |
 | `CanHorizontallyScroll` / `CanVerticallyScroll` | `true` (the layout is wider and taller than the viewport when the document says so) |
 | `IsLogicalScrollEnabled` | `true` |
 | `ScrollSize` | `new Size(measure.IndentWidth, measure.LineHeight)` - one step is one layout unit |
 | `PageScrollSize` | `Viewport - ScrollSize`, per axis, floored at one step |
-| `ScrollInvalidated` | raised whenever the offset or the extent changes from the editor's side |
+| `ScrollInvalidated` | raised whenever the offset or the extent may have moved from the editor's side |
 | `BringIntoView(control, rect)` | `ScrollIntoView` for that rectangle |
 | `GetControlInDirection(...)` | `null` - there are no child controls to navigate to |
 
@@ -110,17 +110,25 @@ Notes that are easy to get wrong:
   the window has `Extent < Viewport`, which makes `Maximum` zero and hides the bar under
   `Auto`. Clamping `Extent` up would erase the difference between "shorter than the window"
   and "exactly the window".
+- **`Viewport` is the text area, not `Bounds.Size`.** A bar's maximum is `Extent - Viewport`,
+  so reporting the whole control would let it scroll one gutter-width past the last column of
+  text. `ViewportSize` is the number the painter and the clamp already use; the mapping has to
+  use it too.
 - **The step is a layout unit, not a pixel count.** `MonospaceTextMeasure` gives one line of
   height and `IndentWidth` of width; in the real editor `AvaloniaTextMeasure` gives the font's
   line height. A fixed 16-pixel horizontal step would creep instead of moving a cell.
 - **A page keeps one line of overlap.** `Viewport - ScrollSize` rather than `Viewport`, so
   `PageDown` never loses the line the reader was on. This is the one place the plan invents a
   number, and it invents the conventional one.
-- **`ScrollInvalidated` is the only notification the `ScrollViewer` gets.** It must be raised
-  after an edit changes the document size (the extent moved), after `ScrollTo`, after
-  `ScrollToCaret`, after a wheel scroll, and after `Session` is replaced. Missing one leaves
-  the thumb stale until the next unrelated invalidation, which reads as "the scrollbar is
-  broken".
+- **`ScrollInvalidated` is the only notification the `ScrollViewer` gets.** `UpdateFromScrollable`
+  is the one path by which the presenter learns `Extent`, `Viewport` and `Offset`, so a missing
+  raise leaves the thumb stale until the next unrelated invalidation, which reads as "the
+  scrollbar is broken". The control raises from: `ScrollTo` (behind its early return, so a host
+  writing back the offset we already had hears nothing), `Refresh`, the end of an edit that
+  changed the document, a menu command about to be shown, the `Session`, `FontSize` and
+  `ShowLineNumbers` setters, and the two resize checks - the `Bounds` hook, which runs before
+  the measure pass, and the end of `MeasureOverride`, which runs after the new wrap width has
+  re-laid-out the document.
 - **No feedback loop.** The `ScrollViewer` reacts to `ScrollInvalidated` by reading the
   properties back and setting `Offset`; the `Offset` setter calls `ScrollTo`, which clamps and
   invalidates the visual. Do not raise `ScrollInvalidated` from inside the `Offset` setter
@@ -199,8 +207,11 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
   control cannot be constructed in a unit test (its palette needs platform services), so
   anything left inside it is verified only by a probe.
 - **S2 - the protocol.** `ProjectionalEditorControl` implements `ILogicalScrollable`, reading
-  every property from the `ScrollRange` computed in `Render`/`Refresh`, and raises
-  `ScrollInvalidated` from the five places listed above. No behaviour change without a host.
+  every property from a `ScrollRange` computed on demand from the current `Layout`, viewport and
+  offset, and raises `ScrollInvalidated` from the places listed above. Computed rather than
+  cached on purpose: the offset moves far more often than the layout, and a cached range would
+  need invalidating at exactly the raise sites where a stale number would hide. No behaviour
+  change without a host.
 - **S3 - the workbench.** Wrap each tab's control in a `ScrollViewer` with `Auto` visibility,
   replace the three `tab.Content is ProjectionalEditorControl` checks with one unwrapping
   helper, and set `Focusable = false` on the wrapper.
@@ -218,7 +229,7 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
 | What | How |
 | --- | --- |
 | Step, page, extent, clamping | Headless tests on `ScrollRange` in `Projectional.Core.Tests` |
-| The interface reports the layout, not a copy | Unit test asserting `Extent`/`Viewport`/`Offset` follow `LayoutViewport` after a session rebuild |
+| The interface reports the layout, not a copy | Probe: read `ILogicalScrollable.Extent`/`Viewport`/`Offset` back after an edit changed the document's size |
 | A short document does not swallow the wheel | Probe: raise the wheel on a control whose document fits, read `args.Handled` |
 | Bars move the content | Probe: set `ScrollViewer.Offset`, read `control.OffsetX/OffsetY` and the rendered picture |
 | Nothing painted under a bar | Probe: rasterise with `Auto` bars visible and sample the gutter pixels |
