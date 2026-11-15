@@ -192,6 +192,45 @@ public sealed class EditorTreeTests
     }
 
     [Fact]
+    public void AChildSlotPutsItsSpacingBetweenItsChildren()
+    {
+        var model = TestLanguage.NewModel();
+        var rule = model.NewNode(TestLanguage.Rule);
+        var body = model.NewChild(rule, "body", TestLanguage.Body);
+        model.NewChild(body, "steps", TestLanguage.Step).Set("text", "one");
+        model.NewChild(body, "steps", TestLanguage.Step).Set("text", "two");
+
+        var steps = Find<ChildCell>(body, "steps");
+
+        Assert.Equal(3, steps.Content.Count);
+        Assert.IsType<SpaceCell>(steps.Content[1]);
+        Assert.NotSame(steps.Content[0], steps.Content[2]);
+    }
+
+    [Fact]
+    public void AChildSlotWithoutSpacingPutsItsChildrenSideBySide()
+    {
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration("Test.List", [new ChildSlot("items", "Test.Item")]),
+            new ConceptDeclaration("Test.Item", [new PropertySlot("text", PropertyType.String)]),
+        ]);
+        var notations = new NotationRegistry(concepts);
+        notations.Add("Test.List", ed => ed.Children("items", spacing: 0));
+        notations.Add("Test.Item", ed => ed.Line(ed.Property("text")));
+
+        var model = new Project(concepts).NewModel("List");
+        var list = model.NewNode("Test.List");
+        model.NewChild(list, "items", "Test.Item");
+        model.NewChild(list, "items", "Test.Item");
+
+        var children = Assert.IsType<ChildCell>(new EditorTreeBuilder(notations).Build(list).Root);
+
+        Assert.Equal(2, children.Content.Count);
+        Assert.DoesNotContain(children.Content, cell => cell is SpaceCell);
+    }
+
+    [Fact]
     public void AnEmptyChildSlotHasNoContentAndKeepsItsEmptyText()
     {
         var rule = TestLanguage.NewModel().NewNode(TestLanguage.Rule);
@@ -219,13 +258,15 @@ public sealed class EditorTreeTests
 
         Assert.Equal(3, collection.Items.Count);
         Assert.Equal(2, collection.Separators.Count);
-        Assert.Equal(5, collection.Content.Count);
+        Assert.Equal(1, collection.Spacing);
+        Assert.Equal(7, collection.Content.Count);
         Assert.Equal(";", Assert.IsType<ConstantCell>(collection.Content[1]).Text);
+        Assert.IsType<SpaceCell>(collection.Content[2]);
         Assert.All(collection.Separators, separator => Assert.IsType<ConstantCell>(separator));
     }
 
     [Fact]
-    public void ACollectionWithoutSeparatorPutsASpaceBetweenItsItems()
+    public void ACollectionWithoutSeparatorIsSeparatedByItsSpacing()
     {
         var concepts = ConceptRegistry.Create(
         [
@@ -243,7 +284,60 @@ public sealed class EditorTreeTests
 
         var collection = Assert.IsType<CollectionCell>(new EditorTreeBuilder(notations).Build(list).Root);
 
-        Assert.All(collection.Separators, separator => Assert.IsType<SpaceCell>(separator));
+        Assert.Empty(collection.Separators);
+        Assert.Equal(3, collection.Content.Count);
+        Assert.IsType<SpaceCell>(collection.Content[1]);
+    }
+
+    [Fact]
+    public void ACollectionWithNoSpacingPutsItsItemsSideBySide()
+    {
+        var address = CellAddress.OfSlot(NodeId.New(), "items");
+        var first = new ConstantCell(address, "a", ConstantKind.Punctuation);
+        var second = new ConstantCell(address, "b", ConstantKind.Punctuation);
+
+        var collection = new CollectionCell(address, "items", "<empty>", [first, second], [], spacing: 0);
+
+        Assert.Equal(0, collection.Spacing);
+        Assert.Equal([first, second], collection.Content);
+    }
+
+    [Fact]
+    public void ACollectionWithAWiderSpacingRepeatsTheSpace()
+    {
+        var address = CellAddress.OfSlot(NodeId.New(), "items");
+        var first = new ConstantCell(address, "a", ConstantKind.Punctuation);
+        var second = new ConstantCell(address, "b", ConstantKind.Punctuation);
+        var separator = new ConstantCell(address, ";", ConstantKind.Punctuation);
+
+        var collection = new CollectionCell(address, "items", "<empty>", [first, second], [separator], spacing: 2);
+
+        Assert.Equal(5, collection.Content.Count);
+        Assert.Same(separator, collection.Content[1]);
+        Assert.All([2, 3], index => Assert.IsType<SpaceCell>(collection.Content[index]));
+        Assert.Same(second, collection.Content[4]);
+    }
+
+    [Fact]
+    public void ACollectionWithoutTrailingGapEndsWithItsLastItem()
+    {
+        var address = CellAddress.OfSlot(NodeId.New(), "items");
+        var first = new ConstantCell(address, "a", ConstantKind.Punctuation);
+        var second = new ConstantCell(address, "b", ConstantKind.Punctuation);
+
+        var collection = new CollectionCell(address, "items", "<empty>", [first, second], []);
+
+        Assert.Same(second, collection.Content[^1]);
+    }
+
+    [Fact]
+    public void ACollectionRejectsANegativeSpacing()
+    {
+        var address = CellAddress.OfSlot(NodeId.New(), "items");
+        var first = new ConstantCell(address, "a", ConstantKind.Punctuation);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new CollectionCell(address, "items", "<empty>", [first], [], spacing: -1));
     }
 
     [Fact]
@@ -350,14 +444,29 @@ public sealed class EditorTreeTests
     }
 
     [Fact]
-    public void ACollectionNeedsExactlyOneSeparatorPerGap()
+    public void ACollectionRejectsSeparatorsForOnlySomeGaps()
     {
         var address = CellAddress.OfSlot(NodeId.New(), "items");
-        var first = new ConstantCell(address, "a", ConstantKind.Punctuation);
-        var second = new ConstantCell(address, "b", ConstantKind.Punctuation);
+        var firstSeparator = new ConstantCell(address, ";", ConstantKind.Punctuation);
+        var secondSeparator = new ConstantCell(address, ";", ConstantKind.Punctuation);
+
+        var twoItems = new EditorCell[]
+        {
+            new ConstantCell(address, "a", ConstantKind.Punctuation),
+            new ConstantCell(address, "b", ConstantKind.Punctuation),
+        };
+        var threeItems = new EditorCell[]
+        {
+            new ConstantCell(address, "a", ConstantKind.Punctuation),
+            new ConstantCell(address, "b", ConstantKind.Punctuation),
+            new ConstantCell(address, "c", ConstantKind.Punctuation),
+        };
 
         Assert.Throws<ProjectionException>(() =>
-            new CollectionCell(address, "items", "<empty>", [first, second], []));
+            new CollectionCell(address, "items", "<empty>", threeItems, [firstSeparator]));
+
+        Assert.Throws<ProjectionException>(() =>
+            new CollectionCell(address, "items", "<empty>", twoItems, [firstSeparator, secondSeparator]));
     }
 
     private static T Find<T>(Node node, string slot)

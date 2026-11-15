@@ -28,7 +28,7 @@ public sealed class EditorFrameTests
 
         var frame = Frame(layout, rule, new LayoutSize(41, 5), 0, 0);
 
-        Assert.Equal(29, frame.TextRuns.Count);
+        Assert.Equal(31, frame.TextRuns.Count);
         Assert.All(frame.TextRuns, run => Assert.False(string.IsNullOrEmpty(run.Text)));
         Assert.DoesNotContain(frame.TextRuns, run => run.Cell.Children.Count > 0);
     }
@@ -52,7 +52,7 @@ public sealed class EditorFrameTests
 
         var frame = Frame(layout, rule, new LayoutSize(41, 2), 0, 0);
 
-        Assert.Equal(24, frame.TextRuns.Count);
+        Assert.Equal(26, frame.TextRuns.Count);
         Assert.All(frame.TextRuns, run => Assert.True(run.Bounds.Bottom <= 2));
     }
 

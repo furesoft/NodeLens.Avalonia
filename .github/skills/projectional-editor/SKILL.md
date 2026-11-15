@@ -326,6 +326,13 @@ into the other.
 - **`CollectionCell` owns the interleaving.** `Content` is document order including
   separators; `Items` and `Separators` are kept because navigation and layout want different
   questions answered. Separators are never shared between gaps.
+- **Spacing is the blank *after* a separator, never before it.** `CollectionNotationCell.Spacing`
+  and `ChildNotationCell.Spacing` (default 1, negative throws) are the gap the notation asks for;
+  with no separator the spacing *is* the whole gap, and there is no gap after the last item. A
+  separator's own leading space belongs to the token (`Punct(",")` not `Punct(" ,")`, and
+  `Line(Space, Keyword("and"))` for a word), so `ed.Punct(", ")` is now a bug rather than a
+  workaround. Gaps are real `SpaceCell`s built from the collection's or slot's own address, so a
+  gap of 3 is 3 cells and 3 caret stops - that is intended, not an oversight.
 - **`TableCell` is a `StructureCell` whose content is the flattened grid** (headers, then rows,
   row-major), so every existing walk - caret, snapshot, style - sees table cells in drawn order
   without knowing what a table is. `Headers`, `Rows`, `ColumnCount` and `IsEmpty` exist because
@@ -651,7 +658,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 651 tests**; anything below that means tests were deleted.
+it. **Baseline is 662 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

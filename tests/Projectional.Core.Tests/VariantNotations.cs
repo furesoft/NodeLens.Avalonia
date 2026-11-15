@@ -34,7 +34,7 @@ internal static class VariantNotations
             ed.Property("text"),
             ed.Punct(")")));
 
-        notations.Add(TestLanguage.Body, ed => ed.Collection("notes", separator: ed.Punct(", ")));
+        notations.Add(TestLanguage.Body, ed => ed.Collection("notes", separator: ed.Punct(",")));
 
         return notations;
     }

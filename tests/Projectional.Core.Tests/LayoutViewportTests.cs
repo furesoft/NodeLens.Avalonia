@@ -28,7 +28,7 @@ public sealed class LayoutViewportTests
     {
         var layout = Layout();
 
-        Assert.Equal(new LayoutSize(21, 3), LayoutViewport.ScrollableExtent(layout, new LayoutSize(20, 2)));
+        Assert.Equal(new LayoutSize(23, 3), LayoutViewport.ScrollableExtent(layout, new LayoutSize(20, 2)));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class LayoutViewportTests
     {
         var viewport = LayoutViewport.Of(Layout(), new LayoutSize(20, 2), offsetX: 100, offsetY: 100);
 
-        Assert.Equal(21, viewport.OffsetX);
+        Assert.Equal(23, viewport.OffsetX);
         Assert.Equal(3, viewport.OffsetY);
     }
 
@@ -65,7 +65,7 @@ public sealed class LayoutViewportTests
         var atTop = LayoutViewport.Of(layout, new LayoutSize(41, 2), 0, 0);
         var atBottom = LayoutViewport.Of(layout, new LayoutSize(41, 2), 0, 3);
 
-        Assert.Equal(40, atTop.Cells.Count);
+        Assert.Equal(42, atTop.Cells.Count);
         Assert.Equal(8, atBottom.Cells.Count);
         Assert.DoesNotContain(atTop.Cells, cell => cell.Bounds == ExtendsLine);
         Assert.Contains(atBottom.Cells, cell => cell.Bounds == ExtendsLine);
@@ -78,7 +78,7 @@ public sealed class LayoutViewportTests
         var viewport = LayoutViewport.Of(layout, new LayoutSize(20, 2), 5, 1);
         var window = viewport.Window;
 
-        Assert.Equal(20, viewport.Cells.Count);
+        Assert.Equal(21, viewport.Cells.Count);
         Assert.All(viewport.Cells, cell => Assert.True(cell.Bounds.Intersects(window)));
         Assert.All(
             layout.Cells.Where(cell => !cell.Bounds.Intersects(window)),
