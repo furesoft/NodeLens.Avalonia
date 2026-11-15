@@ -122,18 +122,29 @@ public static class CaretNavigation
     /// <param name="measure">The measure the layout was produced with.</param>
     /// <param name="position">Where the caret starts.</param>
     /// <param name="move">Which way to go.</param>
+    /// <param name="page">
+    /// How tall the visible area is, in layout units, for the page moves; ignored by every other move.
+    /// </param>
     /// <returns>
     /// The position the caret arrives at. It is a cell of <paramref name="layout"/> and its offset is
     /// within that cell's text, so the caller can use it without checking anything; a move that cannot
     /// go anywhere returns the clamped position it started from.
     /// </returns>
+    /// <remarks>
+    /// <paramref name="page"/> has no default on purpose. A layout does not know how large the window
+    /// that shows it is - that is the host's fact, not the tree's - so a caller that wants a page move
+    /// has to say how much a page is; a default would turn PageDown into Down silently. Every other
+    /// move ignores the number, and <see cref="PageStep"/> answers zero for one that is unusable, which
+    /// is what a host without a viewport should pass.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="move"/> is not a known move.</exception>
     /// <exception cref="EditingException">The tree has no cell the caret could stand in.</exception>
     public static CaretPosition Move(
         CellLayout layout,
         ITextMeasure measure,
         CaretPosition position,
-        CaretMove move)
+        CaretMove move,
+        double page)
     {
         ArgumentNullException.ThrowIfNull(layout);
         ArgumentNullException.ThrowIfNull(measure);
@@ -161,8 +172,10 @@ public static class CaretNavigation
             CaretMove.Right => Cell(places, index, direction: 1),
             CaretMove.LeftCharacter => Character(places, index, offset, direction: -1),
             CaretMove.RightCharacter => Character(places, index, offset, direction: 1),
-            CaretMove.Up => Vertical(layout, measure, places, index, offset, direction: -1),
-            CaretMove.Down => Vertical(layout, measure, places, index, offset, direction: 1),
+            CaretMove.Up => Vertical(layout, measure, places, index, offset, direction: -1, distance: 0),
+            CaretMove.Down => Vertical(layout, measure, places, index, offset, direction: 1, distance: 0),
+            CaretMove.PageUp => Vertical(layout, measure, places, index, offset, -1, PageStep(page, measure)),
+            CaretMove.PageDown => Vertical(layout, measure, places, index, offset, 1, PageStep(page, measure)),
             CaretMove.LineStart => LineEdge(layout, measure, places, index, offset, start: true),
             CaretMove.LineEnd => LineEdge(layout, measure, places, index, offset, start: false),
             CaretMove.DocumentStart => CaretPosition.At(places[0], 0),
@@ -170,6 +183,18 @@ public static class CaretNavigation
             _ => throw new ArgumentOutOfRangeException(nameof(move), move, "The move is not a known caret move."),
         };
     }
+
+    /// <summary>
+    /// How far a page move travels: a whole visible page less one line, so the line the caret leaves
+    /// stays on screen at the other edge.
+    /// </summary>
+    /// <remarks>
+    /// Zero when <paramref name="page"/> is not a usable height - a host that has no viewport, or a
+    /// height that is not a positive number - because a page move that cannot measure a page has to
+    /// degrade into the single-line move it is a version of rather than jump nowhere.
+    /// </remarks>
+    private static double PageStep(double page, ITextMeasure measure) =>
+        page > 0 ? Math.Max(0, page - measure.LineHeight) : 0;
 
     /// <summary>
     /// The neighbouring cell in document order, or this one at the edge of the document.
@@ -223,13 +248,25 @@ public static class CaretNavigation
             : CaretPosition.At(place, place.Length);
     }
 
-    /// <summary>The line nearest in <paramref name="direction"/> that keeps the column as well as it can.</summary>
+    /// <summary>
+    /// The line nearest in <paramref name="direction"/>, <paramref name="distance"/> away, that keeps the
+    /// column as well as it can.
+    /// </summary>
     /// <remarks>
+    /// <para>
     /// Lines, not cells: a wrapped value is several lines of one cell, and pressing down in the middle of
     /// it has to move one line down rather than jumping over the whole cell. The column is compared
     /// against the whole width of a candidate cell rather than against its start, so a line that is
     /// indented further still receives the caret when the column falls inside one of its cells. Ties go
     /// to the place that comes first in document order, which is the leftmost one on that line.
+    /// </para>
+    /// <para>
+    /// <paramref name="distance"/> is what turns the single-line move into a page move: the caret aims at
+    /// a line that far away instead of the one next door, and lands on the nearest line in the direction
+    /// it can actually reach. The two are one routine because a page move is a vertical move that wants
+    /// to land somewhere else - a document too short for a page ends up on its last line, which is what
+    /// the nearest-in-direction rule already does when the aim is past the end.
+    /// </para>
     /// </remarks>
     private static CaretPosition Vertical(
         CellLayout layout,
@@ -237,7 +274,8 @@ public static class CaretNavigation
         IReadOnlyList<CaretPlace> places,
         int index,
         int offset,
-        int direction)
+        int direction,
+        double distance)
     {
         var place = places[index];
 
@@ -250,10 +288,12 @@ public static class CaretNavigation
         var lineIndex = CaretGeometry.LineIndexOf(lines, offset);
         var column = origin.X + CaretGeometry.LeftOn(place, lines, lineIndex, offset, measure);
         var line = CaretGeometry.TopOf(origin, lineIndex, measure) + (measure.LineHeight / 2);
-        var target = double.NaN;
+        var aim = line + (direction * distance);
+        var tolerance = measure.LineHeight / 2;
         var best = -1;
         var bestLine = 0;
-        var distance = double.MaxValue;
+        var miss = double.MaxValue;
+        var distanceToColumn = double.MaxValue;
 
         for (var candidate = 0; candidate < places.Count; candidate++)
         {
@@ -273,20 +313,17 @@ public static class CaretNavigation
                     continue;
                 }
 
+                var candidateMiss = Math.Abs(middle - aim);
                 var candidateDistance = DistanceTo(bounds, column);
 
-                if (double.IsNaN(target) || (direction < 0 ? middle > target : middle < target))
-                {
-                    target = middle;
-                    best = candidate;
-                    bestLine = row;
-                    distance = candidateDistance;
-                }
-                else if (Math.Abs(middle - target) < measure.LineHeight / 2 && candidateDistance < distance)
+                if (best < 0
+                    || candidateMiss < miss - tolerance
+                    || (Math.Abs(candidateMiss - miss) <= tolerance && candidateDistance < distanceToColumn))
                 {
                     best = candidate;
                     bestLine = row;
-                    distance = candidateDistance;
+                    miss = candidateMiss;
+                    distanceToColumn = candidateDistance;
                 }
             }
         }

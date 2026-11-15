@@ -42,8 +42,20 @@ public enum EditorKey
     /// <summary>Home.</summary>
     Home,
 
+    /// <summary>Ctrl+Home, which goes to the very first caret stop of the document.</summary>
+    ControlHome,
+
     /// <summary>End.</summary>
     End,
+
+    /// <summary>Ctrl+End, which goes to the very last caret stop of the document.</summary>
+    ControlEnd,
+
+    /// <summary>PageUp, which moves the caret one visible page of lines towards the start.</summary>
+    PageUp,
+
+    /// <summary>PageDown, which moves the caret one visible page of lines towards the end.</summary>
+    PageDown,
 
     /// <summary>Tab.</summary>
     Tab,

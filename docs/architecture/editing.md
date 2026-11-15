@@ -71,6 +71,8 @@ so what is clickable and what is reachable by keyboard cannot drift apart.
 | Ctrl+Left / Ctrl+Right | one character, crossing into the neighbour at the edge of a cell — the character step the cell move takes away |
 | Home / End | start / end of the cell's line, using `LineHeight / 2` as the tolerance so a caret that is vertically centred still counts as being on the line |
 | Up / Down | nearest **line** in that direction — a line of a multi-line value before the neighbouring cell — then the place with the smallest distance to the old column, ties going to document order |
+| PageUp / PageDown | the same geometric step with a distance of `PageHeight - LineHeight`, so one line of the old view stays on screen; the page is an aim, not a count, so pressing it near the bottom lands on the last line instead of refusing |
+| Ctrl+Home / Ctrl+End | first / last caret place in the document, regardless of the current line |
 | Tab / Shift+Tab | next / previous slot of the same node in declaration order, then out to the parent |
 
 Horizontal motion is **by cell**, vertical motion is **geometric**, and the difference is the
@@ -144,7 +146,7 @@ produced it, and the editing layer never has to remember anything for undo.
 | `InsertNodeAction` | Enter, outside a value of text | fill the empty slot the caret is on with a new child |
 | `InsertLineBreakAction` | Enter, inside a value of text | open a line at the caret, which is a `TypeTextAction` of `"\n"` |
 | `TabAction` | Tab, Shift+Tab | move the caret to the next / previous slot |
-| `MoveCaretAction` | the arrow keys, Home, End | move the caret, never the model |
+| `MoveCaretAction` | the arrow keys, Home, End, PageUp, PageDown, Ctrl+Home, Ctrl+End | move the caret, never the model |
 | `MoveNodeAction` | Alt+Up, Alt+Down | reorder the node the caret is in among its siblings |
 | `OpenCompletionAction` | Ctrl+Space | offer the concepts that could fill the empty slot at the caret |
 | `NarrowCompletionAction` / `WidenCompletionAction` | a character / Backspace, while a list is open | filter the open list, never the model |
@@ -466,7 +468,6 @@ errors, such as opening a session on a node that is not in a model.
 | --- | --- | --- |
 | Insert at index | Enter appends to the end of a list, not below the caret | M2 (tables need it) |
 | Property defaults are materialized | typing into a default inserts into it (`"unnamed"` + `"P"` → `"Punnamed"`) instead of replacing it, except in a node an edit has just created, whose value arrives selected | `feat/property-defaults` after M1 |
-| `Ctrl+Home` / `Ctrl+End` | not routed; document start and end are reached with Home/End on the first and last line | M3 |
 | Completion of a filled slot (substitution) | a list only offers concepts for an empty slot; replacing an existing child arrives with the language's substitution rules | M3 ([completion.md](completion.md)) |
 | Multi-cell text editing | a selection behaves like a caret for text input | M3 |
 | Copying a node | the clipboard carries text, not a structural fragment, so a subtree cannot be pasted into another slot | M3 |

@@ -19,15 +19,17 @@ namespace Projectional.Avalonia;
 /// belong to the host - Alt+Left is a back navigation in many applications - and swallowing them
 /// because the plain key happens to be routed would take shortcuts away from the very application that
 /// embeds the editor. Shift is part of what the editor does, because Shift+Tab walks slots backwards.
-/// Control is the host's as well, with three exceptions: Ctrl+Left and Ctrl+Right, because the arrows
-/// move a cell at a time and the character step has to stay reachable from the keyboard; Ctrl+Space,
-/// which is the completion gesture in every editor that has one; and Ctrl+A, Ctrl+C, Ctrl+X and Ctrl+V,
-/// the four text gestures a user reaches for without looking and every platform spells the same way - a
-/// clipboard that only worked through a context menu would be a clipboard nobody finds. Alt has its own
-/// exception, Alt+Up and Alt+Down, because reordering a node is an edit of the model and no host can
-/// offer it for the editor; the combination is also the one every editor uses for the same job, so
-/// taking it is what keeps the shortcut where a user looks for it. Alt+Left, Alt+Right and every other
-/// Alt combination stay with the host.
+/// Control is the host's as well, with a short list of exceptions. Ctrl+Left and Ctrl+Right, because
+/// the arrows move a cell at a time and the character step has to stay reachable from the keyboard.
+/// Ctrl+Space, which is the completion gesture in every editor that has one. Ctrl+A, Ctrl+C, Ctrl+X and
+/// Ctrl+V, the four text gestures a user reaches for without looking and every platform spells the same
+/// way - a clipboard that only worked through a context menu would be a clipboard nobody finds.
+/// Ctrl+Home and Ctrl+End, because a click elsewhere in the window means "the start or end of this
+/// document" in the host too, so taking them costs nothing. Alt has its own exception, Alt+Up and
+/// Alt+Down, because reordering a node is an edit of the model and no host can offer it for the editor;
+/// the combination is also the one every editor uses for the same job, so taking it is what keeps the
+/// shortcut where a user looks for it. Alt+Left, Alt+Right and every other Alt combination stay with the
+/// host, and so does Ctrl+PageUp/Ctrl+PageDown, which most browsers and tabbed applications own.
 /// </para>
 /// </remarks>
 public static class EditorKeyMap
@@ -56,7 +58,7 @@ public static class EditorKeyMap
                 };
         }
 
-        if (control && key is not (Key.Left or Key.Right or Key.Space or Key.A or Key.C or Key.V or Key.X))
+        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.C or Key.V or Key.X))
         {
             return null;
         }
@@ -69,8 +71,10 @@ public static class EditorKeyMap
             Key.Right => control ? EditorKey.ControlRight : EditorKey.Right,
             Key.Up => EditorKey.Up,
             Key.Down => EditorKey.Down,
-            Key.Home => EditorKey.Home,
-            Key.End => EditorKey.End,
+            Key.Home => control ? EditorKey.ControlHome : EditorKey.Home,
+            Key.End => control ? EditorKey.ControlEnd : EditorKey.End,
+            Key.PageUp => EditorKey.PageUp,
+            Key.PageDown => EditorKey.PageDown,
             Key.Tab => shifted ? EditorKey.ShiftTab : EditorKey.Tab,
             Key.Enter => EditorKey.Enter,
             Key.Back => EditorKey.Backspace,

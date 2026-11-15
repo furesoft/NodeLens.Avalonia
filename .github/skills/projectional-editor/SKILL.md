@@ -22,7 +22,9 @@ syntax highlighting from the meaning on a run to a host-swappable palette, model
 decorations, cell-wise caret motion with a blinking caret, a context menu described by the
 editing layer, concept- and value-driven completion (Ctrl+Space, icons as host images, an
 enumerated property offering its values on arrival), and text
-clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`) are done. The
+clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
+size, model-defined markers with hover tooltips, and logical scrolling (bars via
+`ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
 
 ## Status and where the truth lives
@@ -118,7 +120,7 @@ deliberate and easy to break.
   record: false)`) and never `Record`. A replay therefore journals nothing, and
   `UndoHistory` publishes the change set itself (`Invert()` per entry in reverse for
   undo, the original records in forward order for redo) through
-  `Model.PublishRestored`. When you add a mutation seam, add its redo too â€” a missing
+  `Model.PublishRestored`. When you add a mutation seam, add its redo too — a missing
   redo makes redo silently skip the step.
 - A journal entry with a `null` change is rollback-only. `CreateDetached` uses one so that
   `NewChild` publishes a single `NodeAdded` at the final place instead of root-add plus
@@ -153,13 +155,13 @@ Read its `<remarks>` before changing the replay path.
 - Undo plays the entries **in reverse** calling `Undo`; redo plays them **forward**
   calling `Redo` (skipping the nulls).
 - `Replay` sets `_replaying`, opens a transaction, runs the closures, `MarkMutated()`,
-  `Complete()`, and then calls `PublishRestored` **while `_replaying` is still true** â€”
+  `Complete()`, and then calls `PublishRestored` **while `_replaying` is still true** —
   otherwise the history would record its own restoration and redo/undo would fight.
 - `OnModelChanged` bails out on `_replaying` or on `e.Steps.Count == 0` (undo/redo
   publications carry no steps on purpose).
 - Any commit clears the redo stack. Coalescing only merges into the previous step when
   the current `CoalescingKey` is non-null and equals that step's key; `null` never
-  merges. There is no time window â€” the host must clear the key when the burst ends.
+  merges. There is no time window — the host must clear the key when the burst ends.
 - The `UndoHistory` API is `Undo()`, `Redo()`, `CanUndo`, `CanRedo`, `UndoDepth`,
   `RedoDepth`, `CoalescingKey`, `Clear()`, plus `Dispose()` to unsubscribe.
 
@@ -214,7 +216,7 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 - **`Sequence` vs `Indent`.** A sequence stacks blocks unchanged and is usually the root of a
   notation; an indent stacks them one level deeper. They are separate on purpose, so a
   notation says exactly one thing at a time.
-- **The runtime editor tree is a different vocabulary.** Notation cells are `â€¦NotationCell`
+- **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
   (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
   `ChildNotationCell`, `CollectionNotationCell`, `LineNotationCell`, `SequenceNotationCell`,
   `IndentNotationCell`, `SpaceNotationCell`) precisely so they cannot be confused with the
@@ -494,7 +496,9 @@ dependency, so every action is testable headlessly.
   `GetReferenceTarget` or `SetReference`; asking `GetOrNull` for one throws
   `KeyNotFoundException` ("declares no property slot named ...").
 - Text actions edit inside a single `PropertyCell`; a multi-cell selection degrades to caret
-  behaviour. `Ctrl+Home`/`Ctrl+End` are not routed in M1.
+  behaviour. `Ctrl+Home`/`Ctrl+End` are routed as `CaretMove.DocumentStart`/`DocumentEnd`
+  (`KeyRouter`), and `PageUp`/`PageDown` move the caret by `EditorSession.PageHeight`; `Ctrl+PageUp`/
+  `Ctrl+PageDown` stay with the host.
 - **`Ctrl+A` is a ladder, not one answer.** `SelectAllAction` widens one unit per press:
   the property at the caret, then the node under it (plus its descendants), then the
   document. `SelectionRanges` (`SelectionRanges.cs`) computes all three and returns `null`
@@ -541,20 +545,22 @@ dependency, so every action is testable headlessly.
 (`AvaloniaTextMeasure`). Everything that decides *what* is on screen lives in
 `Projectional.Editing`, which is why the control is small enough to trust without a UI test.
 
-- **The control owns no editing rule.** Pointer â†’ `HitTest.Caret`, key â†’ `EditorKeyMap` â†’
-  `KeyRouter` â†’ `EditorSession.Apply`. If you are about to write `if (key == ...)` in the
+- **The control owns no editing rule.** Pointer → `HitTest.Caret`, key → `EditorKeyMap` →
+  `KeyRouter` → `EditorSession.Apply`. If you are about to write `if (key == ...)` in the
   control, the rule belongs in `KeyRouter` instead.
 - **Input arrives in two streams.** Characters come from `OnTextInput` (one edit for a whole
   typed string, and the place IME will hook in later); navigation and deletion come from
   `OnKeyDown`. A letter therefore never appears in `EditorKeyMap` - it is not a key the
   editor routes.
-- **Keys held with Control/Alt/Meta are the host's**, with three exceptions. `EditorKeyMap.Map`
+- **Keys held with Control/Alt/Meta are the host's**, except for a short allow-list. `EditorKeyMap.Map`
   returns `null` for them on purpose: Ctrl+Left is a word jump in the surrounding app,
-  Ctrl+Delete deletes a file in a file manager. The exceptions are Ctrl+Left/Ctrl+Right, which
+  Ctrl+Delete deletes a file in a file manager. The list is Ctrl+Left/Ctrl+Right, which
   map to `EditorKey.ControlLeft`/`ControlRight` because the plain arrows move a whole cell,
   Alt+Up/Alt+Down, which reorder the node under the caret - the vertical arrows do nothing
-  else, so the host loses no gesture it had - and Ctrl+Space, which opens completion. Shift is
-  not in that list because Shift+Tab is the editor's.
+  else, so the host loses no gesture it had - Ctrl+Space, which opens completion, and
+  Ctrl+Home/Ctrl+End, which jump to the document ends. Ctrl+PageUp/Ctrl+PageDown are *not* in
+  it: a page jump that also changes tabs stays the host's. Shift is not in that list because
+  Shift+Tab is the editor's.
 - **Escape always reaches the editor and is always consumed**, with or without a list open:
   `EditorKey.Escape` routes to `DismissCompletionAction`, which closes an open list and is a
   no-op otherwise. A host that wanted "Escape leaves the editor" therefore has to check
@@ -863,10 +869,10 @@ Rules that follow from that, and are easy to break by accident:
    controls touch Avalonia. A UI test harness (`Avalonia.Headless.XUnit`) is added when there is
    wiring worth asserting on, not before.
 5. **The dirty flag is derived from the change journal**, never a boolean the app sets on edit and
-   clears on save â€” otherwise undo back to the saved state still claims "modified".
+   clears on save — otherwise undo back to the saved state still claims "modified".
 6. **Undo belongs to the session, not to the tab.** A document keeps its session while open and
    disposes it when the document closes; forgetting the dispose leaks undo state.
-7. **View â–¸ Representation is built from the active document, not from the registry.** It binds
+7. **View ▸ Representation is built from the active document, not from the registry.** It binds
    `EditorSession.Alternatives()` (concepts the document uses that have more than one variant) to
    one submenu per concept with radio items, and clicking one calls `ChooseVariant` + `Refresh()`
    on that tab's control. The menu is refreshed from `UpdateStatus()`, holds no state of its own
@@ -888,7 +894,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 920 tests**; anything below that means tests were deleted.
+it. **Baseline is 940 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

@@ -242,6 +242,23 @@ public sealed class EditorSession : IDisposable
     }
 
     /// <summary>
+    /// How tall the visible area is, or zero when the host has not said - what a page move travels.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// View state like <see cref="WrapWidth"/>, and for the same reason: the layout is viewport
+    /// independent, so the reader has to supply the one number the page moves need. Publishing it
+    /// therefore has to stay cheap - it rebuilds nothing, re-lays-out nothing and moves no caret, so a
+    /// control may write it from every measure pass without the document noticing.
+    /// </para>
+    /// <para>
+    /// The value is not validated because it is a hint rather than a fact: a page move whose page is
+    /// unusable becomes a single-line move, which is a visibly smaller step rather than a wrong jump.
+    /// </para>
+    /// </remarks>
+    public double PageHeight { get; set; }
+
+    /// <summary>
     /// Draws the document with <paramref name="choice"/> from now on.
     /// </summary>
     /// <remarks>
@@ -340,7 +357,7 @@ public sealed class EditorSession : IDisposable
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        var context = new EditContext(Document, Tree, Layout, Measure, Selection, Clipboard, Typing)
+        var context = new EditContext(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing)
         {
             Completion = action is CompletionAction ? Completion : null,
         };

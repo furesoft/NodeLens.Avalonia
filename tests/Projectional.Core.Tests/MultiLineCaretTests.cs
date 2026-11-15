@@ -169,7 +169,7 @@ public sealed class MultiLineCaretTests
         HitTest.Caret(layout.Tree, layout, x, y, Measure);
 
     private static CaretPosition Move(CellLayout layout, Node rule, int offset, CaretMove move) =>
-        CaretNavigation.Move(layout, Measure, CaretPosition.At(CellAddress.OfSlot(rule.Id, "name"), offset), move);
+        CaretNavigation.Move(layout, Measure, CaretPosition.At(CellAddress.OfSlot(rule.Id, "name"), offset), move, 0);
 
     private static (CellLayout Layout, Node Rule, EditorCell Name) Layout(string name, double? wrapWidth = null)
     {

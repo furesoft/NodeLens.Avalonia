@@ -9,7 +9,8 @@ This document plans that, and it is deliberately short on new machinery: the ari
 scrollbars need already exists in `LayoutViewport`, and Avalonia already ships the widget and
 the protocol for a control that scrolls itself.
 
-Status: **planned**, an M1 remainder. See [roadmap.md](../roadmap.md).
+Status: **S1-S4 shipped, S5 (the probe run) outstanding**. An M1 remainder, see
+[roadmap.md](../roadmap.md).
 
 ## What is delivered
 
@@ -27,16 +28,22 @@ Avalonia-free so it can be tested headlessly.
 `ProjectionalEditorControl` keeps `_offsetX`/`_offsetY`, exposes them as `OffsetX`/`OffsetY`,
 clamps them in `ScrollTo` and again in `Render`, follows the caret through `ScrollToCaret`, and
 scrolls on the wheel by `WheelLines = 3` lines per notch on both axes. `MeasureOverride`
-returns the available size, so the control *is* its viewport, and `ViewportSize` reports
-`new(Bounds.Width, Bounds.Height)`.
+returns the available size, so the control *is* its viewport, and `ViewportSize` reports the
+text area - `Bounds` minus the gutter - because a bar's maximum is `Extent - Viewport` and
+reporting the whole control would scroll one gutter-width too far.
 
-That is a complete scrolling implementation with no scrollbar. The gaps are exactly three:
+That is a complete scrolling implementation with no scrollbar. It started with three gaps, and
+all three are now closed; the only thing that stays out of scope is a bar the editor draws
+itself, which is the decision in the next section rather than a gap:
 
-1. Nothing is drawn, so the user cannot see that there is more, or how much more, or drag.
-2. There are no page keys. `PageUp`/`PageDown`/`Ctrl+Home`/`Ctrl+End` are not routed in M1,
-   and without a visible bar there is no other way to move by a screen.
-3. The wheel is swallowed unconditionally (`e.Handled = true`), so an editor whose document
-   fits still eats the wheel and a surrounding panel never scrolls.
+1. **Nothing was drawn**, so the user could not see that there is more, or how much more, or
+   drag. A `ScrollViewer` host now supplies the bars (S2, S3).
+2. **There were no page keys.** `PageUp`/`PageDown` move the caret by one page, and
+   `Ctrl+Home`/`Ctrl+End` reach the document's ends, with `ScrollToCaret` doing the scrolling
+   (S4).
+3. **The wheel was swallowed unconditionally**, so an editor whose document fits still ate the
+   wheel and a surrounding panel never scrolled. It is handed back when nothing moved, and
+   Shift+wheel scrolls horizontally (S4).
 
 ## Decision: implement `ILogicalScrollable`, do not build scrollbars
 
@@ -94,13 +101,13 @@ Nothing here is new arithmetic - each property is a number the viewport already 
 | `IScrollable` / `ILogicalScrollable` member | Value |
 | --- | --- |
 | `Extent` | `layout.Size` - the laid-out document, in layout units |
-| `Viewport` | `Bounds.Size` - what is on screen, i.e. today's `ViewportSize` |
-| `Offset` | `new Vector(_offsetX, _offsetY)` |
+| `Viewport` | `ViewportSize` - the text area, so the gutter is excluded |
+| `Offset` | `new Vector(_offsetX, _offsetY)`, clamped by `LayoutViewport.Clamp` |
 | `CanHorizontallyScroll` / `CanVerticallyScroll` | `true` (the layout is wider and taller than the viewport when the document says so) |
 | `IsLogicalScrollEnabled` | `true` |
 | `ScrollSize` | `new Size(measure.IndentWidth, measure.LineHeight)` - one step is one layout unit |
 | `PageScrollSize` | `Viewport - ScrollSize`, per axis, floored at one step |
-| `ScrollInvalidated` | raised whenever the offset or the extent changes from the editor's side |
+| `ScrollInvalidated` | raised whenever the offset or the extent may have moved from the editor's side |
 | `BringIntoView(control, rect)` | `ScrollIntoView` for that rectangle |
 | `GetControlInDirection(...)` | `null` - there are no child controls to navigate to |
 
@@ -110,31 +117,62 @@ Notes that are easy to get wrong:
   the window has `Extent < Viewport`, which makes `Maximum` zero and hides the bar under
   `Auto`. Clamping `Extent` up would erase the difference between "shorter than the window"
   and "exactly the window".
+- **`Viewport` is the text area, not `Bounds.Size`.** A bar's maximum is `Extent - Viewport`,
+  so reporting the whole control would let it scroll one gutter-width past the last column of
+  text. `ViewportSize` is the number the painter and the clamp already use; the mapping has to
+  use it too.
 - **The step is a layout unit, not a pixel count.** `MonospaceTextMeasure` gives one line of
   height and `IndentWidth` of width; in the real editor `AvaloniaTextMeasure` gives the font's
   line height. A fixed 16-pixel horizontal step would creep instead of moving a cell.
 - **A page keeps one line of overlap.** `Viewport - ScrollSize` rather than `Viewport`, so
   `PageDown` never loses the line the reader was on. This is the one place the plan invents a
   number, and it invents the conventional one.
-- **`ScrollInvalidated` is the only notification the `ScrollViewer` gets.** It must be raised
-  after an edit changes the document size (the extent moved), after `ScrollTo`, after
-  `ScrollToCaret`, after a wheel scroll, and after `Session` is replaced. Missing one leaves
-  the thumb stale until the next unrelated invalidation, which reads as "the scrollbar is
-  broken".
+- **`ScrollInvalidated` is the only notification the `ScrollViewer` gets.** `UpdateFromScrollable`
+  is the one path by which the presenter learns `Extent`, `Viewport` and `Offset`, so a missing
+  raise leaves the thumb stale until the next unrelated invalidation, which reads as "the
+  scrollbar is broken". The control raises from: `ScrollTo` (behind its early return, so a host
+  writing back the offset we already had hears nothing), `Refresh`, the end of an edit that
+  changed the document, a menu command about to be shown, the `Session`, `FontSize` and
+  `ShowLineNumbers` setters, and the two resize checks - the `Bounds` hook, which runs before
+  the measure pass, and the end of `MeasureOverride`, which runs after the new wrap width has
+  re-laid-out the document.
 - **No feedback loop.** The `ScrollViewer` reacts to `ScrollInvalidated` by reading the
   properties back and setting `Offset`; the `Offset` setter calls `ScrollTo`, which clamps and
   invalidates the visual. Do not raise `ScrollInvalidated` from inside the `Offset` setter
   unless the value the `ScrollViewer` would read actually changed - a guarded raise, not an
   unconditional one.
 
-### The one thing to verify first
+### Arranged at the viewport, not at the extent
 
-A `ScrollContentPresenter` arranges a *logical* scrollable at the viewport rectangle, not at
-its extent. If it ever arranges the control at its extent, `Bounds` becomes the content size,
-`ViewportSize` becomes the document, and the mapping above silently inverts. That is the first
-thing to check in the slice that wires it up: put a document larger than the window in a
-`ScrollViewer`, read back `control.Bounds.Size` and `session.Layout.Size`, and confirm the
-first is the window and the second is the document.
+The whole mapping rests on one assumption: a `ScrollContentPresenter` arranges a *logical*
+scrollable at the viewport rectangle, not at its extent. If it arranged the control at its
+extent, `Bounds` would become the content size, `ViewportSize` would become the document, and
+the table above would silently invert.
+
+Verified against Avalonia 12.1.6 with a probe window of 240x120 holding a document that lays
+out to 963x319:
+
+| Read back | Value |
+| --- | --- |
+| `control.Bounds.Size` | 240x120 - the viewport |
+| `session.Layout.Size` | 963x319 - the document |
+| `ScrollViewer.Extent` | 963x319 |
+| `ScrollViewer.Viewport` | 240x120 |
+
+Setting `ScrollViewer.Offset` to `(60, 40)` moved `OffsetX`/`OffsetY` to exactly `(60, 40)`,
+and resetting it to `(0, 0)` moved them back, so the two-way path works in both directions.
+A document shorter than the window on one axis is clamped to zero on that axis and no bar
+appears, which is the `Extent < Viewport` behaviour the mapping relies on.
+
+### Bar space is automatic
+
+The control never reserves room for a bar and does not need to. With `AllowAutoHide` at its
+default the Fluent bars are overlaid on the content, so the control keeps the full viewport;
+with `AllowAutoHide = false` the presenter is arranged 16 pixels narrower and shorter and the
+control's `Bounds` shrinks with it. Either way the resize is picked up by the `Bounds` hook, the
+`WrapWidth` re-lay-out happens in the same measure pass, and the raised `ScrollInvalidated`
+carries the new extent and viewport. Nothing in this plan has to know which mode the host's
+theme uses.
 
 ## Wheel and keys
 
@@ -144,29 +182,42 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
   `ScrollViewer`'s own wheel handling never runs. That is what we want: our step is a line of
   the *editor's* layout (so a wheel notch moves exactly the number of lines the notation
   uses), not a fixed pixel amount, and the bars follow through `ScrollInvalidated`.
-- **A short document hands the wheel back.** Today the handler marks the event handled
-  unconditionally, so an editor showing a document that fits still swallows the wheel and a
-  surrounding panel never scrolls. Fix: handle the event only when `ScrollTo` actually moved
-  the offset, or when a modifier makes the gesture ours. This is a real embedding bug, not a
-  polish item.
-- **Shift+wheel is horizontal.** Today only a trackpad's horizontal delta moves X. On a mouse
-  with one wheel, horizontal scrolling is otherwise impossible with a bar overlay.
-- **Page keys move the caret, they are not scroll commands.** `PageUp`/`PageDown` are routed
-  in `EditorKeyMap` as vertical caret moves of one page, and `Ctrl+Home`/`Ctrl+End` as moves to
-  the first and last caret place, with the existing `ScrollToCaret` doing the scrolling. A
+- **A short document hands the wheel back.** `ScrollTo` answers whether the offset actually
+  moved, and the handler marks the event handled only when it did. An editor showing a
+  document that fits therefore leaves the wheel to a surrounding panel, which is what makes
+  the control safe to embed. This was a real embedding bug, not a polish item.
+- **Shift+wheel is horizontal.** One notch is `WheelLines` lines on X instead of on Y, so a
+  mouse with a single wheel can still reach the right-hand columns under an auto-hiding bar.
+  A trackpad's own horizontal delta moves X without the modifier.
+- **Page keys move the caret, they are not scroll commands.** `PageUp`/`PageDown` are
+  `CaretMove.PageUp`/`PageDown`, a vertical move of one page, and `Ctrl+Home`/`Ctrl+End` are
+  `CaretMove.DocumentStart`/`DocumentEnd`. The existing `ScrollToCaret` does the scrolling. A
   page command that scrolled without moving the caret would introduce a second notion of
   "where the user is", and every editing action would have to ask which one is current.
   `Home`/`End` stay cell-wise as they are.
+- **A page is the viewport minus one line.** `EditorSession.PageHeight` (set from
+  `MeasureOverride`) is the visible height, and `CaretNavigation` aims at
+  `PageHeight - LineHeight` below the caret, so a `PageDown` never loses the line the reader
+  was on. Two details follow: the target is an aim, not a count, so the move clamps to the
+  nearest reachable line in that direction rather than refusing near the bottom, and a page
+  with no viewport (`PageHeight == 0`, the unbounded-height case) degrades to the single-line
+  move.
+- **`Ctrl+PageUp`/`Ctrl+PageDown` stay with the host.** The unmodified page keys are the
+  editor's; the combination is not listed in `EditorKeyMap`'s allow-list, so a host keeps
+  whatever it did with it. `Ctrl+Home`/`Ctrl+End` are the editor's, because the document ends
+  are the only thing they could mean here.
 - **The `ScrollViewer` must not steal focus.** Bars are not focusable, but a `ScrollViewer`
   can take focus when clicked. The workbench sets `Focusable = false` on the wrapper so a
   click on the surface keeps the caret where it was.
 
 ## Hosts and embedding
 
-- **The workbench wraps each tab's control.** `TabItem.Content` currently *is* the
-  `ProjectionalEditorControl`, and three places in `MainWindow` rely on that
-  (`tab.Content is ProjectionalEditorControl`). Those checks become one helper that unwraps
-  the `ScrollViewer`, so a second shape of tab content does not spread through the file.
+- **The workbench wraps each tab's control.** `TabItem.Content` was the
+  `ProjectionalEditorControl` itself, and six places in `MainWindow` relied on that
+  (`tab.Content is ProjectionalEditorControl`, plus one `as`). They are now one helper that
+  unwraps the `ScrollViewer`, so a second shape of tab content does not spread through the
+  file. The helper answers `null` rather than throwing, because a tab whose content is
+  something else is not an error - it is a tab the theme loop should skip.
 - **`ScrollBarVisibility` is the host's.** Default `Auto` on both axes. The control keeps no
   policy property: an embedded editor whose host wants `Disabled` says so on its own
   `ScrollViewer`, and the control keeps scrolling by wheel and by caret either way.
@@ -199,11 +250,14 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
   control cannot be constructed in a unit test (its palette needs platform services), so
   anything left inside it is verified only by a probe.
 - **S2 - the protocol.** `ProjectionalEditorControl` implements `ILogicalScrollable`, reading
-  every property from the `ScrollRange` computed in `Render`/`Refresh`, and raises
-  `ScrollInvalidated` from the five places listed above. No behaviour change without a host.
+  every property from a `ScrollRange` computed on demand from the current `Layout`, viewport and
+  offset, and raises `ScrollInvalidated` from the places listed above. Computed rather than
+  cached on purpose: the offset moves far more often than the layout, and a cached range would
+  need invalidating at exactly the raise sites where a stale number would hide. No behaviour
+  change without a host.
 - **S3 - the workbench.** Wrap each tab's control in a `ScrollViewer` with `Auto` visibility,
-  replace the three `tab.Content is ProjectionalEditorControl` checks with one unwrapping
-  helper, and set `Focusable = false` on the wrapper.
+  replace the `tab.Content is ProjectionalEditorControl` checks with one unwrapping helper, and set
+  `Focusable = false` on the wrapper.
 - **S4 - gestures.** Hand the wheel back when nothing moved, add Shift+wheel, route
   `PageUp`/`PageDown`/`Ctrl+Home`/`Ctrl+End` as caret moves, and set `LargeChange` behaviour
   through `PageScrollSize`.
@@ -213,16 +267,20 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
   the wheel and confirm the event is no longer handled (so a wrapping panel would get it), and
   rasterise the picture to confirm nothing is painted under a bar.
 
+S1-S4 are delivered; S5 is the outstanding probe run.
+
 ## Testing
 
 | What | How |
 | --- | --- |
 | Step, page, extent, clamping | Headless tests on `ScrollRange` in `Projectional.Core.Tests` |
-| The interface reports the layout, not a copy | Unit test asserting `Extent`/`Viewport`/`Offset` follow `LayoutViewport` after a session rebuild |
-| A short document does not swallow the wheel | Probe: raise the wheel on a control whose document fits, read `args.Handled` |
-| Bars move the content | Probe: set `ScrollViewer.Offset`, read `control.OffsetX/OffsetY` and the rendered picture |
-| Nothing painted under a bar | Probe: rasterise with `Auto` bars visible and sample the gutter pixels |
-| The caret still drags the view | Probe: `Ctrl+End`, read the offset; existing behaviour must survive S2 |
+| The page keys move the caret a page | Headless tests on `CaretNavigation` with a page height |
+| Every `EditorKey` has a route | `KeyRouterTests` asks the table for every declared member |
+| The interface reports the layout, not a copy | Probe: read `ILogicalScrollable.Extent`/`Viewport`/`Offset` back after an edit changed the document's size (done: see the arranged-at-the-viewport table above) |
+| Bars move the content | Probe: set `ScrollViewer.Offset`, read `control.OffsetX/OffsetY` (done) |
+| A short document does not swallow the wheel | Probe: raise the wheel on a control whose document fits, read `args.Handled` (S5) |
+| Nothing painted under a bar | Probe: rasterise with `Auto` bars visible and sample the gutter pixels (S5) |
+| The caret still drags the view | Probe: `Ctrl+End`, read the offset (S5) |
 
 ## Open questions
 
@@ -232,7 +290,9 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
 2. **Does a nested `ScrollViewer` (editor inside a scrolling panel) misbehave?** Recommend:
    document that a host should give the editor a bounded row rather than a place inside an
    outer scroll surface; the inner control already clamps its own offset.
-3. **Should `Home`/`End` also page?** They stay cell-wise. A `Ctrl+Home` to the document start
-   is enough for now.
+3. **Should `Home`/`End` also page - or jump to the document ends?** They stay cell-wise, and
+   the document ends are a separate move on `Ctrl+Home`/`Ctrl+End`. Home/End inside a wrapped
+   table cell would otherwise be ambiguous, and a host that wants the other binding can bind
+   `CaretMove.DocumentStart` itself.
 4. **Do bars need to be reachable by keyboard?** Recommend: no. Focus stays in the editor, and
    the page keys cover the same ground; a focusable bar would break Tab.

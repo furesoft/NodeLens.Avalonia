@@ -2,6 +2,7 @@ using System.Globalization;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -47,8 +48,14 @@ namespace Projectional.Avalonia;
 /// document does, and keep the same control - so disposing is the host's decision, and
 /// <see cref="EditorSession.Dispose"/> is never called from here.
 /// </para>
+/// <para>
+/// It is a <see cref="ILogicalScrollable"/> so a host can put it in a <see cref="ScrollViewer"/> and get
+/// the platform's bars, without the editor owning a bar, a wrapper or a second offset. The protocol is
+/// spoken in layout units - the step is one cell, the page keeps a line of overlap - which is why the
+/// bars move by whole rows rather than by pixels.
+/// </para>
 /// </remarks>
-public sealed class ProjectionalEditorControl : Control
+public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 {
     /// <summary>How wide the caret bar is drawn, in device pixels.</summary>
     /// <remarks>
@@ -68,6 +75,21 @@ public sealed class ProjectionalEditorControl : Control
 
     private double _offsetX;
     private double _offsetY;
+
+    // What a scroll host asked for. Recorded rather than obeyed: a host hides its bars with these, and the
+    // wheel and the caret keep scrolling either way - a document the caret is in must stay reachable.
+    private bool _canScrollHorizontally = true;
+    private bool _canScrollVertically = true;
+
+    // A scroll host's only notification that the numbers it reads back have moved. Held as a field because
+    // an explicit interface event cannot be raised from the class itself.
+    private EventHandler? _scrollInvalidated;
+
+    // The numbers a scroll host was last told. Comparing against them is what makes a resize safe to
+    // notice twice: Bounds is a direct property whose change carries no previous value, and the new width
+    // only becomes a new extent inside the measure pass, so the geometry is checked before and after the
+    // document is re-laid-out and only the check that sees a difference raises.
+    private (LayoutSize Extent, LayoutSize Viewport) _reported;
 
     // Where the press that started a drag landed. Held here rather than in the session because it is
     // the mouse's memory of the gesture, not the document's.
@@ -228,6 +250,10 @@ public sealed class ProjectionalEditorControl : Control
             InvalidateMeasure();
             ScrollToCaret();
             InvalidateVisual();
+
+            // A new font size is a new step, a new extent and - through the gutter, if it is showing
+            // line numbers - a new viewport.
+            RaiseScrollInvalidated();
         }
     }
 
@@ -254,6 +280,9 @@ public sealed class ProjectionalEditorControl : Control
             InvalidateMeasure();
             ScrollToCaret();
             InvalidateVisual();
+
+            // A different document is a different extent, and an offset that just went back to zero.
+            RaiseScrollInvalidated();
         }
     }
 
@@ -365,6 +394,10 @@ public sealed class ProjectionalEditorControl : Control
 
             InvalidateMeasure();
             InvalidateVisual();
+
+            // The gutter is part of the viewport arithmetic, so toggling it changes the text area without
+            // a resize and without an edit.
+            RaiseScrollInvalidated();
         }
     }
 
@@ -538,6 +571,125 @@ public sealed class ProjectionalEditorControl : Control
     /// <summary>The vertical scroll offset, in layout units.</summary>
     public double OffsetY => _offsetY;
 
+    /// <summary>The numbers a scroll host reads back, or nothing when no document is open.</summary>
+    /// <remarks>
+    /// Computed rather than cached. The offset changes far more often than the layout does, so a cached
+    /// range would have to be invalidated at every place that says the numbers moved - which is exactly
+    /// where a stale number would hide. The arithmetic is one clamp and one subtraction per axis.
+    /// </remarks>
+    private ScrollRange? Range => Session is { } session
+        ? ScrollRange.Of(session.Layout, ViewportSize, _offsetX, _offsetY, session.Measure)
+        : null;
+
+    /// <summary>
+    /// The document as the layout produced it - not raised to the viewport, so a document shorter than the
+    /// window reports a smaller extent and a bar with <c>Auto</c> visibility stays hidden.
+    /// </summary>
+    Size IScrollable.Extent => SizeOf(Range?.Extent);
+
+    /// <summary>
+    /// The room the document is drawn in, in the same units as <see cref="IScrollable.Extent"/>.
+    /// </summary>
+    /// <remarks>
+    /// This is the text area, so the gutter is not part of it. Reporting <see cref="Bounds"/> instead would
+    /// let a bar scroll one gutter-width further than the document goes, because the maximum a bar offers
+    /// is the extent minus this number.
+    /// </remarks>
+    Size IScrollable.Viewport => SizeOf(Range?.Viewport);
+
+    /// <summary>The scroll offset, clamped to the range the document has.</summary>
+    Vector IScrollable.Offset
+    {
+        get => VectorOf(Range?.Offset);
+
+        // The setter is how a host moves the content - a bar drag, a kinetic gesture, a scroll into view
+        // raised by an ancestor. It clamps like every other scroll path, so a host cannot put the view
+        // past the end of the document.
+        set => ScrollTo(value.X, value.Y);
+    }
+
+    bool IScrollable.CanHorizontallyScroll => _canScrollHorizontally;
+
+    bool IScrollable.CanVerticallyScroll => _canScrollVertically;
+
+    bool ILogicalScrollable.CanHorizontallyScroll
+    {
+        get => _canScrollHorizontally;
+        set => _canScrollHorizontally = value;
+    }
+
+    bool ILogicalScrollable.CanVerticallyScroll
+    {
+        get => _canScrollVertically;
+        set => _canScrollVertically = value;
+    }
+
+    /// <summary>
+    /// Always true: the control is laid out at the viewport and paints only the cells inside it, so its
+    /// extent is a claim rather than a size the parent could arrange it at.
+    /// </summary>
+    /// <remarks>
+    /// This is the flag that decides whether a <see cref="ScrollContentPresenter"/> measures the control
+    /// with the available size or with an infinite one. Returning false would make the control ask for its
+    /// whole document, which is a very wide control and a viewport that equals the extent.
+    /// </remarks>
+    bool ILogicalScrollable.IsLogicalScrollEnabled => true;
+
+    /// <summary>One wheel notch: one indent of width, one line of height.</summary>
+    Size ILogicalScrollable.ScrollSize => SizeOf(Range?.Step);
+
+    /// <summary>One page: the viewport less a step, so a page never loses the line the reader was on.</summary>
+    Size ILogicalScrollable.PageScrollSize => SizeOf(Range?.Page);
+
+    /// <summary>Raised when the numbers above have changed; the host reads them back from here.</summary>
+    event EventHandler? ILogicalScrollable.ScrollInvalidated
+    {
+        add => _scrollInvalidated += value;
+        remove => _scrollInvalidated -= value;
+    }
+
+    /// <summary>Brings a rectangle of this control into view.</summary>
+    /// <returns>Whether the offset moved.</returns>
+    /// <remarks>
+    /// The control paints its document instead of hosting a control per cell, so the only target that can
+    /// arrive here meaningfully is the control itself, with a rectangle in its own coordinates - which is
+    /// what <see cref="Control.BringIntoView()"/> raises. A descendant is refused rather than guessed at:
+    /// it has no bounds of its own to honour, and scrolling to its parent's origin would be a lie.
+    /// </remarks>
+    bool ILogicalScrollable.BringIntoView(Control target, Rect targetRect)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        if (Session is not { } session || !ReferenceEquals(target, this))
+        {
+            return false;
+        }
+
+        // A control coordinate is a layout coordinate moved past the gutter and up by the scroll.
+        var rect = new LayoutRect(
+            targetRect.X - GutterWidth + _offsetX,
+            targetRect.Y + _offsetY,
+            targetRect.Width,
+            targetRect.Height);
+
+        var (x, y) = LayoutViewport.ScrollIntoView(
+            session.Layout,
+            ViewportSize,
+            _offsetX,
+            _offsetY,
+            rect);
+
+        var (clampedX, clampedY) = LayoutViewport.Clamp(session.Layout, ViewportSize, x, y);
+        var moved = clampedX != _offsetX || clampedY != _offsetY;
+
+        ScrollTo(x, y);
+
+        return moved;
+    }
+
+    /// <summary>Nothing to navigate to: the document's cells are painted, not hosted as controls.</summary>
+    Control? ILogicalScrollable.GetControlInDirection(NavigationDirection direction, Control? from) => null;
+
     /// <summary>Opens <paramref name="document"/> for editing and makes it what the control shows.</summary>
     /// <param name="document">The root of the model to edit.</param>
     /// <param name="notations">The notation that projects the document's concepts.</param>
@@ -568,6 +720,10 @@ public sealed class ProjectionalEditorControl : Control
         InvalidateMeasure();
         ScrollToCaret();
         InvalidateVisual();
+
+        // The rebuild may have changed the document's size without moving the offset, and a scroll host
+        // learns about a new extent only from this event.
+        RaiseScrollInvalidated();
     }
 
     /// <summary>Scrolls so the caret is visible, as far as that needs to move.</summary>
@@ -592,27 +748,80 @@ public sealed class ProjectionalEditorControl : Control
     }
 
     /// <summary>Scrolls to an offset, trimmed to the range the document actually has.</summary>
-    public void ScrollTo(double x, double y)
+    /// <returns>Whether the offset moved, which is what tells a caller its gesture did something.</returns>
+    /// <remarks>
+    /// The answer is the difference between a wheel event this editor consumed and one it should hand
+    /// back: a wheel over a document that already shows its first line belongs to whatever is behind the
+    /// editor, and reporting "nothing happened" is the only way a host can forward it.
+    /// </remarks>
+    public bool ScrollTo(double x, double y)
     {
         var session = Session;
 
         if (session is null)
         {
-            return;
+            return false;
         }
 
         var (clampedX, clampedY) = LayoutViewport.Clamp(session.Layout, ViewportSize, x, y);
 
         if (clampedX == _offsetX && clampedY == _offsetY)
         {
-            return;
+            return false;
         }
 
         _offsetX = clampedX;
         _offsetY = clampedY;
 
         InvalidateVisual();
+
+        // Guarded by the early return above: a host that set the offset we were already at must not be told
+        // the offset moved, or its reaction to that would drive this setter again.
+        RaiseScrollInvalidated();
+
+        return true;
     }
+
+    /// <summary>Tells a scroll host that what it reads back has changed.</summary>
+    /// <remarks>
+    /// The event is the whole notification channel: a logical scroll host never arranges this control at
+    /// its extent and never measures it, so nothing else would reveal a new extent, viewport or offset.
+    /// </remarks>
+    private void RaiseScrollInvalidated(EventArgs? e = null)
+    {
+        _reported = (Range?.Extent ?? ViewportSize, ViewportSize);
+
+        _scrollInvalidated?.Invoke(this, e ?? EventArgs.Empty);
+    }
+
+    /// <summary>Raises only if the extent or the viewport differs from what was last reported.</summary>
+    /// <remarks>
+    /// For the two sites that cannot know whether a resize changed anything: the bounds hook runs before
+    /// the document is re-laid-out for the new width, and the end of the measure pass runs after. One of
+    /// the two usually finds the numbers unchanged, and telling a host twice would make it re-read its
+    /// bars for nothing on every layout pass.
+    /// </remarks>
+    private void RaiseScrollInvalidatedIfResized()
+    {
+        if ((Range?.Extent ?? ViewportSize, ViewportSize) != _reported && _scrollInvalidated is not null)
+        {
+            RaiseScrollInvalidated();
+        }
+    }
+
+    /// <summary>Raises <see cref="ILogicalScrollable.ScrollInvalidated"/> on behalf of a caller.</summary>
+    /// <remarks>
+    /// The interface offers this so a wrapper can pass a notification through. There is no wrapper here,
+    /// so it is the same raise the control does itself - and it stays guarded, so a host that calls it in
+    /// response to the event cannot make the two of us spin.
+    /// </remarks>
+    void ILogicalScrollable.RaiseScrollInvalidated(EventArgs e) => RaiseScrollInvalidated(e);
+
+    /// <summary>The extent, viewport, offset, step or page as a <see cref="Size"/>, or nothing without a document.</summary>
+    private static Size SizeOf(LayoutSize? size) => size is { } value ? new Size(value.Width, value.Height) : default;
+
+    /// <summary>The offset as a <see cref="Vector"/>.</summary>
+    private static Vector VectorOf(LayoutSize? offset) => offset is { } value ? new Vector(value.Width, value.Height) : default;
 
     /// <inheritdoc />
     public override void Render(DrawingContext context)
@@ -778,19 +987,32 @@ public sealed class ProjectionalEditorControl : Control
     /// <inheritdoc />
     /// <remarks>
     /// The measure pass is where the editor learns how much room it has, so it publishes the width it is
-    /// given as the page a text cell wraps at. An unbounded width means there is no page: the document is
-    /// laid out one long line at a time, which is what a host inside a scrolling panel asks for.
+    /// given as the page a text cell wraps at, and the height as the distance a page move travels. An
+    /// unbounded width means there is no page: the document is laid out one long line at a time, which is
+    /// what a host inside a scrolling panel asks for. An unbounded height means the same thing for the
+    /// other axis - there is no page to move by, so the page keys fall back to the single-line move
+    /// rather than jumping to the end of a document that is entirely on screen.
     /// </remarks>
     protected override Size MeasureOverride(Size availableSize)
     {
         var session = Session;
 
-        if (session is not null && !double.IsInfinity(availableSize.Width))
+        if (session is not null)
         {
-            // The gutter is the host's chrome, not part of the page, so the room a text cell may fill is
-            // what is left of the width once the numbers have taken theirs.
-            session.WrapWidth = Math.Max(0, availableSize.Width - GutterWidth);
+            if (!double.IsInfinity(availableSize.Width))
+            {
+                // The gutter is the host's chrome, not part of the page, so the room a text cell may fill
+                // is what is left of the width once the numbers have taken theirs.
+                session.WrapWidth = Math.Max(0, availableSize.Width - GutterWidth);
+            }
+
+            // Only the width is chrome; the page runs the full height the host gave it.
+            session.PageHeight = double.IsInfinity(availableSize.Height) ? 0 : Math.Max(0, availableSize.Height);
         }
+
+        // Setting the wrap width re-lays-out the document, so the extent reported a moment ago may have
+        // been the previous width's. A host needs the numbers that are on screen now.
+        RaiseScrollInvalidatedIfResized();
 
         var content = session?.Layout.Size;
 
@@ -799,6 +1021,25 @@ public sealed class ProjectionalEditorControl : Control
         return new Size(
             double.IsInfinity(availableSize.Width) ? content?.Width ?? 0 : availableSize.Width,
             double.IsInfinity(availableSize.Height) ? content?.Height ?? 0 : availableSize.Height);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A resize changes the viewport without touching the document, and a logical scroll host never
+    /// arranges this control at its extent - so this notification is the only way the bars hear about a
+    /// new window size. It fires before the measure pass, so it sees the old extent; the end of
+    /// <see cref="MeasureOverride"/> checks again once the new width is in the layout.
+    /// </remarks>
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+
+        base.OnPropertyChanged(change);
+
+        if (change.Property == BoundsProperty)
+        {
+            RaiseScrollInvalidatedIfResized();
+        }
     }
 
     /// <inheritdoc />
@@ -816,6 +1057,20 @@ public sealed class ProjectionalEditorControl : Control
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// The wheel is one axis at a time, as on most platforms: Shift turns the vertical wheel into the
+    /// horizontal one, and a device that reports both moves on the axis it reports. One notch is
+    /// <see cref="WheelLines"/> lines, because a document whose caret the mouse does not move should
+    /// scroll in steps the user can aim.
+    /// </para>
+    /// <para>
+    /// A wheel this control cannot act on is not consumed. A document already showing its first line has
+    /// nowhere to go, and swallowing the event there would break the wheel for the panel the editor was
+    /// dropped into - so the event is handed back untouched and the hover tip is kept, because nothing
+    /// moved under the pointer.
+    /// </para>
+    /// </remarks>
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -827,9 +1082,15 @@ public sealed class ProjectionalEditorControl : Control
             return;
         }
 
+        var horizontal = (e.KeyModifiers & KeyModifiers.Shift) != 0;
+        var deltaX = horizontal ? e.Delta.Y : e.Delta.X;
+        var deltaY = horizontal ? 0 : e.Delta.Y;
         var step = TextMeasure.LineHeight * WheelLines;
 
-        ScrollTo(_offsetX - (e.Delta.X * step), _offsetY - (e.Delta.Y * step));
+        if (!ScrollTo(_offsetX - (deltaX * step), _offsetY - (deltaY * step)))
+        {
+            return;
+        }
 
         // The text moved under a pointer that did not, so the wave it was resting on is no longer there.
         // Dropping the tip is the honest answer; keeping it would describe text that scrolled away.
@@ -1136,6 +1397,9 @@ public sealed class ProjectionalEditorControl : Control
         {
             // The document grew or shrank, so the space it wants changed as well.
             InvalidateMeasure();
+
+            // A scroll host learns about a new extent only from this event.
+            RaiseScrollInvalidated();
         }
 
         Show();
@@ -1194,6 +1458,7 @@ public sealed class ProjectionalEditorControl : Control
         // changed size. Measuring again is the safe answer and the cheap one: it costs nothing visible
         // and it is what an inserted node needs.
         InvalidateMeasure();
+        RaiseScrollInvalidated();
         Show();
     }
 

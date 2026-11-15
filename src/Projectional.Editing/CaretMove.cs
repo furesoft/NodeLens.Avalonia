@@ -8,7 +8,9 @@ namespace Projectional.Editing;
 /// The values are the moves the editor supports, not the keys that produce them: the same move is
 /// reachable from a key, from a click and from a test, and a key map that wants to bind Home to
 /// something else should not need a new action. Up and Down are the ones that need the layout, because
-/// "the cell above" is a fact about the page and not about the tree.
+/// "the cell above" is a fact about the page and not about the tree; the page moves need the layout and
+/// the height of the visible area as well, which is why the caller hands that number to
+/// <see cref="CaretNavigation.Move"/> instead of it being derivable from the tree.
 /// </para>
 /// <para>
 /// Horizontal motion is by cell, not by character, because a projectional editor shows a structure
@@ -37,6 +39,16 @@ public enum CaretMove
 
     /// <summary>To the closest caret stop on the line below, keeping the column.</summary>
     Down,
+
+    /// <summary>To the closest caret stop one page of lines above, keeping the column.</summary>
+    /// <remarks>
+    /// A page is the height of the visible area, which the layout does not know and the host therefore
+    /// supplies; a document at least a page tall is what makes this different from <see cref="Up"/>.
+    /// </remarks>
+    PageUp,
+
+    /// <summary>To the closest caret stop one page of lines below, keeping the column.</summary>
+    PageDown,
 
     /// <summary>To the start of the line the caret is on.</summary>
     LineStart,

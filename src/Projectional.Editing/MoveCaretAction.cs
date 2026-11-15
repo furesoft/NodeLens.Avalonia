@@ -35,7 +35,12 @@ public sealed class MoveCaretAction : EditAction
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var caret = CaretNavigation.Move(context.Layout, context.Measure, context.Selection.Caret, Move);
+        var caret = CaretNavigation.Move(
+            context.Layout,
+            context.Measure,
+            context.Selection.Caret,
+            Move,
+            context.PageHeight);
 
         return EditResult.Unchanged(Selection.At(caret));
     }
