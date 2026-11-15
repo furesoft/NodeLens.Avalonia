@@ -155,6 +155,16 @@ edits with the same key belong to one undo step, which is how a typed word becom
 instead of one per character. Returning `Unchanged` is not a failure — a key that means
 nothing here must leave both the model and the undo stack alone.
 
+Two of an action's members describe the moment *after* it ran rather than the model.
+`CoalescingKey` says which burst a commit belongs to. `SelectsLandedValue` says that what the
+action produced is something to be named, so the session widens the caret it landed on to the
+whole value found there: a rule that Enter creates is already called `"unnamed"`, and a caret in
+front of that name would turn the first keystroke into `"Punnamed"`. The action states the
+intent, the session carries it out against the tree the edit produced — the action does not have
+to predict which cell the coercion will choose — and only the creating edit sets it, because if
+typing re-selected what it had just written the next keystroke would replace it and no name
+longer than one character could be typed.
+
 The router is a table from `EditorKey` to action, not a `switch`. A host can bind a key
 differently or add an action without the editing layer learning about it.
 
@@ -343,7 +353,7 @@ errors, such as opening a session on a node that is not in a model.
 | Missing | Consequence | Arrives with |
 | --- | --- | --- |
 | Insert at index | Enter appends to the end of a list, not below the caret | M2 (tables need it) |
-| Property defaults are materialized | typing into a default inserts into it (`"unnamed"` + `"P"` → `"Punnamed"`) instead of replacing it | `feat/property-defaults` after M1 |
+| Property defaults are materialized | typing into a default inserts into it (`"unnamed"` + `"P"` → `"Punnamed"`) instead of replacing it, except in a node an edit has just created, whose value arrives selected | `feat/property-defaults` after M1 |
 | `Ctrl+Home` / `Ctrl+End` | not routed; document start and end are reached with Home/End on the first and last line | M3 |
 | Completion of a filled slot (substitution) | a list only offers concepts for an empty slot; replacing an existing child arrives with the language's substitution rules | M3 ([completion.md](completion.md)) |
 | Multi-cell text editing | a selection behaves like a caret for text input | M3 |
