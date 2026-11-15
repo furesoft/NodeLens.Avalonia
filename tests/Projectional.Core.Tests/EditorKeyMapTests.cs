@@ -23,9 +23,22 @@ public sealed class EditorKeyMapTests
     [InlineData(Key.Enter, EditorKey.Enter)]
     [InlineData(Key.Back, EditorKey.Backspace)]
     [InlineData(Key.Delete, EditorKey.Delete)]
+    [InlineData(Key.Escape, EditorKey.Escape)]
     public void NavigationKeysMapToOneEditorKey(Key key, EditorKey expected)
     {
         Assert.Equal(expected, EditorKeyMap.Map(key, KeyModifiers.None));
+    }
+
+    [Theory]
+    [InlineData(KeyModifiers.Control)]
+    [InlineData(KeyModifiers.Control | KeyModifiers.Shift)]
+    public void ControlSpaceIsTheCompletionGesture(KeyModifiers modifiers)
+    {
+        // The second exception to "Control belongs to the host": every editor with completion uses it.
+        Assert.Equal(EditorKey.ControlSpace, EditorKeyMap.Map(Key.Space, modifiers));
+
+        // A bare space is a character, so it arrives as text input and is not an editor key.
+        Assert.Null(EditorKeyMap.Map(Key.Space, KeyModifiers.None));
     }
 
     [Fact]
@@ -55,7 +68,7 @@ public sealed class EditorKeyMapTests
     [Theory]
     [InlineData(KeyModifiers.Control)]
     [InlineData(KeyModifiers.Control | KeyModifiers.Shift)]
-    public void ControlReachesOnlyTheArrows(KeyModifiers modifiers)
+    public void ControlReachesTheArrows(KeyModifiers modifiers)
     {
         // The arrows move a cell at a time, so the character step has to stay reachable.
         Assert.Equal(EditorKey.ControlLeft, EditorKeyMap.Map(Key.Left, modifiers));
@@ -82,7 +95,6 @@ public sealed class EditorKeyMapTests
     [InlineData(Key.A)]
     [InlineData(Key.Space)]
     [InlineData(Key.F5)]
-    [InlineData(Key.Escape)]
     public void KeysTheEditorDoesNotRouteMapToNothing(Key key)
     {
         // Text arrives as text input, not as key events, so a letter is not an editor key.

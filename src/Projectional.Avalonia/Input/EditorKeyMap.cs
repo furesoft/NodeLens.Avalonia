@@ -19,8 +19,9 @@ namespace Projectional.Avalonia;
 /// belong to the host - Alt+Left is a back navigation in many applications - and swallowing them
 /// because the plain key happens to be routed would take shortcuts away from the very application that
 /// embeds the editor. Shift is part of what the editor does, because Shift+Tab walks slots backwards.
-/// Control is the host's as well, with one exception: Ctrl+Left and Ctrl+Right, because the arrows move
-/// a cell at a time and the character step has to stay reachable from the keyboard. Alt has its own
+/// Control is the host's as well, with two exceptions: Ctrl+Left and Ctrl+Right, because the arrows move
+/// a cell at a time and the character step has to stay reachable from the keyboard; and Ctrl+Space,
+/// which is the completion gesture in every editor that has one. Alt has its own
 /// exception, Alt+Up and Alt+Down, because reordering a node is an edit of the model and no host can
 /// offer it for the editor; the combination is also the one every editor uses for the same job, so
 /// taking it is what keeps the shortcut where a user looks for it. Alt+Left, Alt+Right and every other
@@ -53,7 +54,7 @@ public static class EditorKeyMap
                 };
         }
 
-        if (control && key is not (Key.Left or Key.Right))
+        if (control && key is not (Key.Left or Key.Right or Key.Space))
         {
             return null;
         }
@@ -72,6 +73,8 @@ public static class EditorKeyMap
             Key.Enter => EditorKey.Enter,
             Key.Back => EditorKey.Backspace,
             Key.Delete => EditorKey.Delete,
+            Key.Space when control => EditorKey.ControlSpace,
+            Key.Escape => EditorKey.Escape,
             _ => null,
         };
     }

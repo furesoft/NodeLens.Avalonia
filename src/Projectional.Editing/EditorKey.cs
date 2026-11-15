@@ -59,4 +59,10 @@ public enum EditorKey
 
     /// <summary>The Delete key.</summary>
     Delete,
+
+    /// <summary>Ctrl+Space, which offers the concepts that could fill the empty slot at the caret.</summary>
+    ControlSpace,
+
+    /// <summary>Escape, which closes an open completion list.</summary>
+    Escape,
 }

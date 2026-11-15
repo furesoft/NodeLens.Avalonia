@@ -49,6 +49,7 @@ and [testing.md](architecture/testing.md).
 | Avalonia control | rendering, scrolling, virtualization, caret, selection — **delivered** |
 | Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
 | Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) — **delivered** |
+| Completion | Ctrl+Space offers the concepts an empty slot accepts, filtering by typed prefix, with a host-supplied icon per kind ([completion.md](architecture/completion.md)) — **delivered** (concepts only) |
 | Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
 | Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |
 | Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) — **delivered** |
@@ -77,7 +78,7 @@ first.*
 | Shell grows | model browser, problems panel, find/replace, recent projects, self-contained single-file build |
 
 **Gate:** a small DSL (including a table) is defined entirely in project files and is
-editable with correct completion-free structural editing; deleting the language's C#
+editable with correct structural editing; deleting the language's C#
 code changes nothing about what the user sees. The declared DSL can be opened, edited
 and saved in the standalone app, which no longer needs C# to know the language.
 *Effort: 6–8 weeks.*
@@ -90,7 +91,7 @@ and saved in the standalone app, which no longer needs C# to know the language.
 | --- | --- |
 | Scopes | chain, defaults, per-language overrides, ambiguity diagnostics |
 | Reference cells | resolve, create-on-the-fly, unresolved state, chooser popup |
-| Completion | scope-driven, prefix filtering, insert-and-continue |
+| Completion | scope-driven entries alongside the concepts M1 already offers, insert-and-continue ([completion.md](architecture/completion.md)) |
 | Substitutions | transformation menus, wrapping, keyword-triggered insertion |
 | Intentions (light bulb) | actions offered at the caret by the language and by the host, applied as one undo step ([context-actions.md](architecture/context-actions.md)) |
 

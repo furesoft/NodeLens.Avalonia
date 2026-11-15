@@ -80,6 +80,12 @@ public sealed class ProjectionalEditorControl : Control
     // a popup on a popup; the entries themselves are built per opening and never cached.
     private ContextMenu? _menu;
 
+    // The completion list is painted onto this control's own surface rather than into a popup of its
+    // own, so it needs a painter and nothing else - no window, no second control, nothing to detach.
+    private readonly CompletionPresenter _completion;
+
+    private CompletionPalette _listPalette = CompletionPalette.Light;
+
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
         : this(new Typeface(FontFamily.Default), 14)
@@ -92,6 +98,7 @@ public sealed class ProjectionalEditorControl : Control
     public ProjectionalEditorControl(Typeface typeface, double fontSize)
     {
         TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, _palette.BrushOf(TextStyleKind.Default));
+        _completion = new CompletionPresenter(TextMeasure, _listPalette);
 
         Background = Brushes.White;
         HighlightBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x26, 0x8B, 0xD2));
@@ -183,6 +190,33 @@ public sealed class ProjectionalEditorControl : Control
 
     /// <summary>The colour selected text is painted over.</summary>
     public IBrush HighlightBrush { get; set; }
+
+    /// <summary>What the completion list and its icons look like.</summary>
+    /// <remarks>
+    /// Named for the list rather than for the palette type, because a member named after a type shadows
+    /// it inside this class - and because the list is what a host actually sees. The icons are
+    /// <see cref="IImage"/>s, so a host can supply its own artwork (a <c>Bitmap</c> from a file works)
+    /// instead of the vector markers the presets declare.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public CompletionPalette ListPalette
+    {
+        get => _listPalette;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_listPalette, value))
+            {
+                return;
+            }
+
+            _listPalette = value;
+            _completion.Palette = value;
+
+            InvalidateVisual();
+        }
+    }
 
     /// <summary>The colour of the caret bar.</summary>
     public IBrush CaretBrush { get; set; }
@@ -321,6 +355,13 @@ public sealed class ProjectionalEditorControl : Control
 
             context.FillRectangle(CaretBrush, new Rect(bounds.X, bounds.Y, CaretThickness, bounds.Height));
         }
+
+        // Last, so the list is never buried by the text it belongs to - it describes what the caret is
+        // about to create, so it has to read as an overlay rather than as part of the document.
+        if (session.Completion is { IsEmpty: false } list)
+        {
+            _completion.Render(context, list, CompletionBounds(session, list));
+        }
     }
 
     /// <inheritdoc />
@@ -422,6 +463,14 @@ public sealed class ProjectionalEditorControl : Control
         }
 
         Focus();
+
+        // The list overlays the document, so it gets the first refusal: a click on a proposal must not
+        // also move the caret into the slot the proposal belongs to.
+        if (ClickCompletion(session, e.GetPosition(this)))
+        {
+            e.Handled = true;
+            return;
+        }
 
         if (CaretAt(e) is not { } position)
         {
@@ -532,7 +581,7 @@ public sealed class ProjectionalEditorControl : Control
             return;
         }
 
-        var result = session.Apply(KeyRouter.Type(e.Text));
+        var result = session.Apply(KeyRouter.Type(session, e.Text));
 
         // A refused character is left unconsumed, so a host can react to it - a beep, a status line.
         e.Handled = result.Outcome != EditOutcome.Rejected;
@@ -665,6 +714,59 @@ public sealed class ProjectionalEditorControl : Control
     }
 
     private LayoutSize ViewportSize => new(Bounds.Width, Bounds.Height);
+
+    /// <summary>Where the completion list is drawn, in viewport coordinates.</summary>
+    /// <remarks>
+    /// Below the caret and shifted right of it, flipped above when it would hang off the bottom edge,
+    /// then clamped so it never leaves the surface. Keeping it inside the control rather than over the
+    /// host's other content is the reason the list is painted here instead of in a popup.
+    /// </remarks>
+    private Rect CompletionBounds(EditorSession session, CompletionList list)
+    {
+        var size = _completion.Measure(list);
+
+        var caret = CaretBounds.Of(session.Tree, session.Layout, session.Selection.Caret, session.Measure);
+
+        var left = (caret?.X ?? 0) - _offsetX;
+        var top = (caret is { } below ? below.Y - _offsetY + below.Height : 0) + _completion.RowHeight;
+
+        if (caret is { } flip && top + size.Height > Bounds.Height)
+        {
+            top = flip.Y - _offsetY - size.Height;
+        }
+
+        return new Rect(
+            Math.Clamp(left, 0, Math.Max(0, Bounds.Width - size.Width)),
+            Math.Clamp(top, 0, Math.Max(0, Bounds.Height - size.Height)),
+            size.Width,
+            size.Height);
+    }
+
+    /// <summary>Accepts the row of the completion list the pointer pressed, if it hit one.</summary>
+    /// <returns>Whether the press was the list's rather than the document's.</returns>
+    /// <remarks>
+    /// A click is turned into the two actions the keyboard runs - move the highlight, then accept - so a
+    /// row cannot be accepted through a path that the keyboard would have refused.
+    /// </remarks>
+    private bool ClickCompletion(EditorSession session, Point point)
+    {
+        if (session.Completion is not { IsEmpty: false } list
+            || _completion.RowAt(list, CompletionBounds(session, list), point) is not { } index)
+        {
+            return false;
+        }
+
+        var delta = index - list.SelectedIndex;
+
+        if (delta != 0)
+        {
+            session.Apply(new SelectCompletionAction(delta));
+        }
+
+        AfterEdit(session.Apply(new AcceptCompletionAction()));
+
+        return true;
+    }
 
     private static Rect ToRect(LayoutRect rect) => new(rect.X, rect.Y, rect.Width, rect.Height);
 }

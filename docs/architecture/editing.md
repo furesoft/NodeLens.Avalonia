@@ -139,6 +139,11 @@ produced it, and the editing layer never has to remember anything for undo.
 | `TabAction` | Tab, Shift+Tab | move the caret to the next / previous slot |
 | `MoveCaretAction` | the arrow keys, Home, End | move the caret, never the model |
 | `MoveNodeAction` | Alt+Up, Alt+Down | reorder the node the caret is in among its siblings |
+| `OpenCompletionAction` | Ctrl+Space | offer the concepts that could fill the empty slot at the caret |
+| `NarrowCompletionAction` / `WidenCompletionAction` | a character / Backspace, while a list is open | filter the open list, never the model |
+| `SelectCompletionAction` | Up, Down | move the highlight in the open list |
+| `AcceptCompletionAction` | Enter, Tab, while a list is open | create the highlighted concept in the slot |
+| `DismissCompletionAction` | Escape | close the list and leave the model alone |
 
 The result of an apply is an `EditResult`: an `EditOutcome` (`Changed`, `Unchanged`,
 `Rejected`) plus the caret to place afterwards and the **coalescing key**. Two consecutive
@@ -155,6 +160,12 @@ a value whose type can hold a break can take one. `KeyRouter.For(session, key)` 
 the caret first and falls back to the plain table; the plain `For(key)` stays for the host that
 has no document to ask. The test for "text" is the property type, not `CaretPlace.IsEditable`,
 because a number and a date are editable and refuse a break.
+
+An open completion list adds a third answer to Enter and Tab, and it is asked first: while a
+list is open those two keys accept a proposal rather than fill a slot or open a line. The same
+`For(session, key)` overload carries that decision, so a host that routes keys through the
+session gets it and a host that uses the plain table gets no list at all. Both cases are what
+[completion.md](completion.md) describes.
 
 ## Moving nodes
 
@@ -227,6 +238,26 @@ The constraining rule for language authors is that a variant keeps every shown s
 natural address, so the tables, undo, selection and hit testing layers never learn that
 variants exist.
 
+## Completion
+
+An open completion list is view state, exactly like the representation choice: it lives on
+`EditorSession.Completion`, is never serialized, creates no undo step and dies with the caret
+that justified it. `EditContext.Completion` is the handle an action edits it through, and the
+session closes it after **any** action that is not a completion action — which is why no edit
+has to remember to dismiss a list.
+
+The proposals are the model's own possibilities, not a vocabulary guessed from text: the caret
+is in an empty slot, the slot declares the concept its children must be, and every non-abstract
+concept below it is an entry, in declaration order. That order is the language author's ranking,
+and the first entry is the concept `InsertNodeAction` would create on Enter, so the top of the
+list and the default never disagree.
+
+The full contract — the gestures, why text typed into a list is a filter rather than an edit,
+how the list is painted and why items carry an `IImage` instead of a glyph — is in
+[completion.md](completion.md). What belongs here is the split: the *decisions* (which concepts,
+which key does what, when the list closes) are in this layer and testable headlessly; only the
+painting is above it, and a host that renders its own list needs no editing knowledge at all.
+
 ## The context menu
 
 `EditorMenu.For(session)` returns a list of `EditorMenuEntry` — labels, gestures, enabled
@@ -292,7 +323,7 @@ errors, such as opening a session on a node that is not in a model.
 | Insert at index | Enter appends to the end of a list, not below the caret | M2 (tables need it) |
 | Property defaults are materialized | typing into a default inserts into it (`"unnamed"` + `"P"` → `"Punnamed"`) instead of replacing it | `feat/property-defaults` after M1 |
 | `Ctrl+Home` / `Ctrl+End` | not routed; document start and end are reached with Home/End on the first and last line | M3 |
-| Completion and substitution | a key can only type, delete, move or create | M3 |
+| Completion of a filled slot (substitution) | a list only offers concepts for an empty slot; replacing an existing child arrives with the language's substitution rules | M3 ([completion.md](completion.md)) |
 | Multi-cell text editing | a selection behaves like a caret for text input | M3 |
 | Intentions (light bulb) | the menu offers only what a key binding could already do | M3 ([context-actions.md](context-actions.md)) |
 | Incremental rebuild | every keystroke rebuilds tree and layout | M7 |
