@@ -1160,10 +1160,11 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
             if (e.ClickCount > 1)
             {
-                // A second click means the word under the pointer. The gesture deliberately does not start
-                // a drag: the first pointer move would collapse the range onto the anchor the drag would
-                // set, and the selection the user asked for would vanish before they could type over it.
-                _ = session.Apply(new SelectWordAction());
+                // A second click means the word under the pointer, a third the whole value. Either way the
+                // gesture deliberately does not start a drag: the first pointer move would collapse the
+                // range onto the anchor the drag would set, and the selection the user asked for would
+                // vanish before they could type over it.
+                _ = session.Apply(e.ClickCount > 2 ? new SelectValueAction() : new SelectWordAction());
             }
             else
             {
