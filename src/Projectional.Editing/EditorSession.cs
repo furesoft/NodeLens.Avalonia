@@ -37,8 +37,15 @@ public sealed class EditorSession : IDisposable
     /// <param name="document">The root of the model to edit.</param>
     /// <param name="notations">The notation that projects the document's concepts.</param>
     /// <param name="measure">How text is measured; monospace when omitted, which is what tests use.</param>
+    /// <param name="emphasis">
+    /// What decorates the model beyond its notation, asked again on every rebuild; nothing when omitted.
+    /// </param>
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
-    public EditorSession(Node document, NotationRegistry notations, ITextMeasure? measure = null)
+    public EditorSession(
+        Node document,
+        NotationRegistry notations,
+        ITextMeasure? measure = null,
+        ICellEmphasis? emphasis = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
@@ -47,7 +54,7 @@ public sealed class EditorSession : IDisposable
         Measure = measure ?? MonospaceTextMeasure.Instance;
         History = new UndoHistory(document.Model);
 
-        _builder = new EditorTreeBuilder(notations);
+        _builder = new EditorTreeBuilder(notations, emphasis);
         _layouter = new CellLayouter(Measure);
 
         Tree = _builder.Build(Document);

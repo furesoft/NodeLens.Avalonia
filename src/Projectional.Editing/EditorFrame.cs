@@ -1,3 +1,4 @@
+using Projectional.Language;
 using Projectional.Projection;
 
 namespace Projectional.Editing;
@@ -120,7 +121,8 @@ public sealed class EditorFrame
                     placed.Cell,
                     CellText.Of(placed.Cell),
                     placed.Bounds,
-                    styler.StyleOf(placed.Cell)));
+                    styler.StyleOf(placed.Cell),
+                    placed.Cell is TextCell text ? text.Emphasis : TextEmphasis.None));
             }
         }
 

@@ -1,3 +1,4 @@
+using Projectional.Language;
 using Projectional.Projection;
 
 namespace Projectional.Editing;
@@ -36,6 +37,16 @@ public readonly record struct CaretPlace
 
     /// <summary>What the cell shows, which is what the offset counts characters of.</summary>
     public string Text { get; }
+
+    /// <summary>
+    /// How the text is decorated, and therefore which face it was measured in.
+    /// </summary>
+    /// <remarks>
+    /// A caret offset has to be turned back into a horizontal position by measuring the text in front of
+    /// it. Measuring with the regular face while the glyphs are drawn in a bold one would put the caret
+    /// somewhere the letters are not, so the decoration travels with the stop.
+    /// </remarks>
+    public TextEmphasis Emphasis => Cell is TextCell text ? text.Emphasis : TextEmphasis.None;
 
     /// <summary>How many offsets the cell has, one of which is always its end.</summary>
     public int Length => Text.Length;

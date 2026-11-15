@@ -215,7 +215,7 @@ public static class CaretNavigation
             return CaretPosition.At(place, offset);
         }
 
-        var column = origin.X + measure.Measure(place.Text[..offset]);
+        var column = origin.X + CaretBounds.PrefixWidth(place, offset, measure);
         var line = MiddleOf(origin);
         var target = double.NaN;
         var best = -1;
@@ -252,7 +252,7 @@ public static class CaretNavigation
 
         return best < 0 || layout.BoundsOf(places[best].Cell) is not { } landing
             ? CaretPosition.At(place, offset)
-            : CaretPosition.At(places[best], OffsetAt(measure, places[best].Text, column - landing.X));
+            : CaretPosition.At(places[best], OffsetAt(measure, places[best], column - landing.X));
     }
 
     /// <summary>The start or the end of the line the caret is on.</summary>
@@ -291,15 +291,15 @@ public static class CaretNavigation
             : CaretPosition.At(places[found], start ? 0 : places[found].Length);
     }
 
-    /// <summary>The offset into <paramref name="text"/> whose caret is closest to <paramref name="x"/>.</summary>
-    private static int OffsetAt(ITextMeasure measure, string text, double x)
+    /// <summary>The offset into <paramref name="place"/>'s text whose caret is closest to <paramref name="x"/>.</summary>
+    private static int OffsetAt(ITextMeasure measure, CaretPlace place, double x)
     {
         var best = 0;
         var distance = Math.Abs(x);
 
-        for (var offset = 1; offset <= text.Length; offset++)
+        for (var offset = 1; offset <= place.Length; offset++)
         {
-            var candidate = Math.Abs(measure.Measure(text[..offset]) - x);
+            var candidate = Math.Abs(CaretBounds.PrefixWidth(place, offset, measure) - x);
 
             if (candidate < distance)
             {
