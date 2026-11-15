@@ -141,6 +141,19 @@ public sealed class LayoutViewportTests
     }
 
     [Fact]
+    public void ScrollIntoViewLeavesTheOffsetAloneWhenTheWindowHasNoExtent()
+    {
+        // A control that has not been arranged yet reports a zero-size viewport, and every editor sets its
+        // session - which brings the caret into view - before that first arrange. There is no window to
+        // show the target in, so the offset must stay where it is: aligned to the caret it would open the
+        // document scrolled to the caret instead of to its start.
+        var (x, y) = LayoutViewport.ScrollIntoView(Layout(), new LayoutSize(0, 0), 5, 1, ExtendsLine);
+
+        Assert.Equal(5, x);
+        Assert.Equal(1, y);
+    }
+
+    [Fact]
     public void ToViewportSubtractsTheOffsetAndToLayoutAddsItBack()
     {
         var viewport = LayoutViewport.Of(Layout(), new LayoutSize(41, 2), 0, 2);
