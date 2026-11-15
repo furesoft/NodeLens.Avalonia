@@ -2,21 +2,19 @@ namespace Projectional.Core;
 
 internal sealed class EnumPropertyType : PropertyType
 {
-    private readonly HashSet<string> _symbols;
+    private readonly string[] _symbols;
 
     public EnumPropertyType(params ReadOnlySpan<string> symbols)
         : base(NameFor(symbols))
     {
-        _symbols = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var symbol in symbols)
-        {
-            _symbols.Add(symbol);
-        }
+        _symbols = [.. symbols];
     }
+
+    public override IReadOnlyList<string> Symbols => _symbols;
 
     public override bool TryParse(string? text, out object? value)
     {
-        if (text is not null && _symbols.Contains(text))
+        if (text is not null && Has(text))
         {
             value = text;
             return true;
@@ -27,9 +25,11 @@ internal sealed class EnumPropertyType : PropertyType
     }
 
     public override string Format(object value) =>
-        value is string text && _symbols.Contains(text)
+        value is string text && Has(text)
             ? text
             : throw new ArgumentException($"'{value}' is not a symbol of {Name}.", nameof(value));
+
+    private bool Has(string symbol) => Array.IndexOf(_symbols, symbol) >= 0;
 
     /// <summary>
     /// Validates the symbols and renders the name in declaration order, so that two enumerations

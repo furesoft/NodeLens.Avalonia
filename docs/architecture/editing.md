@@ -149,7 +149,7 @@ produced it, and the editing layer never has to remember anything for undo.
 | `OpenCompletionAction` | Ctrl+Space | offer the concepts that could fill the empty slot at the caret |
 | `NarrowCompletionAction` / `WidenCompletionAction` | a character / Backspace, while a list is open | filter the open list, never the model |
 | `SelectCompletionAction` | Up, Down | move the highlight in the open list |
-| `AcceptCompletionAction` | Enter, Tab, while a list is open | create the highlighted concept in the slot |
+| `AcceptCompletionAction` | Enter, Tab, while a list is open | create the highlighted concept in the slot, or write the highlighted symbol into the property |
 | `DismissCompletionAction` | Escape | close the list and leave the model alone |
 | `SelectAllAction` | Ctrl+A | widen the selection: the property, then the node, then the document |
 | `CopyAction` | Ctrl+C | put the selected text on the clipboard |
@@ -235,6 +235,15 @@ A non-empty selection is case 3, not case 2: typing over a range is a future str
 creating a node in the slot the caret happens to sit in would silently discard what the user
 selected. A language that declares no typing rules at all is also case 3, which is what every
 language did before this existed.
+
+**Case 1 can refuse a keystroke the user meant.** A property whose type is an enumeration accepts
+only its symbols, so the first character of a new value — a prefix of one — is not a legal value
+and is rejected. The repair is not to loosen the type, because the value written must always be
+legal; it is the completion list built from the type's own symbols, which turns those refused
+keystrokes into a filter over the values that *are* legal
+([completion.md](completion.md#values)). An enumeration property therefore offers its values by
+itself the moment the caret arrives in it, and for a cell whose type cannot name its values the
+typing rules are the only way in.
 
 ## Moving nodes
 

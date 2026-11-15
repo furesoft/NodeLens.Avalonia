@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Projection;
 
 namespace Projectional.Editing;
 
@@ -71,5 +72,76 @@ internal static class CompletionSource
         var items = Proposals(context.Concepts, owner, slot);
 
         return items.Count == 0 ? null : new CompletionList(items);
+    }
+
+    /// <summary>
+    /// An open list for <paramref name="slot"/>, whichever kind of slot it is, or <see langword="null"/>
+    /// when it has nothing to offer.
+    /// </summary>
+    /// <remarks>
+    /// The one entry point that turns a <see cref="CompletionSlot"/> into a list, so the list a host sees
+    /// and the list the accepting action reads are built by the same question. A property slot is answered
+    /// from its type; an empty slot from the concepts below the declared child concept.
+    /// </remarks>
+    internal static CompletionList? Open(EditContext context, CompletionSlot slot)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        return slot.Property is { } property
+            ? Values(property)
+            : Open(context, slot.Owner, slot.Slot);
+    }
+
+    /// <summary>
+    /// The values <paramref name="property"/> allows, in declaration order, or <see langword="null"/> when
+    /// its type has no closed set of values.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The value the cell already holds is selected, so opening the list and accepting without choosing
+    /// leaves the document alone. Without that, arriving in a <c>Review</c> cell and pressing Enter would
+    /// silently turn it into the first symbol of the type - a completion that edits when the user asked
+    /// for nothing.
+    /// </para>
+    /// <para>
+    /// The list starts with an empty prefix, so it is complete: filtering happens when the user types, one
+    /// <see cref="NarrowCompletionAction"/> at a time.
+    /// </para>
+    /// </remarks>
+    internal static CompletionList? Values(PropertyCell property)
+    {
+        ArgumentNullException.ThrowIfNull(property);
+
+        var symbols = property.Type.Symbols;
+
+        if (symbols.Count == 0)
+        {
+            return null;
+        }
+
+        List<CompletionItem> items = [];
+
+        foreach (var symbol in symbols)
+        {
+            items.Add(CompletionItem.ForValue(symbol));
+        }
+
+        var list = new CompletionList(items);
+        var current = IndexOf(symbols, property.Text);
+
+        return current > 0 ? list.Move(current) : list;
+    }
+
+    private static int IndexOf(IReadOnlyList<string> symbols, string text)
+    {
+        for (var index = 0; index < symbols.Count; index++)
+        {
+            if (string.Equals(symbols[index], text, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 }
