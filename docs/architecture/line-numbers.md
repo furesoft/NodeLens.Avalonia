@@ -23,6 +23,14 @@ Status: **delivered** for M1. `ShowLineNumbers` is off by default.
 - an unset property cell contributes nothing either, since it draws no text; it always shares
   its band with a visible cell, so no row is lost.
 
+The gutter counts what the layout draws and has no opinion of its own, so it is exactly as
+right as the wrapping is. A wrap that broke a word between two characters used to give a cell
+starting one character inside the page edge six bands, and a three-line document eight numbers;
+`TextWrapper` now breaks only at a space and draws a wider word whole, past the edge
+([projection.md](projection.md) §"A word wider than the room left is drawn whole, past the
+edge"). One test pins that shape: the payroll sample at a width that leaves `Accept` one column
+of room is still three rows.
+
 The bands are then sorted by top and deduplicated with a tolerance of half a line height. Two
 cells on one line share a number; a cell that is half a pixel off because of rounding does not
 get a number of its own. Numbers always run from 1 without a gap, so row *n* is the *n*-th band
@@ -133,9 +141,10 @@ theme does not paint grey numbers on a dark page.
 
 ## What was verified
 
-- Fourteen tests in `LineNumbersTests` pin the rule: one band per drawn line, one number per
+- Fifteen tests in `LineNumbersTests` pin the rule: one band per drawn line, one number per
   band, no gaps, a wrapped cell counting twice, cells sharing a number, an empty slot still
-  producing a band, the first band at the top of the layout, and digit growth at 0/1/9/10/99/100/1000.
+  producing a band, the first band at the top of the layout, digit growth at
+  0/1/9/10/99/100/1000, and a document that stays three rows when a word only just does not fit.
 - A throwaway Avalonia probe rasterised the real control and sampled pixels: the gutter occupies
   `19.55 px` for a one-digit document (one `0` plus two gaps), the text moves right by exactly
   that, the numbers line up on their right edge, `GutterBackground` fills the full height,

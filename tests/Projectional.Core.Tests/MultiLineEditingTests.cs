@@ -132,14 +132,15 @@ public sealed class MultiLineEditingTests
     [Fact]
     public void TheSessionWrapsAValueAtTheWidthItIsGiven()
     {
-        var rule = RuleNamed("abcdefghij");
+        var rule = RuleNamed("abcdefgh ijkl");
         using var session = TestEditor.Open(rule);
 
         // No width is no page: the value runs on however long it is.
         Assert.Null(session.WrapWidth);
         Assert.True(session.Layout.LinesOf(NameCell(session, rule))!.IsSingleLine);
 
-        // "rule " is five columns, so ten characters do not fit in a page of twelve.
+        // "rule " is five columns, so the first word does not fit in a page of twelve and the wrap is
+        // taken at the space after it.
         session.WrapWidth = 12;
 
         var lines = session.Layout.LinesOf(NameCell(session, rule));

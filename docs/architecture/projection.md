@@ -123,15 +123,21 @@ the tree, in abstract **layout units** rather than pixels.
   written into the separator notation itself (`Punct(",")` beside `Line(Space, Keyword("and"))`).
   There is no trailing gap after the last item. A gap is real cells, not padding applied by
   the layout, so a wide gap is several `SpaceCell`s and every one of them is a caret stop.
-- **A text cell is laid out as lines, and breaks itself when the page does not reach.**
-  The text of a property is broken into `TextLine`s by `TextWrapper` before it is measured:
-  a `\n` in the value always ends a line, and when a wrap width is known the wrapper also
-  breaks at the last opportunity that still fits - a space when the value has one, a
-  character boundary otherwise - so a long value fills the room left to the page edge
-  instead of running off it. Each line starts at the cell's left edge, so the columns of a
-  continuation line are counted from the break, not from the start of the cell. A break the
-  user put there and a break the width forced are the same line; only the model knows which
-  is which, and only for the purpose of editing.
+- **A text cell is laid out as lines, and breaks itself at a space when the page does
+  not reach.** The text of a property is broken into `TextLine`s by `TextWrapper` before
+  it is measured: a `\n` in the value always ends a line, and when a wrap width is known
+  the wrapper also breaks at the last space that still fits. Each line starts at the
+  cell's left edge, so the columns of a continuation line are counted from the break, not
+  from the start of the cell. A break the user put there and a break the width forced are
+  the same line; only the model knows which is which, and only for the purpose of editing.
+- **A word wider than the room left is drawn whole, past the edge.** A soft break is only
+  ever taken at a space, never between two characters of a word. Breaking a word is what
+  turns a cell that starts just inside the page edge - one character of room - into one
+  line per character, which makes a three-line document eight rows tall in the gutter and
+  is unreadable besides. Running past the edge is the behaviour a cell that starts *past*
+  the edge already has, and the horizontal scrollbar is what makes the overflow reachable.
+  The consequence for a host is that a wrapping cell can end up wider than the wrap width,
+  so the layout's own width grows with it.
 - **Wrapping is a limit, not a page.** The wrap width is the room a cell has, and
   `CellLayouter.LimitAt(x)` subtracts the x of the cell from it, so an indented value wraps
   earlier than a flush one. With no width - a host that does not measure, or an unbounded

@@ -42,19 +42,20 @@ public sealed class MarkerGeometryTests
     public void AMarkerFollowsAValueAcrossAWrap()
     {
         // The value is drawn on two lines, so a range that straddles the wrap is two rectangles on two
-        // lines - one squiggle per line is the only thing a page can draw.
-        var rule = RuleNamed("abcdefghij");
+        // lines - one squiggle per line is the only thing a page can draw. The wrap falls at the space:
+        // "abcdefgh" overflows the seven characters of room, so "ijkl" starts the second line.
+        var rule = RuleNamed("abcdefgh ijkl");
         using var session = TestEditor.Open(rule);
         session.WrapWidth = 12;
         var name = CellAddress.OfSlot(rule.Id, "name");
 
-        var markers = MarkersOf(session, Value(rule, "name", 6, 9));
+        var markers = MarkersOf(session, Value(rule, "name", 6, 11));
 
         var bounds = BoundsOf(session, name);
         Assert.Equal(2, markers.Count);
 
-        // The first line is seven characters wide, so offset 6 is its last character.
-        Assert.Equal((bounds.X + 6, bounds.Y, 1.0, 0), (markers[0].X, markers[0].Y, markers[0].Width, markers[0].Line));
+        // The first line is eight characters wide, so offsets 6 and 7 are its last two.
+        Assert.Equal((bounds.X + 6, bounds.Y, 2.0, 0), (markers[0].X, markers[0].Y, markers[0].Width, markers[0].Line));
 
         // A continuation line starts at the cell's own left edge, not at the page's.
         Assert.Equal((bounds.X, bounds.Y + 1, 2.0, 1), (markers[1].X, markers[1].Y, markers[1].Width, markers[1].Line));

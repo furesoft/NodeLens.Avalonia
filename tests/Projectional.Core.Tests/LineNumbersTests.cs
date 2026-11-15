@@ -1,5 +1,7 @@
 using Projectional.Editing;
+using Projectional.Language;
 using Projectional.Projection;
+using Projectional.Samples;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -81,6 +83,22 @@ public sealed class LineNumbersTests
         Assert.Equal(0, rows[0].Bounds.Y);
     }
 
+    [Fact]
+    public void AValueStartingNearTheEdgeDoesNotBecomeARowPerCharacter()
+    {
+        // The gutter counts what the layout draws, so it is only ever as right as the wrap. "Accept" starts
+        // forty columns into a forty-one column page: one character of room. Breaking a word there gives a
+        // row per character - six rows for a one-row line, and a three-line document numbered to eight.
+        // The word is drawn whole past the edge instead, so the page is still three rows.
+        var model = PayrollSample.NewSampleModel();
+        var tree = new EditorTreeBuilder(Notations).Build(model.Roots[0]);
+        var layout = new CellLayouter(MonospaceTextMeasure.Instance, wrapWidth: 41).Layout(tree);
+
+        var rows = LineNumbers.Of(layout, MonospaceTextMeasure.Instance);
+
+        Assert.Equal([1, 2, 3], rows.Select(row => row.Number));
+    }
+
     [Theory]
     [InlineData(0, 1)]
     [InlineData(1, 1)]
@@ -109,4 +127,6 @@ public sealed class LineNumbersTests
 
     private static IReadOnlyList<LineNumberRow> RowsOf(EditorSession session) =>
         LineNumbers.Of(session.Layout, session.Measure);
+
+    private static NotationRegistry Notations => RulesLanguage.CreateNotations(RulesLanguage.Concepts);
 }
