@@ -1,5 +1,8 @@
 # Clipboard
 
+Status: **delivered** for M1. Copy, cut, paste, select all and `Delete` are routed in the
+control and covered by tests.
+
 Copy, cut and paste are the first edits whose result does not always land in the document.
 `Ctrl+C` writes to a place the editor does not own, `Ctrl+V` reads from a place the editor did
 not write, and both of those places are shared with every other application on the machine.
