@@ -7,6 +7,12 @@
   <DockPanel>
     <Menu DockPanel.Dock="Top">
       <MenuItem Header="_File">
+        <MenuItem Header="_New" HotKey="Ctrl+N" Click="OnNewDocument" />
+        <MenuItem Header="_Open..." HotKey="Ctrl+O" Click="OnOpenDocument" />
+        <Separator />
+        <MenuItem Header="_Save" HotKey="Ctrl+S" Click="OnSaveDocument" />
+        <MenuItem Header="Save _as..." HotKey="Ctrl+Shift+S" Click="OnSaveDocumentAs" />
+        <Separator />
         <MenuItem Header="_Close document" HotKey="Ctrl+W" Click="OnCloseDocument" />
         <Separator />
         <MenuItem Header="E_xit" Click="OnExit" />

@@ -70,6 +70,29 @@ internal sealed class DocumentSet : IDisposable
         return null;
     }
 
+    /// <summary>The tab that came from <paramref name="filePath"/>, or <see langword="null"/>.</summary>
+    /// <param name="filePath">The file to look for.</param>
+    /// <remarks>
+    /// Two tabs on one file would each think they were the document, and whichever saved last would
+    /// silently discard the other's work. Comparing full paths case-insensitively is what the file
+    /// system this app runs on does, so the two spellings of one file count as the same file.
+    /// </remarks>
+    internal DocumentTab? Find(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        foreach (var document in _documents)
+        {
+            if (document.FilePath is { } candidate
+                && string.Equals(Path.GetFullPath(candidate), Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase))
+            {
+                return document;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Adds <paramref name="document"/> at the end of the strip and makes it active.</summary>
     /// <param name="document">The document to open.</param>
     /// <exception cref="InvalidOperationException">Its model already has a tab.</exception>

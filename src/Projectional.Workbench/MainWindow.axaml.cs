@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
 
@@ -39,6 +40,8 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
+    private string? _error;
+    private bool _closeConfirmed;
     private bool _disposed;
 
     /// <summary>Creates the window and opens the sample document in it.</summary>
@@ -59,6 +62,36 @@ public sealed partial class MainWindow : Window, IDisposable
         Dispose();
 
         base.OnClosed(e);
+    }
+
+    /// <inheritdoc />
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+
+        if (_closeConfirmed || !_documents.AnyUnsaved)
+        {
+            return;
+        }
+
+        // Closing is not something a prompt can interrupt: the window is already on its way out, so the
+        // close is cancelled and re-issued once every dirty document has been dealt with.
+        e.Cancel = true;
+        Dispatcher.UIThread.Post(ConfirmClose);
+    }
+
+    private async void ConfirmClose()
+    {
+        foreach (var document in _documents.Unsaved)
+        {
+            if (!await ResolveUnsavedAsync(document))
+            {
+                return;
+            }
+        }
+
+        _closeConfirmed = true;
+        Close();
     }
 
     /// <summary>Closes every open document and disposes its session.</summary>
@@ -119,13 +152,23 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
-    private void CloseActiveDocument()
+    private async void CloseActiveDocument()
     {
         if (_documents.Active is not { } document)
         {
             return;
         }
 
+        if (!await ResolveUnsavedAsync(document))
+        {
+            return;
+        }
+
+        Close(document);
+    }
+
+    private void Close(DocumentTab document)
+    {
         document.Model.Changed -= OnDocumentChanged;
         _tabs.Remove(document, out var tab);
         _documents.Remove(document);
@@ -141,6 +184,32 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         UpdateStatus();
+    }
+
+    /// <summary>
+    /// Asks what to do about <paramref name="document"/>'s unsaved changes.
+    /// </summary>
+    /// <param name="document">The document about to be closed.</param>
+    /// <returns>Whether the caller may carry on; <see langword="false"/> means the user cancelled.</returns>
+    /// <remarks>
+    /// A save that fails answers "do not carry on": the user asked to keep the changes and they are
+    /// still only in memory, so closing would lose exactly what they said to keep.
+    /// </remarks>
+    private async Task<bool> ResolveUnsavedAsync(DocumentTab document)
+    {
+        if (!document.IsDirty)
+        {
+            return true;
+        }
+
+        Select(document);
+
+        return await UnsavedChangesPrompt.AskAsync(this, document.Title) switch
+        {
+            UnsavedChoice.Save => await SaveAsync(document),
+            UnsavedChoice.Discard => true,
+            _ => false,
+        };
     }
 
     private void Select(DocumentTab document)
@@ -208,9 +277,13 @@ public sealed partial class MainWindow : Window, IDisposable
             tab.Header = document.IsDirty ? $"{document.Title} *" : document.Title;
         }
 
-        StatusText.Text = _documents.Active is not { } active
+        var position = _documents.Active is not { } active
             ? "No document open"
             : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {(_theme.IsDark ? "dark" : "light")} theme";
+
+        // The message goes last and is not cleared here: it is the answer to the command the user just
+        // ran, and the next command clears it, so it cannot go stale while the user reads it.
+        StatusText.Text = _error is null ? position : $"{position} | {_error}";
 
         UpdateRepresentations();
     }
@@ -272,6 +345,128 @@ public sealed partial class MainWindow : Window, IDisposable
             (tab.Content as ProjectionalEditorControl)?.Focus();
         }
     }
+
+    private void OnNewDocument(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+        OpenDocument(PayrollSample.NewEmptyModel(), RulesLanguage.CreateNotations(RulesLanguage.Concepts));
+    }
+
+    private async void OnOpenDocument(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open a model",
+            AllowMultiple = false,
+            FileTypeFilter = [ModelFileType()],
+        });
+
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        if (files[0].TryGetLocalPath() is not { } path)
+        {
+            _error = "That file has no path this app can read.";
+            UpdateStatus();
+
+            return;
+        }
+
+        if (_documents.Find(path) is { } alreadyOpen)
+        {
+            Select(alreadyOpen);
+            UpdateStatus();
+
+            return;
+        }
+
+        if (DocumentFile.TryLoad(path, out var error) is not { } model)
+        {
+            _error = $"Could not open {Path.GetFileName(path)}: {error}";
+
+            UpdateStatus();
+
+            return;
+        }
+
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), filePath: path, emphasis: RulesLanguage.Emphasis);
+    }
+
+    private async void OnSaveDocument(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        if (_documents.Active is { } document)
+        {
+            await SaveAsync(document);
+        }
+    }
+
+    private async void OnSaveDocumentAs(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        if (_documents.Active is { } document && await PickSavePathAsync(document) is { } path)
+        {
+            SaveTo(document, path);
+        }
+    }
+
+    /// <summary>Writes <paramref name="document"/> where it came from, asking for a place the first time.</summary>
+    /// <param name="document">The document to write.</param>
+    /// <returns>Whether the document reached the disk.</returns>
+    private async Task<bool> SaveAsync(DocumentTab document)
+    {
+        if (document.FilePath is { } known)
+        {
+            return SaveTo(document, known);
+        }
+
+        if (await PickSavePathAsync(document) is not { } chosen)
+        {
+            return false;
+        }
+
+        return SaveTo(document, chosen);
+    }
+
+    private bool SaveTo(DocumentTab document, string path)
+    {
+        if (DocumentFile.TrySave(document, path, out var error))
+        {
+            UpdateStatus();
+
+            return true;
+        }
+
+        _error = $"Could not save {Path.GetFileName(path)}: {error}";
+        UpdateStatus();
+
+        return false;
+    }
+
+    private async Task<string?> PickSavePathAsync(DocumentTab document)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save the model",
+            SuggestedFileName = document.Title,
+            DefaultExtension = DocumentFile.Extension.TrimStart('.'),
+            FileTypeChoices = [ModelFileType()],
+            ShowOverwritePrompt = true,
+        });
+
+        return file?.TryGetLocalPath();
+    }
+
+    private static FilePickerFileType ModelFileType() => new("Projectional model")
+    {
+        Patterns = [$"*{DocumentFile.Extension}"],
+    };
 
     private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();
 

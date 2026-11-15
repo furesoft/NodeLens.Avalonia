@@ -658,7 +658,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 662 tests**; anything below that means tests were deleted.
+it. **Baseline is 670 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

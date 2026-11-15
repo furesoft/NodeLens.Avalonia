@@ -151,6 +151,48 @@ the document has to be saved to remember it. A future slice may persist the pref
 file, which is a session-level setting rather than a model property — the same reason
 dark/light is not written into the model.
 
+## What the thin shell implements
+
+The M1 shell is the smallest window that can open, edit and save a model, and it is
+deliberately narrower than the tables above. What exists:
+
+| Command | Shortcut | What it does |
+| --- | --- | --- |
+| New | `Ctrl+N` | a scratch document with one empty root, not yet on disk |
+| Open | `Ctrl+O` | reads one model file into a new tab, or selects the tab already showing it |
+| Save | `Ctrl+S` | writes to the file the document came from, asking for a place the first time |
+| Save as | `Ctrl+Shift+S` | writes to a place the user picks and adopts it as the document's file |
+| Close document | `Ctrl+W` | closes the tab, prompting when it is dirty |
+| Exit | — | prompts once per dirty document, then closes |
+
+`Ctrl+Shift+S` is Save As here rather than the Save all of the table above, because with
+one model per file and no project yet, "save all" is the same operation as "save" repeated
+and there is nothing for it to do that closing the window does not already do. Save all
+comes back with projects in M3.
+
+Two things the tables promise are not in the thin shell, and both are decisions rather than
+omissions:
+
+- **No file watcher.** A model edited by something else while a tab is open is not
+  noticed, so the "reload from disk / keep my version" prompt of
+  [open questions](../open-questions.md#standalone-editor) #23 has nothing to answer yet.
+- **Errors go to the status bar, not to a dialog.** A file that will not parse, a path the
+  app cannot write, a save that failed: each leaves a sentence at the right-hand end of the
+  status bar and the document exactly as it was. A modal box would be the heavier answer
+  for the one case a user can act on by picking another file, and the shell has no
+  message-box vocabulary of its own.
+
+The rules the shell must not get wrong are in `DocumentFile`, which is why it is a type of
+its own rather than four statements in the window: **a save marks the document clean only
+after the write returned**, so a failed save leaves the changes recoverable, and **a load
+reports a broken file as a message**, so the window never has to catch the same exception
+twice. A save that fails answers "do not close" to a close prompt, because the user asked
+to keep changes that are still only in memory.
+
+Opening a file that is already open selects its tab instead of reading it twice: two tabs
+on one file would each believe they were the document, and whichever saved last would
+silently discard the other's work.
+
 ## Command line
 
 | Invocation | Behaviour |
