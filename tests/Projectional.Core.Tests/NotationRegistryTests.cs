@@ -80,7 +80,7 @@ public sealed class NotationRegistryTests
     }
 
     [Fact]
-    public void GivingAConceptASecondNotationIsRejected()
+    public void GivingAConceptTheSameVariantTwiceIsRejected()
     {
         var notations = new NotationRegistry(TestLanguage.Registry);
         notations.Add(TestLanguage.Note, ed => ed.Line(ed.Property("text")));
@@ -89,7 +89,7 @@ public sealed class NotationRegistryTests
             notations.Add(TestLanguage.Note, ed => ed.Line(ed.Property("text"))));
 
         Assert.Contains("'Test.Note'", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("more than once", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("already has a 'default' notation", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

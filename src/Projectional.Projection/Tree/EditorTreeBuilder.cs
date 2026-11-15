@@ -30,12 +30,18 @@ public sealed class EditorTreeBuilder
 {
     private readonly NotationRegistry _notations;
     private readonly ICellEmphasis? _emphasis;
+    private readonly INotationChoice? _choice;
 
-    public EditorTreeBuilder(NotationRegistry notations, ICellEmphasis? emphasis = null)
+    /// <summary>Builds trees with every concept drawn as <paramref name="choice"/> asks, default variants when it says nothing.</summary>
+    public EditorTreeBuilder(
+        NotationRegistry notations,
+        ICellEmphasis? emphasis = null,
+        INotationChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(notations);
         _notations = notations;
         _emphasis = emphasis;
+        _choice = choice;
     }
 
     /// <summary>Builds the tree for <paramref name="node"/>.</summary>
@@ -52,7 +58,7 @@ public sealed class EditorTreeBuilder
     private EditorCell BuildNode(Node node, CellAddress rootAddress, TextEmphasis inherited)
     {
         var emphasis = inherited | (_emphasis?.EmphasisOf(node) ?? TextEmphasis.None);
-        var notation = _notations.FindFor(node.Concept);
+        var notation = _notations.FindFor(node.Concept, _choice);
 
         return notation is null
             ? new MissingNotationCell(rootAddress, node.Concept.Key)

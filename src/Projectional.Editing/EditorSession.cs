@@ -30,8 +30,11 @@ namespace Projectional.Editing;
 /// </remarks>
 public sealed class EditorSession : IDisposable
 {
-    private readonly EditorTreeBuilder _builder;
+    private readonly NotationRegistry _notations;
+    private readonly ICellEmphasis? _emphasis;
     private readonly CellLayouter _layouter;
+
+    private EditorTreeBuilder _builder;
 
     /// <summary>Opens <paramref name="document"/> for editing.</summary>
     /// <param name="document">The root of the model to edit.</param>
@@ -40,12 +43,16 @@ public sealed class EditorSession : IDisposable
     /// <param name="emphasis">
     /// What decorates the model beyond its notation, asked again on every rebuild; nothing when omitted.
     /// </param>
+    /// <param name="choice">
+    /// Which variant of each concept to draw; the default variant of everything when omitted.
+    /// </param>
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
     public EditorSession(
         Node document,
         NotationRegistry notations,
         ITextMeasure? measure = null,
-        ICellEmphasis? emphasis = null)
+        ICellEmphasis? emphasis = null,
+        INotationChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
@@ -54,8 +61,11 @@ public sealed class EditorSession : IDisposable
         Measure = measure ?? MonospaceTextMeasure.Instance;
         History = new UndoHistory(document.Model);
 
-        _builder = new EditorTreeBuilder(notations, emphasis);
+        _notations = notations;
+        _emphasis = emphasis;
         _layouter = new CellLayouter(Measure);
+        Choice = choice ?? NotationChoice.Default;
+        _builder = new EditorTreeBuilder(notations, emphasis, Choice);
 
         Tree = _builder.Build(Document);
         Layout = _layouter.Layout(Tree);
@@ -83,6 +93,28 @@ public sealed class EditorSession : IDisposable
 
     /// <summary>Where the caret is and what is selected.</summary>
     public Selection Selection { get; private set; }
+
+    /// <summary>
+    /// Which variant of each concept is drawn, as the tree was built with it. View state, not model
+    /// state: two sessions can hold different choices over one document and edit the same model.
+    /// </summary>
+    public INotationChoice Choice { get; private set; }
+
+    /// <summary>
+    /// Draws the document with <paramref name="choice"/> from now on.
+    /// </summary>
+    /// <remarks>
+    /// Switching a representation is a re-projection like any other, so it goes through the same
+    /// rebuild-and-re-resolve path: the model is untouched, the tree and the layout are new, and the
+    /// caret lands on the nearest cell that still exists. A cell the other variant showed and this one
+    /// hides is not an error - it is the difference between the two representations.
+    /// </remarks>
+    public void Choose(INotationChoice? choice)
+    {
+        Choice = choice ?? NotationChoice.Default;
+        _builder = new EditorTreeBuilder(_notations, _emphasis, Choice);
+        Refresh();
+    }
 
     /// <summary>Applies <paramref name="action"/> and leaves the session consistent with the result.</summary>
     /// <remarks>

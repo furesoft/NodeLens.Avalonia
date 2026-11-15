@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Projectional.Core;
 
 namespace Projectional.Language;
@@ -6,10 +7,15 @@ namespace Projectional.Language;
 /// The notation of every concept in a language, validated once against the concept registry so that
 /// the projection engine can assume a notation only ever names slots that exist.
 /// </summary>
+/// <remarks>
+/// A concept may be given several notations, one per <see cref="Notation.Variant"/>. The registry
+/// keeps them all and answers for a <see cref="INotationChoice"/>; it does not decide which one a
+/// reader should see, because that is view state and this is a property of the language.
+/// </remarks>
 public sealed class NotationRegistry
 {
     private readonly ConceptRegistry _concepts;
-    private readonly Dictionary<string, Notation> _byConceptKey = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<Notation>> _byConceptKey = new(StringComparer.Ordinal);
     private readonly List<Notation> _ordered = [];
 
     public NotationRegistry(ConceptRegistry concepts)
@@ -18,20 +24,29 @@ public sealed class NotationRegistry
         _concepts = concepts;
     }
 
-    /// <summary>Notations in registration order.</summary>
+    /// <summary>Notations in registration order, every variant included.</summary>
     public IReadOnlyList<Notation> Notations => _ordered;
 
-    /// <summary>Declares how <paramref name="conceptKey"/> is drawn.</summary>
+    /// <summary>Declares how <paramref name="conceptKey"/> is drawn by default.</summary>
     /// <exception cref="NotationException">The notation names something the concept does not have.</exception>
-    public Notation Add(string conceptKey, Func<NotationEditor, BlockNotationCell> build)
+    public Notation Add(string conceptKey, Func<NotationEditor, BlockNotationCell> build) =>
+        Add(conceptKey, Notation.DefaultVariant, build);
+
+    /// <summary>Declares how <paramref name="conceptKey"/> is drawn in <paramref name="variant"/>.</summary>
+    /// <exception cref="NotationException">
+    /// The notation names something the concept does not have, or the variant is already declared.
+    /// </exception>
+    public Notation Add(string conceptKey, string variant, Func<NotationEditor, BlockNotationCell> build)
     {
         ArgumentException.ThrowIfNullOrEmpty(conceptKey);
+        ArgumentException.ThrowIfNullOrEmpty(variant);
         ArgumentNullException.ThrowIfNull(build);
 
         var root = build(NotationEditor.Create())
-            ?? throw new NotationException($"The notation of concept '{conceptKey}' built no root cell.");
+            ?? throw new NotationException(
+                $"The '{variant}' notation of concept '{conceptKey}' built no root cell.");
 
-        return Add(new Notation(conceptKey, root));
+        return Add(new Notation(conceptKey, variant, root));
     }
 
     /// <summary>Declares a notation that has already been built.</summary>
@@ -40,15 +55,24 @@ public sealed class NotationRegistry
     {
         ArgumentNullException.ThrowIfNull(notation);
 
-        if (_byConceptKey.ContainsKey(notation.ConceptKey))
-        {
-            throw new NotationException($"Concept '{notation.ConceptKey}' is given a notation more than once.");
-        }
-
         if (!_concepts.TryGet(notation.ConceptKey, out var concept))
         {
             throw new NotationException(
                 $"Concept '{notation.ConceptKey}' is given a notation, but no such concept is declared.");
+        }
+
+        if (!_byConceptKey.TryGetValue(notation.ConceptKey, out var variants))
+        {
+            variants = [];
+            _byConceptKey.Add(notation.ConceptKey, variants);
+        }
+
+        // One notation per (concept, variant) is the rule that makes a choice well defined: two
+        // notations claiming the same name would make "which one did I ask for" unanswerable.
+        if (variants.Exists(existing => string.Equals(existing.Variant, notation.Variant, StringComparison.Ordinal)))
+        {
+            throw new NotationException(
+                $"Concept '{notation.ConceptKey}' already has a '{notation.Variant}' notation.");
         }
 
         foreach (var cell in notation.SelfAndDescendants())
@@ -56,38 +80,113 @@ public sealed class NotationRegistry
             ValidateCell(concept, cell);
         }
 
-        _byConceptKey.Add(notation.ConceptKey, notation);
+        variants.Add(notation);
         _ordered.Add(notation);
         return notation;
     }
 
-    public bool TryGet(string? conceptKey, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Notation? notation)
+    /// <summary>The default notation of <paramref name="conceptKey"/>, when it declares one.</summary>
+    public bool TryGet(string? conceptKey, [NotNullWhen(true)] out Notation? notation) =>
+        TryGet(conceptKey, Notation.DefaultVariant, out notation);
+
+    /// <summary>The notation of <paramref name="conceptKey"/> in <paramref name="variant"/>, when it declares one.</summary>
+    public bool TryGet(string? conceptKey, string? variant, [NotNullWhen(true)] out Notation? notation)
     {
-        notation = conceptKey is not null && _byConceptKey.TryGetValue(conceptKey, out var found) ? found : null;
+        notation = conceptKey is not null
+            && variant is not null
+            && _byConceptKey.TryGetValue(conceptKey, out var variants)
+                ? variants.Find(existing => string.Equals(existing.Variant, variant, StringComparison.Ordinal))
+                : null;
+
         return notation is not null;
     }
 
-    public Notation Get(string conceptKey) => TryGet(conceptKey, out var notation)
+    /// <summary>The default notation of <paramref name="conceptKey"/>.</summary>
+    /// <exception cref="KeyNotFoundException">The concept declares no default notation.</exception>
+    public Notation Get(string conceptKey) => Get(conceptKey, Notation.DefaultVariant);
+
+    /// <summary>The notation of <paramref name="conceptKey"/> in <paramref name="variant"/>.</summary>
+    /// <exception cref="KeyNotFoundException">The concept declares no such variant.</exception>
+    public Notation Get(string conceptKey, string variant) => TryGet(conceptKey, variant, out var notation)
         ? notation
-        : throw new KeyNotFoundException($"No notation is declared for concept '{conceptKey}'.");
+        : throw new KeyNotFoundException(
+            $"No '{variant}' notation is declared for concept '{conceptKey}'.");
 
     /// <summary>
-    /// The notation that applies to <paramref name="concept"/>: its own, or the nearest one it
-    /// inherits. Super concepts are searched in declaration order, which makes the outcome
-    /// predictable when a concept has more than one.
+    /// The variants declared for <paramref name="conceptKey"/>, in registration order; empty when the
+    /// concept has no notation of its own.
     /// </summary>
-    public Notation? FindFor(Concept concept)
+    public IReadOnlyList<string> VariantsOf(string conceptKey)
+    {
+        ArgumentNullException.ThrowIfNull(conceptKey);
+
+        return _byConceptKey.TryGetValue(conceptKey, out var variants)
+            ? [.. variants.Select(notation => notation.Variant)]
+            : [];
+    }
+
+    /// <summary>
+    /// The notation that applies to <paramref name="concept"/> when the reader expresses no opinion:
+    /// its own default, or the nearest one it inherits.
+    /// </summary>
+    public Notation? FindFor(Concept concept) => FindFor(concept, null);
+
+    /// <summary>The notation that applies to <paramref name="concept"/> for <paramref name="choice"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// The requested variant is searched up the super-concept chain first and only then the default,
+    /// which is what lets an abstract super concept be the only one that knows how to be a table: a
+    /// concept-specific default must not shadow the variant the reader asked for, or the request
+    /// would silently produce text.
+    /// </para>
+    /// <para>
+    /// Super concepts are searched in declaration order, which makes the outcome predictable when a
+    /// concept has more than one. When a concept declares notations but no default at all, its first
+    /// declared variant is used rather than nothing - a language that only ever wants to be a table
+    /// should not have to declare a text form it never renders.
+    /// </para>
+    /// </remarks>
+    public Notation? FindFor(Concept concept, INotationChoice? choice)
     {
         ArgumentNullException.ThrowIfNull(concept);
 
-        if (TryGet(concept.Key, out var own))
+        if (choice?.VariantOf(concept.Key) is { Length: > 0 } wanted
+            && FindVariant(concept, wanted) is { } chosen)
+        {
+            return chosen;
+        }
+
+        return FindVariant(concept, Notation.DefaultVariant) ?? FindAny(concept);
+    }
+
+    private Notation? FindVariant(Concept concept, string variant)
+    {
+        if (TryGet(concept.Key, variant, out var own))
         {
             return own;
         }
 
         foreach (var super in concept.SuperConcepts)
         {
-            if (FindFor(super) is { } inherited)
+            if (FindVariant(super, variant) is { } inherited)
+            {
+                return inherited;
+            }
+        }
+
+        return null;
+    }
+
+    private Notation? FindAny(Concept concept)
+    {
+        if (_byConceptKey.TryGetValue(concept.Key, out var own))
+        {
+            return own[0];
+        }
+
+        foreach (var super in concept.SuperConcepts)
+        {
+            if (FindAny(super) is { } inherited)
             {
                 return inherited;
             }

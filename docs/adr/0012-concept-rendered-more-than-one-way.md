@@ -75,11 +75,16 @@ every language written before this ADR keeps behaving identically.
 2. the variant inherited from the nearest super concept that has it,
 3. the concept's own default notation,
 4. the nearest super concept's default notation,
-5. nothing — which the builder turns into a `MissingNotationCell`, exactly as before.
+5. the first notation the concept (or a super concept) declares, in registration order,
+6. nothing — which the builder turns into a `MissingNotationCell`, exactly as before.
 
 Steps 1–2 before 3–4 is the point: asking for a table must not silently produce a *text*
 notation just because the concept's own default happens to exist, or a language could not
 declare "only my abstract super concept knows how to be a table".
+
+Step 5 exists so that a concept whose only representation is a table does not have to declare
+a text form it never renders. It cannot weaken step 1–2, because it is only reached when
+neither the requested variant nor any default exists.
 
 ### A variant may hide what another shows
 
