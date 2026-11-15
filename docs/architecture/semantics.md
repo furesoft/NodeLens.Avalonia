@@ -24,20 +24,31 @@ Each pass produces diagnostics and never mutates the model. Only migrations muta
 One diagnostics model for everything the user sees:
 
 ```csharp
-sealed record Diagnostic(
-    DiagnosticSeverity Severity,   // Hint | Info | Warning | Error
-    NodeId Target,
-    string? Role,                  // null = whole node
-    int? Index,
-    string Message,
-    string? Code,                  // stable identity, e.g. "RULE_002"
-    CharacterRange? Range,         // null = the whole target; otherwise part of one text
-    IReadOnlyList<DiagnosticFix>? Fixes);  // null = nothing to offer
+sealed record Diagnostic
+{
+    Diagnostic(
+        DiagnosticSeverity severity,   // Hint | Info | Warning | Error, in that order
+        NodeId target,
+        string message,
+        string? role = null,           // null = the node's own text
+        int? index = null,             // which child of a many-valued role
+        string? code = null,           // stable identity, e.g. "RULE_002"
+        CharacterRange? range = null); // null = all of the value; otherwise part of one text
 
-// A fix is an intention addressed to one diagnostic: it names the intention by id, and the
-// diagnostic carries the label so the menu can be built without resolving it first.
-sealed record DiagnosticFix(string IntentionId, string Label);
+    DiagnosticSeverity Severity { get; }
+    NodeId Target { get; }
+    string Message { get; }
+    string? Role { get; }
+    int? Index { get; }
+    string? Code { get; }
+    CharacterRange? Range { get; }
+}
 ```
+
+A quick fix is *not* on the record. Fixes are intentions — edit actions that change the model —
+and a diagnostic that carried them would make "what is wrong" and "what to do about it" one
+type, decided by the same check. The mapping from diagnostic to fix list lives beside the set
+when slice F needs it; see [context-actions.md](context-actions.md).
 
 - Diagnostics are rendered as markers/underlines, never as blocking dialogs.
 - Errors do not prevent editing, saving, or opening.

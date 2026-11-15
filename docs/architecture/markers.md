@@ -1,11 +1,17 @@
 # Markers
 
-*Planned, not implemented.* This document is the design for the wavy underline under a cell
-that is wrong: the error and warning squiggles every code editor has, with an error in red
-and a warning in orange, drawn under exactly the text the diagnostic is about. It is written
-before the code because the feature is the first one that has to answer a question the
+*Slice A implemented; B–F planned.* This document is the design for the wavy underline under
+a cell that is wrong: the error and warning squiggles every code editor has, with an error in
+red and a warning in orange, drawn under exactly the text the diagnostic is about. It is
+written before the code because the feature is the first one that has to answer a question the
 projection layer has never had to answer — *what does the editor know that the model does
 not* — and because the answer decides where validation, geometry and colour may each live.
+
+Slice A — the vocabulary, the set, and the resolution of a diagnostic to cells — is delivered
+in `Projectional.Semantics/Diagnostics/` and `Projectional.Editing/Markers/`, and its decisions
+are frozen in [ADR 0013](../adr/0013-markers-are-view-state.md). Two things in this document
+were changed by writing it and are marked *superseded* below: the frame does not carry markers,
+and a marker set is resolved against the layout at paint time rather than during a frame build.
 
 The vocabulary is deliberately split in two:
 
@@ -55,16 +61,30 @@ the fields the display reads:
 ```csharp
 public enum DiagnosticSeverity { Hint, Info, Warning, Error }
 
-public sealed record Diagnostic(
-    DiagnosticSeverity Severity,
-    NodeId Target,
-    string? Role = null,              // the slot or property complained about; null = the node
-    int? Index = null,                // which element in that slot
-    string Message,
-    string? Code = null,              // stable identity, e.g. "RULE_002"
-    CharacterRange? Range = null,     // part of one property's text; null = the whole target
-    IReadOnlyList<DiagnosticFix>? Fixes = null);
+public sealed record Diagnostic
+{
+    public Diagnostic(
+        DiagnosticSeverity severity,
+        NodeId target,
+        string message,
+        string? role = null,             // the slot complained about; null = the node
+        int? index = null,               // which child of a many-valued role
+        string? code = null,             // stable identity, e.g. "RULE_002"
+        CharacterRange? range = null);   // part of one value's text; null = all of it
+
+    public DiagnosticSeverity Severity { get; }
+    public NodeId Target { get; }
+    public string Message { get; }
+    public string? Role { get; }
+    public int? Index { get; }
+    public string? Code { get; }
+    public CharacterRange? Range { get; }
+}
 ```
+
+`message` is required and second in the argument list, because a diagnostic with no message is
+not a diagnostic; `severity`, `target` and `message` are the only positional ones a caller has
+to think about.
 
 - **`Target`**, never a cell address. A cell address is a projection artefact: change the
   notation variant and the addresses under a node change, but the node does not. Diagnostics
@@ -76,8 +96,11 @@ public sealed record Diagnostic(
   in model characters, a wrapped line cannot confuse it.
 - **`Code`** is for tests and documentation, and is shown next to the message. A message is
   prose that gets reworded; a code is the stable handle.
-- **`Fixes`** are the quick fixes: the same `Intention` shape the light bulb uses, listed in
-  [context-actions.md](context-actions.md). Empty until fixes exist.
+- **There is no `Fixes` field.** Quick fixes are a list of intentions that change the model,
+  and putting them on the diagnostic would make the vocabulary of "what is wrong" also the
+  vocabulary of "what to do about it" — the check that found the problem is not the thing that
+  knows how to repair it. A fix list belongs beside the set, keyed by diagnostic, when slice F
+  needs one.
 - Nothing in a diagnostic mentions colour, thickness, or a wave. A severity is a *meaning*;
   the palette decides what it looks like.
 
@@ -86,52 +109,94 @@ is drawn when several markers share a range, and the order of the tooltip's line
 
 ## The marker set
 
-The editing layer holds the markers it was given and resolves them during layout, exactly as
+The editing layer holds the markers it was given and resolves them while it paints, exactly as
 it resolves the caret:
 
 ```csharp
 public sealed class MarkerSet
 {
-    public MarkerSet(IEnumerable<Diagnostic> diagnostics);   // replaces, never appends
-    public MarkerSet Concat(MarkerSet other);                // e.g. language + host diagnostics
-    public MarkerSet For(NodeId node);                        // what marks one node
-    public DiagnosticSeverity? SeverityOf(NodeId node);
+    public MarkerSet(params ReadOnlySpan<Diagnostic> diagnostics);  // replaces, never appends
+    public static MarkerSet Empty { get; }
     public int Count { get; }
+    public IReadOnlyList<Diagnostic> Diagnostics { get; }           // build order
+    public IReadOnlyList<Diagnostic> For(NodeId node);              // empty, never null
+    public DiagnosticSeverity? SeverityOf(NodeId node);             // worst wins
+    public MarkerSet Concat(MarkerSet other);                       // e.g. language + host
 }
 ```
 
 `EditorSession` gains one property:
 
 ```csharp
-public MarkerSet Markers { get; set; }   // null/empty = nothing marked
+public MarkerSet Markers { get; set; }   // never null; empty = nothing marked
 ```
 
-Setting it does **not** rebuild the tree and does **not** touch the document. It drops the
-cached frame, so the next paint recomputes geometry — that is the whole invalidation story,
-and it is why a late diagnostic is cheap.
+Setting it does **not** rebuild the tree and does **not** touch the document. It is decoration,
+so the control repaints and nothing else happens — no frame is cached anywhere to invalidate,
+which is why a late diagnostic is cheap.
 
 Rules that make it behave:
 
 - **Replacing, not appending.** A validation pass reports the whole truth for the units it
-  covered, so `SetMarkers` swaps the set. An incremental validator that only knows part of
-  the document merges with `Concat` and keeps the rest — the difference is the caller's, and
+  covered, so assigning `Markers` swaps the set. An incremental validator that only knows part
+  of the document merges with `Concat` and keeps the rest — the difference is the caller's, and
   it has to be explicit rather than implied by an `Add`.
 - **Stale by construction.** A marker whose node is gone resolves to nothing and is dropped
-  while the frame is built. Undo brings the node back and the marker resolves again if the
-  set still holds it — which is correct for a set that was never edited, and the reason
-  markers cannot corrupt history.
+  while painting. Undo brings the node back and the marker resolves again if the set still
+  holds it — which is correct for a set that was never edited, and the reason markers cannot
+  corrupt history.
 - **Not persisted, ever.** A model file contains the model. Diagnostics are recomputed on
   open. This also means a squiggle cannot resurrect itself from a file written by an older
   version of a constraint.
-- **Thread-safe to set.** Validation runs off the UI thread, so `SetMarkers` takes a
-  snapshot into an immutable set and the control posts a repaint. It never mutates a set the
-  paint is iterating.
+- **Thread-safe to set.** Validation runs off the UI thread, so a background pass builds a
+  whole `MarkerSet` and assigns it; the control then posts a repaint. Nothing ever mutates a set
+  the paint is iterating, because nothing can mutate a set at all.
 
-## Resolving a marker to a rectangle
+## Resolving a diagnostic to cells
 
-This is the slice with the real work in it, because a cell is no longer one line: since
-multi-line text a cell is a stack of `TextLine`s with hard breaks and soft wraps. A squiggle
-has to follow the text it belongs to.
+This is the part slice A delivers, and it is the only place that knows the mapping. It lives in
+`Projectional.Editing/Markers/MarkerCells.cs` and is `internal`: a host supplies diagnostics and
+the editor decides what they cover.
+
+```csharp
+internal static class MarkerCells
+{
+    internal static IReadOnlyList<EditorCell> Of(CellLayout layout, Diagnostic diagnostic);
+}
+```
+
+| Diagnostic | Cells |
+| --- | --- |
+| `Role` null | the node's own visible cells, and nothing below them |
+| `Role` set, `Range` null | that slot's cell and the visible text below it |
+| `Role` set, `Range` set | that slot's cell alone |
+| `Role` and `Index` set | that one element's cell and the visible text below it |
+| `Role` that resolves to nothing | falls back to the node rule |
+| a node the layout does not contain | nothing |
+
+Two of those are rules rather than cases, and they are the ones a future change is most likely
+to break:
+
+1. **A finding about a node stops at its own slots.** A node's own cells are the cells its
+   notation made for it — keywords, values, punctuation and the placeholders of its empty slots —
+   not the cells of its children. Marking a parent's children from the parent would make one
+   finding look like a finding on everything below it, and would double-cover a line whenever a
+   child has a finding of its own.
+2. **A finding is never invisible.** A concept whose notation is only a child slot draws no text
+   of its own once the child is filled, so the node rule falls back to the node's outermost cell:
+   a container still gets a line's worth of marker instead of nothing. A `Range` is ignored when
+   `Role` is null, because there is no single value for the offsets to count from.
+
+"Visible text below" is a depth-first walk that keeps only cells with text, so a marker on a
+child slot covers what the child draws and never an invisible container's rectangle. A node that
+is not in the layout marks nothing: the set may have been computed before the edit that removed
+the node, and dropping the marker is the only honest answer — inventing a cell would put the mark
+somewhere it does not belong.
+
+## Geometry, per line
+
+*Slice B.* A cell is no longer one line: since multi-line text a cell is a stack of `TextLine`s
+with hard breaks and soft wraps. A squiggle has to follow the text it belongs to.
 
 ```csharp
 public readonly record struct MarkerLine(
@@ -148,44 +213,36 @@ public readonly record struct MarkerLine(
 internal static class MarkerGeometry
 {
     internal static IReadOnlyList<MarkerLine> Of(CellLayout layout, MarkerSet markers, ITextMeasure measure);
-    internal static IReadOnlyList<MarkerLine> Of(EditorFrame frame, MarkerSet markers);
 }
 ```
 
 The rules, in the order they matter:
 
-1. **Resolve the node to its cells.** A node's own cells are the cells the notation made for
-   it, not the cells of its children. A node that has no text of its own — a container — is
-   marked on its first cell's line, spanning its whole width, so that a broken table row is
-   visibly broken at the row and not somewhere inside it.
-2. **A range inside a property splits per line.** `start`/`length` in model characters map
-   onto the lines the cell was laid out into: the first line's part, the middle lines in
-   full, the last line's part. One `MarkerLine` each. This is exactly what a wrapped word or
-   a hard `\n` requires, and it is why the geometry exists at all instead of a text
-   decoration.
-3. **A range that is out of bounds is clipped, not dropped.** A stale range past the end of
-   the text (the user deleted characters and validation has not caught up) marks the last
-   character instead of vanishing; a range that is entirely past the end marks the cell.
-4. **Empty ranges mark one character**, or the whole cell when the cell is empty — a squiggle
-   of zero width would be invisible, and "there is an error here" has to be visible.
-5. **Only visible lines produce geometry.** `EditorFrame.Build` already clips to the viewport,
-   so `MarkerGeometry.Of(frame, …)` inherits that: a document with ten thousand diagnostics
-   paints the thirty lines that are on screen. Filtering by row before building the wave path
-   is not an optimisation to add later; it is the default.
-6. **The wave lives under the baseline**, inside the line's box, so it changes no bounds and
-   no hit test. Its thickness is a renderer constant, not a measure constant: a squiggle must
-   not make a line taller.
+1. **Resolve the diagnostic to cells first** (above), then each of those cells to its lines.
+2. **A range inside a value splits per line.** `start`/`length` in model characters map onto the
+   lines the cell was laid out into: the first line's part, the middle lines in full, the last
+   line's part. One `MarkerLine` each. This is exactly what a wrapped word or a hard `\n`
+   requires, and it is why the geometry exists at all instead of a text decoration.
+3. **A range that is out of bounds is clipped, not dropped.** A stale range past the end of the
+   text (the user deleted characters and validation has not caught up) marks the last character
+   instead of vanishing; a range that is entirely past the end marks the cell.
+4. **Empty ranges mark one character**, or the whole cell when the cell is empty — a squiggle of
+   zero width would be invisible, and "there is an error here" has to be visible.
+5. **Only visible lines produce geometry.** The control clips to the viewport before building the
+   wave path, so a document with ten thousand diagnostics paints the thirty lines on screen.
+   Filtering by row is not an optimisation to add later; it is the default.
+6. **The wave lives under the baseline**, inside the line's box, so it changes no bounds and no
+   hit test. Its thickness is a renderer constant, not a measure constant: a squiggle must not
+   make a line taller.
 
-`EditorFrame` therefore gains one member and `Build` one optional parameter:
+### Superseded: the frame does not carry markers
 
-```csharp
-public IReadOnlyList<MarkerLine> Markers { get; }
-```
-
-`EditorFrame.Build(layout, viewport, offsetX, offsetY, selection, measure, styler, markers)`.
-The frame is the right home because it is already the layer that says "these are the
-rectangles for what you can see", and because a second renderer that consumes `EditorFrame`
-gets squiggles for free — the same argument that put `TextRun` and `CaretRect` there.
+An earlier draft of this document gave `EditorFrame` a `Markers` property and `Build` an eighth
+parameter. That is impossible without breaking the dependency arrows: `Projection` cannot
+reference `Editing` or `Semantics` ([ADR 0010](../adr/0010-public-api-surface.md)), so a frame
+carrying `MarkerLine` would drag both up. `MarkerGeometry.Of` therefore takes the layout and the
+measure, and the control calls it when it paints. The cost is one recomputation per paint; the
+gain is that assigning a marker set needs no rebuild of the tree, the layout or the caret.
 
 ## Painting
 
@@ -237,11 +294,11 @@ long before a real one exists:
 
 | Slice | Branch | Delivers |
 | --- | --- | --- |
-| A | `feat/marker-model` | `DiagnosticSeverity`, `Diagnostic`, `CharacterRange`, `MarkerSet`, `EditorSession.Markers`, resolution of node ids to cells, tests for stale nodes, undo, and replacement versus `Concat` |
-| B | `feat/marker-geometry` | `MarkerLine`, `MarkerGeometry`, per-line splitting, clipping, the visible-lines rule, `EditorFrame.Markers`, tests over wrapped and hard-broken cells |
+| A ✓ | `feat/marker-model` | `DiagnosticSeverity`, `Diagnostic`, `CharacterRange`, `MarkerSet`, `EditorSession.Markers`, `MarkerCells` (node ids to cells), tests for stale nodes, replacement versus `Concat`, the node-versus-container rule |
+| B | `feat/marker-geometry` | `MarkerLine`, `MarkerGeometry`, per-line splitting, clipping, the visible-lines rule, tests over wrapped and hard-broken cells |
 | C | `feat/marker-paint` | `MarkerPalette` on `SyntaxTheme`, the wave in the control's `Render`, light and dark defaults, pattern-per-severity |
 | D | `feat/marker-hover` | the tooltip, the click-to-caret hit test, and `F8` ordering in the editing layer |
-| E | (M4) `feat/validation-markers` | the constraint runner publishes diagnostics through `SetMarkers`, incrementally, off the UI thread |
+| E | (M4) `feat/validation-markers` | the constraint runner publishes diagnostics through `Markers`, incrementally, off the UI thread |
 | F | (M4) `feat/quick-fixes` | a diagnostic's fixes reach the light bulb, which is a change in [context-actions.md](context-actions.md) rather than here |
 
 The status-bar line and the `F8` binding are shell work and land with the standalone editor's
@@ -253,17 +310,16 @@ The one thing this feature can do wrong is make typing slower, so the rules are 
 budgets rather than as wishes:
 
 - **No work while typing.** A keystroke rebuilds tree and layout; markers are not resolved
-  during that rebuild. Geometry is built when a frame is built, and a frame is built when
-  something is painted.
-- **Cost is per visible line.** Because `MarkerGeometry.Of(frame, …)` sees only the viewport,
-  the cost is bounded by the window, not by the document.
+  during that rebuild. Geometry is built when something is painted.
+- **Cost is per visible line.** Because the control clips to the viewport before building the
+  wave path, the cost is bounded by the window, not by the document.
 - **One wave path per marker line, built from a shared pattern.** A thousand repeats of a
   four-point wave is one `StreamGeometry` with a repeated figure, not a thousand geometries.
 - **No re-validation on caret movement.** Moving the caret changes the bulb and the status
   line; it must not trigger a validation pass. That is the validator's incremental contract,
   and stating it here keeps the marker layer from adding its own trigger.
-- **A repaint, not a rebuild,** when `Markers` changes: the cached frame is dropped, the
-  editor tree is not.
+- **A repaint, not a rebuild,** when `Markers` changes: the control invalidates its visual, the
+  editor tree and the layout are untouched.
 
 ## What this plan deliberately leaves out
 
@@ -278,31 +334,35 @@ budgets rather than as wishes:
 | Suppressing or disabling a warning | needs a place to record the suppression, which is a model decision |
 | A minimap or a scrollbar rail with severity colours | a shell rendering of the same set, once the set exists and is cheap to query |
 
-## Decisions this plan proposes
+## Decisions frozen with slice A
 
-To be frozen as an ADR with slice A, not before:
+[ADR 0013](../adr/0013-markers-are-view-state.md) records them. In short:
 
 1. A marker is **transient editor state**, supplied by the host, keyed by node id, never
    persisted and never part of the editor tree.
-2. Diagnostics are **resolved to geometry at frame-build time**, per line, and only for the
-   visible area; the projection carries no diagnostics.
-3. Severity is conveyed by **colour and pattern together**, and the colour comes from a
+2. The diagnostic vocabulary lives in `Projectional.Semantics`, because a check must be able to
+   run on a model nobody is drawing; the set and the geometry live in `Projectional.Editing`.
+3. Diagnostics are **resolved to cells, and then to per-line geometry, when the control paints**,
+   never during a frame build — the frame may not reference `Editing` or `Semantics`.
+4. Severity is conveyed by **colour and pattern together**, and the colour comes from a
    palette in the theme, never from the model or the language.
-4. A marker is **attached to a node, optionally narrowed to a range of one property's text**,
-   because a constraint usually knows the node and sometimes knows the characters.
-5. When markers overlap, the **highest severity is drawn** and all of them are discoverable
+5. A marker is **attached to a node, optionally narrowed to a range of one value's text**,
+   because a check usually knows the node and sometimes knows the characters.
+6. When markers overlap, the **highest severity is drawn** and all of them are discoverable
    through the tooltip and the light bulb.
 
 ## Testing
 
-- **Model, headless.** `MarkerSet` replacement versus `Concat`; a marker on a node that was
-  deleted; undo restoring the node; a diagnostic with no range marking the node's own cells;
-  the same severity and message for two nodes.
+- **Model, headless.** Done in `MarkerSetTests`: replacement versus `Concat`, duplicates kept,
+  `For` answering empty for a healthy node, `SeverityOf` reporting the worst finding.
+- **Resolution, headless.** Done in `MarkerCellsTests`: the node rule, a slot that names a
+  property, a slot that names a child, an index naming one element, a range narrowing to one
+  cell, a stale node marking nothing, an unknown slot falling back to the node, and a node with
+  no text of its own falling back to its container.
 - **Geometry, headless.** A range inside a wrapped line (one segment per line, correct
   widths); a range spanning a hard `\n`; a range that starts before and ends after a break;
-  a range past the end of the text; an empty cell; a container node with no text; a marker
-  whose line is scrolled out of the viewport (no geometry); two markers on one range (one
-  drawn).
+  a range past the end of the text; an empty cell; a marker whose line is scrolled out of the
+  viewport (no geometry); two markers on one range (one drawn).
 - **Palette, headless.** Every severity has a brush in both themes, and the wave constants
   keep the wave inside a `LineHeight` row.
 - **Control, when `tests/Projectional.Avalonia.Tests` exists.** A rendered wave for one

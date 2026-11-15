@@ -29,7 +29,7 @@ standalone shell (tabs, menu bar, status bar) is being delivered.
 
 - `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates.
 - `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone, plus one document per planned feature: `completion.md`, `markers.md`, `node-moves.md`, `scrolling.md`, `import.md`, `csharp.md`.
-- `docs/adr/` - 12 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
+- `docs/adr/` - 13 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
 - `docs/open-questions.md` - open items, each with a recommendation and a decide-by milestone.
 
 A milestone is done when its acceptance gate passes, not when the code compiles.
