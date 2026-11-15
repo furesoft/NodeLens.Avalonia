@@ -66,8 +66,8 @@ the parts of that plan that are choices rather than mechanics.
 | # | Question | State | Answer | Decide by |
 |---|----------|-------|--------|-----------|
 | 30 | Where does the intention contract live? | Open | Defined in `Projectional.Editing` next to the action model it reuses, and promoted into the public surface of `Projectional.Avalonia` in the same commit as the first language that ships an intention. ADR 0010 says only `Core` and `Avalonia` carry a promise, so a type a host must implement has to end up there — but promoting a contract before a second consumer exists is how a public API gets the wrong shape. | M3 |
-| 31 | Does an intention come from the concept, from a host registration, or both? | Leaning | Both, and the aspect comes first: a language's intentions travel with the language, and a host registers what only it can know (generate this, open that, run the interpreter). One list, ordered host, language, quick fixes. | M3 |
-| 32 | Is the bulb shown only at the caret, or also on lines that are merely marked? | Leaning | Caret only in M3. From M4 the bulb appears once per line that has a diagnostic, and the caret's line wins when the caret stands on one — a marked line with no offer is the case users complain about, but a bulb on every line of a document full of warnings is noise. | M4 |
+| 31 | Does an intention come from the concept, from a host registration, or both? | Leaning | Both, and the aspect comes first: a language's intentions travel with the language, and a host registers what only it can know (generate this, open that, run the interpreter). One list, ordered host, language, quick fixes, and the fixes are the part that exists first ([quick-fixes.md](architecture/quick-fixes.md)). | M3 |
+| 32 | Is the bulb shown only at the caret, or also on lines that are merely marked? | Leaning | Once a list of fixes exists, once per line that carries at least one fix, and the caret's line wins when the caret stands on one — a marked line with no offer is the case users complain about, but a bulb on every line of a document full of warnings is noise. A line that has a diagnostic but no fix shows nothing, because there is nothing to offer. | M1, with Q6 |
 | 33 | Are intentions also in the context menu, or only on the bulb? | Leaning | Both, from one list: a submenu at the top of the menu, the same entries the bulb shows. The menu answers "what can I do here" with the mouse, and the bulb answers it at the keyboard; two independent lists would drift. | M3 |
 | 34 | Does an intention ever preview its effect before applying? | Leaning | No. A one-sentence description and a single undo step instead — in a projectional editor the effect is visible text, so a preview dialog shows what the editor is about to show anyway. Reopen this at M6, where a refactoring that touches several files is not visible at a glance. | M3 |
 
@@ -138,6 +138,17 @@ is how far the summary and the gesture go beyond "fold this node, show an arrow 
 | 55 | Is foldability a designated slot, or a framework base concept? | Leaning | A designated slot, mirroring the name slot. A `Collapsible` base concept would tie foldability to concept inheritance, which cannot express "this rule folds, that one does not" inside a single concept — and the user's requirement is precisely "only when the node has the property set". | M2 |
 | 56 | Is the fold set persisted per document? | Leaning | Per document in project settings, keyed by model URI and node id, the same place variants go (question 27). Never in the model file: a fold is not model state, and a saved fold set in the document would make the file change on hover. | M3 |
 | 57 | Can a single child slot fold, rather than the whole node? | Open | Only if a real language asks. It needs the caret and layout to agree on a slot whose cell is a node address, which the current cell model does not have — that is a projection-layer change, not a gutter feature. | M5 |
+
+## Quick fixes
+
+The repairs a diagnostic carries, and how they are reached. The design is
+[quick-fixes.md](architecture/quick-fixes.md); these are the parts still open.
+
+| # | Question | State | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 58 | How does a fix find its diagnostic again after the checks re-ran? | Leaning | Joined on `(Diagnostic, Id)` against the current set, and a pick that no longer resolves is rejected with a reason - never re-matched by node, because "some fix for this node" is how a repair lands on a problem it was not built for. | M1 |
+| 59 | Do a language's own checks live in the language package or in the framework? | Leaning | In the language package, beside its notation and emphasis, so referencing the package is enough for a host to get them. The framework ships no check runner before M4 and gains one only when a second language needs it. | M1 |
+| 60 | Can one fix repair several diagnostics at once ("fix all")? | Open | Not in the first slice. Repairs that overlap or contradict need a conflict policy (apply in which order? re-check between steps?), and that policy is not a side effect of one fix. Reopen at M4, when the constraint engine produces findings in volume. | M4 |
 
 ## Scope honesty
 
