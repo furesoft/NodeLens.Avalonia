@@ -61,6 +61,11 @@ crosses 9, 99 or 999 rows, and the numbers keep their right edge.
 The right edge is what the numbers are aligned to - `GutterWidth - GutterGap - text.Width` - so
 `1` and `10` do not wobble.
 
+This is the one-occupant form of the rule. [collapsing.md](collapsing.md) plans a second occupant
+- a per-row fold arrow to the left of the numbers - which turns the sum into three terms and makes
+the padding depend on *whether the gutter has any occupant at all*, not on `ShowLineNumbers`. The
+invariant to preserve is that the formula above reduces to itself when nothing is foldable.
+
 ## The gutter sits outside the scroll transform
 
 A code editor's gutter does not slide sideways when the code scrolls; a line number that could
@@ -117,7 +122,9 @@ theme does not paint grey numbers on a dark page.
 - **No current-row highlight, no breakpoint margin, no click to select a row.** Each of those is
   a margin feature; the gutter is currently a painting and not an input surface, and `CaretAt`
   returns null inside it, so a click there does nothing rather than putting the caret in the
-  wrong place.
+  wrong place. A fold arrow ([collapsing.md](collapsing.md), planned) is the first exception worth
+  making: it is genuinely an input surface, and it is why the plan puts a hit test *in front of*
+  `CaretAt` rather than relaxing `CaretAt` itself.
 - **No "go to line".** A line number is derived, so jumping to one means finding the address of
   the cell at that band - a different feature with a different failure mode (the row may move
   between the menu opening and the key press).
