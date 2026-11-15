@@ -20,7 +20,8 @@ two real languages (`Projectional.Expressions`, `Projectional.Samples`), the emb
 `Projectional.Avalonia` control (which paints real glyphs, hit-tests clicks and handles keys),
 syntax highlighting from the meaning on a run to a host-swappable palette, model-defined text
 decorations, cell-wise caret motion with a blinking caret, a context menu described by the
-editing layer, and concept-driven completion (Ctrl+Space, icons as host images) are done. The
+editing layer, concept-driven completion (Ctrl+Space, icons as host images), and text
+clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
 
 ## Status and where the truth lives
@@ -661,6 +662,69 @@ contract; the invariants that are easy to break are these.
   *before* the document hit test, and a clicked row runs `SelectCompletionAction` then
   `AcceptCompletionAction` - the same actions the keyboard would run.
 
+## How the clipboard works
+
+`Ctrl+A`/`Ctrl+C`/`Ctrl+X`/`Ctrl+V` select all, copy, cut and paste **text inside one property
+cell**. `docs/architecture/clipboard.md` is the contract. The clipboard is text and not
+structure on purpose: a structural copy (a subtree, a slot's children) is a different feature
+with a different payload and a different paste rule, and it is scheduled for M3.
+
+- **The seam is `ITextClipboard`**: one `string? Text` property and one default
+  `Task RefreshAsync() => Task.CompletedTask`. Nothing else. `null` means "the clipboard holds
+  no text", so an empty clipboard is not an empty string.
+- **Read and write are synchronous, and must stay synchronous.** A key arrives synchronously and
+  an action applies synchronously; an asynchronous contract would put an `await` into every
+  action that touches text. A platform whose clipboard can only be read asynchronously caches
+  instead, and `RefreshAsync` is the hook that lets it pull the platform's text at a moment
+  where waiting costs nothing - focus, or opening the context menu.
+- **`RefreshAsync` returns `Task`, not `ValueTask`.** The callers that cannot await fire and
+  forget, and a discarded `ValueTask` is an analyzer error because it may be pooled. A `Task`
+  can be dropped without pretending anything was consumed. Do not "modernise" this signature.
+- **`InMemoryClipboard` is what a session gets when the host supplies none.** It keeps a string
+  and nothing else; its `RefreshAsync` is the inherited default. Tests use it. A host with a
+  real clipboard adapts it - `AvaloniaClipboard` in `Projectional.Avalonia/Input/` is that
+  adapter, and it caches the platform's text so a synchronous `Ctrl+V` sees what another
+  application put there.
+- **`SelectedText.Of(context)` is the single answer to "what does the selection say".** It is
+  `internal`, clamps to the cell's length, and returns `null` unless the selection is inside one
+  `PropertyCell`. Every text action goes through it; a second reading of the selection is a bug
+  waiting to happen. Because `EditorSession.Select` already clamps, the clamp is unreachable
+  through the public API - cover it through `CopyAction`/`CutAction`, not by calling it.
+- **The four actions are in `Projectional.Editing/Clipboard/`.** `SelectAllAction` selects the
+  whole property cell's text with the caret at the end. `CopyAction` writes the text and returns
+  `EditResult.Unchanged` - a copy never changes the document. `CutAction` writes, then applies
+  `DeleteTextAction(DeleteDirection.Forward)`. `PasteAction` hands the text to `TypeTextAction`,
+  so a paste gets exactly the same validation and the same refusal as typing; an empty or null
+  clipboard is `Unchanged` ("nothing to do"), never a rejection.
+- **A paste never coalesces.** `PasteAction.CoalescingKey` is `null` (and `CutAction`'s too), so
+  a paste is its own undo step and never merges into the typing around it. `ToString()` returns
+  `"paste"`, which is what the undo label shows.
+- **The keys are a third exception to "Control belongs to the host".** `EditorKeyMap.Map` returns
+  `null` for Control combinations except the documented ones, and `A`, `C`, `X`, `V` join
+  `Left`/`Right`/`Space` in that list. Shift does not change them: `Ctrl+Shift+C` is still Copy.
+  A bare letter is never in the key map - it is text input, not a routed key.
+- **The menu decides availability from state, not from a flag.** `EditorMenu.For` lists
+  `Select All`, `Copy`, `Cut`, `Paste` after the edit entries. `CanCopyText(session)` is true
+  only when the selection has text *and* the caret resolves to a `PropertyCell`;
+  `CanPasteText(session)` is true only when `session.Clipboard.Text` has length. Copy and Cut
+  share one predicate because they are the same read.
+- **The Avalonia adapter resolves the platform clipboard lazily and swallows its failures.** A
+  control that is not yet in a visual tree has no `TopLevel`, and a platform clipboard that
+  refuses must not take the editor down with it - a copy that cannot reach the platform leaves
+  the cached text alone. The control refreshes the clipboard on focus and before opening the
+  context menu, and intercepts the platform's own paste so `Ctrl+V` goes through
+  `PasteAction` (one undo step, one validation path) instead of the toolkit's default.
+
+Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
+
+- **Text only, one cell.** Copying across cells, copying a subtree, and pasting a structural
+  fragment all wait for M3. A multi-cell selection degrades to caret behaviour, exactly as it
+  does for typing.
+- **No rich payloads.** No HTML, no images, no custom MIME types. The model is the source of
+  truth and a formatted payload would be a second representation to keep in sync.
+- **Cross-editor fragment paste is not supported.** Two editors in one process share the text
+  through the platform clipboard, but not their identity or their references.
+
 ## How the standalone app fits
 
 The repository ships two front ends and **one** public surface:
@@ -853,6 +917,8 @@ dotnet test
 - Do not put Avalonia types, `Dispatcher`, or `Control` references into `Projection` or `Editing`.
 - Do not introduce reflection or source generators for language definition.
 - Do not reorder children or renumber IDs during save.
+- Do not make `ITextClipboard` asynchronous. A synchronous key needs a synchronous clipboard;
+  `RefreshAsync` is the only async seam and it stays fire-and-forget.
 
 ## Verification habits
 

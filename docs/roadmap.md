@@ -49,6 +49,7 @@ and [testing.md](architecture/testing.md).
 | Avalonia control | rendering, scrolling, virtualization, caret, selection — **delivered** |
 | Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
 | Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) — **delivered** |
+| Clipboard | Ctrl+A/C/X/V select, copy, cut and paste text within one property cell through a host-supplied `ITextClipboard` ([clipboard.md](architecture/clipboard.md)) — **delivered** (text only) |
 | Completion | Ctrl+Space offers the concepts an empty slot accepts, filtering by typed prefix, with a host-supplied icon per kind ([completion.md](architecture/completion.md)) — **delivered** (concepts only) |
 | Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
 | Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |

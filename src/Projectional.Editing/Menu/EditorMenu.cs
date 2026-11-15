@@ -15,9 +15,15 @@ namespace Projectional.Editing;
 /// </para>
 /// <para>
 /// It offers what MPS offers at this point of the roadmap: the two history steps, inserting where the
-/// caret stands, deleting what it can reach, and switching the representation of a concept. Node
-/// deletion and slot-targeted insertion are absent because the actions behind them do not exist yet;
-/// a menu entry that silently did nothing would be worse than no entry at all.
+/// caret stands, deleting what it can reach, the clipboard group and switching the representation of a
+/// concept. Node deletion and slot-targeted insertion are absent because the actions behind them do not
+/// exist yet; a menu entry that silently did nothing would be worse than no entry at all.
+/// </para>
+/// <para>
+/// The clipboard entries are the same actions the Control-key gestures run, so the gesture an entry
+/// prints cannot drift from the binding. Paste reads the clipboard that the session already holds; a
+/// host whose clipboard lives in another process refreshes it before the menu is built, exactly as it
+/// does before a Ctrl+V.
 /// </para>
 /// </remarks>
 public static class EditorMenu
@@ -26,6 +32,10 @@ public static class EditorMenu
     private const string RedoGesture = "Ctrl+Y";
     private const string InsertGesture = "Enter";
     private const string DeleteGesture = "Delete";
+    private const string SelectAllGesture = "Ctrl+A";
+    private const string CopyGesture = "Ctrl+C";
+    private const string CutGesture = "Ctrl+X";
+    private const string PasteGesture = "Ctrl+V";
 
     /// <summary>The entries the context menu shows for <paramref name="session"/>.</summary>
     /// <param name="session">The session whose caret and history the menu describes.</param>
@@ -50,6 +60,11 @@ public static class EditorMenu
                 () => session.Apply(new DeleteTextAction(DeleteDirection.Forward)),
                 DeleteGesture,
                 CanDeleteText(session)),
+            EditorMenuSeparator.Instance,
+            EditorMenuItem.Run("Select All", () => session.Apply(new SelectAllAction()), SelectAllGesture),
+            EditorMenuItem.Run("Copy", () => session.Apply(new CopyAction()), CopyGesture, CanCopyText(session)),
+            EditorMenuItem.Run("Cut", () => session.Apply(new CutAction()), CutGesture, CanCopyText(session)),
+            EditorMenuItem.Run("Paste", () => session.Apply(new PasteAction()), PasteGesture, CanPasteText(session)),
         };
 
         var representations = Representations(session);
@@ -120,4 +135,31 @@ public static class EditorMenu
             is PropertyCell cell
             && selection.Caret.Offset < cell.Text.Length;
     }
+
+    /// <summary>
+    /// Whether Copy and Cut have text to take, which is what makes those entries available.
+    /// </summary>
+    /// <remarks>
+    /// A selection that spans two cells is representable but not copyable, so the question is asked of
+    /// the same place the actions ask it: the caret must be inside a property cell and the selection must
+    /// not be empty. A constant cannot be copied, because its text belongs to the notation and not to
+    /// the model.
+    /// </remarks>
+    private static bool CanCopyText(EditorSession session)
+    {
+        var selection = session.Selection;
+
+        return selection.HasText
+            && CaretPlaces.PlaceAt(CaretPlaces.Of(session.Tree), selection.Caret)?.Cell is PropertyCell;
+    }
+
+    /// <summary>
+    /// Whether Paste has something to insert, which is what makes that entry available.
+    /// </summary>
+    /// <remarks>
+    /// The clipboard is read, not interrogated: an empty string and no text at all are the same outcome
+    /// for the user, and the action refuses both. Pasting into a place that cannot take text is not
+    /// checked here - the caret can be anywhere, and the action answers that by leaving the model alone.
+    /// </remarks>
+    private static bool CanPasteText(EditorSession session) => session.Clipboard.Text is { Length: > 0 };
 }

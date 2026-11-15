@@ -65,4 +65,16 @@ public enum EditorKey
 
     /// <summary>Escape, which closes an open completion list.</summary>
     Escape,
+
+    /// <summary>Ctrl+A, which selects the whole text of the cell at the caret.</summary>
+    SelectAll,
+
+    /// <summary>Ctrl+C, which copies the selected text.</summary>
+    Copy,
+
+    /// <summary>Ctrl+X, which copies the selected text and deletes it.</summary>
+    Cut,
+
+    /// <summary>Ctrl+V, which inserts the clipboard text at the caret, replacing any selection.</summary>
+    Paste,
 }

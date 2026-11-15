@@ -17,6 +17,16 @@ internal static class TestEditor
     /// <summary>Opens <paramref name="document"/> for editing, measured in monospace columns.</summary>
     public static EditorSession Open(Node document) => new(document, TestNotations.Registry);
 
+    /// <summary>
+    /// Opens <paramref name="document"/> for editing with <paramref name="clipboard"/> as its clipboard.
+    /// </summary>
+    /// <remarks>
+    /// A clipboard test needs a clipboard it can read back. Passing one in also proves the session uses
+    /// the adapter it was given rather than quietly falling back to its own memory.
+    /// </remarks>
+    public static EditorSession Open(Node document, ITextClipboard clipboard) =>
+        new(document, TestNotations.Registry, clipboard: clipboard);
+
     /// <summary>A bare rule: the name still holds its default, the body and extends slots are empty.</summary>
     public static Node BareRule()
     {

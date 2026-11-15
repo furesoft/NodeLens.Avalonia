@@ -21,14 +21,16 @@ constraints it must satisfy, and which alternatives were rejected.
    at the caret (planned).
 9. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (planned).
-10. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-11. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-12. [Integration](architecture/integration.md) — how host applications embed this.
-13. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+10. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+    text clipboard; the first slice is implemented.
+11. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+12. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+13. [Integration](architecture/integration.md) — how host applications embed this.
+14. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-14. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-15. [Roadmap](roadmap.md) — milestones and acceptance gates.
-16. [Open questions](open-questions.md) — what is deliberately still undecided.
+15. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+16. [Roadmap](roadmap.md) — milestones and acceptance gates.
+17. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.

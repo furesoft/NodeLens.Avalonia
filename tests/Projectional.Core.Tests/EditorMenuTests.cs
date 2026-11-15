@@ -27,7 +27,7 @@ public sealed class EditorMenuTests
         using var session = TestEditor.Open(TestEditor.BareRule());
 
         Assert.Equal(
-            ["Undo", "Redo", "", "Insert", "Delete"],
+            ["Undo", "Redo", "", "Insert", "Delete", "", "Select All", "Copy", "Cut", "Paste"],
             EditorMenu.For(session).Select(entry => entry.Label));
     }
 
@@ -157,6 +157,110 @@ public sealed class EditorMenuTests
         Assert.Equal("Ctrl+Y", Entry(session, "Redo").Gesture);
         Assert.Equal("Enter", Entry(session, "Insert").Gesture);
         Assert.Equal("Delete", Entry(session, "Delete").Gesture);
+        Assert.Equal("Ctrl+A", Entry(session, "Select All").Gesture);
+        Assert.Equal("Ctrl+C", Entry(session, "Copy").Gesture);
+        Assert.Equal("Ctrl+X", Entry(session, "Cut").Gesture);
+        Assert.Equal("Ctrl+V", Entry(session, "Paste").Gesture);
+    }
+
+    [Fact]
+    public void CopyAndCutAreUnavailableWithoutATextSelection()
+    {
+        var step = TestEditor.BareStep("abc");
+        using var session = TestEditor.Open(step);
+
+        session.Select(Selection.At(CellAddress.OfSlot(step.Id, "text")));
+
+        Assert.False(Entry(session, "Copy").IsEnabled);
+        Assert.False(Entry(session, "Cut").IsEnabled);
+    }
+
+    [Fact]
+    public void CopyAndCutAreAvailableInsideAPropertyCell()
+    {
+        var step = TestEditor.BareStep("abc");
+        using var session = TestEditor.Open(step);
+        var text = CellAddress.OfSlot(step.Id, "text");
+
+        session.Select(new Selection(CaretPosition.At(text, 0), CaretPosition.At(text, 2)));
+
+        Assert.True(Entry(session, "Copy").IsEnabled);
+        Assert.True(Entry(session, "Cut").IsEnabled);
+    }
+
+    [Fact]
+    public void CopyAndCutAreUnavailableWhereTheTextIsNotEditable()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+        var keyword = new CellAddress(rule.Id);
+
+        // The `rule` keyword is a constant: its text can be selected, but copying it would promise a
+        // clipboard the caret cannot type back into.
+        session.Select(new Selection(CaretPosition.At(keyword, 0), CaretPosition.At(keyword, 4)));
+
+        Assert.True(session.Selection.HasText);
+        Assert.False(Entry(session, "Copy").IsEnabled);
+        Assert.False(Entry(session, "Cut").IsEnabled);
+    }
+
+    [Fact]
+    public void PasteIsUnavailableWhileTheClipboardIsEmpty()
+    {
+        var clipboard = new InMemoryClipboard();
+        using var session = TestEditor.Open(TestEditor.BareStep(), clipboard);
+
+        Assert.False(Entry(session, "Paste").IsEnabled);
+
+        clipboard.Text = "";
+        Assert.False(Entry(session, "Paste").IsEnabled);
+
+        clipboard.Text = "abc";
+        Assert.True(Entry(session, "Paste").IsEnabled);
+    }
+
+    [Fact]
+    public void PickingCopyLeavesTheSelectionOnTheClipboard()
+    {
+        var step = TestEditor.BareStep("abcdef");
+        var clipboard = new InMemoryClipboard();
+        using var session = TestEditor.Open(step, clipboard);
+        var text = CellAddress.OfSlot(step.Id, "text");
+
+        session.Select(new Selection(CaretPosition.At(text, 1), CaretPosition.At(text, 4)));
+        Entry(session, "Copy").Execute();
+
+        Assert.Equal("bcd", clipboard.Text);
+        Assert.Equal("abcdef", step.GetOrNull("text"));
+    }
+
+    [Fact]
+    public void PickingCutRemovesTheSelectionAndLeavesItOnTheClipboard()
+    {
+        var step = TestEditor.BareStep("abcdef");
+        var clipboard = new InMemoryClipboard();
+        using var session = TestEditor.Open(step, clipboard);
+        var text = CellAddress.OfSlot(step.Id, "text");
+
+        session.Select(new Selection(CaretPosition.At(text, 1), CaretPosition.At(text, 4)));
+        Entry(session, "Cut").Execute();
+
+        Assert.Equal("bcd", clipboard.Text);
+        Assert.Equal("aef", step.GetOrNull("text"));
+    }
+
+    [Fact]
+    public void PickingPasteTypesTheClipboardTextAtTheCaret()
+    {
+        var step = TestEditor.BareStep("abcdef");
+        var clipboard = new InMemoryClipboard { Text = "XY" };
+        using var session = TestEditor.Open(step, clipboard);
+        var text = CellAddress.OfSlot(step.Id, "text");
+
+        session.Select(new Selection(CaretPosition.At(text, 1), CaretPosition.At(text, 4)));
+        Entry(session, "Paste").Execute();
+
+        Assert.Equal("aXYef", step.GetOrNull("text"));
     }
 
     [Fact]

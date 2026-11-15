@@ -31,7 +31,8 @@ public sealed class EditContext
         EditorTree tree,
         CellLayout layout,
         ITextMeasure measure,
-        Selection selection)
+        Selection selection,
+        ITextClipboard clipboard)
     {
         _document = document;
         _places = CaretPlaces.Of(tree);
@@ -40,6 +41,7 @@ public sealed class EditContext
         Layout = layout;
         Measure = measure;
         Selection = selection;
+        Clipboard = clipboard;
     }
 
     /// <summary>The node being edited, which is the root of the tree.</summary>
@@ -74,6 +76,15 @@ public sealed class EditContext
     /// </para>
     /// </remarks>
     public CompletionList? Completion { get; internal set; }
+
+    /// <summary>The clipboard Copy, Cut and Paste go through.</summary>
+    /// <remarks>
+    /// Never <see langword="null"/>: the session supplies one, falling back to an
+    /// <see cref="InMemoryClipboard"/> when the host named none, so an action can copy without asking
+    /// whether a clipboard exists. Which clipboard it is - the platform's or the session's own - is a
+    /// wiring decision the editing layer never makes.
+    /// </remarks>
+    public ITextClipboard Clipboard { get; }
 
     /// <summary>The concepts of the language the document is written in.</summary>
     public ConceptRegistry Concepts => _document.Model.Concepts;

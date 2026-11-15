@@ -11,14 +11,15 @@ namespace Projectional.Editing;
 /// The anchor is stored rather than normalised away. Extending a selection moves the caret and keeps
 /// the anchor, so a selection is a pair and collapsing it to a sorted range would lose which end the
 /// user is dragging; <see cref="Start"/> and <see cref="End"/> are derived for the readers that want
-/// the range. M1 only ever creates empty selections - it has no shift-arrow or mouse drag yet - but the
-/// shape is what the input layer will fill in, and building the actions against it now means selection
-/// editing is a matter of producing a non-empty value.
+/// the range. Select All is the one gesture M1 produces it with so far - shift-arrow and mouse drag are
+/// still missing - but the shape is what the input layer will fill in, and building the actions against
+/// it means selection editing is a matter of producing a non-empty value.
 /// </para>
 /// <para>
 /// A selection that spans two cells is representable but not yet editable. Every text action works on
 /// one property's text, so a cross-cell selection behaves like an empty one at the caret. That is a
-/// limit of the first input layer, not of this type.
+/// limit of the first input layer, not of this type. Select All therefore selects to the end of the
+/// caret's cell rather than to the end of the document.
 /// </para>
 /// </remarks>
 public readonly record struct Selection
