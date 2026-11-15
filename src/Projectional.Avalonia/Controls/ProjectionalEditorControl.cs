@@ -106,13 +106,36 @@ public sealed class ProjectionalEditorControl : Control
     // shadows a type of the same name everywhere inside this class.
     private MarkerPalette _markerColors = MarkerPalette.Light;
 
-    // The waves as last computed. Geometry walks the document's findings and the whole layout, and the
+    // The findings as last placed. Geometry walks the document's findings and the whole layout, and the
     // caret blink repaints twice a second, so the result is kept until one of its three inputs is replaced.
     // A MarkerSet is immutable and the layout is a new object after every rebuild, so identity is enough.
+    // One list serves both the waves and the tip, so asking where a marker is never walks the document twice.
+    private IReadOnlyList<MarkerLine>? _lines;
+    private CellLayout? _linesOfLayout;
+    private MarkerSet? _linesOfMarkers;
+    private ITextMeasure? _linesOfMeasure;
+
+    // The waves, merged from the lines above. Derived state, so its invalidation is the identity of the
+    // list it was merged from rather than of the layout it was computed out of.
     private IReadOnlyList<MarkerRun>? _runs;
-    private CellLayout? _runsOfLayout;
-    private MarkerSet? _runsOfMarkers;
-    private ITextMeasure? _runsOfMeasure;
+    private IReadOnlyList<MarkerLine>? _runsOfLines;
+
+    // The tip is painted onto this control's own surface, like the completion list and for the same
+    // reason: it stays testable headlessly and can never outlive the control it describes.
+    private readonly MarkerTipPresenter _tip;
+
+    private MarkerTipPalette _tipPalette = MarkerTipPalette.Light;
+
+    // The squiggle the pointer is resting on, if any. Hovering is pointer state, not document state: it is
+    // never stored in the model, never persisted, and never outlives the pointer leaving the wave.
+    private MarkerHit? _hover;
+
+    // The tip's lines and the size its box needs, wrapped at most once per squiggle and text width.
+    // Wrapping measures glyphs, and a repaint must not measure again - so the width it was wrapped for is
+    // part of the state, and a narrower window re-wraps rather than keeping a box sized for the old room.
+    private IReadOnlyList<string>? _tipLines;
+    private Size _tipSize;
+    private double _tipWidth = -1;
 
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
@@ -127,6 +150,7 @@ public sealed class ProjectionalEditorControl : Control
     {
         TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, _palette.BrushOf(TextStyleKind.Default));
         _completion = new CompletionPresenter(TextMeasure, _listPalette);
+        _tip = new MarkerTipPresenter(TextMeasure, _tipPalette);
         Clipboard = new AvaloniaClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
 
         Background = Brushes.White;
@@ -191,6 +215,10 @@ public sealed class ProjectionalEditorControl : Control
             // The list is drawn on this surface and must keep the editor's line height, or its rows stop
             // matching the text they are offering to fill.
             _completion.TextMeasure = TextMeasure;
+            _tip.TextMeasure = TextMeasure;
+
+            // A box wrapped for the old font is sized for glyphs that are no longer on screen.
+            ForgetTip();
 
             if (Session is { } session)
             {
@@ -218,6 +246,10 @@ public sealed class ProjectionalEditorControl : Control
             _offsetX = 0;
             _offsetY = 0;
             _blink.Reset();
+
+            // A hit points into the layout of the session it was taken from, so a new document must not
+            // inherit the old one's tip.
+            ClearHover();
 
             InvalidateMeasure();
             ScrollToCaret();
@@ -429,6 +461,30 @@ public sealed class ProjectionalEditorControl : Control
         }
     }
 
+    /// <summary>What the box that describes a marker under the pointer looks like.</summary>
+    /// <remarks>
+    /// Separate from <see cref="MarkerColors"/> because the two are asked different questions: a wave says
+    /// "something is wrong here" in one colour per severity, while the tip is one panel of text whatever
+    /// severity it is describing. Recolouring is a repaint - no colour reaches the model.
+    /// </remarks>
+    public MarkerTipPalette TipPalette
+    {
+        get => _tipPalette;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_tipPalette, value))
+            {
+                return;
+            }
+
+            _tipPalette = value;
+            _tip.Palette = value;
+            InvalidateVisual();
+        }
+    }
+
     /// <summary>How much room the row numbers take on the left edge, in device pixels.</summary>
     /// <remarks>
     /// The width is the widest number the document needs plus the blank that separates it from the text,
@@ -621,6 +677,67 @@ public sealed class ProjectionalEditorControl : Control
         {
             _completion.Render(context, list, CompletionBounds(session, list));
         }
+
+        // After the list, because the two are read at different moments: the list is what the caret is
+        // about to create, and a tip only exists while the pointer rests on a squiggle, which means the
+        // reader is looking rather than typing. Whatever it covers is still one move away.
+        PaintTip(context);
+    }
+
+    /// <summary>Paints the message of the marker the pointer is on, if it is on one.</summary>
+    /// <remarks>
+    /// The box is placed from the <em>anchor's layout rectangle</em> rather than from the pointer, so it
+    /// sits under the squiggle instead of under the cursor and cannot drift away from the text it
+    /// describes while the pointer wanders inside the same wave.
+    /// </remarks>
+    private void PaintTip(DrawingContext context)
+    {
+        if (_hover is not { } hover || TipBounds(hover) is not { } bounds)
+        {
+            return;
+        }
+
+        _tip.Render(context, _tipLines!, bounds);
+    }
+
+    /// <summary>Where the tip's box goes, wrapping its text the first time it is asked for at a width.</summary>
+    /// <param name="hover">The finding the pointer is on.</param>
+    /// <returns>The box, or <see langword="null"/> when there is nothing to draw.</returns>
+    private Rect? TipBounds(MarkerHit hover)
+    {
+        // The whole surface, gutter included: the anchor below is in control pixels, so the room the box
+        // may use is the control's, not the page's.
+        var viewport = new LayoutSize(Math.Max(0, Bounds.Width), Math.Max(0, Bounds.Height));
+
+        // The cap keeps a long explanation from covering the document; the viewport term keeps a narrow
+        // window from producing a box wider than the surface it is painted on.
+        var room = Math.Min(
+            MarkerTipPresenter.MaximumTextWidth,
+            Math.Max(1, viewport.Width - (2 * MarkerTipPresenter.Inset)));
+
+        if (_tipLines is null || _tipWidth != room)
+        {
+            _tipLines = MarkerTip.Lines(hover.Diagnostics, room, TextMeasure);
+            _tipSize = _tip.Measure(_tipLines);
+            _tipWidth = room;
+        }
+
+        if (_tipLines.Count == 0)
+        {
+            return null;
+        }
+
+        // The same conversion PaintMarkers makes: the gutter is on the left of the page, so a layout unit
+        // is a control pixel once the gutter is added back and the scroll is taken off.
+        var anchor = new LayoutRect(
+            hover.Anchor.X - _offsetX + GutterWidth,
+            hover.Anchor.Y - _offsetY,
+            hover.Anchor.Width,
+            hover.Anchor.Height);
+
+        var box = MarkerTip.Place(anchor, new LayoutSize(_tipSize.Width, _tipSize.Height), viewport);
+
+        return new Rect(box.X, box.Y, box.Width, box.Height);
     }
 
     /// <inheritdoc />
@@ -707,6 +824,10 @@ public sealed class ProjectionalEditorControl : Control
 
         ScrollTo(_offsetX - (e.Delta.X * step), _offsetY - (e.Delta.Y * step));
 
+        // The text moved under a pointer that did not, so the wave it was resting on is no longer there.
+        // Dropping the tip is the honest answer; keeping it would describe text that scrolled away.
+        ClearHover();
+
         e.Handled = true;
     }
 
@@ -725,6 +846,10 @@ public sealed class ProjectionalEditorControl : Control
         }
 
         var properties = e.GetCurrentPoint(this).Properties;
+
+        // A press uses the pointer for something else - a selection, a menu - so the tip goes with it and
+        // comes back on the next move, which is exactly when the reader is looking again.
+        ClearHover();
 
         if (properties.IsRightButtonPressed)
         {
@@ -784,8 +909,15 @@ public sealed class ProjectionalEditorControl : Control
 
         var session = Session;
 
-        if (session is null || !_dragging || _dragAnchor is not { } anchor)
+        if (session is null)
         {
+            return;
+        }
+
+        if (!_dragging || _dragAnchor is not { } anchor)
+        {
+            UpdateHover(e.GetPosition(this));
+
             return;
         }
 
@@ -796,6 +928,84 @@ public sealed class ProjectionalEditorControl : Control
 
         session.Select(new Selection(anchor, position));
         Show();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The pointer left the surface, so nothing under it is being pointed at any more. Without this the tip
+    /// would stay on screen until the next move inside the control, describing a wave the pointer is no
+    /// longer on.
+    /// </remarks>
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnPointerExited(e);
+
+        ClearHover();
+    }
+
+    /// <summary>Moves the tip onto the marker under the pointer, or off it when there is none.</summary>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    private void UpdateHover(Point point)
+    {
+        // The gutter is chrome rather than page, so a pointer over the numbers is over no marker at all.
+        // Everything right of it is converted the way PaintMarkers converts back: layout units in, minus
+        // the scroll, plus the gutter.
+        var gutter = GutterWidth;
+
+        var hit = point.X < gutter
+            ? null
+            : MarkerHitTest.At(Lines, point.X - gutter + _offsetX, point.Y + _offsetY, MarkerWave.Band);
+
+        if (IsSameHover(hit, _hover))
+        {
+            // A pointer moving inside one wave must not repaint: the tip already describes that finding.
+            return;
+        }
+
+        _hover = hit;
+        ForgetTip();
+        InvalidateVisual();
+    }
+
+    /// <summary>Drops the tip, if one is up.</summary>
+    private void ClearHover()
+    {
+        if (_hover is null)
+        {
+            return;
+        }
+
+        _hover = null;
+        ForgetTip();
+        InvalidateVisual();
+    }
+
+    /// <summary>Drops the wrapped tip but keeps the hover, so the next paint re-wraps where it is.</summary>
+    private void ForgetTip()
+    {
+        _tipLines = null;
+        _tipSize = default;
+        _tipWidth = -1;
+    }
+
+    /// <summary>Whether two hits describe the same finding.</summary>
+    /// <remarks>
+    /// <see cref="MarkerHit"/> cannot be compared with <c>==</c> here: it carries a list that
+    /// <see cref="MarkerHitTest"/> builds afresh on every call, so two hits over one wave are never
+    /// reference-equal. What identifies the finding is the rectangle it is drawn in and how many
+    /// diagnostics landed on it - and a different set on the same stretch would have needed a different
+    /// marker set, which invalidates the cache the hit was taken from anyway.
+    /// </remarks>
+    private static bool IsSameHover(MarkerHit? left, MarkerHit? right)
+    {
+        if (left is not { } a || right is not { } b)
+        {
+            return left is null && right is null;
+        }
+
+        return a.Anchor == b.Anchor && a.Diagnostics.Count == b.Diagnostics.Count;
     }
 
     /// <inheritdoc />
@@ -984,6 +1194,11 @@ public sealed class ProjectionalEditorControl : Control
     {
         _blink.Reset();
         ScrollToCaret();
+
+        // Every edit and every move lands here, and each one can move the wave the tip is describing. The
+        // pointer has not moved, so nothing else would notice that its box now points at the wrong text.
+        ClearHover();
+
         InvalidateVisual();
     }
 
@@ -1164,14 +1379,14 @@ public sealed class ProjectionalEditorControl : Control
         }
     }
 
-    /// <summary>The stretches of text to stroke, computed at most once per layout and marker set.</summary>
+    /// <summary>The findings as placed on the layout, computed at most once per layout and marker set.</summary>
     /// <remarks>
-    /// Both passes walk the document rather than the visible part of it, so neither may run per repaint.
-    /// The marker set is immutable and the layout is a fresh object after every rebuild, so identity on
-    /// the pair answers "is this still the same drawing" - and the measure is in the key because a cell's
-    /// position depends on it.
+    /// Both the waves and the tip ask where the findings are, and geometry walks the whole document rather
+    /// than the visible part of it, so neither may recompute it per repaint. The marker set is immutable and
+    /// the layout is a fresh object after every rebuild, so identity on the pair answers "is this still the
+    /// same drawing" - and the measure is in the key because a cell's position depends on it.
     /// </remarks>
-    private IReadOnlyList<MarkerRun> Runs
+    private IReadOnlyList<MarkerLine> Lines
     {
         get
         {
@@ -1182,15 +1397,37 @@ public sealed class ProjectionalEditorControl : Control
                 return [];
             }
 
-            if (_runs is null
-                || !ReferenceEquals(_runsOfLayout, session.Layout)
-                || !ReferenceEquals(_runsOfMarkers, session.Markers)
-                || !ReferenceEquals(_runsOfMeasure, session.Measure))
+            if (_lines is null
+                || !ReferenceEquals(_linesOfLayout, session.Layout)
+                || !ReferenceEquals(_linesOfMarkers, session.Markers)
+                || !ReferenceEquals(_linesOfMeasure, session.Measure))
             {
-                _runs = MarkerRuns.Of(MarkerGeometry.Of(session.Layout, session.Markers, session.Measure));
-                _runsOfLayout = session.Layout;
-                _runsOfMarkers = session.Markers;
-                _runsOfMeasure = session.Measure;
+                _lines = MarkerGeometry.Of(session.Layout, session.Markers, session.Measure);
+                _linesOfLayout = session.Layout;
+                _linesOfMarkers = session.Markers;
+                _linesOfMeasure = session.Measure;
+            }
+
+            return _lines;
+        }
+    }
+
+    /// <summary>The stretches of text to stroke, merged from <see cref="Lines"/>.</summary>
+    /// <remarks>
+    /// Derived state: the merge depends on the placed findings and nothing else, so the identity of that
+    /// list is the whole invalidation. Merging is cheap next to placing, but it still allocates, and the
+    /// caret blink repaints twice a second.
+    /// </remarks>
+    private IReadOnlyList<MarkerRun> Runs
+    {
+        get
+        {
+            var lines = Lines;
+
+            if (_runs is null || !ReferenceEquals(_runsOfLines, lines))
+            {
+                _runs = MarkerRuns.Of(lines);
+                _runsOfLines = lines;
             }
 
             return _runs;

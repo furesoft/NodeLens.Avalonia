@@ -36,6 +36,14 @@ internal static class MarkerWave
     /// <summary>How thick the stroke is, in layout units.</summary>
     internal const double Thickness = 1;
 
+    /// <summary>How much of a line's bottom the wave can occupy, in layout units.</summary>
+    /// <remarks>
+    /// The band the pointer has to be in for the tip to open. It is derived rather than declared so it
+    /// cannot drift from what <see cref="Draw"/> actually paints: a wave that grew would otherwise leave
+    /// a strip of itself that does not answer the pointer.
+    /// </remarks>
+    internal const double Band = Amplitude + Thickness;
+
     /// <summary>Whether a severity is drawn as a dotted wave rather than a solid one.</summary>
     /// <param name="severity">How much a finding matters.</param>
     /// <returns><see langword="true"/> for the two mild severities.</returns>
