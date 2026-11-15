@@ -64,7 +64,7 @@ public sealed class LayoutSnapshotTests
         Assert.Equal(
             """
             <empty>
-            note a;note b
+            note a; note b
             """,
             LayoutSnapshot.Render(model, TestNotations.Registry, width: 40));
     }

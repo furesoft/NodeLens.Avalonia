@@ -44,7 +44,7 @@ public sealed class NotationVariantProjectionTests
         var notations = new NotationRegistry(TestLanguage.Registry);
         notations.Add(TestLanguage.Note, ed => ed.Line(ed.Keyword("note"), ed.Space, ed.Property("text")));
         notations.Add(TestLanguage.Note, "bare", ed => ed.Line(ed.Keyword("note")));
-        notations.Add(TestLanguage.Body, ed => ed.Collection("notes", separator: ed.Punct(", ")));
+        notations.Add(TestLanguage.Body, ed => ed.Collection("notes", separator: ed.Punct(",")));
 
         Assert.Equal(
             "note, note",

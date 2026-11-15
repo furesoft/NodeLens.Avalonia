@@ -75,7 +75,7 @@ public sealed class CaretScrollTests
         var (layout, _) = Layout();
         var nowhere = CaretPosition.At(new CellAddress(TestEditor.BareTag().Id));
 
-        Assert.Equal((29, 2), Scroll(layout, new LayoutSize(12, 3), 100, 100, nowhere));
+        Assert.Equal((31, 2), Scroll(layout, new LayoutSize(12, 3), 100, 100, nowhere));
     }
 
     private static (double X, double Y) Scroll(

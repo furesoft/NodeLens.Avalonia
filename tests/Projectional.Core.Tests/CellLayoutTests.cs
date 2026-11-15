@@ -149,11 +149,12 @@ public sealed class CellLayoutTests
         var layout = Layouter.Layout(Builder.Build(body));
         var notes = Assert.IsType<CollectionCell>(layout.Tree.Root.Children[1]);
 
-        // note ␣ a ; note ␣ b
+        // note ␣ a ; ␣ note ␣ b
         AssertRect(0, 1, 6, 1, Bounds(layout, notes.Items[0]));
         AssertRect(6, 1, 1, 1, Bounds(layout, notes.Separators[0]));
-        AssertRect(7, 1, 6, 1, Bounds(layout, notes.Items[1]));
-        AssertRect(0, 1, 13, 1, Bounds(layout, notes));
+        AssertRect(7, 1, 1, 1, Bounds(layout, notes.Content[2]));
+        AssertRect(8, 1, 6, 1, Bounds(layout, notes.Items[1]));
+        AssertRect(0, 1, 14, 1, Bounds(layout, notes));
     }
 
     [Fact]
