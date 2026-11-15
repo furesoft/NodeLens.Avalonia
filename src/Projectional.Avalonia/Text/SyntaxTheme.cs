@@ -28,6 +28,8 @@ public sealed class SyntaxTheme
         IBrush chrome,
         IBrush caret,
         IBrush highlight,
+        IBrush gutter,
+        IBrush lineNumber,
         bool isDark)
     {
         Palette = palette;
@@ -35,6 +37,8 @@ public sealed class SyntaxTheme
         Chrome = chrome;
         Caret = caret;
         Highlight = highlight;
+        Gutter = gutter;
+        LineNumber = lineNumber;
         IsDark = isDark;
     }
 
@@ -45,6 +49,8 @@ public sealed class SyntaxTheme
         new SolidColorBrush(Color.FromRgb(0xF3, 0xF3, 0xF3)),
         Brushes.Black,
         new SolidColorBrush(Color.FromArgb(0x40, 0x26, 0x8B, 0xD2)),
+        new SolidColorBrush(Color.FromRgb(0xF7, 0xF7, 0xF7)),
+        new SolidColorBrush(Color.FromRgb(0x23, 0x78, 0x93)),
         isDark: false);
 
     /// <summary>Light text on black, for a host whose surroundings are dark.</summary>
@@ -54,6 +60,8 @@ public sealed class SyntaxTheme
         new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x2D)),
         Brushes.White,
         new SolidColorBrush(Color.FromArgb(0x50, 0x26, 0x4F, 0x78)),
+        new SolidColorBrush(Color.FromRgb(0x18, 0x18, 0x18)),
+        new SolidColorBrush(Color.FromRgb(0x85, 0x85, 0x85)),
         isDark: true);
 
     /// <summary>The colours of the text itself.</summary>
@@ -77,6 +85,23 @@ public sealed class SyntaxTheme
 
     /// <summary>The colour selected text is painted over.</summary>
     public IBrush Highlight { get; }
+
+    /// <summary>
+    /// What is painted behind the row numbers.
+    /// </summary>
+    /// <remarks>
+    /// A shade apart from <see cref="Background"/> rather than a different hue, so the gutter reads as
+    /// part of the page instead of as a panel next to it. A host that shows no line numbers never paints
+    /// this and loses nothing.
+    /// </remarks>
+    public IBrush Gutter { get; }
+
+    /// <summary>The colour the row numbers are painted in.</summary>
+    /// <remarks>
+    /// Dimmer than the text, because a number is orientation and not content: it must be readable when
+    /// looked for and must never compete with the document.
+    /// </remarks>
+    public IBrush LineNumber { get; }
 
     /// <summary>Whether this is one of the dark themes, for a toolkit that asks light or dark.</summary>
     public bool IsDark { get; }

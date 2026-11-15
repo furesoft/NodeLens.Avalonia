@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -58,6 +60,9 @@ public sealed class ProjectionalEditorControl : Control
     /// <summary>How far one wheel notch scrolls, in lines.</summary>
     private const double WheelLines = 3;
 
+    /// <summary>How much blank separates a row number from the edge of the gutter, in device pixels.</summary>
+    private const double GutterGap = 6;
+
     private SyntaxPalette _palette = SyntaxPalette.Light;
     private ICellStyler _styler = CellStyler.Default;
 
@@ -85,6 +90,17 @@ public sealed class ProjectionalEditorControl : Control
     private readonly CompletionPresenter _completion;
 
     private CompletionPalette _listPalette = CompletionPalette.Light;
+
+    // The rows the gutter numbers, kept between paints because counting them walks the whole document
+    // rather than the visible part of it. The layout is a new object after every rebuild, so its identity
+    // is the invalidation: a different layout or a different measure means the numbers are stale.
+    private IReadOnlyList<LineNumberRow>? _rows;
+    private CellLayout? _rowsOfLayout;
+    private ITextMeasure? _rowsOfMeasure;
+
+    private bool _showLineNumbers;
+    private IBrush _lineNumberBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x80, 0x80, 0x80));
+    private IBrush? _gutterBackground;
 
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
@@ -226,6 +242,94 @@ public sealed class ProjectionalEditorControl : Control
     /// <summary>The colour of the caret bar.</summary>
     public IBrush CaretBrush { get; set; }
 
+    /// <summary>Whether the rows of the document are numbered down the left edge.</summary>
+    /// <remarks>
+    /// <para>
+    /// Off by default, because a projectional document is read as a shape rather than as lines and the
+    /// gutter costs horizontal room. A host that wants to talk about "row 12" - a problems panel, a
+    /// marker list, a diff - turns it on.
+    /// </para>
+    /// <para>
+    /// Turning it on shortens the room a text cell has to wrap at by <see cref="GutterWidth"/>, so it
+    /// re-measures and re-lays-out rather than merely repainting.
+    /// </para>
+    /// </remarks>
+    public bool ShowLineNumbers
+    {
+        get => _showLineNumbers;
+
+        set
+        {
+            if (_showLineNumbers == value)
+            {
+                return;
+            }
+
+            _showLineNumbers = value;
+
+            InvalidateMeasure();
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The colour the row numbers are painted in.</summary>
+    public IBrush LineNumberBrush
+    {
+        get => _lineNumberBrush;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_lineNumberBrush, value))
+            {
+                return;
+            }
+
+            _lineNumberBrush = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The colour the gutter is painted over, or <see langword="null"/> to leave the background showing.</summary>
+    /// <remarks>
+    /// Nothing is painted when this is <see langword="null"/>, which is what a host wants when the
+    /// document already sits on a surface of its own: a second shade for the gutter alone would read as a
+    /// panel that is not part of the page.
+    /// </remarks>
+    public IBrush? GutterBackground
+    {
+        get => _gutterBackground;
+        set
+        {
+            if (ReferenceEquals(_gutterBackground, value))
+            {
+                return;
+            }
+
+            _gutterBackground = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>How much room the row numbers take on the left edge, in device pixels.</summary>
+    /// <remarks>
+    /// The width is the widest number the document needs plus the blank that separates it from the text,
+    /// so it grows by one digit when the document reaches a row count with one more digit in it. Text is
+    /// laid out to the right of the gutter and the gutter itself does not scroll with the document, the
+    /// way a code editor's does not.
+    /// </remarks>
+    public double GutterWidth => _showLineNumbers
+        ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
+        : 0;
+
+    /// <summary>The numbered rows of the document as last laid out.</summary>
+    /// <remarks>
+    /// Public because a host that shows a problems panel wants to say where something is, and the only
+    /// honest answer in a projectional document is the row the reader can see. The numbers are positions,
+    /// not identities: they change when the document above them changes height.
+    /// </remarks>
+    public IReadOnlyList<LineNumberRow> LineRows => Rows;
+
     /// <summary>The clipboard that copy, cut and paste read and write.</summary>
     /// <remarks>
     /// <para>
@@ -365,14 +469,16 @@ public sealed class ProjectionalEditorControl : Control
             context.FillRectangle(background, new Rect(Bounds.Size));
         }
 
+        PaintGutter(context);
+
         foreach (var highlight in frame.Highlights)
         {
-            context.FillRectangle(HighlightBrush, ToRect(frame.Viewport.ToViewport(highlight)));
+            context.FillRectangle(HighlightBrush, ToControl(frame, highlight));
         }
 
         foreach (var run in frame.TextRuns)
         {
-            var bounds = frame.Viewport.ToViewport(run.Bounds);
+            var bounds = ToControl(frame, run.Bounds);
 
             context.DrawText(
                 TextMeasure.Shaped(run.Text, _palette.BrushOf(run.Style), run.Emphasis),
@@ -381,7 +487,7 @@ public sealed class ProjectionalEditorControl : Control
 
         if (frame.CaretRect is { } caret && _blink.IsVisible)
         {
-            var bounds = frame.Viewport.ToViewport(caret);
+            var bounds = ToControl(frame, caret);
 
             context.FillRectangle(CaretBrush, new Rect(bounds.X, bounds.Y, CaretThickness, bounds.Height));
         }
@@ -434,7 +540,9 @@ public sealed class ProjectionalEditorControl : Control
 
         if (session is not null && !double.IsInfinity(availableSize.Width))
         {
-            session.WrapWidth = availableSize.Width;
+            // The gutter is the host's chrome, not part of the page, so the room a text cell may fill is
+            // what is left of the width once the numbers have taken theirs.
+            session.WrapWidth = Math.Max(0, availableSize.Width - GutterWidth);
         }
 
         var content = session?.Layout.Size;
@@ -782,16 +890,22 @@ public sealed class ProjectionalEditorControl : Control
 
         var point = e.GetPosition(this);
 
+        // The gutter is chrome outside the page, so a press in it is not a press into the document.
+        if (point.X < GutterWidth)
+        {
+            return null;
+        }
+
         // Pointer coordinates are device pixels; the layout's are its own units, shifted by the scroll.
         return HitTest.Caret(
             session.Tree,
             session.Layout,
-            point.X + _offsetX,
+            point.X - GutterWidth + _offsetX,
             point.Y + _offsetY,
             session.Measure);
     }
 
-    private LayoutSize ViewportSize => new(Bounds.Width, Bounds.Height);
+    private LayoutSize ViewportSize => new(Math.Max(0, Bounds.Width - GutterWidth), Bounds.Height);
 
     /// <summary>Where the completion list is drawn, in viewport coordinates.</summary>
     /// <remarks>
@@ -805,7 +919,7 @@ public sealed class ProjectionalEditorControl : Control
 
         var caret = CaretBounds.Of(session.Tree, session.Layout, session.Selection.Caret, session.Measure);
 
-        var left = (caret?.X ?? 0) - _offsetX;
+        var left = (caret?.X ?? 0) - _offsetX + GutterWidth;
         var top = (caret is { } below ? below.Y - _offsetY + below.Height : 0) + _completion.RowHeight;
 
         if (caret is { } flip && top + size.Height > Bounds.Height)
@@ -847,4 +961,83 @@ public sealed class ProjectionalEditorControl : Control
     }
 
     private static Rect ToRect(LayoutRect rect) => new(rect.X, rect.Y, rect.Width, rect.Height);
+
+    /// <summary>A layout rectangle in this control's coordinates: through the scroll, then past the gutter.</summary>
+    private Rect ToControl(EditorFrame frame, LayoutRect rect)
+    {
+        var bounds = frame.Viewport.ToViewport(rect);
+
+        return new Rect(bounds.X + GutterWidth, bounds.Y, bounds.Width, bounds.Height);
+    }
+
+    /// <summary>The numbered rows of the document, counted at most once per layout.</summary>
+    /// <remarks>
+    /// Counting walks the whole document, so it must not happen on every repaint - the caret blinks, and a
+    /// repaint per blink must not cost a pass over every cell. <see cref="CellLayout"/> is a fresh object
+    /// after every rebuild, so its identity answers "is this the layout the numbers were counted from".
+    /// </remarks>
+    private IReadOnlyList<LineNumberRow> Rows
+    {
+        get
+        {
+            var session = Session;
+
+            if (session is null)
+            {
+                return [];
+            }
+
+            if (_rows is null
+                || !ReferenceEquals(_rowsOfLayout, session.Layout)
+                || !ReferenceEquals(_rowsOfMeasure, session.Measure))
+            {
+                _rows = LineNumbers.Of(session.Layout, session.Measure);
+                _rowsOfLayout = session.Layout;
+                _rowsOfMeasure = session.Measure;
+            }
+
+            return _rows;
+        }
+    }
+
+    /// <summary>Paints the row numbers down the left edge, outside the scroll.</summary>
+    /// <remarks>
+    /// The gutter does not scroll with the document - a row number that slid away with the page would stop
+    /// being a reference the reader can use - so the numbers are placed from the layout's own heights minus
+    /// the scroll offset, and only the rows that are on screen are shaped.
+    /// </remarks>
+    private void PaintGutter(DrawingContext context)
+    {
+        var width = GutterWidth;
+
+        if (width <= 0)
+        {
+            return;
+        }
+
+        if (GutterBackground is { } background)
+        {
+            context.FillRectangle(background, new Rect(0, 0, width, Bounds.Height));
+        }
+
+        var right = width - GutterGap;
+        var height = Bounds.Height;
+
+        foreach (var row in Rows)
+        {
+            var top = row.Bounds.Y - _offsetY;
+
+            if (top + row.Bounds.Height <= 0 || top >= height)
+            {
+                continue;
+            }
+
+            var text = TextMeasure.Shaped(
+                row.Number.ToString(CultureInfo.InvariantCulture),
+                LineNumberBrush,
+                TextEmphasis.None);
+
+            context.DrawText(text, new Point(right - text.WidthIncludingTrailingWhitespace, top));
+        }
+    }
 }
