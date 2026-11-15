@@ -233,6 +233,14 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 - `NotationEditor`'s members touch no instance state and therefore trip CA1822, which is an
   error here. The suppression is class-level and deliberate: the documented surface is
   `ed.Keyword("if")`, which a static class cannot express.
+- **`ITypingRules` sits in `Projectional.Language/Typing/`, beside `ICellEmphasis` and for the
+  same reason** - it says how the language is written, so a language package must be able to
+  declare it without referencing `Projectional.Editing`. `TypingRuleRegistry` is immutable
+  (`Add` returns a new one), refuses a duplicate concept key with `ArgumentException`
+  (`ParamName` `"conceptKey"`), and its `ClaimFor` answers `null` for a concept that declares
+  no rule. `ExpressionsLanguage.TypingRules` is the reference declaration; `RulesLanguage`
+  forwards it. What the editor does with a claim is in
+  `docs/architecture/language.md` Â§Typing rules and `editing.md` Â§Typing into an empty slot.
 
 ## How notation variants work
 
@@ -448,6 +456,18 @@ dependency, so every action is testable headlessly.
   every keystroke is deliberate M1 policy, not an oversight.
 - **Enter appends.** `Model.NewChild` adds to the end of a list; there is no insert-at-index
   API yet, so Enter on a slot in the middle of a list puts the child last.
+- **Typing into an empty slot creates what you are describing.** `TypeTextAction`'s second case:
+  an empty `ChildCell`/`CollectionCell` with a collapsed selection asks the language's
+  `ITypingRules` which concept claims the text, creates it there and writes the text into the
+  rule's property - one undo step, because `EditContext.AddChild` opens a nested
+  `ModelTransaction`. It cannot be inferred from the concepts (a string property accepts `abc`
+  as happily as `"abc"`), which is why the language declares it beside the notation. The caret
+  afterwards is the *created node's* `CellAddress.OfElement`, so `Nearest` lands on the first
+  typeable place inside it - `IntLiteral.value` (so `1` then `2` gives `12`), or
+  `Parenthesized.inner` rather than the `(` the notation draws. A rule may name no property (a
+  parenthesis is a gesture, not text); a rule naming a slot or a text the type refuses still
+  creates the node and drops the text, because a keystroke must not be able to throw. A
+  non-empty selection and a language with no rules both stay `Unchanged`.
 - **The value a created node lands on arrives selected.** `EditAction.SelectsLandedValue` is the
   intent ("what I made is something to be named") and `EditorSession.Apply` carries it out against
   the tree the edit produced, widening the caret to the whole `PropertyCell` it landed in. It is a
@@ -836,7 +856,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 781 tests**; anything below that means tests were deleted.
+it. **Baseline is 799 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

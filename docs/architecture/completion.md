@@ -97,7 +97,9 @@ widening a filter must be able to restore what it removed.
 
 `Prefix` is held on the list rather than in a cell. An empty slot has no text to type into, so
 the characters the user types while the list is open are not an edit at all; they exist only to
-filter, and they disappear with the list.
+filter, and they disappear with the list. Closing the list hands the next character back to
+`TypeTextAction`, which may then create a concept from it
+([editing.md](editing.md#typing-into-an-empty-slot)) — the prefix itself is still never stored.
 
 Routing an edit through the session is what keeps this honest. `EditContext.Completion` is the
 handle an action uses, `EditorSession.Apply` copies it back onto the session after every apply,
