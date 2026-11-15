@@ -55,6 +55,30 @@ public sealed class RulesLanguageEditingTests
         }
     }
 
+    [Fact]
+    public void EnterInTheRuleListLeavesTheCaretWhereTheNewRulesNameCanBeTyped()
+    {
+        var model = PayrollSample.NewEmptyModel();
+        var ruleset = model.Roots[0];
+
+        using var session = new EditorSession(ruleset, Notations);
+
+        session.Select(Selection.At(CellAddress.OfSlot(ruleset.Id, "rules")));
+
+        var created = session.Apply(KeyRouter.For(EditorKey.Enter));
+        var rule = ruleset.GetChildren("rules")[0];
+
+        // The caret ends up in the new rule's name rather than on the keyword in front of it, so the
+        // very next keystroke is part of naming the rule instead of being refused by a keyword.
+        Assert.Equal(EditOutcome.Applied, created.Outcome);
+        Assert.Equal(CellAddress.OfSlot(rule.Id, "name"), session.Selection.Caret.Address);
+
+        var typed = session.Apply(KeyRouter.Type("Bonus"));
+
+        Assert.Equal(EditOutcome.Applied, typed.Outcome);
+        Assert.NotEqual("unnamed", rule.Get("name"));
+    }
+
     private static (EditorSession Session, Node Rule) OpenRuleWithEmptyCondition()
     {
         var model = PayrollSample.NewEmptyModel();
