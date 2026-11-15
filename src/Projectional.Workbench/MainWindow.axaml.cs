@@ -1,9 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Styling;
+using Avalonia.Threading;
 
 using Projectional.Avalonia;
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Samples;
 
@@ -215,37 +217,25 @@ public sealed partial class MainWindow : Window, IDisposable
 
     /// <summary>Fills the representation submenu from the active document's alternatives.</summary>
     /// <remarks>
-    /// The menu is rebuilt rather than data-bound because the alternatives depend on the document in
-    /// front and on its model: an edit can introduce a concept that declares a second notation, and the
-    /// menu has to offer it without the shell having to notice that on its own. It is refreshed with
-    /// the status bar, which is the one place that already runs whenever any of those things change.
+    /// <para>
+    /// The list comes from <see cref="EditorMenu.Representations"/> rather than from the session
+    /// directly: the context menu offers the same choice, and a concept's variants may only be offered
+    /// one way. The window contributes only the location.
+    /// </para>
+    /// <para>
+    /// It is rebuilt rather than data-bound because the alternatives depend on the document in front
+    /// and on its model: an edit can introduce a concept that declares a second notation, and the menu
+    /// has to offer it without the shell having to notice that on its own. It is refreshed with the
+    /// status bar, which is the one place that already runs whenever any of those things change.
+    /// </para>
     /// </remarks>
     private void UpdateRepresentations()
     {
-        var items = new List<MenuItem>();
+        var entries = _documents.Active is { } document
+            ? EditorMenu.Representations(document.Session)
+            : [];
 
-        if (_documents.Active is { } document)
-        {
-            foreach (var alternative in document.Session.Alternatives())
-            {
-                var concept = new MenuItem { Header = alternative.ConceptKey };
-
-                foreach (var variant in alternative.Variants)
-                {
-                    var choice = new MenuItem
-                    {
-                        Header = variant,
-                        ToggleType = MenuItemToggleType.Radio,
-                        IsChecked = string.Equals(variant, alternative.Selected, StringComparison.Ordinal),
-                    };
-
-                    choice.Click += (_, _) => ChooseRepresentation(document, alternative.ConceptKey, variant);
-                    concept.Items.Add(choice);
-                }
-
-                items.Add(concept);
-            }
-        }
+        var items = EditorMenuPresenter.Items(entries, AfterRepresentation);
 
         // No alternative means nothing to choose from, which is a different thing from a document whose
         // one concept can be drawn a single way: disabling says so instead of offering an empty menu.
@@ -253,16 +243,23 @@ public sealed partial class MainWindow : Window, IDisposable
         Representations.ItemsSource = items;
     }
 
-    private void ChooseRepresentation(DocumentTab document, string conceptKey, string variant)
+    private void AfterRepresentation()
     {
-        document.Session.ChooseVariant(conceptKey, variant);
+        RefreshActive();
 
-        if (_tabs.TryGetValue(document, out var tab) && tab.Content is ProjectionalEditorControl editor)
+        // Posted, not called: this runs from the click of an item whose menu is still closing, and
+        // rebuilding the list now would replace that item underneath the click.
+        Dispatcher.UIThread.Post(UpdateStatus);
+    }
+
+    private void RefreshActive()
+    {
+        if (_documents.Active is { } document
+            && _tabs.TryGetValue(document, out var tab)
+            && tab.Content is ProjectionalEditorControl editor)
         {
             editor.Refresh();
         }
-
-        UpdateStatus();
     }
 
     private static string FormatFile(string? filePath) =>
