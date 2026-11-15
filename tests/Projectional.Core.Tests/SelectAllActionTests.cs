@@ -6,13 +6,13 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// What Ctrl+A means in a projectional editor: the whole text of the property the caret is in, not the
-/// document.
+/// What Ctrl+A means in a projectional editor: it widens one unit per press - the value, then the node,
+/// then the document.
 /// </summary>
 /// <remarks>
-/// A selection is a range inside one cell, so "everything" can only ever be one property's text. The
-/// tests pin the two halves of that decision - it widens to the cell's ends, and it refuses to widen at
-/// all where there is no editable text to select.
+/// A projectional document nests three units and "everything" is ambiguous between them, so the gesture
+/// is a ladder rather than a single answer. The tests pin the rungs, the order, that a rung with nothing
+/// to offer is skipped rather than blocking, and that the top rung does not move.
 /// </remarks>
 public sealed class SelectAllActionTests
 {
@@ -52,7 +52,56 @@ public sealed class SelectAllActionTests
     }
 
     [Fact]
-    public void SelectAllInAKeywordChangesNothing()
+    public void SelectAllWidensFromTheValueToTheNodeToTheDocument()
+    {
+        var (rule, _, step) = TestEditor.RuleWithStep();
+        step.Set("text", "abc");
+        using var session = TestEditor.Open(rule);
+        var text = CellAddress.OfSlot(step.Id, "text");
+
+        session.Select(Selection.At(CaretPosition.At(text, 1)));
+
+        session.Apply(KeyRouter.For(EditorKey.SelectAll));
+        Assert.Equal(text, session.Selection.Anchor.Address);
+        Assert.Equal(text, session.Selection.Caret.Address);
+        Assert.True(session.Selection.HasText);
+
+        session.Apply(KeyRouter.For(EditorKey.SelectAll));
+        Assert.Equal(CellAddress.OfSlot(step.Id, "index"), session.Selection.Anchor.Address);
+        Assert.Equal(0, session.Selection.Anchor.Offset);
+        Assert.Equal(step.Id, session.Selection.Caret.Address.Owner);
+        Assert.False(session.Selection.IsSingleCell);
+
+        session.Apply(KeyRouter.For(EditorKey.SelectAll));
+        Assert.Equal(new CellAddress(rule.Id), session.Selection.Anchor.Address);
+        Assert.Equal(0, session.Selection.Anchor.Offset);
+        Assert.Equal(new CellAddress(rule.Id), session.Selection.Caret.Address);
+        Assert.Equal(1, session.Selection.Caret.Offset);
+    }
+
+    [Fact]
+    public void SelectAllAtTheDocumentChangesNothing()
+    {
+        var (rule, _, _) = TestEditor.RuleWithStep();
+        using var session = TestEditor.Open(rule);
+        var press = KeyRouter.For(EditorKey.SelectAll);
+
+        session.Apply(press);
+        session.Apply(press);
+        session.Apply(press);
+
+        var atDocument = session.Selection;
+        var result = session.Apply(press);
+
+        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
+        Assert.Equal(atDocument.Anchor.Address, session.Selection.Anchor.Address);
+        Assert.Equal(atDocument.Anchor.Offset, session.Selection.Anchor.Offset);
+        Assert.Equal(atDocument.Caret.Address, session.Selection.Caret.Address);
+        Assert.Equal(atDocument.Caret.Offset, session.Selection.Caret.Offset);
+    }
+
+    [Fact]
+    public void SelectAllInAKeywordSelectsTheNode()
     {
         var rule = TestEditor.BareRule();
         using var session = TestEditor.Open(rule);
@@ -63,11 +112,13 @@ public sealed class SelectAllActionTests
         var result = session.Apply(KeyRouter.For(EditorKey.SelectAll));
 
         Assert.Equal(EditOutcome.Unchanged, result.Outcome);
-        Assert.True(session.Selection.IsEmpty);
+        Assert.Equal(new CellAddress(rule.Id), session.Selection.Anchor.Address);
+        Assert.Equal(0, session.Selection.Anchor.Offset);
+        Assert.False(session.Selection.IsEmpty);
     }
 
     [Fact]
-    public void SelectAllInAnEmptyPropertyChangesNothing()
+    public void SelectAllInAnEmptyPropertySelectsTheNode()
     {
         var step = TestEditor.BareStep();
         using var session = TestEditor.Open(step);
@@ -75,14 +126,15 @@ public sealed class SelectAllActionTests
 
         session.Select(Selection.At(CaretPosition.At(text, 0)));
 
-        var result = session.Apply(KeyRouter.For(EditorKey.SelectAll));
+        session.Apply(KeyRouter.For(EditorKey.SelectAll));
 
-        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
-        Assert.True(session.Selection.IsEmpty);
+        Assert.Equal(CellAddress.OfSlot(step.Id, "index"), session.Selection.Anchor.Address);
+        Assert.Equal(0, session.Selection.Anchor.Offset);
+        Assert.False(session.Selection.IsSingleCell);
     }
 
     [Fact]
-    public void SelectAllInAnEmptySlotChangesNothing()
+    public void SelectAllInAnEmptySlotSelectsTheNodeThatOwnsIt()
     {
         var (_, body) = TestEditor.RuleWithBody();
         using var session = TestEditor.Open(body);
@@ -90,10 +142,12 @@ public sealed class SelectAllActionTests
         // The body's steps slot has no children, so it projects as one empty collection cell.
         session.Select(Selection.At(CellAddress.OfSlot(body.Id, "steps")));
 
-        var result = session.Apply(KeyRouter.For(EditorKey.SelectAll));
+        session.Apply(KeyRouter.For(EditorKey.SelectAll));
 
-        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
-        Assert.True(session.Selection.IsEmpty);
+        Assert.Equal(CellAddress.OfSlot(body.Id, "steps"), session.Selection.Anchor.Address);
+        Assert.Equal(0, session.Selection.Anchor.Offset);
+        Assert.Equal(CellAddress.OfSlot(body.Id, "notes"), session.Selection.Caret.Address);
+        Assert.False(session.Selection.IsSingleCell);
     }
 
     [Fact]
