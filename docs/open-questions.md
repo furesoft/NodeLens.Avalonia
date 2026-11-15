@@ -96,6 +96,34 @@ breaking, and the editing of a broken value, may go.
 | 41 | Is the wrap width a per-host view setting, a per-document setting, or a per-cell notation setting? | Leaning | Per host in M1, published as `EditorSession.WrapWidth`. Per document once settings exist, per cell only if a notation asks for a fixed narrow cell. | M3 |
 | 42 | Should a long value be soft-wrapped at all, or scrolled horizontally like a code editor? | Open | Soft-wrap for text, horizontal scroll for a notation that is a grid. Wrapping a table row would destroy the alignment that makes the table readable. | M5 |
 
+## Base language
+
+A base language is the logic a DSL author writes *inside* the editor instead of next to it -
+MPS has Java for this, and [csharp.md](architecture/csharp.md) plans the .NET equivalent. These
+questions are about how far that goes, not whether to do it.
+
+| # | Question | State | Answer | Decide by |
+|---|----------|-------|--------|-----------|
+| 43 | Does a C# expression concept extend the matching `Expressions` concept, or is it a sibling under a new shared parent? | Leaning | Extends it. A slot already declared over `Expressions.Expression` then accepts C# expressions with no language change and no migration of existing models, which is the whole reason the small language shipped first. | M6 |
+| 44 | Is a behaviour class generated per concept, or per concept and DSL? | Leaning | Per concept. A concept key is unique within a project, so the generated class name is unique and the host's hand-written partial never has to disambiguate. | M6 |
+| 45 | Should the editor ever know C# specifically? | Decided by design | No. Everything C#-specific lives in the language package and its generator, so a host that ships its own base language replaces the package without touching the core. | - |
+| 46 | Does the framework ever compile the projected logic? | Open | No. It generates source and the host's build compiles it, which is also what keeps the roadmap's "no user-defined executable logic" exclusion meaningful - see [csharp.md](architecture/csharp.md). Running a DSL inside the editor is the M4 interpreter, not this. | M6 |
+| 47 | How much of C# is enough? | Open | Expressions plus statements plus methods and classes, with query syntax, `async`, attributes and generic declaration left out. The list is in [csharp.md](architecture/csharp.md) and should be revised by what the pilot DSL actually needs, not by grammar order. | M6 |
+
+## Text import
+
+Import is text becoming a model, once, from a string the host supplies
+([import.md](architecture/import.md)). It is the only place a parser exists, which is why the
+questions are about scope rather than about whether parsing is acceptable.
+
+| # | Question | State | Answer | Decide by |
+|---|----------|-------|--------|-----------|
+| 48 | Can import replace an existing document, or only append? | Leaning | Append only. Replacing is "close the document and open a new one", which is a shell decision, and an import that silently swapped a model would be indistinguishable from data loss. | M6 |
+| 49 | What happens to a construct the language does not model? | Leaning | It is kept as raw text and reported as a warning, because invariant 8 (never drop data on load) applies to import too - an editor that quietly discards a CDATA section is an editor that rewrites the user's file. | M6 |
+| 50 | Should a JSON number be a `double`, an `int`, or its source text? | Leaning | Its source text. `1`, `1.0` and `1e3` are three different files to a consumer, and a numeric property would rewrite all three on the next generation. | M6 |
+| 51 | Is an XML document with a DTD or external entity importable? | Decided by design | No, refused with a diagnostic. An editor that dereferences a `SYSTEM` identifier on import is an XXE vulnerability in every host that embeds it, so this is not a limitation to lift later. | - |
+| 52 | Do import errors appear in the problems panel? | Open | Not as model diagnostics: a syntax error has no node, which is exactly the problem. The result carries its own line/column records and the host decides where to show them. | M6 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
