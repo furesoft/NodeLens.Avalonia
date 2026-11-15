@@ -99,6 +99,7 @@ public sealed class ProjectionalEditorControl : Control
     {
         TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, _palette.BrushOf(TextStyleKind.Default));
         _completion = new CompletionPresenter(TextMeasure, _listPalette);
+        Clipboard = new AvaloniaClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
 
         Background = Brushes.White;
         HighlightBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x26, 0x8B, 0xD2));
@@ -221,6 +222,26 @@ public sealed class ProjectionalEditorControl : Control
     /// <summary>The colour of the caret bar.</summary>
     public IBrush CaretBrush { get; set; }
 
+    /// <summary>The clipboard that copy, cut and paste read and write.</summary>
+    /// <remarks>
+    /// <para>
+    /// Defaults to the window's platform clipboard, cached by <see cref="AvaloniaClipboard"/> because a
+    /// key press is synchronous and a platform clipboard is not. A host that wants a private clipboard, or
+    /// that already has a clipboard service, assigns its own <see cref="ITextClipboard"/>.
+    /// </para>
+    /// <para>
+    /// The cache is refreshed exactly where the platform may have changed since the last look: on gaining
+    /// the focus, on a click into the control (a returning window keeps the logical focus, so focus alone
+    /// would miss a copy made elsewhere), and when the context menu opens, whose entries run with no chance
+    /// to await. The paste key refreshes once more immediately before applying, so no path is stale.
+    /// </para>
+    /// <para>
+    /// A session takes its clipboard when it is created, so assigning this after
+    /// <see cref="OpenSession"/> affects the next session rather than the current one.
+    /// </para>
+    /// </remarks>
+    public ITextClipboard Clipboard { get; set; }
+
     /// <summary>The horizontal scroll offset, in layout units.</summary>
     public double OffsetX => _offsetX;
 
@@ -233,7 +254,7 @@ public sealed class ProjectionalEditorControl : Control
     /// <returns>The session, which the caller owns and must dispose.</returns>
     public EditorSession OpenSession(Node document, NotationRegistry notations)
     {
-        var session = new EditorSession(document, notations, TextMeasure);
+        var session = new EditorSession(document, notations, TextMeasure, clipboard: Clipboard);
         Session = session;
 
         return session;
@@ -417,6 +438,20 @@ public sealed class ProjectionalEditorControl : Control
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Focus is one of the two moments the platform clipboard is read (the other is just before a paste),
+    /// because that is when a value copied in another window is most likely to be wanted next.
+    /// </remarks>
+    protected override void OnGotFocus(FocusChangedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnGotFocus(e);
+
+        _ = Clipboard.RefreshAsync();
+    }
+
+    /// <inheritdoc />
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -463,6 +498,10 @@ public sealed class ProjectionalEditorControl : Control
         }
 
         Focus();
+
+        // A click into a window that is already focused changes no focus, so this is the second place the
+        // clipboard is read - otherwise a copy made in another window would never be noticed.
+        _ = Clipboard.RefreshAsync();
 
         // The list overlays the document, so it gets the first refusal: a click on a proposal must not
         // also move the caret into the slot the proposal belongs to.
@@ -563,7 +602,19 @@ public sealed class ProjectionalEditorControl : Control
             return;
         }
 
-        AfterEdit(session.Apply(KeyRouter.For(session, key)));
+        var action = KeyRouter.For(session, key);
+
+        if (key == EditorKey.Paste)
+        {
+            // The platform clipboard may have been filled by another application while this control kept
+            // the focus, so the read has to happen before the edit - and a read is asynchronous.
+            _ = PasteAsync(session, action);
+        }
+        else
+        {
+            AfterEdit(session.Apply(action));
+        }
+
         e.Handled = true;
     }
 
@@ -608,6 +659,20 @@ public sealed class ProjectionalEditorControl : Control
         return true;
     }
 
+    /// <summary>Waits for the platform clipboard and then pastes what it holds.</summary>
+    /// <remarks>
+    /// The wait is the cost of a clipboard shared with other processes: the text this application last saw
+    /// is a cache, and a copy made in another window would otherwise be pasted one press late. The edit is
+    /// applied when the read answers, so it lands where the caret is then - which is the caret the user is
+    /// looking at, because the control had the focus the whole time.
+    /// </remarks>
+    private async Task PasteAsync(EditorSession session, EditAction action)
+    {
+        await Clipboard.RefreshAsync().ConfigureAwait(true);
+
+        AfterEdit(session.Apply(action));
+    }
+
     private void AfterEdit(EditResult result)
     {
         if (result.Changed)
@@ -629,6 +694,10 @@ public sealed class ProjectionalEditorControl : Control
     private void OpenContextMenu(EditorSession session, PointerPressedEventArgs e)
     {
         Focus();
+
+        // The entries are built and run synchronously, so the paste entry needs the cache current before
+        // the menu exists rather than when it is clicked.
+        _ = Clipboard.RefreshAsync();
 
         if (CaretAt(e) is { } position)
         {

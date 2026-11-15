@@ -78,6 +78,24 @@ public sealed class EditorKeyMapTests
         Assert.Null(EditorKeyMap.Map(Key.Home, modifiers));
     }
 
+    [Theory]
+    [InlineData(Key.A, EditorKey.SelectAll)]
+    [InlineData(Key.C, EditorKey.Copy)]
+    [InlineData(Key.X, EditorKey.Cut)]
+    [InlineData(Key.V, EditorKey.Paste)]
+    public void ControlReachesTheClipboardGestures(Key key, EditorKey expected)
+    {
+        // The third exception to "Control belongs to the host": every platform spells these four the
+        // same way, and a clipboard reachable only through a menu is a clipboard nobody finds.
+        Assert.Equal(expected, EditorKeyMap.Map(key, KeyModifiers.Control));
+        Assert.Equal(expected, EditorKeyMap.Map(key, KeyModifiers.Control | KeyModifiers.Shift));
+
+        // A bare letter is text input, so it never reaches the editor as a key.
+        Assert.Null(EditorKeyMap.Map(key, KeyModifiers.None));
+        Assert.Null(EditorKeyMap.Map(key, KeyModifiers.Alt));
+        Assert.Null(EditorKeyMap.Map(key, KeyModifiers.Meta));
+    }
+
     [Fact]
     public void AltReachesOnlyTheVerticalArrows()
     {
