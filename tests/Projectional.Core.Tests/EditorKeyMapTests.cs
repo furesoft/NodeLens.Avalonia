@@ -1,0 +1,66 @@
+using Avalonia.Input;
+
+using Projectional.Avalonia;
+using Projectional.Editing;
+
+using Xunit;
+
+namespace Projectional.Core.Tests;
+
+/// <summary>
+/// The translation from window keys to editor keys, which is the only part of input handling that has
+/// no window in it.
+/// </summary>
+public sealed class EditorKeyMapTests
+{
+    [Theory]
+    [InlineData(Key.Left, EditorKey.Left)]
+    [InlineData(Key.Right, EditorKey.Right)]
+    [InlineData(Key.Up, EditorKey.Up)]
+    [InlineData(Key.Down, EditorKey.Down)]
+    [InlineData(Key.Home, EditorKey.Home)]
+    [InlineData(Key.End, EditorKey.End)]
+    [InlineData(Key.Enter, EditorKey.Enter)]
+    [InlineData(Key.Back, EditorKey.Backspace)]
+    [InlineData(Key.Delete, EditorKey.Delete)]
+    public void NavigationKeysMapToOneEditorKey(Key key, EditorKey expected)
+    {
+        Assert.Equal(expected, EditorKeyMap.Map(key, KeyModifiers.None));
+    }
+
+    [Fact]
+    public void TabMapsToTabAndShiftTabToShiftTab()
+    {
+        Assert.Equal(EditorKey.Tab, EditorKeyMap.Map(Key.Tab, KeyModifiers.None));
+        Assert.Equal(EditorKey.ShiftTab, EditorKeyMap.Map(Key.Tab, KeyModifiers.Shift));
+    }
+
+    [Fact]
+    public void ShiftDoesNotChangeTheNavigationKeys()
+    {
+        Assert.Equal(EditorKey.Left, EditorKeyMap.Map(Key.Left, KeyModifiers.Shift));
+        Assert.Equal(EditorKey.Delete, EditorKeyMap.Map(Key.Delete, KeyModifiers.Shift));
+    }
+
+    [Theory]
+    [InlineData(KeyModifiers.Control)]
+    [InlineData(KeyModifiers.Alt)]
+    [InlineData(KeyModifiers.Meta)]
+    [InlineData(KeyModifiers.Control | KeyModifiers.Shift)]
+    public void HostModifiersLeaveTheKeyToTheHost(KeyModifiers modifiers)
+    {
+        Assert.Null(EditorKeyMap.Map(Key.Left, modifiers));
+        Assert.Null(EditorKeyMap.Map(Key.Back, modifiers));
+    }
+
+    [Theory]
+    [InlineData(Key.A)]
+    [InlineData(Key.Space)]
+    [InlineData(Key.F5)]
+    [InlineData(Key.Escape)]
+    public void KeysTheEditorDoesNotRouteMapToNothing(Key key)
+    {
+        // Text arrives as text input, not as key events, so a letter is not an editor key.
+        Assert.Null(EditorKeyMap.Map(key, KeyModifiers.None));
+    }
+}

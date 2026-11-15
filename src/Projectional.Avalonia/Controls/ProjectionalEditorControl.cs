@@ -22,6 +22,12 @@ namespace Projectional.Avalonia;
 /// device pixels, and asking the frame what to paint.
 /// </para>
 /// <para>
+/// Input is split the same way. A pointer event becomes a caret with <see cref="HitTest"/>, a key
+/// becomes an edit with <see cref="EditorKeyMap"/> and <see cref="KeyRouter"/>, and both are applied
+/// to the session as the actions they are. The control never edits the model itself, so every change
+/// it makes is undoable and repeatable in exactly the way the editing layer's tests describe.
+/// </para>
+/// <para>
 /// It draws the whole frame itself rather than materialising a child control per cell. A projectional
 /// model has thousands of cells and a pane of text is one thing to draw, so the control is a single
 /// surface: no control tree, no per-cell measuring, no per-cell invalidation. Virtualization is the
@@ -47,6 +53,12 @@ public sealed class ProjectionalEditorControl : Control
 
     private double _offsetX;
     private double _offsetY;
+
+    // Where the press that started a drag landed. Held here rather than in the session because it is
+    // the mouse's memory of the gesture, not the document's.
+    private CaretPosition? _dragAnchor;
+
+    private bool _dragging;
 
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
@@ -282,6 +294,195 @@ public sealed class ProjectionalEditorControl : Control
         ScrollTo(_offsetX - (e.Delta.X * step), _offsetY - (e.Delta.Y * step));
 
         e.Handled = true;
+    }
+
+    /// <inheritdoc />
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnPointerPressed(e);
+
+        var session = Session;
+
+        if (session is null || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        Focus();
+
+        if (CaretAt(e) is not { } position)
+        {
+            return;
+        }
+
+        if ((e.KeyModifiers & KeyModifiers.Shift) != 0)
+        {
+            // Shift extends from the end that is already anchored; a plain click would have dropped it.
+            session.Select(new Selection(session.Selection.Anchor, position));
+        }
+        else
+        {
+            session.Select(Selection.At(position));
+
+            _dragAnchor = position;
+            _dragging = true;
+
+            e.Pointer.Capture(this);
+        }
+
+        Show();
+        e.Handled = true;
+    }
+
+    /// <inheritdoc />
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnPointerMoved(e);
+
+        var session = Session;
+
+        if (session is null || !_dragging || _dragAnchor is not { } anchor)
+        {
+            return;
+        }
+
+        if (CaretAt(e) is not { } position || position.Equals(session.Selection.Caret))
+        {
+            return;
+        }
+
+        session.Select(new Selection(anchor, position));
+        Show();
+    }
+
+    /// <inheritdoc />
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnPointerReleased(e);
+
+        if (!_dragging)
+        {
+            return;
+        }
+
+        _dragging = false;
+        _dragAnchor = null;
+
+        e.Pointer.Capture(null);
+    }
+
+    /// <inheritdoc />
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnKeyDown(e);
+
+        var session = Session;
+
+        if (session is null)
+        {
+            return;
+        }
+
+        if (Shortcut(session, e))
+        {
+            e.Handled = true;
+
+            return;
+        }
+
+        if (EditorKeyMap.Map(e.Key, e.KeyModifiers) is not { } key)
+        {
+            return;
+        }
+
+        AfterEdit(session.Apply(KeyRouter.For(key)));
+        e.Handled = true;
+    }
+
+    /// <inheritdoc />
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+
+        base.OnTextInput(e);
+
+        var session = Session;
+
+        if (session is null || string.IsNullOrEmpty(e.Text))
+        {
+            return;
+        }
+
+        var result = session.Apply(KeyRouter.Type(e.Text));
+
+        // A refused character is left unconsumed, so a host can react to it - a beep, a status line.
+        e.Handled = result.Outcome != EditOutcome.Rejected;
+
+        AfterEdit(result);
+    }
+
+    private bool Shortcut(EditorSession session, KeyEventArgs e)
+    {
+        if ((e.KeyModifiers & KeyModifiers.Control) == 0 || e.Key is not (Key.Z or Key.Y))
+        {
+            return false;
+        }
+
+        var undo = e.Key == Key.Z && (e.KeyModifiers & KeyModifiers.Shift) == 0;
+
+        if (!(undo ? session.Undo() : session.Redo()))
+        {
+            return false;
+        }
+
+        Show();
+
+        return true;
+    }
+
+    private void AfterEdit(EditResult result)
+    {
+        if (result.Changed)
+        {
+            // The document grew or shrank, so the space it wants changed as well.
+            InvalidateMeasure();
+        }
+
+        Show();
+    }
+
+    private void Show()
+    {
+        ScrollToCaret();
+        InvalidateVisual();
+    }
+
+    private CaretPosition? CaretAt(PointerEventArgs e)
+    {
+        var session = Session;
+
+        if (session is null)
+        {
+            return null;
+        }
+
+        var point = e.GetPosition(this);
+
+        // Pointer coordinates are device pixels; the layout's are its own units, shifted by the scroll.
+        return HitTest.Caret(
+            session.Tree,
+            session.Layout,
+            point.X + _offsetX,
+            point.Y + _offsetY,
+            session.Measure);
     }
 
     private LayoutSize ViewportSize => new(Bounds.Width, Bounds.Height);
