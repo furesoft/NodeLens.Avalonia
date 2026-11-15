@@ -251,10 +251,15 @@ public sealed class ProjectionalEditorControl : Control
     /// <summary>Opens <paramref name="document"/> for editing and makes it what the control shows.</summary>
     /// <param name="document">The root of the model to edit.</param>
     /// <param name="notations">The notation that projects the document's concepts.</param>
+    /// <param name="typing">
+    /// What the language says about text typed into an empty slot, so that the first keystroke can create
+    /// the node it belongs to. Omitting it leaves such a keystroke ignored, which is the behaviour a
+    /// language that declares no rules keeps.
+    /// </param>
     /// <returns>The session, which the caller owns and must dispose.</returns>
-    public EditorSession OpenSession(Node document, NotationRegistry notations)
+    public EditorSession OpenSession(Node document, NotationRegistry notations, ITypingRules? typing = null)
     {
-        var session = new EditorSession(document, notations, TextMeasure, clipboard: Clipboard);
+        var session = new EditorSession(document, notations, TextMeasure, clipboard: Clipboard, typing: typing);
         Session = session;
 
         return session;

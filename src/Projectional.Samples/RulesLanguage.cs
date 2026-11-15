@@ -52,6 +52,18 @@ public static class RulesLanguage
     public static Project NewProject() => new(Concepts);
 
     /// <summary>
+    /// What this language says about text typed into an empty slot.
+    /// </summary>
+    /// <remarks>
+    /// Borrowed from the expression sub-language rather than declared again, for the same reason the
+    /// concepts are: the rules that decide a digit is an integer literal belong to whoever declares
+    /// integer literals. This language adds none of its own, because the only slots it can leave empty are
+    /// its ruleset's rule list - a list, not one empty slot - and every condition is declared over an
+    /// expression.
+    /// </remarks>
+    public static ITypingRules TypingRules => ExpressionsLanguage.TypingRules;
+
+    /// <summary>
     /// What decorates a model of this language beyond what its notation already says.
     /// </summary>
     /// <remarks>

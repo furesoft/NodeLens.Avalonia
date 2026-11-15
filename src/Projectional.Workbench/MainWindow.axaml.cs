@@ -117,14 +117,15 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), emphasis: RulesLanguage.Emphasis);
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules);
     }
 
     private void OpenDocument(
         Model model,
         NotationRegistry notations,
         string? filePath = null,
-        ICellEmphasis? emphasis = null)
+        ICellEmphasis? emphasis = null,
+        ITypingRules? typing = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -134,7 +135,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         var editor = new ProjectionalEditorControl();
-        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis);
+        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
 
@@ -349,7 +350,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private void OnNewDocument(object? sender, RoutedEventArgs e)
     {
         _error = null;
-        OpenDocument(PayrollSample.NewEmptyModel(), RulesLanguage.CreateNotations(RulesLanguage.Concepts));
+        OpenDocument(PayrollSample.NewEmptyModel(), RulesLanguage.CreateNotations(RulesLanguage.Concepts), typing: RulesLanguage.TypingRules);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)
@@ -393,7 +394,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), filePath: path, emphasis: RulesLanguage.Emphasis);
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), filePath: path, emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules);
     }
 
     private async void OnSaveDocument(object? sender, RoutedEventArgs e)
