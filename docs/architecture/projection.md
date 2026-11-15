@@ -290,6 +290,52 @@ These are called out because they are the parts that get deferred and then hurt:
 | **Bidirectional text** | out of scope before 1.0, but caret math must not assume left-to-right only. |
 | **Fonts** | fallback chains per language for symbol keywords (e.g. arrows, `≤`). |
 
+## Styling
+
+Highlighting is derived, like everything else. The model stores no colour, the notation
+stores no colour, and a saved model cannot carry formatting that disagrees with the
+concept that produced it. What travels is *meaning*, and meaning is decided at projection
+time from what a cell already is:
+
+| Layer | Decides | Type |
+| --- | --- | --- |
+| `Projectional.Projection` | what a cell's text *is* | `TextStyleKind` + `ICellStyler` |
+| `Projectional.Editing` | which run carries which kind | `TextRun.Style` |
+| `Projectional.Avalonia` | what that kind *looks like* | `SyntaxPalette` |
+
+`CellStyler.Default` reads the cell and nothing else: a `ConstantCell` is a keyword or
+punctuation as the notation declared it, an `int` or `date` property is a number, a
+`string` property is text, a resolved reference is a reference and an unresolved one is
+unresolved, and an empty slot or a concept without a notation has its own kind. It never
+reaches back into the node, because a style that consulted the model could describe a
+value the layout never measured.
+
+`ICellStyler` is an interface rather than a fixed switch for two reasons. Classification
+is a judgement about *the language* - a DSL may want its operators in their own colour, or
+its type names - and the host is the only one who knows; and a styler is cheap to replace
+because it is pure. **Purity is a requirement, not a nicety**: layout measures a cell's
+text before the frame is built, so a styler that changed its answer between two calls
+would produce a frame whose colours describe different text than its bounds.
+
+The palette varies **the brush only, never the font**. Layout runs first and its bounds are
+what the caret, the hit test and the selection rectangles are computed from; a bold keyword
+would be wider than the box the layout handed it and every one of those would sit a few
+pixels off. Colour is the one property of text that changes no number, so colour is all a
+palette may change.
+
+Two consequences worth knowing:
+
+- **Swapping a palette is a repaint, not a re-projection.** The model, the tree, the layout
+  and every bound in it stay exactly as they were. This is the whole point of separating
+  meaning from appearance.
+- **Shaping is cached per `(text, brush)`.** Measuring shapes at the default brush, so a
+  `Default` run is painted from text that has already been shaped; the control points its
+  measure at the palette's default brush to keep it that way, and only genuinely coloured
+  runs pay for a second shape.
+
+A palette that omits a kind falls back to `Default` rather than throwing, which makes a
+partial palette usable: a host that wants its own keyword colour says just that.
+
 ## Incremental invalidation
 
 On a change event:

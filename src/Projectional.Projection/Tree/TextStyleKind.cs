@@ -5,9 +5,9 @@ namespace Projectional.Projection;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The vocabulary stops at meaning. A cell is an <em>identifier</em>, never "green"; a theme decides what
-/// an identifier looks like, and the same document therefore reads correctly on a light background and
-/// on a dark one without the model or the notation knowing that either exists.
+/// The vocabulary stops at meaning. A cell is an <em>identifier</em>, never "green"; the host's palette
+/// decides what an identifier looks like, and the same document therefore reads correctly on a light
+/// background and on a dark one without the model or the notation knowing that either exists.
 /// </para>
 /// <para>
 /// Highlighting is derived from the projection, not stored next to the text. A keyword is a keyword
@@ -27,7 +27,15 @@ public enum TextStyleKind
     /// <summary>Punctuation that only groups or separates, such as <c>{</c>, <c>(</c> or <c>;</c>.</summary>
     Punctuation,
 
-    /// <summary>A name the reader or the language chose: a string value, a symbol such as <c>+</c>.</summary>
+    /// <summary>
+    /// A name, such as a symbol like <c>+</c> or a word the language defines elsewhere.
+    /// </summary>
+    /// <remarks>
+    /// The built-in <see cref="CellStyler"/> never picks this, because nothing a cell exposes says "this
+    /// is a name": a stored string is <see cref="Text"/>, a number is <see cref="Number"/>, and an
+    /// enumeration symbol is one of a closed set of words, which reads as <see cref="Keyword"/>. It is
+    /// here for the host that does know, and for the palettes that are expected to be complete.
+    /// </remarks>
     Identifier,
 
     /// <summary>A literal numeric value, including dates.</summary>
