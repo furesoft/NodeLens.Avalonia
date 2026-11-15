@@ -29,6 +29,12 @@ namespace Projectional.Expressions;
 /// slot with the first concrete concept below it - <see cref="ExpressionsConceptKeys.IntLiteral"/>,
 /// which is the one a user is most likely to want.
 /// </para>
+/// <para>
+/// The three literal concepts are declared with <c>isOfferedInCompletion: false</c>. A literal is
+/// something a user creates to type into, not something they pick out of a menu of eight, so listing
+/// them only pushes the concepts that are worth choosing down. They stay reachable exactly as before:
+/// Enter in an empty slot still materializes the integer literal.
+/// </para>
 /// </remarks>
 public static class ExpressionsLanguage
 {
@@ -65,17 +71,20 @@ public static class ExpressionsLanguage
         new ConceptDeclaration(
             ExpressionsConceptKeys.IntLiteral,
             [new PropertySlot("value", PropertyType.Integer)],
-            [ExpressionsConceptKeys.Expression]),
+            [ExpressionsConceptKeys.Expression],
+            isOfferedInCompletion: false),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.BoolLiteral,
             [new PropertySlot("value", PropertyType.Boolean)],
-            [ExpressionsConceptKeys.Expression]),
+            [ExpressionsConceptKeys.Expression],
+            isOfferedInCompletion: false),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.StringLiteral,
             [new PropertySlot("value", PropertyType.String)],
-            [ExpressionsConceptKeys.Expression]),
+            [ExpressionsConceptKeys.Expression],
+            isOfferedInCompletion: false),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.Name,
