@@ -7,6 +7,8 @@
   <DockPanel>
     <Menu DockPanel.Dock="Top">
       <MenuItem Header="_File">
+        <MenuItem Header="_Close document" HotKey="Ctrl+W" Click="OnCloseDocument" />
+        <Separator />
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
       <MenuItem Header="_View">
@@ -19,6 +21,14 @@
       <TextBlock x:Name="StatusText" FontSize="12" />
     </Border>
 
-    <TabControl x:Name="Documents" Padding="0" />
+    <TabControl x:Name="Documents" Padding="0" FontSize="14">
+      <TabControl.Styles>
+        <Style Selector="TabItem">
+          <Setter Property="FontSize" Value="14" />
+          <Setter Property="Padding" Value="12,4" />
+          <Setter Property="MinHeight" Value="28" />
+        </Style>
+      </TabControl.Styles>
+    </TabControl>
   </DockPanel>
 </Window>

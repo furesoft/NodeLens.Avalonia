@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Projection;
 using Projectional.Workbench;
 using Xunit;
 
@@ -30,7 +31,7 @@ public sealed class DocumentSetTests
         using var tab = OpenTab();
         documents.Add(tab);
 
-        using var second = new DocumentTab(tab.Model, TestNotations.Registry);
+        using var second = new DocumentTab(tab.Model, TestNotations.Registry, MonospaceTextMeasure.Instance);
 
         Assert.Throws<InvalidOperationException>(() => documents.Add(second));
         Assert.Equal(1, documents.Count);
@@ -144,6 +145,6 @@ public sealed class DocumentSetTests
         var rule = model.NewNode(TestLanguage.Rule);
         model.AddRoot(rule);
 
-        return new DocumentTab(model, TestNotations.Registry);
+        return new DocumentTab(model, TestNotations.Registry, MonospaceTextMeasure.Instance);
     }
 }

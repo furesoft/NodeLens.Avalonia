@@ -37,17 +37,22 @@ internal sealed class DocumentTab : IDisposable
     /// <summary>Opens <paramref name="model"/> for editing in a new tab.</summary>
     /// <param name="model">The model to edit; it must have a root.</param>
     /// <param name="notations">The notation that projects the model's concepts.</param>
+    /// <param name="measure">
+    /// How text is measured. There is no default on purpose: the layout is expressed in the measure's
+    /// units, so a tab opened with a different measure than the one its editor paints with would put
+    /// every cell in the wrong place. A host passes its editor's <c>TextMeasure</c>.
+    /// </param>
     /// <param name="filePath">The file the model was read from, or <see langword="null"/> if it is new.</param>
-    /// <param name="measure">How text is measured; monospace when omitted.</param>
     /// <exception cref="InvalidOperationException">The model has no root to edit.</exception>
     internal DocumentTab(
         Model model,
         NotationRegistry notations,
-        string? filePath = null,
-        ITextMeasure? measure = null)
+        ITextMeasure measure,
+        string? filePath = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
+        ArgumentNullException.ThrowIfNull(measure);
 
         if (model.Roots.Count == 0)
         {

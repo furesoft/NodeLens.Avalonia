@@ -4,7 +4,6 @@ using Avalonia.Styling;
 
 using Projectional.Avalonia;
 using Projectional.Core;
-using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Samples;
 
@@ -26,13 +25,19 @@ namespace Projectional.Workbench;
 /// whatever is still open. That rule is the one hosts get wrong most often, so the shell demonstrates
 /// it rather than describing it.
 /// </para>
+/// <para>
+/// Each tab carries its own editor control rather than one control shared by all of them, because a
+/// control draws the caret, the selection and the scroll offset of the session it shows; a shared
+/// control would have to be reset on every switch and would forget where the user was reading.
+/// </para>
 /// </remarks>
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow : Window, IDisposable
 {
-    private readonly ProjectionalEditorControl _editor = new();
+    private readonly DocumentSet _documents = new();
+    private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
-    private EditorSession? _session;
+    private bool _disposed;
 
     /// <summary>Creates the window and opens the sample document in it.</summary>
     public MainWindow()
@@ -42,38 +47,124 @@ public sealed partial class MainWindow : Window
         ApplyTheme(_theme);
         OpenSample();
 
-        Opened += (_, _) => _editor.Focus();
+        Documents.SelectionChanged += OnSelectionChanged;
+        Opened += (_, _) => FocusActiveDocument();
     }
 
     /// <inheritdoc />
     protected override void OnClosed(EventArgs e)
     {
-        // The session, not the control, owns the undo history, so the window is what closes it.
-        _session?.Dispose();
-        _session = null;
+        Dispose();
 
         base.OnClosed(e);
+    }
+
+    /// <summary>Closes every open document and disposes its session.</summary>
+    /// <remarks>
+    /// The session, not the control, owns the undo history, so the window disposes the sessions of the
+    /// documents still open when it closes. It is idempotent because a host that embeds the window may
+    /// dispose it explicitly as well as closing it.
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        _documents.Dispose();
+        _tabs.Clear();
     }
 
     private void OpenSample()
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(
-            model.Name ?? "Sample",
-            model.Roots[0],
-            RulesLanguage.CreateNotations(model.Concepts));
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts));
     }
 
-    private void OpenDocument(string title, Node root, NotationRegistry notations)
+    private void OpenDocument(Model model, NotationRegistry notations, string? filePath = null)
     {
-        _session = _editor.OpenSession(root, notations);
+        if (_documents.Find(model) is { } alreadyOpen)
+        {
+            Select(alreadyOpen);
 
-        Documents.Items.Add(new TabItem { Header = title, Content = _editor });
-        Documents.SelectedIndex = Documents.ItemCount - 1;
+            return;
+        }
+
+        var editor = new ProjectionalEditorControl();
+        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath);
+        editor.Session = document.Session;
+        ApplyThemeTo(editor, _theme);
+
+        // The header has to say "modified" without the user saving to find out, so the model itself
+        // is the notification: an edit anywhere in it changes the dirty state.
+        model.Changed += OnDocumentChanged;
+
+        var tab = new TabItem { Header = document.Title, Content = editor };
+        _documents.Add(document);
+        _tabs.Add(document, tab);
+
+        Documents.Items.Add(tab);
+        Documents.SelectedItem = tab;
 
         UpdateStatus();
     }
+
+    private void CloseActiveDocument()
+    {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        document.Model.Changed -= OnDocumentChanged;
+        _tabs.Remove(document, out var tab);
+        _documents.Remove(document);
+
+        if (tab is not null)
+        {
+            Documents.Items.Remove(tab);
+        }
+
+        if (_documents.Active is { } next)
+        {
+            Select(next);
+        }
+
+        UpdateStatus();
+    }
+
+    private void Select(DocumentTab document)
+    {
+        _documents.Activate(document);
+
+        if (_tabs.TryGetValue(document, out var tab))
+        {
+            Documents.SelectedItem = tab;
+        }
+    }
+
+    private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (Documents.SelectedItem is TabItem selected)
+        {
+            foreach (var (document, tab) in _tabs)
+            {
+                if (ReferenceEquals(tab, selected))
+                {
+                    _documents.Activate(document);
+                    break;
+                }
+            }
+        }
+
+        UpdateStatus();
+    }
+
+    private void OnDocumentChanged(object? sender, ModelChangedEventArgs e) => UpdateStatus();
 
     private void ApplyTheme(SyntaxTheme theme)
     {
@@ -85,18 +176,49 @@ public sealed partial class MainWindow : Window
         RequestedThemeVariant = theme.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
         Background = theme.Chrome;
 
-        // Four properties rather than one, because the control refuses to guess what surface its
-        // palette is meant for: a dark palette is only readable on a dark background.
-        _editor.Palette = theme.Palette;
-        _editor.Background = theme.Background;
-        _editor.CaretBrush = theme.Caret;
-        _editor.HighlightBrush = theme.Highlight;
+        foreach (var tab in _tabs.Values)
+        {
+            if (tab.Content is ProjectionalEditorControl editor)
+            {
+                ApplyThemeTo(editor, theme);
+            }
+        }
     }
 
-    private void UpdateStatus() =>
-        StatusText.Text = _session is null
+    private static void ApplyThemeTo(ProjectionalEditorControl editor, SyntaxTheme theme)
+    {
+        // Four properties rather than one, because the control refuses to guess what surface its
+        // palette is meant for: a dark palette is only readable on a dark background.
+        editor.Palette = theme.Palette;
+        editor.Background = theme.Background;
+        editor.CaretBrush = theme.Caret;
+        editor.HighlightBrush = theme.Highlight;
+    }
+
+    private void UpdateStatus()
+    {
+        foreach (var (document, tab) in _tabs)
+        {
+            tab.Header = document.IsDirty ? $"{document.Title} *" : document.Title;
+        }
+
+        StatusText.Text = _documents.Active is not { } active
             ? "No document open"
-            : $"type to edit | Ctrl+Z undoes | {(_theme.IsDark ? "dark" : "light")} theme";
+            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {(_theme.IsDark ? "dark" : "light")} theme";
+    }
+
+    private static string FormatFile(string? filePath) =>
+        filePath is null ? string.Empty : $" ({Path.GetFileName(filePath)})";
+
+    private void FocusActiveDocument()
+    {
+        if (_documents.Active is { } document && _tabs.TryGetValue(document, out var tab))
+        {
+            (tab.Content as ProjectionalEditorControl)?.Focus();
+        }
+    }
+
+    private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();
 
     private void OnLightTheme(object? sender, RoutedEventArgs e)
     {

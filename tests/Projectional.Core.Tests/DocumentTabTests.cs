@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Projection;
 using Projectional.Workbench;
 using Xunit;
 
@@ -122,7 +123,7 @@ public sealed class DocumentTabTests
     {
         var model = TestLanguage.NewModel();
 
-        Assert.Throws<InvalidOperationException>(() => new DocumentTab(model, TestNotations.Registry));
+        Assert.Throws<InvalidOperationException>(() => new DocumentTab(model, TestNotations.Registry, MonospaceTextMeasure.Instance));
     }
 
     [Fact]
@@ -146,5 +147,5 @@ public sealed class DocumentTabTests
         return model;
     }
 
-    private static DocumentTab OpenTab(Model model) => new(model, TestNotations.Registry);
+    private static DocumentTab OpenTab(Model model) => new(model, TestNotations.Registry, MonospaceTextMeasure.Instance);
 }
