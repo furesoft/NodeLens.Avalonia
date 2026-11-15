@@ -129,6 +129,16 @@ Properties:
 Model-to-model generators (MPS' second generator stage) are deliberately excluded
 before 1.0. They double the conceptual surface and the debugging cost.
 
+Generation is only half of the text story. The other half is import, which is the single
+place where a parser exists and the only path by which text becomes a model
+([import.md](import.md)). The two are tested as a pair: `generate(import(text))` must equal
+`text` for text the reference languages map completely, which is a property of the *text*, not
+of the model - import mints fresh node ids, so the models are never equal.
+
+Two consumers of the same template tree are planned on top of this: projected C# as a base
+language, whose generator has to parenthesise by precedence ([csharp.md](csharp.md)), and the
+JSON and XML reference languages, which exercise it in both directions.
+
 ## Interpretation
 
 An `Evaluate` aspect per concept, walking the tree:
