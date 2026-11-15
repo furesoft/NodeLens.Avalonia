@@ -46,8 +46,9 @@ and [testing.md](architecture/testing.md).
 | Editor tree + layout | cells, measure/arrange, line-based layout |
 | Editing layer | caret, edit actions, key routing, undo/redo — **delivered** |
 | Headless snapshot render | ASCII grid, used by all notation tests — **delivered** |
-| Avalonia control | rendering, scrolling, virtualization, caret, selection |
-| Input | typing, arrows, tab, enter, delete, undo/redo |
+| Avalonia control | rendering, scrolling, virtualization, caret, selection — **delivered** |
+| Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
+| Syntax highlighting | a semantic style per cell, a host-supplied theme, no colour in the model |
 | Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) — **delivered** |
 | Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) |
 

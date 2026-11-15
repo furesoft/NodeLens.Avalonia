@@ -90,7 +90,7 @@ internal static class LayoutSnapshot
         foreach (var placed in layout.Cells)
         {
             // A text cell is one line tall, so the height layout reported only ever moves it.
-            if (TextOf(placed.Cell) is not { Length: > 0 } text)
+            if (CellText.Of(placed.Cell) is not { Length: > 0 } text)
             {
                 continue;
             }
@@ -108,17 +108,4 @@ internal static class LayoutSnapshot
             grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, visible);
         }
     }
-
-    /// <summary>
-    /// What a cell shows. An empty slot draws its placeholder rather than nothing, because layout has
-    /// already reserved room for <see cref="ChildCell.EmptyText"/> and a language that shows nothing
-    /// at all leaves the reader unable to see that the slot exists.
-    /// </summary>
-    private static string TextOf(EditorCell cell) => cell switch
-    {
-        TextCell text => text.Text,
-        ChildCell { IsEmpty: true } empty => empty.EmptyText,
-        CollectionCell { IsEmpty: true } empty => empty.EmptyText,
-        _ => string.Empty,
-    };
 }
