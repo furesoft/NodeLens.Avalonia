@@ -47,6 +47,10 @@ public static class KeyRouter
         EditorKey.Delete => new DeleteTextAction(DeleteDirection.Forward),
         EditorKey.ControlSpace => new OpenCompletionAction(),
         EditorKey.Escape => new DismissCompletionAction(),
+        EditorKey.SelectAll => new SelectAllAction(),
+        EditorKey.Copy => new CopyAction(),
+        EditorKey.Cut => new CutAction(),
+        EditorKey.Paste => new PasteAction(),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown editor key."),
     };
 

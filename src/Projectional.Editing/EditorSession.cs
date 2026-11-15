@@ -47,13 +47,18 @@ public sealed class EditorSession : IDisposable
     /// <param name="choice">
     /// Which variant of each concept to draw; the default variant of everything when omitted.
     /// </param>
+    /// <param name="clipboard">
+    /// Where Copy, Cut and Paste put and take text; the session's own clipboard when omitted, which keeps
+    /// copying and pasting working in a host that has no platform clipboard.
+    /// </param>
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
     public EditorSession(
         Node document,
         NotationRegistry notations,
         ITextMeasure? measure = null,
         ICellEmphasis? emphasis = null,
-        INotationChoice? choice = null)
+        INotationChoice? choice = null,
+        ITextClipboard? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
@@ -66,6 +71,7 @@ public sealed class EditorSession : IDisposable
         _emphasis = emphasis;
         _layouter = new CellLayouter(Measure);
         Choice = choice ?? NotationChoice.Default;
+        Clipboard = clipboard ?? new InMemoryClipboard();
         _builder = new EditorTreeBuilder(notations, emphasis, Choice);
 
         Tree = _builder.Build(Document);
@@ -117,6 +123,21 @@ public sealed class EditorSession : IDisposable
     /// </para>
     /// </remarks>
     public CompletionList? Completion { get; private set; }
+
+    /// <summary>Where Copy, Cut and Paste put and take their text.</summary>
+    /// <remarks>
+    /// <para>
+    /// Never <see langword="null"/>: a session built without one gets an <see cref="InMemoryClipboard"/>,
+    /// so the clipboard gestures work in a host with no platform clipboard and in a test with no window.
+    /// Handing the same adapter to two sessions is what makes copying between two documents work, which is
+    /// a wiring decision this layer leaves to the host.
+    /// </para>
+    /// <para>
+    /// Public because a host needs it for two things: to hand the session a platform adapter, and to decide
+    /// whether Paste has anything to offer before it shows a menu entry.
+    /// </para>
+    /// </remarks>
+    public ITextClipboard Clipboard { get; }
 
     /// <summary>
     /// How wide the room a text cell may fill is, or <see langword="null"/> when it may run on.
@@ -238,16 +259,16 @@ public sealed class EditorSession : IDisposable
 
     /// <summary>Applies <paramref name="action"/> and leaves the session consistent with the result.</summary>
     /// <remarks>
-    /// The caret the action asks for is resolved against the tree the action produced, so an action may
-    /// return an address that only exists after it ran - which is exactly what adding a child needs.
-    /// An action that reports no change still gets to move the caret, because that is how the caret
-    /// moves at all.
+    /// The selection the action asks for - both ends of it - is resolved against the tree the action
+    /// produced, so an action may return an address that only exists after it ran, which is exactly what
+    /// adding a child needs. An action that reports no change still gets to move the selection, because
+    /// that is how the caret moves at all and how Select All selects anything.
     /// </remarks>
     public EditResult Apply(EditAction action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        var context = new EditContext(Document, Tree, Layout, Measure, Selection)
+        var context = new EditContext(Document, Tree, Layout, Measure, Selection, Clipboard)
         {
             Completion = action is CompletionAction ? Completion : null,
         };
@@ -272,7 +293,7 @@ public sealed class EditorSession : IDisposable
             Rebuild();
         }
 
-        MoveTo(CaretNavigation.Nearest(Tree, result.Selection.Caret));
+        Settle(result.Selection);
 
         return result;
     }
@@ -325,18 +346,20 @@ public sealed class EditorSession : IDisposable
         return true;
     }
 
-    /// <summary>Rebuilds the tree and the layout from the model, then re-resolves the caret.</summary>
+    /// <summary>Rebuilds the tree and the layout from the model, then re-resolves the selection.</summary>
     /// <remarks>
     /// For changes the session did not make - a substitution, a background transformation, a test that
-    /// wrote to the model directly. The selection is collapsed, because a selection spans cells that may
-    /// no longer be there and there is nothing better to do than keep the caret's end. An open completion
-    /// list is closed for the same reason: it names a slot of the tree that was just replaced.
+    /// wrote to the model directly. Both ends of the selection are resolved against the tree that just
+    /// appeared, so a range stays a range when the cells it named survived and collapses onto the caret
+    /// when an end was in a node that is gone; there is nothing better to do with a position that names
+    /// a cell that no longer exists. An open completion list is closed for the same reason: it names a
+    /// slot of the tree that was just replaced.
     /// </remarks>
     public void Refresh()
     {
         Completion = null;
         Rebuild();
-        MoveTo(CaretNavigation.Nearest(Tree, Selection.Caret));
+        Settle(Selection);
     }
 
     /// <summary>Stops listening to the model's changes.</summary>
@@ -348,7 +371,19 @@ public sealed class EditorSession : IDisposable
         Layout = _layouter.Layout(Tree);
     }
 
-    private void MoveTo(CaretPosition caret) => Selection = new Selection(caret, caret);
+    /// <summary>Puts the selection onto cells of the current tree, keeping a range whole.</summary>
+    /// <remarks>
+    /// Both ends are resolved, not just the caret, because the selection belongs to the action: Select All
+    /// produces a range and a range that lost its anchor on the way out of the session would be a
+    /// highlight the user never sees. Every action that reports an empty selection gets the old behaviour
+    /// unchanged - its two ends are the same position, so both resolve to the same cell.
+    /// </remarks>
+    private void Settle(Selection selection)
+    {
+        Selection = new Selection(
+            CaretNavigation.Nearest(Tree, selection.Anchor),
+            CaretNavigation.Nearest(Tree, selection.Caret));
+    }
 
     private static IEnumerable<Node> SelfAndDescendants(Node node)
     {
