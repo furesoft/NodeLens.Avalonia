@@ -20,6 +20,12 @@
       <MenuItem Header="_View">
         <MenuItem x:Name="Representations" Header="_Representation" />
         <Separator />
+        <MenuItem
+          x:Name="LineNumbersItem"
+          Header="Line _numbers"
+          ToggleType="CheckBox"
+          Click="OnToggleLineNumbers" />
+        <Separator />
         <MenuItem Header="_Light theme" Click="OnLightTheme" />
         <MenuItem Header="_Dark theme" Click="OnDarkTheme" />
       </MenuItem>

@@ -40,6 +40,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
+    private bool _showLineNumbers;
     private string? _error;
     private bool _closeConfirmed;
     private bool _disposed;
@@ -138,6 +139,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
+        editor.ShowLineNumbers = _showLineNumbers;
 
         // The header has to say "modified" without the user saving to find out, so the model itself
         // is the notification: an edit anywhere in it changes the dirty state.
@@ -263,12 +265,14 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private static void ApplyThemeTo(ProjectionalEditorControl editor, SyntaxTheme theme)
     {
-        // Four properties rather than one, because the control refuses to guess what surface its
+        // Five properties rather than one, because the control refuses to guess what surface its
         // palette is meant for: a dark palette is only readable on a dark background.
         editor.Palette = theme.Palette;
         editor.Background = theme.Background;
         editor.CaretBrush = theme.Caret;
         editor.HighlightBrush = theme.Highlight;
+        editor.GutterBackground = theme.Gutter;
+        editor.LineNumberBrush = theme.LineNumber;
     }
 
     private void UpdateStatus()
@@ -481,6 +485,19 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         ApplyTheme(SyntaxTheme.Dark);
         UpdateStatus();
+    }
+
+    private void OnToggleLineNumbers(object? sender, RoutedEventArgs e)
+    {
+        _showLineNumbers = LineNumbersItem.IsChecked;
+
+        foreach (var tab in _tabs.Values)
+        {
+            if (tab.Content is ProjectionalEditorControl editor)
+            {
+                editor.ShowLineNumbers = _showLineNumbers;
+            }
+        }
     }
 
     private void OnExit(object? sender, RoutedEventArgs e) => Close();

@@ -151,6 +151,15 @@ the document has to be saved to remember it. A future slice may persist the pref
 file, which is a session-level setting rather than a model property — the same reason
 dark/light is not written into the model.
 
+### Line numbers
+
+**View ▸ Line numbers** is a checkable item, off at first, that sets `ShowLineNumbers` on
+every tab's control; a document opened afterwards inherits whatever the flag currently is.
+It is a shell preference and not a per-document one, so switching tabs does not switch the
+gutter on and off, and nothing about it reaches the model or the undo history - see
+[line-numbers.md](line-numbers.md). The colours come from `SyntaxTheme`, like the palette, so
+the dark theme does not paint the numbers in light-theme grey.
+
 ## What the thin shell implements
 
 The M1 shell is the smallest window that can open, edit and save a model, and it is
