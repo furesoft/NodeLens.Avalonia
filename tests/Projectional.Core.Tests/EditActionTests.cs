@@ -53,7 +53,8 @@ public sealed class EditActionTests
         // A new node materialises the defaults of its concept, so the name of a fresh rule is the
         // string "unnamed" rather than nothing. The model cannot tell a value the user typed from one
         // that was filled in for it, so typing inserts. Replacing the default needs a notion of an
-        // unset property that renders a placeholder, which the model does not have yet.
+        // unset property that renders a placeholder, which the model does not have yet - the one case
+        // that escapes it is a node the user has just created, which arrives with its value selected.
         var rule = TestEditor.BareRule();
         using var session = TestEditor.Open(rule);
 
@@ -227,6 +228,55 @@ public sealed class EditActionTests
         // The caret moves into the child that was added and lands on its first slot, which is where
         // the next keystroke has to go.
         Assert.Equal(CellAddress.OfSlot(created.Id, "steps"), session.Selection.Caret.Address);
+
+        // That slot is empty, so there is nothing to select over: the caret stays a bare caret.
+        Assert.False(session.Selection.HasText);
+    }
+
+    [Fact]
+    public void TypingIntoANewlyCreatedNodeReplacesTheValueItWasGiven()
+    {
+        // A created node arrives with its concept's defaults already materialised, so the rule Enter
+        // puts in the extends slot is called "unnamed" before anybody types. The value is selected on
+        // arrival, which is what turns the first keystroke into a replacement instead of "Punnamed".
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        session.Select(Selection.At(CellAddress.OfSlot(rule.Id, "extends")));
+        session.Apply(KeyRouter.For(EditorKey.Enter));
+
+        var created = Assert.Single(rule.GetChildren("extends"));
+        Assert.Equal(CellAddress.OfSlot(created.Id, "name"), session.Selection.Caret.Address);
+        Assert.True(session.Selection.HasText);
+        Assert.Equal(0, session.Selection.Start);
+        Assert.Equal("unnamed".Length, session.Selection.End);
+
+        session.Apply(KeyRouter.Type("P"));
+
+        Assert.Equal("P", created.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void OnlyTheEditThatCreatesAValueSelectsIt()
+    {
+        // If typing selected what it had just written, the next keystroke would replace it and no name
+        // longer than one character could ever be typed - so the widening belongs to the creating edit
+        // and must not survive into the burst of typing that follows it.
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        session.Select(Selection.At(CellAddress.OfSlot(rule.Id, "extends")));
+        session.Apply(KeyRouter.For(EditorKey.Enter));
+
+        var created = Assert.Single(rule.GetChildren("extends"));
+
+        session.Apply(KeyRouter.Type("P"));
+
+        Assert.False(session.Selection.HasText);
+
+        session.Apply(KeyRouter.Type("a"));
+
+        Assert.Equal("Pa", created.GetOrNull("name"));
     }
 
     [Fact]
