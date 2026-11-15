@@ -119,6 +119,13 @@ public sealed class LayoutViewport
     /// A target taller or wider than the window is aligned to its start rather than its end, so a block
     /// that does not fit is shown from its first line - reading order beats showing the tail.
     /// </para>
+    /// <para>
+    /// An axis whose window has no extent is left alone. That is the state of a control that has not been
+    /// arranged yet, and it has no answer to give: no part of the layout is on screen, so no offset shows
+    /// more than another. Treating the target as "wider than the window" - which is what the start
+    /// alignment would do - would instead park the layout at the caret's own position, and a document set
+    /// on a control before its first arrange would open scrolled to the caret rather than to its start.
+    /// </para>
     /// </remarks>
     public static (double X, double Y) ScrollIntoView(
         CellLayout layout,
@@ -149,7 +156,8 @@ public sealed class LayoutViewport
     public (double X, double Y) ToLayout(double x, double y) => (x + OffsetX, y + OffsetY);
 
     private static double ScrollAxis(double offset, double extent, double start, double end) =>
-        end - start >= extent || start < offset ? start
+        extent <= 0 ? offset
+        : end - start >= extent || start < offset ? start
         : end > offset + extent ? end - extent
         : offset;
 

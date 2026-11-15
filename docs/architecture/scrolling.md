@@ -164,6 +164,27 @@ and resetting it to `(0, 0)` moved them back, so the two-way path works in both 
 A document shorter than the window on one axis is clamped to zero on that axis and no bar
 appears, which is the `Extent < Viewport` behaviour the mapping relies on.
 
+### A control with no viewport does not scroll to the caret
+
+A host sets `Session` before the control has bounds - there is no other order available - and
+the `Session` setter calls `ScrollToCaret()`. At that moment `Bounds` is empty, so `ViewportSize`
+is `0x0` and `ScrollIntoView` has nothing to decide.
+
+It used to decide anyway, and wrongly: with an extent of zero, every target is "wider than the
+window", so the start alignment parked the layout at the caret's own position. A control that
+was then arranged kept that offset, because it is inside the scrollable range, so a document
+wider than the window opened already scrolled sideways - the first keyword of the first line was
+cut off. Measured on the S5 probe: a session set before the arrange left `OffsetX` at `48.65`,
+the width of the `ruleset` keyword, and the first raster of the document started with `Payroll`
+instead of `ruleset Payroll`.
+
+The rule is now: **an axis whose window has no extent is left alone**, in `LayoutViewport` rather
+than in the control. It is a geometric statement, not a toolkit one - no part of the layout is
+on screen, so no offset shows more than another - and it keeps the control free of a "have I
+been laid out yet" test. The first arrange does not have to undo anything, and a host that sets
+a session on a control it never shows gets the document's start rather than an arbitrary
+position inside it.
+
 ### Bar space is automatic
 
 The control never reserves room for a bar and does not need to. With `AllowAutoHide` at its
@@ -276,6 +297,7 @@ S1-S4 are delivered; S5 is the outstanding probe run.
 | Step, page, extent, clamping | Headless tests on `ScrollRange` in `Projectional.Core.Tests` |
 | The page keys move the caret a page | Headless tests on `CaretNavigation` with a page height |
 | Every `EditorKey` has a route | `KeyRouterTests` asks the table for every declared member |
+| A session set before the first arrange does not scroll the document | Unit: `LayoutViewportTests` asks for the caret before the control has bounds |
 | The interface reports the layout, not a copy | Probe: read `ILogicalScrollable.Extent`/`Viewport`/`Offset` back after an edit changed the document's size (done: see the arranged-at-the-viewport table above) |
 | Bars move the content | Probe: set `ScrollViewer.Offset`, read `control.OffsetX/OffsetY` (done) |
 | A short document does not swallow the wheel | Probe: raise the wheel on a control whose document fits, read `args.Handled` (S5) |
