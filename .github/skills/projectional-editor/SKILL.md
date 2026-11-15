@@ -15,9 +15,10 @@ milestone **M0 is complete** (model, change events, undo/redo, XML persistence, 
 harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
 in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/`, the
 measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapshot renderer in
-`Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/` and the
-first two real languages (`Projectional.Expressions`, `Projectional.Samples`) are done; the
-Avalonia control and the standalone shell follow.
+`Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/`, the first
+two real languages (`Projectional.Expressions`, `Projectional.Samples`) and the embeddable
+`Projectional.Avalonia` control - which paints real glyphs, hit-tests clicks and handles
+keys - are done. Syntax highlighting and the standalone shell follow.
 
 ## Status and where the truth lives
 
@@ -371,6 +372,42 @@ dependency, so every action is testable headlessly.
 - Text actions edit inside a single `PropertyCell`; a multi-cell selection degrades to caret
   behaviour. `Ctrl+Home`/`Ctrl+End` are not routed in M1.
 
+## How the control paints and takes input
+
+`Projectional.Avalonia` is one `Control` (`ProjectionalEditorControl`) plus one measure
+(`AvaloniaTextMeasure`). Everything that decides *what* is on screen lives in
+`Projectional.Editing`, which is why the control is small enough to trust without a UI test.
+
+- **The control owns no editing rule.** Pointer → `HitTest.Caret`, key → `EditorKeyMap` →
+  `KeyRouter` → `EditorSession.Apply`. If you are about to write `if (key == ...)` in the
+  control, the rule belongs in `KeyRouter` instead.
+- **Input arrives in two streams.** Characters come from `OnTextInput` (one edit for a whole
+  typed string, and the place IME will hook in later); navigation and deletion come from
+  `OnKeyDown`. A letter therefore never appears in `EditorKeyMap` - it is not a key the
+  editor routes.
+- **Keys held with Control/Alt/Meta are the host's.** `EditorKeyMap.Map` returns `null` for
+  them on purpose: Ctrl+Left is a word jump in the surrounding app, Ctrl+Delete deletes a
+  file in a file manager. Shift is not in that list because Shift+Tab is the editor's.
+- **A refused edit stays unconsumed.** `e.Handled` is set from the outcome, not
+  unconditionally: `EditOutcome.Rejected` (a letter typed into a number) leaves the event
+  open so the host can beep or reroute it.
+- **Undo/redo report whether they did anything.** `Ctrl+Z`, `Ctrl+Shift+Z`/`Ctrl+Y` call
+  `session.Undo()`/`Redo()` and only set `Handled` when the history had a step.
+- **`EditorSession` raises no event.** The host invalidates: `InvalidateMeasure()` when
+  `result.Changed` (the document's size changed), `InvalidateVisual()` plus
+  `ScrollToCaret()` always. There is no observable collection to subscribe to, by design.
+- **`Refresh()` collapses a range selection** onto the caret - documented in
+  `EditorSession.Refresh` and easy to misread as "highlights are broken" while debugging.
+  Re-select after calling it.
+- **Text, not glyph runs.** Each run is shaped by `AvaloniaTextMeasure.Shaped(text)` and
+  cached per string; the cache is emptied wholesale at 8192 entries. `FormattedText` is used
+  rather than `TextLayout` because one run is one *cell's* text, not a line.
+- **`Refresh`-free layout.** A changed model rebuilds tree *and* layout in
+  `EditorSession.Apply`; the control only schedules a measure/visual invalidation.
+- **Pointer input cannot be synthesised in a probe** (`PointerPressedEventArgs` has no public
+  constructor), so click/drag is verified through `HitTest` directly, and only the keyboard
+  path through `RaiseEvent`. See the verification habits below.
+
 ## How the standalone app fits
 
 The repository ships two front ends and **one** public surface:
@@ -412,11 +449,12 @@ Work that touches any of this also touches a doc; the app's plan lives in
 ## How the tests are organised
 
 `tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
-`Language`, `Persistence`, `Projection` and `Editing` so that `TestLanguage.cs` (five concepts: `Test.Tag`,
+`Language`, `Persistence`, `Projection`, `Editing` and - for the one pure type in it -
+`Avalonia`. `TestLanguage.cs` (five concepts: `Test.Tag`,
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 349 tests**; anything below that means tests were deleted.
+it. **Baseline is 422 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
@@ -542,3 +580,50 @@ dotnet test
   parses. They are enforced on every mutation (`ModelInvariantException`), not merely asserted
   in debug builds, so a green test run means the checked ones hold - the structural ones
   (invariants 1 and 2) still need a thought.
+
+### Runtime probe: how UI code is verified
+
+There is no `Avalonia.Headless` package in the cache and no test harness for the control, but
+**a real Avalonia window runs on this machine**. So the verification technique is a throwaway
+project *outside* the repository:
+
+1. Create `%TEMP%\probe` with a `WinExe` `net10.0` project referencing `Projectional.Avalonia`
+   and `Projectional.Samples` by absolute path (never add the probe to the solution).
+2. Host the control in a `Window`, and in `Opened` run an `async` sequence: raise inputs, then
+   `await Task.Delay(40)` a few times to let layout and render settle between steps.
+3. Read state back through the public surface (`EditorSession.Selection`, `.Layout.Size`,
+   `EditorFrame.Build(...)`, `OffsetX/Y`) and rasterise proof with
+   `new RenderTargetBitmap(new PixelSize(w, h), new Vector(96, 96))` + `bitmap.Render(control)`
+   + `bitmap.Save(stream)` (the `Save(string)` overload is obsolete: CS0618).
+4. Append findings to a `List<string>`, write it to a log file, then `Close()` the window so the
+   process exits on its own - a probe that stays open blocks the shell call.
+5. Look at the PNGs. Geometry lines can look right while the picture is wrong.
+
+Facts that came out of doing this, and cost time to rediscover:
+
+- **Key and text events are public and raisable**: `new KeyEventArgs { RoutedEvent =
+  InputElement.KeyDownEvent, Key = ..., KeyModifiers = ..., Source = control }` and
+  `new TextInputEventArgs { RoutedEvent = InputElement.TextInputEvent, Text = "..." }`, then
+  `control.RaiseEvent(args)`, then read `args.Handled`. Pointer events are **not**
+  constructible - `PointerPressedEventArgs` has no public parameterless constructor.
+- **`RaiseEvent` bubbles to ancestors**, so `Handled` can be `true` because `TopLevel` or a
+  parent handled it, not because the control did. To isolate the control, raise the same event
+  at a control that is in **no** visual tree.
+- **A local method named after a type breaks the file**: `void Key(Key key, ...)` makes every
+  later `Key.Left` a method group (CS0119). Name the helper `Combo` or `Press`.
+- **Widgets are laid out lazily**, so a probe must `await Task.Delay` *after* the window opens
+  before `Bounds` has a real size; `InvalidateVisual()` alone does not run a render pass in a
+  probe - `RenderTargetBitmap.Render` forces one.
+
+### Avalonia 12.1.6 facts worth having
+
+- `DrawingContext.DrawText(FormattedText, Point)`, `FillRectangle(IBrush, Rect, float)`,
+  `FormattedText(string, CultureInfo, FlowDirection, Typeface, double, IBrush)` with
+  `WidthIncludingTrailingWhitespace`, `Height`, `MaxTextWidth`, `Trimming`.
+- `Control` has **no** `Background`/`Foreground` (only `TemplatedControl`/`TextBlock` do), so
+  declaring them on the editor control is legal and does not hide anything.
+- **Namespace trap**: inside `namespace Projectional.Avalonia`, an unqualified
+  `Avalonia.Media.X` resolves `Avalonia` to `Projectional.Avalonia` and fails to compile. Keep
+  `using` directives at the top of the file and use unqualified names in the body.
+- `FontFamily.Default`, `Typeface(FontFamily, FontStyle, FontWeight, FontStretch)`,
+  `Brushes.Black/White`, `Color.FromArgb`.

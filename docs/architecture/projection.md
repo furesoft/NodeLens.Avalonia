@@ -190,6 +190,35 @@ keeps the input layer testable headlessly and gives the substitution menu the sa
 entry point as the keyboard. [editing.md](editing.md) describes the action model, the
 caret place rules and the session cycle.
 
+### What M1 implements
+
+The table above is the target. M1 delivers the skeleton of it, and the boundaries are
+worth knowing because they are the seams every later feature attaches to:
+
+| Piece | Responsibility |
+| --- | --- |
+| `HitTest.Caret` | pointer position → caret place; picks the innermost cell under the point, then snaps to the nearest character boundary |
+| `EditorKeyMap` | Avalonia `Key` + modifiers → `EditorKey`, in one table, and `null` for everything else |
+| `KeyRouter` | `EditorKey` → edit action; the only place that decides what a key means |
+| `EditorSession` | applies the action, rebuilds when the model changed, settles the caret, records undo |
+
+Two rules fall out of having those three layers instead of one event handler:
+
+- **A key held with Control, Alt or Meta is not the editor's.** Ctrl+Left is a word jump in
+  the host application and Ctrl+Delete deletes a file in a file manager; consuming them
+  because the bare key happens to be routed would take shortcuts away from the very
+  program that embeds the editor. Shift is different — Shift+Tab walks slots backwards,
+  so it belongs to the editor.
+- **A refused character is not consumed.** Typing a letter into a number yields
+  `EditOutcome.Rejected`, the model is untouched, and the event stays unhandled so the
+  host can beep, report it or reroute it. The three outcomes exist for exactly this:
+  applied, unchanged and rejected are not a boolean.
+
+Text arrives as text input, never as key events, so the control sees `"lohn"` as one
+edit rather than four. That is also where IME composition will land: the composition
+string becomes the text of the edit, and nothing below the control has to change.
+
+
 ## Substitutions and transformations
 
 The mechanism that separates an editor from a form. A substitution menu is offered at
@@ -227,6 +256,27 @@ Tables are a first-class cell, not a hack, because the pilot DSL needs them.
   performance and make hit testing ambiguous.
 - Selection and error underlines are drawn as rectangles/underlines from the same
   layout data, so they cannot drift from the glyph positions.
+
+### What M1 implements
+
+`ProjectionalEditorControl` is one `Control` that paints the whole frame itself:
+background, selection rectangles, one `FormattedText` per text run, then the caret bar.
+It asks `EditorFrame` what to paint and shapes glyphs with `AvaloniaTextMeasure`, so
+nothing about *what* is on screen is decided in the control.
+
+Three deltas from the design above, each deliberate and each a later slice:
+
+- **`FormattedText`, not `TextLayout`.** One run is one cell's text — a keyword, a number, a
+  name — not a line, so per-line shaping would fight the cell boundaries the caret and the
+  hit test depend on. Shaping is cached per string, which is the same win for the common
+  case where a model repeats its keywords.
+- **No `ScrollViewer` yet.** The control clamps its own offsets through
+  `LayoutViewport.Clamp` and scrolls on wheel and on caret movement, which is enough for
+  a keyboard-driven editor. `ILogicalScrollable` is what makes host scrollbars and
+  smooth kinetic scrolling behave, so it is additive rather than a rewrite.
+- **No incremental invalidation yet.** A changed model rebuilds the tree and the layout,
+  which is correct and fast enough at the size M1 targets; the invalidation scheme below
+  is a performance slice, gated by the M1 latency budget.
 
 ### Known hard parts
 
