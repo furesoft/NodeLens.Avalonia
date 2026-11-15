@@ -154,6 +154,8 @@ produced it, and the editing layer never has to remember anything for undo.
 | `AcceptCompletionAction` | Enter, Tab, while a list is open | create the highlighted concept in the slot, or write the highlighted symbol into the property |
 | `DismissCompletionAction` | Escape | close the list and leave the model alone |
 | `SelectAllAction` | Ctrl+A | widen the selection: the property, then the node, then the document |
+| `SelectWordAction` | double click | select the word under the pointer, so the next keystroke replaces that word and not the rest of the cell |
+| `SelectValueAction` | triple click | select the whole text of the editable cell under the pointer, so the next keystroke replaces it |
 | `CopyAction` | Ctrl+C | put the selected text on the clipboard |
 | `CutAction` | Ctrl+X | copy the selected text, then delete it |
 | `PasteAction` | Ctrl+V | type the clipboard text at the caret |
@@ -432,6 +434,32 @@ one node shows together with its descendants (`OfNode`), the whole document (`Of
 and the inverse of a range, the nodes it covers (`NodesIn`) — and returns `null` when the unit
 does not exist, which is how the `Ctrl+A` ladder knows to skip a rung instead of stalling on
 it. [clipboard.md](clipboard.md) explains the ladder itself.
+
+**Clicking twice on a value selects a word, clicking three times the whole value.** Neither is a
+rung of the ladder: a double click on `Approved` asks for that word because the next keystroke is
+meant to replace it, and a third click widens to the cell for the same reason. The control
+therefore applies `SelectWordAction` (`SelectionRanges.OfWord`) and then `SelectValueAction`
+(`SelectionRanges.OfProperty`) — both on their own, so the selection is the same one-cell range
+the first rung of Select All would have produced, just narrower.
+
+A word is the maximal run of characters of one kind around the caret: letters, digits and
+underscores are one kind, whitespace another, and every other character a third. So
+`total_amount` is one word, `42.5` is three, and `->` is one — the kinds are what a reader would
+call a word, not what a tokenizer would. The kind is taken from the character *after* the caret
+when that character is a letter or a digit, otherwise from the character before it, which is what
+makes a click on either half of a letter select that letter's word rather than the space beside
+it; a caret at either end of the text belongs to the first or last run. The answer is never
+empty, so the gesture always selects something the user pointed at.
+
+A cell that is not editable has nothing to select, and there both gestures leave the selection
+exactly where the press put it instead of widening to the node: a click on a keyword, on a
+placeholder or on a reference therefore behaves like a single click. Falling back to the node
+would answer a question nobody asked — clicking twice on a rule's `{` would select the whole
+rule. Both actions live in the editing layer rather than in the control because a gesture is not
+a rule: a host that wants the two units on different buttons, or on a keyboard chord, binds the
+same two actions. A repeated press also suppresses the drag a first press starts, since the first
+pointer move would collapse the range onto the pressing end and the selection would vanish before
+the user could type over it.
 
 Node membership is decided by `CellAddress.Owner`, not by address equality. A child's
 projection root carries the *parent's* element address, and a collection's gaps and separators

@@ -507,6 +507,21 @@ dependency, so every action is testable headlessly.
   candidate ranges with `Address`+`Offset` only, **ignoring `CaretPosition.Order`**: a
   position named by address alone has `Order == -1`, so record equality would call the same
   range different and the ladder would stall on one rung forever.
+- **A double click asks for one rung of that ladder, narrower.** The control maps
+  `e.ClickCount > 1` to `SelectWordAction` and `e.ClickCount > 2` to `SelectValueAction`, which
+  are `SelectionRanges.OfWord` and `SelectionRanges.OfProperty` alone: the word under the
+  pointer, then the whole text of the editable cell, or the selection exactly as the press left
+  it when the cell is not a `PropertyCell` or is empty. Neither falls back to the node - a
+  double click on a rule's `{` selecting the whole rule would answer a question nobody asked.
+  A word is the maximal run of one character kind (letters/digits/underscore, whitespace, other)
+  around the caret, taken from the character *after* the caret when it is a word character and
+  otherwise from the one before, so clicking either half of a letter selects that letter's word
+  and not the space beside it. Three things follow: the rules live in `Projectional.Editing`
+  (the control owns no editing rule), the two units are two action types rather than one action
+  with a width so a host can rebind them separately, and every press after the first
+  deliberately does **not** set `_dragAnchor`/`_dragging` or capture the pointer, because the
+  first pointer move would collapse the range onto the drag anchor and the selection the user is
+  about to type over would vanish.
 - **Node membership is `CellAddress.Owner`, never address equality.** A child's projection
   root carries the *parent's* element address, and a collection's gaps and separators carry
   the owning node's address, so "is this place inside that subtree" must be asked of the
