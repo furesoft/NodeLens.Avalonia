@@ -112,10 +112,22 @@ the tree, in abstract **layout units** rather than pixels.
   grows downwards to its tallest child; a vertical container stacks its children and, when
   it is an indent, shifts them right by `ITextMeasure.IndentWidth`. The width of a stacked
   container is its widest child, not the sum of them.
-- **Continuation, not wrapping.** After a taller child inside a line, the cursor continues
-  on that child's *last* line. A nested block therefore keeps the cell that follows it -
-  typically a closing brace - beside its last line, which is the look MPS has. Nothing
-  reflows text.
+- **Continuation.** After a taller child inside a line, the cursor continues on that
+  child's *last* line. A nested block therefore keeps the cell that follows it - typically
+  a closing brace - beside its last line, which is the look MPS has.
+- **A text cell is laid out as lines, and breaks itself when the page does not reach.**
+  The text of a property is broken into `TextLine`s by `TextWrapper` before it is measured:
+  a `\n` in the value always ends a line, and when a wrap width is known the wrapper also
+  breaks at the last opportunity that still fits - a space when the value has one, a
+  character boundary otherwise - so a long value fills the room left to the page edge
+  instead of running off it. Each line starts at the cell's left edge, so the columns of a
+  continuation line are counted from the break, not from the start of the cell. A break the
+  user put there and a break the width forced are the same line; only the model knows which
+  is which, and only for the purpose of editing.
+- **Wrapping is a limit, not a page.** The wrap width is the room a cell has, and
+  `CellLayouter.LimitAt(x)` subtracts the x of the cell from it, so an indented value wraps
+  earlier than a flush one. With no width - a host that does not measure, or an unbounded
+  measure pass - nothing soft-wraps and only a `\n` in the value breaks a line.
 - **Nothing is zero width.** An empty text cell is measured as one space. An unset
   property and an empty slot are still positions the caret can occupy, so they must
   occupy a column. This is why `PropertyCell.Text` is the empty string when unset rather
@@ -126,15 +138,20 @@ the tree, in abstract **layout units** rather than pixels.
   answers with the innermost cell under the point. `LayoutRect.Contains` is half-open, so
   a point on a border belongs to exactly one cell.
 
-Arrangement is independent of available width in M1: none of the built cells changes its
-arrangement with width, so `Layout(tree)` takes no width and lays out the whole tree.
+Only a text cell breaks with the width; nothing else in the notation does. A narrow page
+therefore makes a value taller instead of rearranging the notation, which is what keeps a
+projection recognisable at any size. The width itself is view state the host publishes once
+per measure pass (`EditorSession.WrapWidth`), so two hosts can show one document at
+different widths; setting the same width again is free, so a control that publishes on every
+frame does not rebuild the layout the caret was measured in.
 
 Deferred on purpose, each with the milestone that needs it:
 
 | Deferred | Why it can wait |
 | --- | --- |
 | Viewport-only layout, line-height cache | needs a scrolling control (M1) |
-| Width-dependent arrangement, width classes | no built-in cell depends on available width |
+| Width classes, container-level reflow | only text reflows today; nothing else depends on width |
+| Re-breaking only the changed line | costs more than re-breaking one value until values get long |
 | Snapping to device pixels | needs a real text stack (M1 control) |
 | Re-arranging only the changed subtree | needs the diffing of a repeat layout (M1 control) |
 
@@ -170,6 +187,13 @@ Rules:
   shrinks to what is left — it never silently jumps to a different node.
 - The caret address survives re-layout, so scroll, resize, undo and language changes
   do not move it.
+- A position names a **line** as well as a cell, because a cell can be several lines tall.
+  The offset decides which line it is on, and every question the caret asks about its own
+  geometry - where the bar goes, which offset a click found, where Home ends, which line is
+  "up" - is answered from that one place (`CaretGeometry`), so the bar, the highlight, the
+  click and the vertical move cannot drift apart. Columns are counted from the start of the
+  line rather than of the cell, so the second line of a wrapped value starts at column zero
+  again. [editing.md](editing.md) owns the movement rules.
 
 ## Hit testing and input
 
@@ -181,7 +205,7 @@ Input is routed through the touched cell:
 | Arrow keys | structural movement between cells along the logical line, then lines |
 | Ctrl+Left / Ctrl+Right | one character inside the current cell, because the plain arrows move a whole cell |
 | Tab / Shift+Tab | next / previous slot of the current node in declaration order; a filled child or collection is entered rather than skipped, because only its leaves are caret stops |
-| Enter | fill the empty slot at the caret; per the list strategy of the enclosing cell |
+| Enter | in a value of text, opens a line at the caret; everywhere else, fills the empty slot at the caret per the list strategy of the enclosing cell |
 | Space | same as a printable character; there are no whitespace semantics |
 | Delete/Backspace | per cell: shrink text, remove child, delete node, or nothing when the slot is mandatory |
 | Escape | close completion, clear selection |

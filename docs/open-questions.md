@@ -58,6 +58,19 @@ far the choice, and the representations, may go.
 | 28 | How do custom representations that a declarative notation cannot express (charts, images, maps) plug in? | Open | A separate cell-provider contract that must still report addresses and caret places. The declarative table cell is the reference implementation of "a cell that is a grid but not a grid of lines", so the contract should be derived from it rather than designed before it. | M5 |
 | 29 | Do tables get column-aware navigation (down a column, next row), a header row that stays visible when scrolling, and resizable columns? | Leaning | Yes to navigation and a sticky header; resizing only if a language asks. M1 navigates the flattened grid in document order, which is correct but not what a user expects in a grid. | M3 |
 
+## Multi-line text
+
+A value of text is laid out as lines and breaks itself when the page does not reach
+([projection.md](architecture/projection.md)). What that leaves open is how far the
+breaking, and the editing of a broken value, may go.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 30 | Is a break the user typed stored as `\n` in the value, or as a list of lines in the model? | Leaning | `\n` in the value. A text property stays one string, so a language never has to decide whether its value is one or many, and the file format does not grow a shape per property. | M3 |
+| 31 | Does the caret stop at a soft wrap the way it stops at a hard break? | Leaning | Yes, and that is what is implemented: a position names a line, and a line is a line whichever broke it. The model is the only place that knows which is which. | M3 |
+| 32 | Is the wrap width a per-host view setting, a per-document setting, or a per-cell notation setting? | Leaning | Per host in M1, published as `EditorSession.WrapWidth`. Per document once settings exist, per cell only if a notation asks for a fixed narrow cell. | M3 |
+| 33 | Should a long value be soft-wrapped at all, or scrolled horizontally like a code editor? | Open | Soft-wrap for text, horizontal scroll for a notation that is a grid. Wrapping a table row would destroy the alignment that makes the table readable. | M5 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
