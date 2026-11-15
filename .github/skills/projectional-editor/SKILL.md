@@ -842,8 +842,17 @@ Rules that follow from that, and are easy to break by accident:
 1. **Never add a `ProjectReference` from `Projectional.Workbench` to `Core`-adjacent internal
    projects** (`Language`, `Projection`, `Editing`, `Semantics`, `Persistence`). It used to
    reference `Semantics`; that was removed when ADR 0011 was written. If the app seems to need
-   an internal type, the public API is missing something â€” widen `Projectional.Avalonia`'s
+   an internal type, the public API is missing something — widen `Projectional.Avalonia`'s
    surface instead.
+   **Transitive types are not a reference.** The app names `MarkerSet` and `Diagnostic`, which
+   reach it through `Projectional.Avalonia`'s own public `Markers` property - a public surface
+   has to mention the types it is written in, so `Avalonia` must reference `Editing`, which
+   must reference `Semantics`. The layer diagram puts `Semantics` in the same band as
+   `Projection`/`Editing`, i.e. *below* Avalonia and Workbench, so the arrow is downward and
+   legal. What is forbidden is the app *reaching past* the control into a layer it does not
+   sit above; using a type that a public member is typed with is what a reference consumer is
+   for. Rule of thumb: if the app can express the feature with only members Avalonia makes
+   public, it is allowed; if it needs a `ProjectReference` to see a type, it is not.
 2. **Never grant the workbench `InternalsVisibleTo`.** It is the reference consumer; an
    exemption makes it prove nothing.
 3. **Never put a feature in the app that a host cannot reach.** Shell concerns that legitimately
@@ -879,7 +888,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 807 tests**; anything below that means tests were deleted.
+it. **Baseline is 920 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

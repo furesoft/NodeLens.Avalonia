@@ -1,0 +1,184 @@
+using System.Text;
+
+using Projectional.Language;
+using Projectional.Projection;
+using Projectional.Semantics;
+
+namespace Projectional.Editing;
+
+/// <summary>Decides what a marker's tooltip says and where it goes.</summary>
+/// <remarks>
+/// <para>
+/// Two questions, both answerable without a toolkit: how the text has to be broken so it fits the room it
+/// is given, and which corner of the page the box belongs in. The frontend measures glyphs and fills the
+/// rectangle; nothing here knows what a font or a window is.
+/// </para>
+/// <para>
+/// The text is laid out here rather than left to the drawing code, because a box cannot be placed before
+/// its height is known and a box that runs off the bottom of the page has to be flipped above the marker.
+/// Wrapping is therefore a layout decision, not a trimming decision.
+/// </para>
+/// </remarks>
+public static class MarkerTip
+{
+    /// <summary>How far the box clears the marker it belongs to, in layout units.</summary>
+    public const double Gap = 2;
+
+    /// <summary>What the box says, one drawn line per entry.</summary>
+    /// <param name="diagnostics">The findings to describe, in the order they should be read.</param>
+    /// <param name="maxWidth">The widest a line may be, in layout units.</param>
+    /// <param name="measure">What to measure a candidate line with.</param>
+    /// <returns>
+    /// The lines to draw, with an empty string between two findings. Empty when there is nothing to say.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">A parameter is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxWidth"/> is not positive.</exception>
+    public static IReadOnlyList<string> Lines(
+        IReadOnlyList<Diagnostic> diagnostics,
+        double maxWidth,
+        ITextMeasure measure)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostics);
+        ArgumentNullException.ThrowIfNull(measure);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxWidth);
+
+        var lines = new List<string>();
+
+        foreach (var diagnostic in diagnostics)
+        {
+            var paragraph = Wrap(Heading(diagnostic), maxWidth, measure);
+
+            if (paragraph.Count == 0)
+            {
+                continue;
+            }
+
+            // One blank line between two findings and none around the block, so a single finding has no
+            // empty line above it and the box has no padding to explain.
+            if (lines.Count > 0)
+            {
+                lines.Add(string.Empty);
+            }
+
+            lines.AddRange(paragraph);
+        }
+
+        return lines;
+    }
+
+    /// <summary>Breaks one paragraph so no line is wider than the room it is given.</summary>
+    /// <param name="text">The paragraph to break. Runs of blanks collapse to one.</param>
+    /// <param name="maxWidth">The widest a line may be, in layout units.</param>
+    /// <param name="measure">What to measure a candidate line with.</param>
+    /// <returns>The lines, in reading order. Empty when there is nothing to draw.</returns>
+    /// <remarks>
+    /// A word wider than the box is broken rather than allowed to overflow, because the box has to be
+    /// placed before it is drawn and an overflowing line would make the width a lie.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">A parameter is <see langword="null"/>.</exception>
+    internal static IReadOnlyList<string> Wrap(string text, double maxWidth, ITextMeasure measure)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(measure);
+
+        var lines = new List<string>();
+        var line = new StringBuilder();
+
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Length > 0)
+            {
+                if (measure.Measure($"{line} {word}", TextEmphasis.None) <= maxWidth)
+                {
+                    line.Append(' ').Append(word);
+
+                    continue;
+                }
+
+                lines.Add(line.ToString());
+                line.Clear();
+            }
+
+            var rest = word;
+
+            while (!Fits(rest, maxWidth, measure))
+            {
+                var take = Fitting(rest, maxWidth, measure);
+
+                lines.Add(rest[..take]);
+                rest = rest[take..];
+            }
+
+            line.Append(rest);
+        }
+
+        if (line.Length > 0)
+        {
+            lines.Add(line.ToString());
+        }
+
+        return lines;
+    }
+
+    /// <summary>Where the box goes so that it stays on the page.</summary>
+    /// <param name="anchor">The marker the box describes, in layout units.</param>
+    /// <param name="size">How big the box is.</param>
+    /// <param name="viewport">How much room there is, in the same units.</param>
+    /// <returns>The box, entirely inside the viewport whenever the viewport is at least as big as the box.</returns>
+    /// <remarks>
+    /// Below the marker by preference, so the box never covers the squiggle it is explaining; above it when
+    /// there is no room below, which is the last line of a scrolled-to-the-bottom page. A box bigger than
+    /// the page is pinned to the top-left rather than made to hang off it.
+    /// </remarks>
+    public static LayoutRect Place(LayoutRect anchor, LayoutSize size, LayoutSize viewport)
+    {
+        var y = anchor.Y + anchor.Height + Gap;
+
+        if (y + size.Height > viewport.Height)
+        {
+            y = anchor.Y - Gap - size.Height;
+        }
+
+        return new LayoutRect(
+            Math.Clamp(anchor.X, 0, Math.Max(0, viewport.Width - size.Width)),
+            Math.Clamp(y, 0, Math.Max(0, viewport.Height - size.Height)),
+            size.Width,
+            size.Height);
+    }
+
+    /// <summary>What one finding reads as: how much it matters, what it says, and which check said it.</summary>
+    /// <param name="diagnostic">The finding.</param>
+    /// <returns>One sentence, never empty unless the message itself is.</returns>
+    private static string Heading(Diagnostic diagnostic) => diagnostic.Code is { Length: > 0 } code
+        ? $"{diagnostic.Severity}: {diagnostic.Message} ({code})"
+        : $"{diagnostic.Severity}: {diagnostic.Message}";
+
+    /// <summary>Whether a run of text fits the room it is given.</summary>
+    /// <param name="text">The text to measure.</param>
+    /// <param name="maxWidth">The widest it may be.</param>
+    /// <param name="measure">What to measure with.</param>
+    /// <returns><see langword="true"/> when it fits.</returns>
+    private static bool Fits(string text, double maxWidth, ITextMeasure measure) =>
+        measure.Measure(text, TextEmphasis.None) <= maxWidth;
+
+    /// <summary>How many characters of a word fit on one line.</summary>
+    /// <param name="text">The word to break.</param>
+    /// <param name="maxWidth">The widest a line may be.</param>
+    /// <param name="measure">What to measure with.</param>
+    /// <returns>The length of the longest prefix that fits, and never zero.</returns>
+    /// <remarks>
+    /// One character is the floor: a box narrower than a single glyph would otherwise take nothing, add
+    /// nothing, and never advance.
+    /// </remarks>
+    private static int Fitting(string text, double maxWidth, ITextMeasure measure)
+    {
+        var take = 1;
+
+        while (take < text.Length && Fits(text[..(take + 1)], maxWidth, measure))
+        {
+            take++;
+        }
+
+        return take;
+    }
+}

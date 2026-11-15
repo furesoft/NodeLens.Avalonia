@@ -193,6 +193,17 @@ A diagnostic names a node plus a slot and an optional range within that slot's v
 never names a cell or a screen position, because cells are derived — so a check can run on
 a model nobody is drawing, and a diagnostic survives a notation change.
 
+The set is a snapshot, not a subscription: republish it after every change to the model, or
+the marks will describe the document as it was before the edit. Replacing the set is cheap
+(the control repaints and keeps its tree and layout), so a host can run its checks on every
+committed transaction. `Projectional.Workbench` does exactly that — its `DefaultNames` check
+marks every node whose name is still its concept's placeholder, and it is the reference for
+what a host can do with the public surface alone.
+
+Hovering a mark opens a small box with the severity, the message and the diagnostic's code.
+The box is drawn by the control rather than by a popup window, so it stays inside the
+control's own bounds and shows up in a screenshot like the rest of the document.
+
 ## What the editor does
 
 ### Editing
@@ -245,7 +256,7 @@ More than one key is a real feature here rather than a courtesy:
 | Syntax highlighting | The projection says what a cell's text *means*; a swappable palette says what that looks like. Swapping a palette is a repaint, not a re-projection. |
 | Emphasis | Bold, italic, underline and strikethrough, declared by the notation and/or resolved per node by the language. Emphasis changes glyph advances, so it is known when the tree is built, never added at paint time. |
 | Line numbers | An optional gutter that aligns with the projected lines; the width follows the digit count. |
-| Markers | Diagnostics drawn as coloured squiggles — solid for error and warning, dotted for info and hint — under the exact cell a diagnostic points at. |
+| Markers | Diagnostics drawn as coloured squiggles — solid for error and warning, dotted for info and hint — under the exact cell a diagnostic points at. Hovering one opens a box with the severity, the message and the code. |
 | Font size | Settable from code at any positive size; the View menu zooms between `6` and `48`. Layout, caret, hit test and squiggles all follow. |
 | Themes | Light and dark palettes, both presets and a `Create` factory for a host's own colours. |
 | Representations | A concept can be drawn more than one way. Switching is a view action: no undo step, nothing persisted. |
@@ -367,6 +378,9 @@ Honest list, so nothing here surprises an adopter:
   [ADR 0010](docs/adr/0010-public-api-surface.md) allows, and the API baseline that would
   enforce it is not committed yet.
 - **The completion popup does not scroll.** It shows a fixed number of rows.
+- **A diagnostic tooltip is clipped by the control's bounds.** It is drawn by the control, not
+  by a popup window, so a control with no room around the document shows a truncated box rather
+  than one floating over its neighbours.
 
 ## Non-goals
 

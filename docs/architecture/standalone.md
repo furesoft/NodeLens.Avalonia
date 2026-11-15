@@ -74,6 +74,16 @@ window is wiring.
 5. **No feature exists only in the app.** If the app can do something a host cannot,
    either the public API grows or the feature is removed. This invariant is the whole
    point — without it the app silently becomes the only supported front end.
+6. **A type the app uses must arrive through a public member, not through a reference.**
+   The app names `MarkerSet` and `Diagnostic` when it publishes findings, and it does so
+   with **no** `ProjectReference` of its own: `ProjectionalEditorControl.Markers` is
+   public and is typed with them, so `Avalonia` must reference `Editing`, which must
+   reference `Semantics`. `Semantics` sits in the same band as `Projection`/`Editing`,
+   below Avalonia and therefore below the app, so the arrow points down and is legal.
+   The test is whether a `ProjectReference` would have to be *added*: if the app can
+   express the feature with members `Projectional.Avalonia` already makes public, it is
+   allowed; if it needs a reference to see a type, it is reaching past the control and
+   the public surface is missing something.
 
 ## Document lifecycle
 
@@ -174,6 +184,31 @@ types `+` is `OemPlus` with `Shift`, so one registered gesture cannot match both
 the unshifted press, and `KeyGesture` would print the enum name to the user. The handler is
 registered for the tunnelling phase, because the editor control claims keys of its own and a
 bubbling handler would race it.
+
+### Findings
+
+The app publishes its own diagnostics into the editor, and it is the reference for how a host
+does it: `Checks/DefaultNames.cs` marks every node still called its concept's placeholder
+(`"unnamed"`), and `MainWindow.PublishFindings` hands the resulting `MarkerSet` to the control's
+public `Markers` property when a document opens and again from the model's `Changed` handler.
+
+Three things that follow, and that a host has to do as well:
+
+- **The set is a snapshot, so it must be republished on every change.** The editor keeps no
+  reference to a check; a set published once describes the document as it was then. Republishing
+  is a repaint, not a rebuild — the tree and the layout stay as they are.
+- **A check reads the language, not the app.** `DefaultNames` compares a name against
+  `Concept.NameSlot.DefaultValue`, so it needs no per-concept table and no knowledge of the
+  toy rules language beyond what the declaration already says. A check written against strings
+  copied out of the sample would go out of date the moment a language default changed.
+- **The severity is a decision.** The placeholder is a `Hint`, not a `Warning`: an unnamed rule
+  is a document that is not finished, not a document that is broken. The palette draws `Hint`
+  and `Info` as a dotted line and `Warning`/`Error` as a wave, so the severity is visible
+  before the tooltip is opened.
+
+Nothing about this needs a reference of its own — see rule 6 under
+[Composition rules](#composition-rules). The app is using `Projectional.Avalonia`'s public
+surface exactly as a host would.
 
 ## What the thin shell implements
 

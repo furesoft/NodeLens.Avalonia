@@ -1,6 +1,7 @@
 # Markers
 
-Status: **delivered** for M1, slices A–C. Slices D–F are planned. This document is the design for the wavy underline
+Status: **delivered** for M1, slices A–D (the tooltip included; click-to-caret and `F8` are
+still open). Slices E–F are planned, M4. This document is the design for the wavy underline
 under a cell that is wrong: the error and warning squiggles every code editor has, with an
 error in red and a warning in orange, drawn under exactly the text the diagnostic is about. It
 is written before the code because the feature is the first one that has to answer a question
@@ -11,9 +12,12 @@ Slice A — the vocabulary, the set, and the resolution of a diagnostic to cells
 in `Projectional.Semantics/Diagnostics/` and `Projectional.Editing/Markers/`, and its decisions
 are frozen in [ADR 0013](../adr/0013-markers-are-view-state.md). Slice B — turning a diagnostic
 into the rectangles a page can draw — is `MarkerLine` and `MarkerGeometry` in the same folder.
-Two things in this document were changed by writing the code and are marked *superseded* below:
+Slice C paints them; slice D adds the tooltip a reader needs to know *what* is wrong. Two
+things in this document were changed by writing the code and are marked *superseded* below:
 the frame does not carry markers, and a marker set is resolved against the layout at paint time
-rather than during a frame build.
+rather than during a frame build. Three more were changed by slice D and are stated there: the
+tooltip is drawn by the control rather than by a `Popup`, it carries its own palette, and the
+wrapping lives in the editing layer.
 
 The vocabulary is deliberately split in two:
 
@@ -298,15 +302,25 @@ give is a `DrawingContext`, a pen and a geometry, which is all a wave needs.
 
 | Input | Effect |
 | --- | --- |
-| hover a squiggle | a tooltip with the message, the code and "N quick fixes" — only inside the wave's band, so hovering the text does not open it |
+| hover a squiggle | a tooltip with the message and the code — only inside the wave's band, so hovering the text does not open it |
 | caret on a marked line | the shell's status bar shows the highest-severity message for that line |
-| `F8` / `Shift+F8` | next / previous marker in the document; the shell binds it, the editing layer supplies the order (document order, then severity) |
+| `F8` / `Shift+F8` | next / previous marker in the document; the shell binds it, the editing layer supplies the order (document order, then severity) — *planned* |
 | `Alt+Enter` on a marked line | the light bulb, with the fixes listed first ([context-actions.md](context-actions.md)) |
-| click a squiggle | places the caret inside the marked range — no popup, no navigation |
+| click a squiggle | places the caret inside the marked range — no popup, no navigation — *planned* |
 
-The tooltip is drawn by the control (a `Popup`, like the context menu) and is derived from
-the marker under the pointer on each open: nothing is cached, so an edit that fixes the error
-cannot leave a stale tooltip behind.
+The tooltip is **drawn by the control**, like the completion list and unlike an Avalonia
+`Popup`. Three reasons, in order of weight: a `Popup` is a separate top-level surface, so it
+cannot be rasterised in a headless check and this feature would have had no rendered truth at
+all; a popup can be placed partly outside the host's box, which is not ours to occupy when the
+editor is embedded in someone else's window; and the control already owns the scroll offset and
+the round from layout to pixels that the box has to agree with. The cost is that the tip is
+clipped by the editor's own bounds — a host that gives the control no room around the document
+sees a truncated tip rather than one floating over its neighbours. That is the right side of
+the trade for an embedded control.
+
+It is derived from the marker under the pointer on each pass and cached only by the anchor it is
+attached to, so an edit that fixes the error cannot leave a stale tooltip behind: the set is
+replaced, the anchor is gone with it, and the tip closes.
 
 Ordering for `F8` is document order of the markers' first line, then severity descending at
 one position. A document-order walk is what a user can predict; sorting by severity first
@@ -323,12 +337,32 @@ long before a real one exists:
 | A ✓ | `feat/marker-model` | `DiagnosticSeverity`, `Diagnostic`, `CharacterRange`, `MarkerSet`, `EditorSession.Markers`, `MarkerCells` (node ids to cells), tests for stale nodes, replacement versus `Concat`, the node-versus-container rule |
 | B ✓ | `feat/marker-geometry` | `MarkerLine`, `MarkerGeometry`, per-line splitting, clipping, reading order, tests over wrapped and hard-broken cells |
 | C ✓ | `feat/marker-paint` | `MarkerPalette` on `SyntaxTheme`, `MarkerRuns` (overlap merge), the wave in the control's `Render`, light and dark defaults, pattern-per-severity |
-| D | `feat/marker-hover` | the tooltip, the click-to-caret hit test, and `F8` ordering in the editing layer |
+| D ✓ | `feat/marker-hover` | `MarkerHit` and `MarkerHitTest` (which finding is under the pointer), `MarkerTip` (its text and where its box goes), `MarkerTipPalette`, `MarkerTipPresenter` on the control, and dropping the tip when the set is replaced |
 | E | (M4) `feat/validation-markers` | the constraint runner publishes diagnostics through `Markers`, incrementally, off the UI thread |
 | F | (M4) `feat/quick-fixes` | a diagnostic's fixes reach the light bulb, which is a change in [context-actions.md](context-actions.md) rather than here |
 
+Still open from slice D: the click-to-caret gesture on a squiggle and `F8` ordering, which is a
+list function in the editing layer and a binding in the shell.
+
 The status-bar line and the `F8` binding are shell work and land with the standalone editor's
 own slices; the library supplies the order and the message, not a widget.
+
+**Until M4 there has to be something to see, and no check exists to produce it.** So the
+standalone app ships one, and it is the reference proof that the public surface is enough:
+`Projectional.Workbench/Checks/DefaultNames.cs` walks the model, reports a `Hint` on every node
+whose name still equals the concept's declared default, and `MainWindow` publishes
+`new MarkerSet([.. DefaultNames.Of(document.Model)])` into the editor's `Markers` at open and
+again from `Model.Changed`. Three things fall out of it that are worth keeping:
+
+- **A host can produce findings with what is already public** — `Concept.NameSlot`,
+  `PropertySlot.DefaultValue`, `Node.ChildrenInDocumentOrder`, `MarkerSet`, `editor.Markers` —
+  with no reference from the app to an internal project.
+- **A host must republish on every change**, because a marker set is not re-resolved against a
+  new model; a host that published once would leave the waves describing the document as it was
+  before the edit. The set is immutable and a repaint is cheap (see [Performance](#performance)).
+- **The check reads the placeholder from the language, not from a list of its own**, so a language
+  that changes a default, or declares a name slot with no default (the user must fill it), needs
+  no change here. `Expressions.Name` is the second case and is deliberately not reported.
 
 ## Performance
 
@@ -431,6 +465,48 @@ Two smaller consequences worth knowing:
   feature could make typing feel slow. `MarkerSet` is immutable, so reference identity is a
   sound key.
 
+## Decisions frozen with slice D
+
+The tooltip settled five things. They are here rather than in an ADR for the same reason as
+slice B's and C's: none is expensive to reverse, and none should be re-litigated by accident.
+
+1. **The tip is drawn by the control, not by an Avalonia `Popup`.** Testable-ish headlessly,
+   consistent with `CompletionPresenter` and the completion list, and never occupies space
+   outside the box the host gave the editor. Accepted cost: the tip is **clipped by the
+   control's bounds**. A host that wants the tip to float over its own chrome moves the control
+   instead.
+2. **The tip carries its own palette.** `MarkerTipPalette` is `Background`/`Border`/`Foreground`
+   rather than a widened `MarkerPalette`, because a marker palette describes *severity colours*
+   and the tip needs *chrome colours* - and the tip's background deliberately is not the page
+   colour, or the box would have no edge over a page of the same shade.
+3. **The text is broken in `Projectional.Editing`, not in the control.** `MarkerTip.Lines` wraps
+   the message against a maximum width and answers lines; `MarkerTip.Place` puts the box under
+   the anchor and clamps it into the viewport. Both are pure and testable, and the box has to be
+   placed **after** its height is known, which is why wrapping cannot be a paint-time detail.
+   `MarkerTip.Wrap` stays `internal`: what a host needs is the lines, not the algorithm.
+4. **The box is placed from the anchor's layout rectangle, never from the pointer.** Anchoring on
+   the pointer makes the tip slide as the hand moves and puts it wherever the wave was last
+   touched; the marker line is the stable answer and it is what the message is about.
+   `TipBounds` clamps against the control's whole `Bounds` (gutter included), not the text
+   viewport, so a tip next to the leftmost column may use the gutter's width.
+5. **The tip is dropped on every state change that could invalidate its anchor**: scroll, press,
+   pointer exit, `Show()` (any edit or move), a session swap, and a **new `MarkerSet`**. The last
+   one is the subtle case and it is why the `Markers` setter calls `ClearHover()`: the tip is
+   anchored on a `MarkerLine` that belongs to the set which was current when the pointer
+   stopped, so a fresh set makes the old anchor a rectangle from a document that no longer
+   exists.
+
+Two smaller consequences:
+
+- **`MarkerHit` holds a list of diagnostics and the anchor line.** `MarkerHitTest.At` answers with
+  a *fresh* list on every call, so record equality never matches two hits on the same marker;
+  `IsSameHover` therefore compares the anchor and the count. That is what keeps the tip from
+  being rebuilt on every pointer move while still reopening it for a second finding on the same
+  text.
+- **The tip does not promise a fix it cannot deliver.** The severity word, the message and the
+  code, and nothing else - "N quick fixes" needs the fix list from slice F, and a line that
+  always reads "no fixes" is worse than no line.
+
 ## Testing
 
 - **Model, headless.** Done in `MarkerSetTests`: replacement versus `Concat`, duplicates kept,
@@ -464,8 +540,34 @@ Two smaller consequences worth knowing:
   on the same range collapse to one run and the warning is drawn; clearing the set removes every
   squiggle. This is the check that a geometry assertion cannot make - the rectangles were right
   the whole time the picture was wrong.
+- **Hit test, headless.** Done in `MarkerHitTestTests` (14 cases): a point inside the wave's band
+  finds the finding, a point above it on the same text finds nothing (the text is not the
+  squiggle), a point below the line finds nothing, the band's own top and bottom edges are
+  inside, a point in the gutter at that height finds nothing, the nearest marker horizontally
+  wins, two findings on the same rectangle both come back with the worse one first, a vertical
+  hit that overlaps two lines picks the nearer one, `null` and empty lists answer nothing, and
+  the answer carries the anchor line so the tip can be placed without asking again.
+- **Tip text and placement, headless.** Done in `MarkerTipTests` (17 cases): the heading is the
+  severity word, the message and the code; a long message wraps instead of overflowing; a word
+  longer than the line still advances; blank lines are kept in the wrap and skipped when drawn;
+  the box sits below the anchor with the `Gap` between them; a box near the right edge moves left
+  instead of leaving the viewport; a box near the bottom moves above the anchor; a viewport
+  smaller than the box still keeps the top-left corner visible; and not one case reads pixels.
+- **Tooltip rendering, by probe.** A throwaway window hosted the control with one `Warning` on a
+  ruleset's `name`, put the pointer on the wave and rasterised the frame. Checked: the tip box is
+  `(48.65, 20.62, 370, 50)` - under the anchor's line, one `Gap` below it, inside the control -
+  with two wrapped lines, a `#F3F3F3` fill, a `#C8C8C8` border and `#1E1E1E` text; and the page
+  outside the box is untouched. It also established that the wave under a `Warning` in
+  `MarkerPalette.Light` is drawn but very soft, which is a palette question and not a bug in the
+  tip.
+- **Nodes that are still unnamed, headless.** Done in `DefaultNamesTests` (9 cases): a new
+  document reports its ruleset; typing a name silences it; the message names the concept and the
+  placeholder; a rule is reported as well as the root; findings follow document order; the named
+  sample reports nothing; a model with no roots reports nothing; a concept that declares no
+  default is not reported; and a `null` model is refused.
 - **Control, when `tests/Projectional.Avalonia.Tests` exists.** A rendered wave for one
-  error; the tooltip opening inside the band and not over the text; `F8` moving the caret to
+  error; the tooltip opening from a real pointer move and closing on a press; `F8` moving the
+  caret to
   the next marker.
 - **Rendering truth.** `LayoutSnapshot` is deliberately unchanged: it draws the layout, and a
   marker is not layout. Geometry tests assert rectangles, which is what a broken squiggle
