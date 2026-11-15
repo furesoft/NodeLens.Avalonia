@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -18,7 +20,14 @@ namespace Projectional.Projection;
 public interface ITextMeasure
 {
     /// <summary>The width of <paramref name="text"/> in layout units.</summary>
-    double Measure(string text);
+    /// <param name="text">The text to measure.</param>
+    /// <param name="emphasis">
+    /// How the text is decorated. It is part of the measurement rather than of the painting, because a
+    /// bold or italic face is wider than the regular one: a measure that ignored it would hand the
+    /// layout a box sized for a face that is not the one drawn in it, and the caret, the hit test and
+    /// the selection - all of which are computed from those boxes - would drift.
+    /// </param>
+    double Measure(string text, TextEmphasis emphasis);
 
     /// <summary>The height of one line, which is also the vertical step between two lines.</summary>
     double LineHeight { get; }

@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 
 namespace Projectional.Projection;
 
@@ -18,8 +19,9 @@ public sealed class ReferenceCell : TextCell
         string slot,
         string text,
         ReferenceState state,
-        NodeId? target = null)
-        : base(address, text)
+        NodeId? target = null,
+        TextEmphasis emphasis = TextEmphasis.None)
+        : base(address, text, emphasis)
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
 

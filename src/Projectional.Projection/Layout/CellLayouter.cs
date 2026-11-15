@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -47,12 +49,12 @@ public sealed class CellLayouter
 
         var size = cell switch
         {
-            TextCell text => TextSize(text.Text),
+            TextCell text => TextSize(text.Text, text.Emphasis),
             ContainerCell { Orientation: CellOrientation.Horizontal } line => ArrangeInline(line.Content, x, y, placed),
             ContainerCell stack => ArrangeStacked(stack, x, y, placed),
-            ChildCell { IsEmpty: true } empty => TextSize(empty.EmptyText),
+            ChildCell { IsEmpty: true } empty => TextSize(empty.EmptyText, TextEmphasis.None),
             ChildCell child => ArrangeInline(child.Content, x, y, placed),
-            CollectionCell { IsEmpty: true } empty => TextSize(empty.EmptyText),
+            CollectionCell { IsEmpty: true } empty => TextSize(empty.EmptyText, TextEmphasis.None),
             CollectionCell collection => ArrangeInline(collection.Content, x, y, placed),
             _ => throw new ProjectionException($"The cell {cell} is of a kind that layout does not know."),
         };
@@ -100,11 +102,11 @@ public sealed class CellLayouter
         return new LayoutSize(right - x, Math.Max(_measure.LineHeight, cursorY - y));
     }
 
-    private LayoutSize TextSize(string text)
+    private LayoutSize TextSize(string text, TextEmphasis emphasis)
     {
         // An empty text still occupies one space: a value nobody has typed yet, or the marker for an
         // empty slot, has to be a place the caret can stand on, and a zero-width cell is not.
-        var width = _measure.Measure(text.Length == 0 ? " " : text);
+        var width = _measure.Measure(text.Length == 0 ? " " : text, emphasis);
 
         return new LayoutSize(width, _measure.LineHeight);
     }
