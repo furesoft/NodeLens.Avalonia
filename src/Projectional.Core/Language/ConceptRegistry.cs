@@ -215,6 +215,12 @@ public sealed class ConceptRegistry
             nameSlot = property;
         }
 
-        return new Concept(declaration.Key, supers, slots, nameSlot, declaration.IsAbstract);
+        return new Concept(
+            declaration.Key,
+            supers,
+            slots,
+            nameSlot,
+            declaration.IsAbstract,
+            declaration.IsOfferedInCompletion);
     }
 }

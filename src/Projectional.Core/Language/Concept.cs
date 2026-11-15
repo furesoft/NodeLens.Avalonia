@@ -16,13 +16,15 @@ public sealed class Concept
         IReadOnlyList<Concept> superConcepts,
         IReadOnlyList<SlotDeclaration> slots,
         PropertySlot? nameSlot,
-        bool isAbstract)
+        bool isAbstract,
+        bool isOfferedInCompletion)
     {
         Key = key;
         SuperConcepts = superConcepts;
         Slots = slots;
         NameSlot = nameSlot;
         IsAbstract = isAbstract;
+        IsOfferedInCompletion = isOfferedInCompletion;
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -55,6 +57,13 @@ public sealed class Concept
     /// Whether this concept only exists to be extended, so that no node is ever an instance of it.
     /// </summary>
     public bool IsAbstract { get; }
+
+    /// <summary>
+    /// Whether the editor may offer this concept when the user asks what can stand in a slot. It is a
+    /// statement about the menu, not about the model: the concept stays a legal child of every slot
+    /// that accepts it.
+    /// </summary>
+    public bool IsOfferedInCompletion { get; }
 
     /// <summary>Whether this concept is <paramref name="conceptKey"/> itself or extends it.</summary>
     public bool IsKindOf(string conceptKey) => conceptKey is not null && _ancestry.Contains(conceptKey);
