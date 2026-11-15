@@ -71,7 +71,7 @@ tracks the active one, and closing a modified tab asks before it discards anythi
 | Menu | Entries |
 | --- | --- |
 | File | New (`Ctrl+N`), Open… (`Ctrl+O`), Save (`Ctrl+S`), Save as… (`Ctrl+Shift+S`), Close document (`Ctrl+W`), Exit |
-| View | Representation (one submenu per concept with more than one variant), Line numbers, Increase font size (`Ctrl+=`), Decrease font size (`Ctrl+-`), Reset font size (`Ctrl+0`), Light theme, Dark theme |
+| View | Representation (one submenu per concept with more than one variant), Line numbers, Increase font size (`Ctrl+=`), Decrease font size (`Ctrl+-`), Reset font size (`Ctrl+0`), Follow system theme, Light theme, Dark theme |
 
 ### Define a language
 
@@ -258,7 +258,7 @@ More than one key is a real feature here rather than a courtesy:
 | Line numbers | An optional gutter that aligns with the projected lines; the width follows the digit count. |
 | Markers | Diagnostics drawn as coloured squiggles — solid for error and warning, dotted for info and hint — under the exact cell a diagnostic points at. Hovering one opens a box with the severity, the message and the code. |
 | Font size | Settable from code at any positive size; the View menu zooms between `6` and `48`. Layout, caret, hit test and squiggles all follow. |
-| Themes | Light and dark palettes, both presets and a `Create` factory for a host's own colours. |
+| Themes | Light and dark palettes, both presets, `Of(ThemeVariant)` to pick the one a desktop asks for, and a `Create` factory for a host's own colours. |
 | Representations | A concept can be drawn more than one way. Switching is a view action: no undo step, nothing persisted. |
 
 The same ruleset as a table, with one rule per row and a header row of column names:
