@@ -252,6 +252,32 @@ public sealed class ConceptRegistryTests
     }
 
     [Fact]
+    public void AConceptIsOfferedInCompletionUnlessItIsDeclaredOtherwise()
+    {
+        var registry = Create(
+            new ConceptDeclaration("Shown"),
+            new ConceptDeclaration("Hidden", isOfferedInCompletion: false));
+
+        Assert.True(registry.Get("Shown").IsOfferedInCompletion);
+        Assert.False(registry.Get("Hidden").IsOfferedInCompletion);
+    }
+
+    [Fact]
+    public void AConceptHiddenFromCompletionIsStillTheDefaultOfItsSlot()
+    {
+        // The flag says "do not put me in the menu", not "I do not exist": otherwise hiding a concept
+        // would leave a language with no way to create it at all.
+        var registry = Create(
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Lit", superConcepts: ["Expr"], isOfferedInCompletion: false),
+            new ConceptDeclaration("Name", superConcepts: ["Expr"]));
+
+        Assert.False(registry.Get("Lit").IsOfferedInCompletion);
+        Assert.Equal("Lit", registry.DefaultInstantiableFor("Expr")?.Key);
+        Assert.Equal("Lit", registry.DefaultInstantiableFor("Lit")?.Key);
+    }
+
+    [Fact]
     public void AConcreteConceptIsItsOwnDefaultAndAnUnknownOneHasNone()
     {
         var registry = Create(

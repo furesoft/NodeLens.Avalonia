@@ -20,10 +20,15 @@ ChildSlot("condition", ExpressionsConceptKeys.Expression, Cardinality.One)
 ```
 
 `Expression` is abstract, so no node can be an instance of it, and seven concrete concepts sit
-below it. Those seven are the proposals for that slot, in **declaration order** — the order the
-language author wrote them in, which is the author's ranking of what a user most likely wants.
-Enter without a list already creates the first of them (`ConceptRegistry.DefaultInstantiableFor`),
-so the top entry and the default never disagree.
+below it. **Four** of them are the proposals for that slot, in **declaration order** — the order
+the language author wrote them in, which is the author's ranking of what a user most likely
+wants. The other three are the literals, hidden from the list on purpose (see below).
+
+Enter without a list still creates the first concrete concept, which for the rules sample is
+`IntLiteral` — so the top entry and the default disagree whenever a hidden concept precedes a
+shown one. That is deliberate: the two answer different questions. The list asks "which of these
+would you pick from a menu", and Enter asks "what does a slot take if the user just wants
+something to type into". A literal belongs only to the second answer.
 
 ```csharp
 public sealed class CompletionItem
@@ -46,9 +51,24 @@ public sealed class CompletionItem
   same reason the syntax palette lives above this layer: a model carrying a picture would have
   to be persisted with one.
 
-`CompletionSource.Proposals(concepts, owner, slot)` walks the registry and keeps every
-**non-abstract** concept that is a kind of the declared one. It is a read-only query: no cache
-across edits, so a language that gains a concept needs no rebuild of anything.
+`CompletionSource.Proposals(concepts, owner, slot)` walks the registry and keeps every concept
+that is a kind of the declared one **and is offered in completion**. It is a read-only query: no
+cache across edits, so a language that gains a concept needs no rebuild of anything.
+
+Two concepts are filtered out, for two different reasons:
+
+- **abstract ones**, because no node can be an instance of them, so there is nothing to create;
+- **those declared `isOfferedInCompletion: false`**, because the language author decided they
+  do not belong in a menu. The flag is a statement about the list only
+  (`docs/architecture/language.md`): such a concept is still a legal child, and it is still
+  what `ConceptRegistry.DefaultInstantiableFor` may answer with, so Enter can create it.
+
+That second distinction is the reason `Proposals` is not simply "what
+`DefaultInstantiableFor` would accept". The two used to be the same query and no longer are;
+keeping them separate is what lets `Expressions` hide its literals without making them
+unreachable. A slot declared **directly** over a hidden concept therefore proposes nothing at
+all, and the user fills it with Enter — a slot that can offer no choice is a slot where a list
+would have nothing to say.
 
 ## The list is view state
 
@@ -245,10 +265,12 @@ the public path — `EditorSession` plus `KeyRouter`:
   one character at a time, and the selection resetting to the first match after a change of
   filter.
 - `CompletionActionTests` covers the gestures end to end over the rules sample, whose `condition`
-  slot is declared over an abstract concept with seven concrete ones: Ctrl+Space opens seven in
-  declaration order; Down wraps; typing narrows; Backspace widens and then closes; Enter creates
-  the concept and leaves the caret inside it; Escape closes without changing the model; a key
-  the list does not claim closes it and the key still reaches the model.
+  slot is declared over an abstract concept with four offered concrete ones: Ctrl+Space opens
+  four in declaration order; Down wraps; typing narrows; Backspace widens and then closes; Enter
+  creates the concept and leaves the caret inside it; Escape closes without changing the model; a
+  key the list does not claim closes it and the key still reaches the model. One test pins the
+  asymmetry the flag introduces: the three literals are absent from the list *and* still created
+  by a plain Enter in the same slot.
 
 `EditorKeyMapTests` covers the input side: Ctrl+Space and Escape map, and neither is claimed
 under a different modifier.
@@ -275,4 +297,5 @@ wrong. Geometry assertions would have missed it.
   control that currently has none.
 - **Should the host be able to suppress the built-in items?** `CompletionPalette.With` replaces
   one kind's icon, not the vocabulary. A host that wants a concept hidden needs a filter the
-  editing layer does not offer.
+  editing layer does not offer — while the *language* can hide one with
+  `ConceptDeclaration(..., isOfferedInCompletion: false)`. A host-level filter is still open.

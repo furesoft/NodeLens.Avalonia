@@ -38,6 +38,18 @@ consequences follow, and the editor depends on both:
 - An abstract concept may have no notation, because nothing is ever projected through it.
   Every concrete concept needs one, either its own or an inherited one.
 
+Independently of that, a concept declares whether it is **offered in completion**
+(`ConceptDeclaration(..., isOfferedInCompletion: false)`). The flag answers one question
+only — "should this concept appear in the list a user picks from" — and is *not* a
+statement about legality: a hidden concept is still a legal child of every slot that
+accepts it, and it may still be what an empty slot is filled with by pressing Enter. That
+separation is deliberate. `Expressions` hides `IntLiteral`, `BoolLiteral` and
+`StringLiteral` because a literal is created to be typed into, not picked out of a list of
+four — while keeping them reachable, since a slot declared over the abstract `Expression`
+would otherwise have no way to produce a literal at all. The flag is per declaration and,
+like `isAbstract`, is not inherited: a language whose literals descend from a shared base
+repeats it on each one. See [completion.md](completion.md) for the query that applies it.
+
 ## Notation
 
 Notation is a tree of **editor cells**. A cell is one of:
@@ -245,7 +257,9 @@ A slot declared over `Expressions.Expression` then accepts every expression conc
 without the host naming any of them, and adding an expression concept later extends
 every such slot at once. `Expressions.Expression` is abstract, so a slot declared over
 it cannot hold a bare base node — pressing Enter in an empty one creates the integer
-literal, the first concrete concept below it.
+literal, the first concrete concept below it. That literal is hidden from the completion
+list (see above) and therefore reachable *only* by Enter, which is the point of the two
+mechanisms being separate.
 
 `Projectional.Samples` (the toy rules language the standalone editor opens) is the
 working instance of that seam: two concepts of its own, one notation, and a condition

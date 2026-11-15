@@ -15,7 +15,8 @@ public sealed class ConceptDeclaration
         IEnumerable<SlotDeclaration>? slots = null,
         IEnumerable<string>? superConcepts = null,
         string? nameSlot = null,
-        bool isAbstract = false)
+        bool isAbstract = false,
+        bool isOfferedInCompletion = true)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -67,6 +68,7 @@ public sealed class ConceptDeclaration
         SuperConcepts = superList;
         NameSlot = nameSlot;
         IsAbstract = isAbstract;
+        IsOfferedInCompletion = isOfferedInCompletion;
     }
 
     public string Key { get; }
@@ -91,6 +93,19 @@ public sealed class ConceptDeclaration
     /// would happily create that meaningless node.
     /// </remarks>
     public bool IsAbstract { get; }
+
+    /// <summary>
+    /// Whether the editor may offer this concept when the user asks what can stand in a slot.
+    /// </summary>
+    /// <remarks>
+    /// A language hides the concepts a user reaches for by typing rather than by picking from a
+    /// menu — a literal is the obvious case, because "an integer literal" is not something anyone
+    /// wants to read in a list of eight entries. Hiding one only silences the list: the concept is
+    /// still a legal child of every slot that accepts it, and it can still be what
+    /// <see cref="ConceptRegistry.DefaultInstantiableFor"/> materializes when the user presses Enter
+    /// in an empty slot. Otherwise a language would have no way left to create it.
+    /// </remarks>
+    public bool IsOfferedInCompletion { get; }
 
     public override string ToString() => Key;
 }

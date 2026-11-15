@@ -252,9 +252,12 @@ has to remember to dismiss a list.
 
 The proposals are the model's own possibilities, not a vocabulary guessed from text: the caret
 is in an empty slot, the slot declares the concept its children must be, and every non-abstract
-concept below it is an entry, in declaration order. That order is the language author's ranking,
-and the first entry is the concept `InsertNodeAction` would create on Enter, so the top of the
-list and the default never disagree.
+concept below it that has not opted out is an entry, in declaration order. That order is the
+language author's ranking. `ConceptDeclaration(..., isOfferedInCompletion: false)` removes a
+concept from the list without removing it from the language, so the top entry and the concept
+Enter creates are allowed to disagree: the literals are absent from the menu and still what a
+plain Enter fills an expression slot with. Hiding a concept from the list must therefore never be
+implemented by making it illegal or by teaching `DefaultInstantiableFor` about the flag.
 
 The full contract — the gestures, why text typed into a list is a filter rather than an edit,
 how the list is painted and why items carry an `IImage` instead of a glyph — is in
