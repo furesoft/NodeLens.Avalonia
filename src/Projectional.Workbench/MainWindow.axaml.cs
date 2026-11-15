@@ -10,6 +10,7 @@ using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Samples;
+using Projectional.Semantics;
 
 namespace Projectional.Workbench;
 
@@ -158,6 +159,7 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
         editor.ShowLineNumbers = _showLineNumbers;
+        PublishFindings(document, editor);
 
         // The header has to say "modified" without the user saving to find out, so the model itself
         // is the notification: an edit anywhere in it changes the dirty state.
@@ -260,7 +262,31 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
-    private void OnDocumentChanged(object? sender, ModelChangedEventArgs e) => UpdateStatus();
+    private void OnDocumentChanged(object? sender, ModelChangedEventArgs e)
+    {
+        // Findings are a function of the model, so the model is the notification. A host that had to
+        // remember to re-run its checks would leave the squiggles describing the document as it was
+        // before the edit - which is the one moment they are certainly wrong.
+        if (sender is Model model
+            && _documents.Find(model) is { } document
+            && _tabs.TryGetValue(document, out var tab)
+            && tab.Content is ProjectionalEditorControl editor)
+        {
+            PublishFindings(document, editor);
+        }
+
+        UpdateStatus();
+    }
+
+    /// <summary>Hands the editor what the app's own checks found in a document.</summary>
+    /// <remarks>
+    /// The editor resolves nothing: it draws the diagnostics it is given, so the shell decides what to
+    /// report and a host that wants different checks replaces this call with its own.
+    /// </remarks>
+    private static void PublishFindings(DocumentTab document, ProjectionalEditorControl editor)
+    {
+        editor.Markers = new MarkerSet([.. DefaultNames.Of(document.Model)]);
+    }
 
     private void ApplyTheme(SyntaxTheme theme)
     {
