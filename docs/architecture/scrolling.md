@@ -9,8 +9,8 @@ This document plans that, and it is deliberately short on new machinery: the ari
 scrollbars need already exists in `LayoutViewport`, and Avalonia already ships the widget and
 the protocol for a control that scrolls itself.
 
-Status: **S1-S4 shipped, S5 (the probe run) outstanding**. An M1 remainder, see
-[roadmap.md](../roadmap.md).
+Status: **S1-S5 shipped**, verified against Avalonia 12.1.6 on a document taller and wider
+than the window. See [roadmap.md](../roadmap.md).
 
 ## What is delivered
 
@@ -195,6 +195,46 @@ control's `Bounds` shrinks with it. Either way the resize is picked up by the `B
 carries the new extent and viewport. Nothing in this plan has to know which mode the host's
 theme uses.
 
+Measured on a 240x300 window: with `AllowAutoHide = false` the editor's `Bounds` became
+`224x284` and `ViewportSize` `196.91x284` - exactly what the two bars took - and rasterising
+the window showed **no glyph pixel under either bar**. The bar bands held only the neutral grey
+of the bar chrome (`0` of `3962` and `0` of `3136` sampled pixels were coloured), while the
+content area was `18.9%` coloured.
+
+The overlaid default is the other case, and it must not be described as "space is reserved":
+with `AllowAutoHide = true` the control keeps the whole viewport, so the document is drawn
+*underneath* the bar and the bar paints translucent chrome over it. The same band then sampled
+`22.1%` coloured pixels. A host that wants nothing hidden by a bar sets `AllowAutoHide = false`;
+one that prefers the floating bar accepts that the last few characters of a long line sit
+behind it, which is what every overlaid scrollbar does.
+
+### Measured: a document taller and wider than the window
+
+S5 is the probe that exercises all of the above against a real window, because the control
+cannot be constructed in a unit test. The document is the payroll sample with its rules read
+through `Rules`' table variant, so it overflows on both axes: `266.67x782.09` laid out, 40 rows,
+inside a `240x300` window.
+
+| Question | Read back |
+| --- | --- |
+| Is `Bounds` the window and `Layout.Size` the document? | `Bounds` `240x300`, `Layout.Size` `266.67x782.09` |
+| Does the interface report the same numbers? | `Extent` `266.67x782.09`, `Viewport` `212.91x300` (the window minus the gutter), offset `0,0` - so the furthest offset is `53.76, 482.09` |
+| Do the bars move the content? | `ScrollViewer.Offset = (100, 200)` gave `OffsetX/OffsetY = 53.76, 200`: `Y` exactly, `X` clamped to the horizontal maximum |
+| Does the caret still drag the view? | `Ctrl+End` put the offset at `53.76, 482.09` - both maxima exactly, and the caret landed on the document's last line; `Ctrl+Home` returned it to `0, 0` |
+| Does the wheel step by lines? | One notch inside the host moved `Y` from `200` to `255.86`, which is `3 x 18.62` - `WheelLines` times the line height |
+| Is the wheel handed back at the end? | On a detached control with a `212.91x120` viewport, 12 notches moved the offset and the 13th came back `Handled = false` with `Y` at its maximum - so a wrapping panel would receive it. One notch up was handled again. Shift+notch reached `X = 53.76`, its maximum |
+| Does a short document swallow the wheel? | Detached, viewport `1372.91x900` against the same `266.67x782.09` document: `ScrollTo(0, 0)` returned `false` and a notch came back `Handled = false` |
+| Is anything painted under a bar? | The solid-bar raster, sampled as described above: no coloured pixel in either band |
+
+Two things this run settled:
+
+- the session-before-arrange bug in
+  [the section above](#a-control-with-no-viewport-does-not-scroll-to-the-caret), which the
+  first raster exposed;
+- the wheel assertions have to be made on a control that is in **no** visual tree. `RaiseEvent`
+  bubbles, so inside a `ScrollViewer` the event comes back handled by the presenter even when
+  the editor declined it, which would make "does not swallow" pass for the wrong reason.
+
 ## Wheel and keys
 
 The wheel stays the editor's, and that is a decision rather than an oversight.
@@ -288,7 +328,8 @@ The wheel stays the editor's, and that is a decision rather than an oversight.
   the wheel and confirm the event is no longer handled (so a wrapping panel would get it), and
   rasterise the picture to confirm nothing is painted under a bar.
 
-S1-S4 are delivered; S5 is the outstanding probe run.
+S1-S5 are delivered. The numbers from the S5 run are in
+[Measured: a document taller and wider than the window](#measured-a-document-taller-and-wider-than-the-window).
 
 ## Testing
 
@@ -300,9 +341,9 @@ S1-S4 are delivered; S5 is the outstanding probe run.
 | A session set before the first arrange does not scroll the document | Unit: `LayoutViewportTests` asks for the caret before the control has bounds |
 | The interface reports the layout, not a copy | Probe: read `ILogicalScrollable.Extent`/`Viewport`/`Offset` back after an edit changed the document's size (done: see the arranged-at-the-viewport table above) |
 | Bars move the content | Probe: set `ScrollViewer.Offset`, read `control.OffsetX/OffsetY` (done) |
-| A short document does not swallow the wheel | Probe: raise the wheel on a control whose document fits, read `args.Handled` (S5) |
-| Nothing painted under a bar | Probe: rasterise with `Auto` bars visible and sample the gutter pixels (S5) |
-| The caret still drags the view | Probe: `Ctrl+End`, read the offset (S5) |
+| A short document does not swallow the wheel | Probe: raise the wheel on a control whose document fits, read `args.Handled` (done: `Handled = false`, offset unchanged) |
+| Nothing painted under a bar | Probe: rasterise with `Auto` bars and sample the gutter pixels (done: solid bars are clean at `0` coloured px; the overlaid default draws text under the bar on purpose, see [above](#bar-space-is-automatic)) |
+| The caret still drags the view | Probe: `Ctrl+End`, read the offset (done: offset reached both maxima exactly) |
 
 ## Open questions
 
