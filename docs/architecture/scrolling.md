@@ -1,13 +1,13 @@
 # Scrolling
 
-The editor can already be scrolled: the control keeps an offset, the wheel moves it, the
-caret drags it into view, and layout only ever places the cells the viewport can show. What
-is missing is the part the user can see and grab - a scrollbar - and the part a host expects
-when it embeds an editor in a panel that scrolls.
+The editor scrolls: the control keeps an offset, the wheel moves it, the caret drags it into
+view, layout only places the cells the viewport can show, and a host gets real scrollbars by
+wrapping the control in a `ScrollViewer` because the control implements `ILogicalScrollable`.
 
-This document plans that, and it is deliberately short on new machinery: the arithmetic that
-scrollbars need already exists in `LayoutViewport`, and Avalonia already ships the widget and
-the protocol for a control that scrolls itself.
+This document describes that, and it was deliberately short on new machinery: the arithmetic
+scrollbars need already existed in `LayoutViewport`, and Avalonia already ships the widget and
+the protocol for a control that scrolls itself. The one thing that was genuinely added is the
+protocol implementation plus the wheel hand-back described below.
 
 Status: **S1-S5 shipped**, verified against Avalonia 12.1.6 on a document taller and wider
 than the window. See [roadmap.md](../roadmap.md).
