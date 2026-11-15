@@ -10,8 +10,10 @@ The name is MPS': an **intention** is an action offered *because of where the ca
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
 idea; the UI section says where the bulb appears, the rest of the document is about the
 model behind it. Visual Studio's second half of the concept — a **quick fix** attached to a
-diagnostic rather than to a caret — is the same list with a different source, and is scoped
-to the milestone that first produces diagnostics.
+diagnostic rather than to a caret — is the same list with a different source.
+[Quick fixes](quick-fixes.md) is planned separately and lands **first**, because diagnostics
+exist today while intentions do not: the general list is then read off two real sources
+instead of guessed from one, and it inherits the `EditProgram` that fixes build.
 
 ## What an intention is
 
@@ -73,10 +75,11 @@ Two sources, because they answer different questions:
    (`session.AddIntentions(provider)`), filtered by a predicate over the caret, and are how an
    embedding application puts its own commands next to the structural ones.
 
-Resolution order is host intentions, then language intentions, then quick fixes, each group
-filtered by availability and de-duplicated by id. Order is part of the visible behaviour, so
-it is fixed here rather than left to registration order: a host's action is what the user of
-that host wants first, and a language's action is what a user of that language expects.
+Resolution order is host intentions, then language intentions, then [quick
+fixes](quick-fixes.md), each group filtered by availability and de-duplicated by id. Order is
+part of the visible behaviour, so it is fixed here rather than left to registration order: a
+host's action is what the user of that host wants first, and a language's action is what a
+user of that language expects.
 
 The caret position is resolved first, exactly as for a key: an intention is offered for the
 **cell the caret is on**, not for the node that happens to contain it. If the caret stands on
@@ -168,33 +171,36 @@ host runs its own command from the same id; the bulb is then a launcher, not an 
 
 ## Error markers and quick fixes
 
-Once constraints produce diagnostics (M4), a diagnostic carries an optional list of fixes,
-and a fix is an intention with the diagnostic as its source. The two meet at the bulb —
-how the diagnostic is *shown* is [markers.md](markers.md):
+A diagnostic's repairs are [quick fixes](quick-fixes.md), and they land **before** this list,
+because diagnostics exist today while intentions do not. The two meet at the bulb — how the
+diagnostic is *shown* is [markers.md](markers.md):
 
 - the bulb for the caret's line reports the highest-severity marker on that line;
 - opening it lists the diagnostic's fixes first, then the intentions, separated;
 - a fix that is not applicable is shown disabled with the diagnostic's message as its
   description, so the user reads the problem in the same place as the cure.
 
-Nothing about that needs a second mechanism, which is the reason to design the intention
-list now rather than after validation exists.
+The quick-fix slices therefore deliver the bulb, the keys and the "Quick fixes" submenu, and
+what remains here is teaching the same affordances a second source. That is the honest order:
+the shapes (`Intention`, `IntentionContext`, `IntentionList`, `IntentionAvailability`) are then
+read off two real sources instead of guessed from one, and `EditProgram` is built by the slice
+that needs it first rather than by two slices independently.
 
 ## Slices
 
-Each slice is its own branch and its own merge, per the working rules.
+Each slice is its own branch and its own merge, per the working rules. The quick-fix slices
+Q1-Q6 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow them.
 
 | Slice | Branch | Delivers |
 | --- | --- | --- |
-| A | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionList.For(session)`, provider registration on the session, one fixture intention in the test language, tests for order, availability, dedup |
-| B | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, `EditProgram`, one-undo-step and rollback tests |
-| C | `feat/intentions-keys` | `Alt+Enter` / `Ctrl+.` routing in the control, run-when-single, popup built from `EditorMenuEntry`s through `EditorMenuPresenter` |
-| D | `feat/intentions-bulb` | `IntentionBulb.BoundsOf`, drawing in the control's margin, its hit test, repaint policy, "Intentions" submenu in the context menu |
+| A | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionList.For(session)`, provider registration on the session, one fixture intention in the test language, tests for order, availability, dedup, and the two-source resolution order (host, language, fixes) |
+| B | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced |
+| C | `feat/intentions-keys` | the intention list in the `Alt+Enter` / `Ctrl+.` popup beside the fixes, built from `EditorMenuEntry`s through `EditorMenuPresenter` |
+| D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
-| F | (M4) `feat/quick-fixes` | diagnostics carry fixes; the bulb reports the line's marker; fixes listed before intentions |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
-C and D are presentation and are the first customers of the headless Avalonia test project.
+C and D extend affordances that quick fixes have already delivered and verified.
 
 ## Decisions this plan proposes
 

@@ -48,7 +48,9 @@ sealed record Diagnostic
 A quick fix is *not* on the record. Fixes are intentions — edit actions that change the model —
 and a diagnostic that carried them would make "what is wrong" and "what to do about it" one
 type, decided by the same check. The mapping from diagnostic to fix list lives beside the set
-when slice F needs it; see [context-actions.md](context-actions.md).
+and is keyed by this record; see [quick-fixes.md](quick-fixes.md). That is the part of
+[context-actions.md](context-actions.md) which lands **first**: repairs for the findings that
+already exist, before the general intention list they will later join.
 
 - Diagnostics are rendered as markers/underlines, never as blocking dialogs.
 - Errors do not prevent editing, saving, or opening.
