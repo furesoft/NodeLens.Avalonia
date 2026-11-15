@@ -12,9 +12,10 @@ namespace Projectional.Editing;
 /// a width that matches its zoom and DPI without the frame knowing about either.
 /// </para>
 /// <para>
-/// The height is the height of the cell the caret stands in, not of the line, because a slot may be
-/// taller than the text it holds - and a caret that only covered the glyph would look misplaced in an
-/// indented block.
+/// The height is one line, not the height of the cell the caret stands in: a cell with several lines of
+/// text is several lines tall, and a bar covering all of them would say the caret is on all of them at
+/// once. A caret on a slot rather than on text stands on the slot's own line, which is where its marker
+/// is drawn.
 /// </para>
 /// </remarks>
 public static class CaretBounds
@@ -61,24 +62,13 @@ public static class CaretBounds
             return null;
         }
 
-        return new LayoutRect(bounds.X + PrefixWidth(place, position.Offset, measure), bounds.Y, 0, bounds.Height);
-    }
+        var lines = CaretGeometry.LinesOf(place, layout, measure);
+        var lineIndex = CaretGeometry.LineIndexOf(lines, position.Offset);
 
-    /// <summary>How wide the first <paramref name="length"/> characters of a place's text are.</summary>
-    /// <param name="place">The place whose text is measured.</param>
-    /// <param name="length">How many characters to measure, clamped to the text length.</param>
-    /// <param name="measure">The measure to use.</param>
-    /// <remarks>
-    /// Offsets are clamped rather than rejected: a caret past the end of a shortened property would
-    /// otherwise draw outside its cell, and drawing it at the end is both harmless and what the user
-    /// expects while a deletion is being typed through.
-    /// </remarks>
-    internal static double PrefixWidth(CaretPlace place, int length, ITextMeasure measure)
-    {
-        var clamped = Math.Clamp(length, 0, place.Text.Length);
-
-        return clamped == place.Text.Length
-            ? measure.Measure(place.Text, place.Emphasis)
-            : measure.Measure(place.Text[..clamped], place.Emphasis);
+        return new LayoutRect(
+            bounds.X + CaretGeometry.LeftOn(place, lines, lineIndex, position.Offset, measure),
+            CaretGeometry.TopOf(bounds, lineIndex, measure),
+            0,
+            measure.LineHeight);
     }
 }

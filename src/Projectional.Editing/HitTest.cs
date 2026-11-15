@@ -66,7 +66,7 @@ public static class HitTest
         var place = Under(places, layout, x, y) ?? Nearest(places, layout, x, y);
 
         return place is { } found && layout.BoundsOf(found.Cell) is { } bounds
-            ? CaretPosition.At(found, OffsetAt(found, bounds, x, measure))
+            ? CaretPosition.At(found, OffsetAt(found, layout, bounds, x, y, measure))
             : null;
     }
 
@@ -120,22 +120,16 @@ public static class HitTest
         : value > end ? value - end
         : 0;
 
-    private static int OffsetAt(CaretPlace place, LayoutRect bounds, double x, ITextMeasure measure)
+    /// <summary>The offset of a place whose caret is closest to a point, on the line the point fell on.</summary>
+    /// <remarks>
+    /// The row decides the line and the column decides the boundary, so a click on the second line of a
+    /// wrapped value lands on that line rather than on whichever character of the whole value happens to
+    /// be closest sideways.
+    /// </remarks>
+    private static int OffsetAt(CaretPlace place, CellLayout layout, LayoutRect bounds, double x, double y, ITextMeasure measure)
     {
-        var nearest = 0;
-        var nearestDistance = double.MaxValue;
+        var lines = CaretGeometry.LinesOf(place, layout, measure);
 
-        for (var offset = 0; offset <= place.Length; offset++)
-        {
-            var distance = Math.Abs(bounds.X + CaretBounds.PrefixWidth(place, offset, measure) - x);
-
-            if (distance < nearestDistance)
-            {
-                nearest = offset;
-                nearestDistance = distance;
-            }
-        }
-
-        return nearest;
+        return CaretGeometry.OffsetAt(place, lines, CaretGeometry.LineAtY(lines, bounds, y, measure), x - bounds.X, measure);
     }
 }

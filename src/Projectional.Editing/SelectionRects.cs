@@ -90,15 +90,58 @@ public static class SelectionRects
                 (from, to) = (to, from);
             }
 
-            var left = from <= 0 ? bounds.X : bounds.X + CaretBounds.PrefixWidth(place, from, measure);
-            var right = to >= place.Text.Length ? bounds.Right : bounds.X + CaretBounds.PrefixWidth(place, to, measure);
-
-            if (right > left)
-            {
-                rects.Add(new LayoutRect(left, bounds.Y, right - left, bounds.Height));
-            }
+            AddLines(rects, place, layout, bounds, from, to, measure);
         }
 
         return rects;
+    }
+
+    /// <summary>Adds one box per line the range touches, which is one box for a place of one line.</summary>
+    /// <remarks>
+    /// The ends are trimmed to the line they fall on rather than to the cell, so a selection that starts
+    /// in the middle of a wrapped value highlights only the rest of that line and not the box around it.
+    /// A place that is selected whole is highlighted as a block, keeping its full width on every line,
+    /// because a selection is a range of cells and a ragged right edge would misread as a ragged range.
+    /// </remarks>
+    private static void AddLines(
+        List<LayoutRect> rects,
+        CaretPlace place,
+        CellLayout layout,
+        LayoutRect bounds,
+        int from,
+        int to,
+        ITextMeasure measure)
+    {
+        var lines = CaretGeometry.LinesOf(place, layout, measure);
+        var whole = from <= 0 && to >= place.Text.Length;
+
+        for (var index = 0; index < lines.LineCount; index++)
+        {
+            var line = lines.Lines[index];
+
+            if (to < line.Start || from > line.ContentEnd)
+            {
+                continue;
+            }
+
+            var left = whole || from <= line.Start
+                ? 0
+                : CaretGeometry.LeftOn(place, lines, index, from, measure);
+            var right = whole
+                ? bounds.Width
+                : to >= line.ContentEnd
+                    ? line.Width
+                    : CaretGeometry.LeftOn(place, lines, index, to, measure);
+
+            if (right > left)
+            {
+                rects.Add(
+                    new LayoutRect(
+                        bounds.X + left,
+                        CaretGeometry.TopOf(bounds, index, measure),
+                        right - left,
+                        measure.LineHeight));
+            }
+        }
     }
 }
