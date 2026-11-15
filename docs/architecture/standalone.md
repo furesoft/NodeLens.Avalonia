@@ -160,6 +160,21 @@ gutter on and off, and nothing about it reaches the model or the undo history - 
 [line-numbers.md](line-numbers.md). The colours come from `SyntaxTheme`, like the palette, so
 the dark theme does not paint the numbers in light-theme grey.
 
+### Font size
+
+**View ▸ Increase / Decrease / Reset font size** step one shared size by one pixel between 6 and
+48, and `Ctrl+=`, `Ctrl+-` and `Ctrl+0` do the same. Like the gutter and the theme it is a shell
+preference: one field on `MainWindow`, applied to every open tab and to any document opened
+afterwards, never written into the model. A document created while zoomed is given the size
+before its `DocumentTab` is built, so it is laid out once at the right size instead of twice -
+see [font-size.md](font-size.md).
+
+The gesture is written into the menu header rather than declared as a `HotKey`. The key that
+types `+` is `OemPlus` with `Shift`, so one registered gesture cannot match both the shifted and
+the unshifted press, and `KeyGesture` would print the enum name to the user. The handler is
+registered for the tunnelling phase, because the editor control claims keys of its own and a
+bubbling handler would race it.
+
 ## What the thin shell implements
 
 The M1 shell is the smallest window that can open, edit and save a model, and it is

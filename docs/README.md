@@ -23,16 +23,18 @@ constraints it must satisfy, and which alternatives were rejected.
    reports (planned).
 10. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
-11. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+11. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
+    (delivered).
+12. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard; the first slice is implemented.
-12. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-13. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-14. [Integration](architecture/integration.md) — how host applications embed this.
-15. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+13. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+14. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+15. [Integration](architecture/integration.md) — how host applications embed this.
+16. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-16. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-17. [Roadmap](roadmap.md) — milestones and acceptance gates.
-18. [Open questions](open-questions.md) — what is deliberately still undecided.
+17. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+18. [Roadmap](roadmap.md) — milestones and acceptance gates.
+19. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
