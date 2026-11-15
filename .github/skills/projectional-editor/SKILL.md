@@ -462,9 +462,16 @@ dependency, so every action is testable headlessly.
   typed string, and the place IME will hook in later); navigation and deletion come from
   `OnKeyDown`. A letter therefore never appears in `EditorKeyMap` - it is not a key the
   editor routes.
-- **Keys held with Control/Alt/Meta are the host's.** `EditorKeyMap.Map` returns `null` for
-  them on purpose: Ctrl+Left is a word jump in the surrounding app, Ctrl+Delete deletes a
-  file in a file manager. Shift is not in that list because Shift+Tab is the editor's.
+- **Keys held with Control/Alt/Meta are the host's**, with one exception. `EditorKeyMap.Map`
+  returns `null` for them on purpose: Ctrl+Left is a word jump in the surrounding app,
+  Ctrl+Delete deletes a file in a file manager. The exception is Ctrl+Left/Ctrl+Right, which
+  map to `EditorKey.ControlLeft`/`ControlRight` because the plain arrows move a whole cell.
+  Shift is not in that list because Shift+Tab is the editor's.
+- **The arrows move by cell, Ctrl+arrows by character.** `CaretMove.Left`/`Right` land on the
+  neighbouring caret place at the end/start of its text, so a press never leaves the caret in
+  the gap between two cells and never creeps through a seven-character property one letter at
+  a time. `CaretMove.LeftCharacter`/`RightCharacter` are separate members (not a flag) so a
+  host can rebind them. Vertical moves stay geometric - see `CaretNavigation.Move`.
 - **A refused edit stays unconsumed.** `e.Handled` is set from the outcome, not
   unconditionally: `EditOutcome.Rejected` (a letter typed into a number) leaves the event
   open so the host can beep or reroute it.
@@ -623,7 +630,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 589 tests**; anything below that means tests were deleted.
+it. **Baseline is 595 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

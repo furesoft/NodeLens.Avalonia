@@ -24,6 +24,8 @@ public static class KeyRouter
     {
         EditorKey.Left => new MoveCaretAction(CaretMove.Left),
         EditorKey.Right => new MoveCaretAction(CaretMove.Right),
+        EditorKey.ControlLeft => new MoveCaretAction(CaretMove.LeftCharacter),
+        EditorKey.ControlRight => new MoveCaretAction(CaretMove.RightCharacter),
         EditorKey.Up => new MoveCaretAction(CaretMove.Up),
         EditorKey.Down => new MoveCaretAction(CaretMove.Down),
         EditorKey.Home => new MoveCaretAction(CaretMove.LineStart),

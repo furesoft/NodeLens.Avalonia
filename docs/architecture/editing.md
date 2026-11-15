@@ -67,16 +67,30 @@ so what is clickable and what is reachable by keyboard cannot drift apart.
 
 | Move | Behaviour |
 | --- | --- |
-| Left / Right | previous / next place in document order; clamps at the ends instead of wrapping |
+| Left / Right | previous / next **cell** in document order, arriving at the end of the previous or the start of the next one; clamps at the ends instead of wrapping |
+| Ctrl+Left / Ctrl+Right | one character, crossing into the neighbour at the edge of a cell — the character step the cell move takes away |
 | Home / End | start / end of the cell's line, using `LineHeight / 2` as the tolerance so a caret that is vertically centred still counts as being on the line |
 | Up / Down | nearest non-empty line in that direction, then the place with the smallest distance to the old column, ties going to document order |
 | Tab / Shift+Tab | next / previous slot of the same node in declaration order, then out to the parent |
+
+Horizontal motion is **by cell**, vertical motion is **geometric**, and the difference is the
+point. A projectional editor shows a structure, so one press of an arrow walks one piece of the
+notation — a keyword, a property, a space — the way the language spells it, and never stops in
+the gap that alignment leaves between two cells. There is no comparable structure for "above",
+because lines are a result of layout: a table row above another row is not a parent, and which
+cell sits on the line above depends on widths. So horizontal movement follows document order and
+vertical movement follows the page.
 
 Two rules keep vertical movement from feeling arbitrary:
 
 1. **Empty lines are skipped**, because there is nothing to stand in them.
 2. **Column wins over order** — the target is the place closest to the caret's x position,
    which is what makes arrow-key movement predictable in a table or a ragged notation.
+
+Because a property can be many characters long, the character-wise step stays reachable as
+`CaretMove.LeftCharacter` / `RightCharacter`, bound to Ctrl+Left / Ctrl+Right. It is a separate
+move rather than a modifier flag on the same one, so a host that wants different keys — or a
+different definition of "cell" — only has to bind another key to it.
 
 ## The action model
 

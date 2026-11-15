@@ -20,6 +20,12 @@ public enum EditorKey
     /// <summary>The right arrow.</summary>
     Right,
 
+    /// <summary>Ctrl+Left, which steps one character instead of one cell.</summary>
+    ControlLeft,
+
+    /// <summary>Ctrl+Right, which steps one character instead of one cell.</summary>
+    ControlRight,
+
     /// <summary>The up arrow.</summary>
     Up,
 
