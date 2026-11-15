@@ -75,6 +75,11 @@ even if the build stays green.
     and `InsertNodeAction.FillSlot` uses it to fill an empty slot (returning `EditResult.Unchanged`
     when no concept can exist). An abstract concept may therefore have no notation; every
     concrete one needs its own or an inherited one.
+    A separate flag, `ConceptDeclaration(..., isOfferedInCompletion: false)`, keeps a concept out
+    of the completion **list only**. `DefaultInstantiableFor` must keep ignoring it: a hidden
+    concept stays a legal child reachable with Enter, which is exactly how `Expressions` keeps
+    its three literals usable while leaving them out of the menu. Never "fix" the two into one
+    rule; `CompletionSource.Proposals` filters on both, the default fill on neither.
 
 ## Working conventions (explicit user requirement)
 
@@ -776,15 +781,16 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 707 tests**; anything below that means tests were deleted.
+it. **Baseline is 755 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
 
 - `Projectional.Expressions` - an abstract `Expression` plus seven concrete concepts
-  (`IntLiteral`, `BoolLiteral`, `StringLiteral`, `Name`, `Binary`, `Unary`, `Parenthesized`).
-  That count is what completion offers for an empty `condition`, so it is worth counting
-  rather than trusting.
+  (`IntLiteral`, `BoolLiteral`, `StringLiteral`, `Name`, `Binary`, `Unary`, `Parenthesized`),
+  the three literals declared `isOfferedInCompletion: false`.
+  Four of the seven are what completion offers for an empty `condition`, and four is what a
+  test asserting the list length should expect.
   A host borrows its declarations with `[.. ExpressionsLanguage.ConceptDeclarations, .. own]`;
   it never inherits from them. Operators are `PropertyType.Enum` symbols so the typed value
   *is* the notation.
