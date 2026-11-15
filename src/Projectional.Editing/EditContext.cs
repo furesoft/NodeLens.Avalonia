@@ -33,6 +33,7 @@ public sealed class EditContext
         EditorTree tree,
         CellLayout layout,
         ITextMeasure measure,
+        double pageHeight,
         Selection selection,
         ITextClipboard clipboard,
         ITypingRules typing)
@@ -43,6 +44,7 @@ public sealed class EditContext
         Tree = tree;
         Layout = layout;
         Measure = measure;
+        PageHeight = pageHeight;
         Selection = selection;
         Clipboard = clipboard;
         _typing = typing;
@@ -59,6 +61,16 @@ public sealed class EditContext
 
     /// <summary>The measure the layout was computed with.</summary>
     public ITextMeasure Measure { get; }
+
+    /// <summary>
+    /// How much of the layout is visible, in layout units, which is what a page move travels.
+    /// </summary>
+    /// <remarks>
+    /// The layout cannot know this - the same document is drawn in windows of different heights - so it
+    /// travels with the action instead. Zero means "no viewport was reported", and a page move then
+    /// degrades into the single-line move it is a version of.
+    /// </remarks>
+    public double PageHeight { get; }
 
     /// <summary>The selection as it was when the action started.</summary>
     public Selection Selection { get; }

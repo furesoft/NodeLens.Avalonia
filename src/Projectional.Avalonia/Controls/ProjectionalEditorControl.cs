@@ -748,20 +748,26 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     }
 
     /// <summary>Scrolls to an offset, trimmed to the range the document actually has.</summary>
-    public void ScrollTo(double x, double y)
+    /// <returns>Whether the offset moved, which is what tells a caller its gesture did something.</returns>
+    /// <remarks>
+    /// The answer is the difference between a wheel event this editor consumed and one it should hand
+    /// back: a wheel over a document that already shows its first line belongs to whatever is behind the
+    /// editor, and reporting "nothing happened" is the only way a host can forward it.
+    /// </remarks>
+    public bool ScrollTo(double x, double y)
     {
         var session = Session;
 
         if (session is null)
         {
-            return;
+            return false;
         }
 
         var (clampedX, clampedY) = LayoutViewport.Clamp(session.Layout, ViewportSize, x, y);
 
         if (clampedX == _offsetX && clampedY == _offsetY)
         {
-            return;
+            return false;
         }
 
         _offsetX = clampedX;
@@ -772,6 +778,8 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // Guarded by the early return above: a host that set the offset we were already at must not be told
         // the offset moved, or its reaction to that would drive this setter again.
         RaiseScrollInvalidated();
+
+        return true;
     }
 
     /// <summary>Tells a scroll host that what it reads back has changed.</summary>
@@ -979,18 +987,27 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// <inheritdoc />
     /// <remarks>
     /// The measure pass is where the editor learns how much room it has, so it publishes the width it is
-    /// given as the page a text cell wraps at. An unbounded width means there is no page: the document is
-    /// laid out one long line at a time, which is what a host inside a scrolling panel asks for.
+    /// given as the page a text cell wraps at, and the height as the distance a page move travels. An
+    /// unbounded width means there is no page: the document is laid out one long line at a time, which is
+    /// what a host inside a scrolling panel asks for. An unbounded height means the same thing for the
+    /// other axis - there is no page to move by, so the page keys fall back to the single-line move
+    /// rather than jumping to the end of a document that is entirely on screen.
     /// </remarks>
     protected override Size MeasureOverride(Size availableSize)
     {
         var session = Session;
 
-        if (session is not null && !double.IsInfinity(availableSize.Width))
+        if (session is not null)
         {
-            // The gutter is the host's chrome, not part of the page, so the room a text cell may fill is
-            // what is left of the width once the numbers have taken theirs.
-            session.WrapWidth = Math.Max(0, availableSize.Width - GutterWidth);
+            if (!double.IsInfinity(availableSize.Width))
+            {
+                // The gutter is the host's chrome, not part of the page, so the room a text cell may fill
+                // is what is left of the width once the numbers have taken theirs.
+                session.WrapWidth = Math.Max(0, availableSize.Width - GutterWidth);
+            }
+
+            // Only the width is chrome; the page runs the full height the host gave it.
+            session.PageHeight = double.IsInfinity(availableSize.Height) ? 0 : Math.Max(0, availableSize.Height);
         }
 
         // Setting the wrap width re-lays-out the document, so the extent reported a moment ago may have
@@ -1040,6 +1057,20 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// The wheel is one axis at a time, as on most platforms: Shift turns the vertical wheel into the
+    /// horizontal one, and a device that reports both moves on the axis it reports. One notch is
+    /// <see cref="WheelLines"/> lines, because a document whose caret the mouse does not move should
+    /// scroll in steps the user can aim.
+    /// </para>
+    /// <para>
+    /// A wheel this control cannot act on is not consumed. A document already showing its first line has
+    /// nowhere to go, and swallowing the event there would break the wheel for the panel the editor was
+    /// dropped into - so the event is handed back untouched and the hover tip is kept, because nothing
+    /// moved under the pointer.
+    /// </para>
+    /// </remarks>
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
@@ -1051,9 +1082,15 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             return;
         }
 
+        var horizontal = (e.KeyModifiers & KeyModifiers.Shift) != 0;
+        var deltaX = horizontal ? e.Delta.Y : e.Delta.X;
+        var deltaY = horizontal ? 0 : e.Delta.Y;
         var step = TextMeasure.LineHeight * WheelLines;
 
-        ScrollTo(_offsetX - (e.Delta.X * step), _offsetY - (e.Delta.Y * step));
+        if (!ScrollTo(_offsetX - (deltaX * step), _offsetY - (deltaY * step)))
+        {
+            return;
+        }
 
         // The text moved under a pointer that did not, so the wave it was resting on is no longer there.
         // Dropping the tip is the honest answer; keeping it would describe text that scrolled away.

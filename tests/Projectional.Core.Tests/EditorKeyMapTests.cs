@@ -75,7 +75,32 @@ public sealed class EditorKeyMapTests
         Assert.Equal(EditorKey.ControlRight, EditorKeyMap.Map(Key.Right, modifiers));
 
         Assert.Null(EditorKeyMap.Map(Key.Back, modifiers));
-        Assert.Null(EditorKeyMap.Map(Key.Home, modifiers));
+        Assert.Null(EditorKeyMap.Map(Key.Up, modifiers));
+    }
+
+    [Fact]
+    public void ThePageKeysAreUnmodified()
+    {
+        // A page move is navigation, so it needs no modifier - and vertical scrolling had no key at all
+        // before the editor could scroll.
+        Assert.Equal(EditorKey.PageUp, EditorKeyMap.Map(Key.PageUp, KeyModifiers.None));
+        Assert.Equal(EditorKey.PageDown, EditorKeyMap.Map(Key.PageDown, KeyModifiers.None));
+        Assert.Equal(EditorKey.PageUp, EditorKeyMap.Map(Key.PageUp, KeyModifiers.Shift));
+        Assert.Equal(EditorKey.PageDown, EditorKeyMap.Map(Key.PageDown, KeyModifiers.Shift));
+
+        // Ctrl+PageUp/Ctrl+PageDown stay with the host: browsers and tabbed applications own them.
+        Assert.Null(EditorKeyMap.Map(Key.PageUp, KeyModifiers.Control));
+        Assert.Null(EditorKeyMap.Map(Key.PageDown, KeyModifiers.Control));
+    }
+
+    [Theory]
+    [InlineData(KeyModifiers.Control)]
+    [InlineData(KeyModifiers.Control | KeyModifiers.Shift)]
+    public void ControlReachesTheDocumentEnds(KeyModifiers modifiers)
+    {
+        // Home and End move within the line, so the document ends need the modifier every editor uses.
+        Assert.Equal(EditorKey.ControlHome, EditorKeyMap.Map(Key.Home, modifiers));
+        Assert.Equal(EditorKey.ControlEnd, EditorKeyMap.Map(Key.End, modifiers));
     }
 
     [Theory]

@@ -104,7 +104,8 @@ public sealed class CaretNavigationTests
             session.Layout,
             session.Measure,
             CaretPosition.At(name, 3),
-            CaretMove.Left);
+            CaretMove.Left,
+            page: 0);
 
         Assert.Equal(" ", Place(session, moved).Text);
         Assert.Equal(1, moved.Offset);
@@ -142,7 +143,8 @@ public sealed class CaretNavigationTests
             session.Layout,
             session.Measure,
             CaretNavigation.Last(session.Tree),
-            CaretMove.RightCharacter);
+            CaretMove.RightCharacter,
+            page: 0);
 
         Assert.Equal("}", Place(session, moved).Text);
         Assert.Equal(1, moved.Offset);
@@ -159,7 +161,8 @@ public sealed class CaretNavigationTests
             session.Layout,
             session.Measure,
             CaretPosition.At(name, "unnamed".Length),
-            CaretMove.Right);
+            CaretMove.Right,
+            page: 0);
 
         Assert.Equal(" ", Place(session, moved).Text);
         Assert.Equal(0, moved.Offset);
@@ -186,7 +189,8 @@ public sealed class CaretNavigationTests
             session.Layout,
             session.Measure,
             CaretNavigation.First(session.Tree),
-            CaretMove.Left);
+            CaretMove.Left,
+            page: 0);
 
         Assert.Equal("rule", Place(session, moved).Text);
         Assert.Equal(0, moved.Offset);
@@ -201,7 +205,8 @@ public sealed class CaretNavigationTests
             session.Layout,
             session.Measure,
             CaretNavigation.Last(session.Tree),
-            CaretMove.Right);
+            CaretMove.Right,
+            page: 0);
 
         Assert.Equal("}", Place(session, moved).Text);
         Assert.Equal(1, moved.Offset);
@@ -306,6 +311,60 @@ public sealed class CaretNavigationTests
     }
 
     [Fact]
+    public void APageMoveWithoutAViewportIsASingleLineMove()
+    {
+        var (rule, _, _) = TestEditor.RuleWithStep();
+        using var session = TestEditor.Open(rule);
+        var start = CaretNavigation.First(session.Tree);
+
+        // Zero is what a host that never reported a viewport height sends, so the page keys have to
+        // degrade to the arrow instead of jumping somewhere the user cannot see.
+        var down = Move(session, CaretMove.Down, start);
+        var paged = Move(session, CaretMove.PageDown, start, page: 0);
+
+        Assert.Equal(down.Address, paged.Address);
+        Assert.Equal(down.Offset, paged.Offset);
+    }
+
+    [Fact]
+    public void PageDownMovesAsManyLinesAsTheViewportHolds()
+    {
+        var (body, _) = TestEditor.BodyWithSteps("a", "b", "c", "d");
+        var rule = body.Parent ?? throw new InvalidOperationException("The body hangs under no rule.");
+        using var session = TestEditor.Open(rule);
+        var start = CaretNavigation.First(session.Tree);
+
+        // One line of text is one layout unit, so a five-unit page moves four lines: the last line of
+        // the page has to stay below the first one for the page to have covered anything.
+        var paged = Move(session, CaretMove.PageDown, start, page: 5 * session.Measure.LineHeight);
+
+        Assert.Equal(
+            LineOf(session, start) + (4 * session.Measure.LineHeight),
+            LineOf(session, paged));
+
+        // A page is not a jump to the end: the line above the target still has somewhere to hold the
+        // caret, and the single-line move must stay where it was.
+        Assert.True(LineOf(session, paged) > LineOf(session, Move(session, CaretMove.Down, start)));
+    }
+
+    [Fact]
+    public void PageUpAndPageDownClampToTheDocument()
+    {
+        var (body, _) = TestEditor.BodyWithSteps("a", "b", "c", "d");
+        var rule = body.Parent ?? throw new InvalidOperationException("The body hangs under no rule.");
+        using var session = TestEditor.Open(rule);
+        var start = CaretNavigation.First(session.Tree);
+
+        // A page taller than the document asks for a line that does not exist, so it lands on the last
+        // one instead of refusing to move: a page key that does nothing looks broken.
+        var bottom = Move(session, CaretMove.PageDown, start, page: 1000);
+        var top = Move(session, CaretMove.PageUp, bottom, page: 1000);
+
+        Assert.Equal(session.Layout.Size.Height - session.Measure.LineHeight, LineOf(session, bottom));
+        Assert.Equal(0, LineOf(session, top));
+    }
+
+    [Fact]
     public void DocumentStartAndEndAreReachableThroughTheMoves()
     {
         using var session = TestEditor.Open(TestEditor.BareRule());
@@ -325,7 +384,7 @@ public sealed class CaretNavigationTests
         using var session = TestEditor.Open(TestEditor.BareRule());
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => CaretNavigation.Move(session.Layout, session.Measure, session.Selection.Caret, (CaretMove)99));
+            () => CaretNavigation.Move(session.Layout, session.Measure, session.Selection.Caret, (CaretMove)99, 0));
     }
 
     [Fact]
@@ -335,16 +394,24 @@ public sealed class CaretNavigationTests
         using var session = TestEditor.Open(rule);
         var nowhere = CaretPosition.At(CellAddress.OfSlot(rule.Id, "steps"));
 
-        var moved = CaretNavigation.Move(session.Layout, session.Measure, nowhere, CaretMove.DocumentStart);
+        var moved = CaretNavigation.Move(session.Layout, session.Measure, nowhere, CaretMove.DocumentStart, 0);
 
         Assert.Equal("rule", Place(session, moved).Text);
         Assert.Equal(0, moved.Offset);
     }
 
-    private static CaretPosition Move(EditorSession session, CaretMove move, CaretPosition? from = null) =>
-        CaretNavigation.Move(session.Layout, session.Measure, from ?? session.Selection.Caret, move);
+    private static CaretPosition Move(
+        EditorSession session,
+        CaretMove move,
+        CaretPosition? from = null,
+        double page = 0) =>
+        CaretNavigation.Move(session.Layout, session.Measure, from ?? session.Selection.Caret, move, page);
 
     private static CaretPlace Place(EditorSession session, CaretPosition position) =>
         CaretNavigation.PlaceAt(session.Tree, position)
         ?? throw new InvalidOperationException($"Nothing stands at {position}.");
+
+    private static double LineOf(EditorSession session, CaretPosition position) =>
+        CaretBounds.Of(session.Tree, session.Layout, position, session.Measure)?.Y
+        ?? throw new InvalidOperationException($"No caret bar stands at {position}.");
 }

@@ -22,7 +22,9 @@ syntax highlighting from the meaning on a run to a host-swappable palette, model
 decorations, cell-wise caret motion with a blinking caret, a context menu described by the
 editing layer, concept- and value-driven completion (Ctrl+Space, icons as host images, an
 enumerated property offering its values on arrival), and text
-clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`) are done. The
+clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
+size, model-defined markers with hover tooltips, and logical scrolling (bars via
+`ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
 
 ## Status and where the truth lives
@@ -494,7 +496,9 @@ dependency, so every action is testable headlessly.
   `GetReferenceTarget` or `SetReference`; asking `GetOrNull` for one throws
   `KeyNotFoundException` ("declares no property slot named ...").
 - Text actions edit inside a single `PropertyCell`; a multi-cell selection degrades to caret
-  behaviour. `Ctrl+Home`/`Ctrl+End` are not routed in M1.
+  behaviour. `Ctrl+Home`/`Ctrl+End` are routed as `CaretMove.DocumentStart`/`DocumentEnd`
+  (`KeyRouter`), and `PageUp`/`PageDown` move the caret by `EditorSession.PageHeight`; `Ctrl+PageUp`/
+  `Ctrl+PageDown` stay with the host.
 - **`Ctrl+A` is a ladder, not one answer.** `SelectAllAction` widens one unit per press:
   the property at the caret, then the node under it (plus its descendants), then the
   document. `SelectionRanges` (`SelectionRanges.cs`) computes all three and returns `null`
@@ -548,13 +552,15 @@ dependency, so every action is testable headlessly.
   typed string, and the place IME will hook in later); navigation and deletion come from
   `OnKeyDown`. A letter therefore never appears in `EditorKeyMap` - it is not a key the
   editor routes.
-- **Keys held with Control/Alt/Meta are the host's**, with three exceptions. `EditorKeyMap.Map`
+- **Keys held with Control/Alt/Meta are the host's**, except for a short allow-list. `EditorKeyMap.Map`
   returns `null` for them on purpose: Ctrl+Left is a word jump in the surrounding app,
-  Ctrl+Delete deletes a file in a file manager. The exceptions are Ctrl+Left/Ctrl+Right, which
+  Ctrl+Delete deletes a file in a file manager. The list is Ctrl+Left/Ctrl+Right, which
   map to `EditorKey.ControlLeft`/`ControlRight` because the plain arrows move a whole cell,
   Alt+Up/Alt+Down, which reorder the node under the caret - the vertical arrows do nothing
-  else, so the host loses no gesture it had - and Ctrl+Space, which opens completion. Shift is
-  not in that list because Shift+Tab is the editor's.
+  else, so the host loses no gesture it had - Ctrl+Space, which opens completion, and
+  Ctrl+Home/Ctrl+End, which jump to the document ends. Ctrl+PageUp/Ctrl+PageDown are *not* in
+  it: a page jump that also changes tabs stays the host's. Shift is not in that list because
+  Shift+Tab is the editor's.
 - **Escape always reaches the editor and is always consumed**, with or without a list open:
   `EditorKey.Escape` routes to `DismissCompletionAction`, which closes an open list and is a
   no-op otherwise. A host that wanted "Escape leaves the editor" therefore has to check
@@ -888,7 +894,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 920 tests**; anything below that means tests were deleted.
+it. **Baseline is 940 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
