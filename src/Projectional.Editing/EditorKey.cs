@@ -5,7 +5,8 @@ namespace Projectional.Editing;
 /// </summary>
 /// <remarks>
 /// The editor takes keys, not characters, because which action a key stands for is a policy the layer
-/// owns and the host does not: Enter inserts a node in a projectional editor, Backspace deletes text
+/// owns and the host does not: Enter opens a line in a value of text and inserts a node elsewhere,
+/// Backspace deletes text
 /// only where there is text, and Tab moves between slots instead of focus. Typed text is not a key -
 /// it arrives as a string, one burst per keystroke or per input method - so it does not appear here.
 /// Keys the layer does not handle are simply not in this list, which is how the host knows to keep them
@@ -44,7 +45,7 @@ public enum EditorKey
     /// <summary>Shift+Tab.</summary>
     ShiftTab,
 
-    /// <summary>Enter, which inserts rather than starting a new line.</summary>
+    /// <summary>Enter, which opens a line in text and inserts a node everywhere else.</summary>
     Enter,
 
     /// <summary>Backspace.</summary>
