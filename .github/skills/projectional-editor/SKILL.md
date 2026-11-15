@@ -20,7 +20,8 @@ two real languages (`Projectional.Expressions`, `Projectional.Samples`), the emb
 `Projectional.Avalonia` control (which paints real glyphs, hit-tests clicks and handles keys),
 syntax highlighting from the meaning on a run to a host-swappable palette, model-defined text
 decorations, cell-wise caret motion with a blinking caret, a context menu described by the
-editing layer, concept-driven completion (Ctrl+Space, icons as host images), and text
+editing layer, concept- and value-driven completion (Ctrl+Space, icons as host images, an
+enumerated property offering its values on arrival), and text
 clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
 
@@ -702,20 +703,31 @@ rejects a null brush and a kind mentioned twice - checked by hand, because
 
 ## How completion works
 
-Ctrl+Space offers the concepts that could fill the slot at the caret. The list is **view
-state**, like the representation choice: it lives on `EditorSession.Completion`, is never
-persisted and never becomes its own undo step. `docs/architecture/completion.md` is the
-contract; the invariants that are easy to break are these.
+Ctrl+Space offers the concepts that could fill the slot at the caret, and an enumerated property
+offers its values the moment the caret arrives. The list is **view state**, like the
+representation choice: it lives on `EditorSession.Completion`, is never persisted and never
+becomes its own undo step. `docs/architecture/completion.md` is the contract; the invariants
+that are easy to break are these.
 
-- **Proposals come from the model, not from text.** The caret must sit in an **empty** slot;
-  the slot declares the concept its children must conform to; every non-abstract concept below
-  it in the registry, in declaration order, is one entry. There is no word list, no frequency
-  ranking and no learned order - declaration order is the language author's ranking, and the
-  first entry is what Enter would have created anyway.
+- **Proposals come from the model, not from text.** For a slot, the caret must sit in an
+  **empty** one; the slot declares the concept its children must conform to; every non-abstract
+  concept below it in the registry, in declaration order, is one entry. There is no word list,
+  no frequency ranking and no learned order - declaration order is the language author's
+  ranking, and the first entry is what Enter would have created anyway.
 - **`CompletionSlot.At` is the only place that decides "can this caret be completed"**, and it
-  accepts exactly two cell shapes: an empty `ChildCell` and an empty `CollectionCell`. A filled
-  slot, a property cell or a constant gets nothing. Substitution (replacing a filled child) is
-  deliberately out of this slice.
+  accepts exactly three cell shapes: an empty `ChildCell`, an empty `CollectionCell`, and a
+  `PropertyCell` whose type names its values. A filled slot or a constant gets nothing.
+  Substitution (replacing a filled child) is deliberately out of this slice.
+- **A type that names its values is the second kind of proposal.** `PropertyType.Symbols` is
+  empty by default and an enumeration answers with its symbols in declaration order, so
+  `CompletionSource.Values` needs no registry walk. `CompletionKind.Value` tells the host to
+  label the item with the symbol verbatim instead of shortening it like a concept key, and
+  accepting one is `EditContext.SetProperty` - the caret does not move, because a value replaces
+  the text it stands for.
+- **The value list opens on arrival, and only on arrival.** `EditorSession.Apply` compares the
+  caret before and after a non-completion action and offers when it moved; `Select` offers
+  unconditionally. The constructor and `Refresh` never offer, so opening a document and undoing
+  stay quiet. This is not "auto-open while typing" - a request to type does not open anything.
 - **Any non-completion action closes the list.** `EditorSession.Apply` hands the list to the
   action through `EditContext.Completion` only when the action *is* a `CompletionAction`, and
   drops it afterwards. So moving the caret, typing somewhere else and undoing all dismiss the
@@ -724,7 +736,9 @@ contract; the invariants that are easy to break are these.
   routes to `NarrowCompletionAction` instead of inserting; Backspace with a non-empty prefix
   is `WidenCompletionAction`, and with an empty prefix it falls through, which closes the list.
   This is why the control must call the **session-aware** `Type` overload - the plain one would
-  type into the model behind an open list.
+  type into the model behind an open list. Over a value list this is not a nicety but the
+  feature: every prefix of a symbol is an illegal value, so a filter is the only way a user can
+  reach `Accept` from `Review`.
 - **An empty match keeps the list open.** `EditorSession.Completion` stays non-null so Backspace
   can widen it again; the host hides a zero-row list instead. Hiding and closing are different
   states and the distinction is what makes backspacing past a wrong prefix feel right.
@@ -865,7 +879,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 799 tests**; anything below that means tests were deleted.
+it. **Baseline is 807 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
