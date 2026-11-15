@@ -144,6 +144,10 @@ produced it, and the editing layer never has to remember anything for undo.
 | `SelectCompletionAction` | Up, Down | move the highlight in the open list |
 | `AcceptCompletionAction` | Enter, Tab, while a list is open | create the highlighted concept in the slot |
 | `DismissCompletionAction` | Escape | close the list and leave the model alone |
+| `SelectAllAction` | Ctrl+A | select the whole text of the property cell the caret is in |
+| `CopyAction` | Ctrl+C | put the selected text on the clipboard |
+| `CutAction` | Ctrl+X | copy the selected text, then delete it |
+| `PasteAction` | Ctrl+V | type the clipboard text at the caret |
 
 The result of an apply is an `EditResult`: an `EditOutcome` (`Changed`, `Unchanged`,
 `Rejected`) plus the caret to place afterwards and the **coalescing key**. Two consecutive
@@ -309,6 +313,21 @@ In M1 a selection is structural only: the text actions edit one property cell at
 a multi-cell selection degrades to caret behaviour. Text replacement across cells arrives
 with the substitution actions, because that is the first feature that actually needs it.
 
+`Selection.HasText` is the predicate the clipboard reads: a selection holds text exactly when
+it is empty-but-not-empty — one cell, anchor and caret apart. That is why `Ctrl+A` selects the
+property the caret stands in rather than the document (see [clipboard.md](clipboard.md)):
+"everything" cannot mean more than one cell, because nothing downstream could act on a range
+that spans two.
+
+## The clipboard
+
+Copy, Cut, Paste and Select All are ordinary `EditAction`s, which is what keeps them testable
+without a window. `ITextClipboard` is the only platform seam: one `string? Text` and a default
+`RefreshAsync`. A host without a clipboard gets `InMemoryClipboard`; the Avalonia control
+supplies `AvaloniaClipboard`, which caches the platform clipboard so a synchronous key press can
+read it. [clipboard.md](clipboard.md) is the full account — what each action means, why copy
+produces no undo step, and why a refused cut leaves the text on the clipboard.
+
 ## Error handling
 
 Mutating a node can fail — a mandatory slot cannot be deleted, a value does not fit its
@@ -325,6 +344,8 @@ errors, such as opening a session on a node that is not in a model.
 | `Ctrl+Home` / `Ctrl+End` | not routed; document start and end are reached with Home/End on the first and last line | M3 |
 | Completion of a filled slot (substitution) | a list only offers concepts for an empty slot; replacing an existing child arrives with the language's substitution rules | M3 ([completion.md](completion.md)) |
 | Multi-cell text editing | a selection behaves like a caret for text input | M3 |
+| Copying a node | the clipboard carries text, not a structural fragment, so a subtree cannot be pasted into another slot | M3 |
+| Clipboard text carries no concept | pasting into a cell parses the text against that cell's type, so cross-concept paste is the type's business | M3 |
 | Intentions (light bulb) | the menu offers only what a key binding could already do | M3 ([context-actions.md](context-actions.md)) |
 | Incremental rebuild | every keystroke rebuilds tree and layout | M7 |
 
