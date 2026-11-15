@@ -15,7 +15,9 @@ namespace Projectional.Editing;
 /// <para>
 /// At a cell boundary the action does nothing. Backspace at the start of a property could delete
 /// backwards into the previous cell, but "delete the previous keyword" is not a deletion at all - the
-/// notation owns that text - so the honest answer is that there is nothing there to delete.
+/// notation owns that text - so the honest answer is that there is nothing there to delete. What the
+/// boundary <em>does</em> mean is handled a level up: <see cref="KeyRouter"/> sends a Backspace or Delete
+/// that has no text left to <see cref="DeleteNodeAction"/>, which removes the node the caret stands in.
 /// </para>
 /// </remarks>
 public sealed class DeleteTextAction : EditAction

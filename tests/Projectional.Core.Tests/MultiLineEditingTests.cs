@@ -76,14 +76,15 @@ public sealed class MultiLineEditingTests
     }
 
     [Fact]
-    public void EnterLeavesTheStructuralMeaningOfTheOtherKeysAlone()
+    public void TheRouterStillDeletesTextWhileThereIsTextLeft()
     {
         var rule = RuleNamed("ab");
         using var session = TestEditor.Open(rule);
 
         Name(session, rule, offset: 1);
 
-        // Only Enter is decided by the caret; every other key is still the key alone.
+        // Enter and deletion are decided by the caret, but a cell with text left still deletes a character,
+        // so the stateful answer is the stateless one.
         Assert.Equal(
             KeyRouter.For(EditorKey.Backspace).ToString(),
             KeyRouter.For(session, EditorKey.Backspace).ToString());
