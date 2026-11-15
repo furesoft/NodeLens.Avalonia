@@ -130,6 +130,58 @@ public sealed class EditorFrameTests
         Assert.Empty(frame.Highlights);
     }
 
+    [Fact]
+    public void EveryRunSaysWhatItsTextMeans()
+    {
+        var (layout, rule) = Layout();
+
+        var frame = Frame(layout, rule, new LayoutSize(41, 5), 0, 0);
+
+        Assert.Equal(TextStyleKind.Keyword, Run(frame, "extends").Style);
+        Assert.Equal(TextStyleKind.Punctuation, Run(frame, "{").Style);
+        Assert.Equal(TextStyleKind.Text, Run(frame, "unnamed").Style);
+    }
+
+    [Fact]
+    public void AStoredNumberIsStyledAsALiteral()
+    {
+        var (rule, _, step) = TestEditor.RuleWithStep();
+        step.Set("index", 7);
+
+        var layout = Layouter.Layout(Builder.Build(rule));
+        var frame = Frame(layout, rule, new LayoutSize(41, 5), 0, 0);
+
+        var run = frame.TextRuns.Single(candidate => candidate.Cell is PropertyCell { Slot: "index" });
+
+        Assert.Equal("7", run.Text);
+        Assert.Equal(TextStyleKind.Number, run.Style);
+    }
+
+    [Fact]
+    public void AnEmptySlotIsDrawnAsAPlaceholderRatherThanAsAValue()
+    {
+        var (layout, rule) = Layout();
+
+        var frame = Frame(layout, rule, new LayoutSize(41, 5), 0, 0);
+        var run = frame.TextRuns.Single(candidate => candidate.Cell is ChildCell { Slot: "extends", IsEmpty: true });
+
+        Assert.Equal("<empty>", run.Text);
+        Assert.Equal(TextStyleKind.Placeholder, run.Style);
+    }
+
+    [Fact]
+    public void TheStylerOfTheHostDecidesAndNotTheCellKind()
+    {
+        var (layout, rule) = Layout();
+
+        var frame = Frame(layout, rule, new LayoutSize(41, 5), 0, 0, styler: new PunctuationOnlyStyler());
+
+        Assert.All(frame.TextRuns, run => Assert.Equal(TextStyleKind.Punctuation, run.Style));
+    }
+
+    private static TextRun Run(EditorFrame frame, string text) =>
+        frame.TextRuns.Single(run => run.Text == text);
+
     private static CellAddress Name(Node rule) => CellAddress.OfSlot(rule.Id, "name");
 
     private static EditorFrame Frame(
@@ -138,14 +190,16 @@ public sealed class EditorFrameTests
         LayoutSize viewport,
         double offsetX,
         double offsetY,
-        Selection? selection = null) =>
+        Selection? selection = null,
+        ICellStyler? styler = null) =>
         EditorFrame.Build(
             layout,
             viewport,
             offsetX,
             offsetY,
             selection ?? Selection.At(CaretPosition.At(CellAddress.OfSlot(rule.Id, "name"))),
-            MonospaceTextMeasure.Instance);
+            MonospaceTextMeasure.Instance,
+            styler);
 
     private static (CellLayout Layout, Node Rule) Layout()
     {

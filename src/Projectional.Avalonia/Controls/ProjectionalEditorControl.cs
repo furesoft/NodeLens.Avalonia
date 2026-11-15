@@ -34,6 +34,12 @@ namespace Projectional.Avalonia;
 /// viewport's filter, not a recycling scheme.
 /// </para>
 /// <para>
+/// Colour is the one thing the control decides for itself, and even that it delegates. The frame says
+/// what each run means, <see cref="Styler"/> can overrule the meaning, and <see cref="Palette"/> says
+/// what each meaning looks like - so highlighting is a property of the host rather than of the language,
+/// and swapping a palette repaints without re-projecting anything.
+/// </para>
+/// <para>
 /// The control does not own the session. A host may open one session per document, close it when the
 /// document does, and keep the same control - so disposing is the host's decision, and
 /// <see cref="EditorSession.Dispose"/> is never called from here.
@@ -50,6 +56,9 @@ public sealed class ProjectionalEditorControl : Control
 
     /// <summary>How far one wheel notch scrolls, in lines.</summary>
     private const double WheelLines = 3;
+
+    private SyntaxPalette _palette = SyntaxPalette.Light;
+    private ICellStyler _styler = CellStyler.Default;
 
     private double _offsetX;
     private double _offsetY;
@@ -71,7 +80,7 @@ public sealed class ProjectionalEditorControl : Control
     /// <param name="fontSize">The em size in device pixels.</param>
     public ProjectionalEditorControl(Typeface typeface, double fontSize)
     {
-        TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, Brushes.Black);
+        TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, _palette.BrushOf(TextStyleKind.Default));
 
         Background = Brushes.White;
         HighlightBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x26, 0x8B, 0xD2));
@@ -115,13 +124,47 @@ public sealed class ProjectionalEditorControl : Control
     /// <summary>What is painted behind the text; nothing when <see langword="null"/>.</summary>
     public IBrush? Background { get; set; }
 
-    /// <summary>The colour text is painted in.</summary>
-    public IBrush Foreground
+    /// <summary>The colours text is painted in.</summary>
+    /// <remarks>
+    /// A palette names text colours only; the background, the highlight and the caret stay the host's, so
+    /// a dark palette is a dark palette plus a dark <see cref="Background"/>. Changing it repaints without
+    /// re-projecting anything, because the meaning of a run is decided before the palette is consulted.
+    /// </remarks>
+    public SyntaxPalette Palette
     {
-        get => TextMeasure.Foreground;
+        get => _palette;
         set
         {
-            TextMeasure.Foreground = value;
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_palette, value))
+            {
+                return;
+            }
+
+            _palette = value;
+
+            // Shaping in the palette's default colour lets the measuring cache answer for the runs that
+            // would be painted in it anyway, instead of shaping those cells a second time.
+            TextMeasure.Foreground = value.BrushOf(TextStyleKind.Default);
+
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>What decides the meaning of each run, and so which of the palette's colours it gets.</summary>
+    /// <remarks>
+    /// A language can install its own styler to say more than the default vocabulary does, and a host can
+    /// install one to restyle a document without touching its language.
+    /// </remarks>
+    public ICellStyler Styler
+    {
+        get => _styler;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            _styler = value;
             InvalidateVisual();
         }
     }
@@ -238,7 +281,8 @@ public sealed class ProjectionalEditorControl : Control
             _offsetX,
             _offsetY,
             session.Selection,
-            session.Measure);
+            session.Measure,
+            Styler);
 
         if (Background is { } background)
         {
@@ -254,7 +298,7 @@ public sealed class ProjectionalEditorControl : Control
         {
             var bounds = frame.Viewport.ToViewport(run.Bounds);
 
-            context.DrawText(TextMeasure.Shaped(run.Text), new Point(bounds.X, bounds.Y));
+            context.DrawText(TextMeasure.Shaped(run.Text, _palette.BrushOf(run.Style)), new Point(bounds.X, bounds.Y));
         }
 
         if (frame.CaretRect is { } caret)

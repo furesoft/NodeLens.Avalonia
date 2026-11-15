@@ -22,7 +22,8 @@ namespace Projectional.Avalonia;
 /// Shaping is expensive - roughly an order of magnitude more than a dictionary lookup - and a frame
 /// asks for the width of every cell it draws plus a prefix width for the caret. The cache is what keeps
 /// rendering proportional to the cells on screen rather than to the cost of shaping them, and it is
-/// keyed on the string alone because everything else about a shaped run is fixed by the constructor.
+/// keyed on the string and the brush - the only two things about a shaped run that vary - because
+/// anything else is fixed by the constructor.
 /// </para>
 /// <para>
 /// Widths are measured including trailing whitespace, because the layout deliberately renders spaces as
@@ -45,7 +46,7 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
 
     private static readonly CultureInfo Culture = CultureInfo.CurrentCulture;
 
-    private readonly Dictionary<string, FormattedText> _shaped = new(StringComparer.Ordinal);
+    private readonly Dictionary<ShapedTextKey, FormattedText> _shaped = new();
     private readonly Typeface _typeface;
     private readonly double _fontSize;
 
@@ -56,7 +57,7 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
     /// <summary>Creates a measure for one typeface at one size.</summary>
     /// <param name="typeface">The font to shape with.</param>
     /// <param name="fontSize">The em size in device pixels.</param>
-    /// <param name="foreground">The brush text is painted in; black when omitted.</param>
+    /// <param name="foreground">The brush text is shaped in when no other is given; black when omitted.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="fontSize"/> is not positive.</exception>
     public AvaloniaTextMeasure(Typeface typeface, double fontSize, IBrush? foreground = null)
     {
@@ -67,11 +68,11 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
         _foreground = foreground ?? Brushes.Black;
     }
 
-    /// <summary>The brush text is painted in.</summary>
+    /// <summary>The brush text is shaped in when no other brush is given.</summary>
     /// <remarks>
-    /// Setting it drops the cache, because a shaped run carries the brush it was created with. Doing it
-    /// this way keeps the common case - one brush for the life of the control - free of a per-draw brush
-    /// assignment.
+    /// Setting it drops the cache. It no longer has to - the key holds the brush - but every entry
+    /// shaped with the old brush is now unreachable, and dropping them is cheaper than keeping them
+    /// until the cap evicts the lot.
     /// </remarks>
     public IBrush Foreground
     {
@@ -139,13 +140,25 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
     /// <summary>The shaped form of <paramref name="text"/>, for drawing.</summary>
     /// <remarks>
     /// Drawing goes through the same cache as measuring, so a cell that was laid out is never shaped
-    /// again to be painted.
+    /// again to be painted - as long as it is painted in the measure's own <see cref="Foreground"/>.
+    /// A highlighted run is shaped once more in its own colour, which colour cannot change the width of,
+    /// so the layout stays right either way.
     /// </remarks>
-    public FormattedText Shaped(string text)
+    public FormattedText Shaped(string text) => Shaped(text, _foreground);
+
+    /// <summary>The shaped form of <paramref name="text"/> in a particular brush, for drawing.</summary>
+    /// <param name="text">The text to shape.</param>
+    /// <param name="brush">The brush to paint it with.</param>
+    /// <returns>The shaped run.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="text"/> or <paramref name="brush"/> is <see langword="null"/>.</exception>
+    public FormattedText Shaped(string text, IBrush brush)
     {
         ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(brush);
 
-        if (_shaped.TryGetValue(text, out var cached))
+        var key = new ShapedTextKey(text, brush);
+
+        if (_shaped.TryGetValue(key, out var cached))
         {
             return cached;
         }
@@ -161,7 +174,7 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
             FlowDirection.LeftToRight,
             _typeface,
             _fontSize,
-            _foreground)
+            brush)
         {
             // Cells never wrap; the layout decides where a line ends, and a run that wrapped would
             // paint outside the box its own layout gave it.
@@ -169,7 +182,7 @@ public sealed class AvaloniaTextMeasure : ITextMeasure
             Trimming = TextTrimming.None,
         };
 
-        _shaped.Add(text, formatted);
+        _shaped.Add(key, formatted);
 
         return formatted;
     }

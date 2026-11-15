@@ -76,13 +76,19 @@ public sealed class EditorFrame
     /// <param name="offsetY">The vertical scroll offset, clamped by the viewport.</param>
     /// <param name="selection">Where the caret is and what it is holding.</param>
     /// <param name="measure">The measure that turns text into distances.</param>
+    /// <param name="styler">
+    /// What each cell's text means, defaulting to <see cref="CellStyler.Default"/>; it decides the
+    /// <see cref="TextStyleKind"/> on every run and nothing else, since text is measured before it is
+    /// styled.
+    /// </param>
     public static EditorFrame Build(
         CellLayout layout,
         LayoutSize viewport,
         double offsetX,
         double offsetY,
         Selection selection,
-        ITextMeasure measure)
+        ITextMeasure measure,
+        ICellStyler? styler = null)
     {
         ArgumentNullException.ThrowIfNull(layout);
         ArgumentNullException.ThrowIfNull(measure);
@@ -93,7 +99,7 @@ public sealed class EditorFrame
         return new EditorFrame(
             window,
             measure,
-            TextRunsOf(window),
+            TextRunsOf(window, styler ?? CellStyler.Default),
             SelectionRects.Of(places, layout, selection, measure),
             CaretBounds.Of(places, layout, selection.Caret, measure),
             selection.Caret);
@@ -102,7 +108,7 @@ public sealed class EditorFrame
     public override string ToString() =>
         $"{TextRuns.Count} runs, {Highlights.Count} highlights, caret at {Caret} in {Viewport}";
 
-    private static List<TextRun> TextRunsOf(LayoutViewport viewport)
+    private static List<TextRun> TextRunsOf(LayoutViewport viewport, ICellStyler styler)
     {
         var runs = new List<TextRun>(viewport.Cells.Count);
 
@@ -110,7 +116,11 @@ public sealed class EditorFrame
         {
             if (CellText.IsVisible(placed.Cell))
             {
-                runs.Add(new TextRun(placed.Cell, CellText.Of(placed.Cell), placed.Bounds));
+                runs.Add(new TextRun(
+                    placed.Cell,
+                    CellText.Of(placed.Cell),
+                    placed.Bounds,
+                    styler.StyleOf(placed.Cell)));
             }
         }
 
