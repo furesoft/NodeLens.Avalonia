@@ -14,7 +14,8 @@ public sealed class ConceptDeclaration
         string key,
         IEnumerable<SlotDeclaration>? slots = null,
         IEnumerable<string>? superConcepts = null,
-        string? nameSlot = null)
+        string? nameSlot = null,
+        bool isAbstract = false)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -65,6 +66,7 @@ public sealed class ConceptDeclaration
         Slots = slotList;
         SuperConcepts = superList;
         NameSlot = nameSlot;
+        IsAbstract = isAbstract;
     }
 
     public string Key { get; }
@@ -77,6 +79,18 @@ public sealed class ConceptDeclaration
 
     /// <summary>The slot that supplies the text a reference to this concept displays.</summary>
     public string? NameSlot { get; }
+
+    /// <summary>
+    /// Whether this concept exists only to be extended. An abstract concept can declare slots and be
+    /// named as a slot's content, but no node is ever an instance of it: it stands for "one of the
+    /// concepts below me", the way a base type does in a typed language.
+    /// </summary>
+    /// <remarks>
+    /// Without this, a slot that accepts several kinds of thing has to be declared once per kind or
+    /// has to accept a concept that is meaningless on its own — and <see cref="Model.NewChild"/>
+    /// would happily create that meaningless node.
+    /// </remarks>
+    public bool IsAbstract { get; }
 
     public override string ToString() => Key;
 }

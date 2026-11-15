@@ -239,4 +239,63 @@ public sealed class ConceptRegistryTests
         Assert.Equal(Cardinality.Many, new ChildSlot("kids", "Rules.Rule").Cardinality);
         Assert.Equal(Cardinality.One, new ChildSlot("body", "Rules.Rule", Cardinality.One).Cardinality);
     }
+
+    [Fact]
+    public void AConceptDeclaresWhetherItIsAbstract()
+    {
+        var registry = Create(
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Lit", superConcepts: ["Expr"]));
+
+        Assert.True(registry.Get("Expr").IsAbstract);
+        Assert.False(registry.Get("Lit").IsAbstract);
+    }
+
+    [Fact]
+    public void AConcreteConceptIsItsOwnDefaultAndAnUnknownOneHasNone()
+    {
+        var registry = Create(
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Lit", superConcepts: ["Expr"]));
+
+        Assert.Equal("Lit", registry.DefaultInstantiableFor("Lit")?.Key);
+        Assert.Null(registry.DefaultInstantiableFor("Nope"));
+    }
+
+    [Fact]
+    public void AnAbstractConceptDefaultsToTheFirstConcreteConceptThatExtendsIt()
+    {
+        var registry = Create(
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Lit", superConcepts: ["Expr"]),
+            new ConceptDeclaration("Binary", superConcepts: ["Expr"]));
+
+        Assert.Equal("Lit", registry.DefaultInstantiableFor("Expr")?.Key);
+    }
+
+    [Fact]
+    public void AnAbstractConceptWithOnlyAbstractSubConceptsHasNoDefault()
+    {
+        var registry = Create(
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Arithmetic", superConcepts: ["Expr"], isAbstract: true));
+
+        Assert.Null(registry.DefaultInstantiableFor("Expr"));
+        Assert.Null(registry.DefaultInstantiableFor("Arithmetic"));
+    }
+
+    [Fact]
+    public void AnAbstractConceptDoesNotTakePartInSlotConformanceItself()
+    {
+        var registry = Create(
+            new ConceptDeclaration("Expr", isAbstract: true),
+            new ConceptDeclaration("Lit", superConcepts: ["Expr"]),
+            new ConceptDeclaration("Rules.Rule", [new ChildSlot("condition", "Expr", Cardinality.One)]));
+
+        var slot = registry.Get("Rules.Rule").FindChild("condition");
+
+        Assert.NotNull(slot);
+        Assert.True(registry.Get("Lit").IsKindOf(slot.ChildConceptKey));
+        Assert.False(registry.Get("Expr").IsKindOf("Lit"));
+    }
 }

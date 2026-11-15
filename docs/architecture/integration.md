@@ -128,15 +128,18 @@ asserts the thread on every mutation.
 | --- | --- | --- |
 | `Projectional.Core` | model, persistence, migrations | — |
 | `Projectional.Avalonia` | control, rendering, input | Core, Avalonia |
-| `Projectional.Toolkit` | language authoring helpers, built-in languages; aggregates `Language`, `Projection`, `Editing`, `Semantics` | Core |
+| `Projectional.Toolkit` | language authoring helpers, built-in languages; aggregates `Language`, `Expressions`, `Projection`, `Editing`, `Semantics` | Core |
 | `Projectional.Workbench` | workbench app (also usable as a library) | Avalonia, Toolkit |
 
-The seven projects listed in the [architecture overview](overview.md#projects) are the
+The projects listed in the [architecture overview](overview.md#projects) are the
 compile-time structure; the four packages are the distribution structure. `Toolkit`
-exists so that language authors reference one package instead of four, and so that the
+exists so that language authors reference one package instead of five, and so that the
 internal assemblies are never packaged individually — their API is internal
 ([ADR 0010](../adr/0010-public-api-surface.md)), so they are implementation detail, not
 a supported surface.
+
+`Projectional.Samples` is deliberately not a package: it is a test fixture and the
+documentation example, not something a host should ship.
 
 The application has its own distribution channel, separate from the packages:
 

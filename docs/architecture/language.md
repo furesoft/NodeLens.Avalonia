@@ -25,6 +25,19 @@ Superconcepts affect:
 - which concepts are accepted where a superconcept is expected (subtyping),
 - which aspect applies (most specific implementation wins).
 
+A concept is also either **concrete** or **abstract**. An abstract concept exists to name
+a set — it is what a slot is declared over when the language does not care which member
+of the set stands there — and no node can be an instance of it; the model rejects one at
+the single place where nodes are created, so no code path can produce one. Two
+consequences follow, and the editor depends on both:
+
+- An empty slot declared over an abstract concept is filled with the first concrete
+  concept below it in declaration order. Declaration order is therefore the language
+  author's answer to "what will the user most likely want here", and it is the only place
+  that preference is expressed.
+- An abstract concept may have no notation, because nothing is ever projected through it.
+  Every concrete concept needs one, either its own or an inherited one.
+
 ## Notation
 
 Notation is a tree of **editor cells**. A cell is one of:
@@ -180,8 +193,26 @@ was written against.
 | `Projectional.Constraints` | declarative validation rules (M6) |
 | `Projectional.Types` | type rules when they outgrow C# (M6) |
 | `Projectional.Migrations` | migration rules when they outgrow C# (M6) |
-| `Projectional.Expressions` | shared expression/name sub-language used by most DSLs |
+| `Projectional.Expressions` | shared expression/name sub-language used by most DSLs — **delivered (M1)** |
 
 `Projectional.Expressions` is not a convenience: nearly every DSL needs an identifier
 and a boolean expression, and duplicating them per DSL is the most common way these
 frameworks become unusable.
+
+A host composes it rather than inheriting from it, which is what keeps a DSL's concept
+set its own:
+
+```csharp
+public static ConceptRegistry Concepts { get; } = ConceptRegistry.Create(
+    [.. ExpressionsLanguage.ConceptDeclarations, .. ownDeclarations]);
+```
+
+A slot declared over `Expressions.Expression` then accepts every expression concept
+without the host naming any of them, and adding an expression concept later extends
+every such slot at once. `Expressions.Expression` is abstract, so a slot declared over
+it cannot hold a bare base node — pressing Enter in an empty one creates the integer
+literal, the first concrete concept below it.
+
+`Projectional.Samples` (the toy rules language the standalone editor opens) is the
+working instance of that seam: two concepts of its own, one notation, and a condition
+slot it never fills in itself.

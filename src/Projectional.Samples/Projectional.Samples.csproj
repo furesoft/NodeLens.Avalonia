@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+  </ItemGroup>
+
+</Project>

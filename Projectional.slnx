@@ -3,9 +3,11 @@
     <Project Path="src/Projectional.Avalonia/Projectional.Avalonia.csproj" />
     <Project Path="src/Projectional.Core/Projectional.Core.csproj" />
     <Project Path="src/Projectional.Editing/Projectional.Editing.csproj" />
+    <Project Path="src/Projectional.Expressions/Projectional.Expressions.csproj" />
     <Project Path="src/Projectional.Language/Projectional.Language.csproj" />
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
     <Project Path="src/Projectional.Projection/Projectional.Projection.csproj" />
+    <Project Path="src/Projectional.Samples/Projectional.Samples.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>

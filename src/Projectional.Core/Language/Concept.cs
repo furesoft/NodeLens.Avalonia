@@ -15,12 +15,14 @@ public sealed class Concept
         string key,
         IReadOnlyList<Concept> superConcepts,
         IReadOnlyList<SlotDeclaration> slots,
-        PropertySlot? nameSlot)
+        PropertySlot? nameSlot,
+        bool isAbstract)
     {
         Key = key;
         SuperConcepts = superConcepts;
         Slots = slots;
         NameSlot = nameSlot;
+        IsAbstract = isAbstract;
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -48,6 +50,11 @@ public sealed class Concept
 
     /// <summary>The string property that references to this concept display, if declared.</summary>
     public PropertySlot? NameSlot { get; }
+
+    /// <summary>
+    /// Whether this concept only exists to be extended, so that no node is ever an instance of it.
+    /// </summary>
+    public bool IsAbstract { get; }
 
     /// <summary>Whether this concept is <paramref name="conceptKey"/> itself or extends it.</summary>
     public bool IsKindOf(string conceptKey) => conceptKey is not null && _ancestry.Contains(conceptKey);
