@@ -49,6 +49,8 @@ and [testing.md](architecture/testing.md).
 | Avalonia control | rendering, scrolling, virtualization, caret, selection — **delivered** |
 | Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
 | Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
+| Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |
+| Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) — **delivered** |
 | Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) — **delivered** |
 | Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) |
 

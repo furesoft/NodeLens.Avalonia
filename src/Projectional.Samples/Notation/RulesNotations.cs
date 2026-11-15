@@ -17,6 +17,16 @@ internal static class RulesNotations
             ed.Indent(ed.Children("rules")),
             ed.Line(ed.Punct("}"))));
 
+        // The same ruleset read as a table: the rules are rows, so a reader comparing outcomes sees a
+        // column instead of a sequence of lines whose fields sit at different places.
+        notations.Add(RulesConceptKeys.Ruleset, RulesLanguage.TableVariant, ed => ed.Sequence(
+            ed.Line(ed.Keyword("ruleset", TextEmphasis.Bold), ed.Space, ed.Property("name")),
+            ed.Indent(ed.Table(
+                "rules",
+                ed.Column("name", ed.Keyword("rule")),
+                ed.Column("outcome", ed.Keyword("then")),
+                ed.Column("condition", ed.Keyword("when"))))));
+
         notations.Add(RulesConceptKeys.Rule, ed => ed.Line(
             ed.Keyword("rule", TextEmphasis.Bold),
             ed.Space,

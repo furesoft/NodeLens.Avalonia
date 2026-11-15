@@ -22,6 +22,13 @@ namespace Projectional.Samples;
 /// </remarks>
 public static class RulesLanguage
 {
+    /// <summary>The variant that reads a ruleset as a table of its rules.</summary>
+    /// <remarks>
+    /// A host offers this name to the reader as the alternative representation; declaring it here keeps
+    /// the string the notation is registered under and the string a host asks for the same one.
+    /// </remarks>
+    public const string TableVariant = "table";
+
     /// <summary>The concepts this language adds, which are the only ones it declares.</summary>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } = CreateDeclarations();
 

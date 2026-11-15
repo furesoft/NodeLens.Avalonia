@@ -23,30 +23,50 @@ namespace Projectional.Projection;
 internal static class LayoutSnapshot
 {
     /// <summary>Renders one node exactly as its concept's notation draws it.</summary>
-    internal static string Render(Node node, NotationRegistry notations, int width)
+    /// <param name="node">The node to render.</param>
+    /// <param name="notations">The notation that projects it.</param>
+    /// <param name="width">How many columns the snapshot has.</param>
+    /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    internal static string Render(Node node, NotationRegistry notations, int width, INotationChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        return Render([LayoutOf(node, notations)], width);
+        return Render([LayoutOf(node, notations, choice)], width);
     }
 
     /// <summary>
     /// Renders every root of <paramref name="model"/> into at most <paramref name="width"/> columns,
     /// one below the other in document order.
     /// </summary>
-    internal static string Render(Model model, NotationRegistry notations, int width)
+    /// <param name="model">The model to render.</param>
+    /// <param name="notations">The notation that projects it.</param>
+    /// <param name="width">How many columns the snapshot has.</param>
+    /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    internal static string Render(Model model, NotationRegistry notations, int width, INotationChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        return Render([.. model.Roots.Select(root => LayoutOf(root, notations))], width);
+        return Render([.. model.Roots.Select(root => LayoutOf(root, notations, choice))], width);
     }
 
-    private static CellLayout LayoutOf(Node node, NotationRegistry notations) =>
-        new CellLayouter(MonospaceTextMeasure.Instance).Layout(new EditorTreeBuilder(notations).Build(node));
+    private static CellLayout LayoutOf(Node node, NotationRegistry notations, INotationChoice? choice) =>
+        new CellLayouter(MonospaceTextMeasure.Instance).Layout(
+            new EditorTreeBuilder(notations, choice: choice).Build(node));
+
+    /// <summary>Renders a layout that has already been produced, e.g. the one an edit session holds.</summary>
+    /// <param name="layout">The layout to draw.</param>
+    /// <param name="width">How many columns the snapshot has.</param>
+    internal static string Render(CellLayout layout, int width)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+
+        return Render([layout], width);
+    }
 
     private static string Render(IReadOnlyList<CellLayout> layouts, int width)
     {

@@ -89,6 +89,40 @@ Language authors never write layout code. If a notation needs something the cell
 cannot express, the cell set is incomplete — adding a cell primitive is a framework
 change, deliberately heavier than a per-language hack.
 
+### Variants
+
+A concept may be drawn more than one way — a ruleset as a block, the same ruleset as a
+table — so notation is registered per concept *and* variant:
+
+```csharp
+notation.Add("Sample.Ruleset", ed => /* the block form */);              // the default
+notation.Add("Sample.Ruleset", "table", ed => /* the same concept as rows */);
+```
+
+Only one of them is drawn at a time. Which one is **view state**, decided when the
+document is projected and never written into the model: two sessions over one document
+may read it differently and still edit the same nodes. A variant resolves up the
+super-concept chain like any other notation, so a language that draws its abstract base
+as a table draws its refinements as a table too, and a variant is free to hide slots the
+default shows.
+
+The choice travels as `INotationChoice` / `NotationChoice`, which `EditorSession` carries
+as `Choice` and answers through `Alternatives()` and `ChooseVariant()`. Every slot a
+variant does show keeps the address the default would have given it, so switching
+representation cannot invalidate the caret, a selection or an undo step — a test that
+pins a caret address passes in both forms.
+
+The table variant is where this pays off first: `ed.Table(slot, Column(…), …)` draws the
+children of a slot as rows, one cell per column, with header cells belonging to the table
+rather than to the row. See [projection.md](projection.md#tables) for how the shape is
+projected, laid out and styled.
+
+Notation is validated at registration, so a table with a column that names no slot, names
+a slot of the wrong concept, or names a many-valued slot is refused when the language is
+built rather than when a document is opened.
+
+See [ADR 0012](../adr/0012-concept-rendered-more-than-one-way.md).
+
 ### Styles
 
 Colours, fonts and borders come from a style sheet keyed by cell kind and concept

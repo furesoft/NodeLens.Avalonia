@@ -57,3 +57,4 @@ directory stays authoritative whenever the two disagree.
 | [0009](adr/0009-custom-drawn-editor-control.md) | Custom-drawn control with structural caret |
 | [0010](adr/0010-public-api-surface.md) | Public API limited to `Core` and `Avalonia` |
 | [0011](adr/0011-standalone-editor.md) | A standalone editor ships, as a plain consumer of the public API |
+| [0012](adr/0012-concept-rendered-more-than-one-way.md) | A concept may be rendered more than one way |

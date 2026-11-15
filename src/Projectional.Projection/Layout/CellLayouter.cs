@@ -56,6 +56,8 @@ public sealed class CellLayouter
             ChildCell child => ArrangeInline(child.Content, x, y, placed),
             CollectionCell { IsEmpty: true } empty => TextSize(empty.EmptyText, TextEmphasis.None),
             CollectionCell collection => ArrangeInline(collection.Content, x, y, placed),
+            TableCell { IsEmpty: true } empty => TextSize(empty.EmptyText, TextEmphasis.None),
+            TableCell table => ArrangeTable(table, x, y, placed),
             _ => throw new ProjectionException($"The cell {cell} is of a kind that layout does not know."),
         };
 
@@ -100,6 +102,95 @@ public sealed class CellLayouter
         }
 
         return new LayoutSize(right - x, Math.Max(_measure.LineHeight, cursorY - y));
+    }
+
+    /// <summary>
+    /// Lays a table out as a grid: every column as wide as its widest cell, every row as tall as its
+    /// tallest one.
+    /// </summary>
+    /// <remarks>
+    /// The widths are only known once every cell has been measured, and arranging is also what
+    /// measures, so each cell is first arranged on its own at the origin and then moved to the place
+    /// the finished grid gives it. Moving a cell moves everything below it by the same amount, which
+    /// keeps the placement list in document order and the subtree intact.
+    /// </remarks>
+    private LayoutSize ArrangeTable(TableCell table, double x, double y, List<PlacedCell> placed)
+    {
+        var gap = _measure.Measure(" ", TextEmphasis.None);
+        var columnCount = table.ColumnCount;
+        var rowCount = table.Rows.Count;
+        var columns = new double[columnCount];
+        var rowHeights = new double[rowCount + 1];
+        var grid = new List<PlacedCell>[(rowCount + 1) * columnCount];
+
+        for (var c = 0; c < columnCount; c++)
+        {
+            grid[c] = ArrangeDetached(table.Headers[c], columns, rowHeights, c, 0);
+        }
+
+        for (var r = 0; r < rowCount; r++)
+        {
+            var row = table.Rows[r];
+
+            for (var c = 0; c < columnCount; c++)
+            {
+                grid[((r + 1) * columnCount) + c] = ArrangeDetached(row[c], columns, rowHeights, c, r + 1);
+            }
+        }
+
+        var columnLeft = new double[columnCount];
+        var cursorX = x;
+
+        for (var c = 0; c < columnCount; c++)
+        {
+            columnLeft[c] = cursorX;
+            cursorX += columns[c] + gap;
+        }
+
+        var rowTop = new double[rowCount + 1];
+        var cursorY = y;
+
+        for (var r = 0; r <= rowCount; r++)
+        {
+            rowTop[r] = cursorY;
+            cursorY += rowHeights[r];
+        }
+
+        for (var r = 0; r <= rowCount; r++)
+        {
+            for (var c = 0; c < columnCount; c++)
+            {
+                var dx = columnLeft[c];
+                var dy = rowTop[r];
+
+                foreach (var cell in grid[(r * columnCount) + c])
+                {
+                    placed.Add(cell with { Bounds = cell.Bounds.Offset(dx, dy) });
+                }
+            }
+        }
+
+        return new LayoutSize(cursorX - gap - x, Math.Max(_measure.LineHeight, cursorY - y));
+    }
+
+    /// <summary>
+    /// Arranges one grid cell at the origin, into a list of its own, and records how wide and how tall
+    /// it turned out so that the grid can size its column and its row.
+    /// </summary>
+    private List<PlacedCell> ArrangeDetached(
+        EditorCell cell,
+        double[] columns,
+        double[] rowHeights,
+        int column,
+        int row)
+    {
+        var detached = new List<PlacedCell>();
+        var size = Arrange(cell, x: 0, y: 0, detached);
+
+        columns[column] = Math.Max(columns[column], size.Width);
+        rowHeights[row] = Math.Max(rowHeights[row], size.Height);
+
+        return detached;
     }
 
     private LayoutSize TextSize(string text, TextEmphasis emphasis)

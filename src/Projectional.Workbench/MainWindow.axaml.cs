@@ -209,6 +209,60 @@ public sealed partial class MainWindow : Window, IDisposable
         StatusText.Text = _documents.Active is not { } active
             ? "No document open"
             : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {(_theme.IsDark ? "dark" : "light")} theme";
+
+        UpdateRepresentations();
+    }
+
+    /// <summary>Fills the representation submenu from the active document's alternatives.</summary>
+    /// <remarks>
+    /// The menu is rebuilt rather than data-bound because the alternatives depend on the document in
+    /// front and on its model: an edit can introduce a concept that declares a second notation, and the
+    /// menu has to offer it without the shell having to notice that on its own. It is refreshed with
+    /// the status bar, which is the one place that already runs whenever any of those things change.
+    /// </remarks>
+    private void UpdateRepresentations()
+    {
+        var items = new List<MenuItem>();
+
+        if (_documents.Active is { } document)
+        {
+            foreach (var alternative in document.Session.Alternatives())
+            {
+                var concept = new MenuItem { Header = alternative.ConceptKey };
+
+                foreach (var variant in alternative.Variants)
+                {
+                    var choice = new MenuItem
+                    {
+                        Header = variant,
+                        ToggleType = MenuItemToggleType.Radio,
+                        IsChecked = string.Equals(variant, alternative.Selected, StringComparison.Ordinal),
+                    };
+
+                    choice.Click += (_, _) => ChooseRepresentation(document, alternative.ConceptKey, variant);
+                    concept.Items.Add(choice);
+                }
+
+                items.Add(concept);
+            }
+        }
+
+        // No alternative means nothing to choose from, which is a different thing from a document whose
+        // one concept can be drawn a single way: disabling says so instead of offering an empty menu.
+        Representations.IsEnabled = items.Count > 0;
+        Representations.ItemsSource = items;
+    }
+
+    private void ChooseRepresentation(DocumentTab document, string conceptKey, string variant)
+    {
+        document.Session.ChooseVariant(conceptKey, variant);
+
+        if (_tabs.TryGetValue(document, out var tab) && tab.Content is ProjectionalEditorControl editor)
+        {
+            editor.Refresh();
+        }
+
+        UpdateStatus();
     }
 
     private static string FormatFile(string? filePath) =>

@@ -12,6 +12,8 @@
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
       <MenuItem Header="_View">
+        <MenuItem x:Name="Representations" Header="_Representation" />
+        <Separator />
         <MenuItem Header="_Light theme" Click="OnLightTheme" />
         <MenuItem Header="_Dark theme" Click="OnDarkTheme" />
       </MenuItem>

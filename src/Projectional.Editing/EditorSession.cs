@@ -30,8 +30,11 @@ namespace Projectional.Editing;
 /// </remarks>
 public sealed class EditorSession : IDisposable
 {
-    private readonly EditorTreeBuilder _builder;
+    private readonly NotationRegistry _notations;
+    private readonly ICellEmphasis? _emphasis;
     private readonly CellLayouter _layouter;
+
+    private EditorTreeBuilder _builder;
 
     /// <summary>Opens <paramref name="document"/> for editing.</summary>
     /// <param name="document">The root of the model to edit.</param>
@@ -40,12 +43,16 @@ public sealed class EditorSession : IDisposable
     /// <param name="emphasis">
     /// What decorates the model beyond its notation, asked again on every rebuild; nothing when omitted.
     /// </param>
+    /// <param name="choice">
+    /// Which variant of each concept to draw; the default variant of everything when omitted.
+    /// </param>
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
     public EditorSession(
         Node document,
         NotationRegistry notations,
         ITextMeasure? measure = null,
-        ICellEmphasis? emphasis = null)
+        ICellEmphasis? emphasis = null,
+        INotationChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
@@ -54,8 +61,11 @@ public sealed class EditorSession : IDisposable
         Measure = measure ?? MonospaceTextMeasure.Instance;
         History = new UndoHistory(document.Model);
 
-        _builder = new EditorTreeBuilder(notations, emphasis);
+        _notations = notations;
+        _emphasis = emphasis;
         _layouter = new CellLayouter(Measure);
+        Choice = choice ?? NotationChoice.Default;
+        _builder = new EditorTreeBuilder(notations, emphasis, Choice);
 
         Tree = _builder.Build(Document);
         Layout = _layouter.Layout(Tree);
@@ -83,6 +93,98 @@ public sealed class EditorSession : IDisposable
 
     /// <summary>Where the caret is and what is selected.</summary>
     public Selection Selection { get; private set; }
+
+    /// <summary>
+    /// Which variant of each concept is drawn, as the tree was built with it. View state, not model
+    /// state: two sessions can hold different choices over one document and edit the same model.
+    /// </summary>
+    public INotationChoice Choice { get; private set; }
+
+    /// <summary>
+    /// Draws the document with <paramref name="choice"/> from now on.
+    /// </summary>
+    /// <remarks>
+    /// Switching a representation is a re-projection like any other, so it goes through the same
+    /// rebuild-and-re-resolve path: the model is untouched, the tree and the layout are new, and the
+    /// caret lands on the nearest cell that still exists. A cell the other variant showed and this one
+    /// hides is not an error - it is the difference between the two representations.
+    /// </remarks>
+    public void Choose(INotationChoice? choice)
+    {
+        Choice = choice ?? NotationChoice.Default;
+        _builder = new EditorTreeBuilder(_notations, _emphasis, Choice);
+        Refresh();
+    }
+
+    /// <summary>
+    /// The concepts of this document that declare more than one notation, in the order the document
+    /// first uses them.
+    /// </summary>
+    /// <remarks>
+    /// Only concepts the document actually holds are listed, because a representation can only be
+    /// switched for a node that is there; the variants of a concept's super concepts are included,
+    /// because a variant resolves up the chain. A document whose concepts all declare a single notation
+    /// returns nothing, which is how a host knows there is no representation to offer.
+    /// </remarks>
+    public IReadOnlyList<ConceptVariants> Alternatives()
+    {
+        var alternatives = new List<ConceptVariants>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var node in SelfAndDescendants(Document))
+        {
+            if (!seen.Add(node.Concept.Key))
+            {
+                continue;
+            }
+
+            var variants = VariantsOf(node.Concept);
+
+            if (variants.Count > 1)
+            {
+                alternatives.Add(new ConceptVariants(
+                    node.Concept.Key,
+                    variants,
+                    Choice.VariantOf(node.Concept.Key) ?? Notation.DefaultVariant));
+            }
+        }
+
+        return alternatives;
+    }
+
+    /// <summary>Draws the nodes of <paramref name="conceptKey"/> in <paramref name="variant"/> from now on.</summary>
+    /// <param name="conceptKey">A concept the document holds.</param>
+    /// <param name="variant">A variant that applies to it, its own or one it inherits.</param>
+    /// <remarks>
+    /// The choice is one more opinion on top of the one in force, so a document can be read as a table
+    /// in one place and as a block in another. Both arguments are checked against the document, because
+    /// a menu that offers a variant the notation does not declare would otherwise re-project to
+    /// something that looks like nothing happened.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// The document holds no node of <paramref name="conceptKey"/>, or it declares no such variant.
+    /// </exception>
+    public void ChooseVariant(string conceptKey, string variant)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(conceptKey);
+        ArgumentException.ThrowIfNullOrEmpty(variant);
+
+        var concept = SelfAndDescendants(Document)
+            .Select(node => node.Concept)
+            .FirstOrDefault(candidate => string.Equals(candidate.Key, conceptKey, StringComparison.Ordinal))
+            ?? throw new ArgumentException(
+                $"The document holds no node of concept '{conceptKey}', so there is nothing to re-project.",
+                nameof(conceptKey));
+
+        if (!VariantsOf(concept).Contains(variant, StringComparer.Ordinal))
+        {
+            throw new ArgumentException(
+                $"Concept '{conceptKey}' declares no '{variant}' notation.",
+                nameof(variant));
+        }
+
+        Choose((Choice as NotationChoice ?? NotationChoice.Default).With(conceptKey, variant));
+    }
 
     /// <summary>Applies <paramref name="action"/> and leaves the session consistent with the result.</summary>
     /// <remarks>
@@ -187,4 +289,41 @@ public sealed class EditorSession : IDisposable
     }
 
     private void MoveTo(CaretPosition caret) => Selection = new Selection(caret, caret);
+
+    private static IEnumerable<Node> SelfAndDescendants(Node node)
+    {
+        yield return node;
+
+        foreach (var child in node.ChildrenInDocumentOrder())
+        {
+            foreach (var descendant in SelfAndDescendants(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private List<string> VariantsOf(Concept concept)
+    {
+        var variants = new List<string>();
+
+        Collect(concept);
+        return variants;
+
+        void Collect(Concept current)
+        {
+            foreach (var variant in _notations.VariantsOf(current.Key))
+            {
+                if (!variants.Contains(variant, StringComparer.Ordinal))
+                {
+                    variants.Add(variant);
+                }
+            }
+
+            foreach (var super in current.SuperConcepts)
+            {
+                Collect(super);
+            }
+        }
+    }
 }

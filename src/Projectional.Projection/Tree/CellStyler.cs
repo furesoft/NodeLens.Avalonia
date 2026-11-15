@@ -39,6 +39,7 @@ public sealed class CellStyler : ICellStyler
             ReferenceCell reference => OfReference(reference.State),
             ChildCell { IsEmpty: true } => TextStyleKind.Placeholder,
             CollectionCell { IsEmpty: true } => TextStyleKind.Placeholder,
+            TableCell { IsEmpty: true } => TextStyleKind.Placeholder,
             MissingNotationCell => TextStyleKind.Missing,
             _ => TextStyleKind.Default,
         };

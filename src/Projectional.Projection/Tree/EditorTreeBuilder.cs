@@ -30,12 +30,18 @@ public sealed class EditorTreeBuilder
 {
     private readonly NotationRegistry _notations;
     private readonly ICellEmphasis? _emphasis;
+    private readonly INotationChoice? _choice;
 
-    public EditorTreeBuilder(NotationRegistry notations, ICellEmphasis? emphasis = null)
+    /// <summary>Builds trees with every concept drawn as <paramref name="choice"/> asks, default variants when it says nothing.</summary>
+    public EditorTreeBuilder(
+        NotationRegistry notations,
+        ICellEmphasis? emphasis = null,
+        INotationChoice? choice = null)
     {
         ArgumentNullException.ThrowIfNull(notations);
         _notations = notations;
         _emphasis = emphasis;
+        _choice = choice;
     }
 
     /// <summary>Builds the tree for <paramref name="node"/>.</summary>
@@ -52,7 +58,7 @@ public sealed class EditorTreeBuilder
     private EditorCell BuildNode(Node node, CellAddress rootAddress, TextEmphasis inherited)
     {
         var emphasis = inherited | (_emphasis?.EmphasisOf(node) ?? TextEmphasis.None);
-        var notation = _notations.FindFor(node.Concept);
+        var notation = _notations.FindFor(node.Concept, _choice);
 
         return notation is null
             ? new MissingNotationCell(rootAddress, node.Concept.Key)
@@ -89,6 +95,7 @@ public sealed class EditorTreeBuilder
                 BuildBlocks(indent.Content, node, emphasis)),
             ChildNotationCell children => BuildChildren(children.Slot, children.EmptyText, node, emphasis, rootAddress),
             CollectionNotationCell collection => BuildCollection(collection, node, emphasis, rootAddress),
+            TableNotationCell table => BuildTable(table, node, emphasis, rootAddress),
             _ => throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' uses a block cell of unknown kind '{cell.GetType().Name}'."),
         };
@@ -133,10 +140,12 @@ public sealed class EditorTreeBuilder
             $"The notation of '{node.Concept.Key}' uses an inline cell of unknown kind '{cell.GetType().Name}'."),
     };
 
-    private static PropertyCell BuildProperty(PropertyNotationCell notation, Node node, TextEmphasis emphasis)
-    {
-        var slot = notation.Slot;
+    private static PropertyCell BuildProperty(PropertyNotationCell notation, Node node, TextEmphasis emphasis) =>
+        BuildProperty(notation.Slot, node, emphasis | notation.Emphasis);
 
+    /// <summary>Projects one property of <paramref name="node"/>, whatever notation asked for it.</summary>
+    private static PropertyCell BuildProperty(string slot, Node node, TextEmphasis decoration)
+    {
         var declaration = node.Concept.FindProperty(slot)
             ?? throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' shows property '{slot}', but the concept declares no such property.");
@@ -147,7 +156,7 @@ public sealed class EditorTreeBuilder
             declaration.Type,
             node.GetOrNull(slot) ?? string.Empty,
             node.IsSet(slot),
-            emphasis | notation.Emphasis);
+            decoration);
     }
 
     private static ReferenceCell BuildReference(ReferenceNotationCell notation, Node node, TextEmphasis emphasis)
@@ -255,5 +264,81 @@ public sealed class EditorTreeBuilder
             notation.EmptyText,
             items,
             separators);
+    }
+
+    /// <summary>
+    /// Builds a table: one header cell per column and one cell per column of every row, so that the
+    /// grid is complete before layout sees it.
+    /// </summary>
+    private TableCell BuildTable(
+        TableNotationCell notation,
+        Node node,
+        TextEmphasis emphasis,
+        CellAddress? rootAddress)
+    {
+        var slot = notation.Slot;
+
+        if (node.Concept.FindChild(slot) is null)
+        {
+            throw new ProjectionException(
+                $"The notation of '{node.Concept.Key}' draws a table over '{slot}', but the concept declares no such child.");
+        }
+
+        var address = rootAddress ?? CellAddress.OfSlot(node.Id, slot);
+        var rows = node.GetChildren(slot);
+
+        // Headers belong to the table's notation, so they are projected once, from the node that
+        // owns the table - never from a row, which may not exist at all.
+        if (rows.Count == 0)
+        {
+            return new TableCell(address, slot, notation.EmptyText, [], []);
+        }
+
+        var headers = new EditorCell[notation.Columns.Count];
+
+        for (var i = 0; i < headers.Length; i++)
+        {
+            headers[i] = BuildInline(notation.Columns[i].Header, node, emphasis);
+        }
+
+        var built = new EditorCell[rows.Count][];
+
+        for (var r = 0; r < rows.Count; r++)
+        {
+            var row = rows[r];
+            var cells = new EditorCell[notation.Columns.Count];
+
+            for (var c = 0; c < cells.Length; c++)
+            {
+                cells[c] = BuildColumnCell(notation.Columns[c], row, emphasis);
+            }
+
+            built[r] = cells;
+        }
+
+        return new TableCell(address, slot, notation.EmptyText, headers, built);
+    }
+
+    /// <summary>Projects one column of one row, which is a property or a single child of the row.</summary>
+    private EditorCell BuildColumnCell(TableColumn column, Node row, TextEmphasis emphasis)
+    {
+        if (row.Concept.FindProperty(column.Slot) is not null)
+        {
+            return BuildProperty(column.Slot, row, emphasis);
+        }
+
+        if (row.Concept.FindChild(column.Slot) is { } child)
+        {
+            if (child.Cardinality != Cardinality.One)
+            {
+                throw new ProjectionException(
+                    $"The table of '{row.Concept.Key}' shows column '{column.Slot}', but that child holds many; a cell can only show one child.");
+            }
+
+            return BuildChildren(column.Slot, column.EmptyText, row, emphasis, rootAddress: null);
+        }
+
+        throw new ProjectionException(
+            $"The table of '{row.Concept.Key}' shows column '{column.Slot}', but the concept declares neither a property nor a child of that name.");
     }
 }
