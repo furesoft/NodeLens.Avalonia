@@ -54,6 +54,7 @@ and [testing.md](architecture/testing.md).
 | Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
 | Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |
 | Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) — **delivered** |
+| Folding | a node folds to a one-cell summary when its concept nominates a boolean collapse slot, with an arrow in the gutter; the fold set is view state and never persisted ([collapsing.md](architecture/collapsing.md)) — **planned** (M1 remainder) |
 | Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) — **delivered** |
 | Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) — **delivered** |
 

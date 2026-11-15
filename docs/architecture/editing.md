@@ -316,6 +316,24 @@ The constraining rule for language authors is that a variant keeps every shown s
 natural address, so the tables, undo, selection and hit testing layers never learn that
 variants exist.
 
+## Collapsing
+
+A node may be folded to a single summary cell, so the same session state pattern appears a third
+time: the fold set is view state on `EditorSession.Collapsed`, never serialized, never an undo
+step, and per session rather than per document. The permission, by contrast, is model data — a
+concept nominates a boolean collapse slot, exactly as it nominates a name slot — so a language
+decides *which kinds of node may fold* and the user decides *which ones currently are*.
+
+Planned in [collapsing.md](collapsing.md), which is the authority for the gutter column, the
+summary rule and the marker roll-up. Two consequences matter to this document's subject:
+
+- A folded node is drawn as a visible leaf carrying the **node's own address**, not a new address
+  shape. Caret, selection, delete, move and hit testing therefore need no knowledge of folding, in
+  the same way they need no knowledge of variants.
+- Because the subtree is not built at all, anything that *finds* a target inside a fold — a
+  diagnostic, an incoming reference — has to resolve against the nearest visible ancestor instead
+  of reporting nothing. A finding that cannot be shown is a bug, not a hidden detail.
+
 ## Completion
 
 An open completion list is view state, exactly like the representation choice: it lives on
