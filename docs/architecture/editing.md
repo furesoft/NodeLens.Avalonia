@@ -191,6 +191,28 @@ The constraining rule for language authors is that a variant keeps every shown s
 natural address, so the tables, undo, selection and hit testing layers never learn that
 variants exist.
 
+## The context menu
+
+`EditorMenu.For(session)` returns a list of `EditorMenuEntry` — labels, gestures, enabled
+state and the command each one runs. It is a description, not a widget, and it is derived
+fresh on every opening: nothing is stored, so no edit has to remember to refresh a menu.
+That is what keeps it in the editing layer instead of an Avalonia one; the control only maps
+entries onto toolkit items.
+
+- An entry's command is the same action the keyboard would run, so the menu cannot drift
+  from the key bindings. The gesture it displays is documentation of that agreement.
+- Availability is a question about state, answered before the entry is shown: Undo asks the
+  history, Delete asks the caret whether a character lies to its right or a selection exists.
+  `EditorMenuItem.Execute` also refuses a disabled entry, so a stale menu cannot edit.
+- `Representations(session)` is public because the representation choice belongs to the
+  document, not to the context menu: the sample shell offers the same list from its menu bar.
+  The variant in force is marked, and picking an option sets the choice through
+  `ChooseVariant`.
+
+Only entries whose actions exist are offered. Node deletion and slot-targeted insertion are
+missing because `EditContext` has no remove and no insert-at-index yet — an entry that
+silently did nothing would be worse than no entry.
+
 ## Selection
 
 A selection is a pair of `CaretPosition`s plus a rule for resolving it to model elements.
