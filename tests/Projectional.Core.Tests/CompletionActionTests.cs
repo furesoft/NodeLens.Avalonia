@@ -22,7 +22,7 @@ public sealed class CompletionActionTests
     private static NotationRegistry Notations => RulesLanguage.CreateNotations(RulesLanguage.Concepts);
 
     [Fact]
-    public void AnEmptySlotOffersEveryConcreteConceptTheLanguageDeclares()
+    public void AnEmptySlotOffersEveryConcreteConceptTheLanguageOffers()
     {
         var (session, _) = OpenRuleWithEmptyCondition();
 
@@ -34,13 +34,41 @@ public sealed class CompletionActionTests
 
             var list = Assert.IsType<CompletionList>(session.Completion);
 
-            // Seven concrete Expression concepts; the abstract base is not a candidate because no node
-            // can be an instance of it.
-            Assert.Equal(7, list.Count);
+            // Seven concrete Expression concepts, minus the three literals the language hides; the
+            // abstract base is not a candidate either, because no node can be an instance of it.
+            Assert.Equal(4, list.Count);
             Assert.DoesNotContain(ExpressionsConceptKeys.Expression, list.Matches.Select(item => item.ConceptKey));
 
-            // Declaration order, so the first proposal is the concept Enter would have created.
-            Assert.Equal(ExpressionsConceptKeys.IntLiteral, list.Selected?.ConceptKey);
+            // Declaration order, so the first proposal is the first concept worth choosing.
+            Assert.Equal(ExpressionsConceptKeys.Name, list.Selected?.ConceptKey);
+        }
+    }
+
+    [Fact]
+    public void TheLiteralsAreReachableByEnterButNotOfferedInTheList()
+    {
+        var (session, _) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            session.Apply(KeyRouter.For(session, EditorKey.ControlSpace));
+
+            var keys = session.Completion?.Matches.Select(item => item.ConceptKey).ToArray() ?? [];
+
+            Assert.DoesNotContain(ExpressionsConceptKeys.IntLiteral, keys);
+            Assert.DoesNotContain(ExpressionsConceptKeys.BoolLiteral, keys);
+            Assert.DoesNotContain(ExpressionsConceptKeys.StringLiteral, keys);
+        }
+
+        // Hiding a concept from the menu must not make it impossible to create: the ordinary Enter path
+        // still materializes the language's default, which is the integer literal.
+        var (enterSession, enterRule) = OpenRuleWithEmptyCondition();
+
+        using (enterSession)
+        {
+            enterSession.Apply(KeyRouter.For(enterSession, EditorKey.Enter));
+
+            Assert.Equal(ExpressionsConceptKeys.IntLiteral, enterRule.GetChild("condition")?.Concept.Key);
         }
     }
 
@@ -111,9 +139,9 @@ public sealed class CompletionActionTests
             Assert.NotNull(created);
 
             // Inside the new node rather than on the slot that held it, so the user can keep typing: the
-            // first editable cell of an IntLiteral is its value.
+            // first editable cell of a Name is its name.
             Assert.Equal(
-                CellAddress.OfSlot(created.Id, "value"),
+                CellAddress.OfSlot(created.Id, "name"),
                 session.Selection.Caret.Address);
         }
     }
@@ -130,7 +158,7 @@ public sealed class CompletionActionTests
 
             session.Apply(KeyRouter.For(session, EditorKey.Enter));
 
-            Assert.Equal(ExpressionsConceptKeys.BoolLiteral, rule.GetChild("condition")?.Concept.Key);
+            Assert.Equal(ExpressionsConceptKeys.Binary, rule.GetChild("condition")?.Concept.Key);
         }
     }
 
@@ -144,7 +172,7 @@ public sealed class CompletionActionTests
             session.Apply(KeyRouter.For(session, EditorKey.ControlSpace));
             session.Apply(KeyRouter.For(session, EditorKey.Tab));
 
-            Assert.Equal(ExpressionsConceptKeys.IntLiteral, rule.GetChild("condition")?.Concept.Key);
+            Assert.Equal(ExpressionsConceptKeys.Name, rule.GetChild("condition")?.Concept.Key);
         }
     }
 
@@ -184,7 +212,7 @@ public sealed class CompletionActionTests
 
             session.Apply(KeyRouter.For(session, EditorKey.Backspace));
 
-            Assert.Equal(7, session.Completion?.Count);
+            Assert.Equal(4, session.Completion?.Count);
 
             // With no prefix left there is nothing to widen, so the key falls through to the ordinary
             // path - which is a non-completion action, and therefore closes the list.
