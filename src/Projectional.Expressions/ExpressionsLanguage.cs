@@ -64,6 +64,34 @@ public static class ExpressionsLanguage
     /// <summary>A project whose language is this one, which is what the expression tests open.</summary>
     public static Project NewProject() => new(Concepts);
 
+    /// <summary>What each concept claims when the user starts typing into an empty expression slot.</summary>
+    /// <remarks>
+    /// <para>
+    /// Without this, typing into an empty expression slot does nothing: the slot names the abstract
+    /// <see cref="ExpressionsConceptKeys.Expression"/>, and the only property in reach - the operator of
+    /// a binary - accepts neither a digit nor a letter. With it, the first keystroke picks the concept and
+    /// fills it, so <c>1</c> gives an integer literal, <c>"</c> a string literal, a letter a name, and
+    /// <c>(</c> the parenthesised form with the caret inside it.
+    /// </para>
+    /// <para>
+    /// The rules only have to be disjoint, because each candidate concept is asked in declaration order: a
+    /// digit is an integer literal before it could be anything else, and a word is a boolean only when it
+    /// is exactly <c>true</c> or <c>false</c> - a bare <c>t</c> is a name, since claiming it as a boolean
+    /// would make it impossible to write a name that starts with one.
+    /// </para>
+    /// </remarks>
+    public static ITypingRules TypingRules { get; } = TypingRuleRegistry.Empty
+        .Add(ExpressionsConceptKeys.IntLiteral, text => text.All(char.IsAsciiDigit), "value")
+        .Add(ExpressionsConceptKeys.BoolLiteral, text => text is "true" or "false", "value")
+        .Add(ExpressionsConceptKeys.StringLiteral, text => text.StartsWith('"'), "value")
+        .Add(ExpressionsConceptKeys.Name, ClaimsName, "name")
+        .Add(ExpressionsConceptKeys.Parenthesized, text => text.StartsWith('('));
+
+    private static bool ClaimsName(string text) =>
+        text.Length > 0
+        && (char.IsAsciiLetter(text[0]) || text[0] == '_')
+        && text.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
+
     private static List<ConceptDeclaration> CreateDeclarations() =>
     [
         new ConceptDeclaration(ExpressionsConceptKeys.Expression, isAbstract: true),

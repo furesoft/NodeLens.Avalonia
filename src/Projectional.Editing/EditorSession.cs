@@ -51,6 +51,10 @@ public sealed class EditorSession : IDisposable
     /// Where Copy, Cut and Paste put and take text; the session's own clipboard when omitted, which keeps
     /// copying and pasting working in a host that has no platform clipboard.
     /// </param>
+    /// <param name="typing">
+    /// What the language says about text typed into an empty slot; nothing when omitted, which leaves
+    /// typing there refused.
+    /// </param>
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
     public EditorSession(
         Node document,
@@ -58,7 +62,8 @@ public sealed class EditorSession : IDisposable
         ITextMeasure? measure = null,
         ICellEmphasis? emphasis = null,
         INotationChoice? choice = null,
-        ITextClipboard? clipboard = null)
+        ITextClipboard? clipboard = null,
+        ITypingRules? typing = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
@@ -72,6 +77,7 @@ public sealed class EditorSession : IDisposable
         _layouter = new CellLayouter(Measure);
         Choice = choice ?? NotationChoice.Default;
         Clipboard = clipboard ?? new InMemoryClipboard();
+        Typing = typing ?? TypingRuleRegistry.Empty;
         _builder = new EditorTreeBuilder(notations, emphasis, Choice);
 
         Tree = _builder.Build(Document);
@@ -138,6 +144,15 @@ public sealed class EditorSession : IDisposable
     /// </para>
     /// </remarks>
     public ITextClipboard Clipboard { get; }
+
+    /// <summary>What the language says about text typed while the caret is in an empty slot.</summary>
+    /// <remarks>
+    /// Never <see langword="null"/>: a session built without one gets <see cref="TypingRuleRegistry.Empty"/>,
+    /// which claims nothing, so a host that does not care keeps the older behaviour of ignoring the
+    /// keystroke. A language declares its rules next to its notation and hands the same registry to every
+    /// session it opens.
+    /// </remarks>
+    public ITypingRules Typing { get; }
 
     /// <summary>
     /// How wide the room a text cell may fill is, or <see langword="null"/> when it may run on.
@@ -270,7 +285,7 @@ public sealed class EditorSession : IDisposable
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        var context = new EditContext(Document, Tree, Layout, Measure, Selection, Clipboard)
+        var context = new EditContext(Document, Tree, Layout, Measure, Selection, Clipboard, Typing)
         {
             Completion = action is CompletionAction ? Completion : null,
         };

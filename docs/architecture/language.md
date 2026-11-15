@@ -141,6 +141,43 @@ Colours, fonts and borders come from a style sheet keyed by cell kind and concep
 tag. Hard-coded visual properties in notation are rejected in review: they prevent
 theming, dark mode and accessibility.
 
+## Typing rules
+
+Notation says what a concept looks like; a typing rule says what the user is *describing*
+when they start typing into an empty slot. It is a language declaration for the same reason
+the notation is one: it is a statement about how this language is written, and no amount of
+inspecting the concepts can recover it. A slot declared over `Expression` holds an abstract
+set, and `abc` is a valid value of both `Name` and `StringLiteral` — only the author knows that
+a bare word is a name and a quoted one is a literal.
+
+```csharp
+public static ITypingRules TypingRules { get; } = TypingRuleRegistry.Empty
+    .Add(ExpressionsConceptKeys.IntLiteral, text => text.All(char.IsAsciiDigit), "value")
+    .Add(ExpressionsConceptKeys.BoolLiteral, text => text is "true" or "false", "value")
+    .Add(ExpressionsConceptKeys.StringLiteral, text => text.StartsWith('"'), "value")
+    .Add(ExpressionsConceptKeys.Name, ClaimsName, "name")
+    .Add(ExpressionsConceptKeys.Parenthesized, text => text.StartsWith('('));
+```
+
+Three things about the shape are deliberate:
+
+- **The predicate sees the whole burst of typed text, not one keystroke.** `true` is a single
+  word no character announces on its own, so a per-character question could never answer it.
+- **The property slot is stated, not searched.** Several properties of one concept can accept
+  the same text, and which one the characters belong in is the author's decision.
+- **The slot is optional.** A rule with no property creates the concept and stores no text: a
+  parenthesis is a gesture that selects `Parenthesized`, not a character the model keeps.
+
+`TypingRuleRegistry` is immutable — `Add` returns a new registry and leaves the one it was
+called on alone — and refuses a second rule for the same concept, because two answers to one
+question is a language bug that would otherwise surface as "sometimes the wrong concept
+appears". `ITypingRules.ClaimFor(conceptKey, text)` is the only lookup; a concept that declares
+no rule claims nothing.
+
+The rules live in `Projectional.Language` beside `ICellEmphasis`, not in the editing layer, so a
+language package can declare them without referencing the editor. What the editor does with a
+claim is [editing.md](editing.md#typing-into-an-empty-slot).
+
 ## Aspects
 
 Aspects are the semantic hooks. All are optional per concept, all are delegates

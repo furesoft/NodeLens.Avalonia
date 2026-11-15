@@ -132,7 +132,7 @@ produced it, and the editing layer never has to remember anything for undo.
 
 | Action | Input | Effect |
 | --- | --- | --- |
-| `TypeTextAction` | printable character | insert into the property cell, or reject when the type refuses the value |
+| `TypeTextAction` | printable character | insert into the property cell, reject when the type refuses the value, or create the concept that claims the text in an empty slot |
 | `DeleteTextAction` | Backspace, Delete | shrink the cell's text, using `DeleteDirection` to say which side |
 | `InsertNodeAction` | Enter, outside a value of text | fill the empty slot the caret is on with a new child |
 | `InsertLineBreakAction` | Enter, inside a value of text | open a line at the caret, which is a `TypeTextAction` of `"\n"` |
@@ -180,6 +180,54 @@ list is open those two keys accept a proposal rather than fill a slot or open a 
 `For(session, key)` overload carries that decision, so a host that routes keys through the
 session gets it and a host that uses the plain table gets no list at all. Both cases are what
 [completion.md](completion.md) describes.
+
+## Typing into an empty slot
+
+An empty slot is the normal state of a projectional language — after accepting `Binary` from
+completion, both operands are `<empty>` and nothing in the model says what belongs in them — so
+typing has to be able to *create* what the user is describing, not only edit what is already
+there. `TypeTextAction` has three cases in this order:
+
+1. the caret is in a property cell: insert, or reject when the type refuses the value;
+2. the caret is in an empty child or collection slot of an empty selection: ask the language
+   which concept claims the text, create it there and write the text into its property;
+3. otherwise: `Unchanged`.
+
+Case 2 cannot be inferred from the concepts. Walking the descendants in declaration order and
+taking the first whose property accepts the text gives `StringLiteral` for `abc`, because a
+string property accepts anything — but the user meant `Name`. Only the language knows that a
+bare word is a name and a quoted one is a literal, and which property of the concept the text
+belongs in (a name and a string literal are both strings). So the language declares it, in
+`ITypingRules`, beside the notation rather than in this layer
+([language.md](language.md#typing-rules)). The action walks the concepts the slot can hold in
+declaration order and creates the first that claims the text, which is the same
+"declaration order is the author's answer to what the user most likely meant" rule that
+`ConceptRegistry.DefaultInstantiableFor` uses for a slot filled with no text at all.
+
+Creating the node and writing its text is **one** undo step. `EditContext.AddChild` opens an
+explicit `ModelTransaction`, sets the property inside it and completes, so the `NodeAdded` and
+the property change journal together instead of becoming two steps a user would have to undo
+separately. The transaction nests inside the one the session already opened, which is what makes
+that true without the action having to know about the outer one.
+
+The caret afterwards is the *created node's* cell, not the property the action wrote. It asks for
+`CellAddress.OfElement(owner.Id, slot, created.IndexInParent)` and lets the rebuild resolve it,
+which lands on the first place inside that node that can be typed into. For `IntLiteral` that is
+`value`, so the next digit appends and `1` then `2` gives `12`; for `Parenthesized` it is the
+empty `inner` slot rather than the `(` the notation renders in front of it, so typing a
+parenthesis is how you group and the following characters go inside the group. This is
+`CaretNavigation.Nearest` doing the work — see [Which cells are caret stops](#which-cells-are-caret-stops).
+
+A rule may name no property at all, and then the text only selects the concept: the parenthesis
+is not stored anywhere, it is a gesture. A rule that names a slot the concept does not declare,
+or a text its property type refuses, still creates the node and drops the text rather than
+throwing — a keystroke must not be able to fail because a language author made a mistake, and
+"the right concept appeared, unfilled" is a mistake that shows immediately.
+
+A non-empty selection is case 3, not case 2: typing over a range is a future structural edit, and
+creating a node in the slot the caret happens to sit in would silently discard what the user
+selected. A language that declares no typing rules at all is also case 3, which is what every
+language did before this existed.
 
 ## Moving nodes
 

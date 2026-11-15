@@ -48,13 +48,18 @@ internal sealed class DocumentTab : IDisposable
     /// property of the language rather than of the tab, so the caller passes it once on opening and the
     /// session asks it again on every rebuild.
     /// </param>
+    /// <param name="typing">
+    /// What the language says about text typed into an empty slot, or <see langword="null"/> when typing
+    /// there should be ignored.
+    /// </param>
     /// <exception cref="InvalidOperationException">The model has no root to edit.</exception>
     internal DocumentTab(
         Model model,
         NotationRegistry notations,
         ITextMeasure measure,
         string? filePath = null,
-        ICellEmphasis? emphasis = null)
+        ICellEmphasis? emphasis = null,
+        ITypingRules? typing = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
@@ -68,7 +73,7 @@ internal sealed class DocumentTab : IDisposable
 
         Model = model;
         FilePath = filePath;
-        Session = new EditorSession(model.Roots[0], notations, measure, emphasis);
+        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing);
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.

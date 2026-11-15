@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Projection;
 
 namespace Projectional.Editing;
@@ -25,6 +26,7 @@ public sealed class EditContext
 {
     private readonly Node _document;
     private readonly IReadOnlyList<CaretPlace> _places;
+    private readonly ITypingRules _typing;
 
     internal EditContext(
         Node document,
@@ -32,7 +34,8 @@ public sealed class EditContext
         CellLayout layout,
         ITextMeasure measure,
         Selection selection,
-        ITextClipboard clipboard)
+        ITextClipboard clipboard,
+        ITypingRules typing)
     {
         _document = document;
         _places = CaretPlaces.Of(tree);
@@ -42,6 +45,7 @@ public sealed class EditContext
         Measure = measure;
         Selection = selection;
         Clipboard = clipboard;
+        _typing = typing;
     }
 
     /// <summary>The node being edited, which is the root of the tree.</summary>
@@ -88,6 +92,16 @@ public sealed class EditContext
 
     /// <summary>The concepts of the language the document is written in.</summary>
     public ConceptRegistry Concepts => _document.Model.Concepts;
+
+    /// <summary>
+    /// What the language says about text that arrives while the caret is in an empty slot.
+    /// </summary>
+    /// <remarks>
+    /// Never <see langword="null"/>: a session given no rules gets <see cref="TypingRuleRegistry.Empty"/>,
+    /// so typing into an empty slot is refused the way it was before there were rules, instead of asking
+    /// every action whether the language has an opinion.
+    /// </remarks>
+    public ITypingRules TypingRules => _typing;
 
     /// <summary>Every cell the caret can stand in, in document order.</summary>
     public IReadOnlyList<CaretPlace> Places => _places;
@@ -156,6 +170,52 @@ public sealed class EditContext
         }
 
         return parent.Model.NewChild(parent, slot, conceptKey);
+    }
+
+    /// <summary>
+    /// Adds a new child of <paramref name="conceptKey"/> to <paramref name="parent"/> and fills one of
+    /// its properties with <paramref name="text"/>, as a single undo step.
+    /// </summary>
+    /// <param name="parent">The node that gains the child.</param>
+    /// <param name="slot">The child slot of <paramref name="parent"/>.</param>
+    /// <param name="conceptKey">The concept of the new child.</param>
+    /// <param name="propertySlot">
+    /// The property of the new child to fill, or <see langword="null"/> when the text only selects the
+    /// concept.
+    /// </param>
+    /// <param name="text">The value to write.</param>
+    /// <returns>The node that was created.</returns>
+    /// <exception cref="EditingException"><paramref name="parent"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// <para>
+    /// One step rather than two because creating a node and filling it is one gesture to the user: typing
+    /// the first character of an empty slot must be undone by one press, not by an undo that leaves an
+    /// empty node behind.
+    /// </para>
+    /// <para>
+    /// The text is dropped rather than refused when the concept declares no such property or its type
+    /// rejects the value. That is a mistake in the language's typing rule, not something the user did, and
+    /// a keystroke must not throw; the visible result - the right concept, unfilled - is the diagnostic.
+    /// </para>
+    /// </remarks>
+    public Node AddChild(Node parent, string slot, string conceptKey, string? propertySlot, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        using var transaction = _document.Model.BeginTransaction();
+
+        var created = AddChild(parent, slot, conceptKey);
+
+        if (propertySlot is not null
+            && created.Concept.FindProperty(propertySlot) is { } property
+            && property.Type.IsValid(text))
+        {
+            created.Set(propertySlot, text);
+        }
+
+        transaction.Complete();
+
+        return created;
     }
 
     /// <summary>
