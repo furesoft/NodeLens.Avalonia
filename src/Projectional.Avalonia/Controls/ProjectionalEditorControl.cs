@@ -419,6 +419,12 @@ public sealed class ProjectionalEditorControl : Control
     /// Nothing is resolved here: a marker is decoration, so the tree, the layout and the caret are
     /// untouched, and the wave is computed from the layout that is already on screen.
     /// </para>
+    /// <para>
+    /// A new set also drops the tip. The tip is anchored on a <c>MarkerLine</c> taken from the set that
+    /// was current when the pointer stopped, so keeping it would leave a box on screen quoting a finding
+    /// the host has just withdrawn - and a host republishes after every edit, so the sentence the user is
+    /// reading can go out of date while the pointer stands still.
+    /// </para>
     /// </remarks>
     public MarkerSet Markers
     {
@@ -434,6 +440,7 @@ public sealed class ProjectionalEditorControl : Control
             }
 
             session.Markers = value;
+            ClearHover();
             InvalidateVisual();
         }
     }
