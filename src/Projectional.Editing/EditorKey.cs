@@ -33,6 +33,12 @@ public enum EditorKey
     /// <summary>The down arrow.</summary>
     Down,
 
+    /// <summary>Alt+Up, which moves the node the caret is in one place towards the front of its slot.</summary>
+    AltUp,
+
+    /// <summary>Alt+Down, which moves the node the caret is in one place towards the end of its slot.</summary>
+    AltDown,
+
     /// <summary>Home.</summary>
     Home,
 

@@ -65,6 +65,19 @@ public sealed class EditorKeyMapTests
         Assert.Null(EditorKeyMap.Map(Key.Home, modifiers));
     }
 
+    [Fact]
+    public void AltReachesOnlyTheVerticalArrows()
+    {
+        // Reordering a node is an edit no host can offer for the editor, so Alt+Up/Down is the one
+        // exception to "Alt belongs to the host" - and it is where every editor puts the same job.
+        Assert.Equal(EditorKey.AltUp, EditorKeyMap.Map(Key.Up, KeyModifiers.Alt));
+        Assert.Equal(EditorKey.AltDown, EditorKeyMap.Map(Key.Down, KeyModifiers.Alt));
+
+        Assert.Null(EditorKeyMap.Map(Key.Left, KeyModifiers.Alt));
+        Assert.Null(EditorKeyMap.Map(Key.Right, KeyModifiers.Alt));
+        Assert.Null(EditorKeyMap.Map(Key.Up, KeyModifiers.Alt | KeyModifiers.Control));
+    }
+
     [Theory]
     [InlineData(Key.A)]
     [InlineData(Key.Space)]

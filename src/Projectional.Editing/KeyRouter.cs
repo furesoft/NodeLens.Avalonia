@@ -36,6 +36,8 @@ public static class KeyRouter
         EditorKey.ControlRight => new MoveCaretAction(CaretMove.RightCharacter),
         EditorKey.Up => new MoveCaretAction(CaretMove.Up),
         EditorKey.Down => new MoveCaretAction(CaretMove.Down),
+        EditorKey.AltUp => new MoveNodeAction(NodeMove.Up),
+        EditorKey.AltDown => new MoveNodeAction(NodeMove.Down),
         EditorKey.Home => new MoveCaretAction(CaretMove.LineStart),
         EditorKey.End => new MoveCaretAction(CaretMove.LineEnd),
         EditorKey.Tab => new TabAction(),

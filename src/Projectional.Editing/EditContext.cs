@@ -13,8 +13,9 @@ namespace Projectional.Editing;
 /// different generation of the tree than the one the caret belongs to.
 /// </para>
 /// <para>
-/// It also hands out the only three mutations the editing layer is allowed to perform - resolve a node,
-/// set a property, add a child - and each of them goes through the model's own validated mutators. That
+/// It also hands out the only mutations the editing layer is allowed to perform - resolve a node, set a
+/// property, add a child, move a child - and each of them goes through the model's own validated
+/// mutators. That
 /// is what keeps invariant "the model is only changed through a transaction" and the change journal
 /// true without the editing layer enforcing them, and it is why undo works for free: the journal sees
 /// every edit because the model produced it.
@@ -126,6 +127,33 @@ public sealed class EditContext
         }
 
         return parent.Model.NewChild(parent, slot, conceptKey);
+    }
+
+    /// <summary>
+    /// Moves <paramref name="child"/> to <paramref name="index"/> among the children of
+    /// <paramref name="slot"/> of <paramref name="parent"/>.
+    /// </summary>
+    /// <exception cref="EditingException"><paramref name="parent"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// The node is unlinked and put back inside one mutation, so it keeps its identity: its id stays the
+    /// same, and with it every reference that points into its subtree and every caret address that names
+    /// one of its cells. The journal sees one move rather than a deletion and a creation, which is what
+    /// makes undo put the node back where it was instead of rebuilding it somewhere else.
+    /// </remarks>
+    public Node MoveChild(Node parent, string slot, Node child, int index)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentNullException.ThrowIfNull(child);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        if (!ReferenceEquals(parent.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {parent.Id} belongs to another model than the document being edited.");
+        }
+
+        return parent.InsertChild(slot, index, child);
     }
 
     private static Node? Find(Node node, NodeId id)

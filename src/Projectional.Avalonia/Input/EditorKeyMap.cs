@@ -20,7 +20,11 @@ namespace Projectional.Avalonia;
 /// because the plain key happens to be routed would take shortcuts away from the very application that
 /// embeds the editor. Shift is part of what the editor does, because Shift+Tab walks slots backwards.
 /// Control is the host's as well, with one exception: Ctrl+Left and Ctrl+Right, because the arrows move
-/// a cell at a time and the character step has to stay reachable from the keyboard.
+/// a cell at a time and the character step has to stay reachable from the keyboard. Alt has its own
+/// exception, Alt+Up and Alt+Down, because reordering a node is an edit of the model and no host can
+/// offer it for the editor; the combination is also the one every editor uses for the same job, so
+/// taking it is what keeps the shortcut where a user looks for it. Alt+Left, Alt+Right and every other
+/// Alt combination stay with the host.
 /// </para>
 /// </remarks>
 public static class EditorKeyMap
@@ -30,12 +34,24 @@ public static class EditorKeyMap
     /// <param name="modifiers">The modifiers held while it was pressed.</param>
     public static EditorKey? Map(Key key, KeyModifiers modifiers)
     {
-        if ((modifiers & (KeyModifiers.Alt | KeyModifiers.Meta)) != 0)
+        var control = (modifiers & KeyModifiers.Control) != 0;
+
+        if ((modifiers & KeyModifiers.Meta) != 0)
         {
             return null;
         }
 
-        var control = (modifiers & KeyModifiers.Control) != 0;
+        if ((modifiers & KeyModifiers.Alt) != 0)
+        {
+            return control
+                ? null
+                : key switch
+                {
+                    Key.Up => EditorKey.AltUp,
+                    Key.Down => EditorKey.AltDown,
+                    _ => null,
+                };
+        }
 
         if (control && key is not (Key.Left or Key.Right))
         {
