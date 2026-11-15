@@ -32,6 +32,7 @@ public sealed class EditorSession : IDisposable
 {
     private readonly NotationRegistry _notations;
     private readonly ICellEmphasis? _emphasis;
+    private ITextMeasure _measure;
     private CellLayouter _layouter;
     private double? _wrapWidth;
 
@@ -69,12 +70,12 @@ public sealed class EditorSession : IDisposable
         ArgumentNullException.ThrowIfNull(notations);
 
         Document = document;
-        Measure = measure ?? MonospaceTextMeasure.Instance;
+        _measure = measure ?? MonospaceTextMeasure.Instance;
         History = new UndoHistory(document.Model);
 
         _notations = notations;
         _emphasis = emphasis;
-        _layouter = new CellLayouter(Measure);
+        _layouter = new CellLayouter(_measure);
         Choice = choice ?? NotationChoice.Default;
         Clipboard = clipboard ?? new InMemoryClipboard();
         Typing = typing ?? TypingRuleRegistry.Empty;
@@ -93,7 +94,36 @@ public sealed class EditorSession : IDisposable
     public Node Document { get; }
 
     /// <summary>How text is measured.</summary>
-    public ITextMeasure Measure { get; }
+    /// <remarks>
+    /// <para>
+    /// Setting a different measure re-lays-out the document, because every position in
+    /// <see cref="Layout"/> is expressed in that measure's units. A host uses this to change the font
+    /// size: the projection has no notion of points, so "bigger text" reaches it as "the same
+    /// character is now worth more units".
+    /// </para>
+    /// <para>
+    /// View state, like <see cref="WrapWidth"/>. Two hosts can show one document at different sizes
+    /// and edit the same model, and nothing about the size reaches the model or the undo history.
+    /// </para>
+    /// </remarks>
+    public ITextMeasure Measure
+    {
+        get => _measure;
+
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_measure, value))
+            {
+                return;
+            }
+
+            _measure = value;
+            _layouter = new CellLayouter(value, _wrapWidth);
+            Refresh();
+        }
+    }
 
     /// <summary>The undo history of the document's model.</summary>
     public UndoHistory History { get; }

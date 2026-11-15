@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
@@ -36,11 +37,19 @@ namespace Projectional.Workbench;
 /// </remarks>
 public sealed partial class MainWindow : Window, IDisposable
 {
+    /// <summary>The size documents are drawn at until the user zooms.</summary>
+    private const double DefaultFontSize = 14;
+
+    private const double MinimumFontSize = 6;
+    private const double MaximumFontSize = 48;
+    private const double FontSizeStep = 1;
+
     private readonly DocumentSet _documents = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
     private bool _showLineNumbers;
+    private double _fontSize = DefaultFontSize;
     private string? _error;
     private bool _closeConfirmed;
     private bool _disposed;
@@ -52,6 +61,10 @@ public sealed partial class MainWindow : Window, IDisposable
 
         ApplyTheme(_theme);
         OpenSample();
+
+        // Tunnelling, because the editor control would otherwise see the key first and could claim it:
+        // zoom is a property of the shell, not of one document.
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
 
         Documents.SelectionChanged += OnSelectionChanged;
         Opened += (_, _) => FocusActiveDocument();
@@ -136,6 +149,11 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         var editor = new ProjectionalEditorControl();
+
+        // Before the tab is built, not after: the session takes its measure from the control, so a size
+        // applied afterwards would have to rebuild a layout that was already laid out at 14.
+        editor.FontSize = _fontSize;
+
         var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
@@ -285,7 +303,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         var position = _documents.Active is not { } active
             ? "No document open"
-            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {(_theme.IsDark ? "dark" : "light")} theme";
+            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {(_theme.IsDark ? "dark" : "light")} theme | {_fontSize:0} px";
 
         // The message goes last and is not cleared here: it is the answer to the command the user just
         // ran, and the next command clears it, so it cannot go stale while the user reads it.
@@ -502,4 +520,70 @@ public sealed partial class MainWindow : Window, IDisposable
     }
 
     private void OnExit(object? sender, RoutedEventArgs e) => Close();
+
+    private void OnIncreaseFontSize(object? sender, RoutedEventArgs e) => ApplyFontSize(_fontSize + FontSizeStep);
+
+    private void OnDecreaseFontSize(object? sender, RoutedEventArgs e) => ApplyFontSize(_fontSize - FontSizeStep);
+
+    private void OnResetFontSize(object? sender, RoutedEventArgs e) => ApplyFontSize(DefaultFontSize);
+
+    /// <summary>Routes the zoom gestures that a <c>MenuItem.HotKey</c> cannot express.</summary>
+    /// <remarks>
+    /// On a normal keyboard "+" is <see cref="Key.OemPlus"/> pressed <em>with</em> Shift, so a single
+    /// registered gesture would either miss the shifted press or require the user to hold Shift for a
+    /// key that is printed as "=". Matching here accepts both, and the numpad keys as well. Ctrl+0 is
+    /// included because the top-row zero and the numpad zero are different keys to Avalonia.
+    /// </remarks>
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if ((e.KeyModifiers & ~KeyModifiers.Shift) != KeyModifiers.Control)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.OemPlus or Key.Add:
+                ApplyFontSize(_fontSize + FontSizeStep);
+                break;
+            case Key.OemMinus or Key.Subtract:
+                ApplyFontSize(_fontSize - FontSizeStep);
+                break;
+            case Key.D0 or Key.NumPad0:
+                ApplyFontSize(DefaultFontSize);
+                break;
+            default:
+                return;
+        }
+
+        e.Handled = true;
+    }
+
+    /// <summary>Applies one font size to every open document.</summary>
+    /// <remarks>
+    /// The size belongs to the shell, not to a document: a user who zooms to read one tab expects the
+    /// next one to open at the same size. It is clamped rather than refused, so holding the gesture
+    /// down stops at the limit instead of failing silently.
+    /// </remarks>
+    private void ApplyFontSize(double size)
+    {
+        var clamped = Math.Clamp(size, MinimumFontSize, MaximumFontSize);
+
+        if (clamped == _fontSize)
+        {
+            return;
+        }
+
+        _fontSize = clamped;
+
+        foreach (var tab in _tabs.Values)
+        {
+            if (tab.Content is ProjectionalEditorControl editor)
+            {
+                editor.FontSize = _fontSize;
+            }
+        }
+
+        UpdateStatus();
+    }
 }
