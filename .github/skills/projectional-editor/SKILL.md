@@ -448,6 +448,11 @@ dependency, so every action is testable headlessly.
   every keystroke is deliberate M1 policy, not an oversight.
 - **Enter appends.** `Model.NewChild` adds to the end of a list; there is no insert-at-index
   API yet, so Enter on a slot in the middle of a list puts the child last.
+- **The value a created node lands on arrives selected.** `EditAction.SelectsLandedValue` is the
+  intent ("what I made is something to be named") and `EditorSession.Apply` carries it out against
+  the tree the edit produced, widening the caret to the whole `PropertyCell` it landed in. It is a
+  property of the *creating* edit only: if typing re-selected what it had just written, the next
+  keystroke would replace it and no name longer than one character could be typed.
 - **An empty single-child slot renders one cell** whose address is
   `CellAddress.OfSlot(ownerId, slot)` - that is the address Enter fills. Collection slots with
   no children produce no cell at all, so Enter there has nothing to act on.
@@ -457,7 +462,8 @@ dependency, so every action is testable headlessly.
 - **Typing into a defaulted property inserts, it does not replace.** Defaults are
   materialized values (`name` = `"unnamed"`, `enabled` = `"true"`), and the model cannot tell
   an unset property from a set one, so `"unnamed"` + `"P"` gives `"Punnamed"`. Accepted
-  limitation until a `Node.Unset`/placeholder concept exists (future `feat/property-defaults`).
+  limitation until a `Node.Unset`/placeholder concept exists (future `feat/property-defaults`);
+  the one path that escapes it is a node the user just created, whose value arrives selected.
 - `Node.GetOrNull`/`Set` handle **properties only**. A reference slot needs `GetReference`,
   `GetReferenceTarget` or `SetReference`; asking `GetOrNull` for one throws
   `KeyNotFoundException` ("declares no property slot named ...").
@@ -781,7 +787,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 755 tests**; anything below that means tests were deleted.
+it. **Baseline is 768 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

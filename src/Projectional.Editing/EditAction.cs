@@ -33,6 +33,18 @@ public abstract class EditAction
     /// </remarks>
     public virtual string? CoalescingKey(EditContext context) => null;
 
+    /// <summary>
+    /// Whether the value the caret lands in should arrive selected, so that typing replaces it.
+    /// </summary>
+    /// <remarks>
+    /// A node is created with its concept's defaults already materialised - a fresh rule is called
+    /// <c>"unnamed"</c> before anybody types - so a bare caret in front of that value turns the first
+    /// keystroke into an insertion and produces <c>"Punnamed"</c>. Selecting the value is what makes the
+    /// node nameable, and only the action knows whether what it produced is something to name, so the
+    /// intent is stated here and carried out by the session against the tree the edit produced.
+    /// </remarks>
+    public virtual bool SelectsLandedValue => false;
+
     /// <summary>Applies the action and answers with what happened and where the caret goes.</summary>
     public abstract EditResult Apply(EditContext context);
 
