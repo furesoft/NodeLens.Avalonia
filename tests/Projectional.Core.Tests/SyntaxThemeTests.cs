@@ -76,6 +76,19 @@ public sealed class SyntaxThemeTests
     }
 
     [Fact]
+    public void AThemeCarriesTheOverlaysOfItsOwnDarkness()
+    {
+        // The surfaces painted *over* the page are read against it, so a dark page must not get a white
+        // box: this guards the presets against a copy-paste that passes the light overlay to the dark
+        // theme. The list palette is not asserted here because it carries vector icons and therefore needs
+        // a rendering platform - it resolves lazily, and a probe is what checks it.
+        Assert.Same(MarkerTipPalette.Light, SyntaxTheme.Light.Tip);
+        Assert.Same(MarkerTipPalette.Dark, SyntaxTheme.Dark.Tip);
+        Assert.NotSame(SyntaxTheme.Light.Tip, SyntaxTheme.Dark.Tip);
+        Assert.NotSame(SyntaxTheme.Light.Bulb, SyntaxTheme.Dark.Bulb);
+    }
+
+    [Fact]
     public void AThemeCarriesOneOfTheShippedPalettes()
     {
         Assert.Same(SyntaxPalette.Light, SyntaxTheme.Light.Palette);
