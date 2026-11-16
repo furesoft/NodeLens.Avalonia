@@ -25,11 +25,18 @@ namespace Projectional.Avalonia;
 /// Ctrl+V, the four text gestures a user reaches for without looking and every platform spells the same
 /// way - a clipboard that only worked through a context menu would be a clipboard nobody finds.
 /// Ctrl+Home and Ctrl+End, because a click elsewhere in the window means "the start or end of this
-/// document" in the host too, so taking them costs nothing. Alt has its own exception, Alt+Up and
+/// document" in the host too, so taking them costs nothing. Alt has its own exceptions, Alt+Up and
 /// Alt+Down, because reordering a node is an edit of the model and no host can offer it for the editor;
 /// the combination is also the one every editor uses for the same job, so taking it is what keeps the
 /// shortcut where a user looks for it. Alt+Left, Alt+Right and every other Alt combination stay with the
 /// host, and so does Ctrl+PageUp/Ctrl+PageDown, which most browsers and tabbed applications own.
+/// </para>
+/// <para>
+/// Alt+Enter and Ctrl+. are the quick-fix gesture, spelled the two ways the two editors this one is
+/// modelled on spell it, and they are taken on purpose rather than fallen into: a user who learns the
+/// gesture on day one must not have it moved later, and no host can offer a repair for a model it cannot
+/// see. Both spellings are one <see cref="EditorKey"/>, so a host that binds its own menu shows the same
+/// command twice rather than two commands that happen to do one thing.
 /// </para>
 /// </remarks>
 public static class EditorKeyMap
@@ -54,11 +61,12 @@ public static class EditorKeyMap
                 {
                     Key.Up => EditorKey.AltUp,
                     Key.Down => EditorKey.AltDown,
+                    Key.Enter => EditorKey.QuickFix,
                     _ => null,
                 };
         }
 
-        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.C or Key.V or Key.X))
+        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.C or Key.V or Key.X or Key.OemPeriod))
         {
             return null;
         }
@@ -84,6 +92,7 @@ public static class EditorKeyMap
             Key.C when control => EditorKey.Copy,
             Key.X when control => EditorKey.Cut,
             Key.V when control => EditorKey.Paste,
+            Key.OemPeriod when control => EditorKey.QuickFix,
             Key.Escape => EditorKey.Escape,
             _ => null,
         };

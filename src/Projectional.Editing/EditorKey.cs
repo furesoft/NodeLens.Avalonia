@@ -89,4 +89,13 @@ public enum EditorKey
 
     /// <summary>Ctrl+V, which inserts the clipboard text at the caret, replacing any selection.</summary>
     Paste,
+
+    /// <summary>Alt+Enter and Ctrl+., which offer the repairs for the line the caret is on.</summary>
+    /// <remarks>
+    /// One value for two gestures, because it is one meaning with two spellings: Alt+Enter is MPS' and
+    /// Ctrl+. is Visual Studio's, and a user who has learned either should find the repairs where they
+    /// expect them. The editor applies them as one undo step, so both gestures can be taken from the host
+    /// without taking away anything a host could have done with them.
+    /// </remarks>
+    QuickFix,
 }

@@ -202,6 +202,21 @@ public sealed class EditorSession : IDisposable
     /// </remarks>
     public FixSet Fixes { get; set; } = FixSet.Empty;
 
+    /// <summary>The repairs a gesture offered and the user has not chosen between, or <see langword="null"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// View state like <see cref="Completion"/> and closed by the same rule: any other action closes it,
+    /// because a list of repairs for a caret that has moved is advice about a place the user has left. It
+    /// is also dropped whenever the tree is rebuilt, since the model moving under a list is the same
+    /// situation as the caret moving out of it.
+    /// </para>
+    /// <para>
+    /// Never set to a list of one: a single repair is applied by the gesture that asked for it, so this
+    /// property answers "the user is choosing between several" and nothing else.
+    /// </para>
+    /// </remarks>
+    public QuickFixList? OfferedFixes { get; private set; }
+
     /// <summary>Where Copy, Cut and Paste put and take their text.</summary>
     /// <remarks>
     /// <para>
@@ -379,6 +394,15 @@ public sealed class EditorSession : IDisposable
             return Apply(program);
         }
 
+        if (action is QuickFixAction)
+        {
+            return ApplyQuickFixes();
+        }
+
+        // Every other action closes an offered list, for the same reason it closes the completion list:
+        // the user did something else, and the offer described where they were.
+        OfferedFixes = null;
+
         var context = ContextFor(action);
 
         return ApplyCore(action, context, action.CoalescingKey(context));
@@ -433,6 +457,47 @@ public sealed class EditorSession : IDisposable
         transaction.Complete();
 
         return result;
+    }
+
+    /// <summary>Answers the quick-fix gesture: nothing to offer, one repair, or a list to choose from.</summary>
+    /// <remarks>
+    /// <para>
+    /// One repair is applied immediately. The common case is a single cure for a single finding, and a list
+    /// with one entry costs the user a keystroke to say what the editor already knew.
+    /// </para>
+    /// <para>
+    /// Several repairs open a list, and the answer is <see cref="EditOutcome.Unchanged"/>: the gesture was
+    /// handled, but nothing about the model changed. The list is what the caller reads to draw it - the
+    /// same contract the completion list has, which is why the control only has to look at the session
+    /// after the gesture.
+    /// </para>
+    /// <para>
+    /// Nothing to offer answers unchanged as well and leaves no list behind. A refused gesture would leak
+    /// into the host as a beep for a key that is perfectly legal, and "there is nothing to repair here" is
+    /// an answer rather than an error.
+    /// </para>
+    /// </remarks>
+    public EditResult ApplyQuickFixes()
+    {
+        var offered = QuickFixes.At(this);
+
+        if (offered.Count == 0)
+        {
+            OfferedFixes = null;
+
+            return EditResult.Unchanged(Selection);
+        }
+
+        if (offered.Count == 1)
+        {
+            OfferedFixes = null;
+
+            return Apply(offered[0]);
+        }
+
+        OfferedFixes = new QuickFixList(offered);
+
+        return EditResult.Unchanged(Selection);
     }
 
     /// <summary>Applies <paramref name="fix"/> as an undo step of its own, or rejects the pick.</summary>
@@ -683,6 +748,9 @@ public sealed class EditorSession : IDisposable
     {
         Tree = _builder.Build(Document);
         Layout = _layouter.Layout(Tree);
+
+        // The offer named a caret line of the layout that has just been replaced.
+        OfferedFixes = null;
     }
 
     /// <summary>Puts the selection onto cells of the current tree, keeping a range whole.</summary>
