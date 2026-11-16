@@ -23,26 +23,28 @@ records what was actually verified.
    the first slice is implemented.
 9. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned; after quick fixes).
-10. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+10. [Intention preview](architecture/intention-preview.md) — what an entry would do, shown on
+    a longer hover by projecting a discarded copy.
+11. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (delivered).
-11. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
+12. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
     reach the user (in progress; the model and the apply step are delivered).
-12. [Line numbers](architecture/line-numbers.md) — numbering the rows a
+13. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
-13. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
+14. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
     (delivered).
-14. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+15. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard (delivered).
-15. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-16. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-17. [Integration](architecture/integration.md) — how host applications embed this.
-18. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+16. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+17. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+18. [Integration](architecture/integration.md) — how host applications embed this.
+19. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-19. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
+20. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
     composes, locked to one language.
-20. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-21. [Roadmap](roadmap.md) — milestones and acceptance gates.
-22. [Open questions](open-questions.md) — what is deliberately still undecided.
+21. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+22. [Roadmap](roadmap.md) — milestones and acceptance gates.
+23. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
@@ -84,3 +86,4 @@ directory stays authoritative whenever the two disagree.
 | [0014](adr/0014-both-authoring-paths-are-permanent.md) | Languages are defined in code and in the project, both permanently |
 | [0015](adr/0015-shell-is-a-library.md) | The shell is a library a host composes, and it can be locked to one language |
 | [0016](adr/0016-quick-fixes-are-edits-a-host-supplies.md) | Quick fixes are edits a host supplies, applied by the session |
+| [0017](adr/0017-preview-is-a-discarded-edit.md) | A preview is a projection of a discarded edit |

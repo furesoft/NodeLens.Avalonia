@@ -69,7 +69,7 @@ the parts of that plan that are choices rather than mechanics.
 | 31 | Does an intention come from the concept, from a host registration, or both? | Leaning | Both, and the aspect comes first: a language's intentions travel with the language, and a host registers what only it can know (generate this, open that, run the interpreter). One list, ordered host, language, quick fixes, and the fixes are the part that exists first ([quick-fixes.md](architecture/quick-fixes.md)). | M3 |
 | 32 | Is the bulb shown only at the caret, or also on lines that are merely marked? | Leaning | Once a list of fixes exists, once per line that carries at least one fix, and the caret's line wins when the caret stands on one — a marked line with no offer is the case users complain about, but a bulb on every line of a document full of warnings is noise. A line that has a diagnostic but no fix shows nothing, because there is nothing to offer. | M1, with Q6 |
 | 33 | Are intentions also in the context menu, or only on the bulb? | Leaning | Both, from one list: a submenu at the top of the menu, the same entries the bulb shows. The menu answers "what can I do here" with the mouse, and the bulb answers it at the keyboard; two independent lists would drift. | M3 |
-| 34 | Does an intention ever preview its effect before applying? | Leaning | No. A one-sentence description and a single undo step instead — in a projectional editor the effect is visible text, so a preview dialog shows what the editor is about to show anyway. Reopen this at M6, where a refactoring that touches several files is not visible at a glance. | M3 |
+| 34 | Does an intention ever preview its effect before applying? | Leaning (answered) | Yes, on a longer hover, by applying the edit to a discarded copy and projecting that - never by a per-action describe form, which would be a second implementation to keep in step ([intention-preview.md](architecture/intention-preview.md), [ADR 0017](adr/0017-preview-is-a-discarded-edit.md)). A preview dialog is still not wanted: the page itself becomes the result. | M3 |
 
 ## Markers
 
@@ -164,6 +164,20 @@ arrangement that are not mechanics.
 | 63 | What does the workbench show for a declared concept that has no editor model? | Open | The same `MissingNotationCell` a C# language shows, plus the editor model opened at that concept. A generic fallback form would hide the notation work behind something that looks finished, and every language would ship with it. | M5, with P5 |
 | 64 | Does a slot carry a minimum cardinality, and where? | Leaning | A minimum on the slot declaration, not on `Cardinality`: `One`/`Many` describes storage, while "at least two rules" is a validity statement the constraint engine reads. The bracket syntax (`Rule[1..n]`) already promises it, so dropping it silently is the one option that is not available. | P4 |
 
+## Intention preview
+
+What an intention would do, shown on a longer hover by applying it to a discarded copy
+([intention-preview.md](architecture/intention-preview.md),
+[ADR 0017](adr/0017-preview-is-a-discarded-edit.md)). Question 34 above is the parent decision; these
+are the numbers and edges the design leaves open.
+
+| # | Question | State | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 69 | How long is "long enough" to hover, and is it configurable? | Leaning | 300 ms for the description, 700 ms for the preview, 150 ms of grace when the pointer leaves to move between the bulb and the list. Configurable through `PreviewDelay`, because the tolerance for a preview that appears while reading is not the same for every user. | V3 |
+| 70 | Does the preview follow keyboard navigation, or is it pointer-only? | Leaning | It follows, with the same delay. A list walked with the arrow keys would otherwise either flash a preview per entry or show none at all, and the keyboard user would be the one who cannot see the result. | V3 |
+| 71 | Does a preview get its own budget per document or per session? | Open | Per document, measured in nodes copied: a preview is about one editing context, and a session-wide budget would let a second tab starve the first. Revisit if a host opens many small documents. | V2 |
+| 72 | What happens when the edit is previewed but applying it would be refused? | Leaning | The preview shows the result anyway and the badge says "would be rejected"; refusing to preview is the one answer that hides the reason. It needs `EditResult` to be checkable without applying, which is a change to how a preview runs its action. | V2 |
+
 ## Embedded shell
 
 A host embeds the shell itself - not only the editor control - with one language already loaded
@@ -216,5 +230,6 @@ Listed here so they are not reopened accidentally; the authoritative text is the
 | Language authoring | C# and project paths, both permanent | [0014](adr/0014-both-authoring-paths-are-permanent.md) |
 | Shell | a library a host composes, lockable to one language | [0015](adr/0015-shell-is-a-library.md) |
 | Quick fixes | edits a host supplies, applied by the session as one undo step | [0016](adr/0016-quick-fixes-are-edits-a-host-supplies.md) |
+| Intention preview | a projection of a discarded edit, never a second description | [0017](adr/0017-preview-is-a-discarded-edit.md) |
 | Execution | interpreter *and* text generation | ADR to be written (M4) |
 | Pilot DSL | rule/decision tables | ADR to be written (M4) |

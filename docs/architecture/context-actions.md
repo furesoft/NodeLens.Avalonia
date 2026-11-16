@@ -134,6 +134,7 @@ never shows.
 | click the bulb | same list, with the pointer |
 | `Esc` | close without editing |
 | `Up`/`Down`, `Enter` | move and run — the list is navigable without a mouse |
+| hover an entry for 700 ms | show what it would do, in place ([intention-preview.md](intention-preview.md)) |
 
 "One intention → run it" is deliberate: the common case is a single fix, and a popup with one
 entry costs the user a keystroke for nothing. It also makes the feature usable from the
@@ -148,6 +149,28 @@ applies, which is slice D rather than a second implementation.
 Focus and lifetime follow the context menu's rules exactly: the popup belongs to the control,
 opening a second one closes the first, detaching the control closes it, and a command runs
 the session directly and then measures and repaints.
+
+## Hovering long enough shows a preview
+
+A label answers "what does this do"; it does not answer "what will it look like", and for a
+conversion - a `for` becoming a `while`, a rule becoming a table row - that is the question the user
+has. So an entry that is hovered long enough replaces the page with the result of its edit, marks what
+changed, and puts everything back when the pointer leaves.
+
+The result is produced by applying the real action to a **discarded copy** of the document and
+projecting that copy: no second "describe" implementation per action, and nothing that can drift from
+what applying it does. The live model, its history and its journal are never touched. The whole design
+- the sandbox, the diff by node id, the marks, the hover ladder and its budget - is
+[intention-preview.md](intention-preview.md), decided in
+[ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
+
+Two consequences for this document's own plan:
+
+- The description does not become redundant, and the slice that builds the list still has to write
+  one. A preview is available to a pointer that hovers long enough, so it cannot be the only
+  explanation of what an entry does.
+- A preview is a property of the *list*, not of a single affordance: the bulb, the popup and the
+  context-menu submenu all show the same list, so they all get previews from one implementation.
 
 ## Undo, and what a program is
 
@@ -198,6 +221,7 @@ Q1-Q6 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | C | `feat/intentions-keys` | the intention list in the `Alt+Enter` / `Ctrl+.` popup beside the fixes, built from `EditorMenuEntry`s through `EditorMenuPresenter` |
 | D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
+| F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.
@@ -214,13 +238,17 @@ To be frozen as an ADR when slice A lands, not before — the text above is the 
    filtered by the caret's place, and the order is host, language, fixes.
 5. The intention list and the context menu share one entry model.
 
+The preview is not in that list because it was decided separately and earlier, in
+[ADR 0017](../adr/0017-preview-is-a-discarded-edit.md): a preview is a projection of a discarded
+edit, never a second description of one.
+
 ## What this plan deliberately leaves out
 
 | Left out | Why |
 | --- | --- |
 | Authoring intentions in the language editor (declared form) | follows the other aspects through the bootstrap stages; M5 |
 | Intention search across the whole document (`Ctrl+Shift+A`) | a command palette is a shell feature, not an editing one, and needs its own ranking rules |
-| Preview / diff of what an intention will do | needs a side-effect-free "describe" form per action; the description string is the honest 80 % |
+| Preview of a change across several files | the same machinery as a single-document preview; what it still needs is a policy for scrolling and switching tabs, which is M6 with the refactorings |
 | Auto-apply when typing (MPS' transformation triggers) | that is the substitution-action feature of M3, which shares the action model but not the affordance |
 | Intention ranking by usage statistics | unexplainable ordering; fixed order is debuggable |
 | Localisation of labels | labels are strings until the M5 message-key pass |

@@ -1065,6 +1065,11 @@ dotnet test
 - Do not reorder children or renumber IDs during save.
 - Do not make `ITextClipboard` asynchronous. A synchronous key needs a synchronous clipboard;
   `RefreshAsync` is the only async seam and it stays fire-and-forget.
+- Do not preview an edit by applying it to the live model and rolling back, and do not give each
+  action a "describe" method. A preview applies the real action to a **discarded copy in its own
+  project** and projects that ([ADR 0017](../../../docs/adr/0017-preview-is-a-discarded-edit.md),
+  [intention-preview.md](../../../docs/architecture/intention-preview.md)). Node ids are unique per
+  project, which is why the copy cannot share the live one.
 
 ## Verification habits
 
