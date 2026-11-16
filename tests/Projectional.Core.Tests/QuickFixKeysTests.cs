@@ -93,6 +93,70 @@ public sealed class QuickFixKeysTests
     }
 
     [Fact]
+    public void DownMovesTheHighlightAndNotTheCaret()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+        OpenListOfTwo(session, rule, name);
+
+        var caret = session.Selection.Caret;
+
+        session.Apply(new SelectQuickFixAction(1));
+
+        Assert.Equal(1, session.OfferedFixes!.Selected);
+        Assert.Equal(caret, session.Selection.Caret);
+
+        // Clamped, not wrapped: a list of repairs is not a carousel.
+        session.Apply(new SelectQuickFixAction(5));
+        Assert.Equal(1, session.OfferedFixes!.Selected);
+
+        session.Apply(new SelectQuickFixAction(-5));
+        Assert.Equal(0, session.OfferedFixes!.Selected);
+    }
+
+    [Fact]
+    public void EnterAppliesTheHighlightedRepairAndClosesTheList()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+        OpenListOfTwo(session, rule, name);
+
+        session.Apply(new SelectQuickFixAction(1));
+        var result = session.Apply(new AcceptQuickFixAction());
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.Equal("second", rule.GetOrNull("name"));
+        Assert.Null(session.OfferedFixes);
+    }
+
+    [Fact]
+    public void AcceptingWithoutAListDoesNothing()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new AcceptQuickFixAction()).Outcome);
+        Assert.Equal("walk", rule.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void TheKeysReachTheListWhileItIsOpen()
+    {
+        // The router has to know about the open list, or Down would move the caret out from under it.
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+        OpenListOfTwo(session, rule, name);
+
+        Assert.IsType<SelectQuickFixAction>(KeyRouter.For(session, EditorKey.Down));
+        Assert.IsType<SelectQuickFixAction>(KeyRouter.For(session, EditorKey.Up));
+        Assert.IsType<AcceptQuickFixAction>(KeyRouter.For(session, EditorKey.Enter));
+        Assert.IsType<MoveCaretAction>(KeyRouter.For(session, EditorKey.Left));
+    }
+
+    [Fact]
     public void NothingToOfferLeavesNoList()
     {
         using var session = TestEditor.Open(RuleNamed("walk"));

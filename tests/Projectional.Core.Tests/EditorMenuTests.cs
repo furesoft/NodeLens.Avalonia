@@ -32,6 +32,51 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
+    public void TheRepairsOfTheCaretLineComeFirstAsOneSubmenu()
+    {
+        // A line with repairs gets one submenu at the top rather than an entry per repair mixed into the
+        // rest of the menu: the group is about where the caret is, and the entries under it are the same
+        // ones the bulb and the gesture offer.
+        var rule = TestEditor.BareRule();
+        rule.Set("name", "walk");
+        using var session = TestEditor.Open(rule);
+
+        var finding = new Projectional.Semantics.Diagnostic(
+            Projectional.Semantics.DiagnosticSeverity.Warning,
+            rule.Id,
+            "the name says nothing",
+            role: "name");
+
+        session.Markers = new MarkerSet(finding);
+        session.Fixes = new FixSet(new DiagnosticFix(
+            finding,
+            "rename",
+            "Rename to \"walked\"",
+            _ => new SetPropertyAction(CellAddress.OfSlot(rule.Id, "name"), "walked"),
+            "Gives the rule the name the finding suggests."));
+
+        var submenu = Assert.IsType<EditorMenuItem>(EditorMenu.For(session)[0]);
+
+        Assert.Equal("Quick fixes", submenu.Label);
+        var entry = Assert.IsType<EditorMenuItem>(Assert.Single(submenu.Children));
+        Assert.Equal("Rename to \"walked\"", entry.Label);
+        Assert.Equal("Alt+Enter", entry.Gesture);
+        Assert.Equal("Gives the rule the name the finding suggests.", entry.Description);
+
+        entry.Execute();
+
+        Assert.Equal("walked", rule.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void ALineWithNothingToRepairGetsNoSubmenuAtAll()
+    {
+        using var session = TestEditor.Open(TestEditor.BareRule());
+
+        Assert.DoesNotContain(EditorMenu.For(session), entry => entry.Label == "Quick fixes");
+    }
+
+    [Fact]
     public void UndoIsAvailableOnceSomethingWasEditedAndRedoOnceItWasUndone()
     {
         var step = TestEditor.BareStep();

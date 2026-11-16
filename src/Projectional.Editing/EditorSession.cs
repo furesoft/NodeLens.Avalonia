@@ -394,9 +394,24 @@ public sealed class EditorSession : IDisposable
             return Apply(program);
         }
 
+        // The three quick-fix gestures are answered by the session, which is the only thing holding the
+        // sets and the open list. They run before the "any other action closes the list" rule below,
+        // because for them the list is the point rather than something to close.
         if (action is QuickFixAction)
         {
             return ApplyQuickFixes();
+        }
+
+        if (action is AcceptQuickFixAction)
+        {
+            return AcceptQuickFix();
+        }
+
+        if (action is SelectQuickFixAction select)
+        {
+            MoveQuickFixSelection(select.Delta);
+
+            return EditResult.Unchanged(Selection);
         }
 
         // Every other action closes an offered list, for the same reason it closes the completion list:
@@ -498,6 +513,41 @@ public sealed class EditorSession : IDisposable
         OfferedFixes = new QuickFixList(offered);
 
         return EditResult.Unchanged(Selection);
+    }
+
+    /// <summary>Moves the highlight in the open list, if there is one.</summary>
+    /// <param name="delta">How many rows to move, negative towards the front.</param>
+    /// <remarks>
+    /// Nothing happens without an open list, which is the honest answer: a key that moves a highlight has
+    /// no meaning when nothing is highlighted, and inventing one would make Down mean something different
+    /// depending on what is on screen.
+    /// </remarks>
+    private void MoveQuickFixSelection(int delta)
+    {
+        if (OfferedFixes is { } offered)
+        {
+            OfferedFixes = offered.Move(delta);
+        }
+    }
+
+    /// <summary>Applies the highlighted repair of the open list, if there is one.</summary>
+    /// <remarks>
+    /// The list is closed first, so the answer the caller reads afterwards describes what happened rather
+    /// than what was on screen: a repair that renames a node rebuilds the tree, and a list of repairs for
+    /// the old layout would be advice about a document that no longer exists.
+    /// </remarks>
+    private EditResult AcceptQuickFix()
+    {
+        if (OfferedFixes is not { } offered)
+        {
+            return EditResult.Unchanged(Selection);
+        }
+
+        var pick = offered.SelectedFix;
+
+        OfferedFixes = null;
+
+        return Apply(pick);
     }
 
     /// <summary>Applies <paramref name="fix"/> as an undo step of its own, or rejects the pick.</summary>
