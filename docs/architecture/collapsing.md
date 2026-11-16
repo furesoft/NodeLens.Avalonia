@@ -10,7 +10,7 @@ This document plans that feature. It is short on new machinery on purpose: the l
 gives a node one address for its whole subtree, the caret already knows what to do when the cell it
 stood in disappears, and the gutter already exists because line numbers needed one.
 
-Status: **planned**, an M1 remainder. See [roadmap.md](../roadmap.md).
+Status: **delivered**, slices S1 to S6. See [roadmap.md](../roadmap.md).
 
 ## What already exists
 
@@ -137,7 +137,7 @@ a concept without notation showing its `<no notation for ...>` marker. A languag
 be tucked behind a fold.
 
 The builder takes `IReadOnlySet<NodeId>?`, the BCL interface, so `Projectional.Projection` needs no
-new type; the session's `CollapsedNodes` implements it.
+new type; the session's `CollapsedNodeSet` implements it.
 
 **Nesting needs no bookkeeping.** Folding a node hides its whole subtree, including descendants
 that are themselves in the set. Unfolding the outer node brings them back still folded, because
@@ -151,7 +151,7 @@ Each row is a piece of the editor that could have needed a folding case and does
 | --- | --- |
 | Caret | `CaretNavigation.Nearest` already defines both directions: a lost cell falls back to the first place at or after it (the placeholder), and a node address reads as "start here" (the first place inside). Folding under the caret and unfolding from the placeholder both land somewhere sensible. |
 | Selection, delete, move | They resolve the address to a node, and the address is the node's. |
-| Typing and completion | The placeholder is not a property cell, so both decline. |
+| Typing and completion | The placeholder is not a property cell, so both decline: typing answers `Unchanged`, the same outcome it already gives for a keyword. |
 | Line numbers | Counted from the layout, so they renumber themselves. |
 | Undo | The fold set is view state, so folding creates no step and undoing an edit keeps the folds. |
 | Snapshot tests | A folded node renders as one line of text through the existing renderer. |
@@ -159,7 +159,7 @@ Each row is a piece of the editor that could have needed a folding case and does
 
 ## The fold set on the session
 
-`CollapsedNodes` is an immutable, value-like set of `NodeId` in a new `Projectional.Editing/Folding/`
+`CollapsedNodeSet` is an immutable, value-like set of `NodeId` in a new `Projectional.Editing/Folding/`
 folder, built the way `NotationChoice` is: a `FrozenSet` behind factories, never mutated in place.
 
 | Member | What it answers |
@@ -184,6 +184,8 @@ Three rules worth freezing:
   and `Collapsed`, so `Choose` and the `Collapsed` setter both have to pass both. Put the
   construction in one private `RebuildBuilder()` and call it from both; the drift trap is exactly a
   `Choose` that later forgets the folds.
+- **The set is called `CollapsedNodeSet`, not `CollapsedNodes`.** It implements `IReadOnlySet<NodeId>`, and the BCL rule that such a type ends in `Set` exists so a reader can tell from the name what question it answers. `Clear()` is not needed: `CollapsedNodeSet.Empty` says the same thing.
+
 - **`ToggleCollapsed` does not validate the node.** `ChooseVariant` throws on a bad argument
   because a menu entry that cannot apply is a programming error. Here a stale id is harmless: the
   builder ignores any id it cannot fold, so the worst case is an entry that draws nothing, and a
@@ -209,9 +211,11 @@ to today when the twisty column is absent.
 `GutterWidth` grows from one sum to three, with `advance = TextMeasure.Measure("0", TextEmphasis.None)`:
 
 ```
-GutterWidth = (ShowLineNumbers || HasFoldMarks ? 2 * GutterGap : 0)
-            + (ShowLineNumbers ? LineNumbers.DigitsOf(Rows) * advance : 0)
-            + (HasFoldMarks ? advance : 0)
+GutterWidth = (HasFoldMarks ? advance : 0)
+            + (ShowLineNumbers ? LineNumbers.DigitsOf(Rows) * advance + 2 * GutterGap : 0)
+            + (HasFoldMarks && !ShowLineNumbers ? 2 * GutterGap : 0)
+            + (ShowBulb ? Round(LineHeight) + BulbGap : 0)
+            + PageMargin
 ```
 
 The property to preserve is that with no foldable node in the document - every language today -
@@ -305,7 +309,7 @@ What a host needs, and where it comes from. Everything is reachable through
 | `ProjectionalEditorControl.ShowFoldTwisties` | turn the column off in a dense panel |
 | `ProjectionalEditorControl.CollapsedGlyph` / `ExpandedGlyph` | match the host's own look |
 | `ProjectionalEditorControl.Collapsed` | read and set the set, forwarded to the session like `Markers` |
-| `CollapsedNodes` (public in `Projectional.Editing`) | the value a host stores if it wants to restore a set |
+| `CollapsedNodeSet` (public in `Projectional.Editing`) | the value a host stores if it wants to restore a set |
 | one `EditorMenuItem.Option` entry in `EditorMenu.For` | fold and unfold from the keyboard or a menu, with no geometry knowledge |
 
 The menu entry is a single checkable `Option("Collapsed", isChecked, command)` shown when the caret
@@ -337,7 +341,7 @@ a gutter - an embedded editor in a table cell, a reader view - can still fold.
   `EditorTreeBuilder` accepting `IReadOnlySet<NodeId>?`, substituting after the notation lookup.
   Snapshot tests: a folded node is one line, a folded outer node hides a folded inner one, and a
   node without permission is untouched.
-- **S3 - the session.** `CollapsedNodes`, `EditorSession.Collapsed`, `ToggleCollapsed`, and the
+- **S3 - the session.** `CollapsedNodeSet`, `EditorSession.Collapsed`, `ToggleCollapsed`, and the
   single `RebuildBuilder()` that both `Choose` and the setter call. Session tests: folding under the
   caret lands on the placeholder, unfolding lands inside the node, no undo step is created, and the
   layout shrinks.

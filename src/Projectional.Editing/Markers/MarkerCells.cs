@@ -56,7 +56,37 @@ internal static class MarkerCells
 
         // A node whose notation draws text only in its children - a plain container, or one whose variant
         // hides every value - still has to show that something is wrong with it.
-        return FirstOwnCellOf(layout, diagnostic.Target) is { } outermost ? [outermost] : [];
+        if (FirstOwnCellOf(layout, diagnostic.Target) is { } outermost)
+        {
+            return [outermost];
+        }
+
+        // Last resort, and the rule folding adds: a target that is absent from the layout altogether is
+        // hidden inside a folded ancestor, so the nearest ancestor that *is* drawn carries the mark. A
+        // finding must never be invisible - several findings inside one folded node land on the same row,
+        // and the runs are merged per row.
+        return AncestorCellsOf(layout, diagnostic.Target);
+    }
+
+    /// <summary>The cells of the nearest ancestor of <paramref name="target"/> that the layout still draws.</summary>
+    /// <param name="layout">The layout to look in.</param>
+    /// <param name="target">The node the finding is about, which the layout does not contain.</param>
+    /// <returns>The ancestor's cells, or empty when even the root is absent.</returns>
+    private static IReadOnlyList<EditorCell> AncestorCellsOf(CellLayout layout, NodeId target)
+    {
+        var node = layout.Tree.Source.Model.Project.FindNode(target);
+
+        while (node?.Parent is { } parent)
+        {
+            node = parent;
+
+            if (FirstOwnCellOf(layout, node.Id) is { } cell)
+            {
+                return [cell];
+            }
+        }
+
+        return [];
     }
 
     private static CellAddress? SlotOf(Diagnostic diagnostic) => diagnostic.Role switch
