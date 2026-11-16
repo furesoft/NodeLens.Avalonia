@@ -185,6 +185,23 @@ public sealed class EditorSession : IDisposable
     /// </remarks>
     public MarkerSet Markers { get; set; } = MarkerSet.Empty;
 
+    /// <summary>What repairs are offered for what the checks found, or <see cref="FixSet.Empty"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// The companion of <see cref="Markers"/> and view state for the same reasons: never part of the model,
+    /// never persisted, never an undo step. A host that runs checks publishes both sets - the findings and
+    /// the repairs it can offer for them - and one that runs none keeps both empty.
+    /// </para>
+    /// <para>
+    /// They are two properties rather than one because they answer different questions and have different
+    /// readers: a marker set is what a renderer and a hit test read, and neither can do anything with a
+    /// repair; a fix set is what the menu, the popup and the keyboard read. They are assigned separately
+    /// and replaced as a whole, and neither assignment rebuilds the tree, the layout or the caret - both
+    /// describe a document rather than change it.
+    /// </para>
+    /// </remarks>
+    public FixSet Fixes { get; set; } = FixSet.Empty;
+
     /// <summary>Where Copy, Cut and Paste put and take their text.</summary>
     /// <remarks>
     /// <para>
