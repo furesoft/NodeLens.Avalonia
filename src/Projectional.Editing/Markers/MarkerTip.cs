@@ -1,5 +1,3 @@
-using System.Text;
-
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Semantics;
@@ -53,7 +51,7 @@ public static class MarkerTip
 
         foreach (var diagnostic in diagnostics)
         {
-            var paragraph = Wrap(Heading(diagnostic), maxWidth, measure);
+            var paragraph = TipText.Wrap(Heading(diagnostic), maxWidth, measure);
 
             if (paragraph.Count == 0)
             {
@@ -73,7 +71,7 @@ public static class MarkerTip
 
             if (fixes > 0)
             {
-                lines.AddRange(Wrap(Offer(fixes), maxWidth, measure));
+                lines.AddRange(TipText.Wrap(Offer(fixes), maxWidth, measure));
             }
         }
 
@@ -86,60 +84,6 @@ public static class MarkerTip
     private static string Offer(int count) => count == 1
         ? "1 quick fix - Alt+Enter"
         : $"{count} quick fixes - Alt+Enter";
-
-    /// <summary>Breaks one paragraph so no line is wider than the room it is given.</summary>
-    /// <param name="text">The paragraph to break. Runs of blanks collapse to one.</param>
-    /// <param name="maxWidth">The widest a line may be, in layout units.</param>
-    /// <param name="measure">What to measure a candidate line with.</param>
-    /// <returns>The lines, in reading order. Empty when there is nothing to draw.</returns>
-    /// <remarks>
-    /// A word wider than the box is broken rather than allowed to overflow, because the box has to be
-    /// placed before it is drawn and an overflowing line would make the width a lie.
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">A parameter is <see langword="null"/>.</exception>
-    internal static IReadOnlyList<string> Wrap(string text, double maxWidth, ITextMeasure measure)
-    {
-        ArgumentNullException.ThrowIfNull(text);
-        ArgumentNullException.ThrowIfNull(measure);
-
-        var lines = new List<string>();
-        var line = new StringBuilder();
-
-        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (line.Length > 0)
-            {
-                if (measure.Measure($"{line} {word}", TextEmphasis.None) <= maxWidth)
-                {
-                    line.Append(' ').Append(word);
-
-                    continue;
-                }
-
-                lines.Add(line.ToString());
-                line.Clear();
-            }
-
-            var rest = word;
-
-            while (!Fits(rest, maxWidth, measure))
-            {
-                var take = Fitting(rest, maxWidth, measure);
-
-                lines.Add(rest[..take]);
-                rest = rest[take..];
-            }
-
-            line.Append(rest);
-        }
-
-        if (line.Length > 0)
-        {
-            lines.Add(line.ToString());
-        }
-
-        return lines;
-    }
 
     /// <summary>Where the box goes so that it stays on the page.</summary>
     /// <param name="anchor">The marker the box describes, in layout units.</param>
@@ -174,32 +118,4 @@ public static class MarkerTip
         ? $"{diagnostic.Severity}: {diagnostic.Message} ({code})"
         : $"{diagnostic.Severity}: {diagnostic.Message}";
 
-    /// <summary>Whether a run of text fits the room it is given.</summary>
-    /// <param name="text">The text to measure.</param>
-    /// <param name="maxWidth">The widest it may be.</param>
-    /// <param name="measure">What to measure with.</param>
-    /// <returns><see langword="true"/> when it fits.</returns>
-    private static bool Fits(string text, double maxWidth, ITextMeasure measure) =>
-        measure.Measure(text, TextEmphasis.None) <= maxWidth;
-
-    /// <summary>How many characters of a word fit on one line.</summary>
-    /// <param name="text">The word to break.</param>
-    /// <param name="maxWidth">The widest a line may be.</param>
-    /// <param name="measure">What to measure with.</param>
-    /// <returns>The length of the longest prefix that fits, and never zero.</returns>
-    /// <remarks>
-    /// One character is the floor: a box narrower than a single glyph would otherwise take nothing, add
-    /// nothing, and never advance.
-    /// </remarks>
-    private static int Fitting(string text, double maxWidth, ITextMeasure measure)
-    {
-        var take = 1;
-
-        while (take < text.Length && Fits(text[..(take + 1)], maxWidth, measure))
-        {
-            take++;
-        }
-
-        return take;
-    }
 }

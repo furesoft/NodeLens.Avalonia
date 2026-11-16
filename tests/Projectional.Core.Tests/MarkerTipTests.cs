@@ -144,7 +144,7 @@ public sealed class MarkerTipTests
     {
         string[] expected = ["a b"];
 
-        Assert.Equal(expected, MarkerTip.Wrap("a   b", Wide, MonospaceTextMeasure.Instance));
+        Assert.Equal(expected, TipText.Wrap("a   b", Wide, MonospaceTextMeasure.Instance));
     }
 
     [Fact]
