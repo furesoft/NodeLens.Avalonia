@@ -202,6 +202,17 @@ the sandbox and the answer the ghost is drawn from.
   `Truncated` says how many were left out; `PreviewBadge.Of(label, marks)` owns the sentence, because it is
   user-facing grammar: one kind reads as a total ("4 changes"), several are broken down ("2 added, 3
   removed"), one is singular, and truncation is appended.
+- **`GhostFrame.Build(sandbox, marks, label, viewport, offsetX, offsetY)` is the frame a ghost paints**
+  (`Preview/`): the copy's `TextRun`s, the `PreviewMarks` to look up per run, and the badge sentence. It takes
+  the **live page's offsets** - that is what anchors the preview to the line the user is looking at - and it
+  carries **no caret and no selection**, because a preview is not editable and must not look as if the document
+  had a caret somewhere else. `EditorFrame.TextRunsOf` is `internal` for this: the ghost is a frame of the same
+  vocabulary, not a second renderer. `PreviewSandbox.Measure` exists for it (drawing with another measure would
+  put glyphs outside the boxes the layout reserved).
+- **"Unchanged" is not a mark, it is the absence of one**: `GhostFrame.IsDimmed(run)` is exactly "no mark names
+  this cell", which is "the marks read first" written as code rather than as a palette decision.
+  `PreviewMarks.ChangeAt(address)` is the indexed lookup behind it, and the **first** mark for an address wins -
+  every removal out of one slot names that slot's cell.
 - **The ladder's value is in its interruptions, so do not "simplify" them away**: a different entry
   starts from nothing (a preview is an answer about *that* edit); the *same* entry again continues the
   clock (that is the bulb-to-list gap, and restarting there means a preview is never reached); leaving an
@@ -1250,7 +1261,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1388 tests**; anything below that means tests were deleted.
+it. **Baseline is 1394 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

@@ -116,7 +116,7 @@ public sealed class EditorFrame
     /// unpainted. Only a cell of several lines is split, because there is no single rect that covers its
     /// lines without also covering the gap the break left.
     /// </remarks>
-    private static List<TextRun> TextRunsOf(
+    internal static List<TextRun> TextRunsOf(
         LayoutViewport viewport,
         CellLayout layout,
         ICellStyler styler,

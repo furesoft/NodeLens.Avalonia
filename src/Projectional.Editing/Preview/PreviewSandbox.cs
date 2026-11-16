@@ -55,6 +55,13 @@ public sealed class PreviewSandbox : IDisposable
     /// <summary>The layout of that projection, in the session's own measure.</summary>
     public CellLayout Layout => _session.Layout;
 
+    /// <summary>The measure that layout was computed with.</summary>
+    /// <remarks>
+    /// Exposed because a ghost draws the copy's text with the copy's geometry: measuring the same string with a
+    /// different measure would put the glyphs somewhere other than the boxes the layout reserved for them.
+    /// </remarks>
+    public ITextMeasure Measure => _session.Measure;
+
     /// <summary>Where the caret stands in the copy, which starts where the live caret is.</summary>
     /// <remarks>
     /// Exposed because the ghost is anchored to the caret's line: a preview that moved the page's scroll
