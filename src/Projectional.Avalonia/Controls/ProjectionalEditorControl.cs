@@ -128,6 +128,14 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private IBrush _lineNumberBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x80, 0x80, 0x80));
     private IBrush? _gutterBackground;
 
+    // The bulb, and the answer "does this line offer anything" kept between paints: the caret blinks, so
+    // a repaint per tick must not walk the document's findings. The layout is a fresh object after every
+    // rebuild and both sets are immutable, so their identity is the invalidation.
+    private bool _showBulb = true;
+    private IBrush _bulbBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE8, 0xA3, 0x3D));
+    private bool _bulbOffered;
+    private (CellLayout Layout, CaretPosition Caret, MarkerSet Markers, FixSet Fixes)? _bulbOf;
+
     // The type is MarkerPalette; the property below cannot carry that name, because an instance member
     // shadows a type of the same name everywhere inside this class.
     private MarkerPalette _markerColors = MarkerPalette.Light;
@@ -421,6 +429,61 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>Whether the margin shows a bulb on a line that offers a repair.</summary>
+    /// <remarks>
+    /// <para>
+    /// On by default, because it is the only affordance the feature has that can be <em>found</em>: the
+    /// gesture has to be known and the menu has to be opened. A host that paints its own margin turns it
+    /// off and uses <see cref="QuickFixBulb"/> instead - the geometry is in the editing layer precisely so
+    /// that a second renderer needs nothing from this control.
+    /// </para>
+    /// <para>
+    /// Like the row numbers, it is part of the viewport arithmetic: its margin is reserved whether or not
+    /// a line offers anything, so turning it on or off re-measures instead of merely repainting.
+    /// </para>
+    /// </remarks>
+    public bool ShowBulb
+    {
+        get => _showBulb;
+
+        set
+        {
+            if (_showBulb == value)
+            {
+                return;
+            }
+
+            _showBulb = value;
+
+            InvalidateMeasure();
+            InvalidateVisual();
+            RaiseScrollInvalidated();
+        }
+    }
+
+    /// <summary>The colour the bulb is painted in.</summary>
+    /// <remarks>
+    /// One brush rather than a palette: the bulb means one thing - "this line offers a repair" - so it has
+    /// one colour, and a host that recolours its margin sets this.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public IBrush BulbBrush
+    {
+        get => _bulbBrush;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_bulbBrush, value))
+            {
+                return;
+            }
+
+            _bulbBrush = value;
+            InvalidateVisual();
+        }
+    }
+
     /// <summary>The colour the row numbers are painted in.</summary>
     public IBrush LineNumberBrush
     {
@@ -575,17 +638,26 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
-    /// <summary>How much room the row numbers take on the left edge, in device pixels.</summary>
+    /// <summary>How much room the row numbers and the bulb take on the left edge, in device pixels.</summary>
     /// <remarks>
+    /// <para>
     /// The width is the widest number the document needs plus the blank that separates it from the text,
     /// so it grows by one digit when the document reaches a row count with one more digit in it. Text is
     /// laid out to the right of the gutter and the gutter itself does not scroll with the document, the
     /// way a code editor's does not.
+    /// </para>
+    /// <para>
+    /// The bulb's margin is reserved whenever <see cref="ShowBulb"/> is on, <em>not</em> when a line
+    /// happens to offer a repair: a margin that appears would shift every cell of the document sideways,
+    /// and a page that jumps because the caret moved onto a marked line is worse than a narrow blank that
+    /// is sometimes empty.
+    /// </para>
     /// </remarks>
-    public double GutterWidth => _showLineNumbers
-
-        ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
-        : 0;
+    public double GutterWidth =>
+        (_showLineNumbers
+            ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
+            : 0)
+        + (ShowBulb ? BulbMargin : 0);
 
     /// <summary>The numbered rows of the document as last laid out.</summary>
     /// <remarks>
@@ -912,6 +984,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         PaintGutter(context);
 
+        // In the margin rather than in the page, so it is painted with the gutter and does not scroll
+        // sideways with the text: the bulb names a line, not a column.
+        PaintBulb(context, session);
+
         foreach (var highlight in frame.Highlights)
         {
             context.FillRectangle(HighlightBrush, ToControl(frame, highlight));
@@ -1198,6 +1274,14 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // A click into a window that is already focused changes no focus, so this is the second place the
         // clipboard is read - otherwise a copy made in another window would never be noticed.
         _ = Clipboard.RefreshAsync();
+
+        // The bulb is the first refusal, because it is a target the user aimed at: a press on it must not
+        // also move the caret into the line it belongs to.
+        if (ClickBulb(session, e.GetPosition(this)))
+        {
+            e.Handled = true;
+            return;
+        }
 
         // The list overlays the document, so it gets the first refusal: a click on a proposal must not
         // also move the caret into the slot the proposal belongs to.
@@ -1680,6 +1764,96 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         return true;
     }
 
+    /// <summary>The room the bulb reserves in the margin: one line square plus the gap to the page.</summary>
+    private double BulbMargin => Math.Round(TextMeasure.LineHeight) + QuickFixBulb.Gap;
+
+    /// <summary>Whether the caret's line offers a repair, computed at most once per caret and drawing.</summary>
+    /// <remarks>
+    /// The answer is kept because the caret blinks: a repaint per blink tick must not walk the document's
+    /// findings. The caret, the layout and both sets identify the question exactly - the layout is a fresh
+    /// object after every rebuild, the caret is a value, and a republished set is a different object - so a
+    /// stale answer cannot outlive the thing it describes.
+    /// </remarks>
+    private bool BulbOffered(EditorSession session)
+    {
+        var key = (session.Layout, session.Selection.Caret, session.Markers, session.Fixes);
+
+        if (_bulbOf is { } previous && previous.Equals(key))
+        {
+            return _bulbOffered;
+        }
+
+        _bulbOf = key;
+        _bulbOffered = QuickFixes.At(session).Count > 0;
+
+        return _bulbOffered;
+    }
+
+    /// <summary>Paints the bulb in the margin, level with the caret's line.</summary>
+    /// <remarks>
+    /// Two primitives rather than a glyph from a font: the bulb must not change the width the measure
+    /// reports for the line it sits on, and a font glyph would depend on the host's font family. It is
+    /// drawn from the same layout rectangle the hit test uses, so what is painted is what is clickable.
+    /// </remarks>
+    private void PaintBulb(DrawingContext context, EditorSession session)
+    {
+        if (!ShowBulb || !BulbOffered(session))
+        {
+            return;
+        }
+
+        if (QuickFixBulb.BoundsOf(session.Tree, session.Layout, session.Selection.Caret, session.Measure)
+            is not { } bulb)
+        {
+            return;
+        }
+
+        var bounds = new Rect(bulb.X + GutterWidth, bulb.Y - _offsetY, bulb.Width, bulb.Height);
+
+        if (bounds.Bottom <= 0 || bounds.Y >= Bounds.Height)
+        {
+            return;
+        }
+
+        var radius = bounds.Width * 0.32;
+        var centre = new Point(bounds.X + (bounds.Width / 2), bounds.Y + radius + (bounds.Height * 0.06));
+
+        context.DrawEllipse(_bulbBrush, null, centre, radius, radius);
+
+        // The stem, so the circle reads as a bulb rather than as a bullet that belongs to the line.
+        context.FillRectangle(
+            _bulbBrush,
+            new Rect(centre.X - (radius * 0.45), centre.Y + radius, radius * 0.9, radius * 0.75));
+    }
+
+    /// <summary>Opens the repairs for the caret's line when the pointer pressed the bulb.</summary>
+    /// <returns>Whether the press was the bulb's rather than the document's.</returns>
+    /// <remarks>
+    /// The press runs the same action the gesture runs, so the bulb cannot open something the keyboard
+    /// would not have opened. A press that misses the bulb is left to the document, which is why the
+    /// rectangle is asked for rather than a radius around a point.
+    /// </remarks>
+    private bool ClickBulb(EditorSession session, Point point)
+    {
+        if (!ShowBulb
+            || QuickFixBulb.BoundsOf(session.Tree, session.Layout, session.Selection.Caret, session.Measure)
+                is not { } bulb)
+        {
+            return false;
+        }
+
+        var bounds = new Rect(bulb.X + GutterWidth, bulb.Y - _offsetY, bulb.Width, bulb.Height);
+
+        if (!bounds.Contains(point))
+        {
+            return false;
+        }
+
+        AfterEdit(session.Apply(new QuickFixAction()));
+
+        return true;
+    }
+
     /// <summary>Accepts the row of the completion list the pointer pressed, if it hit one.</summary>
     /// <returns>Whether the press was the list's rather than the document's.</returns>
     /// <remarks>
@@ -1766,7 +1940,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             context.FillRectangle(background, new Rect(0, 0, width, Bounds.Height));
         }
 
-        var right = width - GutterGap;
+        // The numbers are right-aligned against the bulb's margin rather than against the page, or they
+        // would be painted underneath the bulb.
+        var right = width - (ShowBulb ? BulbMargin : 0) - GutterGap;
         var height = Bounds.Height;
 
         foreach (var row in Rows)

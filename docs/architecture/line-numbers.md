@@ -58,21 +58,32 @@ the numbers were counted from" is a reference comparison rather than a version n
 ## Digits, and how wide the gutter is
 
 ```
-GutterWidth = DigitsOf(rows) * Measure("0") + 2 * GutterGap
+GutterWidth = (ShowLineNumbers ? DigitsOf(rows) * Measure("0") + 2 * GutterGap : 0)
+            + (ShowBulb ? Round(LineHeight) + BulbGap : 0)
 ```
 
-Both halves matter: `Measure("0")` is the only way to learn how wide a digit is in the current
-font, and the digits are counted by dividing the row count by ten (`9 -> 1`, `10 -> 2`,
-`999 -> 3`). The width therefore grows by exactly one digit's worth the moment the document
-crosses 9, 99 or 999 rows, and the numbers keep their right edge.
+Both halves of the number part matter: `Measure("0")` is the only way to learn how wide a digit is
+in the current font, and the digits are counted by dividing the row count by ten (`9 -> 1`,
+`10 -> 2`, `999 -> 3`). The width therefore grows by exactly one digit's worth the moment the
+document crosses 9, 99 or 999 rows, and the numbers keep their right edge.
 
-The right edge is what the numbers are aligned to - `GutterWidth - GutterGap - text.Width` - so
-`1` and `10` do not wobble.
+The right edge is what the numbers are aligned to - `GutterWidth - BulbMargin - GutterGap -
+text.Width` - so `1` and `10` do not wobble, and so the numbers are never painted underneath the
+quick-fix bulb that now occupies the outer margin ([quick-fixes.md](quick-fixes.md), slice Q6).
 
-This is the one-occupant form of the rule. [collapsing.md](collapsing.md) plans a second occupant
-- a per-row fold arrow to the left of the numbers - which turns the sum into three terms and makes
-the padding depend on *whether the gutter has any occupant at all*, not on `ShowLineNumbers`. The
-invariant to preserve is that the formula above reduces to itself when nothing is foldable.
+**This is the second-occupant form of the rule.** [collapsing.md](collapsing.md) predicted that a
+second occupant would turn the sum into three terms and make the padding depend on whether the
+gutter has any occupant at all rather than on `ShowLineNumbers`; the bulb is that occupant. Two
+rules follow, and both are cheap now and expensive later:
+
+- **Each occupant reserves its own term**, so a host can turn one off without recomputing the
+  other's arithmetic. Do not fold the bulb's square into the number term.
+- **An occupant's margin is reserved whether or not it has anything to draw.** The bulb's margin is
+  there on a document with no findings at all, because a margin that appeared on demand would shift
+  every cell of the page sideways when the caret moved onto a marked line.
+
+A per-row fold arrow will be the third term, and it has to answer the same question the bulb does:
+does the *row* have an arrow, or does the *gutter* always reserve the room?
 
 ## The gutter sits outside the scroll transform
 
