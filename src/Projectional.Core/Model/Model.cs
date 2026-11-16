@@ -117,6 +117,10 @@ public sealed class Model
     /// <param name="node">The node to surround, which keeps its identity and its subtree.</param>
     /// <param name="wrapperConceptKey">The concept of the node to create around it.</param>
     /// <param name="wrapperSlot">The single-child slot of that concept which receives <paramref name="node"/>.</param>
+    /// <param name="presets">
+    /// Values the wrapper is born with, such as the operator that makes a unary a negation, or
+    /// <see langword="null"/> for a wrapper holding only its defaults.
+    /// </param>
     /// <returns>The node that was created.</returns>
     /// <remarks>
     /// <para>
@@ -130,6 +134,13 @@ public sealed class Model
     /// The node keeps its id, which is what makes the operation safe to undo: every reference that points
     /// into its subtree and every caret address that names one of its cells still resolves afterwards.
     /// </para>
+    /// <para>
+    /// <paramref name="presets"/> exists because some wrappers only mean something with a value:
+    /// "negate" is a <c>Unary</c> whose operator is <c>!</c>, and a caller cannot write that value
+    /// afterwards, because the wrapper's id does not exist until it is created. Every preset is validated
+    /// against the wrapper's declarations before anything is touched, so a wrong one fails without leaving
+    /// the node detached.
+    /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
@@ -137,9 +148,14 @@ public sealed class Model
     /// </exception>
     /// <exception cref="ModelInvariantException">
     /// <paramref name="node"/> is not part of this model, has no place, cannot be wrapped by that concept
-    /// in that slot, or the wrapper declares no single-child slot of that name.
+    /// in that slot, the wrapper declares no single-child slot of that name, or a preset names a property
+    /// the wrapper does not declare or a value its type refuses.
     /// </exception>
-    public Node Wrap(Node node, string wrapperConceptKey, string wrapperSlot)
+    public Node Wrap(
+        Node node,
+        string wrapperConceptKey,
+        string wrapperSlot,
+        IReadOnlyDictionary<string, string>? presets = null)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
@@ -187,6 +203,25 @@ public sealed class Model
                 $"Concept '{node.Concept.Key}' does not conform to slot '{wrapperSlot}' of concept '{wrapperConceptKey}'.");
         }
 
+        // Validated before anything moves: a preset the wrapper refuses must not leave the node detached.
+        if (presets is not null)
+        {
+            foreach (var (presetSlot, value) in presets)
+            {
+                if (wrapper.FindProperty(presetSlot) is not { } property)
+                {
+                    throw new ModelInvariantException(
+                        $"Concept '{wrapperConceptKey}' declares no property named '{presetSlot}', so it cannot be born with it.");
+                }
+
+                if (!property.Type.IsValid(value))
+                {
+                    throw new ModelInvariantException(
+                        $"\"{value}\" is not a valid {property.Type.Name} value for '{presetSlot}' of concept '{wrapperConceptKey}'.");
+                }
+            }
+        }
+
         var index = node.IndexInParent;
 
         using var transaction = BeginTransaction();
@@ -196,6 +231,15 @@ public sealed class Model
         var created = CreateDetached(wrapper);
         parent.InsertChild(slot, Math.Min(index, parent.GetChildren(slot).Count), created);
         created.InsertChild(wrapperSlot, 0, node);
+
+        if (presets is not null)
+        {
+            foreach (var (presetSlot, value) in presets)
+            {
+                created.Set(presetSlot, value);
+            }
+        }
+
         MarkMutated();
 
         transaction.Complete();

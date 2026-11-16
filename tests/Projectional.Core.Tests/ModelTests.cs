@@ -80,6 +80,41 @@ public sealed class ModelTests
     }
 
     [Fact]
+    public void WrappingWithAPresetWritesItOnTheWrapper()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+        var step = model.NewChild(body, "steps", TestLanguage.Step);
+
+        var wrapper = model.Wrap(step, TestLanguage.Step, "detail", new Dictionary<string, string>
+        {
+            ["text"] = "born",
+            ["index"] = "7",
+        });
+
+        Assert.Equal("born", wrapper.GetOrNull("text"));
+        Assert.Equal("7", wrapper.GetOrNull("index"));
+        Assert.Same(step, wrapper.GetChild("detail"));
+        Assert.Null(step.GetOrNull("text"));
+    }
+
+    [Fact]
+    public void APresetTheWrapperRefusesLeavesTheNodeWhereItWas()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+        var step = model.NewChild(body, "steps", TestLanguage.Step);
+
+        Assert.Throws<ModelInvariantException>(
+            () => model.Wrap(step, TestLanguage.Step, "detail", new Dictionary<string, string> { ["nope"] = "x" }));
+        Assert.Throws<ModelInvariantException>(
+            () => model.Wrap(step, TestLanguage.Step, "detail", new Dictionary<string, string> { ["index"] = "x" }));
+
+        Assert.Same(step, Assert.Single(body.GetChildren("steps")));
+        Assert.Same(body, step.Parent);
+    }
+
+    [Fact]
     public void DeletingASubtreeRemovesEveryNodeBelowIt()
     {
         var model = TestLanguage.NewModel();
