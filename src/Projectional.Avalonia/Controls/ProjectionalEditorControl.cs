@@ -180,6 +180,20 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private double _tipWidth = -1;
     private string _tipFixes = string.Empty;
 
+    // The concept tip, which is the other tooltip this control can show. It is deliberately a separate
+    // state from the marker tip rather than a second kind of it: the marker tip follows a squiggle and is
+    // shown at once, while this one follows ordinary text and waits - so the two have different triggers
+    // even though they share a presenter and a placement rule.
+    private const int ConceptTipDelayMs = 600;
+
+    private NodeId? _hoverNode;
+    private DispatcherTimer? _conceptTipTimer;
+    private ConceptTipContent? _conceptTip;
+    private NodeId? _conceptTipNode;
+    private IReadOnlyList<string>? _conceptTipLines;
+    private Size _conceptTipSize;
+    private double _conceptTipWidth = -1;
+
     /// <summary>How many repairs the session offers for <paramref name="diagnostic"/>.</summary>
     /// <remarks>
     /// Read from the session rather than remembered: the fix set is republished by the host, so the count
@@ -1044,6 +1058,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             _quickFixes.Render(context, offered, QuickFixBounds(session, offered));
         }
 
+        // Before the finding's tip, so a squiggle's message is on top if the two ever overlap: it is the one
+        // that asks for an action, and a description can be re-read by hovering again.
+        PaintConceptTip(context);
+
         // After the list, because the two are read at different moments: the list is what the caret is
         // about to create, and a tip only exists while the pointer rests on a squiggle, which means the
         // reader is looking rather than typing. Whatever it covers is still one move away.
@@ -1130,6 +1148,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             timer.Stop();
             timer.Tick -= OnBlinkTick;
             _blinkTimer = null;
+        }
+
+        // A pending hover delay outliving the control would show a tip for a document nobody is looking at.
+        if (_conceptTipTimer is { } hover)
+        {
+            hover.Stop();
+            _conceptTipTimer = null;
         }
 
         // A popup outlives the visual tree it was opened from, so a control that is detached (closed
@@ -1412,17 +1437,24 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         if (IsSameHover(hit, _hover))
         {
             // A pointer moving inside one wave must not repaint: the tip already describes that finding.
+            // The concept tip still has to follow the pointer, because leaving the wave re-enables it.
+            UpdateConceptHover(point, hit);
+
             return;
         }
 
         _hover = hit;
         ForgetTip();
+        UpdateConceptHover(point, hit);
         InvalidateVisual();
     }
 
     /// <summary>Drops the tip, if one is up.</summary>
     private void ClearHover()
     {
+        _hoverNode = null;
+        CancelConceptTip();
+
         if (_hover is null)
         {
             return;
@@ -1440,6 +1472,184 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         _tipSize = default;
         _tipWidth = -1;
         _tipFixes = string.Empty;
+    }
+
+    /// <summary>Follows the pointer over ordinary text, which is where a concept tip may appear.</summary>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    /// <param name="marker">The finding the pointer is on, if it is on one.</param>
+    /// <remarks>
+    /// <para>
+    /// The delay exists because this tip's target is everything: a squiggle is a small shape a user aims at,
+    /// while ordinary text is what the pointer crosses on its way somewhere else. Without the delay every
+    /// mouse move would flash a box.
+    /// </para>
+    /// <para>
+    /// The marker wins. A squiggle is a specific finding at a specific place and a description is ambient,
+    /// so a pointer over a wave shows the finding and this tip stays down - never two boxes under one
+    /// pointer.
+    /// </para>
+    /// </remarks>
+    private void UpdateConceptHover(Point point, MarkerHit? marker)
+    {
+        if (marker is not null)
+        {
+            _hoverNode = null;
+            CancelConceptTip();
+
+            return;
+        }
+
+        var node = NodeAt(point);
+
+        if (node == _hoverNode)
+        {
+            // The same node: whatever is up is still about the right thing, and a tip that has not appeared
+            // yet must not restart its delay because the pointer moved inside the node.
+            return;
+        }
+
+        _hoverNode = node;
+        CancelConceptTip();
+
+        if (node is null)
+        {
+            return;
+        }
+
+        _conceptTipTimer ??= CreateConceptTipTimer();
+        _conceptTipTimer.Stop();
+        _conceptTipTimer.Start();
+    }
+
+    /// <summary>Shows the tip for the node the pointer has been resting on.</summary>
+    private void ShowConceptTip()
+    {
+        _conceptTipTimer?.Stop();
+
+        if (Session is not { } session || _hoverNode is not { } node)
+        {
+            return;
+        }
+
+        // Asked again rather than remembered: the pointer may have moved onto a wave while the timer ran.
+        if (_hover is not null || ConceptTip.Of(session, node) is not { } content)
+        {
+            return;
+        }
+
+        _conceptTip = content;
+        _conceptTipNode = node;
+        _conceptTipLines = null;
+        InvalidateVisual();
+    }
+
+    /// <summary>Drops the concept tip that is showing, and the pending delay.</summary>
+    /// <remarks>
+    /// It deliberately leaves <see cref="_hoverNode"/> alone: the caller decides whether the pointer is now
+    /// over nothing, over another node, or over the same node as before - and only the last of those must
+    /// keep a delay that is already running.
+    /// </remarks>
+    private void CancelConceptTip()
+    {
+        _conceptTipTimer?.Stop();
+
+        if (_conceptTip is null)
+        {
+            return;
+        }
+
+        _conceptTip = null;
+        _conceptTipNode = null;
+        _conceptTipLines = null;
+        _conceptTipSize = default;
+        _conceptTipWidth = -1;
+        InvalidateVisual();
+    }
+
+    /// <summary>The node under <paramref name="point"/>, or <see langword="null"/> over chrome or nothing.</summary>
+    /// <remarks>
+    /// The caret place the point resolves to names a cell, and a cell names the node it was projected from -
+    /// which is the node the description belongs to. Over the margin there is no place at all, so no tip.
+    /// </remarks>
+    private NodeId? NodeAt(Point point)
+    {
+        if (Session is not { } session || point.X < GutterWidth)
+        {
+            return null;
+        }
+
+        var x = point.X - GutterWidth + _offsetX;
+        var y = point.Y + _offsetY;
+
+        return HitTest.Caret(session.Tree, session.Layout, x, y, session.Measure) is { } position
+            ? position.Address.Owner
+            : null;
+    }
+
+    /// <summary>Paints the concept tip, unless a finding's tip is up instead.</summary>
+    /// <remarks>
+    /// Drawn before the marker tip, so the finding is on top if the two ever overlap: it is the one that asks
+    /// for an action.
+    /// </remarks>
+    private void PaintConceptTip(DrawingContext context)
+    {
+        if (_conceptTip is not { } content || _hover is not null || ConceptTipBounds(content) is not { } bounds)
+        {
+            return;
+        }
+
+        _tip.Render(context, _conceptTipLines!, bounds);
+    }
+
+    /// <summary>Where the concept tip goes, wrapping its text the first time it is asked for at a width.</summary>
+    /// <param name="content">What the tip says.</param>
+    /// <returns>The box, or <see langword="null"/> when there is nothing to draw.</returns>
+    private Rect? ConceptTipBounds(ConceptTipContent content)
+    {
+        var viewport = new LayoutSize(Math.Max(0, Bounds.Width), Math.Max(0, Bounds.Height));
+
+        var room = Math.Min(
+            MarkerTipPresenter.MaximumTextWidth,
+            Math.Max(1, viewport.Width - (2 * MarkerTipPresenter.Inset)));
+
+        if (_conceptTipLines is null || _conceptTipWidth != room)
+        {
+            _conceptTipLines = ConceptTip.Lines(content, room, TextMeasure);
+            _conceptTipSize = _tip.Measure(_conceptTipLines);
+            _conceptTipWidth = room;
+        }
+
+        if (_conceptTipLines.Count == 0 || _conceptTipNode is not { } node)
+        {
+            return null;
+        }
+
+        // The node, not the cell the pointer happens to be over: a box that followed the caret place would
+        // jump while the pointer crossed one line of a node that spans several.
+        if (Session is not { } session || session.Layout.BoundsOf(new CellAddress(node)) is not { } anchor)
+        {
+            return null;
+        }
+
+        var placed = new LayoutRect(
+            anchor.X - _offsetX + GutterWidth,
+            anchor.Y - _offsetY,
+            anchor.Width,
+            anchor.Height);
+
+        var box = MarkerTip.Place(placed, new LayoutSize(_conceptTipSize.Width, _conceptTipSize.Height), viewport);
+
+        return new Rect(box.X, box.Y, box.Width, box.Height);
+    }
+
+    /// <summary>Builds the timer that waits before a concept tip appears.</summary>
+    private DispatcherTimer CreateConceptTipTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ConceptTipDelayMs) };
+
+        timer.Tick += (_, _) => ShowConceptTip();
+
+        return timer;
     }
 
     /// <summary>Whether two hits describe the same finding.</summary>
