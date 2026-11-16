@@ -22,6 +22,9 @@ namespace Projectional.Core;
 /// </remarks>
 public sealed class ConceptTrigger
 {
+    private static readonly IReadOnlyDictionary<string, string> EmptyPresets =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     private readonly Func<string, bool> _claims;
 
     /// <summary>Declares that text matching <paramref name="claims"/> typed on <paramref name="side"/> of a
@@ -51,7 +54,8 @@ public sealed class ConceptTrigger
         Func<string, bool> claims,
         string anchorSlot,
         string? propertySlot = null,
-        string? caretSlot = null)
+        string? caretSlot = null,
+        IReadOnlyDictionary<string, string>? presets = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(anchorConceptKey);
         ArgumentException.ThrowIfNullOrEmpty(anchorSlot);
@@ -72,11 +76,23 @@ public sealed class ConceptTrigger
             throw new ArgumentException($"'{side}' is not a trigger side.", nameof(side));
         }
 
+        if (presets is not null)
+        {
+            foreach (var (slot, value) in presets)
+            {
+                ArgumentException.ThrowIfNullOrEmpty(slot);
+                ArgumentNullException.ThrowIfNull(
+                    value,
+                    $"The preset for '{slot}' of a trigger on '{anchorConceptKey}' is null.");
+            }
+        }
+
         AnchorConcept = anchorConceptKey;
         Side = side;
         AnchorSlot = anchorSlot;
         PropertySlot = propertySlot;
         CaretSlot = caretSlot;
+        Presets = presets ?? EmptyPresets;
         _claims = claims;
     }
 
@@ -100,6 +116,17 @@ public sealed class ConceptTrigger
     /// the node it was at went.
     /// </summary>
     public string? CaretSlot { get; }
+
+    /// <summary>
+    /// Values the concept is born with, whatever was typed.
+    /// </summary>
+    /// <remarks>
+    /// For the gestures whose text is a word rather than the value itself: <c>and</c> typed after a condition
+    /// means the operator <c>&amp;&amp;</c>, which no keystroke contains. <see cref="PropertySlot"/> is for the
+    /// other case, where the typed text <em>is</em> the value. A preset wins over the typed text when both name
+    /// the same slot, because the language said so explicitly.
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> Presets { get; }
 
     /// <summary>Whether a burst of typed text belongs to this trigger.</summary>
     /// <param name="text">The characters the host typed.</param>

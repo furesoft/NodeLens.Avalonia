@@ -258,6 +258,11 @@ does **not** name the concept to create: that is the concept declaring it. `Conc
 answers in concept declaration order, which is the only tie-break where two concepts claim the same character, and
 a subtype does not inherit the gesture (it would create the super concept).
 
+The two optional slots exist for the two kinds of gesture. A gesture whose text *is* the value names `propertySlot`
+and is done in one keystroke. A gesture that is **spelt** - `and` for `&&` - names no property and instead carries
+`presets`, and the run of keystrokes that spells it is buffered by the editing layer, which is why `ConceptTrigger`
+needs no notion of time. [triggers.md](triggers.md#spelling-a-word) covers the buffer.
+
 The rule that decides everything: **text a property accepts is never given to a trigger.** `-` in front of `5`
 writes `-5`, because a negative number is a number; only a refused keystroke asks the triggers.
 [triggers.md](triggers.md) is the design of record, including the caret-to-anchor rules, the checks that turn a bad

@@ -49,11 +49,36 @@ public sealed class ConceptRegistryTriggerTests
     [Fact]
     public void TheAnswerIsTheLanguageAndNotTheCaller()
     {
-        // The expression language has four gestures: two for a binary, one for a negation and one for a
-        // parenthesis. The count is what makes "the catalogue is declared on the concepts" checkable.
+        // Seven gestures: two operators and two words for a binary, one for a negation, one for a parenthesis and
+        // one for a conditional.
+        // The count is what makes "the catalogue is declared on the concepts" checkable.
         var triggered = ExpressionsLanguage.Concepts.TriggersFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Expression));
 
-        Assert.Equal(4, triggered.Count);
+        Assert.Equal(7, triggered.Count);
+    }
+
+    [Fact]
+    public void APresetNamingNoPropertyIsRefusedAtRegistration()
+    {
+        Assert.Throws<ConceptDefinitionException>(() => ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Test.Wrapper",
+                [
+                    new PropertySlot("operator", PropertyType.Enum("+")),
+                    new ChildSlot("left", ExpressionsConceptKeys.Expression, Cardinality.One),
+                ],
+                [ExpressionsConceptKeys.Expression],
+                triggers:
+                [
+                    new ConceptTrigger(
+                        ExpressionsConceptKeys.Expression,
+                        TriggerSide.Right,
+                        text => text == "and",
+                        "left",
+                        presets: new Dictionary<string, string>(StringComparer.Ordinal) { ["opertor"] = "&&" }),
+                ]),
+        ]));
     }
 
     [Fact]

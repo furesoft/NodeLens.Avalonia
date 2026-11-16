@@ -34,4 +34,7 @@ public static class ExpressionsConceptKeys
 
     /// <summary>An <c>inner</c> expression between parentheses, which is how a user says how to read a tree.</summary>
     public const string Parenthesized = "Expressions.Parenthesized";
+
+    /// <summary>A choice: a <c>condition</c>, the <c>then</c> expression and the <c>else</c> expression.</summary>
+    public const string If = "Expressions.If";
 }

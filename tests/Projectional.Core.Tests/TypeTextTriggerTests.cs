@@ -355,6 +355,49 @@ public sealed class TypeTextTriggerTests
     }
 
     [Fact]
+    public void AQuestionMarkAfterAnExpressionMakesItTheConditionOfAChoice()
+    {
+        // The conditional is the one concept here that is not a rearrangement: the expression the caret left
+        // becomes its condition, and the caret continues in the branch the user writes next.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("?")).Outcome);
+
+        var choice = Assert.Single(group.GetChildren("inner"));
+
+        Assert.Equal(ExpressionsConceptKeys.If, choice.Concept.Key);
+        Assert.Same(literal, choice.GetChild("condition"));
+        Assert.Empty(choice.GetChildren("then"));
+        Assert.Empty(choice.GetChildren("else"));
+        Assert.Equal(CellAddress.OfSlot(choice.Id, "then"), session.Selection.Caret.Address);
+
+        Assert.Equal(
+            "((if 5 then <empty> else <empty>))",
+            LayoutSnapshot.Render(session.Layout, width: 60));
+    }
+
+    [Fact]
+    public void AQuestionMarkAfterAQuestionMarkChoiceContinuesInTheOtherBranch()
+    {
+        // The other branch is still empty, so a second question mark would have to mean "wrap the whole choice"
+        // - which is what it does, because the caret sits inside the choice rather than at its edge.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+        session.Apply(KeyRouter.Type("?"));
+        session.Apply(KeyRouter.Type("1"));
+
+        var choice = Assert.Single(group.GetChildren("inner"));
+        var then = Assert.Single(choice.GetChildren("then"));
+
+        Assert.Equal("1", then.GetOrNull("value"));
+    }
+
+    [Fact]
     public void AnOpeningParenthesisTypedBeforeAnExpressionGroupsIt()
     {
         // A parenthesis is a gesture rather than a value: nothing is written, and the caret stays inside the
@@ -396,6 +439,97 @@ public sealed class TypeTextTriggerTests
         Assert.Equal("((5 + <empty>))", LayoutSnapshot.Render(session.Layout, width: 40));
     }
 
+    [Fact]
+    public void AWordTypedOneLetterAtATimeSpellsAnOperator()
+    {
+        // No keystroke spells "and", so the language declares the word and the preset answers what it stores.
+        // The letters are kept between keystrokes, which is the only reason a word can mean anything at all.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("a")).Outcome);
+        Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("n")).Outcome);
+
+        // Nothing has happened yet: a letter that means nothing edits nothing, and costs no undo step.
+        Assert.Equal("5", literal.GetOrNull("value"));
+        Assert.Equal(0, session.History.UndoDepth);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("d")).Outcome);
+
+        var binary = Assert.Single(group.GetChildren("inner"));
+
+        Assert.Equal(ExpressionsConceptKeys.Binary, binary.Concept.Key);
+
+        // The preset, not the letters: the model holds the operator the notation draws, so what the user spelt
+        // and what the tree says cannot drift apart.
+        Assert.Equal("&&", binary.GetOrNull("operator"));
+        Assert.Same(literal, binary.GetChild("left"));
+
+        Assert.Equal("((5 && <empty>))", LayoutSnapshot.Render(session.Layout, width: 40));
+
+        // Three keystrokes, one edit: the letters were never applied, and the operator is the step.
+        Assert.Equal(1, session.History.UndoDepth);
+    }
+
+    [Fact]
+    public void AWordArrivingInOnePieceSpellsTheOperatorToo()
+    {
+        // A paste hands the whole text to the same action, so a language that can be spelt must accept a word
+        // that was never spelt here - the buffer is a convenience, not the definition.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("or")).Outcome);
+
+        var binary = Assert.Single(group.GetChildren("inner"));
+
+        Assert.Equal("||", binary.GetOrNull("operator"));
+        Assert.Same(literal, binary.GetChild("left"));
+    }
+
+    [Fact]
+    public void ALetterThatMeansNothingDoesNotBlockTheNextGesture()
+    {
+        // The buffer must not become a filter. "x" is what a user types when they meant nothing, and the "+"
+        // after it has to still make an addition instead of waiting for a word "x+" that nobody declared.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("x")).Outcome);
+        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("+")).Outcome);
+
+        var binary = Assert.Single(group.GetChildren("inner"));
+
+        Assert.Equal("+", binary.GetOrNull("operator"));
+        Assert.Same(literal, binary.GetChild("left"));
+    }
+
+    [Fact]
+    public void TheSequenceEndsWhenTheCaretMoves()
+    {
+        // "a" at the end of one operand and "nd" at the end of the same operand are a word; a click in between
+        // means the user is no longer spelling it, and the halves must not add up.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+        session.Apply(KeyRouter.Type("a"));
+
+        CaretAtStart(session, literal, "value");
+        CaretAtEnd(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("n")).Outcome);
+        Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("d")).Outcome);
+
+        Assert.Same(literal, Assert.Single(group.GetChildren("inner")));
+        Assert.Equal("5", literal.GetOrNull("value"));
+    }
     private static NotationRegistry Notations => ExpressionsLanguage.CreateNotations(ExpressionsLanguage.Concepts);
 
     /// <summary>A literal inside a group inside the document's group, which is the root.</summary>

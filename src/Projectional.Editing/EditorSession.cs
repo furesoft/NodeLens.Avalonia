@@ -42,6 +42,10 @@ public sealed class EditorSession : IDisposable
     // rebuild and an undo that moves nodes around.
     private CollapsedNodeSet _collapsed = CollapsedNodeSet.Empty;
 
+    // The characters typed at one edge that did nothing yet, and where they were typed. Kept here rather than in
+    // the action because an action is a value that runs once: spelling a keyword spans several of them.
+    private (CellAddress Address, string Text)? _pending;
+
     // The two sources of intentions, kept apart so the list's order is fixed rather than accidental. A host
     // may register several; a language hands over one provider that composes what its packages declare.
     private readonly List<IIntentionProvider> _hostIntentions = [];
@@ -841,6 +845,12 @@ public sealed class EditorSession : IDisposable
         new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing)
         {
             Completion = action is CompletionAction ? Completion : null,
+
+            // Only a typing action continues a sequence, and only where the previous one stopped.
+            PendingText = action is TypeTextAction && _pending is { } pending
+                && pending.Address.Equals(Selection.Caret.Address)
+                    ? pending.Text
+                    : null,
         };
 
     /// <summary>Applies one action and leaves the session consistent with what it did.</summary>
@@ -867,6 +877,12 @@ public sealed class EditorSession : IDisposable
         }
 
         Completion = context.Completion;
+
+        // Whatever the action left behind is the sequence a following keystroke can continue; any other action
+        // seeded nothing and left nothing, so a moved caret or a click ends the sequence.
+        _pending = context.PendingText is { Length: > 0 } text
+            ? (Selection.Caret.Address, text)
+            : null;
 
         if (result.Changed)
         {
@@ -956,6 +972,10 @@ public sealed class EditorSession : IDisposable
 
         Selection = new Selection(anchor, caret);
         Completion = null;
+
+        // A caret that moved is no longer spelling a word at the place it left: `a` at the end of one operand
+        // and `nd` at the end of the next must not add up to a keyword.
+        _pending = null;
 
         // A caret that moved is no longer the caret that asked for a repair list. The list describes one
         // line's findings, so leaving it up would keep showing them beside a caret on a different line.

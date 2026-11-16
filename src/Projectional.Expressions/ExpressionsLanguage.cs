@@ -155,6 +155,23 @@ public static class ExpressionsLanguage
                     anchorSlot: "right",
                     propertySlot: "operator",
                     caretSlot: "left"),
+
+                // The words, which no single keystroke spells: the presets turn the word into the operator the
+                // model stores, and the session's buffer is what waits for the last letter.
+                new ConceptTrigger(
+                    ExpressionsConceptKeys.Expression,
+                    TriggerSide.Right,
+                    text => text == "and",
+                    anchorSlot: "left",
+                    caretSlot: "right",
+                    presets: new Dictionary<string, string>(StringComparer.Ordinal) { ["operator"] = "&&" }),
+                new ConceptTrigger(
+                    ExpressionsConceptKeys.Expression,
+                    TriggerSide.Right,
+                    text => text == "or",
+                    anchorSlot: "left",
+                    caretSlot: "right",
+                    presets: new Dictionary<string, string>(StringComparer.Ordinal) { ["operator"] = "||" }),
             ]),
 
         new ConceptDeclaration(
@@ -187,6 +204,28 @@ public static class ExpressionsLanguage
                     TriggerSide.Left,
                     text => text == "(",
                     anchorSlot: "inner"),
+            ]),
+
+        // A conditional is the one concept here that is not a rearrangement of its operands, so it is the one a
+        // user reaches for while writing an expression rather than from the top of a list. The gesture is a
+        // question mark after the expression that becomes its condition, which is also the reading of `a ? b : c`
+        // in the languages this vocabulary borrows from.
+        new ConceptDeclaration(
+            ExpressionsConceptKeys.If,
+            [
+                new ChildSlot("condition", ExpressionsConceptKeys.Expression, Cardinality.One),
+                new ChildSlot("then", ExpressionsConceptKeys.Expression, Cardinality.One),
+                new ChildSlot("else", ExpressionsConceptKeys.Expression, Cardinality.One),
+            ],
+            [ExpressionsConceptKeys.Expression],
+            triggers:
+            [
+                new ConceptTrigger(
+                    ExpressionsConceptKeys.Expression,
+                    TriggerSide.Right,
+                    text => text == "?",
+                    anchorSlot: "condition",
+                    caretSlot: "then"),
             ]),
     ];
 }

@@ -178,6 +178,15 @@ public sealed class ConceptRegistry
                     $"Concept '{concept.Key}' has a trigger whose caret slot '{caret}' is not a child slot it declares.");
             }
 
+            foreach (var slot in trigger.Presets.Keys)
+            {
+                if (concept.FindProperty(slot) is null)
+                {
+                    throw new ConceptDefinitionException(
+                        $"Concept '{concept.Key}' has a trigger with a preset for '{slot}', which is not a property it declares.");
+                }
+            }
+
             if (concept.IsAbstract)
             {
                 throw new ConceptDefinitionException(

@@ -71,7 +71,7 @@ public sealed class TypeTextAction : EditAction
             var typed = TypeIntoProperty(context, cell, selection);
 
             return typed.Outcome == EditOutcome.Rejected
-                ? Trigger(context, place, selection) ?? typed
+                ? Refused(context, place, selection, typed)
                 : typed;
         }
 
@@ -82,7 +82,34 @@ public sealed class TypeTextAction : EditAction
             return Create(context, place, selection);
         }
 
-        return Trigger(context, place, selection) ?? EditResult.Unchanged(selection);
+        return Refused(context, place, selection, EditResult.Unchanged(selection));
+    }
+
+    /// <summary>
+    /// What a keystroke that would otherwise do nothing does: a gesture, or the first letter of one.
+    /// </summary>
+    /// <param name="context">The apply in progress.</param>
+    /// <param name="place">Where the caret stands.</param>
+    /// <param name="selection">The selection it started with.</param>
+    /// <param name="nothing">The answer to give when no gesture claims the text.</param>
+    /// <remarks>
+    /// When a trigger fires the sequence ends with it. When none does the characters are kept, so that the next
+    /// keystroke is asked about together with them - which is the only way a word such as <c>and</c> can mean
+    /// anything, since the first letter of it alone means nothing. The model is untouched either way, so the
+    /// accumulation costs no undo step and disappears with the next caret move.
+    /// </remarks>
+    private EditResult Refused(EditContext context, CaretPlace place, Selection selection, EditResult nothing)
+    {
+        if (Trigger(context, place, selection) is { } applied)
+        {
+            context.PendingText = null;
+
+            return applied;
+        }
+
+        context.PendingText = string.Concat(context.PendingText ?? string.Empty, Text);
+
+        return nothing;
     }
 
     /// <summary>
@@ -153,7 +180,8 @@ public sealed class TypeTextAction : EditAction
             return false;
         }
 
-        return !place.IsEmptySlot && TriggerAt(context, place) is not null;
+        return !place.IsEmptySlot
+            && Candidates(context).Any(text => TriggerAt(context, place, text) is not null);
     }
 
     /// <summary>Puts the wrapper on the node the caret is at the edge of, if the language declares one there.</summary>
@@ -165,20 +193,58 @@ public sealed class TypeTextAction : EditAction
     /// </remarks>
     private EditResult? Trigger(EditContext context, CaretPlace place, Selection selection)
     {
-        if (!selection.IsEmpty || TriggerAt(context, place) is not { } found)
+        if (!selection.IsEmpty)
         {
             return null;
         }
 
-        var (node, triggered) = found;
+        // The whole word spelled at this edge first, then the burst that just arrived. A keyword only means
+        // something once its last letter is there, while an operator has to work even after a letter that meant
+        // nothing was typed before it.
+        foreach (var text in Candidates(context))
+        {
+            if (TriggerAt(context, place, text) is not { } found)
+            {
+                continue;
+            }
 
-        var wrapper = context.WrapChild(
-            node,
-            triggered.Concept.Key,
-            triggered.Trigger.AnchorSlot,
-            PresetsOf(context, triggered));
+            var (node, triggered) = found;
 
-        return EditResult.Applied(Selection.At(ContinueAt(wrapper, triggered.Trigger)));
+            var wrapper = context.WrapChild(
+                node,
+                triggered.Concept.Key,
+                triggered.Trigger.AnchorSlot,
+                PresetsOf(triggered, text));
+
+            return EditResult.Applied(Selection.At(ContinueAt(wrapper, triggered.Trigger)));
+        }
+
+        return null;
+    }
+
+    /// <summary>The texts a trigger may be asked about, longest first.</summary>
+    /// <remarks>
+    /// The accumulated word and then the burst on its own. Without the second, one character that meant nothing
+    /// would block every later gesture at that edge - typing <c>x</c> and then <c>+</c> after a number has to give
+    /// an addition, not a sequence nobody claims.
+    /// </remarks>
+    private IEnumerable<string> Candidates(EditContext context)
+    {
+        if (context.PendingText is { Length: > 0 } pending)
+        {
+            var word = string.Concat(pending, Text);
+
+            yield return word;
+
+            if (!word.Equals(Text, StringComparison.Ordinal))
+            {
+                yield return Text;
+            }
+
+            yield break;
+        }
+
+        yield return Text;
     }
 
     /// <summary>The trigger this keystroke fires, and the node it would go around.</summary>
@@ -189,11 +255,11 @@ public sealed class TypeTextAction : EditAction
     /// and within one candidate the language's declaration order decides, so the answer is always the first
     /// trigger that matches rather than a vote between them.
     /// </remarks>
-    private (Node Node, TriggeredConcept Triggered)? TriggerAt(EditContext context, CaretPlace place)
+    private static (Node Node, TriggeredConcept Triggered)? TriggerAt(EditContext context, CaretPlace place, string text)
     {
         foreach (var anchor in TriggerAnchors.Of(context, place, context.Selection.Caret.Offset))
         {
-            if (TriggerFor(context, anchor) is { } triggered)
+            if (TriggerFor(context, anchor, text) is { } triggered)
             {
                 return (anchor.Node, triggered);
             }
@@ -211,7 +277,7 @@ public sealed class TypeTextAction : EditAction
     /// skipped rather than tried: the model refuses such a wrap, and checking first makes a
     /// declared-but-impossible gesture a keystroke that does nothing instead of an editor that throws.
     /// </remarks>
-    private TriggeredConcept? TriggerFor(EditContext context, TriggerAnchor anchor)
+    private static TriggeredConcept? TriggerFor(EditContext context, TriggerAnchor anchor, string text)
     {
         if (anchor.Node.Parent is not { } parent || anchor.Node.ParentSlot is not { } slot)
         {
@@ -222,7 +288,7 @@ public sealed class TypeTextAction : EditAction
         foreach (var triggered in context.Concepts.TriggersFor(anchor.Node.Concept))
         {
             if (triggered.Trigger.Side == anchor.Side
-                && triggered.Trigger.Claims(Text)
+                && triggered.Trigger.Claims(text)
                 && Fits(parent, slot, triggered))
             {
                 return triggered;
@@ -244,17 +310,38 @@ public sealed class TypeTextAction : EditAction
         && triggered.Concept.IsKindOf(place.ChildConceptKey)
         && triggered.Concept.Applicability.Allows(parent.Concept, slot);
 
-    /// <summary>The values the wrapper is born with: the typed text, when the trigger says where it goes.</summary>
-    private Dictionary<string, string>? PresetsOf(EditContext context, TriggeredConcept triggered)
+    /// <summary>The values the wrapper is born with: its fixed ones, and the typed text where the trigger says so.</summary>
+    /// <param name="triggered">The concept that would be created and the declaration that claims the keystroke.</param>
+    /// <param name="text">The text that was recognised, which may be a whole word rather than one keystroke.</param>
+    /// <remarks>
+    /// A preset wins over the typed text where both name one slot, because a language that spells a value out
+    /// meant it: <c>and</c> becomes <c>&amp;&amp;</c> even though the word is what the user typed. The text is
+    /// written only when the property's type accepts it - a keystroke must not be able to throw over a trigger
+    /// that claims more than its concept can store.
+    /// </remarks>
+    private static Dictionary<string, string>? PresetsOf(TriggeredConcept triggered, string text)
     {
-        if (triggered.Trigger.PropertySlot is not { } slot)
+        Dictionary<string, string>? presets = null;
+
+        foreach (var (slot, value) in triggered.Trigger.Presets)
         {
-            return null;
+            if (triggered.Concept.FindProperty(slot) is { } property && property.Type.IsValid(value))
+            {
+                presets ??= new Dictionary<string, string>(StringComparer.Ordinal);
+                presets[slot] = value;
+            }
         }
 
-        return triggered.Concept.FindProperty(slot) is { } property && property.Type.IsValid(Text)
-            ? new Dictionary<string, string>(StringComparer.Ordinal) { [slot] = Text }
-            : null;
+        if (triggered.Trigger.PropertySlot is { } typed
+            && !(presets?.ContainsKey(typed) ?? false)
+            && triggered.Concept.FindProperty(typed) is { } target
+            && target.Type.IsValid(text))
+        {
+            presets ??= new Dictionary<string, string>(StringComparer.Ordinal);
+            presets[typed] = text;
+        }
+
+        return presets;
     }
 
     /// <summary>Where the caret goes once the wrapper exists.</summary>
