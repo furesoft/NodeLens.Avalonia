@@ -3,6 +3,7 @@ using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Samples;
+using Projectional.Semantics;
 
 using Xunit;
 
@@ -105,6 +106,103 @@ public sealed class EditorMenuTests
         using var session = TestEditor.Open(TestEditor.BareRule());
 
         Assert.DoesNotContain(EditorMenu.For(session), entry => entry.Label == "Quick fixes");
+    }
+
+    [Fact]
+    public void AnIntentionGetsItsOwnSubmenu()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        session.AddIntentions(new StubIntentions(new Intention(
+            "test.rename",
+            "Rename to \"walked\"",
+            "Gives the rule the name the finding would suggest.",
+            _ => new SetPropertyAction(CellAddress.OfSlot(rule.Id, "name"), "walked"),
+            gesture: "Ctrl+T")));
+
+        var submenu = Assert.IsType<EditorMenuItem>(Entry(session, "Intentions"));
+
+        Assert.True(submenu.IsEnabled);
+
+        var entry = Assert.IsType<EditorMenuItem>(Assert.Single(submenu.Children));
+
+        Assert.Equal("Rename to \"walked\"", entry.Label);
+        Assert.Equal("Ctrl+T", entry.Gesture);
+        Assert.Equal("Gives the rule the name the finding would suggest.", entry.Description);
+        Assert.True(entry.IsEnabled);
+
+        entry.Execute();
+
+        Assert.Equal("walked", rule.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void TheFixesComeBeforeTheIntentionsWhenTheCaretOffersBoth()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        session.AddIntentions(new StubIntentions(new Intention(
+            "test.rename",
+            "Rename",
+            "Renames the rule.",
+            _ => null)));
+
+        var finding = new Diagnostic(
+            DiagnosticSeverity.Warning,
+            rule.Id,
+            "the name says nothing",
+            role: "name");
+
+        session.Markers = new MarkerSet(finding);
+        session.Fixes = new FixSet(new DiagnosticFix(
+            finding,
+            "std.trim",
+            "Trim",
+            _ => null,
+            "Removes the whitespace."));
+
+        var labels = EditorMenu.For(session)
+            .TakeWhile(entry => entry is EditorMenuItem)
+            .Select(entry => entry.Label);
+
+        Assert.Equal(["Quick fixes", "Intentions"], labels);
+    }
+
+    [Fact]
+    public void ADisabledIntentionIsListedWithItsReason()
+    {
+        // The user can see that it will not run; the reason is the only part of the message that helps.
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        session.AddIntentions(new StubIntentions(new Intention(
+            "test.blocked",
+            "Blocked",
+            "Cannot run here.",
+            _ => null,
+            availability: IntentionAvailability.Disabled("the document is read-only"))));
+
+        var entry = Assert.IsType<EditorMenuItem>(
+            Assert.Single(Assert.IsType<EditorMenuItem>(Entry(session, "Intentions")).Children));
+
+        Assert.False(entry.IsEnabled);
+        Assert.Equal("the document is read-only", entry.Description);
+    }
+
+    [Fact]
+    public void AnIntentionThatIsAbsentHereGetsNoSubmenu()
+    {
+        // The fixture declares its entries once and answers "absent" off a rule, so the menu must not offer
+        // a heading with nothing inside it.
+        var (rule, _, step) = TestEditor.RuleWithStep();
+        using var session = TestEditor.Open(rule);
+
+        session.AddIntentions(TestIntentions.ForRules, IntentionSource.Language);
+        session.Select(Selection.At(CellAddress.OfSlot(step.Id, "text")));
+
+        Assert.DoesNotContain(EditorMenu.For(session), entry => entry.Label == "Intentions");
     }
 
     [Fact]
