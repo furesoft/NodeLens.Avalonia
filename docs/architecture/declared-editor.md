@@ -16,7 +16,7 @@ shape the whole plan is built on.
 
 ## The language
 
-Sixteen concepts, and the split between them is the interesting part: it is the one rule the C# builder expresses
+Seventeen concepts, and the split between them is the interesting part: it is the one rule the C# builder expresses
 with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carried by **slot declarations** instead.
 
 | Concept | Holds | Kind |
@@ -37,10 +37,16 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.ChildInline` | `slot`, `emptyText` | one child, inline |
 | `Editor.Children` | `slot`, `emptyText`, `spacing` | many children, as blocks |
 | `Editor.Collection` | `slot`, `separator`, `emptyText`, `spacing` | many children between separators |
+| `Editor.Conditional` | `slot`, `value`, `cells` over `Editor.InlineCell` | drawn only while `slot` holds `value` |
 
 **A block inside a line therefore cannot be written.** The model refuses it with `ModelInvariantException` before
 lowering runs, which is why the lowering has no inline/block check of its own: the rule moved from the compiler into
 the declarations, and there is exactly one place it lives.
+
+`Editor.Conditional` is what keeps the two paths level for a cell that disappears. It carries the same three things
+the C# cell carries - a property, the value to compare it with, and the inline cells to draw - and it lowers to the
+same `ConditionalNotationCell`, so a notation that says `abstract concept Rule` can be written as a model or by
+hand. Its own notation reads `[> if {slot} = "value"` with the cells indented below it.
 
 ## The shape: MPS' brackets
 
@@ -97,6 +103,7 @@ singular names (`EditorLanguage`, `EditorLowering`, `EditorConceptKeys`), and th
 | Missing | Arrives with |
 | --- | --- |
 | tables as declared cells | P5 |
+| a *block* conditional, hiding a whole line | when a notation needs one |
 | MPS' cell glyphs: borders, folds, an option's checkbox | P5 |
 | a line's inline cells drawn on one row *with* their own brackets | P5, with a horizontal sibling cell |
 | variants beyond the name (`variant` property) | when a language needs a second drawing of one concept |
@@ -108,4 +115,5 @@ singular names (`EditorLanguage`, `EditorLowering`, `EditorConceptKeys`), and th
 declared path is only proven by the picture. Covered: the keyword/property/gap line renders as `rule Approved`; a
 block inside a line is refused by the model; a notation about an undeclared concept is refused by the lowering; an
 undeclared slot is refused by `NotationRegistry`; a variant travels; a named slot keeps the `emptyText` its author
-wrote; a definition of a notation is drawn like any other model; and a document that is not a notation is refused.
+wrote; a declared conditional draws its cells only while the property holds and is validated like a hand-written one; a
+definition of a notation is drawn like any other model; and a document that is not a notation is refused.

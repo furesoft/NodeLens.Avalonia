@@ -109,6 +109,7 @@ Notation is a tree of **editor cells**. A cell is one of:
 | Reference | the target's name, with a chooser | typed text resolves through scopes |
 | Collection | a child list with a separator cell between children | |
 | Table/Grid | rows (children) × columns (fixed or per-row roles) | cell-level caret |
+| Conditional | its inline cells, or nothing at all | as its content |
 | Line, Sequence, Indent, Space | layout modifiers | |
 
 The layout cells are the skeleton, and they come in two shapes that cannot be
@@ -123,6 +124,24 @@ misplaces a cell fails to compile rather than at startup.
 Empty slots are never invisible: a slot-bearing cell carries the text it shows while
 it is empty (`<empty>`, `<none>`). The caret always needs something visible to
 attach to, and an empty list still has to be fillable.
+
+**A conditional cell is the one thing that is not there.** `ed.Conditional("isAbstract", "true",
+ed.Keyword("abstract"), ed.Space)` draws its cells only while the node's `isAbstract` holds `"true"`, and
+otherwise draws nothing - not an empty cell, which would be a caret stop pointing at nothing. That is what
+lets one notation write `abstract concept Rule` for an abstract concept and `concept Rule` for a concrete
+one, the way MPS does.
+
+- **The condition is a property and a value, never a predicate.** A delegate could not be written down in a
+  notation model, so a language declared as data would silently become weaker than one written in C# -
+  the equality ADR 0014 is built on. Comparing a property's stored text is the smallest form that covers
+  what notations actually need: a flag that turns a word on.
+- **The value is validated at registration** against the property's type, so `"yes"` on a `bool` is a
+  startup error rather than a cell that can never appear.
+- **The gap belongs inside the conditional.** `ed.Conditional(..., ed.Keyword("abstract"), ed.Space)`, not
+  `ed.Conditional(...), ed.Space` - a space outside it stays behind as a leading blank in every drawing
+  where the word is gone.
+- Inline only, for now. A block conditional is the same idea one level up and arrives when a notation needs
+  to hide a whole line rather than a word.
 
 ```csharp
 notation.Add("Sample.Ruleset", ed => ed.Sequence(

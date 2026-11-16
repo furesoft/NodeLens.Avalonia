@@ -39,6 +39,16 @@ public sealed class NotationEditor
     public SingleChildNotationCell ChildInline(string slot, string emptyText = "<empty>") =>
         new(slot) { EmptyText = emptyText };
 
+    /// <summary>Inline cells that are drawn only while <paramref name="slot"/> holds <paramref name="value"/>.</summary>
+    /// <param name="slot">The property the condition reads.</param>
+    /// <param name="value">The text it has to equal, in the type's stored spelling.</param>
+    /// <param name="content">What to draw while it does.</param>
+    public ConditionalNotationCell Conditional(
+        string slot,
+        string value,
+        params ReadOnlySpan<InlineNotationCell> content) =>
+        new(slot, value, content);
+
     public LineNotationCell Line(params ReadOnlySpan<InlineNotationCell> content) => new(content);
 
     public SequenceNotationCell Sequence(params ReadOnlySpan<BlockNotationCell> content) => new(content);

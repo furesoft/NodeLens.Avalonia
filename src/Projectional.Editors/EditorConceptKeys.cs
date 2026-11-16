@@ -56,4 +56,7 @@ public static class EditorConceptKeys
 
     /// <summary>Many children with a separator between them, as blocks.</summary>
     public const string Collection = "Editor.Collection";
+
+    /// <summary>Inline cells drawn only while a property of the node holds a value.</summary>
+    public const string Conditional = "Editor.Conditional";
 }

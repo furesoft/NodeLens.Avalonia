@@ -16,6 +16,7 @@ internal static class NotationWalker
             LineNotationCell line => line.Content,
             SequenceNotationCell sequence => sequence.Content,
             IndentNotationCell indent => indent.Content,
+            ConditionalNotationCell conditional => conditional.Content,
             _ => [],
         };
     }
