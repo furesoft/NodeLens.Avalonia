@@ -508,10 +508,11 @@ Two smaller consequences:
   being rebuilt on every pointer move while still reopening it for a second finding on the same
   text.
 - **The tip does not promise a fix it cannot deliver.** The severity word, the message and the
-  code, and nothing else - "N quick fixes" needs the fix list from
+  code, and nothing else - "N quick fixes" needed the fix list from
   [quick-fixes.md](quick-fixes.md) slice Q5, and a line that always reads "no fixes" is worse
-  than no line. When that slice lands, the tip gains a fourth line, read from the same set the
-  bulb reads.
+  than no line. That slice landed, so the tip now adds one line for a finding with repairs
+  (`2 quick fixes - Alt+Enter`) and none at all for a finding without them, read from the same set
+  the bulb reads.
 
 ## Testing
 
