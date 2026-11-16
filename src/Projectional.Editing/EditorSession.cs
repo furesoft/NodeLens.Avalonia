@@ -374,18 +374,158 @@ public sealed class EditorSession : IDisposable
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        var context = new EditContext(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing)
+        if (action is EditProgram program)
+        {
+            return Apply(program);
+        }
+
+        var context = ContextFor(action);
+
+        return ApplyCore(action, context, action.CoalescingKey(context));
+    }
+
+    /// <summary>Applies <paramref name="program"/> as one step, or not at all.</summary>
+    /// <param name="program">The edits to apply, in order.</param>
+    /// <remarks>
+    /// <para>
+    /// This is the only way to run a program: the tree and the layout are rebuilt between steps, because a
+    /// step's addresses describe the model the step before it produced. That is also why the whole program
+    /// sits inside one model transaction - the rebuilds are an implementation detail of running the steps,
+    /// not edit boundaries the user should see.
+    /// </para>
+    /// <para>
+    /// A rejected step takes the whole program back: the transaction rolls back, the tree is rebuilt to
+    /// describe the state that was restored, and the answer is that step's own <see cref="EditOutcome.Rejected"/>
+    /// - so a repair that could not finish leaves nothing half-applied and still says why.
+    /// </para>
+    /// </remarks>
+    public EditResult Apply(EditProgram program)
+    {
+        ArgumentNullException.ThrowIfNull(program);
+
+        if (program.Steps.Count == 0)
+        {
+            return EditResult.Unchanged(Selection);
+        }
+
+        var selection = Selection;
+
+        using var transaction = Document.Model.BeginTransaction();
+
+        var result = EditResult.Unchanged(Selection);
+
+        foreach (var step in program.Steps)
+        {
+            result = ApplyCore(step, ContextFor(step), coalescingKey: null);
+
+            if (result.Outcome == EditOutcome.Rejected)
+            {
+                // Rolling back restores the model, not the session: the tree and the layout still describe
+                // the edits that were just taken back, and the selection still points into them.
+                transaction.Dispose();
+                Rebuild();
+                Settle(selection);
+
+                return result;
+            }
+        }
+
+        transaction.Complete();
+
+        return result;
+    }
+
+    /// <summary>Applies <paramref name="fix"/> as an undo step of its own, or rejects the pick.</summary>
+    /// <param name="fix">A fix the caller was handed, which is matched against the current set.</param>
+    /// <remarks>
+    /// <para>
+    /// The pick is joined on (finding, id) against the current <see cref="Fixes"/>, and the <em>current</em>
+    /// object is what runs. Everything a fix knows was computed against the model of the moment its set was
+    /// published, so running the caller's copy after an undo is how a repair lands on a document that has
+    /// moved on.
+    /// </para>
+    /// <para>
+    /// A pick that no longer resolves is the ordinary case rather than an error: the user may have repaired
+    /// the finding another way, or the checks may have run again and reported something else. It is
+    /// therefore an <see cref="EditOutcome.Rejected"/> with a reason, the same outcome a refused keystroke
+    /// gets, so the host can say what happened instead of nothing happening.
+    /// </para>
+    /// <para>
+    /// A fix runs as one step: the coalescing key is cleared for its commits, so it cannot merge into a
+    /// typing burst before it, and a keystroke after it starts a step of its own.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="fix"/> is <see langword="null"/>.</exception>
+    public EditResult Apply(DiagnosticFix fix)
+    {
+        ArgumentNullException.ThrowIfNull(fix);
+
+        if (Current(fix) is not { } current)
+        {
+            return EditResult.Rejected(
+                Selection,
+                $"The fix \"{fix.Label}\" is no longer offered for this document.");
+        }
+
+        if (current.Availability.Reason is { } reason)
+        {
+            return EditResult.Rejected(Selection, reason);
+        }
+
+        var context = new FixContext(
+            Document.Model,
+            current.Diagnostic,
+            Document.Model.Project.FindNode(current.Diagnostic.Target));
+
+        if (current.Create(context) is not { } action)
+        {
+            return EditResult.Rejected(
+                Selection,
+                $"The fix \"{current.Label}\" has nothing to do for this document.");
+        }
+
+        return action is EditProgram program
+            ? Apply(program)
+            : ApplyCore(action, ContextFor(action), coalescingKey: null);
+    }
+
+    /// <summary>The fix in the current set that <paramref name="fix"/> names, or <see langword="null"/>.</summary>
+    private DiagnosticFix? Current(DiagnosticFix fix)
+    {
+        foreach (var candidate in Fixes.For(fix.Diagnostic))
+        {
+            if (string.Equals(candidate.Id, fix.Id, StringComparison.Ordinal))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>The context one action sees, built from the tree and layout as they are now.</summary>
+    private EditContext ContextFor(EditAction action) =>
+        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing)
         {
             Completion = action is CompletionAction ? Completion : null,
         };
 
+    /// <summary>Applies one action and leaves the session consistent with what it did.</summary>
+    /// <param name="action">The action to run; not a program.</param>
+    /// <param name="context">The context it sees.</param>
+    /// <param name="coalescingKey">
+    /// The key its commits are grouped under, or <see langword="null"/> when the edit must be a step of its
+    /// own. Passed in rather than read from the action so that a fix can force a boundary.
+    /// </param>
+    private EditResult ApplyCore(EditAction action, EditContext context, string? coalescingKey)
+    {
         var previous = History.CoalescingKey;
         var before = Selection.Caret;
         var result = EditResult.Unchanged(Selection);
 
         try
         {
-            History.CoalescingKey = action.CoalescingKey(context);
+            History.CoalescingKey = coalescingKey;
             result = action.Apply(context);
         }
         finally
