@@ -26,9 +26,40 @@ public sealed class EditorMenuTests
     {
         using var session = TestEditor.Open(TestEditor.BareRule());
 
+        // The fixture nominates a collapse slot, so a node of it offers Fold. A language that does not opt
+        // into folding has no such entry, which is what keeps this list language-dependent by design.
         Assert.Equal(
-            ["Undo", "Redo", "", "Insert", "Delete", "", "Select All", "Copy", "Cut", "Paste"],
+            ["Undo", "Redo", "", "Fold", "", "Insert", "Delete", "", "Select All", "Copy", "Cut", "Paste"],
             EditorMenu.For(session).Select(entry => entry.Label));
+    }
+
+    [Fact]
+    public void AFoldableNodeOffersFoldAndThenUnfold()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        var fold = Assert.IsType<EditorMenuItem>(
+            EditorMenu.For(session).Single(entry => entry.Label is "Fold" or "Unfold"));
+
+        Assert.Equal("Fold", fold.Label);
+        Assert.False(fold.IsChecked);
+
+        session.ToggleCollapsed(rule.Id);
+
+        var unfold = Assert.IsType<EditorMenuItem>(
+            EditorMenu.For(session).Single(entry => entry.Label is "Fold" or "Unfold"));
+
+        Assert.Equal("Unfold", unfold.Label);
+        Assert.True(unfold.IsChecked);
+    }
+
+    [Fact]
+    public void ANodeThatCannotBeFoldedOffersNoEntry()
+    {
+        using var session = TestEditor.Open(TestEditor.BareStep());
+
+        Assert.DoesNotContain(EditorMenu.For(session), entry => entry.Label is "Fold" or "Unfold");
     }
 
     [Fact]
