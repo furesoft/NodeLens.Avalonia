@@ -478,6 +478,36 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>What the checks offer to repair, or the empty set when they offer nothing.</summary>
+    /// <remarks>
+    /// <para>
+    /// The companion of <see cref="Markers"/> and published the same way, because they are published
+    /// together: a finding and its repair describe one state of the document, so a host that republished
+    /// the markers and forgot the fixes would offer cures for problems the user has already dealt with.
+    /// </para>
+    /// <para>
+    /// A fix set is not decoration - something will eventually read it to offer the repair - so this is
+    /// the one set whose assignment may be read after the fact. Nothing is resolved here either: the
+    /// repairs are offered against the model when one is picked, not when the set arrives.
+    /// </para>
+    /// </remarks>
+    public FixSet Fixes
+    {
+        get => Session?.Fixes ?? FixSet.Empty;
+
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (Session is not { } session)
+            {
+                return;
+            }
+
+            session.Fixes = value;
+        }
+    }
+
     /// <summary>The colour each severity is stroked in.</summary>
     /// <remarks>
     /// Named for what it colours rather than for its type, following <see cref="Palette"/> and

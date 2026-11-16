@@ -11,6 +11,7 @@ using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Samples;
+using Projectional.Samples.Checks;
 using Projectional.Semantics;
 
 namespace Projectional.Workbench;
@@ -314,14 +315,26 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
-    /// <summary>Hands the editor what the app's own checks found in a document.</summary>
+    /// <summary>Hands the editor what the checks found in a document, and what repairs they offer.</summary>
     /// <remarks>
-    /// The editor resolves nothing: it draws the diagnostics it is given, so the shell decides what to
-    /// report and a host that wants different checks replaces this call with its own.
+    /// <para>
+    /// Two checks, both of them the app's own: the shell's placeholder names and the sample language's
+    /// duplicated rule names. Both answer with fixes, and a fix carries the finding it repairs, so the
+    /// marker set is derived from the repairs rather than collected a second time - the two sets cannot
+    /// describe different models because they are the same list.
+    /// </para>
+    /// <para>
+    /// The editor resolves nothing: it draws the diagnostics it is given and offers the repairs it is
+    /// given, so the shell decides what to report and a host that wants different checks replaces this
+    /// call with its own.
+    /// </para>
     /// </remarks>
     private static void PublishFindings(DocumentTab document, ProjectionalEditorControl editor)
     {
-        editor.Markers = new MarkerSet([.. DefaultNames.Of(document.Model)]);
+        List<DiagnosticFix> fixes = [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
+
+        editor.Markers = new MarkerSet([.. fixes.Select(fix => fix.Diagnostic)]);
+        editor.Fixes = new FixSet([.. fixes]);
     }
 
     /// <summary>Applies a theme choice to the window, its chrome and every tab's control.</summary>
