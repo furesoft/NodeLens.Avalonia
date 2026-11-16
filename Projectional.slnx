@@ -22,4 +22,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Projectional.Screenshots/Projectional.Screenshots.csproj" />
+  </Folder>
 </Solution>
