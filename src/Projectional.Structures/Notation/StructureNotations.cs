@@ -3,22 +3,31 @@ using Projectional.Language;
 namespace Projectional.Structures.Notation;
 
 /// <summary>
-/// How a language definition is drawn: one line per concept, one per slot, nothing clever.
+/// How a language definition is drawn, in the shape MPS writes a structure model: a header, a block of options, and
+/// one section per kind of slot.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The provisional shape of slice P1, and provisional in a specific way: it reads like the C# a language author
-/// would have written - <c>concept Rules.Rule</c>, then its slots indented under it - rather than like MPS'
-/// angle-bracket block language. That is deliberate, because the shape of a definition should be decided by
-/// someone reading definitions, and P4 is where it becomes MPS-shaped.
+/// The shape is worth copying because it is the shape the problem has. A reader sees what the concept <em>is</em> in
+/// the header, what it allows in the options, and what it holds in three named sections - which is why a definition
+/// can be reviewed without its presentation, and why the sections are collections in the model rather than a
+/// grouping the renderer invents.
 /// </para>
 /// <para>
-/// It is a real notation all the same, and the tests render it: a definition language that needed a rendering
-/// exception would not be a language, and a definition nobody can look at is a data structure.
+/// Empty sections show <c>&lt;&lt; ... &gt;&gt;</c>, MPS' placeholder, rather than a bare heading: a section nobody
+/// has filled is a state to see, and a heading with nothing under it reads as a mistake.
+/// </para>
+/// <para>
+/// What this <em>cannot</em> do yet is MPS' conditional cells: <c>abstract</c> appears in MPS only when the concept
+/// is abstract, while this notation always draws the option with its value. Making a cell disappear is a notation
+/// feature the engine does not have, and inventing it here would be a second mechanism beside the notation - the
+/// honest form until then is <c>is abstract: true</c>.
 /// </para>
 /// </remarks>
 public static class StructureNotations
 {
+    private const string NoEntries = "<< ... >>";
+
     /// <summary>Registers the notation of every concept of the structure language.</summary>
     /// <param name="notations">The registry to add to.</param>
     /// <exception cref="ArgumentNullException"><paramref name="notations"/> is <see langword="null"/>.</exception>
@@ -28,88 +37,73 @@ public static class StructureNotations
 
         var ed = NotationEditor.Create();
 
+        // The two lists are separate slots, so an unlabelled document would be two identical placeholders and no
+        // way to tell which one creates a concept. The heading is a constant of the notation, not a slot of the
+        // model: nothing is stored for it and nothing can be typed into it.
         notations.Add(StructureConceptKeys.Language, ed => ed.Sequence(
-            ed.Children(StructureLanguage.EnumerationSlot, "<no enumerations>"),
-            ed.Children(StructureLanguage.ConceptSlot, "<no concepts>")));
+            ed.Line(ed.Keyword("enumerations:")),
+            ed.Indent(ed.Children(StructureLanguage.EnumerationSlot, NoEntries)),
+            ed.Line(ed.Keyword("concepts:")),
+            ed.Indent(ed.Children(StructureLanguage.ConceptSlot, NoEntries))));
 
         notations.Add(StructureConceptKeys.Concept, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("concept"),
                 ed.Space,
-                ed.Property(StructureLanguage.KeySlot),
-                ed.Space,
-                ed.Keyword("abstract"),
-                ed.Punct("="),
-                ed.Property("isAbstract"),
-                ed.Space,
-                ed.Keyword("offered"),
-                ed.Punct("="),
-                ed.Property("isOfferedInCompletion")),
+                ed.Property(StructureLanguage.KeySlot)),
             ed.Indent(ed.Sequence(
-                ed.Line(ed.Keyword("named by"), ed.Space, ed.Property("nameSlot")),
-                ed.Line(ed.Keyword("described as"), ed.Space, ed.Property("description")),
-                ed.Children(StructureLanguage.SuperTypeSlot, "<no super concepts>"),
-                ed.Children(StructureLanguage.SlotSlot, "<no slots>")))));
+                ed.Line(ed.Keyword("is abstract:"), ed.Space, ed.Property("isAbstract")),
+                ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
+                ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
+                ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
+                ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
+                ed.Line(ed.Keyword("extends:")),
+                ed.Indent(ed.Children(StructureLanguage.SuperTypeSlot, NoEntries)),
+                ed.Line(ed.Keyword("properties:")),
+                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoEntries)),
+                ed.Line(ed.Keyword("children:")),
+                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoEntries)),
+                ed.Line(ed.Keyword("references:")),
+                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoEntries))))));
 
-        notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(
-            ed.Keyword("extends"),
-            ed.Space,
-            ed.Property("conceptKey")));
+        notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
-        // Abstract on purpose: a slot is written as one of the three kinds, and a bare one would be a slot with
-        // nothing to say. The notation exists so the abstract concept can still be drawn if it ever appears.
         notations.Add(StructureConceptKeys.Slot, ed => ed.Line(
             ed.Keyword("slot"),
             ed.Space,
             ed.Property("name")));
 
-        // The optional fields get their own lines, like the concept's do: an empty property holds no cells, so a
-        // "default ... as ..." written inline leaves gaps between the words that are still there.
         notations.Add(StructureConceptKeys.PropertyDecl, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("property"),
-                ed.Space,
-                ed.Property("name"),
-                ed.Space,
-                ed.Punct(":"),
-                ed.Space,
-                ed.Property("typeName")),
+            ed.Line(ed.Property("name"), ed.Space, ed.Punct(":"), ed.Space, ed.Property("typeName")),
             ed.Indent(ed.Sequence(
-                ed.Line(ed.Keyword("default"), ed.Space, ed.Property("defaultValue")),
-                ed.Line(ed.Keyword("described as"), ed.Space, ed.Property("description"))))));
+                ed.Line(ed.Keyword("default:"), ed.Space, ed.Property("defaultValue")),
+                ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description"))))));
 
         notations.Add(StructureConceptKeys.ChildDecl, ed => ed.Line(
-            ed.Keyword("child"),
-            ed.Space,
             ed.Property("name"),
             ed.Space,
             ed.Punct(":"),
             ed.Space,
             ed.Property("childConceptKey"),
             ed.Space,
-            ed.Keyword("cardinality"),
+            ed.Keyword("cardinality:"),
             ed.Space,
             ed.Property("cardinality")));
 
         notations.Add(StructureConceptKeys.ReferenceDecl, ed => ed.Line(
-            ed.Keyword("reference"),
-            ed.Space,
             ed.Property("name"),
             ed.Space,
             ed.Punct(":"),
             ed.Space,
             ed.Property("targetConceptKey"),
             ed.Space,
-            ed.Keyword("own subtree"),
+            ed.Keyword("own subtree:"),
             ed.Space,
             ed.Property("allowOwnSubtree")));
 
         notations.Add(StructureConceptKeys.Enumeration, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("enum"),
-                ed.Space,
-                ed.Property(StructureLanguage.KeySlot)),
-            ed.Indent(ed.Children("symbols", "<no symbols>"))));
+            ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),
+            ed.Indent(ed.Children("symbols", NoEntries))));
 
         notations.Add(StructureConceptKeys.EnumSymbol, ed => ed.Line(ed.Property("symbol")));
     }

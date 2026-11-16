@@ -3,8 +3,9 @@
 The second half of "a language is data": how a concept is drawn, written as nodes and lowered into the same
 `Notation` objects a language author writes by hand.
 
-Status: **delivered** as slice P2 of [language-authoring.md](language-authoring.md). Provisional in the same sense
-as [declared-structure.md](declared-structure.md): what a notation says, not yet MPS' cell glyphs (P5).
+Status: **delivered** as slice P2 of [language-authoring.md](language-authoring.md), and the surface now reads the
+way MPS writes `editor.mps` - brackets for the cell model. What is still missing are MPS' *cell glyphs* (borders,
+collapsible folds, the checkbox of an option), which is P5.
 
 ## One language per aspect, on purpose
 
@@ -15,7 +16,7 @@ shape the whole plan is built on.
 
 ## The language
 
-Fifteen concepts, and the split between them is the interesting part: it is the one rule the C# builder expresses
+Sixteen concepts, and the split between them is the interesting part: it is the one rule the C# builder expresses
 with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carried by **slot declarations** instead.
 
 | Concept | Holds | Kind |
@@ -35,10 +36,38 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Reference` | `slot` | a reference's target name |
 | `Editor.ChildInline` | `slot`, `emptyText` | one child, inline |
 | `Editor.Children` | `slot`, `emptyText`, `spacing` | many children, as blocks |
+| `Editor.Collection` | `slot`, `separator`, `emptyText`, `spacing` | many children between separators |
 
 **A block inside a line therefore cannot be written.** The model refuses it with `ModelInvariantException` before
 lowering runs, which is why the lowering has no inline/block check of its own: the rule moved from the compiler into
 the declarations, and there is exactly one place it lives.
+
+## The shape: MPS' brackets
+
+A notation is drawn with MPS' own markers, because they are a reading aid that costs nothing to copy: `[/ ... /]`
+opens and closes a container that stacks, and `[>` marks one cell of a line.
+
+```text
+notations:
+  editor for concept Rules.Rule variant: default
+  node cell layout:
+    [/
+      [> line
+        [> constant "rule" [> space [> {name}
+    /]
+```
+
+The brackets say what a reviewer needs to know before running anything: the root of this notation stacks, the thing
+inside it is one line, and that line is three inline cells - a constant, a space and a slot. A structure that deep
+reads top to bottom.
+
+**One compromise, and it is the engine's.** In MPS the inline cells of a line sit *on* the line. Here a line's
+`cells` slot is a `Many` slot, and a many-child cell is a block cell, so `ed.Children(cells)` draws one row per
+inline cell - `[> constant "rule" [> space [> {name}` above is three cells side by side because they happen to be
+drawn by a collection, not because they are nested. The model is unchanged and so is the reading (`[>` still means
+"one cell of a line"); what the notation cannot do is put a marker around each cell *and* keep them on one row. A
+`Line`'s children would have to be drawn by a cell type that lays siblings out horizontally *and* brackets each -
+that is P5's cell glyphs, not a change to this model.
 
 ## The lowering
 
@@ -68,7 +97,8 @@ singular names (`EditorLanguage`, `EditorLowering`, `EditorConceptKeys`), and th
 | Missing | Arrives with |
 | --- | --- |
 | tables as declared cells | P5 |
-| MPS-shaped cell glyphs | P5 |
+| MPS' cell glyphs: borders, folds, an option's checkbox | P5 |
+| a line's inline cells drawn on one row *with* their own brackets | P5, with a horizontal sibling cell |
 | variants beyond the name (`variant` property) | when a language needs a second drawing of one concept |
 | lowering a *whole* language project (structure + editor + dependencies) | P3 |
 
@@ -78,4 +108,4 @@ singular names (`EditorLanguage`, `EditorLowering`, `EditorConceptKeys`), and th
 declared path is only proven by the picture. Covered: the keyword/property/gap line renders as `rule Approved`; a
 block inside a line is refused by the model; a notation about an undeclared concept is refused by the lowering; an
 undeclared slot is refused by `NotationRegistry`; a variant travels; a named slot keeps the `emptyText` its author
-wrote; both definition languages are projectable; and a document that is not a notation is refused.
+wrote; a definition of a notation is drawn like any other model; and a document that is not a notation is refused.

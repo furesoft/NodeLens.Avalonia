@@ -97,7 +97,13 @@ public static class StructureLowering
         // `ConceptDefinitionException` as everything else here, so a definition that is wrong reads as one error.
         return new ConceptDeclaration(
             key,
-            concept.GetChildren(StructureLanguage.SlotSlot).Select(slot => LowerSlot(key, slot, enums)),
+            // Properties, then children, then references: the order MPS writes them in and the order a completion
+            // entry or a default fill sees, so the sections and the declaration order agree.
+            [
+                .. concept.GetChildren(StructureLanguage.PropertiesSlot).Select(slot => LowerSlot(key, slot, enums)),
+                .. concept.GetChildren(StructureLanguage.ChildrenSlot).Select(slot => LowerSlot(key, slot, enums)),
+                .. concept.GetChildren(StructureLanguage.ReferencesSlot).Select(slot => LowerSlot(key, slot, enums)),
+            ],
             concept.GetChildren(StructureLanguage.SuperTypeSlot)
                 .Select(super => Required(super, "conceptKey", $"'{key}'")),
             nameSlot: Optional(concept, "nameSlot"),

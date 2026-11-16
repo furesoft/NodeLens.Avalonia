@@ -309,7 +309,7 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   "is this a language".
 - **The namespace is `Projectional.Structures`, not `Projectional.Structure`**: CA1716 is an error here and
   `Structure` is a VB keyword. The class names keep `Structure`.
-- **`Projectional.Editors` is the other half (slice P2)**: the editor language, fifteen concepts whose nodes are a
+- **`Projectional.Editors` is the other half (slice P2)**: the editor language, sixteen concepts whose nodes are a
   notation, and `EditorLowering` into real `Notation`s. It is a *separate* language from the structure one, because
   a definition that mixes the domain with the presentation cannot be reviewed. The **inline/block split is carried
   by slot declarations** here - `Editor.Line.cells` holds `Editor.InlineCell` - so `ed.Line(ed.Indent(...))`'s
@@ -319,6 +319,20 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   `NotationRegistry`. The namespace is `Projectional.Editors` (plural) because `Projectional.Editor` would shadow
   every `Editor*` type of `Projectional.Editing`, and the notation of the notation lives in `…Editors.Rendering`
   because `…Notation` would shadow the `Notation` type.
+- **Both definition languages are drawn in MPS' shape** (`StructureNotations`, `Editors.Rendering.EditorNotations`):
+  a header, a block of options, then one section per kind of slot, with `<< ... >>` for an empty section and
+  `[/ ... /]` / `[>` for the editor language's cell model. **`<< ... >>` is the empty-list placeholder in both** -
+  do not "improve" one of them back to prose such as `<no notations>`; the same state gets the same glyph.
+- **`Structure.Concept` holds `properties`, `children` and `references` as three `Many` slots, not one `slots`
+  list.** The kind of a slot is a fact of the model, not something the renderer infers from the child's concept -
+  which is why MPS splits the sections too. The consequence is a **fixed rank**: lowering concatenates properties,
+  then children, then references, and that rank *is* the concept's declaration order, which decides the default
+  fill and the completion ranking. A definition that creates a reference before a property still declares the
+  property first; do not sort by creation order or by name.
+- **Two parts of MPS' look are out of reach and must not be faked**: MPS shows `abstract` only when it is true
+  (a notation here is a fixed tree of cells - there are no conditional cells), and `instance can be root` / `alias`
+  exist in MPS but lower nowhere here, so ADR 0014's "nothing declared-only" keeps them out. The honest form is
+  `is abstract: false` always drawn.
 
 ### The parity rule is executed by three tests
 
@@ -1350,7 +1364,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1432 tests**; anything below that means tests were deleted.
+it. **Baseline is 1434 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

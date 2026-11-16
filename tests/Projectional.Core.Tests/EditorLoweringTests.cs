@@ -138,16 +138,29 @@ public sealed class EditorLoweringTests
     }
 
     [Fact]
-    public void BothDefinitionLanguagesAreProjectable()
+    public void ADefinitionOfANotationIsDrawnLikeAnyOtherModel()
     {
-        // The plan's rule: a definition language that needed a rendering exception would not be a language.
-        var model = EditorLanguage.NewModel();
-        var notations = model.NewNode(EditorConceptKeys.Notations);
+        // The plan's rule: a definition language that needed a rendering exception would not be a language. The
+        // brackets are the reading aid - `[/ ... /]` stacks, `[>` is one cell of a line.
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+        var line = notation.Line(root, EditorConceptKeys.Keyword, EditorConceptKeys.Space, EditorConceptKeys.Property);
 
-        model.AddRoot(notations);
+        line.GetChildren(EditorLanguage.CellSlot)[0].Set("text", "rule");
+        line.GetChildren(EditorLanguage.CellSlot)[2].Set("slot", "name");
 
-        Assert.Contains("notation", LayoutSnapshot.Render(notations, EditorNotations.Create(), width: 120), StringComparison.Ordinal);
-        Assert.Equal("<no notations>", LayoutSnapshot.Render(notations, EditorNotations.Create(), width: 120));
+        Assert.Equal(
+            string.Join(
+                '\n',
+                "notations:",
+                "  editor for concept Rules.Rule variant: default",
+                "  node cell layout:",
+                "    [/",
+                "      [> line",
+                "        [> constant \"rule\" [> space [> {name}",
+                "    /]"),
+            LayoutSnapshot.Render(notation.Root, EditorNotations.Create(), width: 120));
     }
 
     [Fact]

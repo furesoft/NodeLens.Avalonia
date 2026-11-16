@@ -3,15 +3,27 @@ using Projectional.Language;
 namespace Projectional.Editors.Rendering;
 
 /// <summary>
-/// How a notation is drawn: one line per notation, its cells nested underneath.
+/// How a notation is drawn, in the shape MPS writes an editor model: which concept, which variant, and the cell
+/// layout underneath.
 /// </summary>
 /// <remarks>
-/// Provisional, like the structure language's own notation and for the same reason: the MPS-shaped glyphs for
-/// cells are slice P5. What matters here is that a notation is a model that can be opened and read - a definition
-/// nobody can look at is a data structure, not a language.
+/// <para>
+/// The brackets are the point. MPS draws a vertical collection as <c>[/ ... /]</c> and an inline cell as
+/// <c>[&gt;</c>, so a reader can see the shape of the tree without running it - a <c>[/</c> opens a block that
+/// stacks, and every line inside it is one row. Copying that gives the same reading in a projectional editor:
+/// the structure of the notation is the structure of the drawing.
+/// </para>
+/// <para>
+/// One difference is deliberate and worth knowing: in MPS the cells of a line sit on the line, while here an inline
+/// cell is shown as its own <c>[&gt;</c> row, because a line's notation cannot hold a child block. The shape of the
+/// <em>model</em> is unchanged - it is still a line of inline cells - and the notation of the notation has to make
+/// the same compromise any notation does when it draws a language with deeper structure than its own.
+/// </para>
 /// </remarks>
 public static class EditorNotations
 {
+    private const string NoEntries = "<< ... >>";
+
     /// <summary>Registers the notation of every concept of the editor language.</summary>
     /// <param name="notations">The registry to add to.</param>
     /// <exception cref="ArgumentNullException"><paramref name="notations"/> is <see langword="null"/>.</exception>
@@ -21,89 +33,103 @@ public static class EditorNotations
 
         var ed = NotationEditor.Create();
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Notations, ed => ed.Children(
-            EditorLanguage.NotationSlot,
-            "<no notations>"));
+        notations.Add(EditorConceptKeys.Notations, ed => ed.Sequence(
+            ed.Line(ed.Keyword("notations:")),
+            ed.Indent(ed.Children(EditorLanguage.NotationSlot, NoEntries))));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Notation, ed => ed.Sequence(
+        notations.Add(EditorConceptKeys.Notation, ed => ed.Sequence(
             ed.Line(
-                ed.Keyword("notation"),
+                ed.Keyword("editor for concept"),
                 ed.Space,
                 ed.Property(EditorLanguage.ConceptKeySlot),
                 ed.Space,
-                ed.Keyword("variant"),
+                ed.Keyword("variant:"),
+                ed.Space,
                 ed.Property("variant")),
-            ed.Indent(ed.Sequence(ed.Line(ed.ChildInline(EditorLanguage.RootSlot, "<no root>"))))));
+            ed.Line(ed.Keyword("node cell layout:")),
+            ed.Indent(ed.Sequence(ed.Line(ed.ChildInline(EditorLanguage.RootSlot, "<no layout>"))))));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Cell, ed => ed.Line(ed.Keyword("cell")));
-        notations.Add(Projectional.Editors.EditorConceptKeys.InlineCell, ed => ed.Line(ed.Keyword("inline")));
-        notations.Add(Projectional.Editors.EditorConceptKeys.BlockCell, ed => ed.Line(ed.Keyword("block")));
-        notations.Add(Projectional.Editors.EditorConceptKeys.Space, ed => ed.Line(ed.Keyword("space")));
+        notations.Add(EditorConceptKeys.Cell, ed => ed.Line(ed.Keyword("cell")));
+        notations.Add(EditorConceptKeys.InlineCell, ed => ed.Line(ed.Keyword("inline cell")));
+        notations.Add(EditorConceptKeys.BlockCell, ed => ed.Line(ed.Keyword("block cell")));
+        notations.Add(EditorConceptKeys.Space, ed => ed.Line(ed.Keyword("[> space")));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Line, ed => ed.Sequence(
-            ed.Line(ed.Keyword("line")),
-            ed.Indent(ed.Children(EditorLanguage.CellSlot, "<empty line>"))));
+        notations.Add(EditorConceptKeys.Line, ed => ed.Sequence(
+            ed.Line(ed.Keyword("[> line")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Sequence, ed => ed.Sequence(
-            ed.Line(ed.Keyword("sequence")),
-            ed.Indent(ed.Children(EditorLanguage.CellSlot, "<empty sequence>"))));
+        notations.Add(EditorConceptKeys.Sequence, ed => ed.Sequence(
+            ed.Line(ed.Keyword("[/")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries)),
+            ed.Line(ed.Keyword("/]"))));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Indent, ed => ed.Sequence(
-            ed.Line(ed.Keyword("indent")),
-            ed.Indent(ed.Children(EditorLanguage.CellSlot, "<empty indent>"))));
+        notations.Add(EditorConceptKeys.Indent, ed => ed.Sequence(
+            ed.Line(ed.Keyword("[/ indent")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries)),
+            ed.Line(ed.Keyword("/]"))));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Keyword, ed => ed.Line(
-            ed.Keyword("keyword"),
+        notations.Add(EditorConceptKeys.Keyword, ed => ed.Line(
+            ed.Keyword("[>"),
+            ed.Space,
+            ed.Keyword("constant"),
             ed.Space,
             ed.Punct("\""),
             ed.Property("text"),
             ed.Punct("\"")));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Punct, ed => ed.Line(
-            ed.Keyword("punct"),
+        notations.Add(EditorConceptKeys.Punct, ed => ed.Line(
+            ed.Keyword("[>"),
+            ed.Space,
+            ed.Keyword("punctuation"),
             ed.Space,
             ed.Punct("\""),
             ed.Property("text"),
             ed.Punct("\"")));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Property, ed => ed.Line(
-            ed.Keyword("property"),
-            ed.Space,
-            ed.Property("slot")));
-
-        notations.Add(Projectional.Editors.EditorConceptKeys.Reference, ed => ed.Line(
-            ed.Keyword("reference"),
-            ed.Space,
-            ed.Property("slot")));
-
-        notations.Add(Projectional.Editors.EditorConceptKeys.ChildInline, ed => ed.Line(
-            ed.Keyword("child"),
-            ed.Space,
+        notations.Add(EditorConceptKeys.Property, ed => ed.Line(
+            ed.Keyword("[> {"),
             ed.Property("slot"),
-            ed.Space,
-            ed.Keyword("empty"),
-            ed.Property("emptyText")));
+            ed.Punct("}")));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Collection, ed => ed.Sequence(
+        notations.Add(EditorConceptKeys.Reference, ed => ed.Line(
+            ed.Keyword("[> reference {"),
+            ed.Property("slot"),
+            ed.Punct("}")));
+
+        notations.Add(EditorConceptKeys.ChildInline, ed => ed.Sequence(
             ed.Line(
-                ed.Keyword("collection"),
+                ed.Keyword("[> child <"),
                 ed.Space,
-                ed.Property("slot"),
+                ed.Keyword("empty:"),
                 ed.Space,
-                ed.Keyword("empty"),
                 ed.Property("emptyText")),
-            ed.Indent(ed.Sequence(ed.Line(ed.Keyword("separator"), ed.Space, ed.ChildInline("separator"))))));
+            ed.Indent(ed.Sequence(ed.Line(ed.Property("slot"))))));
 
-        notations.Add(Projectional.Editors.EditorConceptKeys.Children, ed => ed.Line(
-            ed.Keyword("children"),
-            ed.Space,
-            ed.Property("slot"),
-            ed.Space,
-            ed.Keyword("empty"),
-            ed.Property("emptyText"),
-            ed.Space,
-            ed.Keyword("spacing"),
-            ed.Property("spacing")));
+        notations.Add(EditorConceptKeys.Children, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[/ children"),
+                ed.Space,
+                ed.Keyword("empty:"),
+                ed.Space,
+                ed.Property("emptyText"),
+                ed.Space,
+                ed.Keyword("spacing:"),
+                ed.Space,
+                ed.Property("spacing")),
+            ed.Indent(ed.Sequence(ed.Line(ed.Property("slot")))),
+            ed.Line(ed.Keyword("/]"))));
+
+        notations.Add(EditorConceptKeys.Collection, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[/ collection"),
+                ed.Space,
+                ed.Keyword("empty:"),
+                ed.Space,
+                ed.Property("emptyText")),
+            ed.Indent(ed.Sequence(
+                ed.Line(ed.Property("slot")),
+                ed.Line(ed.Keyword("separator:"), ed.Space, ed.ChildInline("separator")))),
+            ed.Line(ed.Keyword("/]"))));
     }
 
     /// <summary>A registry holding only the editor language.</summary>

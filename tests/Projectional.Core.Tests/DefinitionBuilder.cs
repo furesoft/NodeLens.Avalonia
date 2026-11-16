@@ -60,7 +60,16 @@ internal sealed class DefinitionBuilder
 
         foreach (var slot in slots ?? [])
         {
-            concept.AddChild(StructureLanguage.SlotSlot, slot);
+            // Each kind goes into its own collection, which is what a language author's `properties:` /
+            // `children:` / `references:` sections are.
+            concept.AddChild(
+                slot.Concept.Key switch
+                {
+                    StructureConceptKeys.PropertyDecl => StructureLanguage.PropertiesSlot,
+                    StructureConceptKeys.ChildDecl => StructureLanguage.ChildrenSlot,
+                    _ => StructureLanguage.ReferencesSlot,
+                },
+                slot);
         }
 
         return concept;
