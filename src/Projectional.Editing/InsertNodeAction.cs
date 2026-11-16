@@ -56,24 +56,19 @@ public sealed class InsertNodeAction : EditAction
 
     /// <summary>Creates a node for the empty slot, choosing a concept that can actually be instantiated.</summary>
     /// <remarks>
-    /// A slot declared over an abstract concept names a set rather than a node, so the concept that
-    /// ends up in it is the language's default for that set. A slot whose declared concept and every
-    /// concept below it is abstract has nothing to create, and Enter leaves the model alone rather than
-    /// inventing a node the language said cannot exist.
+    /// The creation itself is <see cref="InsertChildAction"/>, so pressing Enter on an empty slot and a
+    /// repair that fills the same slot cannot disagree about what belongs there. A slot declared over an
+    /// abstract concept names a set rather than a node, so the concept that ends up in it is the language's
+    /// default for that set.
     /// </remarks>
     private static EditResult FillSlot(EditContext context, Selection selection, CaretPlace place, string slot)
     {
-        if (context.NodeOf(place.Address) is not { } owner
-            || owner.Concept.FindChild(slot) is not { } declared
-            || context.Concepts.DefaultInstantiableFor(declared.ChildConceptKey) is not { } concept)
+        if (context.NodeOf(place.Address) is not { } owner)
         {
             return EditResult.Unchanged(selection);
         }
 
-        var created = context.AddChild(owner, slot, concept.Key);
-
-        return EditResult.Applied(
-            Selection.At(CellAddress.OfElement(owner.Id, slot, created.IndexInParent)));
+        return new InsertChildAction(owner.Id, slot).Apply(context);
     }
 
     /// <summary>Adds another element to the list slot the caret's node sits in.</summary>
