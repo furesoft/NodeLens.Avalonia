@@ -286,6 +286,13 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   no rule. `ExpressionsLanguage.TypingRules` is the reference declaration; `RulesLanguage`
   forwards it. What the editor does with a claim is in
   `docs/architecture/language.md` §Typing rules and `editing.md` §Typing into an empty slot.
+- **`Applicability` is the "conditional concept"**: a concept may name the places it may stand in
+  (`Applicability.Only(new ConceptPlace(Class, "attributes"), ...)`), because some concepts are not valid
+  everywhere their type is accepted - a C# attribute, an XML comment. It is consulted by completion, by
+  Enter's default fill and by the typing rules, and **enforced** in `Model.InsertChild`/`InsertChildAt`/
+  `InsertRootAt`, which is why a filter bug cannot produce an illegal document. A concept that names places
+  can never be a root (no parent, no slot). Do not merge it with `isOfferedInCompletion`: that one silences
+  the list only, this one is legality. `ConceptRegistry.Create` validates every place at registration.
 - **`ITriggerRules` sits beside it, in `Projectional.Language/Triggers/`**, and says what a typed
   character means at the *edge* of a node that already exists; `ExpressionsLanguage.Triggers` is the
   reference declaration and `RulesLanguage` forwards it the same way. Same layering reason, same
@@ -1181,7 +1188,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1312 tests**; anything below that means tests were deleted.
+it. **Baseline is 1333 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

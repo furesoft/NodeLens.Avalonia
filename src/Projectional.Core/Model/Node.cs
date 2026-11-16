@@ -115,6 +115,8 @@ public sealed class Node
             throw new ModelInvariantException($"Node {child.Id} cannot be inserted into its own subtree.");
         }
 
+        Model.RequireApplicable(child, this, name);
+
         var siblings = _children[name];
         if (declaration.Cardinality == Cardinality.One && siblings.Count > 0 && !ReferenceEquals(siblings[0], child))
         {
@@ -413,6 +415,8 @@ public sealed class Node
     /// <summary>Puts a child into a slot at a known index, as restoring a deletion needs.</summary>
     internal void InsertChildAt(string name, int index, Node child)
     {
+        Model.RequireApplicable(child, this, name);
+
         var siblings = _children[name];
         index = Math.Min(index, siblings.Count);
         siblings.Insert(index, child);

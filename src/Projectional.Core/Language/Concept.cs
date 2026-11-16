@@ -19,7 +19,8 @@ public sealed class Concept
         bool isAbstract,
         bool isOfferedInCompletion,
         string? description = null,
-        PropertySlot? collapseSlot = null)
+        PropertySlot? collapseSlot = null,
+        Applicability? applicability = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -29,6 +30,7 @@ public sealed class Concept
         IsOfferedInCompletion = isOfferedInCompletion;
         Description = description;
         CollapseSlot = collapseSlot;
+        Applicability = applicability ?? Applicability.Anywhere;
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -89,6 +91,15 @@ public sealed class Concept
     /// is always a boolean.
     /// </remarks>
     public PropertySlot? CollapseSlot { get; }
+
+    /// <summary>Where nodes of this concept may stand; <see cref="Core.Applicability.Anywhere"/> when unconstrained.</summary>
+    /// <remarks>
+    /// A constraint the concept carries rather than one its slots carry, because it is not about the slot: the
+    /// same concept may be allowed in one place and forbidden in another of the same type. The model refuses a
+    /// placement it forbids, and the editor consults it before offering or creating one.
+    /// </remarks>
+    public Applicability Applicability { get; }
+
 
     /// <summary>Whether this concept is <paramref name="conceptKey"/> itself or extends it.</summary>
     public bool IsKindOf(string conceptKey) => conceptKey is not null && _ancestry.Contains(conceptKey);

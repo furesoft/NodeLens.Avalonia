@@ -144,6 +144,7 @@ rule that claims nothing produces.
 | `+` `-` `*` `/` `==` `&&` ... | any expression, right | `Binary` with the expression on the left, operator filled, caret in `right` |
 | `+` `-` `*` ... | any expression, left | `Binary` with the expression on the right, caret in the empty `left` |
 | `-` `!` | any expression, left | `Unary` with the expression as its operand |
+| `(` | any expression, left | `Parenthesized` around it, caret inside |
 
 The negation is declared first because it is the narrower reading of `-`; declaration order is how a
 language says "this one first". `-5` is a number, so a minus in front of a literal never reaches

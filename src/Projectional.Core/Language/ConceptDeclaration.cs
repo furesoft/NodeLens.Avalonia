@@ -18,7 +18,8 @@ public sealed class ConceptDeclaration
         bool isAbstract = false,
         bool isOfferedInCompletion = true,
         string? description = null,
-        string? collapseSlot = null)
+        string? collapseSlot = null,
+        Applicability? applicability = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -77,6 +78,7 @@ public sealed class ConceptDeclaration
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         CollapseSlot = collapseSlot;
+        Applicability = applicability ?? Applicability.Anywhere;
 
         // Trimmed, and an empty one is no description at all: "declared nothing" and "declared a blank"
         // have to be one state, or a language ships a tooltip that shows nothing.
@@ -142,6 +144,26 @@ public sealed class ConceptDeclaration
     /// never nominates one behaves exactly as it did before folding existed.
     /// </remarks>
     public string? CollapseSlot { get; }
+
+    /// <summary>
+    /// Where nodes of this concept may stand, or <see cref="Applicability.Anywhere"/> when the language
+    /// constrains nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// For the concepts that are not valid wherever their type is accepted: an attribute on a class, a method or
+    /// a parameter and nowhere else, an XML comment only in front of a class or a method. Without it the editor
+    /// offers such a concept in slots that would reject it, and the model accepts a node the language forbids
+    /// ([Applicability](../architecture/language.md#applicability)).
+    /// </para>
+    /// <para>
+    /// A place names a concept and, optionally, one slot of it; naming a super concept is how "anywhere inside a
+    /// declaration" is written. The registry checks every place at registration - the concept must exist, and a
+    /// named slot must hold children that accept this concept - so a typo is a language error at load, not a
+    /// keystroke that does nothing.
+    /// </para>
+    /// </remarks>
+    public Applicability Applicability { get; }
 
     public override string ToString() => Key;
 }

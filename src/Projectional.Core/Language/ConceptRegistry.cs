@@ -99,6 +99,35 @@ public sealed class ConceptRegistry
             }
         }
 
+        foreach (var concept in ordered)
+        {
+            foreach (var place in concept.Applicability.Places)
+            {
+                if (!byKey.TryGetValue(place.ConceptKey, out var host))
+                {
+                    throw new ConceptDefinitionException(
+                        $"Concept '{concept.Key}' may stand in '{place}', which is never declared.");
+                }
+
+                if (place.Slot is not { } slot)
+                {
+                    continue;
+                }
+
+                if (host.FindChild(slot) is not { } child)
+                {
+                    throw new ConceptDefinitionException(
+                        $"Concept '{concept.Key}' may stand in '{place}', but '{host.Key}' declares no child slot named '{slot}'.");
+                }
+
+                if (!concept.IsKindOf(child.ChildConceptKey))
+                {
+                    throw new ConceptDefinitionException(
+                        $"Concept '{concept.Key}' may stand in '{place}', but that slot holds '{child.ChildConceptKey}'.");
+                }
+            }
+        }
+
         return new ConceptRegistry(byKey, ordered);
     }
 
@@ -130,19 +159,42 @@ public sealed class ConceptRegistry
     /// </remarks>
     public Concept? DefaultInstantiableFor(string conceptKey)
     {
+        return DefaultInstantiableFor(conceptKey, parent: null, slot: null);
+    }
+
+    /// <summary>
+    /// What to create when filling <paramref name="slot"/> of <paramref name="parent"/>, skipping a concept
+    /// that may not stand there.
+    /// </summary>
+    /// <param name="conceptKey">The concept the slot is declared over.</param>
+    /// <param name="parent">The node that would hold it, or <see langword="null"/> for a model root.</param>
+    /// <param name="slot">That node's child slot, or <see langword="null"/> for a model root.</param>
+    /// <returns>
+    /// The first concrete concept below <paramref name="conceptKey"/>, in declaration order, that
+    /// <see cref="Applicability"/> allows there, or <see langword="null"/> when none does.
+    /// </returns>
+    /// <remarks>
+    /// The context is why this exists: a concept can be a legal child of a slot by type and still not belong in
+    /// *this* slot - an attribute in a place the language forbids. Filling an empty slot has to skip it and take
+    /// the next candidate rather than create something the model would then refuse.
+    /// </remarks>
+    public Concept? DefaultInstantiableFor(string conceptKey, Concept? parent, string? slot)
+    {
         if (!TryGet(conceptKey, out var requested))
         {
             return null;
         }
 
-        if (!requested.IsAbstract)
+        if (!requested.IsAbstract && requested.Applicability.Allows(parent, slot))
         {
             return requested;
         }
 
         foreach (var candidate in _ordered)
         {
-            if (!candidate.IsAbstract && candidate.IsKindOf(conceptKey))
+            if (!candidate.IsAbstract
+                && candidate.IsKindOf(conceptKey)
+                && candidate.Applicability.Allows(parent, slot))
             {
                 return candidate;
             }
@@ -250,6 +302,7 @@ public sealed class ConceptRegistry
             declaration.IsAbstract,
             declaration.IsOfferedInCompletion,
             declaration.Description,
-            collapseSlot);
+            collapseSlot,
+            declaration.Applicability);
     }
 }
