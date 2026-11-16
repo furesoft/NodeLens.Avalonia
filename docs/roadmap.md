@@ -121,7 +121,7 @@ twin is still in the repository and still agrees with it, because the parity har
 | Scopes | chain, defaults, per-language overrides, ambiguity diagnostics |
 | Reference cells | resolve, create-on-the-fly, unresolved state, chooser popup |
 | Completion | scope-driven entries alongside the concepts M1 already offers, insert-and-continue ([completion.md](architecture/completion.md)) |
-| Substitutions | transformation menus, wrapping, keyword-triggered insertion |
+| Substitutions | transformation menus and wrapping; keyword-triggered insertion is **delivered ahead of this milestone** as concept triggers ([triggers.md](architecture/triggers.md)) |
 | Intentions (light bulb) | actions offered at the caret by the language and by the host, applied as one undo step ([context-actions.md](architecture/context-actions.md)) |
 | Intention preview | a longer hover shows what the highlighted entry would do, by applying it to a discarded copy and projecting that; the live model is never touched ([intention-preview.md](architecture/intention-preview.md)) |
 

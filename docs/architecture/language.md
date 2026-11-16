@@ -224,6 +224,35 @@ The rules live in `Projectional.Language` beside `ICellEmphasis`, not in the edi
 language package can declare them without referencing the editor. What the editor does with a
 claim is [editing.md](editing.md#typing-into-an-empty-slot).
 
+## Triggers
+
+A typing rule answers for an **empty** slot. The neighbour question - the caret is at the edge of a
+node that is already there, and the character typed says what should surround it - is a *trigger*,
+declared the same way, in the same package, for the same reason.
+
+```csharp
+public static ITriggerRules Triggers { get; } = TriggerRegistry.Empty
+    .Add(new ConceptTrigger(
+        ExpressionsConceptKeys.Binary,
+        ExpressionsConceptKeys.Expression,
+        TriggerSide.Right,
+        text => ExpressionOperators.Binary.Contains(text),
+        anchorSlot: "left",
+        propertySlot: "operator",
+        caretSlot: "right"));
+```
+
+A trigger names the concept to create, the anchor concept it applies to, the side of the anchor the
+caret must stand at, the slot of the new concept that receives it, and - both optional - where the
+typed text goes and where the caret continues. `TriggerRegistry` is immutable and answers
+`Find(Concept)` in declaration order, which is the only tie-break where two triggers claim the same
+character.
+
+The rule that decides everything: **text a property accepts is never given to a trigger.** `-` in
+front of `5` writes `-5`, because a negative number is a number; only a refused keystroke asks the
+triggers. [triggers.md](triggers.md) is the design of record, including the caret-to-anchor rules,
+the guards that keep a bad declaration from throwing, and the limits.
+
 ## Aspects
 
 Aspects are the semantic hooks. All are optional per concept, all are delegates

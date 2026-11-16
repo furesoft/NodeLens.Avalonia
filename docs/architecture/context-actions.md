@@ -407,7 +407,7 @@ edit, never a second description of one.
 | Authoring intentions in the language editor (declared form) | follows the other aspects through the bootstrap stages; M5 |
 | Intention search across the whole document (`Ctrl+Shift+A`) | a command palette is a shell feature, not an editing one, and needs its own ranking rules |
 | Preview of a change across several files | the same machinery as a single-document preview; what it still needs is a policy for scrolling and switching tabs, which is M6 with the refactorings |
-| Auto-apply when typing (MPS' transformation triggers) | that is the substitution-action feature of M3, which shares the action model but not the affordance |
+| Auto-apply when typing (MPS' transformation triggers) | that is the [concept-trigger](triggers.md) half of substitutions, delivered as a typed gesture; an intention is always something the user picks |
 | Intention ranking by usage statistics | unexplainable ordering; fixed order is debuggable |
 | Localisation of labels | labels are strings until the M5 message-key pass |
 
