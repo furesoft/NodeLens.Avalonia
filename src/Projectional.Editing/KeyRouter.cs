@@ -57,7 +57,7 @@ public static class KeyRouter
         EditorKey.Copy => new CopyAction(),
         EditorKey.Cut => new CutAction(),
         EditorKey.Paste => new PasteAction(),
-        EditorKey.QuickFix => new QuickFixAction(),
+        EditorKey.QuickFix => new OfferAction(),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown editor key."),
     };
 
@@ -83,12 +83,12 @@ public static class KeyRouter
     {
         ArgumentNullException.ThrowIfNull(session);
 
-        // An open quick-fix list is asked first: it was opened by a deliberate gesture on a line that has
-        // repairs, so while it is up the arrows and Enter belong to it. Escape is shared - it closes
-        // whichever list is open, which is what one gesture for "never mind" means.
-        if (session.OfferedFixes is not null && QuickFixListed(key) is { } quickFix)
+        // An open offer list is asked first: it was opened by a deliberate gesture at a caret that has
+        // something to offer, so while it is up the arrows and Enter belong to it. Escape is shared - it
+        // closes whichever list is open, which is what one gesture for "never mind" means.
+        if (session.Offered is not null && OfferListed(key) is { } offer)
         {
-            return quickFix;
+            return offer;
         }
 
         if (session.Completion is { } list && Listed(list, key) is { } listed)
@@ -140,17 +140,17 @@ public static class KeyRouter
             : offset < cell.Text.Length;
     }
 
-    /// <summary>What <paramref name="key"/> means while a quick-fix list is open, if anything.</summary>
+    /// <summary>What <paramref name="key"/> means while an offer list is open, if anything.</summary>
     /// <remarks>
     /// Up and Down move the highlight rather than the caret, so a list that is up cannot be navigated past
-    /// and lost. Enter and Tab apply the highlighted repair - Tab as well, because that is what accepts a
+    /// and lost. Enter and Tab apply the highlighted offer - Tab as well, because that is what accepts a
     /// completion and a user who has learned one list has learned both.
     /// </remarks>
-    private static EditAction? QuickFixListed(EditorKey key) => key switch
+    private static EditAction? OfferListed(EditorKey key) => key switch
     {
-        EditorKey.Up => new SelectQuickFixAction(-1),
-        EditorKey.Down => new SelectQuickFixAction(1),
-        EditorKey.Enter or EditorKey.Tab => new AcceptQuickFixAction(),
+        EditorKey.Up => new SelectOfferAction(-1),
+        EditorKey.Down => new SelectOfferAction(1),
+        EditorKey.Enter or EditorKey.Tab => new AcceptOfferAction(),
         EditorKey.Escape => new DismissCompletionAction(),
         _ => null,
     };

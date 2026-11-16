@@ -571,8 +571,8 @@ transaction and rolls back completely if a step is rejected.
   `QuickFixes.At(session)` answers the caret's line (resolved geometrically, `MarkerGeometry` tops against
   `CaretBounds`), worst finding first; `QuickFixes.Of(session, diagnostic)` answers one finding. Both are
   derived per call and never cached.
-- **`EditSafety` decides whether a lone offer may run.** `EditorSession.ApplyQuickFixes()` applies a lone
-  offer only when it is `EditSafety.Plain` *and* not disabled; anything else opens a `QuickFixList`. A list
+- **`EditSafety` decides whether a lone offer may run.** `EditorSession.ApplyOffers()` applies a lone
+  offer only when it is `EditSafety.Plain` *and* not disabled; anything else opens a `OfferList`. A list
   of one is therefore legal **only** because a destructive or disabled repair is asking rather than being
   offered - do not restore the old "at least two" rule.
 - **A fix's label names the result** ("Rename to \"Check2\"") and `Description` is part of the contract; a
@@ -641,8 +641,30 @@ path a keystroke takes.
 
 Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
 the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`;
-`docs/architecture/context-actions.md` carries the plan and the remaining slices (C onwards: popup, bulb,
+`docs/architecture/context-actions.md` carries the plan and the remaining slices (D onwards: submenu,
 samples, preview, standard catalogue).
+
+**The gesture and the list are named differently on purpose.** `EditorKey.QuickFix`, `QuickFixAction` and
+`QuickFixBulb` keep the quick-fix name because they are the *affordance* the docs and ADR 0016 describe;
+everything about the *list* is an offer: `OfferList` (of `Intention` entries), `EditorSession.Offered`,
+`SelectOfferAction`, `AcceptOfferAction`, `OfferPresenter` (in `Projectional.Avalonia/Offers/`) and
+`EditorSession.ApplyOffers()`. Do not "tidy" one half into the other's vocabulary - the split is what keeps
+"a quick fix is an intention carrying its `DiagnosticFix`" readable.
+
+- **`ApplyOffers()` asks `IntentionList.For(session)`**, so the popup lists host, language and fixes
+  together. The lone-plain rule therefore covers both catalogues; an entry that is `Disabled` or
+  `Destructive` opens the list (including a one-entry list).
+- **`AcceptOffer` calls `Apply(Intention)`**, which routes an entry carrying `Intention.Fix` through
+  `Apply(DiagnosticFix)` - so accepting a repair keeps its re-resolution, and accepting an intention builds
+  its action at that moment.
+- **`OfferList` refuses an `Absent` entry** in its constructor: the list is what the user chooses from, and
+  a row that says "not this caret" would be a row that cannot be chosen.
+- **The bulb asks the same list** (`IntentionList.For(session).Count > 0`) and keeps that answer keyed on
+  `(Layout, Caret, Markers, Fixes)`; a source registered *after* the document opened catches up on the next
+  caret move, which is why hosts register at open.
+- **Two offers with one id collapse to the first**, which is why the shell's `SHELL001` and the standard
+  `STD001` must not both be published: the user would read one sentence twice with nowhere to see the
+  duplicate. That is the same rule that lets a standard repair and its intention share an id.
 
 ## How the control paints and takes input
 
@@ -1039,7 +1061,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1214 tests**; anything below that means tests were deleted.
+it. **Baseline is 1220 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

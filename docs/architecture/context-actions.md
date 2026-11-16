@@ -1,16 +1,18 @@
 # Context actions (intentions)
 
-*Partly delivered: the model, the list and applying one (slices A and B).* This document is the design for
-the light bulb: the affordance that offers, at the caret, the edits that make sense *there* — "wrap in
-parentheses", "negate", "add the missing condition", "extract this into a rule". It is written before the
-code so that the three layers it touches — language, editing, control — agree on who owns what, and so the
-milestone that implements it has a gate instead of an ambition.
+*Partly delivered: the model, the list, applying one and the popup (slices A, B and C).* This document is
+the design for the light bulb: the affordance that offers, at the caret, the edits that make sense *there* —
+"wrap in parentheses", "negate", "add the missing condition", "extract this into a rule". It is written
+before the code so that the three layers it touches — language, editing, control — agree on who owns what,
+and so the milestone that implements it has a gate instead of an ambition.
 
-What exists today is everything a surface needs and nothing that draws: `Intention`, `IntentionContext`,
-`IntentionAvailability`, `IIntentionProvider` and `IntentionList.For(session)` in `Projectional.Editing`,
-the two registration groups on the session, `EditorSession.Apply(Intention)`, and the order and
-de-duplication rules below. The bulb, the popup entry and the context-menu submenu are the quick-fix
-affordances that already ship, and teaching them a second source is slice C onwards.
+What exists today: `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider` and
+`IntentionList.For(session)` in `Projectional.Editing`, the two registration groups on the session,
+`EditorSession.Apply(Intention)`, and the `Alt+Enter` popup, which now asks the merged list - `OfferList`
+holds the host's commands, the language's intentions and the caret line's quick fixes as `Intention`
+entries, and the bulb lights when any of them is offered. What is left is the "Intentions" submenu beside
+the quick fixes (D), real intentions in the shipped languages (E), the preview (F) and the rest of the
+standard catalogue (G).
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -156,15 +158,16 @@ never shows.
 
 | Input | Effect |
 | --- | --- |
-| `Alt+Enter`, `Ctrl+.` | open the list for the caret; if it holds exactly one applicable intention, run it |
+| `Alt+Enter`, `Ctrl+.` | open the list for the caret; if it holds exactly one plain offer, run it |
 | click the bulb | same list, with the pointer |
 | `Esc` | close without editing |
 | `Up`/`Down`, `Enter` | move and run — the list is navigable without a mouse |
 | hover an entry for 700 ms | show what it would do, in place ([intention-preview.md](intention-preview.md)) |
 
-"One intention → run it" is deliberate: the common case is a single fix, and a popup with one
-entry costs the user a keystroke for nothing. It also makes the feature usable from the
-keyboard before the popup exists, which is why the popup is a separate slice.
+"One offer → run it" is deliberate: the common case is a single cure, and a popup with one entry costs the
+user a keystroke for nothing. It also makes the feature usable from the keyboard before the popup exists,
+which is why the popup was a separate slice. A lone *destructive* or *disabled* offer opens the list
+instead, because the gesture asks what is available rather than acting on a guess.
 
 The list reuses the context-menu model: entries are `EditorMenuEntry`s, so labels, gestures,
 enabled state, separators, nesting and execution are already built and tested, and
@@ -371,7 +374,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | --- | --- | --- |
 | A ✓ | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider`, `IntentionList.For(session)`, the two registration groups on the session, one fixture intention beside the test language, tests for order, availability, dedup and the two-source resolution order (host, language, fixes) |
 | B ✓ | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced, the refusal of an offer that no longer applies, and the routing of a fix's entry back through the fix path |
-| C | `feat/intentions-keys` | the intention list in the `Alt+Enter` / `Ctrl+.` popup beside the fixes, built from `EditorMenuEntry`s through `EditorMenuPresenter` |
+| C ✓ | `feat/intentions-popup` | the offers gesture asks `IntentionList.For(session)`, so the `Alt+Enter` popup lists the host's commands and the language's intentions beside the fixes - `OfferList` of `Intention` entries, the same safety rule for both sources, and the bulb lit by either |
 | D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |

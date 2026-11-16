@@ -111,7 +111,7 @@ public sealed class DiagnosticFix
     /// A lone plain repair is applied by the gesture that asked for it, because a list of one costs a
     /// keystroke and tells the user nothing. A lone destructive one opens that list instead: the same
     /// keystroke that fills an empty slot must not be able to delete a node the user was only asking
-    /// about. The reading is done by <see cref="EditorSession.ApplyQuickFixes"/> and not by a surface, so
+    /// about. The reading is done by <see cref="EditorSession.ApplyOffers"/> and not by a surface, so
     /// every host inherits the rule.
     /// </remarks>
     public EditSafety Safety { get; }
