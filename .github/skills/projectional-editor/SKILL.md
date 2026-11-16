@@ -25,7 +25,7 @@ enumerated property offering its values on arrival), and text
 clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
 size, model-defined markers with hover tooltips, concept descriptions shown on hover and in the
 completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin), the standard
-check catalogue as a package (`Projectional.Checks`) and logical
+check catalogue as a package (`Projectional.Checks`), the intention model and its per-caret list, and logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
@@ -607,6 +607,43 @@ at once), so identity and undo survive; `WrapInAction` is that as an edit and `I
 address-based half of Enter (`InsertNodeAction.FillSlot` delegates to it). Both decline with a reason
 rather than throwing when the document moved on.
 
+## How intentions work
+
+An intention is a *way to find* an `EditAction` at the caret, in `Projectional.Editing/Intentions/`, and it
+is not a new kind of edit. The list is derived per call, never cached, and applies through the same session
+path a keystroke takes.
+
+- **`Intention`** carries `Id` (stable, never translated), `Label`, a **required** `Description` (a fix can
+  fall back to the finding's message; an intention has nothing behind it), an optional `Gesture`, an
+  `Availability`, an `EditSafety`, and `Create: Func<IntentionContext, EditAction?>`. That function is how
+  deciding and applying stay separate: an intention never mutates, it produces an action.
+- **`IntentionAvailability` has three states, unlike `FixAvailability`'s two**: `Applies`,
+  `Disabled(reason)` and `Absent`. A fix is built per finding, so "does not apply" is simply "not built"; an
+  intention is *declared once* and asked per caret, so it needs "not my caret" (`Absent`, dropped from the
+  list) as distinct from "mine, but not now" (`Disabled`, listed with its reason).
+- **A declaration is made per-caret with `With(availability)`**, which answers a copy. That is what lets a
+  language hand back its whole catalogue and let the list filter it - do not mutate a declared intention or
+  make availability a stored field of the aspect.
+- **`IntentionContext` is read-only**: model, tree, layout, measure, selection, the resolved `Place` and the
+  `Node` that owns the caret's cell. `Node` is the address *owner*, which is why an empty slot answers with
+  the parent ("insert a rule here" is about the parent). It deliberately has none of `EditContext`'s
+  mutation methods.
+- **`IntentionList.For(session)` is the only answer to "what is here"**: host providers, then language
+  providers, then `QuickFixes.At(session)`; each entry's `Id` de-duplicated first-wins, `Absent` dropped,
+  `Disabled` kept. Order is fixed by `IntentionSource`, not by registration order; `AddIntentions` defaults
+  the source to `Host`, so a language package says `Language` explicitly.
+- **A fix enters the list as an intention** (`Intention.FromFix`) and keeps the fix on the entry
+  (`Intention.Fix`). `Apply(Intention)` routes such an entry back through `Apply(DiagnosticFix)` so the
+  repair is re-resolved against the *current* `FixSet`; everything else is inherited.
+- **`Apply(Intention)`** refuses an absent or disabled offer with a reason, builds the action *when it runs*,
+  clears the coalescing key (one undo step), runs an `EditProgram` in one transaction that rolls back whole,
+  and closes any open quick-fix list. Do not move the "build the action at apply time" rule to list time.
+
+Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
+the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`;
+`docs/architecture/context-actions.md` carries the plan and the remaining slices (C onwards: popup, bulb,
+samples, preview, standard catalogue).
+
 ## How the control paints and takes input
 
 `Projectional.Avalonia` is one `Control` (`ProjectionalEditorControl`) plus one measure
@@ -1002,7 +1039,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1175 tests**; anything below that means tests were deleted.
+it. **Baseline is 1214 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
