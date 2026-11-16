@@ -5,10 +5,11 @@ A projectional editor knows which node a keystroke is about and owns every chang
 This document is the design of the layer between a finding and the edit that removes it: what a
 fix is, where it lives, how it reaches the user, and in which order the slices land.
 
-Status: **in progress.** Slices Q1 to Q3 are delivered - the fix model, the fix set on the session,
+Status: **in progress.** Slices Q1 to Q4 are delivered - the fix model, the fix set on the session,
 the query that answers which repairs the caret's line offers, applying one as a single undo step
-through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), and two real checks that
-carry repairs, one in a language package and one in the host. Q4 to Q6 are planned.
+through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that carry
+repairs, and the `Alt+Enter`/`Ctrl+.` gesture with its three answers. What a user still cannot see is
+the list of several repairs. Q5 and Q6 are planned.
 Markers are delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the
 constraint engine that will produce findings in volume at M4 - it is the half that makes the findings
 that already exist actionable.
@@ -196,6 +197,13 @@ The four surfaces are delivered in dependency order, and only the last one needs
    deliberately and early: a quick-fix gesture that moves after users have learned it is worse than
    one gesture reserved from the host on day one. [context-actions.md](context-actions.md) already
    names both for the intention list, and there must be one binding, not two.
+
+   **Delivered as far as the editing layer goes.** `EditorKey.QuickFix` carries the gesture,
+   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyQuickFixes()` gives the three
+   answers: nothing offered, one repair applied as its own undo step, or several held in
+   `OfferedFixes` for whoever draws them. What is still missing is the drawing - the list is a value
+   with no presenter yet, which is why the popup moved to slice Q5 with the menu rather than
+   shipping half of it here.
 2. **A "Quick fixes" submenu in the context menu.** Free: `EditorMenu.For(session)` is rebuilt on
    every opening and its entries are already `EditorMenuEntry`s that `EditorMenuPresenter` maps to
    the toolkit, so the fixes appear in the menu the user already knows before the popup, the bulb or
@@ -251,8 +259,8 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q1 ✓ | `feat/quick-fix-model` | `FixAvailability`, `DiagnosticFix`, `FixContext`, `FixSet`, `EditorSession.Fixes`, `QuickFixes.At/Of`, tests for keying, duplicate rejection, order, disabled, and a marker on a wrapped line |
 | Q2 ✓ | `feat/quick-fix-apply` | `EditorSession.Apply(DiagnosticFix)`, `EditProgram`, re-resolution by id, one-undo-step, stale rejection, rollback |
 | Q3 ✓ | `feat/quick-fix-sample` | `RULES001` and its rename fix in `Projectional.Samples.Checks`, a fix for the workbench's `SHELL001`, both published to the editor at open and on `Model.Changed` |
-| Q4 | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, popup from `EditorMenuEntry`s, verified with a probe |
-| Q5 | `feat/quick-fix-menu` | "Quick fixes" submenu in `EditorMenu`; the fix line in `MarkerTip` |
+| Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `OfferedFixes`; verified in a real window with a probe |
+| Q5 | `feat/quick-fix-popup` | the popup that draws `OfferedFixes` (a presenter beside `CompletionPresenter`, with its own row hit test and keyboard navigation), the "Quick fixes" submenu in `EditorMenu`, and the fix line in `MarkerTip` |
 | Q6 | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf`, the margin glyph, its hit test, its repaint policy, and the bulb showing for a marked line |
 
 Q1 and Q2 hold the invariants and are testable without a window; Q4 to Q6 are presentation and are
