@@ -126,7 +126,13 @@ public static class ExpressionsLanguage
             text => ExpressionOperators.Binary.Contains(text),
             anchorSlot: "left",
             propertySlot: "operator",
-            caretSlot: "right"));
+            caretSlot: "right"))
+        .Add(new ConceptTrigger(
+            ExpressionsConceptKeys.Parenthesized,
+            ExpressionsConceptKeys.Expression,
+            TriggerSide.Left,
+            text => text == "(",
+            anchorSlot: "inner"));
 
 
     private static bool ClaimsName(string text) =>

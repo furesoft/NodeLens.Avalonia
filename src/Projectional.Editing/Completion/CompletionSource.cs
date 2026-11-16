@@ -55,7 +55,10 @@ internal static class CompletionSource
 
         foreach (var concept in concepts.Concepts)
         {
-            if (!concept.IsAbstract && concept.IsOfferedInCompletion && concept.IsKindOf(declared))
+            if (!concept.IsAbstract
+                && concept.IsOfferedInCompletion
+                && concept.IsKindOf(declared)
+                && concept.Applicability.Allows(owner.Concept, slot))
             {
                 items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description));
             }

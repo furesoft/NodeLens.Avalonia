@@ -253,6 +253,7 @@ public sealed class TypeTextAction : EditAction
 
         return parent.Concept.FindChild(slot) is { } place
             && wrapper.IsKindOf(place.ChildConceptKey)
+            && wrapper.Applicability.Allows(parent.Concept, slot)
             && wrapper.FindChild(trigger.AnchorSlot) is { Cardinality: Cardinality.One } inner
             && node.Concept.IsKindOf(inner.ChildConceptKey);
     }
@@ -301,7 +302,7 @@ public sealed class TypeTextAction : EditAction
         if (slot is null
             || context.NodeOf(place.Address) is not { } owner
             || owner.Concept.FindChild(slot) is not { } declared
-            || FindClaimant(context, declared.ChildConceptKey) is not { } rule)
+            || FindClaimant(context, owner, slot, declared.ChildConceptKey) is not { } rule)
         {
             return EditResult.Unchanged(selection);
         }
@@ -327,12 +328,13 @@ public sealed class TypeTextAction : EditAction
     /// mean" the same way <see cref="ConceptRegistry.DefaultInstantiableFor"/> answers it for an empty
     /// slot.
     /// </remarks>
-    private TypingRule? FindClaimant(EditContext context, string declaredKey)
+    private TypingRule? FindClaimant(EditContext context, Node owner, string slot, string declaredKey)
     {
         foreach (var concept in context.Concepts.Concepts)
         {
             if (!concept.IsAbstract
                 && concept.IsKindOf(declaredKey)
+                && concept.Applicability.Allows(owner.Concept, slot)
                 && context.TypingRules.ClaimFor(concept.Key, Text) is { } rule)
             {
                 return rule;

@@ -90,7 +90,7 @@ public sealed class InsertChildAction : EditAction
         // A slot declared over an abstract concept whose every descendant is abstract is a set with nothing
         // in it. Enter is silent there rather than complaining, because the keystroke asked for "another
         // thing here" and the language has no thing to offer - so this is no answer, not a refusal.
-        if (context.Concepts.DefaultInstantiableFor(declared.ChildConceptKey) is not { } concept)
+        if (context.Concepts.DefaultInstantiableFor(declared.ChildConceptKey, owner.Concept, _slot) is not { } concept)
         {
             return EditResult.Unchanged(selection);
         }

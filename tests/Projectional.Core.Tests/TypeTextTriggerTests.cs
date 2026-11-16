@@ -354,6 +354,25 @@ public sealed class TypeTextTriggerTests
     }
 
     [Fact]
+    public void AnOpeningParenthesisTypedBeforeAnExpressionGroupsIt()
+    {
+        // A parenthesis is a gesture rather than a value: nothing is written, and the caret stays inside the
+        // expression that was grouped.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtStart(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("(")).Outcome);
+
+        var wrapper = Assert.Single(group.GetChildren("inner"));
+
+        Assert.Equal(ExpressionsConceptKeys.Parenthesized, wrapper.Concept.Key);
+        Assert.Same(literal, wrapper.GetChild("inner"));
+        Assert.Equal(CellAddress.OfSlot(literal.Id, "value"), session.Selection.Caret.Address);
+    }
+
+    [Fact]
     public void TheShippedLanguagesDeclareTriggersBesideTheirTypingRules()
     {
         Assert.False(ExpressionsLanguage.Triggers.IsEmpty);

@@ -463,11 +463,41 @@ public sealed class Model
     /// <summary>Puts <paramref name="node"/> at <paramref name="index"/> among the model roots.</summary>
     internal void InsertRootAt(int index, Node node)
     {
+        RequireApplicable(node, parent: null, slot: null);
+
         index = Math.Min(index, _roots.Count);
         _roots.Insert(index, node);
         node.Parent = null;
         node.ParentSlot = null;
         Node.ReindexFrom(_roots, index);
+    }
+
+    /// <summary>
+    /// Refuses a placement the concept's <see cref="Applicability"/> does not allow.
+    /// </summary>
+    /// <param name="node">The node about to be placed.</param>
+    /// <param name="parent">The node that would hold it, or <see langword="null"/> for a root.</param>
+    /// <param name="slot">That node's child slot, or <see langword="null"/> for a root.</param>
+    /// <exception cref="ModelInvariantException">The concept may not stand there.</exception>
+    /// <remarks>
+    /// Called by the three primitives every placement goes through, so it holds for a new node, a move, a wrap, a
+    /// load and a replay alike. That is what makes "a concept is not valid here" a property of the model rather
+    /// than a rule each caller has to remember - and it is why the editor's completion and insertion filters are
+    /// a courtesy, not the guarantee.
+    /// </remarks>
+    internal static void RequireApplicable(Node node, Node? parent, string? slot)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (node.Concept.Applicability.Allows(parent?.Concept, slot))
+        {
+            return;
+        }
+
+        throw new ModelInvariantException(
+            parent is null
+                ? $"Concept '{node.Concept.Key}' may not be a model root; it may stand in {node.Concept.Applicability}."
+                : $"Concept '{node.Concept.Key}' may not stand in slot '{slot}' of concept '{parent.Concept.Key}'; it may stand in {node.Concept.Applicability}.");
     }
 
     internal void MarkMutated() => Version++;
