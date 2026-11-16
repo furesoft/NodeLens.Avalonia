@@ -21,7 +21,7 @@ public sealed class ConceptTipTests
         var content = ConceptTip.Of(rule);
 
         Assert.NotNull(content);
-        Assert.Equal("Test.Rule", content.ConceptKey);
+        Assert.Equal("Test.Rule", content.Heading);
         Assert.Equal(Sentence, content.Description);
     }
 
@@ -37,7 +37,7 @@ public sealed class ConceptTipTests
     {
         var rule = TestEditor.BareRule();
 
-        var lines = ConceptTip.Lines(ConceptTip.Of(rule)!, 80, MonospaceTextMeasure.Instance);
+        var lines = TipLines.Of(ConceptTip.Of(rule)!, 80, MonospaceTextMeasure.Instance);
 
         Assert.Equal("Test.Rule", lines[0]);
         Assert.Equal(Sentence, string.Join(' ', lines.Skip(1)));
@@ -48,7 +48,7 @@ public sealed class ConceptTipTests
     {
         var rule = TestEditor.BareRule();
 
-        var lines = ConceptTip.Lines(ConceptTip.Of(rule)!, 12, MonospaceTextMeasure.Instance);
+        var lines = TipLines.Of(ConceptTip.Of(rule)!, 12, MonospaceTextMeasure.Instance);
 
         Assert.True(lines.Count > 2, "a sentence of 40 characters cannot fit in 12 units on two lines");
 
@@ -64,9 +64,9 @@ public sealed class ConceptTipTests
     public void AKeyLongerThanTheBoxIsBrokenRatherThanOverflowing()
     {
         // The box is placed from the width the measure reports, so an overflowing line would make it a lie.
-        var content = new ConceptTipContent("Rules.Very.Long.Key", "x");
+        var content = new TipContent("Rules.Very.Long.Key", "x");
 
-        var lines = ConceptTip.Lines(content, 8, MonospaceTextMeasure.Instance);
+        var lines = TipLines.Of(content, 8, MonospaceTextMeasure.Instance);
 
         foreach (var line in lines)
         {
@@ -99,12 +99,12 @@ public sealed class ConceptTipTests
     {
         Assert.Throws<ArgumentNullException>(() => ConceptTip.Of(null!));
         Assert.Throws<ArgumentNullException>(
-            () => ConceptTip.Lines(null!, 80, MonospaceTextMeasure.Instance));
+            () => TipLines.Of(null!, 80, MonospaceTextMeasure.Instance));
         Assert.Throws<ArgumentNullException>(
-            () => ConceptTip.Lines(new ConceptTipContent("Test.Rule", Sentence), 80, null!));
+            () => TipLines.Of(new TipContent("Test.Rule", Sentence), 80, null!));
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => ConceptTip.Lines(new ConceptTipContent("Test.Rule", Sentence), 0, MonospaceTextMeasure.Instance));
-        Assert.Throws<ArgumentException>(() => new ConceptTipContent("", Sentence));
-        Assert.Throws<ArgumentException>(() => new ConceptTipContent("Test.Rule", ""));
+            () => TipLines.Of(new TipContent("Test.Rule", Sentence), 0, MonospaceTextMeasure.Instance));
+        Assert.Throws<ArgumentException>(() => new TipContent("", Sentence));
+        Assert.Throws<ArgumentException>(() => new TipContent("Test.Rule", ""));
     }
 }
