@@ -329,7 +329,7 @@ a gutter - an embedded editor in a table cell, a reader view - can still fold.
 | Double-click or ellipsis-click to unfold | One gesture, in the gutter. A click on the placeholder has to stay a caret placement, or the caret could not enter a folded node at all. |
 | Animating the fold | The layout is rebuilt on every view-state change; an animation would need a stable geometry across two generations. |
 
-## A defect the probe found
+## A defect the probe found, and the fix
 
 The runtime probe rendered a folded rules document and showed the fold working - one line reading
 `Approved …` where the body used to be - but **no arrow in the margin**, and a gutter exactly as wide as
@@ -349,8 +349,14 @@ The fix has two parts and is the next slice (S7):
   then read each foldable node's entry. Asking `BoundsOf` per node instead would reintroduce the nested
   scan this document warns about.
 
-`FoldHitTest`, `GutterWidth`, the glyph painting and the press path are all correct as written; only the
-mark list is empty, which is why the feature looks like it does nothing.
+`FoldHitTest`, `GutterWidth`, the glyph painting and the press path were all correct as written; only the
+mark list was empty, which is why the feature looked like it did nothing.
+
+**Fixed.** `FoldMarks.Of` now resolves each node's address through the model - its own for the root,
+`CellAddress.OfElement` for everything else - and reads the boxes from one `address -> bounds` map built in
+a single pass. Re-running the probe shows the arrow where it belongs: `[+][2][rule text]`, the gutter at 50
+device pixels instead of 42, and no overlap between the three columns. The regression test folds a *nested*
+rule, because folding the document root proved nothing about the case that was broken.
 
 ## Slices
 

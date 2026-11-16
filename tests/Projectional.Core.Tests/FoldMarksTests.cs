@@ -24,6 +24,22 @@ public sealed class FoldMarksTests
     }
 
     [Fact]
+    public void ANestedFoldableNodeGetsItsOwnMark()
+    {
+        // The regression the runtime probe caught: only the document root carries the node's own address,
+        // so a test that folds the root proves nothing about every other node.
+        var (rule, body) = TestEditor.RuleWithBody();
+        var inner = rule.Model.NewChild(rule, "extends", TestLanguage.Rule);
+        using var session = TestEditor.Open(rule);
+
+        var marks = FoldMarks.Of(session, session.Layout, session.Measure);
+
+        Assert.Contains(marks, mark => mark.Node == rule.Id);
+        Assert.Contains(marks, mark => mark.Node == inner.Id);
+        Assert.DoesNotContain(marks, mark => mark.Node == body.Id);
+    }
+
+    [Fact]
     public void AMarkSaysWhichWayTheNodeIs()
     {
         var (rule, _) = TestEditor.RuleWithBody();
