@@ -5,11 +5,12 @@ A projectional editor knows which node a keystroke is about and owns every chang
 This document is the design of the layer between a finding and the edit that removes it: what a
 fix is, where it lives, how it reaches the user, and in which order the slices land.
 
-Status: **in progress.** Slice Q1 - the fix model, the fix set on the session and the query that
-answers which repairs the caret's line offers - is delivered; Q2 to Q6 are planned. Markers are
-delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the constraint engine
-that will produce findings in volume at M4 - it is the half that makes the findings that already
-exist actionable.
+Status: **in progress.** Slices Q1 and Q2 are delivered - the fix model, the fix set on the session,
+the query that answers which repairs the caret's line offers, and applying one as a single undo step
+through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md). Q3 to Q6 are planned.
+Markers are delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the
+constraint engine that will produce findings in volume at M4 - it is the half that makes the findings
+that already exist actionable.
 
 ## A fix is an edit with a reason
 
@@ -173,9 +174,8 @@ public EditResult Apply(DiagnosticFix fix);
    which the session runs inside one transaction; if any step is rejected the transaction rolls back
    and the result is that step's `Rejected`, so a half-applied fix never reaches the model.
 
-`EditProgram` does not exist yet and arrives with this slice; the intentions plan in
-[context-actions.md](context-actions.md) then reuses it instead of introducing a second program
-type.
+`EditProgram` arrived with this slice; the intentions plan in [context-actions.md](context-actions.md)
+then reuses it instead of introducing a second program type.
 
 The model may change as a *result* of the fix - the node the diagnostic pointed at can be renamed,
 moved or deleted. Nothing here republishes `Markers` or `Fixes`; the host owns its checks and is
@@ -237,7 +237,7 @@ Each slice is its own branch and its own merge, per the working rules.
 | Slice | Branch | Delivers |
 | --- | --- | --- |
 | Q1 ✓ | `feat/quick-fix-model` | `FixAvailability`, `DiagnosticFix`, `FixContext`, `FixSet`, `EditorSession.Fixes`, `QuickFixes.At/Of`, tests for keying, duplicate rejection, order, disabled, and a marker on a wrapped line |
-| Q2 | `feat/quick-fix-apply` | `EditorSession.Apply(DiagnosticFix)`, `EditProgram`, re-resolution by id, one-undo-step, stale rejection, rollback |
+| Q2 ✓ | `feat/quick-fix-apply` | `EditorSession.Apply(DiagnosticFix)`, `EditProgram`, re-resolution by id, one-undo-step, stale rejection, rollback |
 | Q3 | `feat/quick-fix-sample` | `RULES001` and its rename fix in `Projectional.Samples`, a fix for the workbench's `SHELL001`, both published to the editor at open and on `Model.Changed` |
 | Q4 | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, popup from `EditorMenuEntry`s, verified with a probe |
 | Q5 | `feat/quick-fix-menu` | "Quick fixes" submenu in `EditorMenu`; the fix line in `MarkerTip` |
@@ -252,7 +252,8 @@ source instead of ending with one.
 
 ## Decisions this plan proposes
 
-To be frozen as an ADR when Q2 lands, not before - the text above is the argument:
+Frozen in [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md) when Q2 landed, not
+before - the text above is the argument:
 
 1. A fix produces `EditAction`s applied by the session as one undo step; it never mutates the model.
 2. The fix list is a separate, host-supplied `FixSet` keyed by the `Diagnostic` record, beside the

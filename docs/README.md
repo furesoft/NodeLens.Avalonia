@@ -26,7 +26,7 @@ records what was actually verified.
 10. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (delivered).
 11. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
-    reach the user (in progress; the fix model is delivered).
+    reach the user (in progress; the model and the apply step are delivered).
 12. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
 13. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
@@ -83,3 +83,4 @@ directory stays authoritative whenever the two disagree.
 | [0013](adr/0013-markers-are-view-state.md) | Markers are view state: the frame never carries them |
 | [0014](adr/0014-both-authoring-paths-are-permanent.md) | Languages are defined in code and in the project, both permanently |
 | [0015](adr/0015-shell-is-a-library.md) | The shell is a library a host composes, and it can be locked to one language |
+| [0016](adr/0016-quick-fixes-are-edits-a-host-supplies.md) | Quick fixes are edits a host supplies, applied by the session |
