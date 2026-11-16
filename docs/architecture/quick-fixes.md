@@ -5,12 +5,12 @@ A projectional editor knows which node a keystroke is about and owns every chang
 This document is the design of the layer between a finding and the edit that removes it: what a
 fix is, where it lives, how it reaches the user, and in which order the slices land.
 
-Status: **in progress.** Slices Q1 to Q5 are delivered - the fix model, the fix set on the session,
-the query that answers which repairs the caret's line offers, applying one as a single undo step
-through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that carry
-repairs, the `Alt+Enter`/`Ctrl+.` gesture with its three answers, the keyboard-navigable list, the
-context-menu submenu and the tip line. What is still missing is the two presentations that need a
-window: the painted popup (Q8) and the bulb (Q6).
+Status: **in progress.** Slices Q1 to Q5 and Q8 are delivered - the fix model, the fix set on the
+session, the query that answers which repairs the caret's line offers, applying one as a single undo
+step through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that
+carry repairs, the `Alt+Enter`/`Ctrl+.` gesture with its three answers, the keyboard-navigable list,
+the context-menu submenu, the tip line and the painted popup. What is still missing is the bulb (Q6),
+which is the one affordance that has to be found rather than invoked.
 Markers are delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the
 constraint engine that will produce findings in volume at M4 - it is the half that makes the findings
 that already exist actionable.
@@ -202,9 +202,8 @@ The four surfaces are delivered in dependency order, and only the last one needs
    **Delivered as far as the editing layer goes.** `EditorKey.QuickFix` carries the gesture,
    `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyQuickFixes()` gives the three
    answers: nothing offered, one repair applied as its own undo step, or several held in
-   `OfferedFixes` for whoever draws them. What is still missing is the drawing - the list is a value
-   with no presenter yet, which is why the popup moved to slice Q5 with the menu rather than
-   shipping half of it here.
+   `OfferedFixes` for whoever draws them. The drawing landed as slice Q8
+   (`QuickFixPresenter`), so a list of several now appears beside the caret.
 2. **A "Quick fixes" submenu in the context menu.** Free: `EditorMenu.For(session)` is rebuilt on
    every opening and its entries are already `EditorMenuEntry`s that `EditorMenuPresenter` maps to
    the toolkit, so the fixes appear in the menu the user already knows before the popup, the bulb or
@@ -225,6 +224,24 @@ existing, the tip gained that line: `1 quick fix - Alt+Enter` or the plural, and
 finding nobody repaired, because "0 quick fixes" is a sentence that exists to say nothing. It is a
 change in `MarkerTip` and not in the marker model, and the control keys its text cache on the counts
 so a republished set cannot leave a stale sentence on screen.
+
+## How the list is painted
+
+`QuickFixPresenter` (`Projectional.Avalonia/Fixes/`) draws an open `OfferedFixes` onto the control's
+own surface, exactly as `CompletionPresenter` draws the proposal list. Five decisions are worth
+keeping, because each of them is a place where the obvious alternative is wrong:
+
+| Decision | Why |
+| --- | --- |
+| **One palette for both lists** (`CompletionPalette`), not a second one. | A list drawn on the document is one kind of surface. Two palettes for two boxes would have to be kept looking alike by hand, and a host that themes one would forget the other. |
+| **One placement helper** (`ListBounds`) for both lists. | Both belong to the caret's line, both flip above when they would hang off the bottom, and both are clamped into the control. Two copies of that arithmetic would eventually flip at different heights. |
+| **A disabled repair is dimmed, not hidden.** | `FixAvailability` exists so the user learns *why* something is not offered; the menu has room for the reason, the popup does not, so it says "not this one" and the menu says why. |
+| **A click is select-then-accept.** | The same two actions the keyboard runs, so a row cannot be taken through a path the keyboard would have refused - including the edit layer's own refusal of a disabled repair. |
+| **A caret that moves closes the list.** | The list describes one line's findings. It is drawn beside the caret, so leaving it open while the caret moves would show that line's repairs over a different line. `EditorSession.Select` therefore clears it, beside the `Completion` it already cleared. |
+
+The popup is painted **after** the completion list and **before** the marker tip, which is the same
+"what covers what" order the two of them already had: the list belongs to the caret, the tip belongs
+to the pointer, and the pointer wins because it is what the reader is looking at.
 
 ## The first real checks
 
@@ -390,7 +407,7 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q3 ✓ | `feat/quick-fix-sample` | `RULES001` and its rename fix in `Projectional.Samples.Checks`, a fix for the workbench's `SHELL001`, both published to the editor at open and on `Model.Changed` |
 | Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `OfferedFixes`; verified in a real window with a probe |
 | Q5 ✓ | `feat/quick-fix-menu` | the list navigable from the keyboard (`SelectQuickFixAction`, `AcceptQuickFixAction`), the "Quick fixes" submenu in `EditorMenu` with the reason on a disabled entry, and the offer line in `MarkerTip` |
-| Q8 | `feat/quick-fix-popup` | the painted popup for `OfferedFixes`: a presenter beside `CompletionPresenter` with its own measure, row hit test and palette, plus the control wiring that draws it and turns a click into select-then-accept |
+| Q8 ✓ | `feat/quick-fix-popup` | the painted popup for `OfferedFixes`: `QuickFixPresenter` beside `CompletionPresenter` with its own measure and row hit test, one shared placement helper for both lists, and the control wiring that draws it and turns a click into select-then-accept |
 | Q6 | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf`, the margin glyph, its hit test, its repaint policy, and the bulb showing for a marked line |
 | Q7 | `feat/standard-checks` | `EditSafety` on the offer and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own |
 
@@ -442,6 +459,12 @@ before - the text above is the argument:
   fixes; the popup closing on `Esc`; the menu's "Quick fixes" submenu disabled when the line has none.
   Until then a probe drives the real window, because key events are raisable and pointer events are
   not.
+- **The popup, verified in a real window.** A probe opened the standalone shell, marked the node under
+  the caret with one finding carrying two repairs, raised `Alt+Enter` and rasterised the control: the
+  list opened with two rows, `Measure` answered 54 units of height for two 23-unit rows plus the inset,
+  `RowAt` named row 1 for a point in its middle and `null` for a point outside the box, and the picture
+  showed a bordered white box with the first row highlighted. Pointer input is still not raisable, so
+  the click path is proven by `RowAt` plus the two actions it calls rather than by a synthetic press.
 
 ## Open questions
 
