@@ -572,10 +572,11 @@ dependency, so every action is testable headlessly.
   Ctrl+Delete deletes a file in a file manager. The list is Ctrl+Left/Ctrl+Right, which
   map to `EditorKey.ControlLeft`/`ControlRight` because the plain arrows move a whole cell,
   Alt+Up/Alt+Down, which reorder the node under the caret - the vertical arrows do nothing
-  else, so the host loses no gesture it had - Ctrl+Space, which opens completion, and
-  Ctrl+Home/Ctrl+End, which jump to the document ends. Ctrl+PageUp/Ctrl+PageDown are *not* in
-  it: a page jump that also changes tabs stays the host's. Shift is not in that list because
-  Shift+Tab is the editor's.
+  else, so the host loses no gesture it had - Ctrl+Space, which opens completion,
+  Ctrl+Home/Ctrl+End, which jump to the document ends, and Alt+Enter/Ctrl+., which are one
+  `EditorKey.QuickFix` because no host can repair a model it cannot see. Ctrl+PageUp/Ctrl+PageDown
+  are *not* in it: a page jump that also changes tabs stays the host's. Shift is not in that list
+  because Shift+Tab is the editor's.
 - **Escape always reaches the editor and is always consumed**, with or without a list open:
   `EditorKey.Escape` routes to `DismissCompletionAction`, which closes an open list and is a
   no-op otherwise. A host that wanted "Escape leaves the editor" therefore has to check
