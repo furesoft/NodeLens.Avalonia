@@ -41,6 +41,10 @@ public sealed class CellStyler : ICellStyler
             CollectionCell { IsEmpty: true } => TextStyleKind.Placeholder,
             TableCell { IsEmpty: true } => TextStyleKind.Placeholder,
             MissingNotationCell => TextStyleKind.Missing,
+
+            // A summary is not a value, it is a statement that something is missing from view - which is
+            // exactly what the placeholder kind means, and every palette already has a brush for it.
+            CollapsedCell => TextStyleKind.Placeholder,
             _ => TextStyleKind.Default,
         };
     }
