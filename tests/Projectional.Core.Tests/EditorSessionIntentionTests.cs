@@ -209,24 +209,27 @@ public sealed class EditorSessionIntentionTests
     }
 
     [Fact]
-    public void ApplyingAnIntentionClosesAnOpenQuickFixList()
+    public void ApplyingAnIntentionClosesAnOpenOfferList()
     {
         var rule = RuleNamed("walk");
         using var session = TestEditor.Open(rule);
-        var name = CellAddress.OfSlot(rule.Id, "name");
         var first = Finding(rule, "one");
         var second = Finding(rule, "two", range: CharacterRange.Of(1, 3));
 
+        // Two offers, so the gesture opens a list instead of running the only one. They need distinct ids:
+        // the list de-duplicates by id across all sources, so two repairs of one operation are one entry.
         session.Markers = new MarkerSet(first, second);
-        session.Fixes = new FixSet(RenameFix(first, "first"), RenameFix(second, "second"));
+        session.Fixes = new FixSet(
+            RenameFix(first, "first", "test.rename.one"),
+            RenameFix(second, "second", "test.rename.two"));
 
-        session.Apply(new QuickFixAction());
-        Assert.NotNull(session.OfferedFixes);
+        session.Apply(new OfferAction());
+        Assert.NotNull(session.Offered);
 
         session.AddIntentions(TestIntentions.ForRules);
         session.Apply(Offer(session, TestIntentions.RenameId));
 
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
         Assert.Equal("renamed", rule.GetOrNull("name"));
     }
 
@@ -241,8 +244,8 @@ public sealed class EditorSessionIntentionTests
     private static Intention Offer(EditorSession session, string id) =>
         IntentionList.For(session).Single(offer => offer.Id == id);
 
-    private static DiagnosticFix RenameFix(Diagnostic finding, string text) =>
-        new(finding, "test.rename", $"Rename to \"{text}\"", _ => null);
+    private static DiagnosticFix RenameFix(Diagnostic finding, string text, string id = "test.rename") =>
+        new(finding, id, $"Rename to \"{text}\"", _ => null);
 
     /// <summary>A repair that actually writes the name, for the tests that apply it.</summary>
     private static DiagnosticFix RenameFix(Diagnostic finding, CellAddress name, string text) =>

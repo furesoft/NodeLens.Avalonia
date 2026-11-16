@@ -204,11 +204,16 @@ The four surfaces are delivered in dependency order, and only the last one needs
    names both for the intention list, and there must be one binding, not two.
 
    **Delivered as far as the editing layer goes.** `EditorKey.QuickFix` carries the gesture,
-   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyQuickFixes()` gives the three
-   answers: nothing offered, one plain repair applied as its own undo step, or a list held in
-   `OfferedFixes` for whoever draws them. Q7 added the safety class that decides the second and third
-   case, and Q8 (`QuickFixPresenter`) draws them beside the caret - a list of one included, because a
-   destructive repair that opened it is asking rather than offering.
+   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyOffers()` gives the three
+   answers: nothing offered, one plain offer applied as its own undo step, or a list held in
+   `Offered` for whoever draws them. Q7 added the safety class that decides the second and third
+   case, and Q8 (`OfferPresenter`) draws them beside the caret - a list of one included, because a
+   destructive offer that opened it is asking rather than offering. **Slice C of
+   [context-actions.md](context-actions.md) turned the same gesture into the intentions gesture**:
+   the list is `IntentionList.For(session)`, so it holds the host's commands and the language's
+   intentions as well, and each row is an `Intention` (a repair is one carrying its `DiagnosticFix`).
+   The names that survive are the ones about the *affordance* - the key, the bulb, the painter - while
+   everything about the *list* is an offer.
 2. **A "Quick fixes" submenu in the context menu.** Free: `EditorMenu.For(session)` is rebuilt on
    every opening and its entries are already `EditorMenuEntry`s that `EditorMenuPresenter` maps to
    the toolkit, so the fixes appear in the menu the user already knows before the popup, the bulb or
@@ -231,8 +236,10 @@ The four surfaces are delivered in dependency order, and only the last one needs
    a blank that is sometimes empty. The glyph is two primitives (a circle and its stem) rather than a
    font glyph, so it cannot depend on the host's font family; the hit test uses the same rectangle the
    painter uses, and it runs before the document's own hit test so a press on the bulb does not also
-   move the caret. "Does this line offer a repair" is kept between paints, keyed on the layout, the
-   caret and both sets, because the caret blinks and a repaint per tick must not walk the document.
+   move the caret. "Does this caret have anything to offer" is kept between paints, keyed on the layout,
+   the caret and both sets, because the caret blinks and a repaint per tick must not walk the document.
+   Since slice C of [context-actions.md](context-actions.md) it asks `IntentionList.For(session)`, so a
+   language's intention lights the bulb exactly as a finding's repair does.
 
 The tooltip closes an open thread at the same time. [markers.md](markers.md) said the tip does not
 promise a fix it cannot deliver - the severity, the message and the code, and nothing else. With fixes
@@ -243,7 +250,7 @@ so a republished set cannot leave a stale sentence on screen.
 
 ## How the list is painted
 
-`QuickFixPresenter` (`Projectional.Avalonia/Fixes/`) draws an open `OfferedFixes` onto the control's
+`OfferPresenter` (`Projectional.Avalonia/Offers/`) draws an open `Offered` onto the control's
 own surface, exactly as `CompletionPresenter` draws the proposal list. Five decisions are worth
 keeping, because each of them is a place where the obvious alternative is wrong:
 
@@ -251,9 +258,9 @@ keeping, because each of them is a place where the obvious alternative is wrong:
 | --- | --- |
 | **One palette for both lists** (`CompletionPalette`), not a second one. | A list drawn on the document is one kind of surface. Two palettes for two boxes would have to be kept looking alike by hand, and a host that themes one would forget the other. |
 | **One placement helper** (`ListBounds`) for both lists. | Both belong to the caret's line, both flip above when they would hang off the bottom, and both are clamped into the control. Two copies of that arithmetic would eventually flip at different heights. |
-| **A disabled repair is dimmed, not hidden.** | `FixAvailability` exists so the user learns *why* something is not offered; the menu has room for the reason, the popup does not, so it says "not this one" and the menu says why. |
-| **A click is select-then-accept.** | The same two actions the keyboard runs, so a row cannot be taken through a path the keyboard would have refused - including the edit layer's own refusal of a disabled repair. |
-| **A caret that moves closes the list.** | The list describes one line's findings. It is drawn beside the caret, so leaving it open while the caret moves would show that line's repairs over a different line. `EditorSession.Select` therefore clears it, beside the `Completion` it already cleared. |
+| **A disabled offer is dimmed, not hidden.** | `FixAvailability` exists so the user learns *why* something is not offered; the menu has room for the reason, the popup does not, so it says "not this one" and the menu says why. A disabled intention dims the same way, because `IntentionAvailability` keeps the same reason. |
+| **A click is select-then-accept.** | The same two actions the keyboard runs, so a row cannot be taken through a path the keyboard would have refused - including the edit layer's own refusal of a disabled offer. |
+| **A caret that moves closes the list.** | The list describes one caret. It is drawn beside the caret, so leaving it open while the caret moves would show that place's offers over a different one. `EditorSession.Select` therefore clears it, beside the `Completion` it already cleared. |
 
 The popup is painted **after** the completion list and **before** the marker tip, which is the same
 "what covers what" order the two of them already had: the list belongs to the caret, the tip belongs
@@ -337,7 +344,7 @@ too).
 
 `STD020` is the one that pays for the scope chain being a language aspect already: the candidates are
 `IScope.CandidatesOf`, ranked by how close each name is to the `resolveInfo`. It is also the fix that
-most clearly needs several offers rather than one, which is what `OfferedFixes` exists for.
+most clearly needs several offers rather than one, which is what `Offered` exists for.
 
 ### Values: whatever the property type knows
 
@@ -427,8 +434,8 @@ keystroke would delete a node the user was only asking about. So an offer carrie
 same classification and one enum serves both), and the
 gesture applies a lone repair only when it is plain; a lone destructive repair opens the list, which is
 then allowed to hold one entry precisely because it is asking rather than offering. **Delivered in Q7**:
-`DiagnosticFix.Safety` defaults to `Plain`, `QuickFixList` accepts one entry, and
-`EditorSession.ApplyQuickFixes` applies a lone offer only when it is plain *and* able to run - a lone
+`DiagnosticFix.Safety` defaults to `Plain`, `OfferList` accepts one entry, and
+`EditorSession.ApplyOffers` applies a lone offer only when it is plain *and* able to run - a lone
 disabled repair opens the list too, because a gesture that silently does nothing is the same complaint
 in another costume. Open question 73.
 
@@ -454,9 +461,9 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q1 ✓ | `feat/quick-fix-model` | `FixAvailability`, `DiagnosticFix`, `FixContext`, `FixSet`, `EditorSession.Fixes`, `QuickFixes.At/Of`, tests for keying, duplicate rejection, order, disabled, and a marker on a wrapped line |
 | Q2 ✓ | `feat/quick-fix-apply` | `EditorSession.Apply(DiagnosticFix)`, `EditProgram`, re-resolution by id, one-undo-step, stale rejection, rollback |
 | Q3 ✓ | `feat/quick-fix-sample` | `RULES001` and its rename fix in `Projectional.Samples.Checks`, a fix for the workbench's `SHELL001`, both published to the editor at open and on `Model.Changed` |
-| Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `OfferedFixes`; verified in a real window with a probe |
-| Q5 ✓ | `feat/quick-fix-menu` | the list navigable from the keyboard (`SelectQuickFixAction`, `AcceptQuickFixAction`), the "Quick fixes" submenu in `EditorMenu` with the reason on a disabled entry, and the offer line in `MarkerTip` |
-| Q8 ✓ | `feat/quick-fix-popup` | the painted popup for `OfferedFixes`: `QuickFixPresenter` beside `CompletionPresenter` with its own measure and row hit test, one shared placement helper for both lists, and the control wiring that draws it and turns a click into select-then-accept |
+| Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `Offered`; verified in a real window with a probe |
+| Q5 ✓ | `feat/quick-fix-menu` | the list navigable from the keyboard (`SelectOfferAction`, `AcceptOfferAction`), the "Quick fixes" submenu in `EditorMenu` with the reason on a disabled entry, and the offer line in `MarkerTip` |
+| Q8 ✓ | `feat/quick-fix-popup` | the painted popup for `Offered`: `OfferPresenter` beside `CompletionPresenter` with its own measure and row hit test, one shared placement helper for both lists, and the control wiring that draws it and turns a click into select-then-accept |
 | Q6 ✓ | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf` (headless geometry, one line square left of the page), the margin the control reserves for it, the two-primitive glyph, its hit test and the answer kept between paints |
 | Q7 ✓ | `feat/standard-checks` | `EditSafety` on the offer and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own - plus `InsertChildAction`, `WrapInAction` and `Model.Wrap`, which two of the four repairs needed |
 

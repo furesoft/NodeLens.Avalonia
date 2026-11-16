@@ -9,15 +9,16 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The quick-fix gesture: two spellings of one key, three answers from the session, and the rules that
-/// close an offer again.
+/// The offers gesture: two spellings of one key, three answers from the session, and the rules that close an
+/// offer again.
 /// </summary>
 /// <remarks>
-/// The three answers are the whole design: nothing to offer, one repair applied without asking, several
-/// repairs listed. The closing rules matter as much, because a list that outlives the caret it described
-/// offers repairs for a place the user has left.
+/// The three answers are the whole design: nothing to offer, one plain offer applied without asking, several
+/// listed. The closing rules matter as much, because a list that outlives the caret it described offers
+/// actions for a place the user has left. The gesture asks the merged list, so an intention behaves exactly
+/// like a repair here - including a destructive one having to ask.
 /// </remarks>
-public sealed class QuickFixKeysTests
+public sealed class OfferKeysTests
 {
     [Fact]
     public void AltEnterAndControlPeriodAreTheSameGesture()
@@ -42,10 +43,10 @@ public sealed class QuickFixKeysTests
     }
 
     [Fact]
-    public void TheGestureRoutesToTheQuickFixAction()
+    public void TheGestureRoutesToTheOfferAction()
     {
-        Assert.IsType<QuickFixAction>(KeyRouter.For(EditorKey.QuickFix));
-        Assert.IsType<QuickFixAction>(KeyRouter.For(TestEditor.Open(TestEditor.BareRule()), EditorKey.QuickFix));
+        Assert.IsType<OfferAction>(KeyRouter.For(EditorKey.QuickFix));
+        Assert.IsType<OfferAction>(KeyRouter.For(TestEditor.Open(TestEditor.BareRule()), EditorKey.QuickFix));
     }
 
     [Fact]
@@ -55,11 +56,11 @@ public sealed class QuickFixKeysTests
         using var session = TestEditor.Open(rule);
         Publish(session, rule, "walked");
 
-        var result = session.Apply(new QuickFixAction());
+        var result = session.Apply(new OfferAction());
 
         Assert.Equal(EditOutcome.Applied, result.Outcome);
         Assert.Equal("walked", rule.GetOrNull("name"));
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
 
         // The gesture is one step of history, like any other edit.
         Assert.True(session.Undo());
@@ -78,18 +79,18 @@ public sealed class QuickFixKeysTests
         session.Markers = new MarkerSet(first, second);
         session.Fixes = new FixSet(RenameFix(first, name, "first"), RenameFix(second, name, "second"));
 
-        var result = session.Apply(new QuickFixAction());
+        var result = session.Apply(new OfferAction());
 
         Assert.Equal(EditOutcome.Unchanged, result.Outcome);
         Assert.Equal("walk", rule.GetOrNull("name"));
         Assert.False(session.History.CanUndo);
 
-        var offered = Assert.IsType<QuickFixList>(session.OfferedFixes);
+        var offered = Assert.IsType<OfferList>(session.Offered);
         Assert.Equal(2, offered.Count);
-        Assert.Equal(["Rename to \"first\"", "Rename to \"second\""], offered.Fixes.Select(fix => fix.Label));
+        Assert.Equal(["Rename to \"first\"", "Rename to \"second\""], offered.Entries.Select(entry => entry.Label));
 
         // The list keeps the finding each repair belongs to, so a popup can show the problem next to it.
-        Assert.Equal(second.Target, offered.DiagnosticOf(1).Target);
+        Assert.Equal(second.Target, offered[1].Fix!.Diagnostic.Target);
     }
 
     [Fact]
@@ -102,17 +103,17 @@ public sealed class QuickFixKeysTests
 
         var caret = session.Selection.Caret;
 
-        session.Apply(new SelectQuickFixAction(1));
+        session.Apply(new SelectOfferAction(1));
 
-        Assert.Equal(1, session.OfferedFixes!.Selected);
+        Assert.Equal(1, session.Offered!.Selected);
         Assert.Equal(caret, session.Selection.Caret);
 
         // Clamped, not wrapped: a list of repairs is not a carousel.
-        session.Apply(new SelectQuickFixAction(5));
-        Assert.Equal(1, session.OfferedFixes!.Selected);
+        session.Apply(new SelectOfferAction(5));
+        Assert.Equal(1, session.Offered!.Selected);
 
-        session.Apply(new SelectQuickFixAction(-5));
-        Assert.Equal(0, session.OfferedFixes!.Selected);
+        session.Apply(new SelectOfferAction(-5));
+        Assert.Equal(0, session.Offered!.Selected);
     }
 
     [Fact]
@@ -123,12 +124,12 @@ public sealed class QuickFixKeysTests
         var name = CellAddress.OfSlot(rule.Id, "name");
         OpenListOfTwo(session, rule, name);
 
-        session.Apply(new SelectQuickFixAction(1));
-        var result = session.Apply(new AcceptQuickFixAction());
+        session.Apply(new SelectOfferAction(1));
+        var result = session.Apply(new AcceptOfferAction());
 
         Assert.Equal(EditOutcome.Applied, result.Outcome);
         Assert.Equal("second", rule.GetOrNull("name"));
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
     }
 
     [Fact]
@@ -137,7 +138,7 @@ public sealed class QuickFixKeysTests
         var rule = RuleNamed("walk");
         using var session = TestEditor.Open(rule);
 
-        Assert.Equal(EditOutcome.Unchanged, session.Apply(new AcceptQuickFixAction()).Outcome);
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Equal("walk", rule.GetOrNull("name"));
     }
 
@@ -150,9 +151,9 @@ public sealed class QuickFixKeysTests
         var name = CellAddress.OfSlot(rule.Id, "name");
         OpenListOfTwo(session, rule, name);
 
-        Assert.IsType<SelectQuickFixAction>(KeyRouter.For(session, EditorKey.Down));
-        Assert.IsType<SelectQuickFixAction>(KeyRouter.For(session, EditorKey.Up));
-        Assert.IsType<AcceptQuickFixAction>(KeyRouter.For(session, EditorKey.Enter));
+        Assert.IsType<SelectOfferAction>(KeyRouter.For(session, EditorKey.Down));
+        Assert.IsType<SelectOfferAction>(KeyRouter.For(session, EditorKey.Up));
+        Assert.IsType<AcceptOfferAction>(KeyRouter.For(session, EditorKey.Enter));
         Assert.IsType<MoveCaretAction>(KeyRouter.For(session, EditorKey.Left));
     }
 
@@ -161,10 +162,10 @@ public sealed class QuickFixKeysTests
     {
         using var session = TestEditor.Open(RuleNamed("walk"));
 
-        var result = session.Apply(new QuickFixAction());
+        var result = session.Apply(new OfferAction());
 
         Assert.Equal(EditOutcome.Unchanged, result.Outcome);
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
     }
 
     [Fact]
@@ -177,7 +178,7 @@ public sealed class QuickFixKeysTests
 
         session.Apply(new MoveCaretAction(CaretMove.Right));
 
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
     }
 
     [Fact]
@@ -192,7 +193,7 @@ public sealed class QuickFixKeysTests
 
         session.Select(Selection.At(CaretPosition.At(name, 0)));
 
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
     }
 
     [Fact]
@@ -205,7 +206,7 @@ public sealed class QuickFixKeysTests
 
         session.Apply(new DismissCompletionAction());
 
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
     }
 
     [Fact]
@@ -219,7 +220,7 @@ public sealed class QuickFixKeysTests
 
         session.Apply(new SetPropertyAction(name, "running"));
 
-        Assert.Null(session.OfferedFixes);
+        Assert.Null(session.Offered);
     }
 
     [Fact]
@@ -234,11 +235,11 @@ public sealed class QuickFixKeysTests
         session.Markers = new MarkerSet(finding);
         session.Fixes = new FixSet(DestructiveRenameFix(finding, name, "walked"));
 
-        var result = session.Apply(new QuickFixAction());
+        var result = session.Apply(new OfferAction());
 
         Assert.Equal(EditOutcome.Unchanged, result.Outcome);
 
-        var offered = Assert.IsType<QuickFixList>(session.OfferedFixes);
+        var offered = Assert.IsType<OfferList>(session.Offered);
         Assert.Equal(1, offered.Count);
     }
 
@@ -254,8 +255,8 @@ public sealed class QuickFixKeysTests
         session.Markers = new MarkerSet(finding);
         session.Fixes = new FixSet(fix);
 
-        Assert.Equal(EditOutcome.Unchanged, session.Apply(new QuickFixAction()).Outcome);
-        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptQuickFixAction()).Outcome);
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Equal("walked", rule.GetOrNull("name"));
     }
 
@@ -277,9 +278,9 @@ public sealed class QuickFixKeysTests
         session.Markers = new MarkerSet(finding);
         session.Fixes = new FixSet(fix);
 
-        Assert.Equal(EditOutcome.Unchanged, session.Apply(new QuickFixAction()).Outcome);
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
 
-        var offered = Assert.IsType<QuickFixList>(session.OfferedFixes);
+        var offered = Assert.IsType<OfferList>(session.Offered);
         Assert.Equal(1, offered.Count);
         Assert.True(offered[0].IsDisabled);
     }
@@ -291,22 +292,145 @@ public sealed class QuickFixKeysTests
         var name = CellAddress.OfSlot(rule.Id, "name");
         var finding = Finding(rule, "one");
 
-        Assert.Throws<ArgumentException>(() => new QuickFixList([]));
-        Assert.Throws<ArgumentNullException>(() => new QuickFixList(null!));
+        Assert.Throws<ArgumentException>(() => new OfferList([]));
+        Assert.Throws<ArgumentNullException>(() => new OfferList(null!));
 
-        var single = new QuickFixList([DestructiveRenameFix(finding, name, "one")]);
+        var single = new OfferList([Intention.FromFix(DestructiveRenameFix(finding, name, "one"))]);
 
         Assert.Equal(1, single.Count);
         Assert.Equal(0, single.Selected);
-        Assert.Equal("Rename to \"one\"", single.SelectedFix.Label);
-        Assert.True(single.SelectedFix.IsDestructive);
+        Assert.Equal("Rename to \"one\"", single.SelectedEntry.Label);
+        Assert.True(single.SelectedEntry.IsDestructive);
     }
 
     [Fact]
     public void TheActionRefusesToRunOutsideASession()
     {
-        Assert.Throws<EditingException>(() => new QuickFixAction().Apply(null!));
+        Assert.Throws<EditingException>(() => new OfferAction().Apply(null!));
     }
+
+    [Fact]
+    public void OneIntentionIsAppliedWithoutAsking()
+    {
+        // The gesture does not care where the offer came from: a single plain intention runs exactly as a
+        // single plain repair does.
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        session.AddIntentions(new StubIntentions(IntentionNamed("test.rename", rule)));
+
+        var result = session.Apply(new OfferAction());
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.Equal("renamed", rule.GetOrNull("name"));
+        Assert.Null(session.Offered);
+    }
+
+    [Fact]
+    public void ALoneDestructiveIntentionOpensAList()
+    {
+        // The safety rule is on the offer, so it covers both catalogues: the keystroke that asks what is
+        // available must not be the one that deletes a node.
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        session.AddIntentions(new StubIntentions(new Intention(
+            "test.delete",
+            "Delete",
+            "Removes the rule.",
+            _ => new DeleteNodeAction(),
+            safety: EditSafety.Destructive)));
+
+        var result = session.Apply(new OfferAction());
+
+        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
+
+        var offered = Assert.IsType<OfferList>(session.Offered);
+
+        Assert.Single(offered.Entries);
+        Assert.Single(rule.Model.Roots);
+    }
+
+    [Fact]
+    public void ALoneDisabledIntentionOpensAListSoItsReasonIsVisible()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        session.AddIntentions(new StubIntentions(new Intention(
+            "test.blocked",
+            "Blocked",
+            "Cannot run here.",
+            _ => null,
+            availability: IntentionAvailability.Disabled("the document is read-only"))));
+
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
+
+        var offered = Assert.IsType<OfferList>(session.Offered);
+
+        Assert.Equal(1, offered.Count);
+        Assert.True(offered.SelectedEntry.IsDisabled);
+        Assert.Equal("the document is read-only", offered.SelectedEntry.Availability.Reason);
+    }
+
+    [Fact]
+    public void TheListHoldsIntentionsAndRepairsInOneOrder()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var finding = Finding(rule, "the name says nothing");
+
+        session.AddIntentions(TestIntentions.ForRules, IntentionSource.Language);
+        session.Markers = new MarkerSet(finding);
+        session.Fixes = new FixSet(RenameFix(finding, CellAddress.OfSlot(rule.Id, "name"), "walked"));
+
+        session.Apply(new OfferAction());
+
+        var offered = Assert.IsType<OfferList>(session.Offered);
+
+        Assert.Equal(
+            [TestIntentions.RenameId, TestIntentions.DeleteId, "rename.walked"],
+            offered.Entries.Select(entry => entry.Id));
+
+        // The repair kept its finding, which is what lets accepting it go through the fix path.
+        Assert.NotNull(offered[2].Fix);
+        Assert.Null(offered[0].Fix);
+    }
+
+    [Fact]
+    public void AcceptingAnIntentionRowAppliesTheIntention()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        session.AddIntentions(TestIntentions.ForRules, IntentionSource.Language);
+
+        session.Apply(new OfferAction());
+        session.Apply(new SelectOfferAction(0));
+        var result = session.Apply(new AcceptOfferAction());
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.Equal("renamed", rule.GetOrNull("name"));
+        Assert.Null(session.Offered);
+    }
+
+    [Fact]
+    public void AnIntentionOfferedOnlyAwayFromTheCaretDoesNotLightTheGesture()
+    {
+        // The fixture answers "absent" off a rule, so a caret on a step has nothing to offer - and the
+        // gesture then leaves no list behind.
+        var (rule, _, step) = TestEditor.RuleWithStep();
+        using var session = TestEditor.Open(rule);
+        session.AddIntentions(TestIntentions.ForRules, IntentionSource.Language);
+
+        session.Select(Selection.At(CellAddress.OfSlot(step.Id, "text")));
+
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
+        Assert.Null(session.Offered);
+    }
+
+    private static Intention IntentionNamed(string id, Node rule) =>
+        new(
+            id,
+            "Rename",
+            "Renames the rule.",
+            _ => new SetPropertyAction(CellAddress.OfSlot(rule.Id, "name"), "renamed"));
 
     private static void OpenListOfTwo(EditorSession session, Node rule, CellAddress name)
     {
@@ -316,9 +440,9 @@ public sealed class QuickFixKeysTests
         session.Markers = new MarkerSet(first, second);
         session.Fixes = new FixSet(RenameFix(first, name, "first"), RenameFix(second, name, "second"));
 
-        session.Apply(new QuickFixAction());
+        session.Apply(new OfferAction());
 
-        Assert.NotNull(session.OfferedFixes);
+        Assert.NotNull(session.Offered);
     }
 
     private static void Publish(EditorSession session, Node rule, string name)

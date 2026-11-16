@@ -226,9 +226,11 @@ public sealed class EditorSession : IDisposable
     /// groups is fixed by <see cref="IntentionSource"/> and is not a host's to change.
     /// </para>
     /// <para>
-    /// Registering an intention does not rebuild the tree, the layout or the caret, and needs no refresh: the
-    /// list is derived per call, so the next question sees the new source. Registering twice adds it twice,
-    /// which is why the caller owns the list it passes rather than handing over the same provider per edit.
+    /// Registering an intention does not rebuild the tree, the layout or the caret, and the list is derived
+    /// per call, so registering never has to be followed by a refresh. A host still registers its sources
+    /// when it opens the document rather than in the middle of editing one: a control keeps its "is there
+    /// anything here" answer between paints, keyed on the caret and the published sets. Registering the same
+    /// provider twice adds it twice, because the session does not guess what the caller meant.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="provider"/> is <see langword="null"/>.</exception>
@@ -290,7 +292,7 @@ public sealed class EditorSession : IDisposable
     /// asked about one" and nothing else.
     /// </para>
     /// </remarks>
-    public QuickFixList? OfferedFixes { get; private set; }
+    public OfferList? Offered { get; private set; }
 
     /// <summary>Where Copy, Cut and Paste put and take their text.</summary>
     /// <remarks>
@@ -516,29 +518,29 @@ public sealed class EditorSession : IDisposable
             return Apply(program);
         }
 
-        // The three quick-fix gestures are answered by the session, which is the only thing holding the
-        // sets and the open list. They run before the "any other action closes the list" rule below,
-        // because for them the list is the point rather than something to close.
-        if (action is QuickFixAction)
+        // The three gesture actions are answered by the session, which is the only thing holding the sets
+        // and the open list. They run before the "any other action closes the list" rule below, because for
+        // them the list is the point rather than something to close.
+        if (action is OfferAction)
         {
-            return ApplyQuickFixes();
+            return ApplyOffers();
         }
 
-        if (action is AcceptQuickFixAction)
+        if (action is AcceptOfferAction)
         {
-            return AcceptQuickFix();
+            return AcceptOffer();
         }
 
-        if (action is SelectQuickFixAction select)
+        if (action is SelectOfferAction select)
         {
-            MoveQuickFixSelection(select.Delta);
+            MoveOfferSelection(select.Delta);
 
             return EditResult.Unchanged(Selection);
         }
 
         // Every other action closes an offered list, for the same reason it closes the completion list:
         // the user did something else, and the offer described where they were.
-        OfferedFixes = null;
+        Offered = null;
 
         var context = ContextFor(action);
 
@@ -596,50 +598,55 @@ public sealed class EditorSession : IDisposable
         return result;
     }
 
-    /// <summary>Answers the quick-fix gesture: nothing to offer, one repair, or a list to choose from.</summary>
+    /// <summary>Answers the offers gesture: nothing here, one plain offer, or a list to choose from.</summary>
     /// <remarks>
     /// <para>
-    /// One repair is applied immediately when it is plain and can run. The common case is a single cure for
-    /// a single finding, and a list with one entry costs the user a keystroke to say what the editor already
+    /// The question is <see cref="IntentionList.For(EditorSession)"/>, not "which repairs exist": the user
+    /// sees one list, so the host's commands, the language's intentions and the caret line's quick fixes are
+    /// all candidates for the same keystroke.
+    /// </para>
+    /// <para>
+    /// One offer is applied immediately when it is plain and can run. The common case is a single cure for a
+    /// single finding, and a list with one entry costs the user a keystroke to say what the editor already
     /// knew.
     /// </para>
     /// <para>
-    /// One repair that is destructive, or that cannot run at all, opens the list instead. The gesture asks
+    /// One offer that is destructive, or that cannot run at all, opens the list instead. The gesture asks
     /// what is available; it must not also be the keystroke that deletes a node or that does nothing while a
     /// reason exists. A list of one therefore means "this is what is here, do you mean it", which is the
     /// same shape as a choice and a different sentence.
     /// </para>
     /// <para>
-    /// Several repairs open a list, and the answer is <see cref="EditOutcome.Unchanged"/>: the gesture was
+    /// Several offers open a list, and the answer is <see cref="EditOutcome.Unchanged"/>: the gesture was
     /// handled, but nothing about the model changed. The list is what the caller reads to draw it - the
     /// same contract the completion list has, which is why the control only has to look at the session
     /// after the gesture.
     /// </para>
     /// <para>
     /// Nothing to offer answers unchanged as well and leaves no list behind. A refused gesture would leak
-    /// into the host as a beep for a key that is perfectly legal, and "there is nothing to repair here" is
-    /// an answer rather than an error.
+    /// into the host as a beep for a key that is perfectly legal, and "there is nothing to do here" is an
+    /// answer rather than an error.
     /// </para>
     /// </remarks>
-    public EditResult ApplyQuickFixes()
+    public EditResult ApplyOffers()
     {
-        var offered = QuickFixes.At(this);
+        var offered = IntentionList.For(this);
 
         if (offered.Count == 0)
         {
-            OfferedFixes = null;
+            Offered = null;
 
             return EditResult.Unchanged(Selection);
         }
 
         if (offered.Count == 1 && offered[0] is { Safety: EditSafety.Plain, IsDisabled: false })
         {
-            OfferedFixes = null;
+            Offered = null;
 
             return Apply(offered[0]);
         }
 
-        OfferedFixes = new QuickFixList(offered);
+        Offered = new OfferList(offered);
 
         return EditResult.Unchanged(Selection);
     }
@@ -651,30 +658,31 @@ public sealed class EditorSession : IDisposable
     /// no meaning when nothing is highlighted, and inventing one would make Down mean something different
     /// depending on what is on screen.
     /// </remarks>
-    private void MoveQuickFixSelection(int delta)
+    private void MoveOfferSelection(int delta)
     {
-        if (OfferedFixes is { } offered)
+        if (Offered is { } offered)
         {
-            OfferedFixes = offered.Move(delta);
+            Offered = offered.Move(delta);
         }
     }
 
-    /// <summary>Applies the highlighted repair of the open list, if there is one.</summary>
+    /// <summary>Applies the highlighted offer of the open list, if there is one.</summary>
     /// <remarks>
     /// The list is closed first, so the answer the caller reads afterwards describes what happened rather
-    /// than what was on screen: a repair that renames a node rebuilds the tree, and a list of repairs for
-    /// the old layout would be advice about a document that no longer exists.
+    /// than what was on screen: an offer that renames a node rebuilds the tree, and a list of offers for the
+    /// old layout would be advice about a document that no longer exists. An entry that came from a quick fix
+    /// keeps its finding, so <see cref="Apply(Intention)"/> can route it through the repair's own path.
     /// </remarks>
-    private EditResult AcceptQuickFix()
+    private EditResult AcceptOffer()
     {
-        if (OfferedFixes is not { } offered)
+        if (Offered is not { } offered)
         {
             return EditResult.Unchanged(Selection);
         }
 
-        var pick = offered.SelectedFix;
+        var pick = offered.SelectedEntry;
 
-        OfferedFixes = null;
+        Offered = null;
 
         return Apply(pick);
     }
@@ -762,7 +770,7 @@ public sealed class EditorSession : IDisposable
 
         // The user chose this offer instead of the ones that were listed, so any open list is about a place
         // they have left.
-        OfferedFixes = null;
+        Offered = null;
 
         if (intention.Fix is { } fix)
         {
@@ -932,7 +940,7 @@ public sealed class EditorSession : IDisposable
 
         // A caret that moved is no longer the caret that asked for a repair list. The list describes one
         // line's findings, so leaving it up would keep showing them beside a caret on a different line.
-        OfferedFixes = null;
+        Offered = null;
 
         OfferValues();
     }
@@ -995,7 +1003,7 @@ public sealed class EditorSession : IDisposable
         Layout = _layouter.Layout(Tree);
 
         // The offer named a caret line of the layout that has just been replaced.
-        OfferedFixes = null;
+        Offered = null;
     }
 
     /// <summary>Puts the selection onto cells of the current tree, keeping a range whole.</summary>

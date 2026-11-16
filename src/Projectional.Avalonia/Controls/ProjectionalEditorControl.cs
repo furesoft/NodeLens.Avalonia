@@ -119,9 +119,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     // own, so it needs a painter and nothing else - no window, no second control, nothing to detach.
     private readonly CompletionPresenter _completion;
 
-    // The quick-fix list is the same arrangement: a painter over this surface, placed beside the caret and
+    // The offer list is the same arrangement: a painter over this surface, placed beside the caret and
     // sharing the list palette, because both are lists drawn on the document.
-    private readonly QuickFixPresenter _quickFixes;
+    private readonly OfferPresenter _offers;
 
     private CompletionPalette _listPalette = CompletionPalette.Light;
 
@@ -230,7 +230,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     {
         TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, _palette.BrushOf(TextStyleKind.Default));
         _completion = new CompletionPresenter(TextMeasure, _listPalette);
-        _quickFixes = new QuickFixPresenter(TextMeasure, _listPalette);
+        _offers = new OfferPresenter(TextMeasure, _listPalette);
         _tip = new MarkerTipPresenter(TextMeasure, _tipPalette);
         Clipboard = new AvaloniaClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
 
@@ -296,7 +296,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             // The list is drawn on this surface and must keep the editor's line height, or its rows stop
             // matching the text they are offering to fill.
             _completion.TextMeasure = TextMeasure;
-            _quickFixes.TextMeasure = TextMeasure;
+            _offers.TextMeasure = TextMeasure;
             _tip.TextMeasure = TextMeasure;
 
             // A box wrapped for the old font is sized for glyphs that are no longer on screen.
@@ -419,7 +419,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
             _listPalette = value;
             _completion.Palette = value;
-            _quickFixes.Palette = value;
+            _offers.Palette = value;
 
             InvalidateVisual();
         }
@@ -462,7 +462,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
-    /// <summary>Whether the margin shows a bulb on a line that offers a repair.</summary>
+    /// <summary>Whether the margin shows a bulb where the caret has something to offer.</summary>
     /// <remarks>
     /// <para>
     /// On by default, because it is the only affordance the feature has that can be <em>found</em>: the
@@ -615,7 +615,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
     /// <summary>The colour the bulb is painted in.</summary>
     /// <remarks>
-    /// One brush rather than a palette: the bulb means one thing - "this line offers a repair" - so it has
+    /// One brush rather than a palette: the bulb means one thing - "there is something here" - so it has
     /// one colour, and a host that recolours its margin sets this.
     /// </remarks>
     /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
@@ -1196,9 +1196,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         // After the completion list, because the two are never open at once - an edit that opens one
         // closes the other - and before the tip, which is the only thing that may cover them.
-        if (session.OfferedFixes is { } offered)
+        if (session.Offered is { } offered)
         {
-            _quickFixes.Render(context, offered, QuickFixBounds(session, offered));
+            _offers.Render(context, offered, OfferBounds(session, offered));
         }
 
         // Before the finding's tip, so a squiggle's message is on top if the two ever overlap: it is the one
@@ -1491,9 +1491,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             return;
         }
 
-        // The quick-fix list overlays the document in the same way, and for the same reason: a click on a
-        // repair must not also move the caret into the line the repair belongs to.
-        if (ClickQuickFix(session, e.GetPosition(this)))
+        // The offer list overlays the document in the same way, and for the same reason: a click on an
+        // offer must not also move the caret into the line it belongs to.
+        if (ClickOffer(session, e.GetPosition(this)))
         {
             e.Handled = true;
             return;
@@ -2115,18 +2115,18 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         return ListBounds(session, size, _completion.RowHeight);
     }
 
-    /// <summary>Where the quick-fix list is drawn, in viewport coordinates.</summary>
+    /// <summary>Where the offer list is drawn, in viewport coordinates.</summary>
     /// <remarks>
     /// The same placement as the completion list, from the same helper: both are lists that belong to the
     /// caret's line and both must stay inside the surface. The list belongs to the marker's line rather
     /// than to a slot, but the caret is on that line by construction - the gesture that opens the list
     /// asks about the line the caret is drawn on.
     /// </remarks>
-    private Rect QuickFixBounds(EditorSession session, QuickFixList list)
+    private Rect OfferBounds(EditorSession session, OfferList list)
     {
-        var size = _quickFixes.Measure(list);
+        var size = _offers.Measure(list);
 
-        return ListBounds(session, size, _quickFixes.RowHeight);
+        return ListBounds(session, size, _offers.RowHeight);
     }
 
     /// <summary>Places a list of <paramref name="size"/> beside the caret, kept inside the surface.</summary>
@@ -2155,17 +2155,17 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             size.Height);
     }
 
-    /// <summary>Accepts the row of the quick-fix list the pointer pressed, if it hit one.</summary>
+    /// <summary>Accepts the row of the offer list the pointer pressed, if it hit one.</summary>
     /// <returns>Whether the press was the list's rather than the document's.</returns>
     /// <remarks>
     /// The same two actions the keyboard runs - move the highlight, then accept - so a row cannot be taken
     /// through a path the keyboard would have refused, and a click on a dimmed row still goes through the
     /// edit layer's own refusal instead of around it.
     /// </remarks>
-    private bool ClickQuickFix(EditorSession session, Point point)
+    private bool ClickOffer(EditorSession session, Point point)
     {
-        if (session.OfferedFixes is not { } list
-            || _quickFixes.RowAt(list, QuickFixBounds(session, list), point) is not { } index)
+        if (session.Offered is not { } list
+            || _offers.RowAt(list, OfferBounds(session, list), point) is not { } index)
         {
             return false;
         }
@@ -2174,10 +2174,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         if (delta != 0)
         {
-            session.Apply(new SelectQuickFixAction(delta));
+            session.Apply(new SelectOfferAction(delta));
         }
 
-        AfterEdit(session.Apply(new AcceptQuickFixAction()));
+        AfterEdit(session.Apply(new AcceptOfferAction()));
 
         return true;
     }
@@ -2185,12 +2185,19 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// <summary>The room the bulb reserves in the margin: one line square plus the gap to the page.</summary>
     private double BulbMargin => Math.Round(TextMeasure.LineHeight) + QuickFixBulb.Gap;
 
-    /// <summary>Whether the caret's line offers a repair, computed at most once per caret and drawing.</summary>
+    /// <summary>Whether the caret has anything to offer, computed at most once per caret and drawing.</summary>
     /// <remarks>
+    /// <para>
     /// The answer is kept because the caret blinks: a repaint per blink tick must not walk the document's
-    /// findings. The caret, the layout and both sets identify the question exactly - the layout is a fresh
-    /// object after every rebuild, the caret is a value, and a republished set is a different object - so a
-    /// stale answer cannot outlive the thing it describes.
+    /// findings or ask every registered source. The caret, the layout and both published sets identify the
+    /// question - the layout is a fresh object after every rebuild, the caret is a value, and a republished
+    /// set is a different object - so a stale answer cannot outlive the thing it describes.
+    /// </para>
+    /// <para>
+    /// A source registered after the document opened is the one case this key does not describe; it becomes
+    /// visible on the next caret move or the next change, which is why a host registers its intentions when
+    /// it opens a document rather than in the middle of editing one.
+    /// </para>
     /// </remarks>
     private bool BulbOffered(EditorSession session)
     {
@@ -2202,7 +2209,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
 
         _bulbOf = key;
-        _bulbOffered = QuickFixes.At(session).Count > 0;
+        _bulbOffered = IntentionList.For(session).Count > 0;
 
         return _bulbOffered;
     }
@@ -2244,7 +2251,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             new Rect(centre.X - (radius * 0.45), centre.Y + radius, radius * 0.9, radius * 0.75));
     }
 
-    /// <summary>Opens the repairs for the caret's line when the pointer pressed the bulb.</summary>
+    /// <summary>Opens the offers at the caret when the pointer pressed the bulb.</summary>
     /// <returns>Whether the press was the bulb's rather than the document's.</returns>
     /// <remarks>
     /// The press runs the same action the gesture runs, so the bulb cannot open something the keyboard
@@ -2267,7 +2274,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             return false;
         }
 
-        AfterEdit(session.Apply(new QuickFixAction()));
+        AfterEdit(session.Apply(new OfferAction()));
 
         return true;
     }

@@ -7,23 +7,25 @@ using Projectional.Language;
 namespace Projectional.Avalonia;
 
 /// <summary>
-/// Measures and paints an open <see cref="QuickFixList"/> as a column of repair labels.
+/// Measures and paints an open <see cref="OfferList"/> as a column of offer labels.
 /// </summary>
 /// <remarks>
 /// <para>
 /// A painter rather than a control, for the reasons <see cref="CompletionPresenter"/> gives: the editor
 /// draws one surface and already knows where the caret is, so there is no second control to keep in step
 /// and nothing to detach when the document closes. The two presenters are deliberately separate types -
-/// a completion row is an icon and a concept name, a repair row is a sentence - but they share one
+/// a completion row is an icon and a concept name, an offer row is a sentence - but they share one
 /// <see cref="CompletionPalette"/>, because a list drawn on the document is one kind of surface and a
 /// host should not have to keep two boxes looking alike by hand.
 /// </para>
 /// <para>
 /// This type owns no editing rule. It reports the size it needs and which row a point hit; opening the
-/// list, moving the highlight and accepting an entry all happen in the editing layer.
+/// list, moving the highlight and accepting an entry all happen in the editing layer. It does not know
+/// whether a row is a repair or an intention either: a row is a label and a disabled state, which is all
+/// the two sources have in common and all a painter needs.
 /// </para>
 /// </remarks>
-public sealed class QuickFixPresenter
+public sealed class OfferPresenter
 {
     /// <summary>The blank between the border and the first row.</summary>
     private const double Inset = 4;
@@ -44,7 +46,7 @@ public sealed class QuickFixPresenter
     /// <exception cref="ArgumentNullException">
     /// <paramref name="measure"/> or <paramref name="palette"/> is <see langword="null"/>.
     /// </exception>
-    public QuickFixPresenter(AvaloniaTextMeasure measure, CompletionPalette palette)
+    public OfferPresenter(AvaloniaTextMeasure measure, CompletionPalette palette)
     {
         ArgumentNullException.ThrowIfNull(measure);
         ArgumentNullException.ThrowIfNull(palette);
@@ -55,9 +57,9 @@ public sealed class QuickFixPresenter
 
     /// <summary>How many rows are shown at once before the window follows the highlight.</summary>
     /// <remarks>
-    /// Fewer than the completion list shows, because the list is short by nature: it holds the repairs of
-    /// the findings on one line, not the concepts a slot accepts. The window still exists so that a line
-    /// with many findings cannot grow a box taller than the control.
+    /// Fewer than the completion list shows, because the list is short by nature: it holds what can be done
+    /// at one caret, not the concepts a slot accepts. The window still exists so that a caret with many
+    /// offers cannot grow a box taller than the control.
     /// </remarks>
     public int VisibleRows { get; set; } = 8;
 
@@ -98,15 +100,15 @@ public sealed class QuickFixPresenter
     /// <param name="list">The list on show.</param>
     /// <returns>The size, including the border and the inset.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="list"/> is <see langword="null"/>.</exception>
-    public Size Measure(QuickFixList list)
+    public Size Measure(OfferList list)
     {
         ArgumentNullException.ThrowIfNull(list);
 
         var labelWidth = 0.0;
 
-        foreach (var fix in list.Fixes)
+        foreach (var entry in list.Entries)
         {
-            labelWidth = Math.Max(labelWidth, _measure.Measure(fix.Label, TextEmphasis.None));
+            labelWidth = Math.Max(labelWidth, _measure.Measure(entry.Label, TextEmphasis.None));
         }
 
         return new Size(
@@ -121,7 +123,7 @@ public sealed class QuickFixPresenter
     /// <exception cref="ArgumentNullException">
     /// <paramref name="context"/> or <paramref name="list"/> is <see langword="null"/>.
     /// </exception>
-    public void Render(DrawingContext context, QuickFixList list, Rect bounds)
+    public void Render(DrawingContext context, OfferList list, Rect bounds)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(list);
@@ -136,7 +138,7 @@ public sealed class QuickFixPresenter
         for (var row = 0; row < rows; row++)
         {
             var index = first + row;
-            var fix = list[index];
+            var entry = list[index];
             var top = bounds.Y + Inset + (row * rowHeight);
 
             if (index == list.Selected)
@@ -146,7 +148,7 @@ public sealed class QuickFixPresenter
                     new Rect(bounds.X + 1, top, bounds.Width - 2, rowHeight));
             }
 
-            var label = _measure.Shaped(fix.Label, ForegroundOf(fix, index == list.Selected), TextEmphasis.None);
+            var label = _measure.Shaped(entry.Label, ForegroundOf(entry, index == list.Selected), TextEmphasis.None);
 
             context.DrawText(label, new Point(labelLeft, top + ((rowHeight - label.Height) / 2)));
         }
@@ -156,13 +158,13 @@ public sealed class QuickFixPresenter
     /// <param name="list">The list on show.</param>
     /// <param name="bounds">Where the list was painted.</param>
     /// <param name="point">The point, in the same coordinates as <paramref name="bounds"/>.</param>
-    /// <returns>The index into <see cref="QuickFixList.Fixes"/>, or <see langword="null"/>.</returns>
+    /// <returns>The index into <see cref="OfferList.Fixes"/>, or <see langword="null"/>.</returns>
     /// <remarks>
-    /// The index rather than the repair, so the caller can turn "the second row was clicked" into the two
+    /// The index rather than the offer, so the caller can turn "the second row was clicked" into the two
     /// actions the keyboard runs: select it, then accept it.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="list"/> is <see langword="null"/>.</exception>
-    public int? RowAt(QuickFixList list, Rect bounds, Point point)
+    public int? RowAt(OfferList list, Rect bounds, Point point)
     {
         ArgumentNullException.ThrowIfNull(list);
 
@@ -188,16 +190,16 @@ public sealed class QuickFixPresenter
 
     /// <summary>The colour of one row's label.</summary>
     /// <remarks>
-    /// A repair that cannot run is dimmed whether or not it is highlighted: the highlight says "this is the
+    /// An offer that cannot run is dimmed whether or not it is highlighted: the highlight says "this is the
     /// row a press would take", the dimming says "and it would refuse". The palette's line colour is the
     /// dim one, because a list palette has no unavailable state of its own and inventing a second palette
     /// for one brush would make a host keep two boxes looking alike by hand.
     /// </remarks>
-    private IBrush ForegroundOf(DiagnosticFix fix, bool selected) =>
-        fix.IsDisabled ? _palette.Border : selected ? _palette.SelectionForeground : _palette.Foreground;
+    private IBrush ForegroundOf(Intention entry, bool selected) =>
+        entry.IsDisabled ? _palette.Border : selected ? _palette.SelectionForeground : _palette.Foreground;
 
-    private int Rows(QuickFixList list) => Math.Min(list.Count, Math.Max(1, VisibleRows));
+    private int Rows(OfferList list) => Math.Min(list.Count, Math.Max(1, VisibleRows));
 
-    private static int FirstVisible(QuickFixList list, int rows) =>
+    private static int FirstVisible(OfferList list, int rows) =>
         Math.Clamp(list.Selected - (rows / 2), 0, list.Count - rows);
 }
