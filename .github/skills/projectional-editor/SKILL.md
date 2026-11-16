@@ -666,6 +666,15 @@ Invariants that are cheap now and expensive later:
 - **Swapping a palette is a repaint, not a re-projection.** `Palette` only invalidates the
   visual; the model, tree, layout and every bound stay as they were. A change that needed a
   re-projection would mean the palette had leaked into meaning.
+- **A theme carries the overlays too, not only the text.** `SyntaxTheme` is the one object a host
+  passes for "make this dark", so it holds `Palette`, `Background`, `Chrome`, `Caret`, `Highlight`,
+  `Gutter`, `LineNumber`, `Markers`, `Lists` (the completion and quick-fix lists), `Tip` (the marker
+  tooltip) and `Bulb`. Anything painted *over* the document is read against it: a host that themes
+  the page and forgets an overlay ships a white box on a dark page, which is what happened before
+  `Lists`, `Tip` and `Bulb` were added. `Lists` is built lazily (`field ??=`) because a
+  `CompletionPalette` carries vector icons and a `StreamGeometry` needs a rendering platform -
+  constructing it eagerly made `SyntaxTheme`'s static initializer require a window and broke every
+  headless test that compares themes. Keep `SyntaxTheme` free of anything that needs a platform.
 
 ### Emphasis (bold, italic, underline, strikethrough)
 

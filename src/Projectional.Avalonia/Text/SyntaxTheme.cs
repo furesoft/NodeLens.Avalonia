@@ -32,6 +32,8 @@ public sealed class SyntaxTheme
         IBrush gutter,
         IBrush lineNumber,
         MarkerPalette markers,
+        MarkerTipPalette tip,
+        IBrush bulb,
         bool isDark)
     {
         Palette = palette;
@@ -42,6 +44,8 @@ public sealed class SyntaxTheme
         Gutter = gutter;
         LineNumber = lineNumber;
         Markers = markers;
+        Tip = tip;
+        Bulb = bulb;
         IsDark = isDark;
     }
 
@@ -55,6 +59,8 @@ public sealed class SyntaxTheme
         new SolidColorBrush(Color.FromRgb(0xF7, 0xF7, 0xF7)),
         new SolidColorBrush(Color.FromRgb(0x23, 0x78, 0x93)),
         MarkerPalette.Light,
+        MarkerTipPalette.Light,
+        new SolidColorBrush(Color.FromRgb(0xC8, 0x87, 0x1C)),
         isDark: false);
 
     /// <summary>Light text on black, for a host whose surroundings are dark.</summary>
@@ -67,6 +73,8 @@ public sealed class SyntaxTheme
         new SolidColorBrush(Color.FromRgb(0x18, 0x18, 0x18)),
         new SolidColorBrush(Color.FromRgb(0x85, 0x85, 0x85)),
         MarkerPalette.Dark,
+        MarkerTipPalette.Dark,
+        new SolidColorBrush(Color.FromRgb(0xE8, 0xA3, 0x3D)),
         isDark: true);
 
     /// <summary>The colours of the text itself.</summary>
@@ -115,6 +123,35 @@ public sealed class SyntaxTheme
     /// background, not against the glyphs.
     /// </remarks>
     public MarkerPalette Markers { get; }
+
+    /// <summary>The colours of the lists that are drawn onto the document.</summary>
+    /// <remarks>
+    /// <para>
+    /// One palette for the completion list and the quick-fix list, because they are one kind of surface: a
+    /// box painted over the page. It is part of the theme rather than of the text palette for the same
+    /// reason <see cref="Markers"/> is - a white box on a dark page is unreadable however good its text
+    /// colours are, and a host that themes the page but not its overlays has shipped a bug the user can
+    /// see.
+    /// </para>
+    /// <para>
+    /// Built on first use rather than in the constructor, and that is not laziness for its own sake: a
+    /// <see cref="CompletionPalette"/> carries vector icons, and a <c>StreamGeometry</c> needs a rendering
+    /// platform. Constructing it here would make the static initializer of this type require a window, and
+    /// a theme is exactly the kind of value a headless test wants to compare.
+    /// </para>
+    /// </remarks>
+    public CompletionPalette Lists => field ??= IsDark ? CompletionPalette.Dark : CompletionPalette.Light;
+
+    /// <summary>The colours of the marker tooltip, which is the other box drawn over the page.</summary>
+    public MarkerTipPalette Tip { get; }
+
+    /// <summary>The colour of the quick-fix bulb in the margin.</summary>
+    /// <remarks>
+    /// A single brush rather than a palette, because the bulb says one thing - "this line offers a repair".
+    /// Warmer and lighter on a dark page, because a colour that reads as an accent on white disappears into
+    /// a dark background.
+    /// </remarks>
+    public IBrush Bulb { get; }
 
     /// <summary>Whether this is one of the dark themes, for a toolkit that asks light or dark.</summary>
     public bool IsDark { get; }
