@@ -339,8 +339,12 @@ The rest is scheduled rather than described as existing:
 - **M3.** Projects — everything here is still one model per file.
 - **M4.** Output panel, and the validation that produces the markers a reader would want a
   panel for.
-- **M5.** Language browser and live preview: a language is still declared in C# and compiled,
-  not authored in the app.
+- **M5.** Language browser and live preview. From M2 a language can be declared in the project
+  without C#, but only in the provisional shape; M5 is where the definition languages exist in
+  their own notation, so a language is edited the way MPS edits one
+  ([language-authoring.md](language-authoring.md)). Declaring a language in C# stays a
+  first-class path after that, because it is the only one that carries behaviour and ships as a
+  package ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)).
 - **M7.** Installers and file association.
 
 Where a table row is implemented, the prose says so; where it is not, the roadmap's milestone

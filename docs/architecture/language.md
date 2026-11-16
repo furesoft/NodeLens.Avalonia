@@ -264,6 +264,14 @@ Both implement the same `ILanguage`; nothing else in the system distinguishes th
 | **Built-in** | C# fluent declarations, compiled into an assembly | assembly load | bootstrap languages, performance-critical languages |
 | **Declared** | concept/notation nodes inside the project | reading project XML | DSLs authored in the workbench |
 
+Neither flavour is temporary, and neither is a stage of the other
+([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)): the C# path is the only one
+that can carry behaviour and the only one that can ship as a package, so it stays after stage
+C, while the declared path stays a front end over the same declarations. How a language is
+actually written down - what a language project contains, what the definition language looks
+like, and where the two paths have to agree - is
+[language-authoring.md](language-authoring.md).
+
 ## Bootstrap stages
 
 Self-hosting is a cycle: to define languages in the editor you need an editor for the
@@ -280,6 +288,11 @@ The bootstrap XML is versioned with the code and migrated like any user data. It
 the most sensitive artefact in the repo: if it breaks, the workbench cannot load its
 own languages.
 
+Stage C replaces the *content* of the bootstrap, not the code path. The definition languages
+are declared, and the C# declarations of the same languages stay in the repository as the
+parity oracle and the fail-safe
+([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)).
+
 ## Language versions and compatibility
 
 Each language has a version number. A model records the version of every language it
@@ -294,6 +307,11 @@ was written against.
 
 ## Built-in languages to ship
 
+The first two are the ground the rest stands on: a language project is written *in*
+`Projectional.Structure` and `Projectional.Editor`, and the aspect languages below them let a
+language declare its constraints, types and generation instead of coding them
+([language-authoring.md](language-authoring.md)).
+
 | Language | Purpose |
 | --- | --- |
 | `Projectional.Structure` | concepts, slots, superconcepts (stage C) |
@@ -301,6 +319,10 @@ was written against.
 | `Projectional.Constraints` | declarative validation rules (M6) |
 | `Projectional.Types` | type rules when they outgrow C# (M6) |
 | `Projectional.Migrations` | migration rules when they outgrow C# (M6) |
+| `Projectional.Generators` | generation rules as templates (M6) |
+| `Projectional.Intentions` | actions offered at the caret, declared (M6) |
+| `Projectional.TextGen` | text output rules, declared (M6) |
+| `Projectional.Accessories` | completion, keymap, node factories (M6) |
 | `Projectional.Expressions` | shared expression/name sub-language used by most DSLs — **delivered (M1)** |
 
 `Projectional.Expressions` is not a convenience: nearly every DSL needs an identifier

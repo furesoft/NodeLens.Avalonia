@@ -84,7 +84,9 @@ first.*
 | --- | --- |
 | Concept declarations as nodes | structure language (stage B) |
 | Notation declarations as nodes | editor language (stage B) |
-| Generic renderer | renders any declared concept |
+| Generic renderer | renders any declared concept; the MPS-shaped definition languages replace it in M5 ([language-authoring.md](architecture/language-authoring.md)) |
+| Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable |
+| Language template | `dotnet new projectional-language`, plus the `Projectional.Toolkit` surface a package needs |
 | Tables | grid cell, column sizing, cell caret, add-row affordance |
 | Language loading | declared languages from the project directory |
 | Shell grows | model browser, problems panel, find/replace, recent projects, self-contained single-file build |
@@ -92,7 +94,8 @@ first.*
 **Gate:** a small DSL (including a table) is defined entirely in project files and is
 editable with correct structural editing; deleting the language's C#
 code changes nothing about what the user sees. The declared DSL can be opened, edited
-and saved in the standalone app, which no longer needs C# to know the language.
+and saved in the standalone app, which no longer needs C# to know the language. Its C#
+twin is still in the repository and still agrees with it, because the parity harness says so.
 *Effort: 6–8 weeks.*
 
 ### M3 — References, scopes and completion
@@ -137,11 +140,17 @@ application and in the standalone app, proving the two front ends share the beha
 
 | Delivers | Details |
 | --- | --- |
-| Structure language (stage C) | concepts, slots, superconcepts as an editable model |
-| Editor language (stage C) | notation and styles as an editable model |
+| Structure language (stage C) | `Projectional.Structure` drawn in its own notation: concepts, slots, inheritance, enumerations as an editable model ([language-authoring.md](architecture/language-authoring.md)) |
+| Editor language (stage C) | `Projectional.Editor` as cell glyphs, with notation and the table variant as an editable model |
+| Language project | one model per aspect beside a `language` root, with dependencies and extended languages; a new kind of aspect is a new language plus an annotation concept, not a framework change |
+| Language export | declared to C#, so a language prototyped in the workbench ships as a package without being retyped, behavioural aspects emitted as explicit stubs |
 | Live preview | edit a language definition, see the effect on a model next to it |
-| Bootstrap | versioned bootstrap XML, migrated with user data |
+| Bootstrap | versioned bootstrap XML, migrated with user data; the C# declarations stay as the oracle and the fail-safe |
 | Workbench shell | the standalone app grows into the workbench: language browser, live preview, output panel, language project creation |
+
+By the end of this milestone the definition languages are written in themselves: the same
+project folder, the same `<<property>>` blocks, the same cell glyphs, loaded from the bootstrap
+corpus and checked by the parity harness against their C# twins.
 
 **Gate:** a new DSL is created from an empty project inside the workbench, including
 its notation, and used immediately — no C# and no restart. The workbench is the same
@@ -156,7 +165,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 
 | Delivers | Details |
 | --- | --- |
-| Declarative constraints/types | lowering to the existing aspect delegates |
+| Declarative aspects | constraints, types, scopes, generation, intentions, textGen and accessories as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
