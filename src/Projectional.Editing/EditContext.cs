@@ -93,6 +93,27 @@ public sealed class EditContext
     /// </remarks>
     public CompletionList? Completion { get; internal set; }
 
+    /// <summary>
+    /// The characters typed at this edge that did nothing yet, in the order they arrived.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A keyword is spelled one character at a time, and no single one of them means anything: <c>and</c> only
+    /// becomes a conjunction when the third letter arrives. So the keystrokes that changed nothing are kept, and
+    /// the next one is asked about together with them - which is what lets a language declare a gesture for a
+    /// word rather than for a letter.
+    /// </para>
+    /// <para>
+    /// Only text the model refused is kept. A character a property accepted, or one a typing rule turned into a
+    /// node, reset it, because the user is writing a value rather than spelling a gesture.
+    /// </para>
+    /// <para>
+    /// View state, like <see cref="Completion"/>: the session seeds it before running a typing action and reads it
+    /// back afterwards, and any other action clears it.
+    /// </para>
+    /// </remarks>
+    public string? PendingText { get; internal set; }
+
     /// <summary>The clipboard Copy, Cut and Paste go through.</summary>
     /// <remarks>
     /// Never <see langword="null"/>: the session supplies one, falling back to an

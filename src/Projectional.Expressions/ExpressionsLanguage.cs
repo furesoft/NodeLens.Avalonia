@@ -156,6 +156,22 @@ public static class ExpressionsLanguage
                     propertySlot: "operator",
                     caretSlot: "left"),
 
+                // The words, which no single keystroke spells: the presets turn the word into the operator the
+                // model stores, and the session's buffer is what waits for the last letter.
+                new ConceptTrigger(
+                    ExpressionsConceptKeys.Expression,
+                    TriggerSide.Right,
+                    text => text == "and",
+                    anchorSlot: "left",
+                    caretSlot: "right",
+                    presets: new Dictionary<string, string>(StringComparer.Ordinal) { ["operator"] = "&&" }),
+                new ConceptTrigger(
+                    ExpressionsConceptKeys.Expression,
+                    TriggerSide.Right,
+                    text => text == "or",
+                    anchorSlot: "left",
+                    caretSlot: "right",
+                    presets: new Dictionary<string, string>(StringComparer.Ordinal) { ["operator"] = "||" }),
             ]),
 
         new ConceptDeclaration(

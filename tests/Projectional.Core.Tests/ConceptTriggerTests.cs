@@ -109,6 +109,17 @@ public sealed class ConceptTriggerTests
     }
 
     [Fact]
+    public void APresetForNoSlotIsRefused()
+    {
+        Assert.Throws<ArgumentException>(() => new ConceptTrigger(
+            "Expressions.Expression",
+            TriggerSide.Right,
+            _ => true,
+            "left",
+            presets: new Dictionary<string, string>(StringComparer.Ordinal) { [""] = "&&" }));
+    }
+
+    [Fact]
     public void ATriggerPrintsItsShape()
     {
         var trigger = new ConceptTrigger(

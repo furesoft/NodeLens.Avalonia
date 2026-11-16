@@ -769,9 +769,18 @@ a trigger declared on a concept answers for the edge of a node that already exis
   the wrap), and the trigger's `CaretSlot` is where the caret lands, so `5` `+` `3` gives `5 + 3` with
   no arrow keys in between. Without a `CaretSlot` the caret stays inside the wrapped node, which is what
   a prefix operator wants.
+- **A gesture may be spelt over several keystrokes.** `ConceptTrigger.Presets` gives the concept values it is born
+  with whatever was typed (`and` -> `operator = "&&"`), and the run of keystrokes is kept in
+  `EditContext.PendingText`: seeded by `EditorSession.ContextFor` from the place the last keystroke stopped at,
+  read back in `ApplyCore`, cleared by `Select` and by every action that is not a `TypeTextAction`. Nothing is
+  applied and nothing is journaled while a word is being spelt, so the wrap is the only undo step. `TypeTextAction`
+  asks `Candidates` - the run plus this character first, then this character alone - so one meaningless letter
+  (`x` before `+`) can never block a gesture. There is no timer: the caret says when a word ends. A preset wins
+  over the typed text where both name one slot, and a preset value the property refuses is dropped.
 - **A wrong declaration is a load-time error, not a dead keystroke.** `ConceptRegistry.Create` validates every
   trigger: the anchor concept exists, `AnchorSlot` is a single child the concept declares and the anchor
-  conforms to it, `PropertySlot` is a property and `CaretSlot` a child slot, and the concept is concrete.
+  conforms to it, `PropertySlot` is a property and `CaretSlot` a child slot, every `Presets` key is a property,
+  and the concept is concrete.
   At the keystroke `TypeTextAction.Fits` asks only the two things registration cannot know - does the concept
   conform to the slot the anchor stands in, and does `Applicability` allow it there - so a gesture that cannot
   run does nothing instead of reaching `Model.Wrap`, which would throw. A `PropertySlot` whose type refuses the
@@ -785,7 +794,8 @@ a trigger declared on a concept answers for the edge of a node that already exis
   intention list's job; typing over a selection stays "replace the text".
 - The shipped catalogue lives on `Binary`, `Unary`, `Parenthesized` and `If` in `ExpressionsLanguage`: operators on
   either side become `Binary` (caret in the empty operand), `-`/`!` on the left become `Unary`, `(` on the
-  left becomes `Parenthesized`, and `?` on the right becomes the `condition` of an `If`. `Binary`'s left trigger deliberately does **not** claim `-`, so the negation is
+  left becomes `Parenthesized`, `and`/`or` on the right become `Binary` with `&&`/`||` as a preset, and `?` on
+  the right becomes the `condition` of an `If`. `Binary`'s left trigger deliberately does **not** claim `-`, so the negation is
   the single reading of a leading minus without needing Unary to outrank Binary in the concept order.
 
 ## How the control paints and takes input
@@ -1196,7 +1206,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1333 tests**; anything below that means tests were deleted.
+it. **Baseline is 1339 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

@@ -55,6 +55,7 @@ new ConceptDeclaration(
 | `AnchorSlot` | the single-child slot of this concept that receives the node |
 | `PropertySlot` | where the typed text goes, or `null` when the text only selects the trigger |
 | `CaretSlot` | where the caret continues, or `null` when it stays inside the wrapped node |
+| `Presets` | values the concept is born with, whatever was typed - see [Spelling a word](#spelling-a-word) |
 
 **The concept key is absent on purpose**: a trigger always creates the concept that declares it. That is what
 makes the two reasons for this location work:
@@ -121,6 +122,35 @@ one first - "and then continue" is what a user typing after such a node means.
 An empty value is both ends for the same reason, and an empty *slot* is no end at all: it has no node
 of its own to grow from.
 
+## Spelling a word
+
+An operator is one character, so one keystroke says all of it. A **word** does not: `and` reaches the editor as
+three keystrokes, and the first of them means nothing on its own. So the request keeps what a keystroke that
+applied nothing spelled, and the next keystroke at the same place is asked about the whole run:
+
+```
+5  a  n  d      ->   5 && <empty>
+   ^^^^^^^  three keystrokes, of which only the third edits anything
+```
+
+- **`ConceptTrigger.Presets` is the other half of it.** The word is not the value: `and` means the operator
+  `&&`, which no keyboard contains. A preset names the slot and the value the concept is born with, and it wins
+  over the typed text where both name one slot - because the language said so explicitly. `PropertySlot` stays
+  for the case where the text *is* the value, as it is for every operator.
+- **The run lives on `EditContext.PendingText`**, which `EditorSession` seeds from the place the previous
+  keystroke stopped at and keeps only while the caret has not moved (`ContextFor`). It is view state in the same
+  sense as the completion list: never applied, never journaled, never undone. Typing three letters into a number
+  costs no undo step; the wrap that ends the word is the only step.
+- **Two candidates, longest first.** The run plus this keystroke, and then this keystroke alone. Without the
+  second, one meaningless character would block every later gesture at that place - `x` then `+` after a number
+  has to give an addition, not wait for a word `x+` nobody declared. The buffer is a convenience, never a filter.
+- **The sequence ends with the gesture, with the caret, and with anything else.** A fired trigger clears the run
+  (`Refused`), `EditorSession.Select` clears it because a caret that moved is not spelling the same word, and any
+  action that is not `TypeTextAction` writes nothing back - so a click, an undo or a completion ends it without
+  any of them knowing it exists. There is no timer: a run is a property of the caret, not of the clock.
+- **A word can also arrive in one piece.** The whole text is still asked as it is, so a paste of `and` spells the
+  operator with no buffer involved, and a host that delivers text in chunks works either way.
+
 ## What a match does
 
 - **A wrap, not a replacement.** `Model.Wrap` puts the node into the new concept and keeps its
@@ -145,7 +175,11 @@ the compiler - the anchor concept is a foreign key and the three slots are strin
 - the anchor concept is declared;
 - `AnchorSlot` is a single-child slot the concept declares, and the anchor concept conforms to it;
 - `PropertySlot` is a property and `CaretSlot` a child slot the concept declares;
+- every `Presets` key is a property the concept declares;
 - the concept is concrete, since no node of an abstract concept can exist and triggers are not inherited.
+
+`ConceptTrigger` itself refuses an empty anchor concept, slot or preset key, a `null` claim and a numeric value
+that is not a `TriggerSide` - the checks that need no registry.
 
 A typo is therefore a `ConceptDefinitionException` when the language loads.
 
@@ -157,7 +191,7 @@ was already checked at load.
 
 ## What the shipped languages declare
 
-Declared on `Binary`, `Unary`, `Parenthesized` and `If` in `ExpressionsLanguage`, so `RulesLanguage` inherits them with
+Declared on `Binary`, `Unary` and `Parenthesized` in `ExpressionsLanguage`, so `RulesLanguage` inherits them with
 the concepts it borrows:
 
 | Typed | At the edge of | Result |
@@ -166,6 +200,7 @@ the concepts it borrows:
 | `+` `-` `*` ... | any expression, left | `Binary` with the expression on the right, caret in the empty `left` |
 | `-` `!` | any expression, left | `Unary` with the expression as its operand |
 | `(` | any expression, left | `Parenthesized` around it, caret inside |
+| `and` `or` | any expression, right | `Binary` with the expression on the left, `&&` or `||` as a preset, caret in `right` |
 | `?` | any expression, right | `If` with the expression as its `condition`, caret in the empty `then` |
 
 A leading minus is a negation and nothing else, so `Binary`'s left trigger does not claim `-`. Leaving the tie to
@@ -180,6 +215,10 @@ Everything is headless, because the decision lives in the editing layer: `TypeTe
 document root, and applies `KeyRouter.Type("+")` - the same call the control makes. It asserts the
 model shape, the caret address, the undo depth, and finally that the drawing reads
 `((5 + <empty>))`: the wrap is proven visible, not merely present in the tree.
+
+The spelling cases are in the same file, because the only way to see the buffer is to press keys: one letter at a
+time gives the operator and one undo step, a whole word in one piece behaves the same, a meaningless letter does
+not block the next gesture, and a caret move between the halves of a word means they were never one.
 
 `ConceptRegistryTriggerTests` covers the declaration surface: which concepts a trigger is asked about, the order
 the answer comes in, that a subtype does not inherit the gesture, and every way a declaration can be impossible.
@@ -198,6 +237,9 @@ the answer comes in, that a subtype does not inherit the gesture, and every way 
 - **A trigger cannot replace or delete the anchor**, only surround it.
 - **A trigger is asked once per keystroke, not re-evaluated on undo.** An undo restores by replaying
   journal closures, which never consult a language.
+- **The buffered run is not shown and not timed.** A user spelling a word gets no feedback until the last letter
+  lands, because a word is not a value yet and drawing it would need a place in the model to draw it. A timeout
+  would be a second rule about when a word ends, beside the caret that already says it.
 
 ## Status
 
@@ -208,6 +250,11 @@ Delivered in `feat/concept-triggers` as a registry beside the language, and **mo
 `TriggerRegistry`, `EditorSession.Triggers`, the `triggers:` constructor parameter, the `DocumentTab` and
 `MainWindow` plumbing and `RulesLanguage.Triggers` all went away, because a language that borrows
 `ConceptDeclarations` now gets the gestures with them.
+
+Spelling was added in `feat/if-concept`, together with the `If` concept that first needed a gesture of more than one
+character: `ConceptTrigger.Presets`, `EditContext.PendingText`, the run `EditorSession` keeps and the two
+candidates `TypeTextAction` asks about. It changed no interface - a language that declares no word behaves exactly
+as before.
 
 `TriggerAnchor`/`TriggerAnchors` and the trigger path in `TypeTextAction` are unchanged in shape and live in
 `Projectional.Editing`. A real-window probe confirmed the whole path: `1000` + `+` in the sample's rule draws
