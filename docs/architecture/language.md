@@ -253,6 +253,54 @@ front of `5` writes `-5`, because a negative number is a number; only a refused 
 triggers. [triggers.md](triggers.md) is the design of record, including the caret-to-anchor rules,
 the guards that keep a bad declaration from throwing, and the limits.
 
+## Applicability
+
+A child slot says which *kind* of thing it holds, and it says the same thing wherever it appears. Some concepts
+are not valid everywhere their type is accepted: a C# attribute may stand on a class, a method or a parameter
+and nowhere else, and an XML comment only in front of a class or a method definition. Where such a concept must
+not stand, the editor has to stop offering it - a completion list that proposes something the language forbids
+teaches the user a mistake.
+
+So the constraint is declared on the concept, as a list of places:
+
+```csharp
+new ConceptDeclaration(
+    CSharpConceptKeys.Attribute,
+    [new PropertySlot("name", PropertyType.String)],
+    applicability: Applicability.Only(
+        new ConceptPlace(CSharpConceptKeys.Class, "attributes"),
+        new ConceptPlace(CSharpConceptKeys.Method, "attributes"),
+        new ConceptPlace(CSharpConceptKeys.Parameter, "attributes")));
+```
+
+A `ConceptPlace` names a concept and, optionally, one slot of it. Naming a **super concept** is how "anywhere
+inside a declaration" is written without listing every declaration: `new ConceptPlace(CSharpConceptKeys.Declaration)`
+allows the concept in any slot of anything that is a declaration. `Applicability.Anywhere` is the default, so a
+language that constrains nothing is written exactly as before.
+
+It is consulted in three places and **enforced in one**:
+
+| Where | What it does |
+| --- | --- |
+| `CompletionSource.Proposals` | does not offer a concept that may not stand in this slot |
+| `InsertChildAction` (Enter) | skips an inapplicable default and takes the next candidate |
+| `TypeTextAction` (typing rules) | skips an inapplicable claimant |
+| `Model` (`InsertChild`, `InsertChildAt`, `InsertRootAt`) | **refuses the placement** with `ModelInvariantException` |
+
+The last row is the guarantee and the first three are a courtesy: a bug in a filter can never produce a document
+the language does not allow, because every placement - a new node, a move, a wrap, a load, an undo replay - goes
+through one of those three primitives. A concept that names places can therefore never be a model root: a root
+has no parent and no slot, so none of its places can match. That follows from the rule rather than being a
+special case.
+
+`ConceptRegistry.Create` validates every place at registration - the concept must exist, a named slot must hold
+children, and that slot must accept this concept - so a typo is a language error at load rather than a keystroke
+that silently does nothing.
+
+**It is not `isOfferedInCompletion`.** That flag silences the list and nothing else, because hiding a literal
+from a menu must not make it impossible to create; this one is about legality, so it holds everywhere. The two
+must not be merged: `CompletionSource.Proposals` filters on both, and the default fill on applicability only.
+
 ## Aspects
 
 Aspects are the semantic hooks. All are optional per concept, all are delegates

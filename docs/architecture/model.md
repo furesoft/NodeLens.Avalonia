@@ -262,3 +262,5 @@ node makes impossible to violate.
 5. Removing a node removes it from its parent and clears all incoming references
    within the same transaction.
 6. Every stored property value parses against its declared type.
+7. A node only stands where its concept's `Applicability` allows - a concept may name the places it may
+   appear in, and a placement anywhere else is refused ([language.md](language.md#applicability)).
