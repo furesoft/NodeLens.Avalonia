@@ -1,18 +1,22 @@
-using Projectional.Language;
 using Xunit;
 
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The one declaration a language writes per gesture: which concept, on which side, for which text.
+/// The one declaration a language writes per gesture: which side, for which text, and where the node and the
+/// caret go.
 /// </summary>
+/// <remarks>
+/// The concept a trigger creates is the concept that declares it, so nothing here names it - which is the point of
+/// declaring the gesture on the concept. What the concept's own slots have to offer is checked by
+/// <see cref="ConceptRegistry"/>, so those tests live in <c>ConceptRegistryTriggerTests</c>.
+/// </remarks>
 public sealed class ConceptTriggerTests
 {
     [Fact]
     public void ATriggerAnswersWhatItClaims()
     {
         var trigger = new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             TriggerSide.Right,
             text => text == "+",
@@ -24,10 +28,9 @@ public sealed class ConceptTriggerTests
     }
 
     [Fact]
-    public void ATriggerWithoutAPropertySlotOnlySelectsTheConcept()
+    public void ATriggerWithoutASlotOnlySelectsTheConcept()
     {
         var trigger = new ConceptTrigger(
-            "Expressions.Parenthesized",
             "Expressions.Expression",
             TriggerSide.Left,
             text => text == "(",
@@ -35,7 +38,6 @@ public sealed class ConceptTriggerTests
 
         Assert.Null(trigger.PropertySlot);
         Assert.Null(trigger.CaretSlot);
-        Assert.Equal("Expressions.Parenthesized", trigger.ConceptKey);
         Assert.Equal("Expressions.Expression", trigger.AnchorConcept);
         Assert.Equal(TriggerSide.Left, trigger.Side);
         Assert.Equal("inner", trigger.AnchorSlot);
@@ -45,7 +47,6 @@ public sealed class ConceptTriggerTests
     public void ATriggerKeepsTheSlotsItWasGiven()
     {
         var trigger = new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             TriggerSide.Right,
             _ => true,
@@ -58,13 +59,11 @@ public sealed class ConceptTriggerTests
     }
 
     [Theory]
-    [InlineData("", "Expressions.Expression", "left")]
-    [InlineData("Expressions.Binary", "", "left")]
-    [InlineData("Expressions.Binary", "Expressions.Expression", "")]
-    public void AnEmptyKeyOrSlotIsRefused(string conceptKey, string anchorConcept, string anchorSlot)
+    [InlineData("", "left")]
+    [InlineData("Expressions.Expression", "")]
+    public void AnEmptyKeyOrSlotIsRefused(string anchorConcept, string anchorSlot)
     {
         Assert.Throws<ArgumentException>(() => new ConceptTrigger(
-            conceptKey,
             anchorConcept,
             TriggerSide.Right,
             _ => true,
@@ -75,7 +74,6 @@ public sealed class ConceptTriggerTests
     public void AnOptionalSlotMayNotBeEmptyEither()
     {
         Assert.Throws<ArgumentException>(() => new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             TriggerSide.Right,
             _ => true,
@@ -83,7 +81,6 @@ public sealed class ConceptTriggerTests
             propertySlot: ""));
 
         Assert.Throws<ArgumentException>(() => new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             TriggerSide.Right,
             _ => true,
@@ -95,7 +92,6 @@ public sealed class ConceptTriggerTests
     public void ClaimingNothingIsRefused()
     {
         Assert.Throws<ArgumentNullException>(() => new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             TriggerSide.Right,
             null!,
@@ -106,7 +102,6 @@ public sealed class ConceptTriggerTests
     public void ASideThatIsNotASideIsRefused()
     {
         Assert.Throws<ArgumentException>(() => new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             (TriggerSide)7,
             _ => true,
@@ -117,12 +112,11 @@ public sealed class ConceptTriggerTests
     public void ATriggerPrintsItsShape()
     {
         var trigger = new ConceptTrigger(
-            "Expressions.Binary",
             "Expressions.Expression",
             TriggerSide.Right,
             _ => true,
             "left");
 
-        Assert.Equal("Expressions.Binary <- Expressions.Expression (right)", trigger.ToString());
+        Assert.Equal("<- Expressions.Expression (right)", trigger.ToString());
     }
 }

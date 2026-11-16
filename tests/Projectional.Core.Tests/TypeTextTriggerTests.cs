@@ -231,126 +231,127 @@ public sealed class TypeTextTriggerTests
     }
 
     [Fact]
-    public void ALanguageWithoutTriggersRejectsTheOperator()
+    public void ALanguageWhoseConceptsDeclareNoGestureRejectsTheOperator()
     {
-        // No triggers is the state every language was in before this existed, and it still has to be the
-        // behaviour: a refused character stays refused.
-        var (outer, group, literal) = Grouped();
-        using var session = new EditorSession(
-            outer,
-            Notations,
-            typing: ExpressionsLanguage.TypingRules);
+        // The state every language was in before gestures existed, and it has to stay one: a character a
+        // property refuses stays refused when no concept says the keystroke means something next to a node.
+        var model = new Project(TestLanguage.Registry).NewModel();
+        var body = model.NewNode(TestLanguage.Body);
 
-        CaretAtEnd(session, literal, "value");
+        model.AddRoot(body);
+
+        var step = model.NewChild(body, "steps", TestLanguage.Step);
+
+        step.Set("index", 1);
+
+        using var session = new EditorSession(body, TestNotations.Registry);
+        var place = Place(session, step, "index");
+
+        session.Select(Selection.At(CaretPosition.At(place, place.Length)));
 
         Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("+")).Outcome);
-        Assert.Same(literal, Assert.Single(group.GetChildren("inner")));
+        Assert.Equal("1", step.GetOrNull("index"));
+        Assert.Same(step, Assert.Single(body.GetChildren("steps")));
     }
 
-    [Fact]
-    public void ATriggerWithoutAPropertySlotOnlyWraps()
-    {
-        // A gesture that only means "put this concept around it": nothing is written, and the caret stays
-        // inside the node that was wrapped.
-        var (outer, group, literal) = Grouped();
-        using var session = new EditorSession(
-            outer,
-            Notations,
-            triggers: TriggerRegistry.Empty.Add(new ConceptTrigger(
-                ExpressionsConceptKeys.Parenthesized,
-                ExpressionsConceptKeys.Expression,
-                TriggerSide.Right,
-                text => text == "(",
-                anchorSlot: "inner")));
-
-        CaretAtEnd(session, literal, "value");
-
-        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("(")).Outcome);
-
-        var wrapper = Assert.Single(group.GetChildren("inner"));
-
-        Assert.Equal(ExpressionsConceptKeys.Parenthesized, wrapper.Concept.Key);
-        Assert.Same(literal, wrapper.GetChild("inner"));
-        Assert.Equal(CellAddress.OfSlot(literal.Id, "value"), session.Selection.Caret.Address);
-    }
 
     [Fact]
     public void ATriggerWhosePropertyRefusesTheTextStillWraps()
     {
-        // A declared trigger that claims more than its wrapper can store is a language mistake, and a
-        // keystroke must not be able to throw over it: the concept appears, the text is dropped.
-        var (outer, group, literal) = Grouped();
+        // A trigger that claims more than its concept can store is a language mistake, and a keystroke must not
+        // be able to throw over it: the concept appears and the text is dropped.
+        var concepts = ConceptRegistry.Create(
+        [
+            .. ExpressionsLanguage.ConceptDeclarations,
+            new ConceptDeclaration(
+                "Test.Narrow",
+                [
+                    new PropertySlot("operator", PropertyType.Enum("+")),
+                    new ChildSlot("left", ExpressionsConceptKeys.Expression, Cardinality.One),
+                ],
+                [ExpressionsConceptKeys.Expression],
+                triggers:
+                [
+                    new ConceptTrigger(
+                        ExpressionsConceptKeys.Expression,
+                        TriggerSide.Right,
+                        text => text == "??",
+                        anchorSlot: "left",
+                        propertySlot: "operator"),
+                ]),
+        ]);
+
+        var (outer, group, literal) = Grouped(concepts: concepts);
         using var session = new EditorSession(
             outer,
-            Notations,
-            triggers: TriggerRegistry.Empty.Add(new ConceptTrigger(
-                ExpressionsConceptKeys.Binary,
-                ExpressionsConceptKeys.Expression,
-                TriggerSide.Right,
-                text => text == "??",
-                anchorSlot: "left",
-                propertySlot: "operator",
-                caretSlot: "right")));
+            ExpressionsLanguage.CreateNotations(concepts),
+            typing: ExpressionsLanguage.TypingRules);
 
         CaretAtEnd(session, literal, "value");
 
         Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("??")).Outcome);
 
-        var binary = Assert.Single(group.GetChildren("inner"));
+        var wrapper = Assert.Single(group.GetChildren("inner"));
 
-        Assert.Equal(ExpressionsConceptKeys.Binary, binary.Concept.Key);
-        Assert.Null(binary.GetOrNull("operator"));
-        Assert.Same(literal, binary.GetChild("left"));
+        Assert.Equal("Test.Narrow", wrapper.Concept.Key);
+        Assert.Null(wrapper.GetOrNull("operator"));
+        Assert.Same(literal, wrapper.GetChild("left"));
     }
 
     [Fact]
-    public void ATriggerForAConceptTheLanguageDoesNotHaveDoesNothing()
+    public void TheFirstDeclaredConceptWinsWhenTwoClaimTheSameCharacter()
     {
-        var (outer, group, literal) = Grouped();
+        // Two concepts claim a leading minus on an expression, so concept declaration order decides - the same
+        // order that ranks completion. The shipped language avoids the tie instead (Binary does not claim "-"
+        // on the left), because the order it would need there is not the order its menu wants.
+        var concepts = ConceptRegistry.Create(
+        [
+            // Declared before the borrowed catalogue, because declaration order is what decides the tie.
+            new ConceptDeclaration(
+                "Test.FirstNegation",
+                [
+                    new PropertySlot("operator", PropertyType.Enum("-")),
+                    new ChildSlot("operand", ExpressionsConceptKeys.Expression, Cardinality.One),
+                ],
+                [ExpressionsConceptKeys.Expression],
+                triggers:
+                [
+                    new ConceptTrigger(
+                        ExpressionsConceptKeys.Expression,
+                        TriggerSide.Left,
+                        text => text == "-",
+                        anchorSlot: "operand",
+                        propertySlot: "operator"),
+                ]),
+            new ConceptDeclaration(
+                "Test.SecondNegation",
+                [
+                    new PropertySlot("operator", PropertyType.Enum("-")),
+                    new ChildSlot("operand", ExpressionsConceptKeys.Expression, Cardinality.One),
+                ],
+                [ExpressionsConceptKeys.Expression],
+                triggers:
+                [
+                    new ConceptTrigger(
+                        ExpressionsConceptKeys.Expression,
+                        TriggerSide.Left,
+                        text => text == "-",
+                        anchorSlot: "operand",
+                        propertySlot: "operator"),
+                ]),
+            .. ExpressionsLanguage.ConceptDeclarations,
+        ]);
+
+        var (outer, group, boolean) = Grouped(ExpressionsConceptKeys.BoolLiteral, "true", concepts);
         using var session = new EditorSession(
             outer,
-            Notations,
-            triggers: TriggerRegistry.Empty.Add(new ConceptTrigger(
-                "Expressions.NoSuchConcept",
-                ExpressionsConceptKeys.Expression,
-                TriggerSide.Right,
-                text => text == "+",
-                anchorSlot: "left")));
-
-        CaretAtEnd(session, literal, "value");
-
-        Assert.Equal(EditOutcome.Rejected, session.Apply(KeyRouter.Type("+")).Outcome);
-        Assert.Same(literal, Assert.Single(group.GetChildren("inner")));
-    }
-
-    [Fact]
-    public void TheFirstDeclaredTriggerWins()
-    {
-        var (outer, group, boolean) = Grouped(ExpressionsConceptKeys.BoolLiteral, "true");
-        using var session = new EditorSession(
-            outer,
-            Notations,
-            triggers: TriggerRegistry.Empty
-                .Add(new ConceptTrigger(
-                    ExpressionsConceptKeys.Unary,
-                    ExpressionsConceptKeys.Expression,
-                    TriggerSide.Left,
-                    text => text == "-",
-                    anchorSlot: "operand",
-                    propertySlot: "operator"))
-                .Add(new ConceptTrigger(
-                    ExpressionsConceptKeys.Binary,
-                    ExpressionsConceptKeys.Expression,
-                    TriggerSide.Left,
-                    text => text == "-",
-                    anchorSlot: "right",
-                    propertySlot: "operator",
-                    caretSlot: "left")));
+            ExpressionsLanguage.CreateNotations(concepts),
+            typing: ExpressionsLanguage.TypingRules);
 
         CaretAtStart(session, boolean, "value");
         session.Apply(KeyRouter.Type("-"));
 
-        Assert.Equal(ExpressionsConceptKeys.Unary, Assert.Single(group.GetChildren("inner")).Concept.Key);
+        Assert.Equal("Test.FirstNegation", Assert.Single(group.GetChildren("inner")).Concept.Key);
     }
 
     [Fact]
@@ -373,10 +374,12 @@ public sealed class TypeTextTriggerTests
     }
 
     [Fact]
-    public void TheShippedLanguagesDeclareTriggersBesideTheirTypingRules()
+    public void TheBorrowingLanguageInheritsTheGesturesWithTheConcepts()
     {
-        Assert.False(ExpressionsLanguage.Triggers.IsEmpty);
-        Assert.Same(ExpressionsLanguage.Triggers, RulesLanguage.Triggers);
+        // Declared on the concepts, so a language that borrows another's declarations gets its gestures with
+        // them - there is nothing to forward and nothing to forget.
+        Assert.NotEmpty(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Binary).Triggers);
+        Assert.NotEmpty(RulesLanguage.Concepts.Get(ExpressionsConceptKeys.Binary).Triggers);
     }
 
     [Fact]
@@ -398,9 +401,12 @@ public sealed class TypeTextTriggerTests
     /// <summary>A literal inside a group inside the document's group, which is the root.</summary>
     private static (Node Outer, Node Group, Node Literal) Grouped(
         string literalConcept = ExpressionsConceptKeys.IntLiteral,
-        string value = "5")
+        string value = "5",
+        ConceptRegistry? concepts = null)
     {
-        var model = ExpressionsLanguage.NewProject().NewModel();
+        // The model has to be built in the registry the session reads, or a concept a test adds is invisible
+        // to it: a session sees its document's project, not the notations it was handed.
+        var model = new Project(concepts ?? ExpressionsLanguage.Concepts).NewModel();
         var outer = model.NewNode(ExpressionsConceptKeys.Parenthesized);
 
         model.AddRoot(outer);
@@ -417,8 +423,7 @@ public sealed class TypeTextTriggerTests
         new(
             document,
             Notations,
-            typing: ExpressionsLanguage.TypingRules,
-            triggers: ExpressionsLanguage.Triggers);
+            typing: ExpressionsLanguage.TypingRules);
 
     private static void CaretAtStart(EditorSession session, Node node, string slot)
     {

@@ -27,7 +27,6 @@ public sealed class EditContext
     private readonly Node _document;
     private readonly IReadOnlyList<CaretPlace> _places;
     private readonly ITypingRules _typing;
-    private readonly ITriggerRules _triggers;
 
     internal EditContext(
         Node document,
@@ -37,8 +36,7 @@ public sealed class EditContext
         double pageHeight,
         Selection selection,
         ITextClipboard clipboard,
-        ITypingRules typing,
-        ITriggerRules triggers)
+        ITypingRules typing)
     {
         _document = document;
         _places = CaretPlaces.Of(tree);
@@ -50,7 +48,6 @@ public sealed class EditContext
         Selection = selection;
         Clipboard = clipboard;
         _typing = typing;
-        _triggers = triggers;
     }
 
     /// <summary>The node being edited, which is the root of the tree.</summary>
@@ -117,16 +114,6 @@ public sealed class EditContext
     /// every action whether the language has an opinion.
     /// </remarks>
     public ITypingRules TypingRules => _typing;
-
-    /// <summary>
-    /// What the language says about text that arrives at the edge of a node that already exists.
-    /// </summary>
-    /// <remarks>
-    /// Never <see langword="null"/>: a session given no triggers gets <see cref="TriggerRegistry.Empty"/>, so
-    /// nothing changes for a language that declares none and no action has to ask whether there are any.
-    /// </remarks>
-    public ITriggerRules Triggers => _triggers;
-
 
     /// <summary>Every cell the caret can stand in, in document order.</summary>
     public IReadOnlyList<CaretPlace> Places => _places;

@@ -105,8 +105,7 @@ public sealed class PreviewSandbox : IDisposable
                 session.Emphasis,
                 session.Choice,
                 session.Clipboard,
-                session.Typing,
-                session.Triggers);
+                session.Typing);
 
             // The caret is where the edit is about, so the copy starts where the user is looking. Addresses name
             // node ids, which the copy preserves, so the same selection resolves in the copy's own tree.

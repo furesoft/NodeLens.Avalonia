@@ -65,10 +65,7 @@ public sealed class EditorSession : IDisposable
     /// What the language says about text typed into an empty slot; nothing when omitted, which leaves
     /// typing there refused.
     /// </param>
-    /// <param name="triggers">
-    /// What the language says about text typed at the edge of a node that already exists; nothing when
-    /// omitted, which leaves such a keystroke doing what it did - nothing.
-    /// </param>
+
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
     public EditorSession(
         Node document,
@@ -77,8 +74,7 @@ public sealed class EditorSession : IDisposable
         ICellEmphasis? emphasis = null,
         INotationChoice? choice = null,
         ITextClipboard? clipboard = null,
-        ITypingRules? typing = null,
-        ITriggerRules? triggers = null)
+        ITypingRules? typing = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
@@ -93,7 +89,6 @@ public sealed class EditorSession : IDisposable
         Choice = choice ?? NotationChoice.Default;
         Clipboard = clipboard ?? new InMemoryClipboard();
         Typing = typing ?? TypingRuleRegistry.Empty;
-        Triggers = triggers ?? TriggerRegistry.Empty;
         _builder = RebuildBuilder();
 
         Tree = _builder.Build(Document);
@@ -340,14 +335,6 @@ public sealed class EditorSession : IDisposable
     /// </remarks>
     public ITypingRules Typing { get; }
 
-    /// <summary>What the language says about text typed at the edge of a node that already exists.</summary>
-    /// <remarks>
-    /// Never <see langword="null"/>: a session built without one gets <see cref="TriggerRegistry.Empty"/>,
-    /// which claims nothing, so a language that declares no triggers behaves exactly as it did before there
-    /// were any. Like <see cref="Typing"/> it is a property of the language rather than of the session, so a
-    /// host passes it once when it opens a document.
-    /// </remarks>
-    public ITriggerRules Triggers { get; }
 
 
     /// <summary>
@@ -851,7 +838,7 @@ public sealed class EditorSession : IDisposable
 
     /// <summary>The context one action sees, built from the tree and layout as they are now.</summary>
     private EditContext ContextFor(EditAction action) =>
-        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing, Triggers)
+        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing)
         {
             Completion = action is CompletionAction ? Completion : null,
         };

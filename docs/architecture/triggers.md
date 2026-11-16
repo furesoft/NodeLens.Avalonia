@@ -14,48 +14,66 @@ typed there says what should surround it.
 | --- | --- | --- |
 | in an empty slot | `ITypingRules` | a new node is created and the text written into it |
 | in a property's text, which accepts it | the property | the text is written |
-| in a property's text, which refuses it | `ITriggerRules` | that node is wrapped, or the keystroke is refused |
-| anywhere else (a keyword, a gap) | `ITriggerRules` | that node is wrapped, if a language says this character means one |
+| in a property's text, which refuses it | the concepts' triggers | that node is wrapped, or the keystroke is refused |
+| anywhere else (a keyword, a gap) | the concepts' triggers | that node is wrapped, if a concept says this character means it |
 
-Both are declarations by the language rather than inferences from the concepts, because neither can
-be derived: a slot names a *set* of concepts, and no inspection of a tree says whether a user typing
-`+` wants an addition or a syntax error.
+Both are declarations rather than inferences from the model, because neither can be derived: a slot names
+a *set* of concepts, and no inspection of a tree says whether a user typing `+` wants an addition or a
+syntax error. They differ in where they live, and deliberately: a typing rule is about a concept that does
+not exist yet, so it is a list beside the language; a trigger is a property *of* the concept it creates, so
+it is declared on that concept.
 
 ## What a language declares
 
+A trigger is declared **on the concept it creates**, in that concept's `triggers` list:
+
 ```csharp
-public static ITriggerRules Triggers { get; } = TriggerRegistry.Empty
-    .Add(new ConceptTrigger(
-        ExpressionsConceptKeys.Unary,
-        ExpressionsConceptKeys.Expression,
-        TriggerSide.Left,
-        text => ExpressionOperators.Unary.Contains(text),
-        anchorSlot: "operand",
-        propertySlot: "operator"))
-    .Add(new ConceptTrigger(
-        ExpressionsConceptKeys.Binary,
-        ExpressionsConceptKeys.Expression,
-        TriggerSide.Right,
-        text => ExpressionOperators.Binary.Contains(text),
-        anchorSlot: "left",
-        propertySlot: "operator",
-        caretSlot: "right"));
+new ConceptDeclaration(
+    ExpressionsConceptKeys.Binary,
+    [
+        new PropertySlot("operator", ExpressionOperators.BinaryType),
+        new ChildSlot("left", ExpressionsConceptKeys.Expression, Cardinality.One),
+        new ChildSlot("right", ExpressionsConceptKeys.Expression, Cardinality.One),
+    ],
+    [ExpressionsConceptKeys.Expression],
+    triggers:
+    [
+        new ConceptTrigger(
+            ExpressionsConceptKeys.Expression,
+            TriggerSide.Right,
+            text => ExpressionOperators.Binary.Contains(text),
+            anchorSlot: "left",
+            propertySlot: "operator",
+            caretSlot: "right"),
+    ]);
 ```
 
 | Member | Answers |
 | --- | --- |
-| `ConceptKey` | which concept to create around the node |
 | `AnchorConcept` | which concepts it applies to - the node's concept or any of its super concepts |
 | `Side` | which end of the node the caret has to stand at |
-| `AnchorSlot` | the single-child slot of the new concept that receives the node |
+| `AnchorSlot` | the single-child slot of this concept that receives the node |
 | `PropertySlot` | where the typed text goes, or `null` when the text only selects the trigger |
 | `CaretSlot` | where the caret continues, or `null` when it stays inside the wrapped node |
 
-`TriggerRegistry` is immutable (`Add` returns a new registry) and answers `Find(Concept)` with the
-triggers for an anchor concept **in declaration order**. Two triggers may share an anchor, a side and
-a text - a minus is a negation on the left and a subtraction on the right - so that order is the only
-tie-break, the same convention `TypingRuleRegistry` and
-`ConceptRegistry.DefaultInstantiableFor` already use.
+**The concept key is absent on purpose**: a trigger always creates the concept that declares it. That is what
+makes the two reasons for this location work:
+
+- **Locality.** Every slot it names - the one that receives the node, the property the text goes into, the slot
+  the caret continues in - is a slot of the declaring concept, so it sits beside the slots it describes.
+- **Reuse.** A language borrows another's concepts with `[.. TheirLanguage.ConceptDeclarations, .. own]`, and the
+  gestures travel with them. A registry beside the language would have to be forwarded by hand, and forgetting it
+  would silently drop a gesture from a language that looks complete. `RulesLanguage` needs no `Triggers`
+  property at all now.
+
+Triggers are **not inherited**: a subtype that reused its super concept's gesture would create the super concept.
+A language that wants the gesture below itself declares it again, which also keeps the intent visible.
+
+`ConceptRegistry.TriggersFor(Concept anchor)` answers with every trigger declared for that concept or one of its
+super concepts, paired with the concept it would create, **in concept declaration order**. That order is the only
+tie-break when two concepts claim the same character on the same side, and it is the same order that ranks
+completion entries and the default fill: the language's answer to "what is the user most likely to want here". A
+language that wants a narrower reading to win declares that concept first.
 
 ## The rule that shapes everything: accepted text wins
 
@@ -119,25 +137,28 @@ of its own to grow from.
   that will restructure, so typing `5`, then `+`, then undo gives back `5` and a second undo gives
   back nothing - the operator does not drag the five it was typed after into its own step.
 
-## Guards: a keystroke never throws
+## Guards: a wrong declaration is caught at load, not at the keystroke
 
-`Model.Wrap` refuses a wrap it cannot perform (`ModelInvariantException`): a root has no place, the
-wrapper may not stand in the slot the anchor occupies, the wrapper may hold no single child in the
-named slot, or the anchor may not conform to that slot's concept. Those are language bugs, but they
-would surface as a crash the first time a user pressed the key, so `TypeTextAction` asks the same
-questions first and skips a trigger that could not be applied:
+**At registration.** `ConceptRegistry.Create` checks every trigger, because none of what it names is visible to
+the compiler - the anchor concept is a foreign key and the three slots are strings:
 
-- the anchor has no parent - a document root is never wrapped;
-- the concept key names no concrete concept of the language;
-- the wrapper does not conform to the slot the anchor stands in;
-- `AnchorSlot` is not a single-child slot, or the anchor does not conform to it.
+- the anchor concept is declared;
+- `AnchorSlot` is a single-child slot the concept declares, and the anchor concept conforms to it;
+- `PropertySlot` is a property and `CaretSlot` a child slot the concept declares;
+- the concept is concrete, since no node of an abstract concept can exist and triggers are not inherited.
 
-A declared-but-impossible trigger therefore does nothing at all, which is the same outcome a typing
-rule that claims nothing produces.
+A typo is therefore a `ConceptDefinitionException` when the language loads.
+
+**At the keystroke.** Two questions remain, because registration cannot know where the anchor will stand:
+`TypeTextAction` skips a trigger whose concept does not conform to the slot the anchor occupies, and one that its
+[`Applicability`](language.md#applicability) forbids there - so a declared-but-impossible gesture does nothing at
+all instead of reaching `Model.Wrap`, which would throw. Everything the model would refuse about the wrap itself
+was already checked at load.
 
 ## What the shipped languages declare
 
-`ExpressionsLanguage.Triggers`, forwarded by `RulesLanguage.Triggers` like its typing rules:
+Declared on `Binary`, `Unary` and `Parenthesized` in `ExpressionsLanguage`, so `RulesLanguage` inherits them with
+the concepts it borrows:
 
 | Typed | At the edge of | Result |
 | --- | --- | --- |
@@ -146,9 +167,10 @@ rule that claims nothing produces.
 | `-` `!` | any expression, left | `Unary` with the expression as its operand |
 | `(` | any expression, left | `Parenthesized` around it, caret inside |
 
-The negation is declared first because it is the narrower reading of `-`; declaration order is how a
-language says "this one first". `-5` is a number, so a minus in front of a literal never reaches
-either.
+A leading minus is a negation and nothing else, so `Binary`'s left trigger does not claim `-`. Leaving the tie to
+declaration order would have forced `Unary` above `Binary` in the concept list, and that same order ranks the
+completion menu - where a binary is the more likely choice. `-5` is a number, so a minus in front of a literal
+never reaches either gesture anyway.
 
 ## Testing
 
@@ -158,8 +180,9 @@ document root, and applies `KeyRouter.Type("+")` - the same call the control mak
 model shape, the caret address, the undo depth, and finally that the drawing reads
 `((5 + <empty>))`: the wrap is proven visible, not merely present in the tree.
 
-`TriggerRegistryTests` and `ConceptTriggerTests` cover the declaration surface: which concepts a
-trigger is asked about, declaration order, and the argument guards.
+`ConceptRegistryTriggerTests` covers the declaration surface: which concepts a trigger is asked about, the order
+the answer comes in, that a subtype does not inherit the gesture, and every way a declaration can be impossible.
+`ConceptTriggerTests` covers the argument guards.
 
 ## Limits, deliberate
 
@@ -177,10 +200,14 @@ trigger is asked about, declaration order, and the argument guards.
 
 ## Status
 
-Delivered in `feat/concept-triggers`: `TriggerSide`, `ConceptTrigger`, `ITriggerRules` and
-`TriggerRegistry` in `Projectional.Language/Triggers/`; `TriggerAnchor`/`TriggerAnchors` and the
-trigger path in `TypeTextAction` in `Projectional.Editing`; the expression catalogue, the sample's
-forwarding, and the host wiring in `Projectional.Workbench`. The test baseline moved from 1244 to
-**1280** (18 behaviour tests, 8 registry tests and 10 declaration tests), and a real-window probe
-confirmed the whole path: `1000` + `+` in the sample's rule draws `amount > 1000 + <empty>` with the
-caret in the new operand and one undo step.
+Delivered in `feat/concept-triggers` as a registry beside the language, and **moved onto the concept** in
+`feat/triggers-on-concepts`: `TriggerSide`, `ConceptTrigger` and `TriggeredConcept` live in
+`Projectional.Core/Language/`, `ConceptDeclaration.Triggers` and `Concept.Triggers` carry them, and
+`ConceptRegistry.TriggersFor` answers the lookup. That move deleted more than it added - `ITriggerRules`,
+`TriggerRegistry`, `EditorSession.Triggers`, the `triggers:` constructor parameter, the `DocumentTab` and
+`MainWindow` plumbing and `RulesLanguage.Triggers` all went away, because a language that borrows
+`ConceptDeclarations` now gets the gestures with them.
+
+`TriggerAnchor`/`TriggerAnchors` and the trigger path in `TypeTextAction` are unchanged in shape and live in
+`Projectional.Editing`. A real-window probe confirmed the whole path: `1000` + `+` in the sample's rule draws
+`amount > 1000 + <empty>` with the caret in the new operand and one undo step.

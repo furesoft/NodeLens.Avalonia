@@ -20,7 +20,8 @@ public sealed class Concept
         bool isOfferedInCompletion,
         string? description = null,
         PropertySlot? collapseSlot = null,
-        Applicability? applicability = null)
+        Applicability? applicability = null,
+        IReadOnlyList<ConceptTrigger>? triggers = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -31,6 +32,7 @@ public sealed class Concept
         Description = description;
         CollapseSlot = collapseSlot;
         Applicability = applicability ?? Applicability.Anywhere;
+        Triggers = triggers ?? [];
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -99,6 +101,13 @@ public sealed class Concept
     /// placement it forbids, and the editor consults it before offering or creating one.
     /// </remarks>
     public Applicability Applicability { get; }
+
+    /// <summary>The gestures that create this concept, in declaration order; empty when it has none.</summary>
+    /// <remarks>
+    /// Declared on the concept and not inherited: a trigger creates the concept it is declared on, so a subtype
+    /// that reused its super concept's gesture would create the wrong node.
+    /// </remarks>
+    public IReadOnlyList<ConceptTrigger> Triggers { get; }
 
 
     /// <summary>Whether this concept is <paramref name="conceptKey"/> itself or extends it.</summary>

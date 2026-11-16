@@ -128,7 +128,97 @@ public sealed class ConceptRegistry
             }
         }
 
+        foreach (var concept in ordered)
+        {
+            ValidateTriggers(concept, byKey);
+        }
+
         return new ConceptRegistry(byKey, ordered);
+    }
+
+    /// <summary>
+    /// Checks that every gesture a concept declares could actually run, which is where a typo belongs.
+    /// </summary>
+    /// <remarks>
+    /// A trigger names slots of the concept that declares it and an anchor concept that lives somewhere else, so
+    /// none of it is checked by the compiler. Doing it here turns "the keystroke does nothing" into a language
+    /// error at load, which is the same trade <see cref="NotationRegistry.Add"/> makes for a notation.
+    /// </remarks>
+    private static void ValidateTriggers(Concept concept, Dictionary<string, Concept> byKey)
+    {
+        foreach (var trigger in concept.Triggers)
+        {
+            if (!byKey.TryGetValue(trigger.AnchorConcept, out var anchor))
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{concept.Key}' has a trigger for '{trigger.AnchorConcept}', which is never declared.");
+            }
+
+            if (concept.FindChild(trigger.AnchorSlot) is not { Cardinality: Cardinality.One } inner)
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{concept.Key}' has a trigger whose anchor slot '{trigger.AnchorSlot}' is not a single-child slot it declares.");
+            }
+
+            if (!anchor.IsKindOf(inner.ChildConceptKey))
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{concept.Key}' has a trigger for '{trigger.AnchorConcept}', but its slot '{trigger.AnchorSlot}' holds '{inner.ChildConceptKey}'.");
+            }
+
+            if (trigger.PropertySlot is { } property && concept.FindProperty(property) is null)
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{concept.Key}' has a trigger that writes into '{property}', which is not a property it declares.");
+            }
+
+            if (trigger.CaretSlot is { } caret && concept.FindChild(caret) is null)
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{concept.Key}' has a trigger whose caret slot '{caret}' is not a child slot it declares.");
+            }
+
+            if (concept.IsAbstract)
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{concept.Key}' is abstract and has a trigger, but no node of an abstract concept can exist.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The concepts a keystroke at an edge of <paramref name="anchor"/> could create, in declaration order.
+    /// </summary>
+    /// <param name="anchor">The concept of the node the caret stands at the edge of.</param>
+    /// <returns>
+    /// Every trigger declared for that concept or for one of its super concepts, paired with the concept it would
+    /// create. Empty when the language has no gesture for this node.
+    /// </returns>
+    /// <remarks>
+    /// Concept declaration order is the tie-break when two concepts claim the same character on the same side, and
+    /// it is the same order that ranks completion entries and the default fill: the language author's answer to
+    /// "what is the user most likely to want here". A language that wants a narrower reading to win declares that
+    /// concept first.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="anchor"/> is <see langword="null"/>.</exception>
+    public IReadOnlyList<TriggeredConcept> TriggersFor(Concept anchor)
+    {
+        ArgumentNullException.ThrowIfNull(anchor);
+
+        var found = new List<TriggeredConcept>();
+
+        foreach (var concept in _ordered)
+        {
+            foreach (var trigger in concept.Triggers)
+            {
+                if (anchor.IsKindOf(trigger.AnchorConcept))
+                {
+                    found.Add(new TriggeredConcept(concept, trigger));
+                }
+            }
+        }
+
+        return found;
     }
 
     public Concept Get(string key) => TryGet(key, out var concept)
@@ -303,6 +393,7 @@ public sealed class ConceptRegistry
             declaration.IsOfferedInCompletion,
             declaration.Description,
             collapseSlot,
-            declaration.Applicability);
+            declaration.Applicability,
+            declaration.Triggers);
     }
 }

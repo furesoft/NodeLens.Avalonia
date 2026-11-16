@@ -293,11 +293,14 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   `InsertRootAt`, which is why a filter bug cannot produce an illegal document. A concept that names places
   can never be a root (no parent, no slot). Do not merge it with `isOfferedInCompletion`: that one silences
   the list only, this one is legality. `ConceptRegistry.Create` validates every place at registration.
-- **`ITriggerRules` sits beside it, in `Projectional.Language/Triggers/`**, and says what a typed
-  character means at the *edge* of a node that already exists; `ExpressionsLanguage.Triggers` is the
-  reference declaration and `RulesLanguage` forwards it the same way. Same layering reason, same
-  immutability, one different naming rule: the lookup is `Find`, not `For` (CA1716). See
-  `docs/architecture/triggers.md`.
+- **A trigger is declared on the concept it creates**, in `ConceptDeclaration.triggers`, and says what a typed
+  character means at the *edge* of a node that already exists. Two reasons and both still hold: every slot it
+  names is a slot of that concept, and a language that borrows another's `ConceptDeclarations` gets the gestures
+  with them - there is no registry to forward (there was one, and it was deleted). The concept key is absent
+  because the trigger creates its declaring concept, and triggers are **not inherited** (a subtype reusing the
+  gesture would create the super concept). `ConceptRegistry.TriggersFor(Concept)` answers in concept declaration
+  order, which is the only tie-break; `ConceptRegistry.Create` validates every trigger, so a typo is a language
+  error at load. See `docs/architecture/triggers.md`.
 
 ## How notation variants work
 
@@ -738,18 +741,20 @@ everything about the *list* is an offer: `OfferList` (of `Intention` entries), `
 
 ## How concept triggers work
 
-Text entry has two halves, and both are declared by the language.
+Text entry has two halves, and neither can be derived from the model.
 [`ITypingRules`](../../../docs/architecture/language.md#typing-rules) answers for an **empty** slot;
-`ITriggerRules` (`Projectional.Language/Triggers/`) answers for the edge of a node that already
-exists: `5` then `+` gives `5 + <empty>`. `docs/architecture/triggers.md` is the design of record.
+a trigger declared on a concept answers for the edge of a node that already exists: `5` then `+` gives
+`5 + <empty>`. `docs/architecture/triggers.md` is the design of record.
 
-- **A trigger names** the concept to create, the anchor concept it applies to (`Concept.IsKindOf`
-  decides, so declaring it over an abstract concept covers every concrete one), the `TriggerSide`, the
-  single-child `AnchorSlot` that receives the node, and - both optional - the `PropertySlot` the typed
-  text goes into and the `CaretSlot` the caret continues in. `TriggerRegistry.Find(Concept)` answers in
-  **declaration order**, which is the only tie-break; `Add` returns a new registry like
-  `TypingRuleRegistry`. `For` is not a legal member name here (CA1716, a VB keyword) - it is `Find`,
-  matching `ICheck.Find`.
+- **A trigger is declared on the concept it creates** (`ConceptDeclaration.triggers`), and does *not* name
+  that concept. It names the anchor concept (`Concept.IsKindOf` decides, so declaring it over an abstract
+  concept covers every concrete one), the `TriggerSide`, the single-child `AnchorSlot` that receives the
+  node, and - both optional - the `PropertySlot` the typed text goes into and the `CaretSlot` the caret
+  continues in. `ConceptRegistry.TriggersFor(Concept)` answers in **concept declaration order**, which is the
+  only tie-break. Triggers are **not inherited** - a subtype reusing the gesture would create the super
+  concept. There is no registry beside the language: one existed (`ITriggerRules`/`TriggerRegistry`) and was
+  deleted, because a language that borrows `ConceptDeclarations` gets the gestures with them and has nothing
+  to forward.
 - **A trigger is asked only where typing would otherwise do nothing.** In `TypeTextAction.Apply`: a
   property that *accepts* the text wins outright (`-` in front of `5` writes `-5`, the negation is never
   reached), a refused property falls through to the trigger, an empty slot stays the typing rules'
@@ -764,11 +769,13 @@ exists: `5` then `+` gives `5 + <empty>`. `docs/architecture/triggers.md` is the
   the wrap), and the trigger's `CaretSlot` is where the caret lands, so `5` `+` `3` gives `5 + 3` with
   no arrow keys in between. Without a `CaretSlot` the caret stays inside the wrapped node, which is what
   a prefix operator wants.
-- **`TypeTextAction` guards everything `Model.Wrap` would throw over** (`Fits`): no parent (a document
-  root is never wrapped), unknown or abstract concept, wrapper not conforming to the slot the anchor
-  stands in, `AnchorSlot` not a single child, anchor not conforming to it. A declared-but-impossible
-  trigger does nothing; a keystroke must never throw. A `PropertySlot` whose type refuses the text drops
-  the text and still wraps - the same rule `AddChild(parent, slot, concept, propertySlot, text)` follows.
+- **A wrong declaration is a load-time error, not a dead keystroke.** `ConceptRegistry.Create` validates every
+  trigger: the anchor concept exists, `AnchorSlot` is a single child the concept declares and the anchor
+  conforms to it, `PropertySlot` is a property and `CaretSlot` a child slot, and the concept is concrete.
+  At the keystroke `TypeTextAction.Fits` asks only the two things registration cannot know - does the concept
+  conform to the slot the anchor stands in, and does `Applicability` allow it there - so a gesture that cannot
+  run does nothing instead of reaching `Model.Wrap`, which would throw. A `PropertySlot` whose type refuses the
+  text drops the text and still wraps, the same rule `AddChild(parent, slot, concept, propertySlot, text)` uses.
 - **A structural keystroke gets no coalescing key.** `TypeTextAction.CoalescingKey` returns `null` when
   `WouldRestructure` - the property would refuse *and* a trigger claims the text - so `5`, `+`, undo
   gives back `5` and a second undo gives back nothing. `WouldRestructure` re-asks the property
@@ -776,9 +783,10 @@ exists: `5` then `+` gives `5 + <empty>`. `docs/architecture/triggers.md` is the
   deliberate and cheaper than threading a plan through the session.
 - **A selection is never a trigger.** Wrapping a range needs a wrapper that can hold one, which is the
   intention list's job; typing over a selection stays "replace the text".
-- The shipped catalogue is `ExpressionsLanguage.Triggers`, forwarded by `RulesLanguage.Triggers`:
-  operators on either side become `Binary` (caret in the empty operand), and `-`/`!` on the left become
-  `Unary` - declared **first**, because the negation is the narrower reading of a minus.
+- The shipped catalogue lives on `Binary`, `Unary` and `Parenthesized` in `ExpressionsLanguage`: operators on
+  either side become `Binary` (caret in the empty operand), `-`/`!` on the left become `Unary`, and `(` on the
+  left becomes `Parenthesized`. `Binary`'s left trigger deliberately does **not** claim `-`, so the negation is
+  the single reading of a leading minus without needing Unary to outrank Binary in the concept order.
 
 ## How the control paints and takes input
 
@@ -1188,7 +1196,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1333 tests**; anything below that means tests were deleted.
+it. **Baseline is 1331 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
