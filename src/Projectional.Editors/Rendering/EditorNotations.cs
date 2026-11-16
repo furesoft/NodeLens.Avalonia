@@ -84,6 +84,16 @@ public static class EditorNotations
             ed.Keyword("empty"),
             ed.Property("emptyText")));
 
+        notations.Add(Projectional.Editors.EditorConceptKeys.Collection, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("collection"),
+                ed.Space,
+                ed.Property("slot"),
+                ed.Space,
+                ed.Keyword("empty"),
+                ed.Property("emptyText")),
+            ed.Indent(ed.Sequence(ed.Line(ed.Keyword("separator"), ed.Space, ed.ChildInline("separator"))))));
+
         notations.Add(Projectional.Editors.EditorConceptKeys.Children, ed => ed.Line(
             ed.Keyword("children"),
             ed.Space,

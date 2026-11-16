@@ -95,6 +95,30 @@ window is wiring.
    allowed; if it needs a reference to see a type, it is reaching past the control and
    the public surface is missing something.
 
+### The languages the app knows
+
+`WorkbenchLanguage` (`Documents/`) is the one registry and the one notation registry every document of the app is
+built and loaded against, and it composes **three** languages: the sample rules language, and the two the editor is
+written with - `Projectional.Structures` and `Projectional.Editors`.
+
+- **Composition, not a mode.** A project holds one registry, so a document the app can open has to be covered by
+  one list. That is why the definition languages are registered up front rather than switched to: a
+  `structure.mps` opens, edits and saves by the same code path as the payroll sample, with no second editor and no
+  flag.
+- **The transitive closure is the host's job.** `RulesLanguage.ConceptDeclarations` is one language's *own*
+  concepts; the rules language borrows `Expressions.Expression`, so a host composing it has to bring
+  `ExpressionsLanguage.ConceptDeclarations` too. Forgetting it is a `ConceptDefinitionException` at startup naming
+  the concept, which is a better failure than a file that only breaks when someone opens it.
+- **`EveryConceptOfAllThreeHasANotation`** guards the other half: a registered concept with no notation still
+  opens, as a `MissingNotationCell`, and that is the one state a user cannot work around. The test walks the
+  concrete concepts of the composed registry and demands a notation for each - it found `Editor.Collection`
+  straight away.
+- **File ▸ New language definition** and **New notation** open an empty document of each, so the declared path can
+  be tried without setup. They are conveniences: the languages are loaded either way.
+- **The references this adds are language packages**, which is the one category rule 8 above allows: `Structures`
+  and `Editors` sit on `Language` exactly like `Samples`, and the app already references three sample packages. No
+  reference to `Core`, `Projection`, `Editing`, `Semantics` or `Persistence` was added for this.
+
 ## Document lifecycle
 
 ```text
