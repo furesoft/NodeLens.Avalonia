@@ -91,6 +91,21 @@ public sealed class WorkbenchLanguageTests
     }
 
     [Fact]
+    public void ALanguageDefinitionOpensWithItsTwoSections()
+    {
+        // A new definition is two lists in two slots, so without a heading the two placeholders are the same
+        // picture - and picking the wrong one to press Enter in creates the wrong kind of declaration.
+        var language = new WorkbenchLanguage();
+        var model = language.NewLanguageDefinition();
+
+        using var session = new EditorSession(model.Roots[0], language.Notations);
+
+        Assert.Equal(
+            string.Join('\n', "enumerations:", "  << ... >>", "concepts:", "  << ... >>"),
+            LayoutSnapshot.Render(session.Layout, width: 120));
+    }
+
+    [Fact]
     public void ANotationDefinitionOpensToo()
     {
         var language = new WorkbenchLanguage();
@@ -98,7 +113,11 @@ public sealed class WorkbenchLanguageTests
 
         using var session = new EditorSession(model.Roots[0], language.Notations);
 
-        Assert.Equal("<no notations>", LayoutSnapshot.Render(session.Layout, width: 120));
+        // The section placeholder of the MPS shape, not a prose sentence: an empty list of notations is the same
+        // state as an empty list of concepts, and one placeholder for both is one thing to learn.
+        Assert.Equal(
+            string.Join('\n', "notations:", "  << ... >>"),
+            LayoutSnapshot.Render(session.Layout, width: 120));
     }
 
     [Fact]
