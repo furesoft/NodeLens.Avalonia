@@ -7,8 +7,9 @@ rule turned into a table row - it is the only honest answer, because the questio
 like" has no good sentence.
 
 Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E), and slice V1 - the copy and the diff - is delivered; V2 onwards are the preview itself. The
-decision it rests on is [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
+slices A-E) and slices V1 (copy and diff) and V2 (the sandbox) are delivered; V3 onwards are the delay,
+the ghost and the wiring. The decision it rests on is
+[ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
 This document reverses a decision that was recorded twice: [context-actions.md](context-actions.md) and
 [quick-fixes.md](quick-fixes.md) both left previews out because they assumed a preview needs a
@@ -152,7 +153,7 @@ property of its implementation.
 | Slice | Branch | M | Delivers |
 | --- | --- | --- | --- |
 | V1 ✓ | `feat/model-copy-and-diff` | M3 | `Model.CopyTo(Project)` (ids preserved) and `ModelDiff` by node id - added, removed, moved, property changed - with a snapshot-equality test and diff tests |
-| V2 | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
+| V2 ✓ | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
 | V3 | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
 | V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe |
 | V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, draw the ghost, and dismiss on every documented event |

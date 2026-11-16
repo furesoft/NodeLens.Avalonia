@@ -313,6 +313,35 @@ Undo and redo are the model's, not the session's: the session only supplies the 
 key. This is why a keystroke, an Enter and a future refactoring are undoable by the same
 mechanism without the editing layer knowing about any of them.
 
+## Previewing an edit
+
+`PreviewSandbox` (`Preview/`) answers "what would this action do" by doing it: the document's model is
+copied into its own project, a second session is opened over the copy with this session's notation,
+measure, emphasis, choice, typing rules, triggers and caret, and the action is applied there. The
+result is projected normally, so there is no per-action cooperation and nothing that can drift from
+the applied edit - the sandbox runs the path the user's click runs
+([intention-preview.md](intention-preview.md), [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md)).
+
+Four rules hold it together:
+
+- **It is best effort, and its type says so.** `PreviewSandbox.Open` and `Apply` answer
+  `null` - never an exception - when the document is above `NodeBudget`, when the copy cannot be
+  taken, or when the action throws on the copy. An action that captured live `Node` objects instead of
+  addresses is exactly that case, and it is the documented reason the catch is broad.
+- **`null` and an empty list are different answers.** `null` is "cannot be previewed"; an empty
+  difference list is "it ran and changed nothing", which is what an intention that would write a value
+  the node already holds produces.
+- **Nothing of the live document is reachable from it.** The copy has its own project, model, journal
+  and version, so a preview produces no undo step and no repaint of the page. A test asserts the live
+  version, journal revision, undo depth and drawing are all unchanged afterwards.
+- **The copy is of the whole model, not of the document's subtree**, because references resolve
+  against a project: a sandbox that copied one root would show references as unresolved that the page
+  resolves.
+
+`EditorSession.Notations` and `Emphasis` are public for this reason alone - a second session over a
+copy has to project with the same vocabulary, or the ghost draws a document that reads differently
+from the page it replaces.
+
 ## Representations
 
 A concept may have more than one notation variant, so the session carries a

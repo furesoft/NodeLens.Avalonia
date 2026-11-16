@@ -172,6 +172,19 @@ the sandbox and the answer the ghost is drawn from.
   `Moved` (with `NodePlace` before and after), `PropertyChanged`, `ReferenceChanged`. One entry per
   change, in document order of the later model, then the removals. Same id on a *different concept* is
   `Removed` + `Added`, because ids are unique per project, not per universe.
+- **`Model.Nodes` is the walk a diff, a budget or a find wants.** `Project.Nodes` is the whole project
+  (several models); `Model.Nodes` is this document, depth first.
+- **`PreviewSandbox` (in `Projectional.Editing/Preview/`) is the applied path**: `Open(session)` copies
+  the *model* into a fresh `Project`, opens a second `EditorSession` over the copy with the live
+  session's notations, measure, emphasis, choice, clipboard, typing rules, triggers and caret, and
+  `Apply(action)` runs the real action there, answering the `ModelDiff` against the live model.
+- **`null` means "cannot be previewed", an empty list means "it ran and changed nothing".**
+  `Open`/`Apply` catch broadly on purpose - best effort is the contract (ADR 0017), and an action that
+  captured live `Node` objects instead of addresses is exactly the failure that has to become "no
+  preview". Do not narrow those catches to "tidy up" the analyser; there is nothing to rethrow to.
+- **The sandbox never touches the live session**, so a preview is not undoable and produces no undo
+  step; `Open` also refuses a document above `NodeBudget` (20 000, overridable for tests) rather than
+  paying for the copy.
 
 ## How undo, redo and coalescing work
 
@@ -1168,7 +1181,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1301 tests**; anything below that means tests were deleted.
+it. **Baseline is 1312 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
