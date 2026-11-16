@@ -98,7 +98,7 @@ first.*
 
 | Delivers | Details |
 | --- | --- |
-| Concept declarations as nodes | structure language (stage B) |
+| Concept declarations as nodes | structure language (stage B) - **delivered** as P1 ([declared-structure.md](architecture/declared-structure.md)) |
 | Notation declarations as nodes | editor language (stage B) |
 | Generic renderer | renders any declared concept; the MPS-shaped definition languages replace it in M5 ([language-authoring.md](architecture/language-authoring.md)) |
 | Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable |

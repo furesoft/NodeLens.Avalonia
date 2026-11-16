@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
   </ItemGroup>
 

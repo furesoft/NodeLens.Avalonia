@@ -89,7 +89,7 @@ presentation.
 
 ## How a concept reads
 
-The structure model is written in `Projectional.Structure`, and it reads like MPS' structure
+The structure model is written in `Projectional.Structures`, and it reads like MPS' structure
 language because it is the same three ideas: a header that says what the concept *is*, angle
 bracket blocks that say what it *holds*, and nothing else.
 
@@ -332,13 +332,13 @@ shippable at the end of each, and so that the parity test exists before the seco
 | --- | --- | --- | --- |
 | C1 | `feat/toolkit-builder` | M2 | the public `Projectional.Toolkit` surface a language package needs, one shipped language re-expressed through it, and the `dotnet new` template |
 | C2 | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage`, so the rule of this document is executable before any declared feature exists |
-| P1 | `feat/declared-structure` | M2 | `Projectional.Structure` (stage B, provisional shape): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` |
+| P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B, provisional shape): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 | `feat/declared-editor` | M2 | `Projectional.Editor` (stage B): notation as nodes, lowering into `Notation`; the generic renderer is then only the fallback for a concept with no declared editor |
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages |
-| P4 | `feat/structure-notation` | M5 | `Projectional.Structure` with its *own* notation - `concept`, `<<property>>`, cardinalities - replacing the provisional form |
+| P4 | `feat/structure-notation` | M5 | `Projectional.Structures` with its *own* notation - `concept`, `<<property>>`, cardinalities - replacing the provisional form |
 | P5 | `feat/editor-notation` | M5 | `Projectional.Editor` with its own notation - the cell glyphs - and the table variant |
 | P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
-| P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structure` and `Projectional.Editor`, with the C# declarations as the fail-safe |
+| P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structures` and `Projectional.Editor`, with the C# declarations as the fail-safe |
 
 C1-C2 come first and are not optional: without the builder there is no surface to lower *into*,
 and without the parity tests the second path has nothing checking it. P1-P2 are the M2 meaning
