@@ -5,12 +5,13 @@ A projectional editor knows which node a keystroke is about and owns every chang
 This document is the design of the layer between a finding and the edit that removes it: what a
 fix is, where it lives, how it reaches the user, and in which order the slices land.
 
-Status: **in progress.** Slices Q1 to Q5 and Q8 are delivered - the fix model, the fix set on the
-session, the query that answers which repairs the caret's line offers, applying one as a single undo
-step through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that
-carry repairs, the `Alt+Enter`/`Ctrl+.` gesture with its three answers, the keyboard-navigable list,
-the context-menu submenu, the tip line and the painted popup. What is still missing is the bulb (Q6),
-which is the one affordance that has to be found rather than invoked.
+Status: **delivered.** Slices Q1 to Q6 and Q8 are done - the fix model, the fix set on the session,
+the query that answers which repairs the caret's line offers, applying one as a single undo step
+through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that carry
+repairs, the `Alt+Enter`/`Ctrl+.` gesture with its three answers, the keyboard-navigable list, the
+context-menu submenu, the tip line, the painted popup and the bulb in the margin. Slice Q7 (the
+standard-check catalogue as a package) is the one part left, and it is an extension of the catalogue
+rather than a gap in the feature.
 Markers are delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the
 constraint engine that will produce findings in volume at M4 - it is the half that makes the findings
 that already exist actionable.
@@ -218,6 +219,17 @@ The four surfaces are delivered in dependency order, and only the last one needs
    geometry (`QuickFixBulb.BoundsOf(layout, caret, measure)`) and nothing about pixels, exactly as
    the intention plan already requires, so a second renderer can draw its own.
 
+   **Delivered.** `QuickFixBulb.BoundsOf` answers a one-line square whose `X` is **negative** - the
+   bulb is outside the page - so a renderer translates it into whatever margin it reserved. The
+   control reserves `LineHeight + Gap` device pixels in `GutterWidth` whenever `ShowBulb` is on, and
+   reserves it **whether or not a line offers anything**: a margin that appeared on demand would shift
+   every cell sideways, and a page that jumps because the caret moved onto a marked line is worse than
+   a blank that is sometimes empty. The glyph is two primitives (a circle and its stem) rather than a
+   font glyph, so it cannot depend on the host's font family; the hit test uses the same rectangle the
+   painter uses, and it runs before the document's own hit test so a press on the bulb does not also
+   move the caret. "Does this line offer a repair" is kept between paints, keyed on the layout, the
+   caret and both sets, because the caret blinks and a repaint per tick must not walk the document.
+
 The tooltip closes an open thread at the same time. [markers.md](markers.md) said the tip does not
 promise a fix it cannot deliver - the severity, the message and the code, and nothing else. With fixes
 existing, the tip gained that line: `1 quick fix - Alt+Enter` or the plural, and nothing at all for a
@@ -408,7 +420,7 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `OfferedFixes`; verified in a real window with a probe |
 | Q5 ✓ | `feat/quick-fix-menu` | the list navigable from the keyboard (`SelectQuickFixAction`, `AcceptQuickFixAction`), the "Quick fixes" submenu in `EditorMenu` with the reason on a disabled entry, and the offer line in `MarkerTip` |
 | Q8 ✓ | `feat/quick-fix-popup` | the painted popup for `OfferedFixes`: `QuickFixPresenter` beside `CompletionPresenter` with its own measure and row hit test, one shared placement helper for both lists, and the control wiring that draws it and turns a click into select-then-accept |
-| Q6 | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf`, the margin glyph, its hit test, its repaint policy, and the bulb showing for a marked line |
+| Q6 ✓ | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf` (headless geometry, one line square left of the page), the margin the control reserves for it, the two-primitive glyph, its hit test and the answer kept between paints |
 | Q7 | `feat/standard-checks` | `EditSafety` on the offer and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own |
 
 Q1 and Q2 hold the invariants and are testable without a window; Q4 to Q6 are presentation and are
