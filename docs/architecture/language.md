@@ -226,32 +226,42 @@ claim is [editing.md](editing.md#typing-into-an-empty-slot).
 
 ## Triggers
 
-A typing rule answers for an **empty** slot. The neighbour question - the caret is at the edge of a
-node that is already there, and the character typed says what should surround it - is a *trigger*,
-declared the same way, in the same package, for the same reason.
+A typing rule answers for an **empty** slot. The neighbour question - the caret is at the edge of a node that is
+already there, and the character typed says what should surround it - is a *trigger*. It is declared **on the
+concept it creates**, because every slot it names belongs to that concept and because a language borrows another's
+concepts as declarations:
 
 ```csharp
-public static ITriggerRules Triggers { get; } = TriggerRegistry.Empty
-    .Add(new ConceptTrigger(
-        ExpressionsConceptKeys.Binary,
-        ExpressionsConceptKeys.Expression,
-        TriggerSide.Right,
-        text => ExpressionOperators.Binary.Contains(text),
-        anchorSlot: "left",
-        propertySlot: "operator",
-        caretSlot: "right"));
+new ConceptDeclaration(
+    ExpressionsConceptKeys.Binary,
+    [
+        new PropertySlot("operator", ExpressionOperators.BinaryType),
+        new ChildSlot("left", ExpressionsConceptKeys.Expression, Cardinality.One),
+        new ChildSlot("right", ExpressionsConceptKeys.Expression, Cardinality.One),
+    ],
+    [ExpressionsConceptKeys.Expression],
+    triggers:
+    [
+        new ConceptTrigger(
+            ExpressionsConceptKeys.Expression,
+            TriggerSide.Right,
+            text => ExpressionOperators.Binary.Contains(text),
+            anchorSlot: "left",
+            propertySlot: "operator",
+            caretSlot: "right"),
+    ]);
 ```
 
-A trigger names the concept to create, the anchor concept it applies to, the side of the anchor the
-caret must stand at, the slot of the new concept that receives it, and - both optional - where the
-typed text goes and where the caret continues. `TriggerRegistry` is immutable and answers
-`Find(Concept)` in declaration order, which is the only tie-break where two triggers claim the same
-character.
+A trigger names the anchor concept it applies to, the side of the anchor the caret must stand at, the slot of this
+concept that receives the node, and - both optional - where the typed text goes and where the caret continues. It
+does **not** name the concept to create: that is the concept declaring it. `ConceptRegistry.TriggersFor(Concept)`
+answers in concept declaration order, which is the only tie-break where two concepts claim the same character, and
+a subtype does not inherit the gesture (it would create the super concept).
 
-The rule that decides everything: **text a property accepts is never given to a trigger.** `-` in
-front of `5` writes `-5`, because a negative number is a number; only a refused keystroke asks the
-triggers. [triggers.md](triggers.md) is the design of record, including the caret-to-anchor rules,
-the guards that keep a bad declaration from throwing, and the limits.
+The rule that decides everything: **text a property accepts is never given to a trigger.** `-` in front of `5`
+writes `-5`, because a negative number is a number; only a refused keystroke asks the triggers.
+[triggers.md](triggers.md) is the design of record, including the caret-to-anchor rules, the checks that turn a bad
+declaration into a language error at load, and the limits.
 
 ## Applicability
 
