@@ -16,26 +16,25 @@ produces something usable, and no milestone depends on a later one being finishe
 
 ## Next
 
-**Folding** ([collapsing.md](architecture/collapsing.md), slices S1 to S6) is the last item of M1 and the
-only entry in that milestone's table still marked planned, so it is what stands between the project and
-its first acceptance gate. It needs little new machinery: the layout already gives a node one address for
-its whole subtree, the caret already knows what to do when the cell it stood in disappears, and the
-gutter already exists because line numbers and the quick-fix bulb needed one.
+**M1 is complete.** The last entry on its table - folding - landed as slices S1 to S6 plus one fix the
+runtime probe forced: `FoldMarks` had assumed a node's cell carries the node's own address, which is true
+only for the document root, so no arrow ever appeared. Both the defect and its repair are written down in
+[collapsing.md](architecture/collapsing.md).
 
-Delivered before it, and worth not re-opening: **quick fixes** ([quick-fixes.md](architecture/quick-fixes.md))
-end to end - the model, the apply step as one undo step, two real checks, `Alt+Enter`/`Ctrl+.` with its
-three answers, the keyboard-navigable list, the context-menu submenu, the tip line, the painted popup and
-the bulb in the margin - with only slice Q7 (the standard-check catalogue as a package a language
-includes) left as an extension; **concept descriptions**
-([concept-descriptions.md](architecture/concept-descriptions.md), slices D1 to D5), shown on hover over a
-node and beside the completion entry that offers it; and the **two-pixel gap between the margin and the
-page** ([line-numbers.md](architecture/line-numbers.md)), which landed with the bulb because the margin had
-become a sum of occupants.
+What is next, in order:
 
-After folding, in order: slice Q7, then the intention list ([context-actions.md](architecture/context-actions.md),
-slices G), and then the preview ([intention-preview.md](architecture/intention-preview.md), slices V) that
-only makes sense once there are intentions whose result is worth imagining. The constraint engine that will
-produce diagnostics in volume stays where it is, in M4.
+1. **Slice Q7 - the standard checks as a package** ([quick-fixes.md](architecture/quick-fixes.md)). The
+   catalogue is designed (nineteen fixes, `STD001` to `STD051`, with the two safety rules); what is missing
+   is `Projectional.Checks` with the first four checks, and the tests that a language including them needs
+   no code of its own. Small, additive, and it is what makes quick fixes usable for a real DSL author
+   rather than only demonstrable.
+2. **The intention list** ([context-actions.md](architecture/context-actions.md), slices G), with
+   `WrapInAction` as the flagship. Quick fixes were built first on purpose: they gave the intention layer a
+   second source to be designed against instead of a single one to be guessed from.
+3. **The preview** ([intention-preview.md](architecture/intention-preview.md), slices V), which only makes
+   sense once there are intentions whose result is worth imagining.
+
+The constraint engine that will produce diagnostics in volume stays where it is, in M4.
 ## Milestones
 
 ### M0 — Core model and persistence
@@ -76,7 +75,7 @@ and [testing.md](architecture/testing.md).
 | Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
 | Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |
 | Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) — **delivered** |
-| Folding | a node folds to a one-cell summary when its concept nominates a boolean collapse slot, with an arrow in the gutter; the fold set is view state and never persisted ([collapsing.md](architecture/collapsing.md)) — **planned** (M1 remainder) |
+| Folding | a node folds to a one-cell summary when its concept nominates a boolean collapse slot, with an arrow in the gutter; the fold set is view state and never persisted ([collapsing.md](architecture/collapsing.md)) — **delivered** |
 | Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) — **delivered** |
 | Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) — **delivered** |
 
