@@ -250,6 +250,126 @@ The host derives the marker set from the fixes, so the two sets cannot describe 
 document - worth doing where it is available, and impossible where a check reports a problem it cannot
 repair.
 
+## Standard checks a language can include
+
+Most languages have the same small problems, and none of them needs to know what the language *means*.
+That is the filter for what can ship with the framework: **a standard check is one that can be computed
+from the declarations and the model's own structure** - the name slot, the child slots, the property
+types, the reference targets, the `resolveInfo` a reference keeps - and never from an analysis the
+language alone could do.
+
+A check that passes that filter should not be written again per language. The catalogue below is what
+the framework can provide; a language includes the ones it wants and inherits their repairs.
+
+### Names: whatever declares a name slot
+
+| Id | The finding | The repair | Class |
+| --- | --- | --- | --- |
+| `STD001` | the name still equals the concept's declared default | `Name it "Rule1"` | plain - **shipped** as the host's `SHELL001`, and the shape a framework version takes |
+| `STD002` | two children of one slot share a name | `Rename to "Check2"` | plain only while nothing references the name - see the rule below |
+| `STD003` | the name has leading or trailing whitespace | `Trim to "Rule"` | plain |
+| `STD004` | the name breaks the identifier rule the concept declares | `Use "myRule"` | plain |
+
+`STD004` needs one new declaration rather than a new mechanism: a concept says what a legal name is
+(`NameRule.Identifier`, `NameRule.AnyText`), and the check reads it. Without that declaration the check
+is not offered, which is the honest default for a language whose names may be sentences.
+
+### Structure: whatever the declarations already say
+
+| Id | The finding | The repair | Class |
+| --- | --- | --- | --- |
+| `STD010` | a single-child slot is empty | `Insert "Rule"` | plain - the same concept Enter would create, from `DefaultInstantiableFor` |
+| `STD011` | a list holds fewer children than its declared minimum | `Add the first rule` | plain - needs the minimum of open question 64 |
+| `STD012` | a node holds nothing but its defaults | `Delete the empty rule` | **destructive** |
+
+`STD010` and `STD011` are the two fixes a user meets most often in a fresh document, and both are one
+`InsertNodeAction` away from what the keyboard already does - which is the argument for shipping them:
+the fix and the keystroke cannot disagree, because they are the same action.
+
+### References: whatever a reference slot knows
+
+| Id | The finding | The repair | Class |
+| --- | --- | --- | --- |
+| `STD020` | a reference does not resolve, but kept a `resolveInfo` | `Point to "X"`, one per candidate from the scope | plain - but only after the user picks |
+| `STD021` | a reference does not resolve and no candidate is close | `Clear the reference` | **destructive** |
+| `STD022` | a reference points outside the model | `Remove the reference` | **destructive** |
+
+`STD020` is the one that pays for the scope chain being a language aspect already: the candidates are
+`IScope.CandidatesOf`, ranked by how close each name is to the `resolveInfo`. It is also the fix that
+most clearly needs several offers rather than one, which is what `OfferedFixes` exists for.
+
+### Values: whatever the property type knows
+
+| Id | The finding | The repair | Class |
+| --- | --- | --- | --- |
+| `STD030` | the text is not a value of the property's type | `Use the default` | plain |
+| `STD031` | a number written with spaces or a comma as the decimal mark | `Use "1000"` | plain |
+| `STD032` | a date in another format | `Use "2026-11-16"` | plain |
+
+These three are the closest thing to a formatter the framework should own: they are deterministic,
+local, and they cannot change what the model means.
+
+### Expressions: shipped with `Projectional.Expressions`
+
+| Id | The finding | The repair | Class |
+| --- | --- | --- | --- |
+| `STD040` | a binary whose grouping depends on precedence | `Wrap in parentheses` | plain |
+| `STD041` | a negation of a negation | `Remove both` | plain |
+| `STD042` | an operator that is not one of the declared symbols | `Use ">="` | plain |
+
+A language that composes the expression sub-language gets these for free, which is the same argument
+that makes the sub-language itself worth shipping.
+
+### Loading: whatever the reader had to preserve
+
+| Id | The finding | The repair | Class |
+| --- | --- | --- | --- |
+| `STD050` | a node whose concept the language does not know, preserved by the loader | `Delete the Foo node` | **destructive** |
+| `STD051` | a property the concept does not declare, preserved by the loader | `Remove the property` | **destructive** |
+
+These exist because loading never drops data: an unknown concept and an unknown property survive a load
+and become diagnostics, so the only way to get rid of them is a repair. Deleting them is the whole fix -
+anything cleverer would guess what the author of the other model meant.
+
+### How a language includes them
+
+A standard check is a *class parameterised by the language's declarations*, never by its code:
+
+```csharp
+public static IReadOnlyList<ICheck> Checks { get; } =
+[
+    .. StandardChecks.Names,
+    .. StandardChecks.Structure,
+    new ExactlyOneAcceptRule(),      // the language's own
+];
+```
+
+That shape is what keeps the catalogue a library rather than a policy: `STD001` reads the name slot from
+the concept, `STD010` reads the child slot's concept, `STD020` reads the scope. A language that declares
+none of the slots a check needs simply does not get that check, and nothing has to be switched off.
+
+### Two rules the catalogue forces
+
+**A repair that destroys something may never run from a single gesture.** Q4 applies a lone repair
+immediately, which is right for `Trim to "Rule"` and wrong for `Delete the empty rule`: the same
+keystroke would delete a node the user was only asking about. So a fix carries a safety class, and the
+gesture applies a lone repair only when it is plain; a lone destructive repair opens the list, which is
+then allowed to hold one entry precisely because it is asking rather than offering. This is the change
+`DiagnosticFix` needs before the catalogue ships, and it is open question 73.
+
+**A standard rename may not break another model.** `STD002` is safe only while nothing references the
+name it changes: in a language where a rule's name is what other models point at, renaming it silently
+leaves dangling references that the fix never saw. So the standard version of the check looks for
+referrers and stays silent when there are any, and updating them is the M6 rename refactoring, which is
+allowed to know how to find them (open question 74).
+
+### Which four to ship first
+
+`STD003` (trim), `STD010` (insert into an empty slot), `STD001` (name after the concept, already written
+as a host check) and `STD040` (wrap in parentheses). All four are plain, all four are one property write
+or one existing action, and between them they cover what a user actually hits while typing: a name, a
+hole, and an expression the parserless projection cannot group.
+
 ## Slices
 
 Each slice is its own branch and its own merge, per the working rules.
@@ -262,6 +382,7 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `OfferedFixes`; verified in a real window with a probe |
 | Q5 | `feat/quick-fix-popup` | the popup that draws `OfferedFixes` (a presenter beside `CompletionPresenter`, with its own row hit test and keyboard navigation), the "Quick fixes" submenu in `EditorMenu`, and the fix line in `MarkerTip` |
 | Q6 | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf`, the margin glyph, its hit test, its repaint policy, and the bulb showing for a marked line |
+| Q7 | `feat/standard-checks` | the safety class on `DiagnosticFix` and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own |
 
 Q1 and Q2 hold the invariants and are testable without a window; Q4 to Q6 are presentation and are
 the first customers of the headless Avalonia test project, with a probe standing in until it exists.
