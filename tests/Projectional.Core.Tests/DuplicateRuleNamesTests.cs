@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Editing;
+using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
 using Projectional.Semantics;
@@ -106,6 +107,28 @@ public sealed class DuplicateRuleNamesTests
 
         // The finding is gone once the model says what the repair made it say.
         Assert.Empty(DuplicateRuleNames.Of(model));
+    }
+
+    [Fact]
+    public void TheRepairIsOfferedAtTheCaretOnTheNameItWouldChange()
+    {
+        // The whole chain in one test: the language's check, the host's two sets, and the query the popup
+        // and the bulb ask. The caret stands on the duplicated name, so the entry is offered there.
+        var (first, second) = TwoRules("Check", "Check");
+        var model = ModelOf(first);
+        var fixes = DuplicateRuleNames.Of(model);
+
+        using var session = new EditorSession(
+            model.Roots[0],
+            RulesLanguage.CreateNotations(RulesLanguage.Concepts),
+            typing: RulesLanguage.TypingRules);
+
+        session.Markers = new MarkerSet([.. fixes.Select(fix => fix.Diagnostic)]);
+        session.Fixes = new FixSet([.. fixes]);
+
+        session.Select(Selection.At(CaretPosition.At(CellAddress.OfSlot(second.Id, "name"))));
+
+        Assert.Equal(["Rename to \"Check2\""], QuickFixes.At(session).Select(fix => fix.Label));
     }
 
     [Fact]
