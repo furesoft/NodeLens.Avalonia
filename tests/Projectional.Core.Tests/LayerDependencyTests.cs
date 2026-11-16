@@ -26,6 +26,28 @@ public sealed class LayerDependencyTests
         Assert.Empty(violations);
     }
 
+    [Fact]
+    public void TheChecksPackageReachesDownwardOnly()
+    {
+        // A check produces diagnostics and edits, so the package sits in the behaviour band beside Editing:
+        // it may name the layers below it, and never the control, the app, a language's samples or another
+        // checks package. Adding a reference "just for one icon or one test fixture" is how that drifts.
+        var referenced = ReadAssemblyReferences("Projectional.Checks.dll");
+
+        Assert.Contains("Projectional.Editing", referenced);
+        Assert.Contains("Projectional.Semantics", referenced);
+
+        var violations = referenced
+            .Where(name => name is "Projectional.Avalonia"
+                or "Projectional.Workbench"
+                or "Projectional.Samples"
+                or "Projectional.Samples.Checks"
+                or "Projectional.Persistence")
+            .ToArray();
+
+        Assert.Empty(violations);
+    }
+
     private static string[] ReadAssemblyReferences(string assemblyFileName)
     {
         var path = Path.Combine(AppContext.BaseDirectory, assemblyFileName);

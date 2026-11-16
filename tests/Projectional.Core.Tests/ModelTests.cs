@@ -44,6 +44,42 @@ public sealed class ModelTests
     }
 
     [Fact]
+    public void WrappingANodeKeepsItsIdentityInsideTheNewParent()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+        var first = model.NewChild(body, "steps", TestLanguage.Step);
+        var second = model.NewChild(body, "steps", TestLanguage.Step);
+        first.Set("text", "first");
+
+        var wrapper = model.Wrap(second, TestLanguage.Step, "detail");
+
+        Assert.Equal([first, wrapper], body.GetChildren("steps"));
+        Assert.Same(wrapper, second.Parent);
+        Assert.Equal("detail", second.ParentSlot);
+        Assert.Same(second, wrapper.GetChild("detail"));
+        Assert.Same(wrapper, model.Project.FindNode(wrapper.Id));
+    }
+
+    [Fact]
+    public void WrappingRootsAndStrangersIsRefused()
+    {
+        var model = TestLanguage.NewModel();
+        var root = model.NewNode(TestLanguage.Step);
+
+        Assert.Throws<ModelInvariantException>(() => model.Wrap(root, TestLanguage.Step, "detail"));
+
+        var body = model.NewNode(TestLanguage.Body);
+        var step = model.NewChild(body, "steps", TestLanguage.Step);
+
+        Assert.Throws<ModelInvariantException>(() => model.Wrap(step, "Test.Unknown", "detail"));
+        Assert.Throws<ModelInvariantException>(() => model.Wrap(step, TestLanguage.Body, "steps"));
+
+        // A step can stand where a step stands, but its only named slot of that spelling is a property.
+        Assert.Throws<ModelInvariantException>(() => model.Wrap(step, TestLanguage.Step, "text"));
+    }
+
+    [Fact]
     public void DeletingASubtreeRemovesEveryNodeBelowIt()
     {
         var model = TestLanguage.NewModel();

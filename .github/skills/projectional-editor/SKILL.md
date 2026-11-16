@@ -24,7 +24,8 @@ editing layer, concept- and value-driven completion (Ctrl+Space, icons as host i
 enumerated property offering its values on arrival), and text
 clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
 size, model-defined markers with hover tooltips, concept descriptions shown on hover and in the
-completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin) and logical
+completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin), the standard
+check catalogue as a package (`Projectional.Checks`) and logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
@@ -556,6 +557,56 @@ dependency, so every action is testable headlessly.
   action mistakes it for one. `SelectionRects.Of` already draws it correctly (both ends
   trimmed, intermediate cells whole, one rect per line) - the rendering needed no change.
 
+## How checks and quick fixes work
+
+A finding is a `Diagnostic` (in `Projectional.Semantics`); the repair is a `DiagnosticFix`
+(`Projectional.Editing/Fixes/`). The contract is that a **fix produces an `EditAction`** and never mutates:
+`EditorSession.Apply(DiagnosticFix)` joins the pick on `(Diagnostic, Id)` against the **current** `FixSet`,
+runs the current object (never the caller's copy), and applies it with the coalescing key cleared so it is
+one undo step. A pick that no longer resolves is `EditResult.Rejected` with a reason - the ordinary case,
+not an error. A repair that takes several edits answers an `EditProgram`, which the session runs inside one
+transaction and rolls back completely if a step is rejected.
+
+- **`FixSet` is keyed by the `Diagnostic` record** and rejects two entries for one finding.
+  `QuickFixes.At(session)` answers the caret's line (resolved geometrically, `MarkerGeometry` tops against
+  `CaretBounds`), worst finding first; `QuickFixes.Of(session, diagnostic)` answers one finding. Both are
+  derived per call and never cached.
+- **`EditSafety` decides whether a lone offer may run.** `EditorSession.ApplyQuickFixes()` applies a lone
+  offer only when it is `EditSafety.Plain` *and* not disabled; anything else opens a `QuickFixList`. A list
+  of one is therefore legal **only** because a destructive or disabled repair is asking rather than being
+  offered - do not restore the old "at least two" rule.
+- **A fix's label names the result** ("Rename to \"Check2\"") and `Description` is part of the contract; a
+  menu falls back to the finding's message. The id is stable and never translated.
+- **Safety is on the offer, not on the fix type**, because the intention catalogue carries the same enum.
+
+`Projectional.Checks` is the standard catalogue a language includes by naming it: `ICheck.Find(Model)`
+(the member is `Find` because CA1716 forbids `Of` on an interface member), `CheckSet` (ordered, immutable,
+`With` to extend), and `StandardChecks` (`Names`, `Structure`, `Expressions`, `All`). A language publishes
+one `CheckSet`; the host runs it and derives `MarkerSet`/`FixSet` from the fixes. Because a check produces
+diagnostics *and* edits, a checks package is a **behaviour** package: it references `Editing`, `Semantics`
+and (for the expression group) `Expressions`, which is exactly why it cannot live inside a language package.
+
+Shipped checks and the rules they encode:
+
+- `STD001` (`PlaceholderNameCheck`, `Hint`) - name still equals the concept's declared default; the repair
+  names it `<Concept>1` with the first free suffix, computed as a group so two unnamed rules get `Rule1`
+  and `Rule2`. A concept with no default is not reported.
+- `STD003` (`SurroundingWhitespaceCheck`, `Warning`) - surrounding whitespace; `Trim to "..."`. A name
+  that is only whitespace is skipped, because trimming it would produce the empty name.
+- `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
+  `InsertChildAction`, which is the same creation path `InsertNodeAction` uses, so the fix and Enter cannot
+  disagree. A slot whose whole set is abstract has no repair and therefore no finding.
+- `STD040` (`BinaryGroupingCheck`, `Warning`) - an operand drawn without the parentheses its grouping
+  needs. **The finding names the operand, not its parent**, and the repair wraps that operand: wrapping the
+  parent leaves the same finding, and a repair that survives itself is broken. Precedence lives in the
+  check, not in `ExpressionOperators`, which says analysis owns it.
+
+Two structural primitives arrived with these: `Model.Wrap(node, wrapperConcept, wrapperSlot)` detaches,
+creates and re-attaches inside one transaction (a single-valued slot cannot hold the node and its wrapper
+at once), so identity and undo survive; `WrapInAction` is that as an edit and `InsertChildAction` is the
+address-based half of Enter (`InsertNodeAction.FillSlot` delegates to it). Both decline with a reason
+rather than throwing when the document moved on.
+
 ## How the control paints and takes input
 
 `Projectional.Avalonia` is one `Control` (`ProjectionalEditorControl`) plus one measure
@@ -951,7 +1002,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 975 tests**; anything below that means tests were deleted.
+it. **Baseline is 1175 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

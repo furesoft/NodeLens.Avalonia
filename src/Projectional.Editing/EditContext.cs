@@ -282,6 +282,31 @@ public sealed class EditContext
         return parent.InsertChild(slot, index, child);
     }
 
+    /// <summary>
+    /// Puts <paramref name="node"/> inside a new node of <paramref name="wrapperConceptKey"/> and
+    /// <paramref name="wrapperSlot"/>, keeping its identity.
+    /// </summary>
+    /// <exception cref="EditingException"><paramref name="node"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// A wrap is a structural move, so it goes through the model's own operation rather than being
+    /// assembled here out of a create and a move: a single-valued slot cannot hold the node and its wrapper
+    /// at the same time, and the model is where that rule lives.
+    /// </remarks>
+    public Node WrapChild(Node node, string wrapperConceptKey, string wrapperSlot)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
+        ArgumentException.ThrowIfNullOrEmpty(wrapperSlot);
+
+        if (!ReferenceEquals(node.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {node.Id} belongs to another model than the document being edited.");
+        }
+
+        return node.Model.Wrap(node, wrapperConceptKey, wrapperSlot);
+    }
+
     private static Node? Find(Node node, NodeId id)
     {
         if (node.Id.Equals(id))

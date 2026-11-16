@@ -62,6 +62,31 @@ public sealed class DiagnosticFixTests
     }
 
     [Fact]
+    public void AFixIsPlainUnlessItSaysOtherwise()
+    {
+        // The default has to be the safe direction: a category that forgot to classify itself runs only
+        // from a list the user picked it from, never from the single keystroke that asked what is here.
+        var fix = new DiagnosticFix(Finding("bad"), "rules.name.rename", "Rename", _ => null);
+
+        Assert.Equal(EditSafety.Plain, fix.Safety);
+        Assert.False(fix.IsDestructive);
+    }
+
+    [Fact]
+    public void ADestructiveFixSaysSo()
+    {
+        var fix = new DiagnosticFix(
+            Finding("bad"),
+            "rules.name.delete",
+            "Delete the rule",
+            _ => null,
+            safety: EditSafety.Destructive);
+
+        Assert.Equal(EditSafety.Destructive, fix.Safety);
+        Assert.True(fix.IsDestructive);
+    }
+
+    [Fact]
     public void TheIdIsNotTheLabel()
     {
         // The id survives translation and a host binding a gesture to it; the label is what the user

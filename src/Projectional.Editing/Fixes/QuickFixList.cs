@@ -12,19 +12,20 @@ namespace Projectional.Editing;
 /// answers.
 /// </para>
 /// <para>
-/// It is never built with fewer than two entries. One repair is applied immediately, because a list of one
-/// costs the user a keystroke and tells them nothing, and none is the absence of an answer rather than an
-/// empty list - so a <see cref="QuickFixList"/> always has something to choose between.
+/// It is never empty: none is the absence of an answer rather than an empty list. It may hold exactly one,
+/// which happens only when the lone repair is not one the gesture may run by itself - a destructive repair,
+/// or one that cannot run at all. The list is then not offering a choice, it is asking whether the user
+/// means it, and that is a different sentence with the same shape.
 /// </para>
 /// </remarks>
 public sealed class QuickFixList
 {
     private readonly ReadOnlyCollection<DiagnosticFix> _fixes;
 
-    /// <summary>Offers <paramref name="fixes"/>, which must hold at least two repairs.</summary>
+    /// <summary>Offers <paramref name="fixes"/>, which must hold at least one repair.</summary>
     /// <param name="fixes">The repairs to offer, in the order they should be listed.</param>
     /// <exception cref="ArgumentNullException"><paramref name="fixes"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException">Fewer than two repairs were given.</exception>
+    /// <exception cref="ArgumentException">No repairs were given.</exception>
     public QuickFixList(IReadOnlyList<DiagnosticFix> fixes)
         : this(Validated(fixes), 0)
     {
@@ -83,10 +84,10 @@ public sealed class QuickFixList
     {
         ArgumentNullException.ThrowIfNull(fixes);
 
-        if (fixes.Count < 2)
+        if (fixes.Count == 0)
         {
             throw new ArgumentException(
-                "A quick-fix list is only opened for two or more repairs; one is applied directly and none is no answer.",
+                "A quick-fix list holds at least one repair; no repairs at all is no answer rather than a list.",
                 nameof(fixes));
         }
 

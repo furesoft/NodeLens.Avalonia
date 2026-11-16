@@ -113,6 +113,96 @@ public sealed class Model
         return node;
     }
 
+    /// <summary>Puts <paramref name="node"/> inside a new node of <paramref name="wrapperConceptKey"/>.</summary>
+    /// <param name="node">The node to surround, which keeps its identity and its subtree.</param>
+    /// <param name="wrapperConceptKey">The concept of the node to create around it.</param>
+    /// <param name="wrapperSlot">The single-child slot of that concept which receives <paramref name="node"/>.</param>
+    /// <returns>The node that was created.</returns>
+    /// <remarks>
+    /// <para>
+    /// Wrapping cannot be written as "create the wrapper, then move the node into it": a single-valued slot
+    /// holds at most one child, so there is no moment at which both the node and its wrapper could be in
+    /// the slot together. The node therefore leaves first and returns inside the wrapper, and all three
+    /// steps run in one transaction so that the user sees one undo step and so that a failure cannot leave
+    /// the node outside the document.
+    /// </para>
+    /// <para>
+    /// The node keeps its id, which is what makes the operation safe to undo: every reference that points
+    /// into its subtree and every caret address that names one of its cells still resolves afterwards.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="wrapperConceptKey"/> or <paramref name="wrapperSlot"/> is empty.
+    /// </exception>
+    /// <exception cref="ModelInvariantException">
+    /// <paramref name="node"/> is not part of this model, has no place, cannot be wrapped by that concept
+    /// in that slot, or the wrapper declares no single-child slot of that name.
+    /// </exception>
+    public Node Wrap(Node node, string wrapperConceptKey, string wrapperSlot)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
+        ArgumentException.ThrowIfNullOrEmpty(wrapperSlot);
+
+        if (!ReferenceEquals(node.Model, this))
+        {
+            throw new ModelInvariantException(
+                $"Node {node.Id} belongs to a different model and cannot be wrapped by this one's concepts.");
+        }
+
+        if (node.Parent is not { } parent || node.ParentSlot is not { } slot)
+        {
+            throw new ModelInvariantException(
+                $"Node {node.Id} has no place, so there is nothing to wrap it in.");
+        }
+
+        if (!Project.Concepts.TryGet(wrapperConceptKey, out var wrapper))
+        {
+            throw new ModelInvariantException(
+                $"Concept '{wrapperConceptKey}' is not part of the language of this project.");
+        }
+
+        if (parent.Concept.FindChild(slot) is not { } place)
+        {
+            throw new ModelInvariantException(
+                $"Slot '{slot}' of concept '{parent.Concept.Key}' holds no children, so nothing can be wrapped in it.");
+        }
+
+        if (wrapper.IsAbstract || !wrapper.IsKindOf(place.ChildConceptKey))
+        {
+            throw new ModelInvariantException(
+                $"Concept '{wrapperConceptKey}' cannot stand in slot '{slot}' of concept '{parent.Concept.Key}'.");
+        }
+
+        if (wrapper.FindChild(wrapperSlot) is not { Cardinality: Cardinality.One } inner)
+        {
+            throw new ModelInvariantException(
+                $"Concept '{wrapperConceptKey}' declares no single-child slot named '{wrapperSlot}'.");
+        }
+
+        if (!node.Concept.IsKindOf(inner.ChildConceptKey))
+        {
+            throw new ModelInvariantException(
+                $"Concept '{node.Concept.Key}' does not conform to slot '{wrapperSlot}' of concept '{wrapperConceptKey}'.");
+        }
+
+        var index = node.IndexInParent;
+
+        using var transaction = BeginTransaction();
+
+        node.Detach();
+
+        var created = CreateDetached(wrapper);
+        parent.InsertChild(slot, Math.Min(index, parent.GetChildren(slot).Count), created);
+        created.InsertChild(wrapperSlot, 0, node);
+        MarkMutated();
+
+        transaction.Complete();
+
+        return created;
+    }
+
     /// <summary>Turns an existing node of this model into a root.</summary>
     public void AddRoot(Node node)
     {

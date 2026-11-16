@@ -65,6 +65,8 @@ makes it a usable test of the integration surface
 | `Projectional.Avalonia` | `ProjectionalEditorControl`, rendering of layout boxes, input, IME, clipboard, accessibility | Avalonia 12 |
 | `Projectional.Workbench` | Standalone desktop editor: document tabs, browsers, panels. **Consumer** of the public API — no internal access | Avalonia 12 |
 | `Projectional.Samples` | The toy rules language and its sample document: the working example of composing `Expressions` | none |
+| `Projectional.Samples.Checks` | What is wrong with a model of the sample language: the working example of a check beside its language | none |
+| `Projectional.Checks` | The standard catalogue a language includes by naming it: name, structure, value and expression checks, each with its repair | none |
 | `tests/*` | Unit and snapshot tests | none |
 
 Only `Projectional.Core` and `Projectional.Avalonia` expose public API. Everything

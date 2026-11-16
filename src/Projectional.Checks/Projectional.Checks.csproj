@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\Projectional.Semantics\Projectional.Semantics.csproj" />
+  </ItemGroup>
+
+</Project>
