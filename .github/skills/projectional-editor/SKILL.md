@@ -213,6 +213,19 @@ the sandbox and the answer the ghost is drawn from.
   this cell", which is "the marks read first" written as code rather than as a palette decision.
   `PreviewMarks.ChangeAt(address)` is the indexed lookup behind it, and the **first** mark for an address wins -
   every removal out of one slot names that slot's cell.
+- **`ProjectionalEditorControl.Ghost` is host-set, and while it is set the control paints only that** - tints,
+  dimmed text, badge, and none of the page's furniture (gutter numbers, bulb, selection, caret, lists, tips). The
+  host decides *when*, so the hover ladder stays out of the control; `GhostPresenter` does the drawing and
+  `PreviewPalette` (in `SyntaxTheme`, like `Tip`/`Markers`) names the colours. **`PreviewPalette` is a theme
+  member for the same reason the other overlays are**: a themed page with an unthemed ghost is a light sheet on a
+  dark background.
+- **Ghost runs are layout coordinates.** `GhostPresenter` converts with `ghost.Viewport.ToViewport(...)` plus the
+  gutter; passing layout coordinates straight to `DrawingContext` puts every tint in the corner (that happened,
+  and only the rendered picture showed it).
+- **`EditorSession.ActionFor(Intention)` is how a preview gets its edit without applying it** - the same
+  `Intention.Create(CreateIntentionContext())` call the apply path makes, answering `null` for "not offered" and
+  for "nothing to do" alike. Never add a second way to ask an intention for its action: a preview that ran a
+  different action would be a preview of something else.
 - **The ladder's value is in its interruptions, so do not "simplify" them away**: a different entry
   starts from nothing (a preview is an answer about *that* edit); the *same* entry again continues the
   clock (that is the bulb-to-list gap, and restarting there means a preview is never reached); leaving an

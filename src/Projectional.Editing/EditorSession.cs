@@ -812,9 +812,7 @@ public sealed class EditorSession : IDisposable
                 $"The intention \"{intention.Label}\" no longer applies at this caret.");
         }
 
-        var action = intention.Create(CreateIntentionContext());
-
-        if (action is null)
+        if (ActionFor(intention) is not { } action)
         {
             return EditResult.Rejected(
                 Selection,
@@ -824,6 +822,31 @@ public sealed class EditorSession : IDisposable
         return action is EditProgram program
             ? Apply(program)
             : ApplyCore(action, ContextFor(action), coalescingKey: null);
+    }
+
+    /// <summary>The edit <paramref name="intention"/> would make here, without making it.</summary>
+    /// <param name="intention">The offer to ask about.</param>
+    /// <returns>The action, or <see langword="null"/> when it does not apply or has nothing to do.</returns>
+    /// <remarks>
+    /// <para>
+    /// The same call <see cref="Apply(Intention)"/> makes, exposed because a preview needs the action without
+    /// running it: showing what an offer would do means applying <em>that</em> action to a copy, and a second way
+    /// of asking an intention for its edit would be a second thing to keep in step with this one.
+    /// </para>
+    /// <para>
+    /// <see langword="null"/> covers both "not offered here" and "offered, but nothing to do", because a caller
+    /// that wants to show a preview treats them the same: there is nothing to show. Applying distinguishes them,
+    /// since the user is owed a reason.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="intention"/> is <see langword="null"/>.</exception>
+    public EditAction? ActionFor(Intention intention)
+    {
+        ArgumentNullException.ThrowIfNull(intention);
+
+        return intention.Availability.IsAbsent || intention.Availability.Reason is not null
+            ? null
+            : intention.Create(CreateIntentionContext());
     }
 
     /// <summary>The fix in the current set that <paramref name="fix"/> names, or <see langword="null"/>.</summary>

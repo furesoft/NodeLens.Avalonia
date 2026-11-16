@@ -86,6 +86,11 @@ public sealed class SyntaxThemeTests
         Assert.Same(MarkerTipPalette.Dark, SyntaxTheme.Dark.Tip);
         Assert.NotSame(SyntaxTheme.Light.Tip, SyntaxTheme.Dark.Tip);
         Assert.NotSame(SyntaxTheme.Light.Bulb, SyntaxTheme.Dark.Bulb);
+
+        // The preview's tints are the newest overlay, and the same copy-paste would make a ghost on a dark page
+        // read against the wrong surface.
+        Assert.Same(PreviewPalette.Light, SyntaxTheme.Light.Preview);
+        Assert.Same(PreviewPalette.Dark, SyntaxTheme.Dark.Preview);
     }
 
     [Fact]
