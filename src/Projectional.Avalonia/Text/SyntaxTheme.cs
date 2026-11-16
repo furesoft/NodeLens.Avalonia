@@ -34,6 +34,7 @@ public sealed class SyntaxTheme
         MarkerPalette markers,
         MarkerTipPalette tip,
         IBrush bulb,
+        PreviewPalette preview,
         bool isDark)
     {
         Palette = palette;
@@ -46,6 +47,7 @@ public sealed class SyntaxTheme
         Markers = markers;
         Tip = tip;
         Bulb = bulb;
+        Preview = preview;
         IsDark = isDark;
     }
 
@@ -61,6 +63,7 @@ public sealed class SyntaxTheme
         MarkerPalette.Light,
         MarkerTipPalette.Light,
         new SolidColorBrush(Color.FromRgb(0xC8, 0x87, 0x1C)),
+        PreviewPalette.Light,
         isDark: false);
 
     /// <summary>Light text on black, for a host whose surroundings are dark.</summary>
@@ -75,6 +78,7 @@ public sealed class SyntaxTheme
         MarkerPalette.Dark,
         MarkerTipPalette.Dark,
         new SolidColorBrush(Color.FromRgb(0xE8, 0xA3, 0x3D)),
+        PreviewPalette.Dark,
         isDark: true);
 
     /// <summary>The colours of the text itself.</summary>
@@ -152,6 +156,14 @@ public sealed class SyntaxTheme
     /// a dark background.
     /// </remarks>
     public IBrush Bulb { get; }
+
+    /// <summary>The colours a preview's ghost is drawn in.</summary>
+    /// <remarks>
+    /// Part of the theme because a ghost is painted over the page: a host that themes the document but not the
+    /// preview ships a light sheet on a dark background. Built eagerly, unlike <see cref="Lists"/>, because a
+    /// tint is a brush and needs no rendering platform.
+    /// </remarks>
+    public PreviewPalette Preview { get; }
 
     /// <summary>Whether this is one of the dark themes, for a toolkit that asks light or dark.</summary>
     public bool IsDark { get; }

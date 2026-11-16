@@ -79,6 +79,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private const double PageMargin = 2;
 
     private SyntaxPalette _palette = SyntaxPalette.Light;
+    private PreviewPalette _previewPalette = PreviewPalette.Light;
+    private GhostFrame? _ghost;
+    private GhostPresenter? _ghostPainter;
     private ICellStyler _styler = CellStyler.Default;
 
     private double _offsetX;
@@ -380,6 +383,53 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             // would be painted in it anyway, instead of shaping those cells a second time.
             TextMeasure.Foreground = value.BrushOf(TextStyleKind.Default);
 
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The colours a preview's ghost is drawn in.</summary>
+    /// <remarks>
+    /// Separate from <see cref="Palette"/> because the two answer different questions: the palette says what text
+    /// means, this one says what an edit did to it. A host that themes the page sets both.
+    /// </remarks>
+    public PreviewPalette PreviewPalette
+    {
+        get => _previewPalette;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            _previewPalette = value;
+            _ghostPainter = null;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The preview to draw instead of the page, or <see langword="null"/> for the page itself.</summary>
+    /// <remarks>
+    /// <para>
+    /// A ghost is drawn <em>instead of</em> the document, not over it: an overlay would keep the old positions and
+    /// lie about the layout. While one is set, the control paints that frame - tints, dimmed text and the badge -
+    /// and no caret, selection, gutter numbering or bulb, because none of those describe the copy.
+    /// </para>
+    /// <para>
+    /// The host decides when this is set, which is what keeps the hover timing out of the control: a preview is
+    /// built from a <c>PreviewSandbox</c> the host already owns, so the control never learns what an intention is.
+    /// </para>
+    /// </remarks>
+    public GhostFrame? Ghost
+    {
+        get => _ghost;
+        set
+        {
+            if (ReferenceEquals(_ghost, value))
+            {
+                return;
+            }
+
+            _ghost = value;
+            _ghostPainter = null;
+            InvalidateMeasure();
             InvalidateVisual();
         }
     }
@@ -1163,6 +1213,21 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             context.FillRectangle(background, new Rect(Bounds.Size));
         }
 
+        // A preview replaces the page rather than covering it, so everything the page draws - gutter numbers,
+        // bulb, selection, caret, lists, tips - belongs to a document that is not on screen. Only the ghost.
+        if (_ghost is { } ghost)
+        {
+            GhostPainter().Render(
+                context,
+                ghost,
+                new Rect(Bounds.Size),
+                GutterWidth,
+                Background ?? Brushes.White,
+                _palette);
+
+            return;
+        }
+
         PaintGutter(context);
 
         // In the margin rather than in the page, so it is painted with the gutter and does not scroll
@@ -1217,6 +1282,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // reader is looking rather than typing. Whatever it covers is still one move away.
         PaintTip(context);
     }
+
+    /// <summary>The painter for the ghost, rebuilt when the measure or the palette changed.</summary>
+    private GhostPresenter GhostPainter() =>
+        _ghostPainter ??= new GhostPresenter(TextMeasure, _previewPalette, _tip.Palette);
 
     /// <summary>Paints the message of the marker the pointer is on, if it is on one.</summary>
     /// <remarks>

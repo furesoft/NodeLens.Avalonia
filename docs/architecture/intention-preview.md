@@ -7,9 +7,9 @@ rule turned into a table row - it is the only honest answer, because the questio
 like" has no good sentence.
 
 Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder) and the headless part of V4 (the
-marks, the badge, the frame and the anchor) are delivered; painting the frame, restoring the page and the sample
-previews are what is left. The decision it rests on is
+slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder) and V4 (the ghost, painted by the control)
+are delivered; what is left is V5 (the hover tracking and the timer that set the ghost) and V6 (previews for the sample
+intentions). The decision it rests on is
 [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
 This document reverses a decision that was recorded twice: [context-actions.md](context-actions.md) and
@@ -123,6 +123,20 @@ The marks and the badge are headless, and they are where the mapping lives - a d
   decision. `PreviewMarks.ChangeAt(address)` is the indexed lookup behind both, and the first mark for an
   address wins - every removal out of one slot names that slot's cell.
 
+Painting it is the control's half, and it is deliberately dumb:
+
+- **`ProjectionalEditorControl.Ghost` is settable by the host.** While a `GhostFrame` is set the control paints
+  *that* instead of the page - tints, dimmed text, badge - and nothing else: no gutter numbers, no bulb, no
+  selection, no caret, no lists, no tips, because none of those describe the copy. The host decides *when*,
+  which is what keeps the hover ladder out of the control.
+- **`GhostPresenter` renders a frame; `PreviewPalette` names the colours.** A ghost is a whole-surface painter,
+  not an overlay, because the ghost replaces the page. `PreviewPalette` (added/changed/removed tints plus the
+  dim colour) is part of `SyntaxTheme`, like `Tip` and `Markers`, so a themed page implies a themed preview -
+  a host that themes the document but not the ghost ships a light sheet on a dark background.
+- **The runs are layout coordinates; the presenter converts with the frame's own viewport and the gutter.** The
+  first implementation passed layout coordinates straight to `DrawingContext`, so every tint landed in the
+  corner - the picture is what caught it.
+
 **Removals are the hard case** and the plan is deliberately modest: the removed text has no position in
 the preview layout, so it is *named* rather than drawn in place. A struck-through band would require
 interleaving two layouts, which is a second kind of layout engine - and the badge plus the tooltip
@@ -206,8 +220,8 @@ property of its implementation.
 | V1 ✓ | `feat/model-copy-and-diff` | M3 | `Model.CopyTo(Project)` (ids preserved) and `ModelDiff` by node id - added, removed, moved, property changed - with a snapshot-equality test and diff tests |
 | V2 ✓ | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
 | V3 ✓ | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewStage`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
-| V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe. Marks and badge landed in `feat/preview-marks`, the frame and the anchor in `feat/preview-ghost`; what is left of V4 is the painting and the restore, which need the control |
-| V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, draw the ghost, and dismiss on every documented event |
+| V4 ✓ | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and the painting - marks and badge in `feat/preview-marks`, frame and anchor in `feat/preview-ghost`, `Ghost`/`GhostPresenter`/`PreviewPalette` in `feat/preview-paint`; verified with a probe that renders the ghost |
+| V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, set `Ghost`, and dismiss on every documented event - the control side of this exists since V4, so what is left is the hover tracking and the timer |
 | V6 | `feat/preview-sample` | M3 | previews for the sample intentions: rename in `Projectional.Samples`, wrap-in-parentheses and negate in `Projectional.Expressions` |
 
 V1 and V2 hold the invariants and are testable without a window; V3 is headless by construction (it never asks what time it is); V4 and
