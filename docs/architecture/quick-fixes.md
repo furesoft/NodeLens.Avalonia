@@ -411,6 +411,13 @@ wrapper at the same time, so `Model.Wrap` detaches, creates and re-attaches insi
 (the repair is one undo step and the node keeps its id). `WrapInAction` is that operation as an edit,
 and the intention catalogue's "wrap in" entry will reuse it rather than invent a second one.
 
+The standalone app still reports placeholder names with its own `DefaultNames` (`SHELL001`) rather than
+with `STD001`, and that is deliberate for now: including `StandardChecks.Names` beside it would report the
+same node twice, with two identical repairs, and replacing a delivered host check is a separate decision
+from shipping the package. The two findings are the same check written twice - one by the framework, one
+by hand to prove the public surface is enough - so the app can move over whenever the host's copy stops
+being worth its demonstration.
+
 ### Two rules the catalogue forces
 
 **A repair that destroys something may never run from a single gesture.** Q4 applies a lone repair
