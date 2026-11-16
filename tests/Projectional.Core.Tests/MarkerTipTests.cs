@@ -58,6 +58,35 @@ public sealed class MarkerTipTests
     }
 
     [Fact]
+    public void AFindingWithRepairsSaysSoAndNamesTheGesture()
+    {
+        // The tip used to be silent about repairs because there were none to promise. Now that there are,
+        // the count and the gesture are the one thing it can say that the squiggle cannot.
+        var finding = Finding("the rule is unreachable");
+
+        Assert.Equal(
+            ["Warning: the rule is unreachable", "2 quick fixes - Alt+Enter"],
+            MarkerTip.Lines([finding], Wide, MonospaceTextMeasure.Instance, _ => 2));
+    }
+
+    [Fact]
+    public void OneRepairIsSaidInTheSingular()
+    {
+        Assert.Equal(
+            ["Warning: the rule is unreachable", "1 quick fix - Alt+Enter"],
+            MarkerTip.Lines([Finding("the rule is unreachable")], Wide, MonospaceTextMeasure.Instance, _ => 1));
+    }
+
+    [Fact]
+    public void AFindingWithoutRepairsGetsNoOfferLine()
+    {
+        // "0 quick fixes" would be worse than silence: it is a sentence that exists only to say nothing.
+        Assert.DoesNotContain(
+            MarkerTip.Lines([Finding("nothing to do")], Wide, MonospaceTextMeasure.Instance, _ => 0),
+            line => line.Contains("quick fix", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void TwoFindingsAreSeparatedByOneBlankLine()
     {
         string[] expected = ["Error: first", string.Empty, "Warning: second"];

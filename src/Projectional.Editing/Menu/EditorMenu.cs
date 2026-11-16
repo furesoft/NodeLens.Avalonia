@@ -38,6 +38,9 @@ public static class EditorMenu
     private const string CutGesture = "Ctrl+X";
     private const string PasteGesture = "Ctrl+V";
 
+    /// <summary>The gesture the quick-fix submenu prints, spelled the way the key map spells it.</summary>
+    private const string QuickFixGesture = "Alt+Enter";
+
     /// <summary>The entries the context menu shows for <paramref name="session"/>.</summary>
     /// <param name="session">The session whose caret and history the menu describes.</param>
     /// <exception cref="ArgumentNullException"><paramref name="session"/> is <see langword="null"/>.</exception>
@@ -45,8 +48,29 @@ public static class EditorMenu
     {
         ArgumentNullException.ThrowIfNull(session);
 
-        var entries = new List<EditorMenuEntry>
+        var entries = new List<EditorMenuEntry>();
+
+        // The repairs first, because they are the one group that is about where the caret is rather than
+        // about the document as a whole. A line with nothing to offer contributes no entry at all: an
+        // empty submenu would be a heading the user has to open to learn there is nothing inside.
+        var fixes = QuickFixes.At(session);
+
+        if (fixes.Count > 0)
         {
+            entries.Add(EditorMenuItem.Submenu(
+                "Quick fixes",
+                [.. fixes.Select(fix => EditorMenuItem.Run(
+                    fix.Label,
+                    () => session.Apply(fix),
+                    QuickFixGesture,
+                    !fix.IsDisabled,
+                    fix.Tip))]));
+
+            entries.Add(EditorMenuSeparator.Instance);
+        }
+
+        entries.AddRange(
+        [
             // A command says nothing about its outcome: whether an undo found a step to undo is the
             // history's answer, and the entry was already enabled or not by that same history.
             EditorMenuItem.Run("Undo", () => session.Undo(), UndoGesture, session.History.CanUndo),
@@ -66,7 +90,7 @@ public static class EditorMenu
             EditorMenuItem.Run("Copy", () => session.Apply(new CopyAction()), CopyGesture, CanCopyText(session)),
             EditorMenuItem.Run("Cut", () => session.Apply(new CutAction()), CutGesture, CanCopyText(session)),
             EditorMenuItem.Run("Paste", () => session.Apply(new PasteAction()), PasteGesture, CanPasteText(session)),
-        };
+        ]);
 
         var representations = Representations(session);
 

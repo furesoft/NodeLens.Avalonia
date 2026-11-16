@@ -31,12 +31,19 @@ public static class MarkerTip
     /// <returns>
     /// The lines to draw, with an empty string between two findings. Empty when there is nothing to say.
     /// </returns>
+    /// <param name="fixCountOf">
+    /// How many repairs a finding offers, or <see langword="null"/> to say nothing about repairs. A count
+    /// above zero adds the line that closes an open promise from [markers.md](markers.md): the tip used to
+    /// be silent about fixes because there were none to promise, and now that there are, staying silent
+    /// would hide the one thing the tooltip can tell the user that they cannot see.
+    /// </param>
     /// <exception cref="ArgumentNullException">A parameter is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxWidth"/> is not positive.</exception>
     public static IReadOnlyList<string> Lines(
         IReadOnlyList<Diagnostic> diagnostics,
         double maxWidth,
-        ITextMeasure measure)
+        ITextMeasure measure,
+        Func<Diagnostic, int>? fixCountOf = null)
     {
         ArgumentNullException.ThrowIfNull(diagnostics);
         ArgumentNullException.ThrowIfNull(measure);
@@ -61,10 +68,24 @@ public static class MarkerTip
             }
 
             lines.AddRange(paragraph);
+
+            var fixes = fixCountOf?.Invoke(diagnostic) ?? 0;
+
+            if (fixes > 0)
+            {
+                lines.AddRange(Wrap(Offer(fixes), maxWidth, measure));
+            }
         }
 
         return lines;
     }
+
+    /// <summary>How the tip offers the repairs of one finding.</summary>
+    /// <param name="count">How many repairs the finding has, which is always at least one here.</param>
+    /// <returns>The sentence, naming the gesture that shows them.</returns>
+    private static string Offer(int count) => count == 1
+        ? "1 quick fix - Alt+Enter"
+        : $"{count} quick fixes - Alt+Enter";
 
     /// <summary>Breaks one paragraph so no line is wider than the room it is given.</summary>
     /// <param name="text">The paragraph to break. Runs of blanks collapse to one.</param>

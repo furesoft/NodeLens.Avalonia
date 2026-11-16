@@ -30,7 +30,8 @@ public sealed class EditorMenuItem : EditorMenuEntry
         bool isEnabled,
         bool isOption,
         bool isChecked,
-        IReadOnlyList<EditorMenuEntry> children)
+        IReadOnlyList<EditorMenuEntry> children,
+        string? description = null)
         : base(label)
     {
         _command = command;
@@ -39,7 +40,16 @@ public sealed class EditorMenuItem : EditorMenuEntry
         IsOption = isOption;
         IsChecked = isChecked;
         Children = children;
+        Description = description;
     }
+
+    /// <summary>One sentence explaining the entry, or <see langword="null"/> when the label is enough.</summary>
+    /// <remarks>
+    /// Part of the contract for the same reason it is on a fix: a label like "Rename" without a sentence
+    /// is a riddle, and a <em>disabled</em> entry without one is a riddle with no answer at all - the user
+    /// can see it will not run and has no way to learn why. A host that shows tooltips shows this one.
+    /// </remarks>
+    public string? Description { get; }
 
     /// <summary>The keys that do the same thing, shown beside the label, or <see langword="null"/> when there are none.</summary>
     public string? Gesture { get; }
@@ -68,11 +78,12 @@ public sealed class EditorMenuItem : EditorMenuEntry
         string label,
         Action command,
         string? gesture = null,
-        bool isEnabled = true)
+        bool isEnabled = true,
+        string? description = null)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        return new EditorMenuItem(label, command, gesture, isEnabled, false, false, NoChildren);
+        return new EditorMenuItem(label, command, gesture, isEnabled, false, false, NoChildren, description);
     }
 
     /// <summary>An entry that opens <paramref name="children"/>.</summary>

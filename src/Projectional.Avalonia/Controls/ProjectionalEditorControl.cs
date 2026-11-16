@@ -158,6 +158,19 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private IReadOnlyList<string>? _tipLines;
     private Size _tipSize;
     private double _tipWidth = -1;
+    private string _tipFixes = string.Empty;
+
+    /// <summary>How many repairs the session offers for <paramref name="diagnostic"/>.</summary>
+    /// <remarks>
+    /// Read from the session rather than remembered: the fix set is republished by the host, so the count
+    /// the tip shows is always the one that was true when the tip was built.
+    /// </remarks>
+    private int CountOf(Projectional.Semantics.Diagnostic diagnostic) =>
+        Session?.Fixes.For(diagnostic).Count ?? 0;
+
+    /// <summary>The repair counts of <paramref name="diagnostics"/>, as one string to compare with.</summary>
+    private string TopicFixes(IReadOnlyList<Projectional.Semantics.Diagnostic> diagnostics) =>
+        string.Join(',', diagnostics.Select(CountOf));
 
     /// <summary>Creates a control that renders in the default font at 14 pixels.</summary>
     public ProjectionalEditorControl()
@@ -961,11 +974,17 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             MarkerTipPresenter.MaximumTextWidth,
             Math.Max(1, viewport.Width - (2 * MarkerTipPresenter.Inset)));
 
-        if (_tipLines is null || _tipWidth != room)
+        // The counts are part of the key because they are part of the text: a host that republishes its
+        // fixes while the pointer stands still would otherwise keep a tip that says "1 quick fix" over a
+        // finding that now has three.
+        var fixes = TopicFixes(hover.Diagnostics);
+
+        if (_tipLines is null || _tipWidth != room || _tipFixes != fixes)
         {
-            _tipLines = MarkerTip.Lines(hover.Diagnostics, room, TextMeasure);
+            _tipLines = MarkerTip.Lines(hover.Diagnostics, room, TextMeasure, CountOf);
             _tipSize = _tip.Measure(_tipLines);
             _tipWidth = room;
+            _tipFixes = fixes;
         }
 
         if (_tipLines.Count == 0)
@@ -1297,6 +1316,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         _tipLines = null;
         _tipSize = default;
         _tipWidth = -1;
+        _tipFixes = string.Empty;
     }
 
     /// <summary>Whether two hits describe the same finding.</summary>
