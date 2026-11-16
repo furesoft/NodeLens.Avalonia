@@ -25,7 +25,7 @@ public sealed class DocumentFileTests
         Assert.True(DocumentFile.TrySave(tab, path, out var saveError), saveError);
         Assert.True(File.Exists(path));
 
-        var loaded = DocumentFile.TryLoad(path, out var loadError);
+        var loaded = DocumentFile.TryLoad(path, new WorkbenchLanguage().NewProject(), out var loadError);
 
         Assert.Null(loadError);
         Assert.NotNull(loaded);
@@ -77,7 +77,7 @@ public sealed class DocumentFileTests
         var path = directory.Combine($"broken{DocumentFile.Extension}");
         File.WriteAllText(path, "this is not a model");
 
-        var model = DocumentFile.TryLoad(path, out var error);
+        var model = DocumentFile.TryLoad(path, new WorkbenchLanguage().NewProject(), out var error);
 
         Assert.Null(model);
         Assert.False(string.IsNullOrWhiteSpace(error));
@@ -88,7 +88,7 @@ public sealed class DocumentFileTests
     {
         using var directory = new TemporaryDirectory();
 
-        var model = DocumentFile.TryLoad(directory.Combine("absent.mps"), out var error);
+        var model = DocumentFile.TryLoad(directory.Combine("absent.mps"), new WorkbenchLanguage().NewProject(), out var error);
 
         Assert.Null(model);
         Assert.False(string.IsNullOrWhiteSpace(error));

@@ -1,6 +1,9 @@
 using Projectional.Core;
+using Projectional.Editors;
 using Projectional.Editing;
+using Projectional.Languages;
 using Projectional.Persistence;
+using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Structures;
 using Projectional.Workbench;
@@ -9,64 +12,62 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The standalone editor knows the languages it is written with, so a definition can be written in it.
+/// The shell's set of languages: the sample one, the two it is written with, and any language project opened from a
+/// folder.
 /// </summary>
 /// <remarks>
-/// This is the M2 claim in the smallest verifiable form: the app's one registry declares the sample language *and*
-/// the two definition languages, so a <c>structure.mps</c> opens, is edited and is saved like any other document -
-/// no mode, no switching, no second editor. Without them the same file would fail to load with "unknown concept",
-/// which is why the registries are asserted rather than assumed.
+/// The set is per shell and grows at runtime, which is the whole reason it is an instance: two shells in one process
+/// must not see each other's languages, and a language opened from a folder has to join the ones already there.
 /// </remarks>
 public sealed class WorkbenchLanguageTests
 {
     [Fact]
-    public void TheAppKnowsAllThreeLanguages()
+    public void AShellStartsWithAllThreeLanguages()
     {
-        var concepts = WorkbenchLanguage.Concepts;
+        var language = new WorkbenchLanguage();
 
-        Assert.True(concepts.TryGet(RulesConceptKeys.Ruleset, out _));
-        Assert.True(concepts.TryGet(StructureConceptKeys.Language, out _));
-        Assert.True(concepts.TryGet(Projectional.Editors.EditorConceptKeys.Notations, out _));
+        Assert.True(language.Concepts.TryGet(RulesConceptKeys.Ruleset, out _));
+        Assert.True(language.Concepts.TryGet(StructureConceptKeys.Language, out _));
+        Assert.True(language.Concepts.TryGet(EditorConceptKeys.Notations, out _));
+        Assert.Empty(language.Opened);
     }
 
     [Fact]
-    public void EveryConceptOfAllThreeHasANotation()
+    public void EveryConcreteConceptHasANotation()
     {
-        // A registered concept with no notation still opens, as a "missing notation" cell - which is the one thing
-        // a user cannot work around, so the app's composition is checked rather than trusted.
-        foreach (var concept in WorkbenchLanguage.Concepts.Concepts.Where(each => !each.IsAbstract))
+        // A registered concept without a notation still opens, as a missing-notation cell - the one state a user
+        // cannot work around, so the composition is checked rather than trusted.
+        var language = new WorkbenchLanguage();
+
+        foreach (var concept in language.Concepts.Concepts.Where(each => !each.IsAbstract))
         {
             Assert.True(
-                WorkbenchLanguage.Notations.TryGet(concept.Key, out _),
-                $"'{concept.Key}' has no notation in the app's registry");
+                language.Notations.TryGet(concept.Key, out _),
+                $"'{concept.Key}' has no notation in the shell's registry");
         }
     }
 
     [Fact]
     public void ANewLanguageDefinitionOpensInASessionAndCanBeWritten()
     {
-        var model = WorkbenchLanguage.NewLanguageDefinition();
+        var language = new WorkbenchLanguage();
+        var model = language.NewLanguageDefinition();
 
-        using var session = new EditorSession(
-            model.Roots[0],
-            WorkbenchLanguage.Notations,
-            typing: WorkbenchLanguage.Typing);
+        using var session = new EditorSession(model.Roots[0], language.Notations, typing: WorkbenchLanguage.Typing);
 
-        // The definition is editable with the same actions every document uses: the user types the concept's key.
         var concept = model.NewChild(model.Roots[0], StructureLanguage.ConceptSlot, StructureConceptKeys.Concept);
 
         concept.Set(StructureLanguage.KeySlot, "Rules.Rule");
         session.Refresh();
 
-        Assert.Contains("Rules.Rule", Projectional.Projection.LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
+        Assert.Contains("Rules.Rule", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ADefinitionSurvivesARoundTripThroughTheAppsLanguage()
+    public void ADefinitionSurvivesARoundTripThroughTheShellsLanguage()
     {
-        // Loading is the part that would fail without the composition: the reader resolves every concept against
-        // the project's registry, so a forgotten language is a file that cannot be opened.
-        var model = WorkbenchLanguage.NewLanguageDefinition();
+        var language = new WorkbenchLanguage();
+        var model = language.NewLanguageDefinition();
 
         model.NewChild(model.Roots[0], StructureLanguage.ConceptSlot, StructureConceptKeys.Concept)
             .Set(StructureLanguage.KeySlot, "Rules.Rule");
@@ -77,17 +78,11 @@ public sealed class WorkbenchLanguageTests
         {
             ModelFile.Save(model, path);
 
-            var loaded = DocumentFile.TryLoad(path, out var error);
+            var loaded = DocumentFile.TryLoad(path, language.NewProject(), out var error);
 
             Assert.Null(error);
             Assert.NotNull(loaded);
-
-            var concept = Assert.Single(loaded.Roots[0].GetChildren(StructureLanguage.ConceptSlot));
-
-            Assert.Equal("Rules.Rule", concept.GetOrNull(StructureLanguage.KeySlot));
-            Assert.Equal(
-                ModelXml.Serialize(model),
-                ModelXml.Serialize(loaded));
+            Assert.Equal(ModelXml.Serialize(model), ModelXml.Serialize(loaded));
         }
         finally
         {
@@ -98,13 +93,101 @@ public sealed class WorkbenchLanguageTests
     [Fact]
     public void ANotationDefinitionOpensToo()
     {
-        var model = WorkbenchLanguage.NewNotationDefinition();
+        var language = new WorkbenchLanguage();
+        var model = language.NewNotationDefinition();
 
-        using var session = new EditorSession(model.Roots[0], WorkbenchLanguage.Notations);
+        using var session = new EditorSession(model.Roots[0], language.Notations);
 
-        Assert.Contains(
-            "<no notations>",
-            Projectional.Projection.LayoutSnapshot.Render(session.Layout, width: 120),
-            StringComparison.Ordinal);
+        Assert.Equal("<no notations>", LayoutSnapshot.Render(session.Layout, width: 120));
+    }
+
+    [Fact]
+    public void AnOpenedLanguageJoinsTheSetAndCanBeUsed()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteLanguage(folder.Root, "Payroll.Payslip", ["name"]);
+
+        var language = new WorkbenchLanguage();
+        var opened = LanguageProject.Open(folder.Root, out _)!;
+
+        Assert.True(language.TryAdd(opened, out var error), error);
+
+        // The concept registry and the notation registry both know it now, which is what "usable" means.
+        var model = WorkbenchLanguage.NewDocument(opened);
+
+        Assert.NotNull(model);
+
+        var node = model.Roots[0];
+
+        node.Set("name", "Approved");
+
+        Assert.Equal("Payroll.Payslip", node.Concept.Key);
+        Assert.Equal("rule Approved", LayoutSnapshot.Render(node, language.Notations, width: 40));
+    }
+
+    [Fact]
+    public void ALanguageThatClashesWithOneAlreadyThereIsRefusedAndChangesNothing()
+    {
+        // The shell keeps the registry it had: a half-added language would give documents a concept registry that
+        // disagrees with the notation registry in force.
+        using var folder = new TemporaryDirectory();
+
+        WriteLanguage(folder.Root, RulesConceptKeys.Rule, ["name"]);
+
+        var language = new WorkbenchLanguage();
+        var before = language.Concepts;
+        var opened = LanguageProject.Open(folder.Root, out _)!;
+
+        Assert.False(language.TryAdd(opened, out var error));
+        Assert.Contains(RulesConceptKeys.Rule, error!, StringComparison.Ordinal);
+        Assert.Same(before, language.Concepts);
+        Assert.Empty(language.Opened);
+
+        // The shell still works.
+        Assert.True(language.Concepts.TryGet(RulesConceptKeys.Ruleset, out _));
+    }
+
+    [Fact]
+    public void TheRootConceptIsTheFirstConcreteOneTheLanguageDeclares()
+    {
+        // Declaration order is the language author's answer to "what is this language about", the same order that
+        // ranks completion.
+        using var folder = new TemporaryDirectory();
+
+        WriteLanguage(folder.Root, "Rules.Thing", ["name"], alsoAbstract: "Rules.Element");
+
+        var opened = LanguageProject.Open(folder.Root, out _)!;
+
+        Assert.Equal("Rules.Thing", WorkbenchLanguage.Rootable(opened)!.Key);
+        Assert.Equal("Rules.Thing", WorkbenchLanguage.NewDocument(opened)!.Roots[0].Concept.Key);
+    }
+
+    /// <summary>Writes a one-concept language project whose notation is the keyword <c>rule</c> and the name.</summary>
+    private static void WriteLanguage(string directory, string conceptKey, string[] properties, string? alsoAbstract = null)
+    {
+        var definition = new DefinitionBuilder();
+
+        if (alsoAbstract is not null)
+        {
+            definition.Concept(alsoAbstract, isAbstract: true);
+        }
+
+        definition.Concept(
+            conceptKey,
+            slots: [.. properties.Select(property => definition.Property(property, "string"))],
+            nameSlot: properties[0]);
+
+        ModelFile.Save(definition.Root.Model, Path.Combine(directory, LanguageProject.StructureFile));
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation(conceptKey);
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Word(line, EditorConceptKeys.Keyword, "rule");
+        notation.Cell(line, EditorConceptKeys.Space);
+        notation.Slot(line, EditorConceptKeys.Property, properties[0]);
+
+        ModelFile.Save(notation.Root.Model, Path.Combine(directory, LanguageProject.EditorFile));
     }
 }

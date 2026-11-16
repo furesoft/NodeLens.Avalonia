@@ -11,6 +11,7 @@ using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Expressions.Intentions;
 using Projectional.Language;
+using Projectional.Languages;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
 using Projectional.Samples.Intentions;
@@ -50,6 +51,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private const double FontSizeStep = 1;
 
     private readonly DocumentSet _documents = new();
+    private readonly WorkbenchLanguage _language = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
@@ -140,7 +142,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(model, WorkbenchLanguage.Notations, emphasis: WorkbenchLanguage.Emphasis, typing: WorkbenchLanguage.Typing);
+        OpenDocument(model, _language.Notations, emphasis: WorkbenchLanguage.Emphasis, typing: WorkbenchLanguage.Typing);
     }
 
     private void OpenDocument(
@@ -539,7 +541,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private void OnNewDocument(object? sender, RoutedEventArgs e)
     {
         _error = null;
-        OpenDocument(PayrollSample.NewEmptyModel(), WorkbenchLanguage.Notations, typing: WorkbenchLanguage.Typing);
+        OpenDocument(PayrollSample.NewEmptyModel(), _language.Notations, typing: WorkbenchLanguage.Typing);
     }
 
     /// <summary>Opens an empty language definition, so the declared path can be tried without setup.</summary>
@@ -552,8 +554,8 @@ public sealed partial class MainWindow : Window, IDisposable
         _error = null;
 
         OpenDocument(
-            WorkbenchLanguage.NewLanguageDefinition(),
-            WorkbenchLanguage.Notations,
+            _language.NewLanguageDefinition(),
+            _language.Notations,
             typing: WorkbenchLanguage.Typing);
     }
 
@@ -563,9 +565,83 @@ public sealed partial class MainWindow : Window, IDisposable
         _error = null;
 
         OpenDocument(
-            WorkbenchLanguage.NewNotationDefinition(),
-            WorkbenchLanguage.Notations,
+            _language.NewNotationDefinition(),
+            _language.Notations,
             typing: WorkbenchLanguage.Typing);
+    }
+
+    /// <summary>Opens a folder as a language and takes it into this shell's set.</summary>
+    /// <remarks>
+    /// The language's own two models open as documents afterwards, which is where the user edits them; new
+    /// documents of the language can then be created from the same registries. A refused language leaves the shell
+    /// exactly as it was and says why, because a folder is user input.
+    /// </remarks>
+    private async void OnOpenLanguage(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Open a language project",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } directory)
+        {
+            return;
+        }
+
+        if (LanguageProject.Open(directory, out var error) is not { } language)
+        {
+            _error = error;
+            UpdateStatus();
+
+            return;
+        }
+
+        if (!_language.TryAdd(language, out error))
+        {
+            _error = error;
+            UpdateStatus();
+
+            return;
+        }
+
+        foreach (var file in new[] { LanguageProject.StructureFile, LanguageProject.EditorFile })
+        {
+            var path = Path.Combine(directory, file);
+
+            if (File.Exists(path) && DocumentFile.TryLoad(path, _language.NewProject(), out _) is { } model)
+            {
+                OpenDocument(model, _language.Notations, path, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+            }
+        }
+
+        UpdateStatus();
+    }
+
+    /// <summary>Creates a document of one of the languages this shell knows.</summary>
+    /// <param name="sender">The menu entry.</param>
+    /// <param name="e">The event.</param>
+    /// <remarks>
+    /// Only the languages that have joined the set are offered, so the menu cannot create a document of a language
+    /// the shell would then be unable to load.
+    /// </remarks>
+    private void OnNewLanguageDocument(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        var opened = _language.Opened.FirstOrDefault(language => WorkbenchLanguage.Rootable(language) is not null);
+
+        if (opened is null || WorkbenchLanguage.NewDocument(opened) is not { } model)
+        {
+            _error = "No opened language declares a concept a document could start with.";
+            UpdateStatus();
+
+            return;
+        }
+
+        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)
@@ -600,7 +676,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        if (DocumentFile.TryLoad(path, out var error) is not { } model)
+        if (DocumentFile.TryLoad(path, _language.NewProject(), out var error) is not { } model)
         {
             _error = $"Could not open {Path.GetFileName(path)}: {error}";
 

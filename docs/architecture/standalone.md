@@ -115,6 +115,11 @@ written with - `Projectional.Structures` and `Projectional.Editors`.
   straight away.
 - **File ▸ New language definition** and **New notation** open an empty document of each, so the declared path can
   be tried without setup. They are conveniences: the languages are loaded either way.
+- **The set is per shell and grows.** `WorkbenchLanguage` is instance state, so two shells in one process never see
+  each other's languages (ADR 0015). **File ▸ Open language…** loads a folder and takes it in
+  ([language-projects.md](language-projects.md)), and **New document of an opened language** creates a document of
+  its first rootable concept. A refused language leaves the shell untouched, and the menu only offers languages that
+  actually joined - the shell must never create a document it would then be unable to load.
 - **The references this adds are language packages**, which is the one category rule 8 above allows: `Structures`
   and `Editors` sit on `Language` exactly like `Samples`, and the app already references three sample packages. No
   reference to `Core`, `Projection`, `Editing`, `Semantics` or `Persistence` was added for this.
