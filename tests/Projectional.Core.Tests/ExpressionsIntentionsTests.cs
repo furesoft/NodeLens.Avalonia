@@ -154,9 +154,10 @@ public sealed class ExpressionsIntentionsTests
     }
 
     [Fact]
-    public void TheGestureAppliesALoneIntention()
+    public void TheGestureOpensAListForALoneIntention()
     {
-        // A negated condition offers only the parentheses, so the gesture runs it without opening anything.
+        // A negated condition offers only the parentheses, and the gesture still shows them: an intention is
+        // never run unasked, because nothing on screen said it was there.
         var (session, rule, condition) = Document();
 
         Caret(session, condition);
@@ -164,7 +165,10 @@ public sealed class ExpressionsIntentionsTests
 
         Caret(session, Assert.Single(rule.GetChildren("condition")));
 
-        Assert.Equal(EditOutcome.Applied, session.Apply(new OfferAction()).Outcome);
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
+        Assert.Equal(ExpressionsIntentions.WrapInParenthesesId, Assert.Single(session.Offered!.Entries).Id);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
         Assert.Equal(
             ExpressionsConceptKeys.Parenthesized,

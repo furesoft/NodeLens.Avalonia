@@ -75,12 +75,21 @@ public sealed class StructureIntentionsTests
     }
 
     [Fact]
-    public void TheGestureRunsTheOnlyOfferWithoutAsking()
+    public void TheGestureOpensTheListEvenWithOnlyOneIntention()
     {
-        // The route the user actually takes: Alt+Enter with one plain offer applies it and opens no list.
+        // The route the user actually takes. An intention is never run unasked: nothing on screen announced it,
+        // so the keystroke asked what can be done here and the answer is a list - of one row, this time.
         var (session, concept) = Document(isAbstract: false);
 
-        Assert.Equal(EditOutcome.Applied, session.Apply(new OfferAction()).Outcome);
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
+
+        var offered = Assert.IsType<OfferList>(session.Offered);
+
+        Assert.Equal(StructureIntentions.MakeAbstractId, Assert.Single(offered.Entries).Id);
+        Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
+
+        // Enter on the highlighted entry is what applies it.
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
         Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
     }

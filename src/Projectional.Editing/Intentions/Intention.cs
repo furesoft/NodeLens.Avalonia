@@ -121,16 +121,24 @@ public sealed class Intention
 
     /// <summary>What applying it can take away, which decides whether it may run unasked.</summary>
     /// <remarks>
-    /// Shared with the fix catalogue: one enum and one rule, so "a lone offer runs immediately only when it is
-    /// plain" cannot drift between the two sources of the list.
+    /// Shared with the fix catalogue: one enum, so "a destructive offer is never run from the gesture" cannot
+    /// drift between the two sources of the list. Being plain is only half of what the gesture asks - see
+    /// <see cref="Fix"/>, the other half.
     /// </remarks>
     public EditSafety Safety { get; }
 
     /// <summary>The quick fix this entry stands for, or <see langword="null"/> for a declared intention.</summary>
     /// <remarks>
+    /// <para>
     /// Set only by <see cref="FromFix"/>. It exists so that <see cref="EditorSession"/> can route the entry
     /// back through the fix's own apply path, which re-resolves it against the current fix set - a guarantee a
     /// general intention does not need and a fix cannot do without.
+    /// </para>
+    /// <para>
+    /// It is also the one thing that tells a repair from an intention, and therefore whether the offers gesture
+    /// may run a lone offer without showing it: a repair answers a finding the editor painted, while an
+    /// intention was never announced anywhere, so a menu with one row is still the honest answer.
+    /// </para>
     /// </remarks>
     public DiagnosticFix? Fix { get; }
 

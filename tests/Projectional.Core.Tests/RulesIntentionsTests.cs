@@ -43,11 +43,16 @@ public sealed class RulesIntentionsTests
     }
 
     [Fact]
-    public void TheGestureRunsItWithoutAsking()
+    public void TheGestureOpensAListForIt()
     {
+        // One intention, still a list: the keystroke asks what can be done here, and nothing announced it.
         var (session, rule) = Document();
 
-        Assert.Equal(EditOutcome.Applied, session.Apply(new OfferAction()).Outcome);
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
+        Assert.Equal(RulesIntentions.AcceptId, Assert.Single(session.Offered!.Entries).Id);
+        Assert.Equal(RuleOutcomes.Review, rule.GetOrNull("outcome"));
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
         Assert.Equal(RuleOutcomes.Accept, rule.GetOrNull("outcome"));
     }

@@ -15,6 +15,7 @@
     <Project Path="src/Projectional.Samples.Checks/Projectional.Samples.Checks.csproj" />
     <Project Path="src/Projectional.Samples.Intentions/Projectional.Samples.Intentions.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
+    <Project Path="src/Projectional.Structures.Intentions/Projectional.Structures.Intentions.csproj" />
     <Project Path="src/Projectional.Structures/Projectional.Structures.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>

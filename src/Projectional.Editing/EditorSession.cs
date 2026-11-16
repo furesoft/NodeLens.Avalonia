@@ -629,15 +629,23 @@ public sealed class EditorSession : IDisposable
     /// all candidates for the same keystroke.
     /// </para>
     /// <para>
-    /// One offer is applied immediately when it is plain and can run. The common case is a single cure for a
-    /// single finding, and a list with one entry costs the user a keystroke to say what the editor already
-    /// knew.
+    /// A lone <em>repair</em> is applied immediately when it is plain and can run. The common case is a single
+    /// cure for a single finding the editor has already painted, and a list with one entry would cost the user a
+    /// keystroke to say what the squiggle already knew.
     /// </para>
     /// <para>
-    /// One offer that is destructive, or that cannot run at all, opens the list instead. The gesture asks
-    /// what is available; it must not also be the keystroke that deletes a node or that does nothing while a
-    /// reason exists. A list of one therefore means "this is what is here, do you mean it", which is the
-    /// same shape as a choice and a different sentence.
+    /// A lone <em>intention</em> opens the list, even though there is only one of them. An intention is not a
+    /// repair: nothing on screen announced it, so the gesture is the question "what can be done here", and the
+    /// answer is a list even when it has one row. Applying it unasked would make the same key mean "do the only
+    /// thing there is" in a document where the user never saw that thing - and a language that later gains a
+    /// second intention would silently change what the key does. `Fix` is what tells the two apart, which is why
+    /// the entry carries it.
+    /// </para>
+    /// <para>
+    /// One offer that is destructive, or that cannot run at all, opens the list too. The gesture asks what is
+    /// available; it must not also be the keystroke that deletes a node or that does nothing while a reason
+    /// exists. A list of one therefore means "this is what is here, do you mean it", which is the same shape as
+    /// a choice and a different sentence.
     /// </para>
     /// <para>
     /// Several offers open a list, and the answer is <see cref="EditOutcome.Unchanged"/>: the gesture was
@@ -662,7 +670,10 @@ public sealed class EditorSession : IDisposable
             return EditResult.Unchanged(Selection);
         }
 
-        if (offered.Count == 1 && offered[0] is { Safety: EditSafety.Plain, IsDisabled: false })
+        // Only a repair may run unasked: it answers a finding the editor painted, so one cure is one keystroke.
+        // A declared intention is a menu of what the language allows here, and a menu with one entry is still a
+        // menu - see the remarks for why `Fix` is the right thing to test.
+        if (offered.Count == 1 && offered[0] is { Safety: EditSafety.Plain, IsDisabled: false, Fix: not null })
         {
             Offered = null;
 
