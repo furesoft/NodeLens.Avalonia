@@ -111,6 +111,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     // own, so it needs a painter and nothing else - no window, no second control, nothing to detach.
     private readonly CompletionPresenter _completion;
 
+    // The quick-fix list is the same arrangement: a painter over this surface, placed beside the caret and
+    // sharing the list palette, because both are lists drawn on the document.
+    private readonly QuickFixPresenter _quickFixes;
+
     private CompletionPalette _listPalette = CompletionPalette.Light;
 
     // The rows the gutter numbers, kept between paints because counting them walks the whole document
@@ -185,6 +189,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     {
         TextMeasure = new AvaloniaTextMeasure(typeface, fontSize, _palette.BrushOf(TextStyleKind.Default));
         _completion = new CompletionPresenter(TextMeasure, _listPalette);
+        _quickFixes = new QuickFixPresenter(TextMeasure, _listPalette);
         _tip = new MarkerTipPresenter(TextMeasure, _tipPalette);
         Clipboard = new AvaloniaClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
 
@@ -250,6 +255,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             // The list is drawn on this surface and must keep the editor's line height, or its rows stop
             // matching the text they are offering to fill.
             _completion.TextMeasure = TextMeasure;
+            _quickFixes.TextMeasure = TextMeasure;
             _tip.TextMeasure = TextMeasure;
 
             // A box wrapped for the old font is sized for glyphs that are no longer on screen.
@@ -372,6 +378,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
             _listPalette = value;
             _completion.Palette = value;
+            _quickFixes.Palette = value;
 
             InvalidateVisual();
         }
@@ -937,6 +944,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             _completion.Render(context, list, CompletionBounds(session, list));
         }
 
+        // After the completion list, because the two are never open at once - an edit that opens one
+        // closes the other - and before the tip, which is the only thing that may cover them.
+        if (session.OfferedFixes is { } offered)
+        {
+            _quickFixes.Render(context, offered, QuickFixBounds(session, offered));
+        }
+
         // After the list, because the two are read at different moments: the list is what the caret is
         // about to create, and a tip only exists while the pointer rests on a squiggle, which means the
         // reader is looking rather than typing. Whatever it covers is still one move away.
@@ -1188,6 +1202,14 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // The list overlays the document, so it gets the first refusal: a click on a proposal must not
         // also move the caret into the slot the proposal belongs to.
         if (ClickCompletion(session, e.GetPosition(this)))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // The quick-fix list overlays the document in the same way, and for the same reason: a click on a
+        // repair must not also move the caret into the line the repair belongs to.
+        if (ClickQuickFix(session, e.GetPosition(this)))
         {
             e.Handled = true;
             return;
@@ -1588,10 +1610,36 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     {
         var size = _completion.Measure(list);
 
+        return ListBounds(session, size, _completion.RowHeight);
+    }
+
+    /// <summary>Where the quick-fix list is drawn, in viewport coordinates.</summary>
+    /// <remarks>
+    /// The same placement as the completion list, from the same helper: both are lists that belong to the
+    /// caret's line and both must stay inside the surface. The list belongs to the marker's line rather
+    /// than to a slot, but the caret is on that line by construction - the gesture that opens the list
+    /// asks about the line the caret is drawn on.
+    /// </remarks>
+    private Rect QuickFixBounds(EditorSession session, QuickFixList list)
+    {
+        var size = _quickFixes.Measure(list);
+
+        return ListBounds(session, size, _quickFixes.RowHeight);
+    }
+
+    /// <summary>Places a list of <paramref name="size"/> beside the caret, kept inside the surface.</summary>
+    /// <remarks>
+    /// Below the caret and shifted right of it, flipped above when it would hang off the bottom edge, then
+    /// clamped so it never leaves the control. Keeping it inside the control rather than over the host's
+    /// other content is the reason these lists are painted here instead of in a popup - and it is one
+    /// helper rather than two, so the two lists cannot end up flipping at different heights.
+    /// </remarks>
+    private Rect ListBounds(EditorSession session, Size size, double rowHeight)
+    {
         var caret = CaretBounds.Of(session.Tree, session.Layout, session.Selection.Caret, session.Measure);
 
         var left = (caret?.X ?? 0) - _offsetX + GutterWidth;
-        var top = (caret is { } below ? below.Y - _offsetY + below.Height : 0) + _completion.RowHeight;
+        var top = (caret is { } below ? below.Y - _offsetY + below.Height : 0) + rowHeight;
 
         if (caret is { } flip && top + size.Height > Bounds.Height)
         {
@@ -1603,6 +1651,33 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             Math.Clamp(top, 0, Math.Max(0, Bounds.Height - size.Height)),
             size.Width,
             size.Height);
+    }
+
+    /// <summary>Accepts the row of the quick-fix list the pointer pressed, if it hit one.</summary>
+    /// <returns>Whether the press was the list's rather than the document's.</returns>
+    /// <remarks>
+    /// The same two actions the keyboard runs - move the highlight, then accept - so a row cannot be taken
+    /// through a path the keyboard would have refused, and a click on a dimmed row still goes through the
+    /// edit layer's own refusal instead of around it.
+    /// </remarks>
+    private bool ClickQuickFix(EditorSession session, Point point)
+    {
+        if (session.OfferedFixes is not { } list
+            || _quickFixes.RowAt(list, QuickFixBounds(session, list), point) is not { } index)
+        {
+            return false;
+        }
+
+        var delta = index - list.Selected;
+
+        if (delta != 0)
+        {
+            session.Apply(new SelectQuickFixAction(delta));
+        }
+
+        AfterEdit(session.Apply(new AcceptQuickFixAction()));
+
+        return true;
     }
 
     /// <summary>Accepts the row of the completion list the pointer pressed, if it hit one.</summary>

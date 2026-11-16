@@ -739,6 +739,10 @@ public sealed class EditorSession : IDisposable
         Selection = new Selection(anchor, caret);
         Completion = null;
 
+        // A caret that moved is no longer the caret that asked for a repair list. The list describes one
+        // line's findings, so leaving it up would keep showing them beside a caret on a different line.
+        OfferedFixes = null;
+
         OfferValues();
     }
 

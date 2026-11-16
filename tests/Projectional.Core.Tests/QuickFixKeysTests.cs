@@ -181,6 +181,21 @@ public sealed class QuickFixKeysTests
     }
 
     [Fact]
+    public void ACaretThatMovedClosesTheList()
+    {
+        // The list describes the findings of one line, so a caret on another line must not keep it up:
+        // the box is drawn beside the caret, and would otherwise show this line's repairs over there.
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+        OpenListOfTwo(session, rule, name);
+
+        session.Select(Selection.At(CaretPosition.At(name, 0)));
+
+        Assert.Null(session.OfferedFixes);
+    }
+
+    [Fact]
     public void EscapeClosesTheList()
     {
         var rule = RuleNamed("walk");
