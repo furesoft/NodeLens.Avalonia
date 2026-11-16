@@ -112,8 +112,42 @@ public sealed class CompletionPresenter
         var (iconWidth, labelWidth) = ColumnWidths(list);
 
         return new Size(
-            Inset + iconWidth + IconGap + labelWidth + Inset,
-            (2 * Inset) + (Rows(list) * RowHeight));
+            Inset + iconWidth + IconGap + Math.Max(labelWidth, DescriptionWidth(list)) + Inset,
+            (2 * Inset) + (Rows(list) * RowHeight) + DescriptionHeight(list));
+    }
+
+    /// <summary>The widest description any entry carries, which the pane has to fit.</summary>
+    private double DescriptionWidth(CompletionList list)
+    {
+        double width = 0;
+
+        foreach (var item in list.Matches)
+        {
+            if (item.Description is { Length: > 0 } description)
+            {
+                width = Math.Max(width, _measure.Measure(description, TextEmphasis.None));
+            }
+        }
+
+        return width;
+    }
+
+    /// <summary>The height the description line takes, which is zero when no entry has one.</summary>
+    /// <remarks>
+    /// Reserved when <em>any</em> entry has a description rather than when the highlighted one does: a box
+    /// that grew and shrank while the highlight moved would make the whole list jump under the pointer.
+    /// </remarks>
+    private double DescriptionHeight(CompletionList list)
+    {
+        foreach (var item in list.Matches)
+        {
+            if (item.Description is { Length: > 0 })
+            {
+                return RowHeight;
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>Paints <paramref name="list"/> into <paramref name="bounds"/>.</summary>
@@ -160,6 +194,36 @@ public sealed class CompletionPresenter
 
             context.DrawText(label, new Point(labelLeft, top + ((rowHeight - label.Height) / 2)));
         }
+
+        DrawDescription(context, list, bounds, rows);
+    }
+
+    /// <summary>Paints the highlighted entry's description under the rows, if it has one.</summary>
+    /// <param name="context">The surface to paint on.</param>
+    /// <param name="list">The list on show.</param>
+    /// <param name="bounds">Where the list sits.</param>
+    /// <param name="rows">How many rows are drawn, which is what the pane sits below.</param>
+    /// <remarks>
+    /// Dimmed, and in the palette's line colour, because a list palette has no "secondary text" of its own -
+    /// the same choice the quick-fix list makes for a repair that cannot run. It is drawn rather than
+    /// wrapped: the pane is one line, and an entry whose description is longer is truncated by the box.
+    /// </remarks>
+    private void DrawDescription(DrawingContext context, CompletionList list, Rect bounds, int rows)
+    {
+        if (list.SelectedIndex < 0 || list.SelectedIndex >= list.Count)
+        {
+            return;
+        }
+
+        if (list.Matches[list.SelectedIndex].Description is not { Length: > 0 } description)
+        {
+            return;
+        }
+
+        var top = bounds.Y + Inset + (rows * RowHeight);
+        var text = _measure.Shaped(description, _palette.Border, TextEmphasis.None);
+
+        context.DrawText(text, new Point(bounds.X + Inset, top + ((RowHeight - text.Height) / 2)));
     }
 
     /// <summary>Which row of <paramref name="list"/> is at <paramref name="point"/>, if any.</summary>

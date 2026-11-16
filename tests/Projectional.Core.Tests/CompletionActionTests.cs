@@ -45,6 +45,26 @@ public sealed class CompletionActionTests
     }
 
     [Fact]
+    public void AProposalCarriesTheConceptsDescription()
+    {
+        // The completion list is the second surface that reads a concept's description, which is why the
+        // sentence lives on the concept rather than on the tooltip.
+        var (session, _) = OpenRuleWithEmptyCondition();
+
+        using (session)
+        {
+            session.Apply(KeyRouter.For(session, EditorKey.ControlSpace));
+
+            var list = Assert.IsType<CompletionList>(session.Completion);
+            var name = list.Matches.Single(item => item.ConceptKey == ExpressionsConceptKeys.Name);
+            var binary = list.Matches.Single(item => item.ConceptKey == ExpressionsConceptKeys.Binary);
+
+            Assert.Equal("A reference to a name that some scope resolves.", name.Description);
+            Assert.Null(binary.Description);
+        }
+    }
+
+    [Fact]
     public void TheLiteralsAreReachableByEnterButNotOfferedInTheList()
     {
         var (session, _) = OpenRuleWithEmptyCondition();
