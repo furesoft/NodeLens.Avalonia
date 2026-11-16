@@ -30,14 +30,28 @@ enumerations:
     accept
     review
 concepts:
-  concept Rules.Rule
-    is abstract: false
+  concept Rules.Element
+    offered in completion: true
+    named by:
+    collapsed by:
+    described as:
+    extends:
+      << ... >>
+    properties:
+      name : string
+        default:
+        described as:
+    children:
+      << ... >>
+    references:
+      << ... >>
+  abstract concept Rules.Rule
     offered in completion: true
     named by: name
     collapsed by:
     described as: One rule of a ruleset.
     extends:
-      Rules.Element
+      << ... >>
     properties:
       name : string
         default:
@@ -47,6 +61,11 @@ concepts:
     references:
       condition : Rules.Condition own subtree: false
 ```
+
+`abstract` is a word of the header and not an option, which is MPS' spelling and the better reading of the same
+fact: abstractness is part of what a concept *is*. A concrete concept therefore draws nothing where an abstract one
+draws the word, which is a [conditional cell](language.md#notation) - and the reason toggling the flag is an
+[intention](context-actions.md) rather than typing into a value.
 
 | Concept | Holds |
 | --- | --- |
@@ -82,15 +101,18 @@ slot, with `<< ... >>` for a section nobody has filled. Copying the shape is wor
 reviewer reads what a concept *is* in the header, what it allows in the options, and what it holds in three named
 sections.
 
-Two parts of that look are out of reach, and the honest half is to say so rather than to fake them:
+What that look needs is a cell that can disappear, and the notation layer has one: a
+[conditional cell](language.md#notation) draws its inline cells only while a property holds a value. `abstract` is
+the case it was added for.
 
-- **Conditional cells.** MPS shows `abstract` only when the concept is abstract; a notation here is a fixed tree of
-  cells, so `is abstract:` is drawn always, with its value. Making a cell disappear needs a mechanism the notation
-  layer does not have, and inventing one for this document would be a second mechanism beside the notation.
+The remaining gap is not the notation's:
+
 - **`instance can be root` and `alias`.** MPS offers both; neither has anywhere to land here. Applicability is a
   `ConceptDeclaration` argument with `Anywhere`/`AsChild`/`AsRoot` places, and an alias would be a second name for a
   concept that no layer below reads. ADR 0014's rule - nothing declared-only - keeps them out until something
   consumes them.
+- **A block conditional** - hiding a whole option line rather than a word - would be the same mechanism one level up,
+  and it is not here because nothing needs it yet.
 
 ## The lowering, and what it refuses to check
 
@@ -120,7 +142,8 @@ classes keep their names (`StructureLanguage`, `StructureLowering`, `StructureCo
 | --- | --- |
 | notation as data (`editor.mps`) | P2 |
 | `language.mps` as one model per aspect, with dependencies | P3, P4 |
-| conditional cells, which is what would let `abstract` be shown only when true | not planned; a notation is a fixed tree |
+| a block conditional, which would let a whole option line disappear | when a notation needs it |
+| toggling the flag from the header rather than from a menu | it is an [intention](context-actions.md), by design |
 | triggers, applicability and collapse slots as declared data | after P2, when an aspect model exists to hold them |
 | constraints, types, generators as declared data | M6 |
 | loading a definition from a project folder | P3, with the aspect models it needs |

@@ -40,6 +40,17 @@ public static class StructureLanguage
     /// <summary>The slots pointing at nodes owned elsewhere.</summary>
     public const string ReferencesSlot = "references";
 
+    /// <summary>
+    /// Whether a concept is abstract.
+    /// </summary>
+    /// <remarks>
+    /// Named here rather than spelled out at each use because three packages read it - the declarations, the
+    /// notation and the intentions - and a name typed three times is a name that can be typed two ways. It is a
+    /// flag and not a word: the notation decides that an abstract concept <em>says</em> <c>abstract</c>, which is
+    /// why the property holds a truth value and not the text.
+    /// </remarks>
+    public const string IsAbstractProperty = "isAbstract";
+
     /// <summary>The concepts of the structure language itself.</summary>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
     [
@@ -55,7 +66,7 @@ public static class StructureLanguage
             StructureConceptKeys.Concept,
             [
                 new PropertySlot(KeySlot, PropertyType.String),
-                new PropertySlot("isAbstract", PropertyType.Boolean, "false"),
+                new PropertySlot(IsAbstractProperty, PropertyType.Boolean, "false"),
                 new PropertySlot("isOfferedInCompletion", PropertyType.Boolean, "true"),
                 new PropertySlot("description", PropertyType.String),
                 new PropertySlot("nameSlot", PropertyType.String),

@@ -18,10 +18,10 @@ namespace Projectional.Structures.Notation;
 /// has filled is a state to see, and a heading with nothing under it reads as a mistake.
 /// </para>
 /// <para>
-/// What this <em>cannot</em> do yet is MPS' conditional cells: <c>abstract</c> appears in MPS only when the concept
-/// is abstract, while this notation always draws the option with its value. Making a cell disappear is a notation
-/// feature the engine does not have, and inventing it here would be a second mechanism beside the notation - the
-/// honest form until then is <c>is abstract: true</c>.
+/// <c>abstract</c> is a word in the header rather than an option, which is MPS' spelling and the better reading of
+/// the same fact: abstractness is part of what the concept <em>is</em>, not one of its settings. It is drawn by a
+/// <see cref="ConditionalNotationCell"/>, so a concrete concept shows <c>concept Rules.Rule</c> and nothing else -
+/// which is also why the value is not a cell the user can type into, and why toggling it is an intention.
 /// </para>
 /// </remarks>
 public static class StructureNotations
@@ -46,13 +46,16 @@ public static class StructureNotations
             ed.Line(ed.Keyword("concepts:")),
             ed.Indent(ed.Children(StructureLanguage.ConceptSlot, NoEntries))));
 
+        // `abstract concept Rule` rather than an option, which is how MPS writes it and how the word is read: as
+        // part of what the concept is, not as one of its settings. The word exists in the notation always and in
+        // the drawing only while the flag is true - a false one draws nothing at all, not an empty cell.
         notations.Add(StructureConceptKeys.Concept, ed => ed.Sequence(
             ed.Line(
+                ed.Conditional(StructureLanguage.IsAbstractProperty, "true", ed.Keyword("abstract"), ed.Space),
                 ed.Keyword("concept"),
                 ed.Space,
                 ed.Property(StructureLanguage.KeySlot)),
             ed.Indent(ed.Sequence(
-                ed.Line(ed.Keyword("is abstract:"), ed.Space, ed.Property("isAbstract")),
                 ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
                 ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
                 ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),

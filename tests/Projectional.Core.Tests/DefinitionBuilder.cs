@@ -35,7 +35,7 @@ internal sealed class DefinitionBuilder
         var concept = _model.NewChild(Root, StructureLanguage.ConceptSlot, StructureConceptKeys.Concept);
 
         concept.Set(StructureLanguage.KeySlot, key);
-        concept.Set("isAbstract", isAbstract ? "true" : "false");
+        concept.Set(StructureLanguage.IsAbstractProperty, isAbstract ? "true" : "false");
 
         if (nameSlot is not null)
         {
