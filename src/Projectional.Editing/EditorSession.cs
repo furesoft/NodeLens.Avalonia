@@ -38,6 +38,10 @@ public sealed class EditorSession : IDisposable
 
     private EditorTreeBuilder _builder;
 
+    // View state, like Choice: which nodes are folded, keyed by the stable id so the set survives every
+    // rebuild and an undo that moves nodes around.
+    private CollapsedNodeSet _collapsed = CollapsedNodeSet.Empty;
+
     /// <summary>Opens <paramref name="document"/> for editing.</summary>
     /// <param name="document">The root of the model to edit.</param>
     /// <param name="notations">The notation that projects the document's concepts.</param>
@@ -79,7 +83,7 @@ public sealed class EditorSession : IDisposable
         Choice = choice ?? NotationChoice.Default;
         Clipboard = clipboard ?? new InMemoryClipboard();
         Typing = typing ?? TypingRuleRegistry.Empty;
-        _builder = new EditorTreeBuilder(notations, emphasis, Choice);
+        _builder = RebuildBuilder();
 
         Tree = _builder.Build(Document);
         Layout = _layouter.Layout(Tree);
@@ -302,9 +306,56 @@ public sealed class EditorSession : IDisposable
     public void Choose(INotationChoice? choice)
     {
         Choice = choice ?? NotationChoice.Default;
-        _builder = new EditorTreeBuilder(_notations, _emphasis, Choice);
+        _builder = RebuildBuilder();
         Refresh();
     }
+
+    /// <summary>The nodes folded right now, which is view state and never an undo step.</summary>
+    /// <remarks>
+    /// <para>
+    /// Assigning replaces the set and re-projects, unlike <see cref="Markers"/>, which only decorates: a
+    /// folded node draws a different tree, so the layout and the caret have to follow.
+    /// </para>
+    /// <para>
+    /// Folding is deliberately not undoable. An undo that silently reopened a fold, or a fold that consumed
+    /// an undo step, would each be a surprise; two sessions over one document may hold different sets.
+    /// </para>
+    /// </remarks>
+    public CollapsedNodeSet Collapsed
+    {
+        get => _collapsed;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_collapsed, value))
+            {
+                return;
+            }
+
+            _collapsed = value;
+            _builder = RebuildBuilder();
+            Refresh();
+        }
+    }
+
+    /// <summary>Folds <paramref name="node"/> if it is open and unfolds it if it is folded.</summary>
+    /// <param name="node">The node to fold or unfold.</param>
+    /// <remarks>
+    /// The node is not validated. <see cref="Choose"/> throws on a bad argument because a menu entry that
+    /// cannot apply is a programming error; here a stale id is harmless - the builder ignores any id it
+    /// cannot fold - and a throw would turn a paint-time race into a crash.
+    /// </remarks>
+    public void ToggleCollapsed(NodeId node) => Collapsed = _collapsed.Toggle(node);
+
+    /// <summary>Builds the projection from both view-state values, so neither can forget the other.</summary>
+    /// <remarks>
+    /// One construction path on purpose: the builder is built from <see cref="Choice"/> <em>and</em>
+    /// <see cref="Collapsed"/> now, and the drift trap is exactly a <see cref="Choose"/> that later forgets
+    /// the folds or a fold setter that forgets the variant.
+    /// </remarks>
+    private EditorTreeBuilder RebuildBuilder() =>
+        new(_notations, _emphasis, Choice, _collapsed);
 
     /// <summary>
     /// The concepts of this document that declare more than one notation, in the order the document
