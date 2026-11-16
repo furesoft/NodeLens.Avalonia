@@ -172,6 +172,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Model-to-model generation | optional second generator stage |
 | Text import | JSON and XML reference languages behind an `ITextImporter` ([import.md](architecture/import.md)) |
 | Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
+| Embedded shell | the shell as a control a host composes: locked to one language, its storage and dialogs supplied by the host, its capabilities declared once and enforced by the command registry ([embedded-shell.md](architecture/embedded-shell.md)) |
 | Plugin packaging | one NuGet per language, versioned |
 
 **Gate:** a model can be renamed project-wide without breaking references, and two

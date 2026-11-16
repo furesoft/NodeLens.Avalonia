@@ -164,6 +164,20 @@ arrangement that are not mechanics.
 | 63 | What does the workbench show for a declared concept that has no editor model? | Open | The same `MissingNotationCell` a C# language shows, plus the editor model opened at that concept. A generic fallback form would hide the notation work behind something that looks finished, and every language would ship with it. | M5, with P5 |
 | 64 | Does a slot carry a minimum cardinality, and where? | Leaning | A minimum on the slot declaration, not on `Cardinality`: `One`/`Many` describes storage, while "at least two rules" is a validity statement the constraint engine reads. The bracket syntax (`Rule[1..n]`) already promises it, so dropping it silently is the one option that is not available. | P4 |
 
+## Embedded shell
+
+A host embeds the shell itself - not only the editor control - with one language already loaded
+([embedded-shell.md](architecture/embedded-shell.md),
+[ADR 0015](adr/0015-shell-is-a-library.md)). These are the parts of that arrangement that are
+choices rather than mechanics.
+
+| # | Question | State | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 65 | Does a shell embedded as a pane show its own menu bar? | Leaning | Only when asked. A `ShellWindow` shows it by default, a `ShellView` used as a pane does not: a docked pane that installs a second File menu inside the host's menu bar is the classic embedding annoyance, and the commands are available through the registry either way. | E2 |
+| 66 | May a host show two shells with different languages in one window? | Leaning | Yes, and it costs nothing but the rule that already exists: no process-wide state. It constrains nothing today and is worth one test, because a static read through the shell would be discovered by a user, not by a reviewer. | E5 |
+| 67 | Is the model list flat, or can a host supply a hierarchy? | Open | Flat for the first slice: `IShellStorage` returns a list, and a project with a folder hierarchy of models is a real need only once a host has hundreds. A second interface (`IShellModelTree`) can be added without changing the shell, but not removed later. | E4 |
+| 68 | Who remembers the last active document? | Leaning | The host, through `ShellOptions.InitialModel` and a shell event; the shell persists nothing. It is the same rule as recent files: state that outlives the process belongs to whoever owns the process. | E4 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
@@ -200,5 +214,6 @@ Listed here so they are not reopened accidentally; the authoritative text is the
 | Public API | `Core` + `Avalonia` only | [0010](adr/0010-public-api-surface.md) |
 | Standalone editor | ships, and is a plain consumer of the public API | [0011](adr/0011-standalone-editor.md) |
 | Language authoring | C# and project paths, both permanent | [0014](adr/0014-both-authoring-paths-are-permanent.md) |
+| Shell | a library a host composes, lockable to one language | [0015](adr/0015-shell-is-a-library.md) |
 | Execution | interpreter *and* text generation | ADR to be written (M4) |
 | Pilot DSL | rule/decision tables | ADR to be written (M4) |
