@@ -1,0 +1,220 @@
+using Projectional.Projection;
+using Projectional.Samples;
+using Xunit;
+
+namespace Projectional.Core.Tests;
+
+/// <summary>
+/// Copying a whole model into another project, which is what a preview sandbox is built from.
+/// </summary>
+/// <remarks>
+/// The contract under test is identity: a copy carries the same node ids, so an edit that addresses ids and
+/// slots means the same thing in the copy as in the original. Everything else - values, references, order -
+/// follows from that being useful.
+/// </remarks>
+public sealed class ModelCopyTests
+{
+    [Fact]
+    public void ACopyHasTheSameNodesInTheSameOrder()
+    {
+        var original = PayrollSample.NewSampleModel();
+        var copy = original.CopyTo(new Project(RulesLanguage.Concepts));
+
+        Assert.Equal(Ids(original), Ids(copy));
+    }
+
+    [Fact]
+    public void ACopyKeepsItsNameUnlessAnotherIsGiven()
+    {
+        var original = PayrollSample.NewSampleModel();
+        original.Rename("Payroll");
+
+        Assert.Equal("Payroll", original.CopyTo(new Project(RulesLanguage.Concepts)).Name);
+        Assert.Equal("Copy", original.CopyTo(new Project(RulesLanguage.Concepts), "Copy").Name);
+    }
+
+    [Fact]
+    public void ACopyCarriesPropertiesReferencesAndChildren()
+    {
+        var source = new Project(TestLanguage.Registry).NewModel("source");
+        var tag = source.NewNode(TestLanguage.Tag);
+        tag.Set("label", "urgent");
+        source.AddRoot(tag);
+
+        var rule = source.NewNode(TestLanguage.Rule);
+        rule.Set("name", "Only");
+        rule.Set("enabled", "false");
+        rule.SetReference("tag", tag);
+        rule.SetReference("inherits", rule.Id, "Only");
+        source.AddRoot(rule);
+
+        var body = source.NewChild(rule, "body", TestLanguage.Body);
+        var step = source.NewChild(body, "steps", TestLanguage.Step);
+        step.Set("index", 3);
+        step.Set("status", "approved");
+        source.NewChild(body, "notes", TestLanguage.Note).Set("text", "note");
+
+        var copy = source.CopyTo(new Project(TestLanguage.Registry));
+
+        AssertSameModel(source, copy);
+
+        var copiedRule = copy.Project.FindNode(rule.Id)!;
+
+        Assert.Equal("Only", copiedRule.GetOrNull("name"));
+        Assert.Equal("false", copiedRule.GetOrNull("enabled"));
+        Assert.Equal(tag.Id, copiedRule.GetReference("tag")!.Value.Target);
+        Assert.Equal("Only", copiedRule.GetReference("inherits")!.Value.ResolveInfo);
+        Assert.Equal(3, copiedRule.GetChild("body")!.GetChild("steps")!.GetInt("index"));
+    }
+
+    [Fact]
+    public void ACopyDrawsTheSamePicture()
+    {
+        // The strongest thing that can be said about an exact copy without comparing fields one at a time.
+        var original = PayrollSample.NewSampleModel();
+        var copy = original.CopyTo(new Project(RulesLanguage.Concepts));
+        var notations = RulesLanguage.CreateNotations(RulesLanguage.Concepts);
+
+        Assert.Equal(
+            LayoutSnapshot.Render(original, notations, width: 60),
+            LayoutSnapshot.Render(copy, notations, width: 60));
+    }
+
+    [Fact]
+    public void ACopyIsIndependentOfTheOriginal()
+    {
+        var original = PayrollSample.NewSampleModel();
+        var copy = original.CopyTo(new Project(RulesLanguage.Concepts));
+
+        var originalRule = original.Roots[0].GetChildren(RulesLanguage.RulesSlot)[0];
+        var copyRule = copy.Project.FindNode(originalRule.Id)!;
+
+        copyRule.Set("name", "Changed");
+
+        Assert.NotEqual("Changed", originalRule.GetOrNull("name"));
+
+        originalRule.Set("name", "Other");
+
+        Assert.Equal("Changed", copyRule.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void ACopyLivesInTheTargetProjectAndNotInTheOriginalOne()
+    {
+        var original = PayrollSample.NewSampleModel();
+        var target = new Project(RulesLanguage.Concepts);
+        var copy = original.CopyTo(target);
+
+        Assert.Same(target, copy.Project);
+        Assert.Same(original.Project, original.Roots[0].Model.Project);
+        Assert.Single(original.Project.Models);
+        Assert.Single(target.Models);
+
+        // The ids are the same, and each project answers with its own node for them.
+        var id = original.Roots[0].Id;
+
+        Assert.Same(original.Roots[0], original.Project.FindNode(id));
+        Assert.NotSame(original.Roots[0], target.FindNode(id));
+    }
+
+    [Fact]
+    public void CopyingIntoTheProjectItCameFromFailsAndLeavesNothingBehind()
+    {
+        // A copy keeps the ids, so it can only live where they are still free. The failure is clean: the
+        // half-built model is taken out of the project again rather than left there empty.
+        var original = PayrollSample.NewSampleModel();
+        var models = original.Project.Models.Count;
+
+        Assert.Throws<ModelInvariantException>(() => original.CopyTo(original.Project));
+        Assert.Equal(models, original.Project.Models.Count);
+
+        // ...and the original is untouched by the attempt.
+        Assert.NotEmpty(original.Roots);
+    }
+
+    [Fact]
+    public void CopyingAnEmptyModelCopiesNoNodes()
+    {
+        var empty = new Project(TestLanguage.Registry).NewModel("empty");
+        var copy = empty.CopyTo(new Project(TestLanguage.Registry));
+
+        Assert.Empty(copy.Roots);
+        Assert.Equal(0, copy.Project.NodeCount);
+    }
+
+    [Fact]
+    public void APlaceNamesWhereANodeStands()
+    {
+        var model = PayrollSample.NewSampleModel();
+        var ruleset = model.Roots[0];
+        var rule = ruleset.GetChildren(RulesLanguage.RulesSlot)[0];
+
+        Assert.Equal($"root[0]", NodePlace.Of(ruleset).ToString());
+        Assert.True(NodePlace.Of(ruleset).IsRoot);
+        Assert.Equal(ruleset.Id, NodePlace.Of(rule).Parent);
+        Assert.Equal(RulesLanguage.RulesSlot, NodePlace.Of(rule).Slot);
+        Assert.Equal(0, NodePlace.Of(rule).Index);
+        Assert.False(NodePlace.Of(rule).IsRoot);
+    }
+
+    /// <summary>Every node id of one model, in document order, depth first.</summary>
+    private static List<NodeId> Ids(Model model)
+    {
+        var ids = new List<NodeId>();
+
+        foreach (var root in model.Roots)
+        {
+            Collect(root, ids);
+        }
+
+        return ids;
+
+        static void Collect(Node node, List<NodeId> into)
+        {
+            into.Add(node.Id);
+
+            foreach (var child in node.ChildrenInDocumentOrder())
+            {
+                Collect(child, into);
+            }
+        }
+    }
+
+    /// <summary>Asserts that two models are the same document, node by node, in the same order.</summary>
+    private static void AssertSameModel(Model original, Model copy)
+    {
+        Assert.Equal(Ids(original), Ids(copy));
+
+        foreach (var id in Ids(original))
+        {
+            var was = original.Project.FindNode(id)!;
+            var now = copy.Project.FindNode(id)!;
+
+            Assert.Equal(was.Concept.Key, now.Concept.Key);
+            Assert.Equal(NodePlace.Of(was), NodePlace.Of(now));
+
+            foreach (var declaration in was.Concept.Slots)
+            {
+                switch (declaration)
+                {
+                    case PropertySlot property:
+                        Assert.Equal(was.GetOrNull(property.Name), now.GetOrNull(property.Name));
+
+                        break;
+
+                    case ReferenceSlot reference:
+                        Assert.Equal(was.GetReference(reference.Name), now.GetReference(reference.Name));
+
+                        break;
+
+                    case ChildSlot child:
+                        Assert.Equal(
+                            was.GetChildren(child.Name).Select(each => each.Id),
+                            now.GetChildren(child.Name).Select(each => each.Id));
+
+                        break;
+                }
+            }
+        }
+    }
+}
