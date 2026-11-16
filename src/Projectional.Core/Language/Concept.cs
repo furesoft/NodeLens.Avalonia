@@ -18,7 +18,8 @@ public sealed class Concept
         PropertySlot? nameSlot,
         bool isAbstract,
         bool isOfferedInCompletion,
-        string? description = null)
+        string? description = null,
+        PropertySlot? collapseSlot = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -27,6 +28,7 @@ public sealed class Concept
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         Description = description;
+        CollapseSlot = collapseSlot;
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -76,6 +78,17 @@ public sealed class Concept
     /// never stored per node and never appears in a change event.
     /// </remarks>
     public string? Description { get; }
+
+    /// <summary>
+    /// The resolved slot that says whether a node of this concept may be folded, or <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// Inherited the way <see cref="NameSlot"/> is: a concept that is foldable stays foldable in its
+    /// subconcepts, and a language re-declares the designation only to override it. It is a
+    /// <see cref="PropertySlot"/> rather than a name because the caller needs the type, and a collapse slot
+    /// is always a boolean.
+    /// </remarks>
+    public PropertySlot? CollapseSlot { get; }
 
     /// <summary>Whether this concept is <paramref name="conceptKey"/> itself or extends it.</summary>
     public bool IsKindOf(string conceptKey) => conceptKey is not null && _ancestry.Contains(conceptKey);

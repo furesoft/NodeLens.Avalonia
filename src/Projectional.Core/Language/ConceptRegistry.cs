@@ -215,6 +215,33 @@ public sealed class ConceptRegistry
             nameSlot = property;
         }
 
+        // The same walk as the name slot, and for the same reason: a concept that is foldable stays
+        // foldable below itself, and a language re-declares the designation only to override it.
+        PropertySlot? collapseSlot = null;
+        var collapseSlotName = declaration.CollapseSlot;
+        if (collapseSlotName is null)
+        {
+            collapseSlotName = supers.Select(super => super.CollapseSlot?.Name).FirstOrDefault(name => name is not null);
+        }
+
+        if (collapseSlotName is { } resolvedCollapseSlot)
+        {
+            if (!byName.TryGetValue(resolvedCollapseSlot, out var slot))
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{declaration.Key}' names '{resolvedCollapseSlot}' as its collapse slot, but no such slot is declared.");
+            }
+
+            if (slot is not PropertySlot { Type: var collapseType } collapseProperty
+                || !collapseType.Equals(PropertyType.Boolean))
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{declaration.Key}' names '{resolvedCollapseSlot}' as its collapse slot, but a collapse slot has to be a boolean property.");
+            }
+
+            collapseSlot = collapseProperty;
+        }
+
         return new Concept(
             declaration.Key,
             supers,
@@ -222,6 +249,7 @@ public sealed class ConceptRegistry
             nameSlot,
             declaration.IsAbstract,
             declaration.IsOfferedInCompletion,
-            declaration.Description);
+            declaration.Description,
+            collapseSlot);
     }
 }

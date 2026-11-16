@@ -46,6 +46,51 @@ public sealed class ConceptRegistryTests
     }
 
     [Fact]
+    public void ABooleanSlotCanBeTheCollapseSlot()
+    {
+        var registry = Create(new ConceptDeclaration(
+            "Rules.Rule",
+            [new PropertySlot("collapsed", PropertyType.Boolean)],
+            collapseSlot: "collapsed"));
+
+        Assert.Equal("collapsed", registry.Get("Rules.Rule").CollapseSlot?.Name);
+    }
+
+    [Fact]
+    public void ACollapseSlotHasToBeABooleanProperty()
+    {
+        // Resolved eagerly at registration, where the language author still sees the message.
+        Assert.Throws<ConceptDefinitionException>(() => Create(new ConceptDeclaration(
+            "Rules.Rule",
+            [new PropertySlot("name", PropertyType.String)],
+            collapseSlot: "name")));
+
+        Assert.Throws<ConceptDefinitionException>(() =>
+            Create(new ConceptDeclaration("Rules.Rule", collapseSlot: "collapsed")));
+    }
+
+    [Fact]
+    public void TheCollapseDesignationIsInherited()
+    {
+        var registry = Create(
+            new ConceptDeclaration(
+                "Base",
+                [new PropertySlot("collapsed", PropertyType.Boolean)],
+                collapseSlot: "collapsed"),
+            new ConceptDeclaration("Leaf", superConcepts: ["Base"]));
+
+        Assert.Equal("collapsed", registry.Get("Leaf").CollapseSlot?.Name);
+    }
+
+    [Fact]
+    public void AConceptThatDeclaresNoCollapseSlotHasNone()
+    {
+        var registry = Create(new ConceptDeclaration("Rules.Rule", [new PropertySlot("name", PropertyType.String)]));
+
+        Assert.Null(registry.Get("Rules.Rule").CollapseSlot);
+    }
+
+    [Fact]
     public void AConceptExposesItsSlotsInDeclarationOrder()
     {
         var registry = Create(new ConceptDeclaration(

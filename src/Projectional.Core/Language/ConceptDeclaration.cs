@@ -17,7 +17,8 @@ public sealed class ConceptDeclaration
         string? nameSlot = null,
         bool isAbstract = false,
         bool isOfferedInCompletion = true,
-        string? description = null)
+        string? description = null,
+        string? collapseSlot = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -64,12 +65,18 @@ public sealed class ConceptDeclaration
             throw new ArgumentException($"'{nameSlot}' is not a valid slot name.", nameof(nameSlot));
         }
 
+        if (collapseSlot is not null && !NameRules.IsValidSlotName(collapseSlot))
+        {
+            throw new ArgumentException($"'{collapseSlot}' is not a valid slot name.", nameof(collapseSlot));
+        }
+
         Key = key;
         Slots = slotList;
         SuperConcepts = superList;
         NameSlot = nameSlot;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
+        CollapseSlot = collapseSlot;
 
         // Trimmed, and an empty one is no description at all: "declared nothing" and "declared a blank"
         // have to be one state, or a language ships a tooltip that shows nothing.
@@ -124,6 +131,17 @@ public sealed class ConceptDeclaration
     /// the concept key teaches the user that hovering is pointless.
     /// </remarks>
     public string? Description { get; }
+
+    /// <summary>
+    /// The slot that says whether a node of this concept may be folded in the editor, or
+    /// <see langword="null"/> when the concept does not opt in.
+    /// </summary>
+    /// <remarks>
+    /// A designated slot like <see cref="NameSlot"/>: the permission is a value on the node, so two nodes
+    /// of one concept can differ - one rule's body is worth hiding and its sibling's is not. A concept that
+    /// never nominates one behaves exactly as it did before folding existed.
+    /// </remarks>
+    public string? CollapseSlot { get; }
 
     public override string ToString() => Key;
 }
