@@ -333,6 +333,23 @@ order, never by node id** - two documents built the same way have different iden
 collection's separator were expressible in C# and not as data. Both are data now. When a declared language cannot
 express something C# can, fix the language - ADR 0014 rule 2.
 
+### The workbench loads the definition languages
+
+`WorkbenchLanguage` (`Projectional.Workbench/Documents/`) is the app's **one** registry and **one** notation
+registry: it composes the sample rules language with `Projectional.Structures` and `Projectional.Editors`, and
+`DocumentFile.TryLoad` loads against it. A `structure.mps` therefore opens in the app like any other document - a
+language definition is a model.
+
+- **Include the transitive closure.** `RulesLanguage.ConceptDeclarations` is that language's *own* concepts; it
+  borrows `Expressions.Expression`, so a host composing it must bring `ExpressionsLanguage.ConceptDeclarations`
+  too. Missing it is a `ConceptDefinitionException` at startup, naming the concept.
+- **`EveryConceptOfAllThreeHasANotation`** walks the composed registry and demands a notation per concrete concept,
+  because a registered concept without one renders as `MissingNotationCell` - the one state a user cannot work
+  around. It already caught `Editor.Collection` being added without its notation: **add the notation in the same
+  commit**.
+- The extra `ProjectReference`s are **language packages** (`Structures`, `Editors`), the same category as
+  `Samples`, not Core-adjacent internals.
+
 ## How notation is declared
 
 `Projectional.Language` is where notation lives: declarative data that the projection engine
@@ -1317,7 +1334,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1417 tests**; anything below that means tests were deleted.
+it. **Baseline is 1422 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

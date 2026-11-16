@@ -16,9 +16,9 @@ namespace Projectional.Workbench;
 /// write succeeded, and a load reports a broken file instead of throwing at the user.
 /// </para>
 /// <para>
-/// Every model the workbench opens is a ruleset, so the project is the toy language's. A host with
-/// several languages would pass the project in, which is why the parameter exists on
-/// <see cref="ModelFile"/> rather than being fixed there.
+/// Every model the workbench opens is loaded against <see cref="WorkbenchLanguage.Concepts"/>, the one registry
+/// that declares the sample language and the two definition languages. A file whose concepts are not in it is
+/// refused with a diagnostic rather than half-loaded, which is the answer that tells a host it forgot a language.
 /// </para>
 /// </remarks>
 internal static class DocumentFile
@@ -43,7 +43,7 @@ internal static class DocumentFile
         {
             error = null;
 
-            return ModelFile.Load(RulesLanguage.NewProject(), path);
+            return ModelFile.Load(WorkbenchLanguage.NewProject(), path);
         }
         catch (Exception exception) when (exception is ModelFormatException or IOException or UnauthorizedAccessException)
         {

@@ -140,7 +140,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules);
+        OpenDocument(model, WorkbenchLanguage.Notations, emphasis: WorkbenchLanguage.Emphasis, typing: WorkbenchLanguage.Typing);
     }
 
     private void OpenDocument(
@@ -539,7 +539,33 @@ public sealed partial class MainWindow : Window, IDisposable
     private void OnNewDocument(object? sender, RoutedEventArgs e)
     {
         _error = null;
-        OpenDocument(PayrollSample.NewEmptyModel(), RulesLanguage.CreateNotations(RulesLanguage.Concepts), typing: RulesLanguage.TypingRules);
+        OpenDocument(PayrollSample.NewEmptyModel(), WorkbenchLanguage.Notations, typing: WorkbenchLanguage.Typing);
+    }
+
+    /// <summary>Opens an empty language definition, so the declared path can be tried without setup.</summary>
+    /// <remarks>
+    /// The structure language is loaded into this app like any other, so this is only a convenience: the document
+    /// it opens is a model written in that language, editable and saveable by the same editor as everything else.
+    /// </remarks>
+    private void OnNewLanguageDefinition(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        OpenDocument(
+            WorkbenchLanguage.NewLanguageDefinition(),
+            WorkbenchLanguage.Notations,
+            typing: WorkbenchLanguage.Typing);
+    }
+
+    /// <summary>Opens an empty notation, which is the other half of a language definition.</summary>
+    private void OnNewNotation(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        OpenDocument(
+            WorkbenchLanguage.NewNotationDefinition(),
+            WorkbenchLanguage.Notations,
+            typing: WorkbenchLanguage.Typing);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)
