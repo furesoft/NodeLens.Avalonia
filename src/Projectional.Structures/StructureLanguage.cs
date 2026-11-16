@@ -31,8 +31,14 @@ public static class StructureLanguage
     /// <summary>What a concept declares: the super types it extends.</summary>
     public const string SuperTypeSlot = "supertypes";
 
-    /// <summary>What a concept holds: its slots.</summary>
-    public const string SlotSlot = "slots";
+    /// <summary>The slots holding one primitive value.</summary>
+    public const string PropertiesSlot = "properties";
+
+    /// <summary>The slots holding owned children.</summary>
+    public const string ChildrenSlot = "children";
+
+    /// <summary>The slots pointing at nodes owned elsewhere.</summary>
+    public const string ReferencesSlot = "references";
 
     /// <summary>The concepts of the structure language itself.</summary>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
@@ -55,7 +61,13 @@ public static class StructureLanguage
                 new PropertySlot("nameSlot", PropertyType.String),
                 new PropertySlot("collapseSlot", PropertyType.String),
                 new ChildSlot(SuperTypeSlot, StructureConceptKeys.SuperType, Cardinality.Many),
-                new ChildSlot(SlotSlot, StructureConceptKeys.Slot, Cardinality.Many),
+
+                // Three collections rather than one `slots`: it is how MPS writes a structure model, it makes the
+                // three sections of the notation a fact about the model instead of a grouping the renderer invents,
+                // and it means a child slot cannot be written where a property belongs.
+                new ChildSlot(PropertiesSlot, StructureConceptKeys.PropertyDecl, Cardinality.Many),
+                new ChildSlot(ChildrenSlot, StructureConceptKeys.ChildDecl, Cardinality.Many),
+                new ChildSlot(ReferencesSlot, StructureConceptKeys.ReferenceDecl, Cardinality.Many),
             ],
             nameSlot: KeySlot,
             description: "One concept: what it is called, what it extends and what it holds."),

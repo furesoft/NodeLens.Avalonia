@@ -67,6 +67,29 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
+    public void TheThreeSectionsAreConcatenatedInTheOrderTheSectionsAppear()
+    {
+        // Slot order is the concept's declaration order, because it decides the default fill and the completion
+        // ranking. A definition that names a reference before a property therefore still declares the property
+        // first: the section a slot was written into is its rank, not the order the editor happened to create it.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Target", slots: [definition.Property("name", "string")]);
+        definition.Concept(
+            "Rules.Rule",
+            slots:
+            [
+                definition.Reference("condition", "Rules.Target"),
+                definition.Child("body", "Rules.Target"),
+                definition.Property("name", "string"),
+            ]);
+
+        var declared = StructureLowering.Lower(definition.Root).Single(c => c.Key == "Rules.Rule");
+
+        Assert.Equal(["name", "body", "condition"], declared.Slots.Select(slot => slot.Name));
+    }
+
+    [Fact]
     public void ADeclaredEnumerationIsTheTypeOfItsProperty()
     {
         var definition = new DefinitionBuilder();
@@ -116,7 +139,8 @@ public sealed class StructureLoweringTests
     public void ADefinitionIsDrawnLikeAnyOtherModel()
     {
         // The rule of the plan: if the definition language needed a rendering exception it would not be a real
-        // language. This is the snapshot of the provisional shape.
+        // language. This is the snapshot of the shape - the header says what the concept is, the options say what
+        // it allows, and the three sections say what it holds.
         var definition = new DefinitionBuilder();
 
         definition.Enumeration("Rules.Outcome", "accept");
@@ -125,15 +149,26 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "enum Rules.Outcome",
-                "  accept",
-                "concept Rules.Rule abstract=false offered=true",
-                "  named by",
-                "  described as",
-                "  <no super concepts>",
-                "  property name : string",
-                "    default",
-                "    described as"),
+                "enumerations:",
+                "  enum Rules.Outcome",
+                "    accept",
+                "concepts:",
+                "  concept Rules.Rule",
+                "    is abstract: false",
+                "    offered in completion: true",
+                "    named by:",
+                "    collapsed by:",
+                "    described as:",
+                "    extends:",
+                "      << ... >>",
+                "    properties:",
+                "      name : string",
+                "        default:",
+                "        described as:",
+                "    children:",
+                "      << ... >>",
+                "    references:",
+                "      << ... >>"),
             LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120));
     }
 
