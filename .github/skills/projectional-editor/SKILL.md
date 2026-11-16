@@ -185,6 +185,19 @@ the sandbox and the answer the ghost is drawn from.
 - **The sandbox never touches the live session**, so a preview is not undoable and produces no undo
   step; `Open` also refuses a document above `NodeBudget` (20 000, overridable for tests) rather than
   paying for the copy.
+- **The hover ladder is a state machine, not three timers** (`PreviewDelay`, `PreviewStage`,
+  `PreviewState` in the same folder; slice V3). `PreviewDelay` holds highlight/description/preview/grace
+  as one immutable value whose rungs may not be out of order (`IsValid`/`Validate`; a host builds it
+  from settings, so construction does not throw). `PreviewState` takes `Hover(entryId)`, `Leave()`,
+  `LeaveList()`, `Invalidate()` and one `Tick(elapsed)` per timer tick and answers `Stage` - the control
+  owns the timer, exactly like `CaretBlink`. The entry key is the `Intention.Id`, so the machine knows
+  nothing about intentions or a toolkit.
+- **The ladder's value is in its interruptions, so do not "simplify" them away**: a different entry
+  starts from nothing (a preview is an answer about *that* edit); the *same* entry again continues the
+  clock (that is the bulb-to-list gap, and restarting there means a preview is never reached); leaving an
+  entry cancels at once but leaving the *list* survives `Grace` with the clock **paused**; and
+  `Invalidate` remembers the entry so the ladder does not restart on the next tick - only leaving and
+  returning asks again. The stage follows elapsed hover time, so a late tick reaches the rung it passed.
 
 ## How undo, redo and coalescing work
 
@@ -1206,7 +1219,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1339 tests**; anything below that means tests were deleted.
+it. **Baseline is 1359 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

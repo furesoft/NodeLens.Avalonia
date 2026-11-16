@@ -342,6 +342,13 @@ Four rules hold it together:
 copy has to project with the same vocabulary, or the ghost draws a document that reads differently
 from the page it replaces.
 
+When the preview appears is a second, equally headless decision: `PreviewDelay` holds the four durations
+(highlight, description, preview, grace) and `PreviewState` climbs them from `Hover(entryId)`, `Leave()`,
+`LeaveList()`, `Invalidate()` and one `Tick(elapsed)` per timer tick, answering `PreviewStage`. The control
+owns the timer and nothing else, which is why the whole ladder - including the grace period, the paused clock
+and the entry an invalidation silences - is tested without a window. [intention-preview.md](intention-preview.md#the-trigger-a-ladder-not-a-switch)
+is the design of record.
+
 ## Representations
 
 A concept may have more than one notation variant, so the session carries a
