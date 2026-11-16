@@ -75,6 +75,27 @@ A model is the unit of import, of reference scope visibility, and of file lockin
 Model granularity is the user's decision — too small means hundreds of files, too
 large means merge conflicts.
 
+### Copying a model
+
+`Model.CopyTo(Project target)` is how a preview's sandbox is built, and it is exact: the same node ids,
+concepts, property values, reference targets and fallback text, the same child order, the same roots in
+the same order. Identity is the point, not an implementation detail - an edit action addresses ids and
+slots rather than positions, so an action value means the same thing in the copy as in the original.
+That is what makes "show what this edit would do" answerable by *doing it to a copy* instead of by a
+per-action description ([intention-preview.md](intention-preview.md)).
+
+Three consequences worth stating:
+
+- **The copy needs its own project.** `Project` indexes nodes by id, so a copy carrying the original's
+  ids can only live where those ids are still free. Copying into the source project throws
+  `ModelInvariantException`, which is the shape of the mistake rather than a limitation.
+- **Nothing is shared afterwards.** Mutating the copy touches no node of the original, and the two
+  projects answer `FindNode` with different objects for the same id.
+- **A failed copy leaves nothing behind.** The nodes built so far are deleted without recording and the
+  half-built model is discarded from the target project, the way a failed load cleans up. Each node is
+  attached to its place *before* it is filled, so a failure always leaves everything reachable from the
+  copy's roots - a bottom-up copy would strand registered nodes with nothing pointing at them.
+
 ## Change events: the backbone
 
 Every mutation goes through a transaction. A transaction yields a list of typed
@@ -199,6 +220,29 @@ Semantics runs against an immutable snapshot so validation never sees a torn mod
 - Snapshot = frozen set of model versions + a copy-on-write node index.
 - Taking a snapshot is O(1) via a version counter; only mutated nodes are copied.
 - A snapshot is only valid within one generation; stale results are dropped.
+
+## Diff
+
+`ModelDiff.Of(before, after)` answers what one model has that the other does not, matched by node id. It
+exists for the preview's ghost ([intention-preview.md](intention-preview.md)), and it is a structural
+diff on purpose: two documents can read identically and be different trees, and one node can move
+without a character changing, so a text diff would answer a different question.
+
+| Kind | What it says |
+| --- | --- |
+| `Added` | the node, and everything below it, exists only in the later model |
+| `Removed` | the node, and everything below it, exists only in the earlier one; `OldValue` carries its name so what went can still be named |
+| `Moved` | the node exists in both and stands in another parent, slot or index |
+| `PropertyChanged` | the same property holds another value |
+| `ReferenceChanged` | the same reference points at something else, or its fallback text does |
+
+A node appears once per change, so a moved node with two rewritten properties is three entries. Entries
+come in document order of the later model, then the removals in the order they had - a renderer can walk
+the list once, marking the document it is drawing and collecting removals for a badge on the way.
+
+Same id with a different concept is reported as `Removed` plus `Added`, never compared: ids are unique
+per project, not per universe, so two unrelated models can share one and comparing them would describe an
+edit nobody made.
 
 ## Invariants (enforced on every mutation)
 

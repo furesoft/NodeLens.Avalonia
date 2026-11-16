@@ -147,6 +147,32 @@ deliberate and easy to break.
 - Subscribers must be passive. Mutating from a `Changed` handler is a bug, and
   reentrancy through `Model.Changed` is not guarded against.
 
+## How a model is copied and compared
+
+`Model.CopyTo(Project target, string? name = null)` (`src/Projectional.Core/Model/Model.cs`) and
+`ModelDiff.Of(before, after)` (`src/Projectional.Core/Diff/`) are slice V1 of the intention preview -
+the sandbox and the answer the ghost is drawn from.
+
+- **The copy keeps every node id**, and that is the contract rather than a detail: an edit action
+  addresses ids and slots, so the same action value means the same thing in the copy as in the
+  original. Values, reference targets and fallback text, child order and root order come with it.
+- **The copy needs its own `Project`.** `Project.Register` asserts id uniqueness, so copying into the
+  project the model came from throws `ModelInvariantException` - that is the correct answer, not a gap.
+- **Attach before filling.** `CopySubtree` creates the node with `CreateDetached(id, concept)`, hangs
+  it into its place, and only then writes properties, references and children. A bottom-up copy would
+  leave registered nodes that nothing points at, and the failure path could not clean up. On failure
+  `Abandon` deletes the built roots with `record: false` and calls `Project.DiscardModel`, because
+  `CreateDetached(id, concept)` deliberately journals no rollback (it exists for loading).
+- **`Node.ChildrenInDocumentOrder()` yields the *direct* children only** - despite the name. A full
+  document walk recurses (see `ModelDiff.SelfAndDescendants` and `EditorSession.SelfAndDescendants`).
+  Assuming it was deep cost two failing tests; do not reintroduce it.
+- **The diff walks `Model.Roots`, never `Project.Nodes`**: a project holds several models, and the
+  index would report documents that are not being compared.
+- **A diff is structural, matched by id**: `Added`, `Removed` (with the node's name in `OldValue`),
+  `Moved` (with `NodePlace` before and after), `PropertyChanged`, `ReferenceChanged`. One entry per
+  change, in document order of the later model, then the removals. Same id on a *different concept* is
+  `Removed` + `Added`, because ids are unique per project, not per universe.
+
 ## How undo, redo and coalescing work
 
 `UndoHistory` (`src/Projectional.Core/Undo/`) subscribes to `Model.Changed`; it is not
@@ -1142,7 +1168,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1280 tests**; anything below that means tests were deleted.
+it. **Baseline is 1301 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
