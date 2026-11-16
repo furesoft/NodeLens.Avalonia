@@ -23,7 +23,9 @@ decorations, cell-wise caret motion with a blinking caret, a context menu descri
 editing layer, concept- and value-driven completion (Ctrl+Space, icons as host images, an
 enumerated property offering its values on arrival), and text
 clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
-size, model-defined markers with hover tooltips, and logical scrolling (bars via
+size, model-defined markers with hover tooltips, concept descriptions shown on hover and in the
+completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin) and logical
+scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
 
@@ -675,6 +677,24 @@ Invariants that are cheap now and expensive later:
   `CompletionPalette` carries vector icons and a `StreamGeometry` needs a rendering platform -
   constructing it eagerly made `SyntaxTheme`'s static initializer require a window and broke every
   headless test that compares themes. Keep `SyntaxTheme` free of anything that needs a platform.
+
+### Two tooltips, one pointer
+
+The control can show two boxes: the finding's message over a squiggle (`MarkerTip`) and a concept's
+description over any node (`ConceptTip`). They share `MarkerTipPresenter` and `MarkerTip.Place`, and
+they differ in exactly two ways that must not be "tidied" away:
+
+- **The marker wins.** A finding is specific and asks for an action; a description is ambient. If both
+  would apply under one pointer, only the finding's box is painted. Never paint both.
+- **Only the concept tip waits.** A squiggle is a shape a user aims at, so its tip is immediate; text
+  is what the pointer crosses, so a description appears after 600 ms. A delay on the marker tip would
+  make a hover feel broken.
+
+Both are dismissed through the one path that already existed (`ClearHover`, reached by pointer exit,
+any edit and any caret move). The concept tip is anchored to the node's own address
+(`new CellAddress(nodeId)`), not to the caret place the pointer resolved to, or it jumps while the
+pointer crosses a line of a node that spans several. `ConceptTip.Of(session, nodeId)` answers `null`
+for an id that no longer exists - a pointer can outlive its node, and a tooltip must never throw.
 
 ### Emphasis (bold, italic, underline, strikethrough)
 
