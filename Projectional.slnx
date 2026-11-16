@@ -5,6 +5,7 @@
     <Project Path="src/Projectional.Core/Projectional.Core.csproj" />
     <Project Path="src/Projectional.Editing/Projectional.Editing.csproj" />
     <Project Path="src/Projectional.Expressions/Projectional.Expressions.csproj" />
+    <Project Path="src/Projectional.Editors/Projectional.Editors.csproj" />
     <Project Path="src/Projectional.Expressions.Intentions/Projectional.Expressions.Intentions.csproj" />
     <Project Path="src/Projectional.Language/Projectional.Language.csproj" />
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
