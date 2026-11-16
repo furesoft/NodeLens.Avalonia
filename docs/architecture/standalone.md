@@ -220,16 +220,22 @@ bubbling handler would race it.
 
 ### Findings
 
-The app publishes its own diagnostics into the editor, and it is the reference for how a host
-does it: `Checks/DefaultNames.cs` marks every node still called its concept's placeholder
-(`"unnamed"`), and `MainWindow.PublishFindings` hands the resulting `MarkerSet` to the control's
-public `Markers` property when a document opens and again from the model's `Changed` handler.
+The app publishes its own findings into the editor, and it is the reference for how a host does it.
+Two checks run: `Checks/DefaultNames.cs` marks every node still called its concept's placeholder
+(`"unnamed"`), and `Projectional.Samples.Checks` reports two rules of one ruleset that share a name.
+`MainWindow.PublishFindings` hands the result to the control's public `Markers` and `Fixes` properties
+when a document opens and again from the model's `Changed` handler.
+
+Both checks answer with fixes rather than with bare diagnostics, and the window derives the marker set
+from them: a fix carries the finding it repairs, so one list produces both sets and they cannot
+describe different states of the document.
 
 Three things that follow, and that a host has to do as well:
 
-- **The set is a snapshot, so it must be republished on every change.** The editor keeps no
+- **The sets are a snapshot, so they must be republished on every change.** The editor keeps no
   reference to a check; a set published once describes the document as it was then. Republishing
-  is a repaint, not a rebuild — the tree and the layout stay as they are.
+  is a repaint, not a rebuild — the tree and the layout stay as they are - and republishing only half
+  of it is how a squiggle keeps offering a cure for something the user already fixed.
 - **A check reads the language, not the app.** `DefaultNames` compares a name against
   `Concept.NameSlot.DefaultValue`, so it needs no per-concept table and no knowledge of the
   toy rules language beyond what the declaration already says. A check written against strings

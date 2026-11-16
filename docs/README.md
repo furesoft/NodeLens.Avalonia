@@ -28,7 +28,7 @@ records what was actually verified.
 11. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (delivered).
 12. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
-    reach the user (in progress; the model and the apply step are delivered).
+    reach the user (in progress; the model, the apply step and two real checks are delivered).
 13. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
 14. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
