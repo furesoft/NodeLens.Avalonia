@@ -56,7 +56,7 @@ public sealed class WrapInActionTests
     }
 
     [Fact]
-    public void UndoTakesTheWrapperBackInOneStep()
+    public void UndoAndRedoRestoreTheWrapInOneStep()
     {
         var (rule, body) = TestEditor.RuleWithBody();
         var step = body.Model.NewChild(body, "steps", TestLanguage.Step);
@@ -73,6 +73,15 @@ public sealed class WrapInActionTests
         Assert.Same(step, restored);
         Assert.Same(body, step.Parent);
         Assert.False(session.History.CanUndo);
+
+        // The wrap journals three steps in one change set - the node leaves, the wrapper arrives, the node
+        // returns inside it - so redo has to replay all three closures in the forward direction.
+        Assert.True(session.Redo());
+
+        var rewrapped = Assert.Single(body.GetChildren("steps"));
+
+        Assert.Same(step, rewrapped.GetChild("detail"));
+        Assert.Same(rewrapped, step.Parent);
     }
 
     [Fact]
