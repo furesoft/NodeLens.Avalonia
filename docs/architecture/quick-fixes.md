@@ -352,7 +352,9 @@ none of the slots a check needs simply does not get that check, and nothing has 
 
 **A repair that destroys something may never run from a single gesture.** Q4 applies a lone repair
 immediately, which is right for `Trim to "Rule"` and wrong for `Delete the empty rule`: the same
-keystroke would delete a node the user was only asking about. So a fix carries a safety class, and the
+keystroke would delete a node the user was only asking about. So an offer carries a safety class
+(`EditSafety` - named for the offer rather than for the fix, because the intention catalogue needs the
+same classification and one enum serves both), and the
 gesture applies a lone repair only when it is plain; a lone destructive repair opens the list, which is
 then allowed to hold one entry precisely because it is asking rather than offering. This is the change
 `DiagnosticFix` needs before the catalogue ships, and it is open question 73.
@@ -382,7 +384,7 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q4 ✓ | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, and the list of several as `OfferedFixes`; verified in a real window with a probe |
 | Q5 | `feat/quick-fix-popup` | the popup that draws `OfferedFixes` (a presenter beside `CompletionPresenter`, with its own row hit test and keyboard navigation), the "Quick fixes" submenu in `EditorMenu`, and the fix line in `MarkerTip` |
 | Q6 | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf`, the margin glyph, its hit test, its repaint policy, and the bulb showing for a marked line |
-| Q7 | `feat/standard-checks` | the safety class on `DiagnosticFix` and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own |
+| Q7 | `feat/standard-checks` | `EditSafety` on the offer and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own |
 
 Q1 and Q2 hold the invariants and are testable without a window; Q4 to Q6 are presentation and are
 the first customers of the headless Avalonia test project, with a probe standing in until it exists.
