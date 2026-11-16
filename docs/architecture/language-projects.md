@@ -4,8 +4,8 @@ The two definition languages produce models; this turns those models into a lang
 `structure.mps` and `editor.mps` loads as a `LanguageProject`: a `ConceptRegistry`, a `NotationRegistry`, and the
 declarations they were built from.
 
-Status: **delivered** as the core of slice P3 of [language-authoring.md](language-authoring.md). The app-side folder
-picker is the remaining piece (see below).
+Status: **delivered** as the core of slice P3 of [language-authoring.md](language-authoring.md), including the
+app-side folder picker.
 
 ## Why a folder and not a file
 
@@ -46,11 +46,26 @@ language, draws it (`rule Approved` through the *declared* notation), saves it a
 Nothing in that test writes C# for the DSL it exercises - the only C# is the language that defines languages. That is
 M2's gate in its smallest complete form.
 
+## In the app
+
+`WorkbenchLanguage` is **per shell** - an instance, not a static table - and it grows at runtime:
+
+- **File ▸ Open language…** picks a folder, loads it, and takes it into the set. The language's own
+  `structure.mps` and `editor.mps` open as documents afterwards, which is where the user edits them.
+- **File ▸ New document of an opened language** creates a document of the first concept that can be a root: concrete,
+  and naming no applicability places. A concept that names places needs a parent and a slot to exist, so it can never
+  start a document - the same rule [language.md](language.md#applicability) states.
+- **A refused language changes nothing.** `TryAdd` builds both candidate registries first and adopts them only if
+  both succeed, because a half-added language would give a document a concept registry that disagrees with the
+  notation registry in force - the one state that produces files nobody can open.
+- **Growing the set rebuilds it.** `ConceptRegistry` is immutable and takes declarations, so every concept already
+  in the set is written down again (`Redeclare`). That path is covered by the parity harness's dump comparison, so a
+  re-declaration that loses a flag or an order fails a test rather than a file.
+
 ## What is still missing
 
 | Missing | Why it is not in this slice |
 | --- | --- |
-| the app's folder picker and a per-shell language set | `WorkbenchLanguage` is a static composition, so a language loaded after startup cannot join it. Making it instance state is the next step, and it is a shell change rather than a language one |
 | `language.mps` (name, version, dependencies, extended languages) | P3 proper: it needs the aspect models it names |
 | constraints, types, generators as declared aspects | M6 |
 | exporting a loaded language back to C# | P6 |

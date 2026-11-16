@@ -10,6 +10,8 @@
         <MenuItem Header="_New" HotKey="Ctrl+N" Click="OnNewDocument" />
         <MenuItem Header="New language _definition" Click="OnNewLanguageDefinition" />
         <MenuItem Header="New _notation" Click="OnNewNotation" />
+        <MenuItem Header="New document of an _opened language" Click="OnNewLanguageDocument" />
+        <MenuItem Header="Open _language..." Click="OnOpenLanguage" />
         <MenuItem Header="_Open..." HotKey="Ctrl+O" Click="OnOpenDocument" />
         <Separator />
         <MenuItem Header="_Save" HotKey="Ctrl+S" Click="OnSaveDocument" />

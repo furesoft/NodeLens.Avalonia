@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Projectional.Avalonia\Projectional.Avalonia.csproj" />
     <ProjectReference Include="..\Projectional.Editors\Projectional.Editors.csproj" />
+    <ProjectReference Include="..\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\Projectional.Samples\Projectional.Samples.csproj" />

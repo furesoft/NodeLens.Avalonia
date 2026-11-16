@@ -16,9 +16,10 @@ namespace Projectional.Workbench;
 /// write succeeded, and a load reports a broken file instead of throwing at the user.
 /// </para>
 /// <para>
-/// Every model the workbench opens is loaded against <see cref="WorkbenchLanguage.Concepts"/>, the one registry
-/// that declares the sample language and the two definition languages. A file whose concepts are not in it is
-/// refused with a diagnostic rather than half-loaded, which is the answer that tells a host it forgot a language.
+/// Every model the workbench opens is loaded against a project the shell supplies, because the set of languages is
+/// per shell and grows when a language project is opened ([language-projects.md](../../docs/architecture/language-projects.md)).
+/// A file whose concepts are not in that registry is refused with a diagnostic rather than half-loaded, which is the
+/// answer that tells the shell it forgot a language.
 /// </para>
 /// </remarks>
 internal static class DocumentFile
@@ -35,15 +36,16 @@ internal static class DocumentFile
     /// open - so both come back as a message rather than as an exception the window would have to
     /// catch twice.
     /// </remarks>
-    internal static Model? TryLoad(string path, out string? error)
+    internal static Model? TryLoad(string path, Project project, out string? error)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(project);
 
         try
         {
             error = null;
 
-            return ModelFile.Load(WorkbenchLanguage.NewProject(), path);
+            return ModelFile.Load(project, path);
         }
         catch (Exception exception) when (exception is ModelFormatException or IOException or UnauthorizedAccessException)
         {

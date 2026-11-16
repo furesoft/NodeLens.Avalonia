@@ -357,9 +357,14 @@ language definition is a model.
 language or a message, never an exception** - opening is a user action, and a user action reports. The notation is
 lowered *against the concepts the structure model just declared*, so a notation for an undeclared concept is caught
 at the earliest moment both halves exist. **A language without `editor.mps` loads on purpose**: every node draws as a
-missing-notation cell, which is the state a language being written is in. The app still composes its languages
-statically, so a language loaded after startup cannot join the shell yet - that is the next step, and it is a shell
-change, not a language one.
+missing-notation cell, which is the state a language being written is in.
+
+**`WorkbenchLanguage` is per shell, not static** - it grows with **File ▸ Open language…**, and `TryAdd` builds both
+candidate registries first so a clash changes nothing (a half-added language gives documents a concept registry that
+disagrees with the notation registry in force). Growing the set re-declares every concept already in it
+(`Redeclare`), because `ConceptRegistry` is immutable; the parity harness's dump comparison covers that path. A
+document of an opened language starts at the first **rootable** concept: concrete and `Applicability.IsAnywhere` - a
+concept that names places can never be a root.
 
 ## How notation is declared
 
@@ -1345,7 +1350,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1429 tests**; anything below that means tests were deleted.
+it. **Baseline is 1432 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
