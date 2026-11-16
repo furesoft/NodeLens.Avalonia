@@ -290,6 +290,26 @@ it is special.
   duplicated. If a second test project ever needs that language, promote it to a
   `Projectional.TestLanguage` library rather than copying it.
 
+## How a language is declared as a model
+
+`Projectional.Structures` is slice P1 of M2: the structure language, nine concepts whose nodes *are* a language
+definition, plus `StructureLowering` into the `ConceptDeclaration`s every other layer understands.
+
+- **A definition is a model like any other** - same editor, same writer, same undo - because that is what makes
+  the two authoring paths of ADR 0014 equal. `StructureLanguage.ConceptDeclarations` is the C# twin of the
+  definition language itself.
+- **The language says what a concept *is*, never how it looks.** Presentation is the editor language (P2), in a
+  separate model, for the same reason MPS splits `structure.mps` from `editor.mps`.
+- **Two spellings are data**: `cardinality` is the text `one`/`many` and `typeName` is a name an author types, so the
+  *lowering* validates them. A model that refused them would have to know the concept registry.
+- **`StructureLowering` checks what a compiler would have checked** (every property names a known type, an
+  enumeration has symbols and a unique key, a slot is one of three kinds) and deliberately **not the graph**:
+  unknown super concepts, child slots naming nothing and duplicate keys are `ConceptRegistry.Create`'s answers.
+  **Do not add a second graph validator here** - the two would drift, and `CreateRegistry` is the single answer to
+  "is this a language".
+- **The namespace is `Projectional.Structures`, not `Projectional.Structure`**: CA1716 is an error here and
+  `Structure` is a VB keyword. The class names keep `Structure`.
+
 ## How notation is declared
 
 `Projectional.Language` is where notation lives: declarative data that the projection engine
@@ -1274,7 +1294,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1394 tests**; anything below that means tests were deleted.
+it. **Baseline is 1406 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
