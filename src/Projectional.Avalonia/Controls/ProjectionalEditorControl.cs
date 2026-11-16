@@ -141,6 +141,17 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     // rebuild and both sets are immutable, so their identity is the invalidation.
     private bool _showBulb = true;
     private IBrush _bulbBrush = new SolidColorBrush(Color.FromRgb(0xC8, 0x87, 0x1C));
+
+    // The fold arrows, kept between paints for the same reason the rows are: finding them walks the whole
+    // document and the whole layout, and the caret blinks. The layout is a fresh object after every rebuild
+    // and the fold set is immutable, so their identity is the invalidation.
+    private bool _showFoldTwisties = true;
+    private string _collapsedGlyph = "+";
+    private string _expandedGlyph = "-";
+    private IReadOnlyList<FoldMark>? _foldMarks;
+    private CellLayout? _foldMarksOf;
+    private CollapsedNodeSet? _foldMarksSet;
+    private NodeId? _hoverFold;
     private bool _bulbOffered;
     private (CellLayout Layout, CaretPosition Caret, MarkerSet Markers, FixSet Fixes)? _bulbOf;
 
@@ -483,6 +494,125 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>Whether the gutter shows the fold arrows.</summary>
+    /// <remarks>
+    /// On by default, and safe because the column is zero-width unless a language nominates a collapse slot.
+    /// A host that turns it off keeps folding reachable through the context menu, which is what an embedded
+    /// editor in a table cell needs.
+    /// </remarks>
+    public bool ShowFoldTwisties
+    {
+        get => _showFoldTwisties;
+
+        set
+        {
+            if (_showFoldTwisties == value)
+            {
+                return;
+            }
+
+            _showFoldTwisties = value;
+
+            InvalidateMeasure();
+            InvalidateVisual();
+            RaiseScrollInvalidated();
+        }
+    }
+
+    /// <summary>What a folded node's arrow looks like.</summary>
+    /// <remarks>
+    /// Text, not geometry: a chevron drawn as a <c>StreamGeometry</c> would be the first non-rectangle in
+    /// this control's chrome, and a <c>&#x25B8;</c> is not in every monospace face. Two ASCII characters are
+    /// the safe pair, and a host that wants chevrons sets these two properties.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">The value is empty.</exception>
+    public string CollapsedGlyph
+    {
+        get => _collapsedGlyph;
+        set
+        {
+            ArgumentException.ThrowIfNullOrEmpty(value);
+
+            if (_collapsedGlyph == value)
+            {
+                return;
+            }
+
+            _collapsedGlyph = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>What an open node's arrow looks like.</summary>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">The value is empty.</exception>
+    public string ExpandedGlyph
+    {
+        get => _expandedGlyph;
+        set
+        {
+            ArgumentException.ThrowIfNullOrEmpty(value);
+
+            if (_expandedGlyph == value)
+            {
+                return;
+            }
+
+            _expandedGlyph = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Which nodes are folded, forwarded to the session like <see cref="Markers"/>.</summary>
+    /// <remarks>
+    /// Assigning re-projects through the session, so the tree, the layout and the caret all follow. Reading
+    /// it before a session exists answers "nothing folded" rather than throwing, which is what a host that
+    /// initializes its bindings in any order needs.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public CollapsedNodeSet Collapsed
+    {
+        get => Session?.Collapsed ?? CollapsedNodeSet.Empty;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (Session is { } session)
+            {
+                session.Collapsed = value;
+
+                // The session re-projects; the host invalidates, like it does after any edit.
+                InvalidateMeasure();
+                RaiseScrollInvalidated();
+                Show();
+            }
+        }
+    }
+
+    /// <summary>The fold arrows of the current layout, computed at most once per layout and fold set.</summary>
+    private IReadOnlyList<FoldMark> Marks
+    {
+        get
+        {
+            if (Session is not { } session)
+            {
+                return [];
+            }
+
+            if (_foldMarks is null
+                || !ReferenceEquals(_foldMarksOf, session.Layout)
+                || !ReferenceEquals(_foldMarksSet, session.Collapsed))
+            {
+                _foldMarks = FoldMarks.Of(session, session.Layout, TextMeasure);
+                _foldMarksOf = session.Layout;
+                _foldMarksSet = session.Collapsed;
+            }
+
+            return _foldMarks;
+        }
+    }
+
     /// <summary>The colour the bulb is painted in.</summary>
     /// <remarks>
     /// One brush rather than a palette: the bulb means one thing - "this line offers a repair" - so it has
@@ -679,16 +809,29 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     {
         get
         {
-            var margin = (_showLineNumbers
+            var fold = FoldColumnWidth;
+
+            var margin = fold
+                + (_showLineNumbers
                     ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
                     : 0)
-                + (ShowBulb ? BulbMargin : 0);
+                + (ShowBulb ? BulbMargin : 0)
+                + (fold > 0 && !_showLineNumbers ? 2 * GutterGap : 0);
 
-            // Only when there is a margin to separate from: with neither numbers nor a bulb the page starts
-            // at the control's own edge, and a blank there would be a margin with nothing on its left.
+            // Only when there is a margin to separate from: with neither numbers, folds nor a bulb the page
+            // starts at the control's own edge, and a blank there would be a margin with nothing on its left.
             return margin > 0 ? margin + PageMargin : 0;
         }
     }
+
+    /// <summary>How wide the fold column is: zero unless a twisty is shown and something can be folded.</summary>
+    /// <remarks>
+    /// Zero rather than "reserved always", unlike the bulb's margin: the column exists only for a language
+    /// that opts into folding, so a language that does not must keep the gutter it had. The mark list is
+    /// cached, so asking this does not walk the document on every repaint.
+    /// </remarks>
+    private double FoldColumnWidth =>
+        ShowFoldTwisties && Marks.Count > 0 ? TextMeasure.Measure("0", TextEmphasis.None) : 0;
 
     /// <summary>The numbered rows of the document as last laid out.</summary>
     /// <remarks>
@@ -1317,6 +1460,21 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // clipboard is read - otherwise a copy made in another window would never be noticed.
         _ = Clipboard.RefreshAsync();
 
+        // The fold arrow is a target the user aimed at, so it reaches before the document: a press on it
+        // must not also move the caret into the row it belongs to.
+        if (FoldAt(e.GetPosition(this)) is { } mark)
+        {
+            session.ToggleCollapsed(mark.Node);
+
+            InvalidateMeasure();
+            RaiseScrollInvalidated();
+            Show();
+
+            e.Handled = true;
+
+            return;
+        }
+
         // The bulb is the first refusal, because it is a target the user aimed at: a press on it must not
         // also move the caret into the line it belongs to.
         if (ClickBulb(session, e.GetPosition(this)))
@@ -1393,6 +1551,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         if (!_dragging || _dragAnchor is not { } anchor)
         {
             UpdateHover(e.GetPosition(this));
+            UpdateFoldCursor(e.GetPosition(this));
 
             return;
         }
@@ -1447,6 +1606,38 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         ForgetTip();
         UpdateConceptHover(point, hit);
         InvalidateVisual();
+    }
+
+    /// <summary>Shows a hand over a fold arrow, because that is the one thing in the margin that is a target.</summary>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    /// <remarks>
+    /// The pointer over a number stays an arrow: nothing there reacts to a press, and a hand would promise
+    /// something the gutter does not do.
+    /// </remarks>
+    private void UpdateFoldCursor(Point point)
+    {
+        var mark = FoldAt(point);
+
+        if (mark?.Node == _hoverFold)
+        {
+            return;
+        }
+
+        _hoverFold = mark?.Node;
+        Cursor = mark is null ? Cursor.Default : new Cursor(StandardCursorType.Hand);
+    }
+
+    /// <summary>The fold arrow under <paramref name="point"/>, if the point is in the twisty column.</summary>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    private FoldMark? FoldAt(Point point)
+    {
+        if (!ShowFoldTwisties || point.X >= GutterWidth)
+        {
+            return null;
+        }
+
+        // The column starts at the gutter's own padding, and the marks are laid out from x = 0.
+        return FoldHitTest.At(Marks, 0, FoldColumnWidth, point.X - GutterGap, point.Y + _offsetY);
     }
 
     /// <summary>Drops the tip, if one is up.</summary>
@@ -2167,6 +2358,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             context.FillRectangle(background, new Rect(0, 0, width, Bounds.Height));
         }
 
+        // Left to right: the arrows, then the numbers. The arrow column is zero-width unless a language
+        // opts into folding, so this loop does nothing for every language that does not.
+        PaintFoldMarks(context);
+
         // The numbers are right-aligned against the bulb's margin rather than against the page, or they
         // would be painted underneath the bulb.
         var right = width - (ShowBulb ? BulbMargin : 0) - GutterGap;
@@ -2187,6 +2382,45 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
                 TextEmphasis.None);
 
             context.DrawText(text, new Point(right - text.WidthIncludingTrailingWhitespace, top));
+        }
+    }
+
+    /// <summary>Paints the fold arrows, one per foldable node, in the leftmost gutter column.</summary>
+    /// <param name="context">The surface to paint on.</param>
+    /// <remarks>
+    /// Each glyph is centred inside its own mark, so the arrow lines up with the text it belongs to rather
+    /// than with the number of the row - the two columns stay independent.
+    /// </remarks>
+    private void PaintFoldMarks(DrawingContext context)
+    {
+        var column = FoldColumnWidth;
+
+        if (column <= 0)
+        {
+            return;
+        }
+
+        var lineHeight = TextMeasure.LineHeight;
+
+        foreach (var mark in Marks)
+        {
+            var top = mark.Bounds.Y - _offsetY;
+
+            if (top + lineHeight <= 0 || top >= Bounds.Height)
+            {
+                continue;
+            }
+
+            var text = TextMeasure.Shaped(
+                mark.IsCollapsed ? CollapsedGlyph : ExpandedGlyph,
+                LineNumberBrush,
+                TextEmphasis.None);
+
+            context.DrawText(
+                text,
+                new Point(
+                    GutterGap + Math.Max(0, (column - text.WidthIncludingTrailingWhitespace) / 2),
+                    top));
         }
     }
 

@@ -1,3 +1,4 @@
+using Projectional.Core;
 using Projectional.Projection;
 
 namespace Projectional.Editing;
@@ -76,6 +77,11 @@ public static class EditorMenu
             EditorMenuItem.Run("Undo", () => session.Undo(), UndoGesture, session.History.CanUndo),
             EditorMenuItem.Run("Redo", () => session.Redo(), RedoGesture, session.History.CanRedo),
             EditorMenuSeparator.Instance,
+
+            // Folding, when the caret stands on a node that may be folded. It is the one way to fold without
+            // a gutter, which is what an embedded editor in a table cell or a reader view needs - and it is
+            // here rather than first, because Undo and Redo are what a reader expects at the top.
+            .. FoldEntries(session),
             EditorMenuItem.Run(
                 "Insert",
                 () => session.Apply(new InsertNodeAction()),
@@ -152,6 +158,41 @@ public static class EditorMenu
     /// the keyboard cannot disagree about what Delete means where the caret stands.
     /// </para>
     /// </remarks>
+    /// <summary>The fold entry for the caret's node, or nothing when the node cannot be folded.</summary>
+    /// <remarks>
+    /// A spread rather than an append, so the entry sits in the group it belongs to without the surrounding
+    /// list having to be built twice.
+    /// </remarks>
+    private static EditorMenuEntry[] FoldEntries(EditorSession session)
+    {
+        if (FoldableNodeOf(session) is not { } foldable)
+        {
+            return [];
+        }
+
+        var folded = session.Collapsed.Contains(foldable.Id);
+
+        return
+        [
+            EditorMenuItem.Option(
+                folded ? "Unfold" : "Fold",
+                folded,
+                () => session.ToggleCollapsed(foldable.Id)),
+            EditorMenuSeparator.Instance,
+        ];
+    }
+
+    /// <summary>The node the caret stands in when it may be folded, otherwise <see langword="null"/>.</summary>
+    /// <remarks>
+    /// Resolved through the model rather than the layout: the permission is a model fact, and a folded node
+    /// has no other cell to read it from.
+    /// </remarks>
+    private static Node? FoldableNodeOf(EditorSession session) =>
+        session.Document.Model.Project.FindNode(session.Selection.Caret.Address.Owner) is { } node
+        && Foldable.Of(node)
+            ? node
+            : null;
+
     private static bool CanDelete(EditorSession session)
     {
         var selection = session.Selection;

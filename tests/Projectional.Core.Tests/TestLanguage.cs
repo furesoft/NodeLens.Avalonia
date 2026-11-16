@@ -35,7 +35,10 @@ internal static class TestLanguage
                 new ReferenceSlot("self", Rule, allowOwnSubtree: true),
             ],
             nameSlot: "name",
-            description: "A named rule with a body and an outcome."),
+            description: "A named rule with a body and an outcome.",
+            // `enabled` doubles as the collapse slot: it is a boolean, it defaults to true, and the
+            // fixture's job is to exercise the mechanism rather than to be a sensible language.
+            collapseSlot: "enabled"),
 
         new ConceptDeclaration(
             Body,

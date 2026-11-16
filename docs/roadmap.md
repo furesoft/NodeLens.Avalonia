@@ -16,24 +16,26 @@ produces something usable, and no milestone depends on a later one being finishe
 
 ## Next
 
-**Quick fixes are delivered** ([quick-fixes.md](architecture/quick-fixes.md)): the fix model, the
-apply step as one undo step, two real checks, `Alt+Enter`/`Ctrl+.` with its three answers, the
-keyboard-navigable list, the context-menu submenu, the tip line, the painted popup and the bulb in
-the margin. What is left of that plan is slice Q7, the standard-check catalogue as a package a
-language includes - an extension of the catalogue rather than a gap in the feature.
+**Folding** ([collapsing.md](architecture/collapsing.md), slices S1 to S6) is the last item of M1 and the
+only entry in that milestone's table still marked planned, so it is what stands between the project and
+its first acceptance gate. It needs little new machinery: the layout already gives a node one address for
+its whole subtree, the caret already knows what to do when the cell it stood in disappears, and the
+gutter already exists because line numbers and the quick-fix bulb needed one.
 
-The **two-pixel gap between the margin and the page** landed with it
-([line-numbers.md](architecture/line-numbers.md)), because the bulb made the margin a sum of two
-occupants and both numbers had to be settled at once.
+Delivered before it, and worth not re-opening: **quick fixes** ([quick-fixes.md](architecture/quick-fixes.md))
+end to end - the model, the apply step as one undo step, two real checks, `Alt+Enter`/`Ctrl+.` with its
+three answers, the keyboard-navigable list, the context-menu submenu, the tip line, the painted popup and
+the bulb in the margin - with only slice Q7 (the standard-check catalogue as a package a language
+includes) left as an extension; **concept descriptions**
+([concept-descriptions.md](architecture/concept-descriptions.md), slices D1 to D5), shown on hover over a
+node and beside the completion entry that offers it; and the **two-pixel gap between the margin and the
+page** ([line-numbers.md](architecture/line-numbers.md)), which landed with the bulb because the margin had
+become a sum of occupants.
 
-Next is **concept descriptions** ([concept-descriptions.md](architecture/concept-descriptions.md),
-slices D1 to D5): the sentence a language writes about a concept, shown on hover over a node and
-beside the completion entry that offers it. D1 and D2 are pure library work and D3 is the only slice
-that needs a window.
-
-Folding stays the last M1 item and resumes afterwards; the constraint engine that will produce
-diagnostics in volume stays where it is, in M4.
-
+After folding, in order: slice Q7, then the intention list ([context-actions.md](architecture/context-actions.md),
+slices G), and then the preview ([intention-preview.md](architecture/intention-preview.md), slices V) that
+only makes sense once there are intentions whose result is worth imagining. The constraint engine that will
+produce diagnostics in volume stays where it is, in M4.
 ## Milestones
 
 ### M0 — Core model and persistence

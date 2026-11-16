@@ -31,17 +31,20 @@ public sealed class EditorTreeBuilder
     private readonly NotationRegistry _notations;
     private readonly ICellEmphasis? _emphasis;
     private readonly INotationChoice? _choice;
+    private readonly IReadOnlySet<NodeId>? _collapsed;
 
     /// <summary>Builds trees with every concept drawn as <paramref name="choice"/> asks, default variants when it says nothing.</summary>
     public EditorTreeBuilder(
         NotationRegistry notations,
         ICellEmphasis? emphasis = null,
-        INotationChoice? choice = null)
+        INotationChoice? choice = null,
+        IReadOnlySet<NodeId>? collapsed = null)
     {
         ArgumentNullException.ThrowIfNull(notations);
         _notations = notations;
         _emphasis = emphasis;
         _choice = choice;
+        _collapsed = collapsed;
     }
 
     /// <summary>Builds the tree for <paramref name="node"/>.</summary>
@@ -60,9 +63,19 @@ public sealed class EditorTreeBuilder
         var emphasis = inherited | (_emphasis?.EmphasisOf(node) ?? TextEmphasis.None);
         var notation = _notations.FindFor(node.Concept, _choice);
 
-        return notation is null
-            ? new MissingNotationCell(rootAddress, node.Concept.Key)
-            : BuildBlock(notation.Root, node, emphasis, rootAddress);
+        if (notation is null)
+        {
+            return new MissingNotationCell(rootAddress, node.Concept.Key);
+        }
+
+        // Substituted after the lookup on purpose: a concept whose notation is missing keeps its
+        // `<no notation for ...>` marker, because a language fault must never be tucked behind a fold.
+        if (_collapsed?.Contains(node.Id) is true && Foldable.Of(node))
+        {
+            return new CollapsedCell(rootAddress, CollapsedSummary.Of(node));
+        }
+
+        return BuildBlock(notation.Root, node, emphasis, rootAddress);
     }
 
     /// <summary>
