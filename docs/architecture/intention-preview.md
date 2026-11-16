@@ -7,7 +7,7 @@ rule turned into a table row - it is the only honest answer, because the questio
 like" has no good sentence.
 
 Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E) and slices V1 (copy and diff) and V2 (the sandbox) are delivered; V3 onwards are the delay,
+slices A-E) and slices V1 (copy and diff), V2 (the sandbox) and V3 (the ladder) are delivered; V4 onwards are
 the ghost and the wiring. The decision it rests on is
 [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
@@ -115,10 +115,32 @@ would otherwise flash a preview per entry. Leaving an entry cancels immediately;
 move between the bulb and an entry has a 150 ms grace period so that a pointer on its way does not
 cancel and restart the preview four times.
 
-Everything about the ladder is headless: a `PreviewDelay` value object holding the three numbers and a
-`PreviewState` machine that takes "hovered", "left", "ticked" and "invalidated" and answers "nothing",
-"tooltip" or "preview". The control owns a timer and calls `Advance(elapsed)` - the same arrangement as
-`CaretBlink`, which is why the timing is testable without a window.
+Everything about the ladder is headless, and it is two types rather than a timer in the control:
+
+- **`PreviewDelay`** holds the four durations - highlight, description, preview and grace - as one immutable
+  value, with `IsValid`/`Validate` for a host that builds it from settings. `PreviewDelay.Default` is the table
+  above. A duration may be zero (that rung is then immediate) but the rungs may not be out of order, because a
+  ladder that shows the answer before the question is a bug and not a preference.
+- **`PreviewState`** is the machine: `Hover(entryId)`, `Leave()`, `LeaveList()`, `Invalidate()` and one
+  `Tick(elapsed)` per timer tick, answering `Stage` as `PreviewStage.Nothing`, `Tooltip` or `Preview`. The entry
+  key is the `Intention.Id`, so the machine knows nothing about intentions or about a toolkit. The control owns
+  the timer and calls `Tick` - the same arrangement as `CaretBlink`, which is why the timing is testable without
+  a window.
+
+The rules the machine encodes, each of which is a case that would otherwise be a flicker:
+
+- **A different entry starts from nothing.** A preview is an answer about *that* edit and is never left standing
+  while the next entry is considered.
+- **The same entry again continues the clock.** That is what the pointer does when it crosses the gap between the
+  bulb and the list, so the grace period is not a pause for its own sake.
+- **Leaving an entry is immediate; leaving the list is not.** The preview survives `Grace` so a pointer on its
+  way does not cancel and restart it, and the clock is *paused* while the pointer is away - coming back resumes
+  the rung that was showing rather than arriving at the next one.
+- **A document that changed under a hover stays silent.** `Invalidate` remembers the entry, so the ladder does not
+  restart on the next tick; only leaving and returning asks again. That is "the user moves the pointer to ask
+  again" written as a rule.
+- **Late ticks are not lost.** The stage follows how long the entry has been hovered, not how often the host
+  ticked, so a busy second does not leave a tooltip showing for another second.
 
 ## What a preview may not do
 
@@ -154,12 +176,12 @@ property of its implementation.
 | --- | --- | --- | --- |
 | V1 ✓ | `feat/model-copy-and-diff` | M3 | `Model.CopyTo(Project)` (ids preserved) and `ModelDiff` by node id - added, removed, moved, property changed - with a snapshot-equality test and diff tests |
 | V2 ✓ | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
-| V3 | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
+| V3 ✓ | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewStage`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
 | V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe |
 | V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, draw the ghost, and dismiss on every documented event |
 | V6 | `feat/preview-sample` | M3 | previews for the sample intentions: rename in `Projectional.Samples`, wrap-in-parentheses and negate in `Projectional.Expressions` |
 
-V1 and V2 hold the invariants and are testable without a window; V3 is headless by construction; V4 and
+V1 and V2 hold the invariants and are testable without a window; V3 is headless by construction (it never asks what time it is); V4 and
 V5 are the first customers of the headless Avalonia harness the intention slices already need. A
 preview of a *refactoring* that touches several files is M6 and needs nothing new but a scroll-and-tab
 policy for the ghost.
@@ -173,7 +195,7 @@ policy for the ghost.
 | isolation | after a preview: live journal empty, `Version` unchanged, no undo step, selection and scroll identical |
 | failure | an action that throws on a copy yields "no preview" and leaves the editor usable |
 | budget | above the node budget no preview runs; a preview that overruns the clock is abandoned |
-| timing | the ladder with a fake clock: tooltip at 300, preview at 700, cancelled by leave, by close, by a model change; the grace period |
+| timing | the ladder with a fake clock: tooltip at 300, preview at 700, cancelled by leave, by close, by a model change; the grace period - `PreviewStateTests`, plus `PreviewDelayTests` for the numbers themselves |
 | wiring | `Avalonia.Headless.XUnit` once it exists, with a probe standing in until then: the ghost replaces the page, the badge counts, `Esc` restores |
 
 ## Open questions
