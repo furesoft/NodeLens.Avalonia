@@ -209,6 +209,116 @@ the shapes (`Intention`, `IntentionContext`, `IntentionList`, `IntentionAvailabi
 read off two real sources instead of guessed from one, and `EditProgram` is built by the slice
 that needs it first rather than by two slices independently.
 
+## Standard intentions a language can include
+
+The quick-fix plan catalogues what a framework can ship as a *repair*
+([quick-fixes.md](quick-fixes.md#standard-checks-a-language-can-include)). Intentions need the same
+treatment for the same reason, and the filter is the sharper version of the same test: an intention is
+generic when it can be derived from **the shape of the place the caret stands on** - a node, an empty
+slot, a value, an element of a list - plus the language's declarations. Nothing about the catalogue
+below knows what a rule or a loop *means*.
+
+That is why the tables are ordered by that shape: it is the editor's own addressing vocabulary, so a
+missing entry is easy to spot, and every entry names the data that produces it.
+
+### The caret stands on a node
+
+| Id | The entry | What it does | Class | Needs |
+| --- | --- | --- | --- | --- |
+| `INT001` | `Rename` | puts the caret in the name slot, the value selected | plain | new: a caret jump that selects, which is `MoveCaretAction` plus `SelectsLandedValue` |
+| `INT002` | `Duplicate` | copies the subtree as the next sibling | plain | new: subtree copy plus insert-at-index |
+| `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`) |
+| `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`) |
+| `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | new: insert-at-index |
+| `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | new: `WrapInAction` - the only genuinely new action here |
+| `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | `DefaultInstantiableFor` plus a replace action |
+| `INT008` | `Select parent` / `Select node` | widens the selection one rung | plain | - (`SelectAllAction`'s ladder) |
+
+`INT006` is the entry this catalogue exists for. It is how "surround with `if`" happens in a code DSL,
+but in this framework it needs no `if`: any concept with a hole of the right shape is a wrapper, so the
+editor offers the language's own compositions instead of a fixed list. Two rules keep it honest, and
+they are open questions 76 and 77.
+
+`INT001` deserves the note: it is a *navigation*, not a refactoring. It moves the caret into the name
+and lets the user type, so it cannot break a reference in another model - which is exactly the problem
+the standard rename *fix* has and cannot solve (open question 74).
+
+### The caret stands on an empty slot
+
+| Id | The entry | What it does | Class | Needs |
+| --- | --- | --- | --- | --- |
+| `INT010` | `Insert "X"` | fills the slot with the concept `DefaultInstantiableFor` answers | plain | - (`InsertNodeAction`) |
+| `INT011` | `Insert...` | the same list completion offers, for picking another | plain | - |
+
+These two are what Enter and `Ctrl+Space` already do; listing them is what makes the pair discoverable
+from a menu, and it costs nothing because the actions exist.
+
+### The caret stands in a value
+
+| Id | The entry | What it does | Class | Needs |
+| --- | --- | --- | --- | --- |
+| `INT020` | `Reset to the default` | writes the declared default over the current value | plain | - (`SetPropertyAction`) |
+| `INT021` | `Select the value` | selects the whole text of the cell | plain | - (`SelectValueAction`) |
+
+`INT020` is the cheapest useful intention in the framework: always correct, always local, always one
+undo step, and it is the one gesture a user reaches for after pasting a value they did not want.
+
+### The caret stands on an element of a list
+
+| Id | The entry | What it does | Class | Needs |
+| --- | --- | --- | --- | --- |
+| `INT030` | `Insert before` / `Insert after` | a new empty sibling at that place | plain | new: insert-at-index |
+| `INT031` | `Sort by name` | reorders the slot by the elements' name slot | **destructive** (order is data) | a program of moves, and a name slot on the element concept |
+
+### With `Projectional.Expressions`
+
+| Id | The entry | What it does | Class | Needs |
+| --- | --- | --- | --- | --- |
+| `INT040` | `Wrap in parentheses` | surrounds the expression with the grouping concept | plain | `WrapInAction`, the same one as `INT006` |
+| `INT041` | `Negate` | puts a `Unary` over it | plain | a small action, or `WrapInAction` with the operator preset |
+| `INT042` | `Swap operands` | swaps left and right of a binary | plain | two `MoveNodeAction`s? no - a small swap action, because a move would renumber |
+
+`INT042` is the one place where "reuse the existing action" fails: swapping two children of one slot by
+moving is order-dependent and collides with itself, so it needs its own action even though it looks like
+a move.
+
+### What the framework can only *list*
+
+| Id | The entry | Why it is not an action |
+| --- | --- | --- |
+| `INT050` | `Show the target` | navigating to another model is the host's job: it owns tabs, windows and focus. The framework resolves the reference and offers the entry, the host runs its own command from the same id - the boundary the intention contract already draws |
+| `INT051` | `Generate` / `Run` | same: the host runs its pipeline, the language supplies the generator |
+
+### What is free, and what is not
+
+Nine of the entries above are configurations of actions that already exist
+(`InsertNodeAction`, `DeleteNodeAction`, `MoveNodeAction`, `SelectAllAction`, `SelectValueAction`,
+`SetPropertyAction`, `EditProgram`). Four are not, and they reduce to three primitives:
+
+| Missing primitive | Blocks | Why it is a primitive, not a per-feature hack |
+| --- | --- | --- |
+| `Model.InsertChild(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | the model appends today, so "insert here" is impossible for anything; a list needs it whichever feature asks |
+| a subtree copy (`Node.CopyTo(sibling)`) | `INT002` | the same walk `Model.CopyTo` needs for the preview sandbox, reused instead of written twice |
+| `WrapInAction` | `INT006`, `INT040` | wrapping is insert-at-index plus a move, and both halves have to happen in one transaction |
+| `SortAction` | `INT031` | a stable permutation of one slot, which a program of moves cannot express without colliding |
+
+That table is the plan's real content: the catalogue is not nineteen features, it is **four primitives
+and fifteen four-line compositions**.
+
+### Two rules, one of them shared with the fixes
+
+**The safety class is shared, so it belongs on the offer rather than on the fix.** The quick-fix
+catalogue calls it `FixSafety`; writing the intentions down shows that both kinds of offer need it, so it
+becomes `EditSafety` and both `DiagnosticFix` and `Intention` carry it. The rule it enforces is the same
+in both places: a lone offer runs immediately only when it is plain, and a lone destructive one opens the
+list to ask (open question 73).
+
+**The two catalogues must not offer the same thing twice.** `STD010` fills an empty slot because a check
+found the hole; `INT010` fills it because the caret is there. Both are right, and both are in the list the
+user sees at that caret - so they need one id or an explicit suppression rule, or the list shows the same
+sentence twice. The cheap answer is one id per operation, which is also what the de-duplication in the
+resolution order already does.
+
 ## Slices
 
 Each slice is its own branch and its own merge, per the working rules. The quick-fix slices
@@ -222,6 +332,7 @@ Q1-Q6 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
+| G | `feat/standard-intentions` | `EditSafety` on the offer (shared with the fix catalogue) and the first primitives the catalogue needs: insert-at-index, subtree copy and `WrapInAction`; then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`) |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.
