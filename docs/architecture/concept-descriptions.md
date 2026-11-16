@@ -5,7 +5,8 @@ needs it: hovering a node of that concept, and next to the completion entry that
 The text is documentation, so it never becomes model data, never enters an undo step and is
 never stored per node.
 
-Status: planned. Slices D1 to D5 are listed at the end.
+Status: planned. Slice D1 is delivered (the declaration and `Concept.Description`); D2 to D5 are
+listed at the end.
 
 ## The text is a property of the concept
 
@@ -127,7 +128,7 @@ the honest name for the field in a .NET API.
 
 | Slice | Branch | Content | Status |
 | --- | --- | --- | --- |
-| D1 | `feat/concept-description` | `description` parameter, `Concept.Description`, normalization, registry plumbing, tests | planned |
+| D1 ✓ | `feat/concept-description` | `description` parameter, `Concept.Description`, normalization, registry plumbing, tests | delivered |
 | D2 | `feat/concept-tip` | `TipText.Wrap` extraction, `ConceptTip` (content and lines), tests | planned |
 | D3 | `feat/concept-tip-hover` | control: hover over any node, 600 ms delay, marker precedence, shared dismissal | planned |
 | D4 | `feat/concept-tip-completion` | `CompletionItem.Description`, description line in `CompletionPresenter` | planned |

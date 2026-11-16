@@ -17,7 +17,8 @@ public sealed class Concept
         IReadOnlyList<SlotDeclaration> slots,
         PropertySlot? nameSlot,
         bool isAbstract,
-        bool isOfferedInCompletion)
+        bool isOfferedInCompletion,
+        string? description = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -25,6 +26,7 @@ public sealed class Concept
         NameSlot = nameSlot;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
+        Description = description;
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -64,6 +66,16 @@ public sealed class Concept
     /// that accepts it.
     /// </summary>
     public bool IsOfferedInCompletion { get; }
+
+    /// <summary>
+    /// The one sentence of documentation this concept declares, or <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// Not inherited: <see cref="SuperConcepts"/> is walked for notation and for slots, but a sentence
+    /// describes the concept it was written on. It is documentation rather than model data, so it is
+    /// never stored per node and never appears in a change event.
+    /// </remarks>
+    public string? Description { get; }
 
     /// <summary>Whether this concept is <paramref name="conceptKey"/> itself or extends it.</summary>
     public bool IsKindOf(string conceptKey) => conceptKey is not null && _ancestry.Contains(conceptKey);

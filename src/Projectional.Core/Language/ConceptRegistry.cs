@@ -221,6 +221,7 @@ public sealed class ConceptRegistry
             slots,
             nameSlot,
             declaration.IsAbstract,
-            declaration.IsOfferedInCompletion);
+            declaration.IsOfferedInCompletion,
+            declaration.Description);
     }
 }
