@@ -1,18 +1,17 @@
 # Context actions (intentions)
 
-*Partly delivered: the model, the list, applying one and the popup (slices A, B and C).* This document is
-the design for the light bulb: the affordance that offers, at the caret, the edits that make sense *there* —
-"wrap in parentheses", "negate", "add the missing condition", "extract this into a rule". It is written
-before the code so that the three layers it touches — language, editing, control — agree on who owns what,
-and so the milestone that implements it has a gate instead of an ambition.
+*Partly delivered: the model, the list, applying one, the popup and the menu (slices A, B, C and D).* This
+document is the design for the light bulb: the affordance that offers, at the caret, the edits that make
+sense *there* — "wrap in parentheses", "negate", "add the missing condition", "extract this into a rule". It
+is written before the code so that the three layers it touches — language, editing, control — agree on who
+owns what, and so the milestone that implements it has a gate instead of an ambition.
 
 What exists today: `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider` and
 `IntentionList.For(session)` in `Projectional.Editing`, the two registration groups on the session,
-`EditorSession.Apply(Intention)`, and the `Alt+Enter` popup, which now asks the merged list - `OfferList`
-holds the host's commands, the language's intentions and the caret line's quick fixes as `Intention`
-entries, and the bulb lights when any of them is offered. What is left is the "Intentions" submenu beside
-the quick fixes (D), real intentions in the shipped languages (E), the preview (F) and the rest of the
-standard catalogue (G).
+`EditorSession.Apply(Intention)`, the `Alt+Enter` popup and the "Intentions" submenu — both reading the one
+merged list, which holds the host's commands, the language's intentions and the caret line's quick fixes as
+`Intention` entries — and a bulb that lights when any of them is offered. What is left is real intentions in
+the shipped languages (E), the preview (F) and the rest of the standard catalogue (G).
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -242,16 +241,17 @@ A diagnostic's repairs are [quick fixes](quick-fixes.md), and they land **before
 because diagnostics exist today while intentions do not. The two meet at the bulb — how the
 diagnostic is *shown* is [markers.md](markers.md):
 
-- the bulb for the caret's line reports the highest-severity marker on that line;
-- opening it lists the diagnostic's fixes first, then the intentions, separated;
-- a fix that is not applicable is shown disabled with the diagnostic's message as its
-  description, so the user reads the problem in the same place as the cure.
+- the bulb for the caret reports the highest-severity marker on that line, and lights when any offer exists;
+- opening it lists the offers in one order — the host's, the language's, then the caret line's fixes — with
+  the menu showing the two sources as separate submenus, fixes first;
+- a disabled offer is shown disabled with the reason as its description, so the user reads why in the same
+  place as the offer.
 
-The quick-fix slices therefore deliver the bulb, the keys and the "Quick fixes" submenu, and
-what remains here is teaching the same affordances a second source. That is the honest order:
-the shapes (`Intention`, `IntentionContext`, `IntentionList`, `IntentionAvailability`) are then
-read off two real sources instead of guessed from one, and `EditProgram` is built by the slice
-that needs it first rather than by two slices independently.
+The quick-fix slices delivered the bulb, the keys and the "Quick fixes" submenu; C and D taught those same
+affordances the second source rather than adding a parallel set. That was the honest order: the shapes
+(`Intention`, `IntentionContext`, `IntentionList`, `IntentionAvailability`) were read off two real sources
+instead of guessed from one, and `EditProgram` was built by the slice that needed it first rather than by
+two slices independently.
 
 ## Standard intentions a language can include
 
@@ -375,7 +375,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | A ✓ | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider`, `IntentionList.For(session)`, the two registration groups on the session, one fixture intention beside the test language, tests for order, availability, dedup and the two-source resolution order (host, language, fixes) |
 | B ✓ | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced, the refusal of an offer that no longer applies, and the routing of a fix's entry back through the fix path |
 | C ✓ | `feat/intentions-popup` | the offers gesture asks `IntentionList.For(session)`, so the `Alt+Enter` popup lists the host's commands and the language's intentions beside the fixes - `OfferList` of `Intention` entries, the same safety rule for both sources, and the bulb lit by either |
-| D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
+| D ✓ | `feat/intentions-menu` | the "Intentions" submenu in the context menu, beside "Quick fixes", both built from the one `IntentionList` so the menu and the popup cannot disagree; the bulb's second source landed with C |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
 | G | `feat/standard-intentions` | the first primitives the catalogue still needs (insert-at-index, subtree copy), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |

@@ -641,8 +641,8 @@ path a keystroke takes.
 
 Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
 the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`;
-`docs/architecture/context-actions.md` carries the plan and the remaining slices (D onwards: submenu,
-samples, preview, standard catalogue).
+`docs/architecture/context-actions.md` carries the plan and the remaining slices (E onwards: samples,
+preview, standard catalogue).
 
 **The gesture and the list are named differently on purpose.** `EditorKey.QuickFix`, `QuickFixAction` and
 `QuickFixBulb` keep the quick-fix name because they are the *affordance* the docs and ADR 0016 describe;
@@ -665,6 +665,11 @@ everything about the *list* is an offer: `OfferList` (of `Intention` entries), `
 - **Two offers with one id collapse to the first**, which is why the shell's `SHELL001` and the standard
   `STD001` must not both be published: the user would read one sentence twice with nowhere to see the
   duplicate. That is the same rule that lets a standard repair and its intention share an id.
+- **`EditorMenu` derives the list once** and splits it: entries with `Fix` go to the "Quick fixes" submenu,
+  the rest to "Intentions", fixes first, one separator after the group, and a submenu that would be empty is
+  not added. Reading `QuickFixes.At` for the menu instead would let a fix reappear there after the merged
+  list de-duplicated it. A disabled entry's `Description` is `Availability.Reason` (why it cannot run), not
+  the offer's own sentence.
 
 ## How the control paints and takes input
 
@@ -1061,7 +1066,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1220 tests**; anything below that means tests were deleted.
+it. **Baseline is 1224 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

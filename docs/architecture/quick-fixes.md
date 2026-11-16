@@ -221,7 +221,10 @@ The four surfaces are delivered in dependency order, and only the last one needs
 
    **Delivered.** One submenu at the top, present only when the line offers something, with a
    disabled repair keeping its reason - which is why `EditorMenuItem` grew a `Description` rather
-   than leaving the user to guess why an entry is grey.
+   than leaving the user to guess why an entry is grey. Since slice D of
+   [context-actions.md](context-actions.md) there are two submenus, "Quick fixes" and "Intentions",
+   both built from the one `IntentionList` so the menu and the popup cannot disagree about what
+   exists or in which order - a fix in one, an intention in the other, the fixes first.
 3. **The bulb in the margin**, last, because it is the only part that needs geometry the control does
    not have yet: a glyph left of the page aligned with the caret's line, a hit test for it, and a
    repaint policy that does not flicker while the caret blinks. The editing layer supplies the

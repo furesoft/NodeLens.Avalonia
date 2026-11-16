@@ -51,12 +51,15 @@ public static class EditorMenu
 
         var entries = new List<EditorMenuEntry>();
 
-        // The repairs first, because they are the one group that is about where the caret is rather than
-        // about the document as a whole. A line with nothing to offer contributes no entry at all: an
-        // empty submenu would be a heading the user has to open to learn there is nothing inside.
-        var fixes = QuickFixes.At(session);
+        // The offers first, because they are the group that is about where the caret is rather than about
+        // the document as a whole. They are read from one list, so the two submenus agree with the popup
+        // about which offers exist and in which order - and so an intention and a repair that name the same
+        // operation are listed once, not twice.
+        var offers = IntentionList.For(session);
+        var fixes = offers.Where(offer => offer.Fix is not null).ToArray();
+        var intentions = offers.Where(offer => offer.Fix is null).ToArray();
 
-        if (fixes.Count > 0)
+        if (fixes.Length > 0)
         {
             entries.Add(EditorMenuItem.Submenu(
                 "Quick fixes",
@@ -65,8 +68,25 @@ public static class EditorMenu
                     () => session.Apply(fix),
                     QuickFixGesture,
                     !fix.IsDisabled,
-                    fix.Tip))]));
+                    TipOf(fix)))]));
+        }
 
+        if (intentions.Length > 0)
+        {
+            entries.Add(EditorMenuItem.Submenu(
+                "Intentions",
+                [.. intentions.Select(offer => EditorMenuItem.Run(
+                    offer.Label,
+                    () => session.Apply(offer),
+                    offer.Gesture,
+                    !offer.IsDisabled,
+                    TipOf(offer)))]));
+        }
+
+        // One separator after the group, not one per submenu: an empty submenu would be a heading the user
+        // has to open to learn there is nothing inside, and a leading separator would separate nothing.
+        if (fixes.Length > 0 || intentions.Length > 0)
+        {
             entries.Add(EditorMenuSeparator.Instance);
         }
 
@@ -233,4 +253,15 @@ public static class EditorMenu
     /// checked here - the caret can be anywhere, and the action answers that by leaving the model alone.
     /// </remarks>
     private static bool CanPasteText(EditorSession session) => session.Clipboard.Text is { Length: > 0 };
+
+    /// <summary>The sentence a submenu entry shows under its label.</summary>
+    /// <param name="offer">The offer the entry stands for.</param>
+    /// <remarks>
+    /// A disabled offer shows <em>why</em> rather than what it would do: the user can already see that it
+    /// will not run, and the reason is the only part of the message that helps. Everything else shows the
+    /// offer's own sentence - which for a quick fix falls back to the finding's message, and for an
+    /// intention is required, so a listed entry always has something true to say.
+    /// </remarks>
+    private static string? TipOf(Intention offer) =>
+        offer.IsDisabled ? offer.Availability.Reason : offer.Description;
 }
