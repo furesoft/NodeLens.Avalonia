@@ -7,7 +7,9 @@ never stored per node.
 
 Status: **delivered.** All five slices are in: the declaration and `Concept.Description` (D1), the headless
 tip (D2), the hover in the control (D3), the completion pane (D4) and descriptions on both shipped
-languages (D5).
+languages (D5). D6 extends the same mechanism to **slots**, which is where the documentation is needed most:
+a property is the one place in a document where an empty value is a visible state - the notation draws the
+cell whether or not it holds text.
 
 ## The text is a property of the concept
 
@@ -67,11 +69,11 @@ would be worse than nothing, because it would teach the user that hovering is po
 A hover over any cell of a node whose concept declares a description. That is a different target
 from the marker tip, which hovers a squiggle, so the two rules differ in one place on purpose:
 
-|  | Marker tip | Concept tip |
-| --- | --- | --- |
-| Target | a marker band | any cell of a node |
-| Delay | none | 600 ms |
-| Precedence | wins | never shown while a marker band is hovered |
+|  | Marker tip | Concept tip | Property tip |
+| --- | --- | --- | --- |
+| Target | a marker band | any cell of a node | an **empty** property cell |
+| Delay | none | 600 ms | 600 ms |
+| Precedence | wins | never shown while a marker band is hovered | beats the concept tip, loses to the marker |
 
 - **The delay exists because the target is everything.** A wave is a small shape a user aims at;
   ordinary text is what the pointer crosses on its way somewhere else. Without a delay every
@@ -87,14 +89,55 @@ from the marker tip, which hovers a squiggle, so the two rules differ in one pla
   (the node may not exist afterwards). The control already has one `ClearHover` path; the concept
   tip hangs off that one rather than adding a second dismissal story.
 
+## Property descriptions: the same sentence, on a slot
+
+A concept description answers "what kind of node is this". A user staring at an empty box needs the
+other answer - "what goes in here" - and no node can carry it, because the node exists and the value
+does not.
+
+So `PropertySlot` gains the same optional `description`:
+
+```csharp
+new PropertySlot("value", PropertyType.Integer, description: "A whole number, such as 42.")
+```
+
+- **It appears only while the slot is empty.** Once there is text, the text is the answer and a box
+  over it would be in the way. This is the one condition that separates it from the concept tip, and it
+  is also why the feature is about properties at all: a property is the only place in a projectional
+  document where "nothing entered yet" is a *visible* state, because the notation draws the cell
+  whether or not it holds a value.
+- **The heading is the slot name**, not the concept key: `value`, `operator`, `outcome`. It is what a
+  language author greps for, exactly like the concept key in the concept tip.
+- **A defaulted property reads as filled.** The model cannot tell a default from a value the user
+  typed (`name` = `"unnamed"`), so a slot born with a default shows no tip. That is the honest reading
+  of "nothing entered yet" rather than a limitation to work around.
+- **The property's sentence wins over the concept's.** When the pointer is over an empty slot of a
+  documented concept, the more specific answer is the one about the box, not the one about the node.
+
+Two consequences the implementation had to accept:
+
+- **The tip is anchored to the slot's cell, not to the node.** The concept tip anchors to the node so it
+  does not jump while the pointer crosses a line; a slot tip is *about* one cell - and a node drawn only
+  as a property (an `IntLiteral` is one cell) has no cell carrying its node address at all, so anchoring
+  to the node would have drawn nothing. `ConceptTipBounds` falls back to the node address when the slot's
+  cell has gone.
+- **The hover keys on (node, slot)**, so moving from one empty property of a node to another restarts the
+  delay while moving inside one property does not.
+
+`PropertyTip.Of(session, position)` is the whole decision, headless: the place must be a `PropertyCell`
+with no text, the node must still exist, and the concept must declare a description for that slot.
+Anything else answers `null` and shows no box - a pointer can outlive its node, and a tooltip must never
+throw at the moment the user moves the mouse.
 ## The headless half
 
 `Projectional.Editing` decides what the tip says and where it goes; `Projectional.Avalonia` only
 paints it. Same split as the marker tip.
 
-- `ConceptTip` (new folder `Tips/`) answers `Of(Node) -> ConceptTipContent?` and
-  `Lines(ConceptTipContent, width) -> IReadOnlyList<string>`. It reads the node's concept from the
-  model and needs no tree, so it is testable without a window.
+- `ConceptTip` (folder `Tips/`) answers `Of(Node) -> TipContent?` and `Of(session, nodeId) -> TipContent?`.
+  It reads the node's concept from the model and needs no tree, so it is testable without a window.
+- **`TipContent` is one shape for both tips** - a heading and a sentence - and `TipLines.Of(content, width,
+  measure)` is the one wrapper. A box with a heading and a paragraph is one thing to paint, so a second
+  content type would mean a second painter path in the control.
 - **`MarkerTip.Lines` already owns word wrap and must not be copied.** The wrapper moves into
   `TipText.Wrap(string, width)` and both tips call it. Two wrappers would drift, and a width that
   fits one box but not the other is a bug nobody would think to blame on wrapping.
@@ -134,6 +177,7 @@ the honest name for the field in a .NET API.
 | D3 ✓ | `feat/concept-tip-hover` | control: hover over any node, 600 ms delay, marker precedence, shared dismissal | delivered |
 | D4 ✓ | `feat/concept-tip-completion` | `CompletionItem.Description`, description line in `CompletionPresenter` | delivered |
 | D5 ✓ | `docs/concept-descriptions-samples` | descriptions on the sample and expression languages, `<<shortDescription>>` lowering note | delivered |
+| D6 ✓ | `feat/property-descriptions` | `PropertySlot.description`, `TipContent`/`TipLines` as the shared shape, `PropertyTip`, the hover keyed on (node, slot), slot descriptions on both shipped languages | delivered |
 
 D1 and D2 need no window and are pure library work; D3 is the only slice that needs the runtime
 probe. D4 depends on D1 only, so it can be taken before or after D3.

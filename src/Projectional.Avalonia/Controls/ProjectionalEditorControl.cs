@@ -202,8 +202,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private const int ConceptTipDelayMs = 600;
 
     private NodeId? _hoverNode;
+    private string? _hoverSlot;
+    private CellAddress? _conceptTipAnchor;
     private DispatcherTimer? _conceptTipTimer;
-    private ConceptTipContent? _conceptTip;
+    private TipContent? _conceptTip;
     private NodeId? _conceptTipNode;
     private IReadOnlyList<string>? _conceptTipLines;
     private Size _conceptTipSize;
@@ -1695,6 +1697,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private void ClearHover()
     {
         _hoverNode = null;
+        _hoverSlot = null;
         CancelConceptTip();
 
         if (_hover is null)
@@ -1736,21 +1739,30 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         if (marker is not null)
         {
             _hoverNode = null;
+            _hoverSlot = null;
             CancelConceptTip();
 
             return;
         }
 
-        var node = NodeAt(point);
+        var place = PlaceAt(point);
+        var node = place?.Address.Owner;
 
-        if (node == _hoverNode)
+        // A slot's own sentence only exists while the slot is empty, so asking the editing layer is also how the
+        // hover decides whether a slot or a node is what the pointer is on.
+        var slot = place is { } named && Session is { } session && PropertyTip.Of(session, named) is not null
+            ? named.Address.Slot
+            : null;
+
+        if (node == _hoverNode && slot == _hoverSlot)
         {
-            // The same node: whatever is up is still about the right thing, and a tip that has not appeared
+            // The same target: whatever is up is still about the right thing, and a tip that has not appeared
             // yet must not restart its delay because the pointer moved inside the node.
             return;
         }
 
         _hoverNode = node;
+        _hoverSlot = slot;
         CancelConceptTip();
 
         if (node is null)
@@ -1773,11 +1785,27 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             return;
         }
 
-        // Asked again rather than remembered: the pointer may have moved onto a wave while the timer ran.
-        if (_hover is not null || ConceptTip.Of(session, node) is not { } content)
+        // Asked again rather than remembered: the pointer may have moved onto a wave while the timer ran. The
+        // property's own sentence wins over the concept's, because it is the more specific answer - it says what
+        // belongs in the box the pointer is over, not what kind of node the box is part of.
+        if (_hover is not null)
         {
             return;
         }
+
+        var slot = _hoverSlot is { } named ? CellAddress.OfSlot(node, named) : (CellAddress?)null;
+        var content = (slot is { } address ? PropertyTip.Of(session, CaretPosition.At(address)) : null)
+            ?? ConceptTip.Of(session, node);
+
+        if (content is null)
+        {
+            return;
+        }
+
+        // A slot's tip is anchored to the slot's own cell: it is about that box, and a node drawn only as a
+        // property has no cell carrying its node address at all. A concept's tip stays on the node, so it does
+        // not jump while the pointer crosses one line of a node that spans several.
+        _conceptTipAnchor = slot ?? new CellAddress(node);
 
         _conceptTip = content;
         _conceptTipNode = node;
@@ -1802,6 +1830,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         _conceptTip = null;
         _conceptTipNode = null;
+        _conceptTipAnchor = null;
         _conceptTipLines = null;
         _conceptTipSize = default;
         _conceptTipWidth = -1;
@@ -1813,7 +1842,14 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// The caret place the point resolves to names a cell, and a cell names the node it was projected from -
     /// which is the node the description belongs to. Over the margin there is no place at all, so no tip.
     /// </remarks>
-    private NodeId? NodeAt(Point point)
+    private NodeId? NodeAt(Point point) => PlaceAt(point)?.Address.Owner;
+
+    /// <summary>The caret place under <paramref name="point"/>, or <see langword="null"/> over chrome.</summary>
+    /// <remarks>
+    /// The place rather than only its node, because a slot's own tooltip needs to know which cell the pointer is
+    /// over - a node has as many properties as its concept declares.
+    /// </remarks>
+    private CaretPosition? PlaceAt(Point point)
     {
         if (Session is not { } session || point.X < GutterWidth)
         {
@@ -1823,10 +1859,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         var x = point.X - GutterWidth + _offsetX;
         var y = point.Y + _offsetY;
 
-        return HitTest.Caret(session.Tree, session.Layout, x, y, session.Measure) is { } position
-            ? position.Address.Owner
-            : null;
+        return HitTest.Caret(session.Tree, session.Layout, x, y, session.Measure);
     }
+
+
 
     /// <summary>Paints the concept tip, unless a finding's tip is up instead.</summary>
     /// <remarks>
@@ -1846,7 +1882,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// <summary>Where the concept tip goes, wrapping its text the first time it is asked for at a width.</summary>
     /// <param name="content">What the tip says.</param>
     /// <returns>The box, or <see langword="null"/> when there is nothing to draw.</returns>
-    private Rect? ConceptTipBounds(ConceptTipContent content)
+    private Rect? ConceptTipBounds(TipContent content)
     {
         var viewport = new LayoutSize(Math.Max(0, Bounds.Width), Math.Max(0, Bounds.Height));
 
@@ -1856,19 +1892,22 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         if (_conceptTipLines is null || _conceptTipWidth != room)
         {
-            _conceptTipLines = ConceptTip.Lines(content, room, TextMeasure);
+            _conceptTipLines = TipLines.Of(content, room, TextMeasure);
             _conceptTipSize = _tip.Measure(_conceptTipLines);
             _conceptTipWidth = room;
         }
 
-        if (_conceptTipLines.Count == 0 || _conceptTipNode is not { } node)
+        if (_conceptTipLines.Count == 0 || _conceptTipNode is not { } node || Session is not { } session)
         {
             return null;
         }
 
-        // The node, not the cell the pointer happens to be over: a box that followed the caret place would
-        // jump while the pointer crossed one line of a node that spans several.
-        if (Session is not { } session || session.Layout.BoundsOf(new CellAddress(node)) is not { } anchor)
+        var bounds = _conceptTipAnchor is { } wanted ? session.Layout.BoundsOf(wanted) : null;
+
+        // Falling back to the node keeps a tip anchored even when the cell it is about has just gone.
+        bounds ??= session.Layout.BoundsOf(new CellAddress(node));
+
+        if (bounds is not { } anchor)
         {
             return null;
         }

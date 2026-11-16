@@ -103,25 +103,25 @@ public static class ExpressionsLanguage
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.IntLiteral,
-            [new PropertySlot("value", PropertyType.Integer)],
+            [new PropertySlot("value", PropertyType.Integer, description: "A whole number, such as 42.")],
             [ExpressionsConceptKeys.Expression],
             isOfferedInCompletion: false),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.BoolLiteral,
-            [new PropertySlot("value", PropertyType.Boolean)],
+            [new PropertySlot("value", PropertyType.Boolean, description: "Either true or false.")],
             [ExpressionsConceptKeys.Expression],
             isOfferedInCompletion: false),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.StringLiteral,
-            [new PropertySlot("value", PropertyType.String)],
+            [new PropertySlot("value", PropertyType.String, description: "Any text, without the quotes.")],
             [ExpressionsConceptKeys.Expression],
             isOfferedInCompletion: false),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.Name,
-            [new PropertySlot("name", PropertyType.String)],
+            [new PropertySlot("name", PropertyType.String, description: "The name to read, such as amount.")],
             [ExpressionsConceptKeys.Expression],
             nameSlot: "name",
             description: "A reference to a name that some scope resolves."),
@@ -134,7 +134,7 @@ public static class ExpressionsLanguage
         new ConceptDeclaration(
             ExpressionsConceptKeys.Binary,
             [
-                new PropertySlot("operator", ExpressionOperators.BinaryType),
+                new PropertySlot("operator", ExpressionOperators.BinaryType, description: "The operator, such as + or &&."),
                 new ChildSlot("left", ExpressionsConceptKeys.Expression, Cardinality.One),
                 new ChildSlot("right", ExpressionsConceptKeys.Expression, Cardinality.One),
             ],
@@ -177,7 +177,7 @@ public static class ExpressionsLanguage
         new ConceptDeclaration(
             ExpressionsConceptKeys.Unary,
             [
-                new PropertySlot("operator", ExpressionOperators.UnaryType),
+                new PropertySlot("operator", ExpressionOperators.UnaryType, description: "Either - or !."),
                 new ChildSlot("operand", ExpressionsConceptKeys.Expression, Cardinality.One),
             ],
             [ExpressionsConceptKeys.Expression],

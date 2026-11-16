@@ -22,12 +22,12 @@ public static class ConceptTip
     /// <param name="node">The node the pointer is over.</param>
     /// <returns>The concept's key and its description, or <see langword="null"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
-    public static ConceptTipContent? Of(Node node)
+    public static TipContent? Of(Node node)
     {
         ArgumentNullException.ThrowIfNull(node);
 
         return node.Concept.Description is { Length: > 0 } description
-            ? new ConceptTipContent(node.Concept.Key, description)
+            ? new TipContent(node.Concept.Key, description)
             : null;
     }
 
@@ -40,37 +40,10 @@ public static class ConceptTip
     /// longer exists answers "nothing to show" instead of throwing at the moment the user moves the mouse.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="session"/> is <see langword="null"/>.</exception>
-    public static ConceptTipContent? Of(EditorSession session, NodeId nodeId)
+    public static TipContent? Of(EditorSession session, NodeId nodeId)
     {
         ArgumentNullException.ThrowIfNull(session);
 
         return session.Document.Model.Project.FindNode(nodeId) is { } node ? Of(node) : null;
-    }
-
-    /// <summary>The lines to draw, the key first and the description broken to fit.</summary>
-    /// <param name="content">What the tip says.</param>
-    /// <param name="maxWidth">The widest a line may be, in layout units.</param>
-    /// <param name="measure">What to measure a candidate line with.</param>
-    /// <returns>The lines in reading order, never empty for a real content.</returns>
-    /// <remarks>
-    /// The key is broken like any other text, so a key longer than the box cannot make the measured width a
-    /// lie. In practice it stays one line: a concept key is a name, not a sentence.
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">A parameter is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxWidth"/> is not positive.</exception>
-    public static IReadOnlyList<string> Lines(
-        ConceptTipContent content,
-        double maxWidth,
-        ITextMeasure measure)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        ArgumentNullException.ThrowIfNull(measure);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxWidth);
-
-        var lines = new List<string>(TipText.Wrap(content.ConceptKey, maxWidth, measure));
-
-        lines.AddRange(TipText.Wrap(content.Description, maxWidth, measure));
-
-        return lines;
     }
 }
