@@ -258,6 +258,28 @@ Nothing about this needs a reference of its own — see rule 8 under
 [Composition rules](#composition-rules). The app is using `Projectional.Avalonia`'s public
 surface exactly as a host would.
 
+### Intentions
+
+`MainWindow.RegisterIntentions` is the whole of what the app writes for the light bulb: two providers,
+registered once per document as `IntentionSource.Language`.
+
+```csharp
+document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
+document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
+```
+
+The entries come from `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and
+`Projectional.Samples.Intentions` (accept this rule). Neither package knows about the shell, and the shell
+knows nothing about what they offer — which is the point of the slice: a language ships its intentions, a
+host registers them and the popup, the menu and the bulb follow.
+
+Two things a host has to get right, both of them the mirror of the findings rules:
+
+- **Register once, at open.** A provider is a source, not a snapshot; `PublishFindings` runs again on every
+  change, so registering there would list every entry twice.
+- **The list is derived, the sets are published.** Intentions need no republishing because they are asked
+  afresh at the caret; `Markers` and `Fixes` are snapshots and must be replaced.
+
 ## What the thin shell implements
 
 The M1 shell is the smallest window that can open, edit and save a model, and it is

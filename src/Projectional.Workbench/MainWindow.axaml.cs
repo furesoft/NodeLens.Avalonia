@@ -9,9 +9,11 @@ using Avalonia.Threading;
 using Projectional.Avalonia;
 using Projectional.Core;
 using Projectional.Editing;
+using Projectional.Expressions.Intentions;
 using Projectional.Language;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
+using Projectional.Samples.Intentions;
 using Projectional.Semantics;
 
 namespace Projectional.Workbench;
@@ -165,6 +167,10 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
         editor.ShowLineNumbers = _showLineNumbers;
+
+        // Once per document, not per change: a provider is a source, not a snapshot, and registering it
+        // again on every edit would list its entries twice.
+        RegisterIntentions(document);
         PublishFindings(document, editor);
 
         // The header has to say "modified" without the user saving to find out, so the model itself
@@ -335,6 +341,26 @@ public sealed partial class MainWindow : Window, IDisposable
 
         editor.Markers = new MarkerSet([.. fixes.Select(fix => fix.Diagnostic)]);
         editor.Fixes = new FixSet([.. fixes]);
+    }
+
+    /// <summary>Registers the intentions the document's languages ship with.</summary>
+    /// <param name="document">The document whose session gains them.</param>
+    /// <remarks>
+    /// <para>
+    /// This is the whole of what a host writes: two providers, registered once. The entries themselves come
+    /// from the languages' packages - the expression vocabulary's parentheses and negation, and the rules
+    /// language's "accept this rule" - and neither needs anything from the app beyond this call.
+    /// </para>
+    /// <para>
+    /// Registered as <see cref="IntentionSource.Language"/> rather than as the host's own, because that is
+    /// what they are: a language's answer to "what is meaningful here", which the list keeps behind a host's
+    /// commands.
+    /// </para>
+    /// </remarks>
+    private static void RegisterIntentions(DocumentTab document)
+    {
+        document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
+        document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
     }
 
     /// <summary>Applies a theme choice to the window, its chrome and every tab's control.</summary>

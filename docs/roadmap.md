@@ -23,12 +23,11 @@ only for the document root, so no arrow ever appeared. Both the defect and its r
 
 What is next, in order:
 
-1. **The intention list** ([context-actions.md](architecture/context-actions.md)). Slices A, B, C and D are
-   done - the model, the list, `EditorSession.Apply(Intention)`, the `Alt+Enter` popup and the "Intentions"
-   submenu, all reading one `IntentionList` of host commands, language intentions and quick fixes. What is
-   left is E (two real intentions in `Projectional.Expressions` and one in `Projectional.Samples`), F (the
-   preview) and G (the rest of the standard catalogue). `WrapInAction` is already there, so
-   `INT006`/`INT040` are compositions rather than new primitives.
+1. **The intention list** ([context-actions.md](architecture/context-actions.md)). Slices A to E are done -
+   the model, the list, `EditorSession.Apply(Intention)`, the `Alt+Enter` popup, the "Intentions" submenu and
+   two packages of real intentions (wrap in parentheses, negate, accept this rule), all reading one
+   `IntentionList` of host commands, language intentions and quick fixes. What is left is F (the preview) and
+   G (the rest of the standard catalogue).
 2. **The preview** ([intention-preview.md](architecture/intention-preview.md), slices V), which only makes
    sense once there are intentions whose result is worth imagining.
 

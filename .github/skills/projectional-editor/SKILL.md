@@ -640,9 +640,23 @@ path a keystroke takes.
   and closes any open quick-fix list. Do not move the "build the action at apply time" rule to list time.
 
 Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
-the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`;
-`docs/architecture/context-actions.md` carries the plan and the remaining slices (E onwards: samples,
-preview, standard catalogue).
+the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`:
+`Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
+(accept this rule). `docs/architecture/context-actions.md` carries the plan and the remaining slices
+(F onwards: preview, standard catalogue).
+
+- **Some wrappers only mean something with a value, and the wrap has to carry it.** "Negate" is a `Unary`
+  whose `operator` is `!`, and the caller cannot write that afterwards because the wrapper's id does not
+  exist until the wrap runs. `Model.Wrap`/`WrapInAction` therefore take an optional
+  `IReadOnlyDictionary<string, string> presets`, validated against the wrapper's declarations *before*
+  anything is detached (a bad preset must not leave the node outside the document). Do not build a bespoke
+  action per wrapper-with-a-value.
+- **An intention that would change nothing is `Absent`, not `Disabled`.** Both expression intentions decline
+  on a node that is already that wrapper, and "accept this rule" declines on a rule that already accepts: an
+  entry that reproduces the current drawing (or writes the value it holds) is noise, and a *disabled* one
+  would light the bulb for an operation nobody needs.
+- **The app registers the providers once, at open**, in `MainWindow.RegisterIntentions`; registering them in
+  `PublishFindings` (which runs on every change) would list every entry twice.
 
 **The gesture and the list are named differently on purpose.** `EditorKey.QuickFix`, `QuickFixAction` and
 `QuickFixBulb` keep the quick-fix name because they are the *affordance* the docs and ADR 0016 describe;
@@ -1066,7 +1080,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1224 tests**; anything below that means tests were deleted.
+it. **Baseline is 1244 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

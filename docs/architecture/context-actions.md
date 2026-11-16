@@ -1,7 +1,7 @@
 # Context actions (intentions)
 
-*Partly delivered: the model, the list, applying one, the popup and the menu (slices A, B, C and D).* This
-document is the design for the light bulb: the affordance that offers, at the caret, the edits that make
+*Partly delivered: the model, the list, applying one, the popup, the menu and real intentions (slices A-E).*
+This document is the design for the light bulb: the affordance that offers, at the caret, the edits that make
 sense *there* — "wrap in parentheses", "negate", "add the missing condition", "extract this into a rule". It
 is written before the code so that the three layers it touches — language, editing, control — agree on who
 owns what, and so the milestone that implements it has a gate instead of an ambition.
@@ -10,8 +10,9 @@ What exists today: `Intention`, `IntentionContext`, `IntentionAvailability`, `II
 `IntentionList.For(session)` in `Projectional.Editing`, the two registration groups on the session,
 `EditorSession.Apply(Intention)`, the `Alt+Enter` popup and the "Intentions" submenu — both reading the one
 merged list, which holds the host's commands, the language's intentions and the caret line's quick fixes as
-`Intention` entries — and a bulb that lights when any of them is offered. What is left is real intentions in
-the shipped languages (E), the preview (F) and the rest of the standard catalogue (G).
+`Intention` entries — and a bulb that lights when any of them is offered. Two packages ship real entries:
+`Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
+(accept this rule). What is left is the preview (F) and the rest of the standard catalogue (G).
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -318,8 +319,8 @@ undo step, and it is the one gesture a user reaches for after pasting a value th
 
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
-| `INT040` | `Wrap in parentheses` | surrounds the expression with the grouping concept | plain | `WrapInAction`, the same one as `INT006` |
-| `INT041` | `Negate` | puts a `Unary` over it | plain | a small action, or `WrapInAction` with the operator preset |
+| `INT040` | `Wrap in parentheses` | surrounds the expression with the grouping concept | plain | `WrapInAction`, the same one as `INT006` - **shipped** in `Projectional.Expressions.Intentions` |
+| `INT041` | `Negate` | puts a `Unary` over it | plain | `WrapInAction` with the operator preset, which is why `Model.Wrap` takes presets - **shipped** with it |
 | `INT042` | `Swap operands` | swaps left and right of a binary | plain | two `MoveNodeAction`s? no - a small swap action, because a move would renumber |
 
 `INT042` is the one place where "reuse the existing action" fails: swapping two children of one slot by
@@ -376,7 +377,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | B ✓ | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced, the refusal of an offer that no longer applies, and the routing of a fix's entry back through the fix path |
 | C ✓ | `feat/intentions-popup` | the offers gesture asks `IntentionList.For(session)`, so the `Alt+Enter` popup lists the host's commands and the language's intentions beside the fixes - `OfferList` of `Intention` entries, the same safety rule for both sources, and the bulb lit by either |
 | D ✓ | `feat/intentions-menu` | the "Intentions" submenu in the context menu, beside "Quick fixes", both built from the one `IntentionList` so the menu and the popup cannot disagree; the bulb's second source landed with C |
-| E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
+| E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers both providers in one method |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
 | G | `feat/standard-intentions` | the first primitives the catalogue still needs (insert-at-index, subtree copy), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
 
