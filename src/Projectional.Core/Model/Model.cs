@@ -48,6 +48,26 @@ public sealed class Model
 
     public IReadOnlyList<Node> Roots => field ??= _roots.AsReadOnly();
 
+    /// <summary>Every node of this model, depth first: each root, then its whole subtree.</summary>
+    /// <remarks>
+    /// <see cref="Project.Nodes"/> is the whole project, which is a different question: a project holds several
+    /// models, so a walk over the index answers with nodes of documents that are not being looked at. This is
+    /// the walk a diff, a copy budget or a "find this node" pass wants.
+    /// </remarks>
+    public IEnumerable<Node> Nodes
+    {
+        get
+        {
+            foreach (var root in Roots)
+            {
+                foreach (var node in SelfAndDescendants(root))
+                {
+                    yield return node;
+                }
+            }
+        }
+    }
+
     /// <summary>Increases with every mutation of this model.</summary>
     public long Version { get; private set; }
 
@@ -379,6 +399,24 @@ public sealed class Model
         }
 
         target.DiscardModel(copy);
+    }
+
+    /// <summary>One node, then everything below it, depth first.</summary>
+    /// <remarks>
+    /// <see cref="Node.ChildrenInDocumentOrder"/> answers with the direct children only, so the descent is
+    /// explicit.
+    /// </remarks>
+    private static IEnumerable<Node> SelfAndDescendants(Node node)
+    {
+        yield return node;
+
+        foreach (var child in node.ChildrenInDocumentOrder())
+        {
+            foreach (var descendant in SelfAndDescendants(child))
+            {
+                yield return descendant;
+            }
+        }
     }
 
 
