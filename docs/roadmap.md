@@ -23,16 +23,18 @@ only for the document root, so no arrow ever appeared. Both the defect and its r
 
 What is next, in order:
 
-1. **Slice Q7 - the standard checks as a package** ([quick-fixes.md](architecture/quick-fixes.md)). The
-   catalogue is designed (nineteen fixes, `STD001` to `STD051`, with the two safety rules); what is missing
-   is `Projectional.Checks` with the first four checks, and the tests that a language including them needs
-   no code of its own. Small, additive, and it is what makes quick fixes usable for a real DSL author
-   rather than only demonstrable.
-2. **The intention list** ([context-actions.md](architecture/context-actions.md), slices G), with
+1. **The intention list** ([context-actions.md](architecture/context-actions.md), slices G), with
    `WrapInAction` as the flagship. Quick fixes were built first on purpose: they gave the intention layer a
-   second source to be designed against instead of a single one to be guessed from.
-3. **The preview** ([intention-preview.md](architecture/intention-preview.md), slices V), which only makes
+   second source to be designed against instead of a single one to be guessed from, and Q7 already landed
+   the primitives that slice needs (`EditSafety`, `WrapInAction`, `InsertChildAction`).
+2. **The preview** ([intention-preview.md](architecture/intention-preview.md), slices V), which only makes
    sense once there are intentions whose result is worth imagining.
+
+**Slice Q7 - the standard checks as a package** is done: `Projectional.Checks` ships `STD001`, `STD003`,
+`STD010` and `STD040`, a language includes them by naming them in a `CheckSet`, and the safety class the
+catalogue needed (`EditSafety`) now decides which lone repairs the gesture may apply by itself. What is
+still open from the catalogue is the fifteen checks the design lists after the first four, which land as a
+language asks for them rather than in one pass.
 
 The constraint engine that will produce diagnostics in volume stays where it is, in M4.
 ## Milestones

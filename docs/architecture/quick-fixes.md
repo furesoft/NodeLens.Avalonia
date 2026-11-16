@@ -5,13 +5,13 @@ A projectional editor knows which node a keystroke is about and owns every chang
 This document is the design of the layer between a finding and the edit that removes it: what a
 fix is, where it lives, how it reaches the user, and in which order the slices land.
 
-Status: **delivered.** Slices Q1 to Q6 and Q8 are done - the fix model, the fix set on the session,
+Status: **delivered.** Slices Q1 to Q8 are done - the fix model, the fix set on the session,
 the query that answers which repairs the caret's line offers, applying one as a single undo step
 through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that carry
 repairs, the `Alt+Enter`/`Ctrl+.` gesture with its three answers, the keyboard-navigable list, the
-context-menu submenu, the tip line, the painted popup and the bulb in the margin. Slice Q7 (the
-standard-check catalogue as a package) is the one part left, and it is an extension of the catalogue
-rather than a gap in the feature.
+context-menu submenu, the tip line, the painted popup and the bulb in the margin. Slice Q7 then added
+the safety class the catalogue needed and shipped the catalogue itself as `Projectional.Checks`, so a
+language author includes the standard checks by naming them.
 Markers are delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the
 constraint engine that will produce findings in volume at M4 - it is the half that makes the findings
 that already exist actionable.
@@ -73,6 +73,7 @@ public sealed class DiagnosticFix
     public string Label { get; }               // "Rename to \"Check2\""
     public string? Description { get; }        // one sentence, shown as a tooltip
     public FixAvailability Availability { get; }
+    public EditSafety Safety { get; }          // Plain or Destructive - see the two rules below
     public Func<FixContext, EditAction?> Create { get; }
 }
 ```
@@ -192,9 +193,11 @@ was handed.
 The four surfaces are delivered in dependency order, and only the last one needs a window:
 
 1. **`Alt+Enter` and `Ctrl+.` in the control**, the two spellings of the same command in the two
-   editors this one is modelled on (MPS and Visual Studio). If the line offers exactly one
-   applicable fix it runs immediately - the common case is a single repair, and a popup with one
-   entry costs the user a keystroke for nothing. Otherwise the list opens.
+   editors this one is modelled on (MPS and Visual Studio). If the line offers exactly one repair and
+   it is plain and able to run, the gesture applies it immediately - the common case is a single
+   repair, and a popup with one entry costs the user a keystroke for nothing. Otherwise the list opens,
+   including for a lone destructive or disabled repair: the gesture asks what is available, and it must
+   not also be the keystroke that deletes something or that answers with nothing at all.
    Both are exceptions to "keys held with Control or Alt are the host's", and they are taken
    deliberately and early: a quick-fix gesture that moves after users have learned it is worse than
    one gesture reserved from the host on day one. [context-actions.md](context-actions.md) already
@@ -202,9 +205,10 @@ The four surfaces are delivered in dependency order, and only the last one needs
 
    **Delivered as far as the editing layer goes.** `EditorKey.QuickFix` carries the gesture,
    `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyQuickFixes()` gives the three
-   answers: nothing offered, one repair applied as its own undo step, or several held in
-   `OfferedFixes` for whoever draws them. The drawing landed as slice Q8
-   (`QuickFixPresenter`), so a list of several now appears beside the caret.
+   answers: nothing offered, one plain repair applied as its own undo step, or a list held in
+   `OfferedFixes` for whoever draws them. Q7 added the safety class that decides the second and third
+   case, and Q8 (`QuickFixPresenter`) draws them beside the caret - a list of one included, because a
+   destructive repair that opened it is asking rather than offering.
 2. **A "Quick fixes" submenu in the context menu.** Free: `EditorMenu.For(session)` is rebuilt on
    every opening and its entries are already `EditorMenuEntry`s that `EditorMenuPresenter` maps to
    the toolkit, so the fixes appear in the menu the user already knows before the popup, the bulb or
@@ -301,9 +305,9 @@ the framework can provide; a language includes the ones it wants and inherits th
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
-| `STD001` | the name still equals the concept's declared default | `Name it "Rule1"` | plain - **shipped** as the host's `SHELL001`, and the shape a framework version takes |
+| `STD001` | the name still equals the concept's declared default | `Name it "Rule1"` | plain - **shipped** in `Projectional.Checks`; the workbench's `SHELL001` was the first hand-written copy of it |
 | `STD002` | two children of one slot share a name | `Rename to "Check2"` | plain only while nothing references the name - see the rule below |
-| `STD003` | the name has leading or trailing whitespace | `Trim to "Rule"` | plain |
+| `STD003` | the name has leading or trailing whitespace | `Trim to "Rule"` | plain - **shipped** |
 | `STD004` | the name breaks the identifier rule the concept declares | `Use "myRule"` | plain |
 
 `STD004` needs one new declaration rather than a new mechanism: a concept says what a legal name is
@@ -314,13 +318,14 @@ is not offered, which is the honest default for a language whose names may be se
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
-| `STD010` | a single-child slot is empty | `Insert "Rule"` | plain - the same concept Enter would create, from `DefaultInstantiableFor` |
+| `STD010` | a single-child slot is empty | `Insert "Rule"` | plain - **shipped**; the same concept Enter would create, from `DefaultInstantiableFor` |
 | `STD011` | a list holds fewer children than its declared minimum | `Add the first rule` | plain - needs the minimum of open question 64 |
 | `STD012` | a node holds nothing but its defaults | `Delete the empty rule` | **destructive** |
 
 `STD010` and `STD011` are the two fixes a user meets most often in a fresh document, and both are one
-`InsertNodeAction` away from what the keyboard already does - which is the argument for shipping them:
-the fix and the keystroke cannot disagree, because they are the same action.
+`InsertChildAction` away from what the keyboard already does - which is the argument for shipping them:
+the fix and the keystroke cannot disagree, because they are the same action (`InsertNodeAction` runs it
+too).
 
 ### References: whatever a reference slot knows
 
@@ -349,12 +354,15 @@ local, and they cannot change what the model means.
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
-| `STD040` | a binary whose grouping depends on precedence | `Wrap in parentheses` | plain |
+| `STD040` | an operand grouped by precedence rather than by the drawing | `Wrap in parentheses` | plain - **shipped**, in the expression group |
 | `STD041` | a negation of a negation | `Remove both` | plain |
 | `STD042` | an operator that is not one of the declared symbols | `Use ">="` | plain |
 
 A language that composes the expression sub-language gets these for free, which is the same argument
-that makes the sub-language itself worth shipping.
+that makes the sub-language itself worth shipping. `STD040` is the one check here that needs an operator
+table, and it keeps it: `ExpressionOperators` says precedence is not part of the language, so the
+analyser owns it. The finding names the *operand* whose grouping is not drawn, and the repair wraps that
+operand - wrapping its parent would again mean the same finding survives its own repair.
 
 ### Loading: whatever the reader had to preserve
 
@@ -369,20 +377,39 @@ anything cleverer would guess what the author of the other model meant.
 
 ### How a language includes them
 
-A standard check is a *class parameterised by the language's declarations*, never by its code:
+A standard check is a *class parameterised by the language's declarations*, never by its code. The
+package is `Projectional.Checks`; `ICheck` is one rule, `CheckSet` is the ordered list a language
+publishes, and `StandardChecks` is the catalogue grouped by subject:
 
 ```csharp
-public static IReadOnlyList<ICheck> Checks { get; } =
-[
-    .. StandardChecks.Names,
-    .. StandardChecks.Structure,
-    new ExactlyOneAcceptRule(),      // the language's own
-];
+// The language's own publishing point, written once.
+public static CheckSet Checks { get; } = StandardChecks.All.With(new ExactlyOneAcceptRule());
+
+// Or, when it wants some of the catalogue and not all of it:
+public static CheckSet Checks { get; } =
+    new CheckSet([.. StandardChecks.Names, .. StandardChecks.Structure, new ExactlyOneAcceptRule()]);
 ```
+
+A host runs the whole set with one call - `checks.Find(model)` - and derives its marker set from the
+fixes it gets back, exactly as it does for a check of its own.
 
 That shape is what keeps the catalogue a library rather than a policy: `STD001` reads the name slot from
 the concept, `STD010` reads the child slot's concept, `STD020` reads the scope. A language that declares
 none of the slots a check needs simply does not get that check, and nothing has to be switched off.
+
+### What Q7 shipped
+
+| Id | Where | What it needed |
+| --- | --- | --- |
+| `STD001` | `PlaceholderNameCheck` | nothing beyond the declarations |
+| `STD003` | `SurroundingWhitespaceCheck` | nothing beyond the declarations |
+| `STD010` | `EmptyChildSlotCheck` | `InsertChildAction`, the address-based half of Enter |
+| `STD040` | `BinaryGroupingCheck` | an operator table of its own, and `WrapInAction` |
+
+`STD040` needed the one genuinely new structural action: a single-valued slot cannot hold a node and its
+wrapper at the same time, so `Model.Wrap` detaches, creates and re-attaches inside one transaction
+(the repair is one undo step and the node keeps its id). `WrapInAction` is that operation as an edit,
+and the intention catalogue's "wrap in" entry will reuse it rather than invent a second one.
 
 ### Two rules the catalogue forces
 
@@ -392,8 +419,11 @@ keystroke would delete a node the user was only asking about. So an offer carrie
 (`EditSafety` - named for the offer rather than for the fix, because the intention catalogue needs the
 same classification and one enum serves both), and the
 gesture applies a lone repair only when it is plain; a lone destructive repair opens the list, which is
-then allowed to hold one entry precisely because it is asking rather than offering. This is the change
-`DiagnosticFix` needs before the catalogue ships, and it is open question 73.
+then allowed to hold one entry precisely because it is asking rather than offering. **Delivered in Q7**:
+`DiagnosticFix.Safety` defaults to `Plain`, `QuickFixList` accepts one entry, and
+`EditorSession.ApplyQuickFixes` applies a lone offer only when it is plain *and* able to run - a lone
+disabled repair opens the list too, because a gesture that silently does nothing is the same complaint
+in another costume. Open question 73.
 
 **A standard rename may not break another model.** `STD002` is safe only while nothing references the
 name it changes: in a language where a rule's name is what other models point at, renaming it silently
@@ -421,12 +451,12 @@ Each slice is its own branch and its own merge, per the working rules.
 | Q5 ✓ | `feat/quick-fix-menu` | the list navigable from the keyboard (`SelectQuickFixAction`, `AcceptQuickFixAction`), the "Quick fixes" submenu in `EditorMenu` with the reason on a disabled entry, and the offer line in `MarkerTip` |
 | Q8 ✓ | `feat/quick-fix-popup` | the painted popup for `OfferedFixes`: `QuickFixPresenter` beside `CompletionPresenter` with its own measure and row hit test, one shared placement helper for both lists, and the control wiring that draws it and turns a click into select-then-accept |
 | Q6 ✓ | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf` (headless geometry, one line square left of the page), the margin the control reserves for it, the two-primitive glyph, its hit test and the answer kept between paints |
-| Q7 | `feat/standard-checks` | `EditSafety` on the offer and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own |
+| Q7 ✓ | `feat/standard-checks` | `EditSafety` on the offer and the gesture that honours it, then `Projectional.Checks` with the first four standard checks (`STD001`, `STD003`, `STD010`, `STD040`) and the tests that a language including them needs no code of its own - plus `InsertChildAction`, `WrapInAction` and `Model.Wrap`, which two of the four repairs needed |
 
 Q1 and Q2 hold the invariants and are testable without a window; Q4 to Q6 are presentation and are
 the first customers of the headless Avalonia test project, with a probe standing in until it exists.
 
-After Q6 the intentions plan continues at `feat/intentions-model` with a source already in place,
+After Q7 the intentions plan continues at `feat/intentions-model` with a source already in place,
 and its old slice F (`feat/quick-fixes`) disappears - the general list now starts with a working
 source instead of ending with one.
 
@@ -477,6 +507,19 @@ before - the text above is the argument:
   `RowAt` named row 1 for a point in its middle and `null` for a point outside the box, and the picture
   showed a bordered white box with the first row highlighted. Pointer input is still not raisable, so
   the click path is proven by `RowAt` plus the two actions it calls rather than by a synthetic press.
+- **The standard catalogue, headless.** `StandardChecksTests` builds a document with one problem per
+  shipped check and asserts the codes in catalogue order with usable repairs - the "no code of its own"
+  claim in one test. `PlaceholderNameCheckTests`, `SurroundingWhitespaceCheckTests`,
+  `EmptyChildSlotCheckTests` and `BinaryGroupingCheckTests` cover each check's positive and negative
+  cases and apply its repair through a session, so every shipped fix is proven to clear its own finding
+  and to undo in one step. `CheckSetTests` pins order, composition and the null guards.
+- **The new structural edits, headless.** `WrapInActionTests` proves identity survives a wrap, the
+  wrapper takes the node's place among its siblings, undo restores it in one step, and a root or a
+  concept that cannot stand there is refused; `InsertChildActionTests` proves the fix and Enter land the
+  caret in the same place. `ModelTests` covers `Model.Wrap` directly, including the many-valued slot.
+- **The safety class, through the gesture.** `QuickFixKeysTests` pins that a lone destructive repair
+  opens a one-entry list instead of running, that it still runs from that list, and that a lone disabled
+  repair is shown rather than silently refused; `DiagnosticFixTests` pins the plain default.
 
 ## Open questions
 

@@ -230,7 +230,7 @@ missing entry is easy to spot, and every entry names the data that produces it.
 | `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`) |
 | `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`) |
 | `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | new: insert-at-index |
-| `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | new: `WrapInAction` - the only genuinely new action here |
+| `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction`, which the quick-fix catalogue already landed |
 | `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | `DefaultInstantiableFor` plus a replace action |
 | `INT008` | `Select parent` / `Select node` | widens the selection one rung | plain | - (`SelectAllAction`'s ladder) |
 
@@ -299,19 +299,21 @@ Nine of the entries above are configurations of actions that already exist
 | --- | --- | --- |
 | `Model.InsertChild(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | the model appends today, so "insert here" is impossible for anything; a list needs it whichever feature asks |
 | a subtree copy (`Node.CopyTo(sibling)`) | `INT002` | the same walk `Model.CopyTo` needs for the preview sandbox, reused instead of written twice |
-| `WrapInAction` | `INT006`, `INT040` | wrapping is insert-at-index plus a move, and both halves have to happen in one transaction |
+| ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot; the intention entries reuse it |
 | `SortAction` | `INT031` | a stable permutation of one slot, which a program of moves cannot express without colliding |
 
 That table is the plan's real content: the catalogue is not nineteen features, it is **four primitives
-and fifteen four-line compositions**.
+and fifteen four-line compositions**. One of the four already exists because `STD040` needed it, and
+`EditSafety` - the other thing slice G was going to introduce - landed with it.
 
 ### Two rules, one of them shared with the fixes
 
-**The safety class is shared, so it belongs on the offer rather than on the fix.** The quick-fix
-catalogue calls it `FixSafety`; writing the intentions down shows that both kinds of offer need it, so it
-becomes `EditSafety` and both `DiagnosticFix` and `Intention` carry it. The rule it enforces is the same
-in both places: a lone offer runs immediately only when it is plain, and a lone destructive one opens the
-list to ask (open question 73).
+**The safety class is shared, so it belongs on the offer rather than on the fix.** What the quick-fix
+catalogue needed is a decision both kinds of offer share, so it is `EditSafety` on the offer itself and
+both `DiagnosticFix` and `Intention` carry it. The rule it enforces is the same in both places: a lone
+offer runs immediately only when it is plain, and a lone destructive one opens the list to ask (open
+question 73). It landed with the quick-fix catalogue (`feat/standard-checks`), so the intention entries
+inherit it rather than deciding again.
 
 **The two catalogues must not offer the same thing twice.** `STD010` fills an empty slot because a check
 found the hole; `INT010` fills it because the caret is there. Both are right, and both are in the list the
@@ -322,7 +324,7 @@ resolution order already does.
 ## Slices
 
 Each slice is its own branch and its own merge, per the working rules. The quick-fix slices
-Q1-Q6 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow them.
+Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow them.
 
 | Slice | Branch | Delivers |
 | --- | --- | --- |
@@ -332,7 +334,7 @@ Q1-Q6 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
-| G | `feat/standard-intentions` | `EditSafety` on the offer (shared with the fix catalogue) and the first primitives the catalogue needs: insert-at-index, subtree copy and `WrapInAction`; then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`) |
+| G | `feat/standard-intentions` | the first primitives the catalogue still needs (insert-at-index, subtree copy), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.
