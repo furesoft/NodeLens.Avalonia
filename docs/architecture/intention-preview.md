@@ -7,8 +7,8 @@ rule turned into a table row - it is the only honest answer, because the questio
 like" has no good sentence.
 
 Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E) and slices V1 (copy and diff), V2 (the sandbox) and V3 (the ladder) are delivered; V4 onwards are
-the ghost and the wiring. The decision it rests on is
+slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder) and the headless half of V4 (the
+marks and the badge) are delivered; the ghost frame, the wiring and the sample previews are what is left. The decision it rests on is
 [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
 This document reverses a decision that was recorded twice: [context-actions.md](context-actions.md) and
@@ -94,6 +94,26 @@ A badge in the corner of the ghost says what it is looking at: `Preview - rename
 `Preview - convert to while, 2 added, 3 removed`. Without it the page is a document that appears to
 have been edited, which is the one thing a preview must never look like.
 
+The marks and the badge are headless, and they are where the mapping lives - a diff names *nodes* and
+*slots*, a ghost is drawn as *cells*:
+
+- **`PreviewMarks.Of(diff, ghost)`** turns a `ModelDiff` into `CellChange` values. A node difference
+  marks every cell whose `CellAddress.Owner` is that node (a new node is drawn as several cells); a slot
+  difference marks exactly the cell that shows that slot. Ownership, not address equality, for the same
+  reason the caret uses it.
+- **A removal is marked where it used to be.** The node has no cells in the ghost, so the mark goes on the
+  slot cell of the parent it was taken out of, with the removed text in `CellChange.OldValue`. Only the
+  outermost node of a removed subtree has such a place, which is why the diff may name three removals and
+  the ghost show one mark.
+- **Counts count nodes; marks count cells.** "Seven added" because a rule happens to be drawn with seven
+  cells would be counting the renderer. A difference whose node is not drawn at all - no notation, a hidden
+  slot - is counted and not marked, so the badge stays honest about an edit the ghost cannot show.
+- **`PreviewMarks.CellBudget` (2 000)** keeps a large diff drawable: past it the first marks are kept and
+  `Truncated` says how many were left out, which the badge appends as "N marks not drawn".
+- **`PreviewBadge.Of(label, marks)`** owns the sentence, because it is user-facing text with grammar in it:
+  one kind of change reads as a total ("4 changes"), several are broken down ("2 added, 3 removed"), and
+  one change is singular. The label is the entry's own, so the badge cannot disagree with the list.
+
 **Removals are the hard case** and the plan is deliberately modest: the removed text has no position in
 the preview layout, so it is *named* rather than drawn in place. A struck-through band would require
 interleaving two layouts, which is a second kind of layout engine - and the badge plus the tooltip
@@ -177,7 +197,7 @@ property of its implementation.
 | V1 ✓ | `feat/model-copy-and-diff` | M3 | `Model.CopyTo(Project)` (ids preserved) and `ModelDiff` by node id - added, removed, moved, property changed - with a snapshot-equality test and diff tests |
 | V2 ✓ | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
 | V3 ✓ | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewStage`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
-| V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe |
+| V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe. The marks and the badge landed first, headless, in `feat/preview-marks` |
 | V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, draw the ghost, and dismiss on every documented event |
 | V6 | `feat/preview-sample` | M3 | previews for the sample intentions: rename in `Projectional.Samples`, wrap-in-parentheses and negate in `Projectional.Expressions` |
 
@@ -196,6 +216,7 @@ policy for the ghost.
 | failure | an action that throws on a copy yields "no preview" and leaves the editor usable |
 | budget | above the node budget no preview runs; a preview that overruns the clock is abandoned |
 | timing | the ladder with a fake clock: tooltip at 300, preview at 700, cancelled by leave, by close, by a model change; the grace period - `PreviewStateTests`, plus `PreviewDelayTests` for the numbers themselves |
+| marks | `PreviewMarksTests`: an added node marks the cells it owns, a rewritten property marks its own cell with the old value, a removal marks the slot it left, the budget truncates and counts, an undrawn difference is counted and not marked - `PreviewBadgeTests` for the grammar |
 | wiring | `Avalonia.Headless.XUnit` once it exists, with a probe standing in until then: the ghost replaces the page, the badge counts, `Esc` restores |
 
 ## Open questions

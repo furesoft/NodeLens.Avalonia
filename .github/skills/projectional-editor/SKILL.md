@@ -192,6 +192,16 @@ the sandbox and the answer the ghost is drawn from.
   `LeaveList()`, `Invalidate()` and one `Tick(elapsed)` per timer tick and answers `Stage` - the control
   owns the timer, exactly like `CaretBlink`. The entry key is the `Intention.Id`, so the machine knows
   nothing about intentions or a toolkit.
+- **`PreviewMarks.Of(diff, ghost)` is the only place a diff becomes cells** (`CellChange`/`CellChangeKind`
+  beside it). A node difference marks every cell whose `CellAddress.Owner` is that node; a slot difference
+  marks the one cell that shows the slot. A removal has no cells left, so it marks the parent's slot cell
+  with the removed text in `OldValue` - only the outermost node of a removed subtree has such a place, so
+  the diff may name three removals and the ghost show one mark. **Counts count nodes, marks count cells**:
+  a badge saying "seven added" because a rule is drawn with seven cells would count the renderer. A
+  difference whose node is not drawn is counted and not marked. `CellBudget` (2 000) truncates and
+  `Truncated` says how many were left out; `PreviewBadge.Of(label, marks)` owns the sentence, because it is
+  user-facing grammar: one kind reads as a total ("4 changes"), several are broken down ("2 added, 3
+  removed"), one is singular, and truncation is appended.
 - **The ladder's value is in its interruptions, so do not "simplify" them away**: a different entry
   starts from nothing (a preview is an answer about *that* edit); the *same* entry again continues the
   clock (that is the bulb-to-list gap, and restarting there means a preview is never reached); leaving an
@@ -1219,7 +1229,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1359 tests**; anything below that means tests were deleted.
+it. **Baseline is 1374 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
