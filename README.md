@@ -26,6 +26,7 @@ The editor is designed to be embedded as a component in other .NET applications:
   - [5. Save and Load](#5-save-and-load)
   - [6. Report a Problem](#6-report-a-problem-in-the-document)
 - [What the Editor Does](#what-the-editor-does)
+  - [Feature Gallery](#feature-gallery)
 - [Project Architecture](#projects-architecture)
 - [Documentation](#documentation)
 - [Build and Test](#build-and-test)
@@ -219,17 +220,97 @@ Keys held with `Ctrl`, `Alt`, or `Meta` belong to the host application, with two
 | **Themes** | Preset Light and Dark palettes, with custom factory support. |
 | **Representations** | Concepts can have multiple view variants switchable on the fly. |
 
-#### Views in Action
+### Feature Gallery
 
-The same ruleset rendered as a table:
+One screenshot per feature, each rendered from the shipping control itself rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses, renders the control, and writes the PNGs into `docs/images`:
 
-![The same ruleset rendered as a table](docs/images/editor-table.png)
+```powershell
+dotnet run --project tools/Projectional.Screenshots
+```
 
-And in the dark theme:
+#### Completion: `Ctrl` + `Space`
 
-![The editor component in the dark theme](docs/images/editor-dark.png)
+An empty condition slot offers the concepts that could fill it, in the language's declaration order, with icons, and the highlighted entry's description underneath. Typing while the list is open filters it instead of editing the document.
 
-*Note: A table is not a rearrangement of lines; a column names a slot of the row concept rather than a cell, allowing mixed-concept rows that share the same slot.*
+![Completion list over an empty condition slot](docs/images/feature-completion.png)
+
+#### Quick fixes and intentions: `Alt` + `Enter` / `Ctrl` + `.`
+
+The bulb in the margin says something can be done at this line. The gesture always opens the list—repairs from the checks and intentions from the language side by side—and never applies anything unasked.
+
+![Offer list with a repair and a language intention](docs/images/feature-offers.png)
+
+#### Selection ladder: `Ctrl` + `A`
+
+One press selects the value at the caret, the next the whole node with its children, the last the document. `Delete` acts on whatever rung is selected; text actions fall back to caret behaviour when the range spans cells.
+
+![Whole rule selected by pressing Ctrl+A twice](docs/images/feature-selection.png)
+
+#### Folding
+
+A concept that declares a `collapseSlot` can be folded. The twisty in the margin toggles the node, and the collapsed line keeps the node's identity, its caret places and its addressing intact.
+
+![A folded rule between two open ones](docs/images/feature-folding.png)
+
+#### Concept triggers
+
+Typing at the edge of a node asks the language what the character means when no property accepts it. `10` then `+` becomes an addition with the literal on its left and the caret in the empty operand, in one undo step.
+
+![Typing a plus turns a literal into a binary expression](docs/images/feature-triggers.png)
+
+#### Syntax highlighting
+
+The projection decides what a cell *means*; a swappable palette decides how it looks. Keywords, properties, numbers, enumerations and missing values each read differently, and changing the palette is a repaint rather than a re-projection.
+
+![Keyword, name, number, operator and enumeration colours](docs/images/feature-syntax-highlighting.png)
+
+#### Emphasis
+
+Bold, italic, underline and strikethrough come from two places: the notation (`ruleset` is bold, `when` italic, `then` underlined) and a model-driven decorator—here every rule whose outcome is `Reject` is struck through, without a byte of formatting being stored.
+
+![Emphasis from the notation and a struck-through rejected rule](docs/images/feature-emphasis.png)
+
+#### Line numbers
+
+An optional gutter tracks the projected lines instead of a text buffer's newlines, so a node that spans several lines is numbered where it is drawn.
+
+![Gutter with line numbers beside a three-line document](docs/images/feature-line-numbers.png)
+
+#### Markers
+
+Diagnostics are drawn as squiggles over the stretch they are about: solid for errors and warnings, dotted for information and hints. A diagnostic names a node, a slot and an optional range—never a cell—so a check runs on a model nobody is drawing.
+
+![Four severities drawn as squiggles](docs/images/feature-markers.png)
+
+Hovering a squiggle opens its message, the severity, the check's code and the repairs it offers. The box is painted by the control, so it stays inside the document's own bounds.
+
+![Tooltip over a squiggle with its message and quick fix count](docs/images/feature-marker-tooltip.png)
+
+#### Concept descriptions
+
+Hovering a node for a moment shows the description its concept declares; a slot's own description appears while the value is still empty, and a finding's tooltip always wins over a description.
+
+![Concept description shown after hovering the ruleset](docs/images/feature-concept-tooltip.png)
+
+#### Font size
+
+The document is laid out with the same font the control paints with, so zooming simply changes that font: line height, cell widths, gutter, caret and lists all follow, from `6` to `48` px.
+
+![The same document at a larger font size](docs/images/feature-font-size.png)
+
+#### Themes
+
+`SyntaxTheme` carries the text palette *and* the surfaces painted over it—background, gutter, caret, selection, markers, lists, tooltips, bulb and the preview ghost—so a dark editor has no white box left in it.
+
+![The editor in the dark theme](docs/images/feature-dark-theme.png)
+
+#### Representations
+
+A concept can be drawn more than one way. Here the same ruleset is read as a table; the choice is view state, never model state, and a shown slot keeps its natural address so caret, selection, hit test and undo need no knowledge of variants.
+
+![The same ruleset rendered as a table](docs/images/feature-table-view.png)
+
+*A table is not a rearrangement of lines: a column names a slot of the row concept rather than a cell, which allows rows of different concepts that declare the same slot to share a grid.*
 
 ---
 
@@ -275,6 +356,7 @@ dotnet test
 - **SDK Pinned:** `global.json` pins SDK **10.0.403** with `rollForward: latestFeature`. Do not remove it.
 - **Central Package Management:** Properties live in `Directory.Build.props`, package versions in `Directory.Packages.props`.
 - **Testing:** Powered by xunit.v3 on Microsoft.Testing.Platform (`tests\Projectional.Core.Tests\bin\Debug\net10.0\Projectional.Core.Tests.exe`).
+- **Screenshots:** `dotnet run --project tools/Projectional.Screenshots` rewrites every PNG in `docs/images` from the shipping control, so the gallery above cannot drift from what the editor draws.
 
 ---
 
