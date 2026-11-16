@@ -16,21 +16,20 @@ produces something usable, and no milestone depends on a later one being finishe
 
 ## Next
 
-**Quick fixes** are in delivery: the model, the apply step, one real check, the two gestures, the
-submenu, the tooltip line and list navigation are done
-([quick-fixes.md](architecture/quick-fixes.md)). What is left is the painted list of several
-repairs (slice Q8) and the light bulb (slice Q6). They go first because diagnostics already exist
-and nothing yet makes them actionable, and because they give the planned intention list a second
-source to be designed against instead of a single one to be guessed from.
+**Quick fixes are delivered** ([quick-fixes.md](architecture/quick-fixes.md)): the fix model, the
+apply step as one undo step, two real checks, `Alt+Enter`/`Ctrl+.` with its three answers, the
+keyboard-navigable list, the context-menu submenu, the tip line, the painted popup and the bulb in
+the margin. What is left of that plan is slice Q7, the standard-check catalogue as a package a
+language includes - an extension of the catalogue rather than a gap in the feature.
 
-Immediately after them, a **two-pixel gap between the gutter and the page**
-([line-numbers.md](architecture/line-numbers.md), section "A gap between the gutter and the page"):
-a readability fix that is deliberately last in that queue, because it moves the number the caret,
-the markers and the hit test all derive from.
+The **two-pixel gap between the margin and the page** landed with it
+([line-numbers.md](architecture/line-numbers.md)), because the bulb made the margin a sum of two
+occupants and both numbers had to be settled at once.
 
-Then **concept descriptions** ([concept-descriptions.md](architecture/concept-descriptions.md),
+Next is **concept descriptions** ([concept-descriptions.md](architecture/concept-descriptions.md),
 slices D1 to D5): the sentence a language writes about a concept, shown on hover over a node and
-beside the completion entry that offers it.
+beside the completion entry that offers it. D1 and D2 are pure library work and D3 is the only slice
+that needs a window.
 
 Folding stays the last M1 item and resumes afterwards; the constraint engine that will produce
 diagnostics in volume stays where it is, in M4.
