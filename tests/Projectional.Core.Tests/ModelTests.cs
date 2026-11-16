@@ -32,6 +32,68 @@ public sealed class ModelTests
     }
 
     [Fact]
+    public void AChildCanBeCreatedAtAPositionRatherThanAtTheEnd()
+    {
+        // "Another thing here" means here: appending would put what the user just made at the far end of a list
+        // they were not looking at.
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+
+        var first = model.NewChild(body, "steps", TestLanguage.Step);
+        var third = model.NewChild(body, "steps", TestLanguage.Step);
+
+        var second = model.NewChildAt(body, "steps", 1, TestLanguage.Step);
+
+        Assert.Equal([first, second, third], body.GetChildren("steps"));
+        Assert.Equal(1, second.IndexInParent);
+        Assert.Equal(2, third.IndexInParent);
+    }
+
+    [Fact]
+    public void CreatingAChildAtAPositionIsOneUndoStep()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+        var first = model.NewChild(body, "steps", TestLanguage.Step);
+
+        model.NewChild(body, "steps", TestLanguage.Step);
+
+        var changes = new List<IModelChange>();
+
+        model.Changed += (_, e) => changes.AddRange(e.Changes);
+
+        var inserted = model.NewChildAt(body, "steps", 1, TestLanguage.Step);
+
+        var added = Assert.Single(changes);
+
+        Assert.Equal(inserted.Id, Assert.IsType<NodeAdded>(added).Target);
+        Assert.Equal(1, Assert.IsType<NodeAdded>(added).Index);
+    }
+
+    [Fact]
+    public void APositionPastTheEndAppends()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+
+        model.NewChild(body, "steps", TestLanguage.Step);
+
+        var appended = model.NewChildAt(body, "steps", 99, TestLanguage.Step);
+
+        Assert.Equal(1, appended.IndexInParent);
+    }
+
+    [Fact]
+    public void ANegativePositionIsRefused()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => model.NewChildAt(body, "steps", -1, TestLanguage.Step));
+        Assert.Empty(body.GetChildren("steps"));
+    }
+
+    [Fact]
     public void AFailedNewChildLeavesNoOrphanBehind()
     {
         var model = TestLanguage.NewModel();
