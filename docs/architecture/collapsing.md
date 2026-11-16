@@ -255,8 +255,10 @@ never from the number of the line - the two columns stay independent.
 - a hit toggles and sets `Handled`;
 - a miss falls through, so `CaretAt` still returns `null` and a gutter press is still "nothing".
 
-Hovering a twisty sets `Cursor = Hand` and clears it on the way out, reusing the hover handling
-that marker tooltips already need.
+Hovering a twisty sets `Cursor = Hand`, which
+[editing.md](editing.md) now states once for the whole surface: the bulb and the twisty are the two
+things a press acts on, so the control resolves the shape from both of them in one place, and
+clears it to an arrow over the numbers and to an I-beam over the page.
 
 ### The marks
 

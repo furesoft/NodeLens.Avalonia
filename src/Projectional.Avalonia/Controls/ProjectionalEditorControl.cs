@@ -151,9 +151,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private IReadOnlyList<FoldMark>? _foldMarks;
     private CellLayout? _foldMarksOf;
     private CollapsedNodeSet? _foldMarksSet;
-    private NodeId? _hoverFold;
     private bool _bulbOffered;
     private (CellLayout Layout, CaretPosition Caret, MarkerSet Markers, FixSet Fixes)? _bulbOf;
+
+    // The pointer shape this control last asked for, kept as the shape rather than as a Cursor so that a
+    // move which does not change it sets no property and allocates nothing. Only a crossing allocates, which
+    // is also how the fold arrow's hand behaved before there were two targets.
+    private StandardCursorType _pointer = StandardCursorType.Ibeam;
 
     // The type is MarkerPalette; the property below cannot carry that name, because an instance member
     // shadows a type of the same name everywhere inside this class.
@@ -243,7 +247,8 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         // The whole surface is text the user can type into, so the pointer says so everywhere on it -
         // the arrow would read as "this is a panel you look at" rather than "this is where you write".
-        Cursor = new Cursor(StandardCursorType.Ibeam);
+        // Which of the three shapes is in force is decided per pointer move; this is the resting one.
+        Cursor = new Cursor(_pointer);
     }
 
     /// <summary>
@@ -1551,7 +1556,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         if (!_dragging || _dragAnchor is not { } anchor)
         {
             UpdateHover(e.GetPosition(this));
-            UpdateFoldCursor(e.GetPosition(this));
+            UpdatePointer(session, e.GetPosition(this));
 
             return;
         }
@@ -1608,24 +1613,70 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         InvalidateVisual();
     }
 
-    /// <summary>Shows a hand over a fold arrow, because that is the one thing in the margin that is a target.</summary>
+    /// <summary>Picks the pointer shape for <paramref name="point"/>, which is a hand over anything a press acts on.</summary>
+    /// <param name="session">The document under the pointer.</param>
     /// <param name="point">Where the pointer is, in control pixels.</param>
     /// <remarks>
-    /// The pointer over a number stays an arrow: nothing there reacts to a press, and a hand would promise
-    /// something the gutter does not do.
+    /// <para>
+    /// The bulb and a fold arrow are the two things a press acts on, so they are the two shapes that promise
+    /// something: a hand says "this is a target" where an I-beam would say "this is text". The bulb needs
+    /// this most, because it sits in the margin beside the page - the same margin whose numbers and blank
+    /// space do nothing - so without a distinct pointer the only thing telling the user the glyph is a
+    /// button is the colour of a circle.
+    /// </para>
+    /// <para>
+    /// The gutter itself stays an arrow: nothing there reacts to a press, and a hand would promise
+    /// something the numbers do not do. Everything right of the gutter is the page and stays an I-beam,
+    /// since that is where the user writes.
+    /// </para>
     /// </remarks>
-    private void UpdateFoldCursor(Point point)
+    private void UpdatePointer(EditorSession session, Point point)
     {
-        var mark = FoldAt(point);
+        var shape = PointerShapeAt(session, point);
 
-        if (mark?.Node == _hoverFold)
+        if (shape == _pointer)
         {
             return;
         }
 
-        _hoverFold = mark?.Node;
-        Cursor = mark is null ? Cursor.Default : new Cursor(StandardCursorType.Hand);
+        _pointer = shape;
+        Cursor = new Cursor(shape);
     }
+
+    /// <summary>Which pointer shape <paramref name="point"/> deserves.</summary>
+    /// <param name="session">The document under the pointer.</param>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    /// <remarks>
+    /// The order is the one the press path uses: a target wins over the margin it sits in, and the page
+    /// only answers once neither target is under the pointer.
+    /// </remarks>
+    private StandardCursorType PointerShapeAt(EditorSession session, Point point)
+    {
+        if (IsTarget(session, point))
+        {
+            return StandardCursorType.Hand;
+        }
+
+        return point.X < GutterWidth ? StandardCursorType.Arrow : StandardCursorType.Ibeam;
+    }
+
+    /// <summary>Whether a press at <paramref name="point"/> would do something.</summary>
+    /// <param name="session">The document under the pointer.</param>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    /// <remarks>
+    /// <para>
+    /// Both questions are asked of the same geometry the paint and the press use, so the shape under the
+    /// pointer cannot disagree with what is drawn there or with what a click would reach.
+    /// </para>
+    /// <para>
+    /// The gutter test comes first because both targets are in the margin and the pointer spends its life on
+    /// the page: finding the bulb resolves the caret's cell and its text through the layout, which is work a
+    /// move over ordinary text must not pay for.
+    /// </para>
+    /// </remarks>
+    private bool IsTarget(EditorSession session, Point point) =>
+        point.X < GutterWidth
+        && ((BulbOnScreen(session) is { } bulb && bulb.Contains(point)) || FoldAt(point) is not null);
 
     /// <summary>The fold arrow under <paramref name="point"/>, if the point is in the twisty column.</summary>
     /// <param name="point">Where the pointer is, in control pixels.</param>
@@ -2214,6 +2265,35 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         return _bulbOffered;
     }
 
+    /// <summary>Where the bulb is on screen right now, or <see langword="null"/> when none is on it.</summary>
+    /// <param name="session">The document whose caret the bulb belongs to.</param>
+    /// <remarks>
+    /// <para>
+    /// One answer for three questions - what is painted, what a press reaches and what shape the pointer
+    /// takes - so the three can never describe different rectangles. <see cref="BulbOffered"/> is part of
+    /// it rather than the caller's business: the margin is reserved whether or not the caret has something
+    /// to offer, so this is the only statement of "there is a bulb there".
+    /// </para>
+    /// <para>
+    /// A bulb scrolled out of the viewport is neither painted nor clickable, which is why the viewport test
+    /// is here and not in the painter.
+    /// </para>
+    /// </remarks>
+    private Rect? BulbOnScreen(EditorSession session)
+    {
+        if (!ShowBulb
+            || !BulbOffered(session)
+            || QuickFixBulb.BoundsOf(session.Tree, session.Layout, session.Selection.Caret, session.Measure)
+                is not { } bulb)
+        {
+            return null;
+        }
+
+        var bounds = new Rect(bulb.X + GutterWidth, bulb.Y - _offsetY, bulb.Width, bulb.Height);
+
+        return bounds.Bottom <= 0 || bounds.Y >= Bounds.Height ? null : bounds;
+    }
+
     /// <summary>Paints the bulb in the margin, level with the caret's line.</summary>
     /// <remarks>
     /// Two primitives rather than a glyph from a font: the bulb must not change the width the measure
@@ -2222,20 +2302,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// </remarks>
     private void PaintBulb(DrawingContext context, EditorSession session)
     {
-        if (!ShowBulb || !BulbOffered(session))
-        {
-            return;
-        }
-
-        if (QuickFixBulb.BoundsOf(session.Tree, session.Layout, session.Selection.Caret, session.Measure)
-            is not { } bulb)
-        {
-            return;
-        }
-
-        var bounds = new Rect(bulb.X + GutterWidth, bulb.Y - _offsetY, bulb.Width, bulb.Height);
-
-        if (bounds.Bottom <= 0 || bounds.Y >= Bounds.Height)
+        if (BulbOnScreen(session) is not { } bounds)
         {
             return;
         }
@@ -2260,16 +2327,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// </remarks>
     private bool ClickBulb(EditorSession session, Point point)
     {
-        if (!ShowBulb
-            || QuickFixBulb.BoundsOf(session.Tree, session.Layout, session.Selection.Caret, session.Measure)
-                is not { } bulb)
-        {
-            return false;
-        }
-
-        var bounds = new Rect(bulb.X + GutterWidth, bulb.Y - _offsetY, bulb.Width, bulb.Height);
-
-        if (!bounds.Contains(point))
+        if (BulbOnScreen(session) is not { } bounds || !bounds.Contains(point))
         {
             return false;
         }

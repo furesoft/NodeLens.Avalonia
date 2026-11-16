@@ -244,6 +244,14 @@ The four surfaces are delivered in dependency order, and only the last one needs
    Since slice C of [context-actions.md](context-actions.md) it asks `IntentionList.For(session)`, so a
    language's intention lights the bulb exactly as a finding's repair does.
 
+   The bulb is a target, so the pointer says so: hovering it sets `Cursor` to `Hand`, exactly as a fold
+   twisty does, and the control resolves both from the one place that also answers the press
+   (`BulbOnScreen(session)`, `FoldAt(point)`). That matters more here than in the twisty column, because
+   the bulb shares its margin with the row numbers and their blank space, neither of which reacts to a
+   press - without a distinct shape the only sign that the glyph is a button is the colour of a circle.
+   The rest of the gutter stays an arrow and the page stays an I-beam, which is what
+   [editing.md](editing.md) promises for the surface as a whole.
+
 The tooltip closes an open thread at the same time. [markers.md](markers.md) said the tip does not
 promise a fix it cannot deliver - the severity, the message and the code, and nothing else. With fixes
 existing, the tip gained that line: `1 quick fix - Alt+Enter` or the plural, and nothing at all for a
