@@ -7,8 +7,9 @@ rule turned into a table row - it is the only honest answer, because the questio
 like" has no good sentence.
 
 Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder) and the headless half of V4 (the
-marks and the badge) are delivered; the ghost frame, the wiring and the sample previews are what is left. The decision it rests on is
+slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder) and the headless part of V4 (the
+marks, the badge, the frame and the anchor) are delivered; painting the frame, restoring the page and the sample
+previews are what is left. The decision it rests on is
 [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
 This document reverses a decision that was recorded twice: [context-actions.md](context-actions.md) and
@@ -113,6 +114,14 @@ The marks and the badge are headless, and they are where the mapping lives - a d
 - **`PreviewBadge.Of(label, marks)`** owns the sentence, because it is user-facing text with grammar in it:
   one kind of change reads as a total ("4 changes"), several are broken down ("2 added, 3 removed"), and
   one change is singular. The label is the entry's own, so the badge cannot disagree with the list.
+- **`GhostFrame.Build(sandbox, marks, label, viewport, offsetX, offsetY)`** is the frame a host paints: the
+  copy's text runs, the marks to look up per run, and the badge. It takes the **live page's offsets**, which is
+  what anchors the preview to the line the user is looking at, and it carries **no caret and no selection** - a
+  preview is not editable and must not look as if the document had a caret somewhere else.
+- **"Unchanged" is not a mark, it is the absence of one.** `GhostFrame.IsDimmed(run)` is true exactly when no
+  mark names that cell, which is the rule "the marks read first" written as code rather than as a palette
+  decision. `PreviewMarks.ChangeAt(address)` is the indexed lookup behind both, and the first mark for an
+  address wins - every removal out of one slot names that slot's cell.
 
 **Removals are the hard case** and the plan is deliberately modest: the removed text has no position in
 the preview layout, so it is *named* rather than drawn in place. A struck-through band would require
@@ -197,7 +206,7 @@ property of its implementation.
 | V1 ✓ | `feat/model-copy-and-diff` | M3 | `Model.CopyTo(Project)` (ids preserved) and `ModelDiff` by node id - added, removed, moved, property changed - with a snapshot-equality test and diff tests |
 | V2 ✓ | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
 | V3 ✓ | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewStage`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
-| V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe. The marks and the badge landed first, headless, in `feat/preview-marks` |
+| V4 | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and exact restore of scroll and selection; verified with a probe. Marks and badge landed in `feat/preview-marks`, the frame and the anchor in `feat/preview-ghost`; what is left of V4 is the painting and the restore, which need the control |
 | V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, draw the ghost, and dismiss on every documented event |
 | V6 | `feat/preview-sample` | M3 | previews for the sample intentions: rename in `Projectional.Samples`, wrap-in-parentheses and negate in `Projectional.Expressions` |
 
@@ -217,6 +226,7 @@ policy for the ghost.
 | budget | above the node budget no preview runs; a preview that overruns the clock is abandoned |
 | timing | the ladder with a fake clock: tooltip at 300, preview at 700, cancelled by leave, by close, by a model change; the grace period - `PreviewStateTests`, plus `PreviewDelayTests` for the numbers themselves |
 | marks | `PreviewMarksTests`: an added node marks the cells it owns, a rewritten property marks its own cell with the old value, a removal marks the slot it left, the budget truncates and counts, an undrawn difference is counted and not marked - `PreviewBadgeTests` for the grammar |
+| frame | `GhostFrameTests`: the ghost draws the copy and not the page, a touched cell is not dimmed while every other one is, a wrapper marks its own text, the badge says what happened, and the ghost takes the page's (clamped) offset instead of choosing its own view |
 | wiring | `Avalonia.Headless.XUnit` once it exists, with a probe standing in until then: the ghost replaces the page, the badge counts, `Esc` restores |
 
 ## Open questions

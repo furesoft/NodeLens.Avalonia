@@ -36,6 +36,8 @@ public sealed class PreviewMarks
     /// </remarks>
     public const int CellBudget = 2_000;
 
+    private readonly Dictionary<CellAddress, CellChange> _byAddress = [];
+
     private PreviewMarks(
         IReadOnlyList<CellChange> changes,
         int added,
@@ -48,6 +50,14 @@ public sealed class PreviewMarks
         Changed = changed;
         Removed = removed;
         Truncated = truncated;
+
+        // A ghost asks "what happened to this cell" once per run, so the answer is indexed rather than scanned.
+        // Several marks can share one address - every removal out of one slot names that slot's cell - and the
+        // first one wins, because that is the outermost thing that happened there.
+        foreach (var change in changes)
+        {
+            _byAddress.TryAdd(change.Address, change);
+        }
     }
 
     /// <summary>The marks to draw, in document order of the ghost.</summary>
@@ -67,6 +77,15 @@ public sealed class PreviewMarks
 
     /// <summary>Whether the edit changed nothing at all.</summary>
     public bool IsEmpty => Added == 0 && Changed == 0 && Removed == 0;
+
+    /// <summary>What happened to the cell at <paramref name="address"/>, or <see langword="null"/> if nothing.</summary>
+    /// <param name="address">The cell to ask about.</param>
+    /// <remarks>
+    /// The question a renderer asks once per run, which is why it is indexed. <see langword="null"/> is not
+    /// "no information": it is the answer "this cell is unchanged", and that is what makes it dimmed.
+    /// </remarks>
+    public CellChange? ChangeAt(CellAddress address) =>
+        _byAddress.TryGetValue(address, out var change) ? change : null;
 
     /// <summary>The marks for <paramref name="diff"/>, resolved against the ghost's tree.</summary>
     /// <param name="diff">What the edit did, as node differences.</param>
