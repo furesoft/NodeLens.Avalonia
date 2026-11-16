@@ -276,6 +276,18 @@ Keeping the built-in icons as geometry is what lets the repository ship **no bin
 them — no licence question, no per-DPI variant, no file that has to be copied to output — while
 a host is free to use pictures instead.
 
+## A description beside the entry
+
+A concept may carry one sentence about itself
+([concept-descriptions.md](concept-descriptions.md),
+[ADR 0018](../adr/0018-concept-description-is-language-data.md)), and the completion list is its
+second reader: `CompletionItem.Description` is resolved from the registry when the item is built,
+and the presenter paints the **selected** entry's description as a dimmed line under the list.
+
+That is why the text belongs to the concept rather than to the hover tip: two surfaces read one
+field and a language author writes it once. The line is absent - not blank - when the concept
+declares nothing, and it never changes a row's height, so the row hit test is unaffected.
+
 ## Filling the slot
 
 `AcceptCompletionAction` is the only completion gesture that changes the model. For a concept it

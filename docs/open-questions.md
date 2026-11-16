@@ -198,6 +198,19 @@ choices rather than mechanics.
 | 67 | Is the model list flat, or can a host supply a hierarchy? | Open | Flat for the first slice: `IShellStorage` returns a list, and a project with a folder hierarchy of models is a real need only once a host has hundreds. A second interface (`IShellModelTree`) can be added without changing the shell, but not removed later. | E4 |
 | 68 | Who remembers the last active document? | Leaning | The host, through `ShellOptions.InitialModel` and a shell event; the shell persists nothing. It is the same rule as recent files: state that outlives the process belongs to whoever owns the process. | E4 |
 
+## Concept descriptions
+
+A concept carries one sentence of documentation, shown on hover and beside the completion entry
+([concept-descriptions.md](architecture/concept-descriptions.md),
+[ADR 0018](adr/0018-concept-description-is-language-data.md)). Where it lives is decided; how it is
+shown is not.
+
+| # | Question | State | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 79 | Does a hover show only the node's own concept description, or the whole ancestry? | Open | Own concept only, and offer the ancestry as a second line only if a real language asks. An inherited sentence describes a base the user cannot see, and a list of five ancestors is a worse tooltip than one accurate sentence. | D3 |
+| 80 | Is the tip's heading the concept key (`Rules.Rule`) or a friendly label (`Rule`)? | Leaning | The key. The notation never shows it, and a language author reading a tip needs the name they can grep for; a label is friendlier for the language's user but leaves the author guessing which concept they are looking at. A short label can become a second line once a language declares one. | D3 |
+| 81 | Should a slot carry its own description? | Open | Not in D1. A slot is already named in the notation (`condition`), so the marginal value is smaller than for a concept, and it doubles the declaration surface. Revisit when a language has a slot whose name does not explain it. | D5 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
@@ -237,5 +250,6 @@ Listed here so they are not reopened accidentally; the authoritative text is the
 | Shell | a library a host composes, lockable to one language | [0015](adr/0015-shell-is-a-library.md) |
 | Quick fixes | edits a host supplies, applied by the session as one undo step | [0016](adr/0016-quick-fixes-are-edits-a-host-supplies.md) |
 | Intention preview | a projection of a discarded edit, never a second description | [0017](adr/0017-preview-is-a-discarded-edit.md) |
+| Concept descriptions | language data on the concept, never per node, never inherited | [0018](adr/0018-concept-description-is-language-data.md) |
 | Execution | interpreter *and* text generation | ADR to be written (M4) |
 | Pilot DSL | rule/decision tables | ADR to be written (M4) |

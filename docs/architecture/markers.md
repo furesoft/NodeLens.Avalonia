@@ -326,6 +326,16 @@ Ordering for `F8` is document order of the markers' first line, then severity de
 one position. A document-order walk is what a user can predict; sorting by severity first
 teleports around the file.
 
+### One tip at a time
+
+A second tooltip is planned: hovering a node shows its concept's description
+([concept-descriptions.md](concept-descriptions.md)). It reuses `MarkerTip.Place`, so both boxes
+flip and clamp the same way, and it never competes for the pointer - **the marker wins**. A wave is
+a specific finding at a specific place and the description is ambient, so a pointer over a marker
+band shows the finding and suppresses the description. The description's hover also carries a delay
+and this one does not, for the same reason: a wave is a shape a user aims at, ordinary text is what
+the pointer crosses on its way somewhere else.
+
 ## Where markers come from, and when
 
 M4. Until constraints exist there is nothing to report, so the feature arrives in slices that

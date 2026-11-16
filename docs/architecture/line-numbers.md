@@ -125,6 +125,30 @@ surface of its own should not get a second shade reading as a panel next to the 
 standalone shell sets both from `SyntaxTheme.Gutter` / `SyntaxTheme.LineNumber`, so the dark
 theme does not paint grey numbers on a dark page.
 
+## A gap between the gutter and the page
+
+Planned, and small: **two device pixels** of blank between the right edge of the gutter and the
+first column of text, so a row number does not touch the document it labels.
+
+The gap is **chrome, not layout**, so it is added to `GutterWidth` and nowhere else:
+
+```csharp
+public double GutterWidth => _showLineNumbers
+    ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None))
+      + (2 * GutterGap) + PageMargin
+    : 0;
+```
+
+`GutterWidth` is the page's left edge: painting translates by `gutter - offsetX`, and both the
+marker band hit test and the hover conversion translate back with `point.X - gutter + offsetX`. A
+gap introduced anywhere else - inside the page transform, as a spacer cell, or as padding on the
+control - would move the painted text without moving the rectangles that the caret, the markers
+and the hit test are computed from, and the symptom would be a caret that is two pixels off near
+the gutter. Adding it to `GutterWidth` keeps one number for "where the page starts".
+
+It applies **only while the gutter is shown**. With `ShowLineNumbers` off there is no gutter to
+separate from, so the page starts at the control's own edge and `GutterWidth` stays `0`.
+
 ## What this is not
 
 - **No current-row highlight, no breakpoint margin, no click to select a row.** Each of those is

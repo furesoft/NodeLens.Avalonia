@@ -50,6 +50,27 @@ would otherwise have no way to produce a literal at all. The flag is per declara
 like `isAbstract`, is not inherited: a language whose literals descend from a shared base
 repeats it on each one. See [completion.md](completion.md) for the query that applies it.
 
+## Concept descriptions
+
+A concept may declare one sentence about itself, which the editor shows on hover over a node of
+that concept and beside the completion entry that offers it
+([concept-descriptions.md](concept-descriptions.md),
+[ADR 0018](../adr/0018-concept-description-is-language-data.md)):
+
+```csharp
+new ConceptDeclaration(
+    "Rules.Rule",
+    slots: [...],
+    nameSlot: RulesLanguage.NameSlot,
+    description: "One rule of a ruleset: a name, an optional condition and an outcome.")
+```
+
+The text is **language data, not model data and not a designated slot**: it is not persisted per
+node, creates no undo step, and is not inherited - a super concept's sentence describes the super
+concept, not the node the user is looking at. It is trimmed at declaration and an empty one becomes
+`null`, so "declared nothing" and "declared a blank" are the same state and a language cannot ship
+a tip that shows nothing. `null` is also the default, so no existing language changes.
+
 ## The two designated slots
 
 A concept may nominate one of its own properties as carrying a framework-wide meaning. There
