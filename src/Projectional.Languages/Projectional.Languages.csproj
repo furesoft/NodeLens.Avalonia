@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Editors\Projectional.Editors.csproj" />
+    <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
+    <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Projectional.Core.Tests" />
+  </ItemGroup>
+
+</Project>

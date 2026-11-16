@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />

@@ -8,6 +8,7 @@
     <Project Path="src/Projectional.Editors/Projectional.Editors.csproj" />
     <Project Path="src/Projectional.Expressions.Intentions/Projectional.Expressions.Intentions.csproj" />
     <Project Path="src/Projectional.Language/Projectional.Language.csproj" />
+    <Project Path="src/Projectional.Languages/Projectional.Languages.csproj" />
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
     <Project Path="src/Projectional.Projection/Projectional.Projection.csproj" />
     <Project Path="src/Projectional.Samples/Projectional.Samples.csproj" />

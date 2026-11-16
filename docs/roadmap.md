@@ -104,7 +104,7 @@ first.*
 | Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable; **delivered** as C2 ([language-parity.md](architecture/language-parity.md)) |
 | Language template | `dotnet new projectional-language`, plus the `Projectional.Toolkit` surface a package needs |
 | Tables | grid cell, column sizing, cell caret, add-row affordance |
-| Language loading | declared languages from the project directory |
+| Language loading | declared languages from the project directory - a folder of `structure.mps` + `editor.mps` loads as a usable language ([language-projects.md](architecture/language-projects.md)); the app-side picker is what is left |
 | Shell grows | model browser, problems panel, find/replace, recent projects, self-contained single-file build |
 
 **Gate:** a small DSL (including a table) is defined entirely in project files and is

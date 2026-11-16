@@ -338,7 +338,7 @@ shippable at the end of each, and so that the parity test exists before the seco
 | C2 ✓ | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage` - delivered, see [language-parity.md](language-parity.md) |
 | P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B, provisional shape): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 ✓ | `feat/declared-editor` | M2 | `Projectional.Editors` (stage B): notation as nodes, lowering into `Notation` - delivered, see [declared-editor.md](declared-editor.md) |
-| P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages |
+| P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)) |
 | P4 | `feat/structure-notation` | M5 | `Projectional.Structures` with its *own* notation - `concept`, `<<property>>`, cardinalities - replacing the provisional form |
 | P5 | `feat/editor-notation` | M5 | `Projectional.Editor` with its own notation - the cell glyphs - and the table variant |
 | P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
