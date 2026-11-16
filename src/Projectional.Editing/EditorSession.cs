@@ -108,6 +108,22 @@ public sealed class EditorSession : IDisposable
     /// <summary>The node being edited.</summary>
     public Node Document { get; }
 
+    /// <summary>The notation the document is projected with.</summary>
+    /// <remarks>
+    /// Public because a second projection of the same model has to be built from the same vocabulary - the
+    /// preview sandbox copies the document and projects it again, and a sandbox that guessed the notation would
+    /// draw a different document from the one being previewed.
+    /// </remarks>
+    public NotationRegistry Notations => _notations;
+
+    /// <summary>What decorates the model beyond its notation, or <see langword="null"/> for nothing.</summary>
+    /// <remarks>
+    /// Exposed for the same reason as <see cref="Notations"/>: a second session over a copy of this document
+    /// has to decorate it the same way, or the ghost would show a document that reads differently from the
+    /// page it replaces.
+    /// </remarks>
+    public ICellEmphasis? Emphasis => _emphasis;
+
     /// <summary>How text is measured.</summary>
     /// <remarks>
     /// <para>

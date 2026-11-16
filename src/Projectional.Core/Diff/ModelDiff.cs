@@ -37,7 +37,7 @@ public static class ModelDiff
         var later = Index(after);
         var differences = new List<NodeDifference>();
 
-        foreach (var node in Walk(after))
+        foreach (var node in after.Nodes)
         {
             if (earlier.TryGetValue(node.Id, out var was) && SameConcept(was, node))
             {
@@ -53,7 +53,7 @@ public static class ModelDiff
                 After: NodePlace.Of(node)));
         }
 
-        foreach (var node in Walk(before))
+        foreach (var node in before.Nodes)
         {
             if (!later.TryGetValue(node.Id, out var now) || !SameConcept(now, node))
             {
@@ -140,40 +140,6 @@ public static class ModelDiff
         NodePlace.Of(node),
         OldValue: node.Name);
 
-    /// <summary>Every node of one model, in document order: each root, then its whole subtree.</summary>
-    /// <remarks>
-    /// The roots of the model rather than the project's node index: a project holds several models, and a diff
-    /// that walked the index would report nodes of documents that are not being compared.
-    /// </remarks>
-    private static IEnumerable<Node> Walk(Model model)
-    {
-        foreach (var root in model.Roots)
-        {
-            foreach (var node in SelfAndDescendants(root))
-            {
-                yield return node;
-            }
-        }
-    }
-
-    /// <summary>One node, then everything below it, depth first.</summary>
-    /// <remarks>
-    /// <see cref="Node.ChildrenInDocumentOrder"/> answers with the direct children only, so the descent is
-    /// explicit - the same shape <see cref="EditorSession"/> uses to find a node by id.
-    /// </remarks>
-    private static IEnumerable<Node> SelfAndDescendants(Node node)
-    {
-        yield return node;
-
-        foreach (var child in node.ChildrenInDocumentOrder())
-        {
-            foreach (var descendant in SelfAndDescendants(child))
-            {
-                yield return descendant;
-            }
-        }
-    }
-
     private static Dictionary<NodeId, Node> Index(Model model) =>
-        Walk(model).ToDictionary(node => node.Id);
+        model.Nodes.ToDictionary(node => node.Id);
 }
