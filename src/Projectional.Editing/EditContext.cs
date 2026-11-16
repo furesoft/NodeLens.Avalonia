@@ -286,13 +286,22 @@ public sealed class EditContext
     /// Puts <paramref name="node"/> inside a new node of <paramref name="wrapperConceptKey"/> and
     /// <paramref name="wrapperSlot"/>, keeping its identity.
     /// </summary>
+    /// <param name="node">The node to surround.</param>
+    /// <param name="wrapperConceptKey">The concept of the node to create around it.</param>
+    /// <param name="wrapperSlot">The single-child slot of that concept which receives the node.</param>
+    /// <param name="presets">Values the wrapper is born with, or <see langword="null"/> for none.</param>
     /// <exception cref="EditingException"><paramref name="node"/> is not in the session's model.</exception>
     /// <remarks>
     /// A wrap is a structural move, so it goes through the model's own operation rather than being
     /// assembled here out of a create and a move: a single-valued slot cannot hold the node and its wrapper
-    /// at the same time, and the model is where that rule lives.
+    /// at the same time, and the model is where that rule lives. The presets travel with it for the same
+    /// reason - the wrapper's id does not exist until the wrap runs.
     /// </remarks>
-    public Node WrapChild(Node node, string wrapperConceptKey, string wrapperSlot)
+    public Node WrapChild(
+        Node node,
+        string wrapperConceptKey,
+        string wrapperSlot,
+        IReadOnlyDictionary<string, string>? presets = null)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
@@ -304,7 +313,7 @@ public sealed class EditContext
                 $"Node {node.Id} belongs to another model than the document being edited.");
         }
 
-        return node.Model.Wrap(node, wrapperConceptKey, wrapperSlot);
+        return node.Model.Wrap(node, wrapperConceptKey, wrapperSlot, presets);
     }
 
     private static Node? Find(Node node, NodeId id)

@@ -145,6 +145,71 @@ public sealed class WrapInActionTests
     }
 
     [Fact]
+    public void AWrapperCanBeBornWithTheValueThatMakesItWhatItMeans()
+    {
+        // "Negate" is a unary whose operator is "!", and the caller cannot write that afterwards because
+        // the wrapper's id does not exist until the wrap runs.
+        var (rule, body) = TestEditor.RuleWithBody();
+        var step = body.Model.NewChild(body, "steps", TestLanguage.Step);
+
+        using var session = TestEditor.Open(rule);
+
+        var result = session.Apply(new WrapInAction(
+            step.Id,
+            TestLanguage.Step,
+            "detail",
+            new Dictionary<string, string> { ["text"] = "negated" }));
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+
+        var wrapper = Assert.Single(body.GetChildren("steps"));
+
+        Assert.Equal("negated", wrapper.GetOrNull("text"));
+        Assert.Same(step, wrapper.GetChild("detail"));
+        Assert.Null(step.GetOrNull("text"));
+    }
+
+    [Fact]
+    public void APresetTheWrapperDoesNotDeclareIsRefusedBeforeAnythingMoves()
+    {
+        var (rule, body) = TestEditor.RuleWithBody();
+        var step = body.Model.NewChild(body, "steps", TestLanguage.Step);
+
+        using var session = TestEditor.Open(rule);
+
+        var result = session.Apply(new WrapInAction(
+            step.Id,
+            TestLanguage.Step,
+            "detail",
+            new Dictionary<string, string> { ["nonsense"] = "x" }));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+
+        // The node never left its place, which is what validating first buys.
+        Assert.Same(step, Assert.Single(body.GetChildren("steps")));
+        Assert.Same(body, step.Parent);
+        Assert.False(session.History.CanUndo);
+    }
+
+    [Fact]
+    public void APresetOfTheWrongTypeIsRefused()
+    {
+        var (rule, body) = TestEditor.RuleWithBody();
+        var step = body.Model.NewChild(body, "steps", TestLanguage.Step);
+
+        using var session = TestEditor.Open(rule);
+
+        var result = session.Apply(new WrapInAction(
+            step.Id,
+            TestLanguage.Step,
+            "detail",
+            new Dictionary<string, string> { ["index"] = "not a number" }));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Same(step, Assert.Single(body.GetChildren("steps")));
+    }
+
+    [Fact]
     public void TheActionNamesTheNodeAndTheWrapper()
     {
         Assert.Throws<ArgumentException>(() => new WrapInAction(NodeId.Empty, TestLanguage.Step, "detail"));

@@ -27,6 +27,7 @@ public sealed class WrapInAction : EditAction
     private readonly NodeId _node;
     private readonly string _wrapperConcept;
     private readonly string _wrapperSlot;
+    private readonly IReadOnlyDictionary<string, string>? _presets;
 
     /// <summary>Surrounds <paramref name="node"/> with a new node of <paramref name="wrapperConceptKey"/>.</summary>
     /// <param name="node">The node to surround, which keeps its identity and stays in its own place.</param>
@@ -35,11 +36,24 @@ public sealed class WrapInAction : EditAction
     /// The single-child slot of that concept which receives the node - <c>inner</c> for
     /// <c>Expressions.Parenthesized</c>.
     /// </param>
+    /// <param name="presets">
+    /// Values the wrapper is born with - <c>operator = "!"</c> for a negation - or <see langword="null"/>
+    /// when its defaults are the whole meaning.
+    /// </param>
+    /// <remarks>
+    /// A preset is not a second edit: the wrapper does not exist until the wrap runs, so its id cannot be
+    /// addressed beforehand. The values therefore travel with the wrap and are validated against the
+    /// wrapper's declarations before anything moves, which is what keeps "wrap in a negation" one undo step.
+    /// </remarks>
     /// <exception cref="ArgumentException">
     /// <paramref name="node"/> is empty, or <paramref name="wrapperConceptKey"/> or
     /// <paramref name="wrapperSlot"/> is not.
     /// </exception>
-    public WrapInAction(NodeId node, string wrapperConceptKey, string wrapperSlot)
+    public WrapInAction(
+        NodeId node,
+        string wrapperConceptKey,
+        string wrapperSlot,
+        IReadOnlyDictionary<string, string>? presets = null)
     {
         if (node.IsEmpty)
         {
@@ -52,6 +66,7 @@ public sealed class WrapInAction : EditAction
         _node = node;
         _wrapperConcept = wrapperConceptKey;
         _wrapperSlot = wrapperSlot;
+        _presets = presets;
     }
 
     /// <summary>The node that is surrounded.</summary>
@@ -62,6 +77,9 @@ public sealed class WrapInAction : EditAction
 
     /// <summary>The single-child slot of the wrapper that receives the node.</summary>
     public string WrapperSlot => _wrapperSlot;
+
+    /// <summary>The values the wrapper is born with, or <see langword="null"/> when it has none.</summary>
+    public IReadOnlyDictionary<string, string>? Presets => _presets;
 
     /// <inheritdoc/>
     /// <remarks>
@@ -109,7 +127,27 @@ public sealed class WrapInAction : EditAction
                 $"Concept '{_wrapperConcept}' has no slot that could hold a '{node.Concept.Key}'.");
         }
 
-        context.WrapChild(node, _wrapperConcept, _wrapperSlot);
+        if (_presets is not null)
+        {
+            foreach (var (presetSlot, value) in _presets)
+            {
+                if (wrapper.FindProperty(presetSlot) is not { } property)
+                {
+                    return EditResult.Rejected(
+                        selection,
+                        $"Concept '{_wrapperConcept}' declares no property named '{presetSlot}'.");
+                }
+
+                if (!property.Type.IsValid(value))
+                {
+                    return EditResult.Rejected(
+                        selection,
+                        $"\"{value}\" is not a valid {property.Type.Name} value for '{presetSlot}'.");
+                }
+            }
+        }
+
+        context.WrapChild(node, _wrapperConcept, _wrapperSlot, _presets);
 
         return EditResult.Applied(selection);
     }

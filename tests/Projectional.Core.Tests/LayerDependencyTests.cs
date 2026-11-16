@@ -48,6 +48,30 @@ public sealed class LayerDependencyTests
         Assert.Empty(violations);
     }
 
+    [Fact]
+    public void TheIntentionPackagesReachDownwardOnly()
+    {
+        // A language's intentions are behaviour beside the language, so the packages sit in the same band as
+        // the checks package: they may name the layers below them and never the control, the app or each
+        // other's languages.
+        foreach (var assembly in new[]
+        {
+            "Projectional.Expressions.Intentions.dll",
+            "Projectional.Samples.Intentions.dll",
+        })
+        {
+            var referenced = ReadAssemblyReferences(assembly);
+
+            Assert.Contains("Projectional.Editing", referenced);
+
+            var violations = referenced
+                .Where(name => name is "Projectional.Avalonia" or "Projectional.Workbench" or "Projectional.Checks")
+                .ToArray();
+
+            Assert.Empty(violations);
+        }
+    }
+
     private static string[] ReadAssemblyReferences(string assemblyFileName)
     {
         var path = Path.Combine(AppContext.BaseDirectory, assemblyFileName);

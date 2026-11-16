@@ -5,11 +5,13 @@
     <Project Path="src/Projectional.Core/Projectional.Core.csproj" />
     <Project Path="src/Projectional.Editing/Projectional.Editing.csproj" />
     <Project Path="src/Projectional.Expressions/Projectional.Expressions.csproj" />
+    <Project Path="src/Projectional.Expressions.Intentions/Projectional.Expressions.Intentions.csproj" />
     <Project Path="src/Projectional.Language/Projectional.Language.csproj" />
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
     <Project Path="src/Projectional.Projection/Projectional.Projection.csproj" />
     <Project Path="src/Projectional.Samples/Projectional.Samples.csproj" />
     <Project Path="src/Projectional.Samples.Checks/Projectional.Samples.Checks.csproj" />
+    <Project Path="src/Projectional.Samples.Intentions/Projectional.Samples.Intentions.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>
