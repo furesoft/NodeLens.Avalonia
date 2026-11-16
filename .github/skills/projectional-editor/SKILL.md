@@ -329,10 +329,13 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   then children, then references, and that rank *is* the concept's declaration order, which decides the default
   fill and the completion ranking. A definition that creates a reference before a property still declares the
   property first; do not sort by creation order or by name.
-- **Two parts of MPS' look are out of reach and must not be faked**: MPS shows `abstract` only when it is true
-  (a notation here is a fixed tree of cells - there are no conditional cells), and `instance can be root` / `alias`
-  exist in MPS but lower nowhere here, so ADR 0014's "nothing declared-only" keeps them out. The honest form is
-  `is abstract: false` always drawn.
+- **`abstract concept Rule`, not `is abstract: true`** - MPS' spelling, and a `ConditionalNotationCell` is what
+  makes it work: the word exists in the notation always and in the drawing only while the flag is true. A concrete
+  concept draws *nothing* there, not an empty cell, so the flag has no cell to type into - which is why toggling it
+  is an intention (`Projectional.Structures.Intentions`, `Make abstract`/`Make concrete`) and why the action behind
+  it is `SetNodePropertyAction` (node + slot) rather than the cell-addressed `SetPropertyAction`.
+- **One part of MPS' look is still out of reach and must not be faked**: `instance can be root` and `alias` exist
+  in MPS but lower nowhere here, so ADR 0014's "nothing declared-only" keeps them out.
 
 ### The parity rule is executed by three tests
 
@@ -397,9 +400,19 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   notation says exactly one thing at a time.
 - **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
   (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
-  `ChildNotationCell`, `CollectionNotationCell`, `LineNotationCell`, `SequenceNotationCell`,
-  `IndentNotationCell`, `SpaceNotationCell`) precisely so they cannot be confused with the
-  runtime cells `docs/architecture/projection.md` names (`ConstantCell`, `PropertyCell`, ...).
+  `ChildNotationCell`, `CollectionNotationCell`, `ConditionalNotationCell`, `LineNotationCell`,
+  `SequenceNotationCell`, `IndentNotationCell`, `SpaceNotationCell`) precisely so they cannot be
+  confused with the runtime cells `docs/architecture/projection.md` names (`ConstantCell`,
+  `PropertyCell`, ...).
+- **`ConditionalNotationCell` is the only cell that may draw nothing.** It holds a property name, the
+  text that property must equal, and inline cells; when the condition does not hold the builder emits
+  *no cells at all* for it. Never "fix" that into an empty or zero-width cell - a zero-width cell is a
+  caret stop on an address with no text. Two rules follow, and both bit on the first use:
+  **the condition is a property + value, never a delegate** (a delegate cannot be written into a notation
+  model, so the declared path would become weaker than C#), and **the gap belongs inside the conditional**
+  (`ed.Conditional(..., ed.Keyword("abstract"), ed.Space)`, or every drawing without the word starts with a
+  blank). `NotationRegistry` validates the slot is a property and the value is one its type accepts.
+  Inline only - a block conditional is the same idea one level up, when something needs it.
 - **Every slot-bearing cell has an `EmptyText`** (`<empty>`, `<none>`). Empty is never
   invisible: the caret needs something visible to attach to, and an empty list must stay
   fillable. Do not make it empty-string to "tidy up" a rendering.
@@ -836,9 +849,17 @@ path a keystroke takes.
 
 Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
 the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`:
-`Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
-(accept this rule). `docs/architecture/context-actions.md` carries the plan and the remaining slices
-(F onwards: preview, standard catalogue).
+`Projectional.Expressions.Intentions` (wrap in parentheses, negate), `Projectional.Samples.Intentions`
+(accept this rule) and `Projectional.Structures.Intentions` (make abstract / make concrete).
+`docs/architecture/context-actions.md` carries the plan and the remaining slices (F onwards: preview,
+standard catalogue).
+
+- **A value with no cell needs an action that names the node, not the cell.** `SetPropertyAction` addresses a
+  `CellAddress` and is right when the user can see the value; `SetNodePropertyAction` addresses a `NodeId` + slot
+  and is right for a value the drawing hides - behind a conditional (`abstract`), on a collapsed node, or in a
+  slot the notation leaves out. Both go through `EditContext.SetProperty`, so a bad value is refused identically.
+  `SetNodePropertyAction` must check `FindProperty` **before** reading `GetOrNull` - asking a node for the value
+  of a child slot throws `KeyNotFoundException`, which is exactly `Test.Rule`'s `body`.
 
 - **Some wrappers only mean something with a value, and the wrap has to carry it.** "Negate" is a `Unary`
   whose `operator` is `!`, and the caller cannot write that afterwards because the wrapper's id does not
@@ -1364,7 +1385,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1434 tests**; anything below that means tests were deleted.
+it. **Baseline is 1460 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Projectional.Samples\Projectional.Samples.csproj" />
     <ProjectReference Include="..\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
     <ProjectReference Include="..\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
+    <ProjectReference Include="..\Projectional.Structures.Intentions\Projectional.Structures.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
   </ItemGroup>
 

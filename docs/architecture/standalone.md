@@ -289,18 +289,21 @@ surface exactly as a host would.
 
 ### Intentions
 
-`MainWindow.RegisterIntentions` is the whole of what the app writes for the light bulb: two providers,
+`MainWindow.RegisterIntentions` is the whole of what the app writes for the light bulb: three providers,
 registered once per document as `IntentionSource.Language`.
 
 ```csharp
 document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
 document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
+document.Session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
 ```
 
-The entries come from `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and
-`Projectional.Samples.Intentions` (accept this rule). Neither package knows about the shell, and the shell
-knows nothing about what they offer — which is the point of the slice: a language ships its intentions, a
-host registers them and the popup, the menu and the bulb follow.
+The entries come from `Projectional.Expressions.Intentions` (wrap in parentheses, negate),
+`Projectional.Samples.Intentions` (accept this rule) and `Projectional.Structures.Intentions` (make abstract,
+make concrete). None of the packages knows about the shell, and the shell knows nothing about what they offer
+— which is the point of the slice: a language ships its intentions, a host registers them and the popup, the
+menu and the bulb follow. A provider that is not about the open document answers `Absent` at every caret, so
+the app registers all three for every document rather than deciding which language a tab holds.
 
 Two things a host has to get right, both of them the mirror of the findings rules:
 

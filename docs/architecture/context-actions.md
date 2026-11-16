@@ -327,6 +327,25 @@ undo step, and it is the one gesture a user reaches for after pasting a value th
 moving is order-dependent and collides with itself, so it needs its own action even though it looks like
 a move.
 
+### With `Projectional.Structures`
+
+| Id | The entry | What it does | Class | Needs |
+| --- | --- | --- | --- | --- |
+| `INT060` | `Make abstract` | sets the concept's `isAbstract` flag, so the header gains the word `abstract` | plain | `SetNodePropertyAction` - **shipped** in `Projectional.Structures.Intentions` |
+| `INT061` | `Make concrete` | clears it again | plain | the same action with the other value |
+
+Two entries rather than one `Toggle abstract`, because a label is fixed when the intention is declared and
+"what this gives you" is a better sentence than "the opposite of what is there". Each is absent where the
+concept already is what it would make it, so the list shows one line.
+
+This is the first intention in the catalogue that exists because a value has **no cell of its own**. The
+structure language writes `abstract concept Rule`, the word is drawn by a
+[conditional cell](language.md#notation), and a non-abstract concept draws nothing where a value would sit -
+there is no text to type into. A property can be invisible three ways (a conditional, a collapsed node, a
+notation that leaves the slot out), and `SetNodePropertyAction` is the action for all three: it addresses the
+*node* and the slot, where `SetPropertyAction` addresses a cell. Prefer the cell-addressed one when a cell
+exists, because "the value the user can see" is the narrower claim and the caret can land on it.
+
 ### What the framework can only *list*
 
 | Id | The entry | Why it is not an action |
@@ -377,7 +396,8 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | B ✓ | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced, the refusal of an offer that no longer applies, and the routing of a fix's entry back through the fix path |
 | C ✓ | `feat/intentions-popup` | the offers gesture asks `IntentionList.For(session)`, so the `Alt+Enter` popup lists the host's commands and the language's intentions beside the fixes - `OfferList` of `Intention` entries, the same safety rule for both sources, and the bulb lit by either |
 | D ✓ | `feat/intentions-menu` | the "Intentions" submenu in the context menu, beside "Quick fixes", both built from the one `IntentionList` so the menu and the popup cannot disagree; the bulb's second source landed with C |
-| E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers both providers in one method |
+| E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers the providers in one method |
+| E2 ✓ | `feat/abstract-intention` | `INT060`/`INT061` in `Projectional.Structures.Intentions`: abstractness is drawn as the word `abstract` in a concept's header by a conditional cell, so it has no cell to type into and needs an entry; `SetNodePropertyAction` is the action for a property with no cell, which is the shape a collapsed node has too |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
 | G | `feat/standard-intentions` | the primitives the catalogue still needs (subtree copy; insert-at-index landed with `feat/insert-at-index`, which gave `Enter` its place), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
 

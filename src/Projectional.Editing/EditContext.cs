@@ -149,15 +149,10 @@ public sealed class EditContext
     /// walk is over the same order the builder used, so the answer is the node whose slot the address
     /// names - the innermost one, since an address carries the node id it belongs to.
     /// </remarks>
-    public Node? NodeOf(CellAddress address)
-    {
-        if (address.Owner.IsEmpty)
-        {
-            return null;
-        }
+    public Node? NodeOf(CellAddress address) => address.Owner.IsEmpty ? null : NodeOf(address.Owner);
 
-        return Find(_document, address.Owner);
-    }
+    /// <summary>The node with <paramref name="id"/>, or <see langword="null"/> when it is no longer in the model.</summary>
+    public Node? NodeOf(NodeId id) => id.IsEmpty ? null : Find(_document, id);
 
     /// <summary>Sets a property from the text of its cell, if the text is valid for its type.</summary>
     /// <returns>Whether the model was changed.</returns>
@@ -184,6 +179,40 @@ public sealed class EditContext
         }
 
         node.Set(cell.Slot, text);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property of <paramref name="node"/> by name, whether or not the notation draws it.
+    /// </summary>
+    /// <returns>Whether the model was changed.</returns>
+    /// <remarks>
+    /// <para>
+    /// The same validation as the cell-shaped overload and for the same reason, without requiring a cell to exist
+    /// first. A property can be invisible for three reasons - the notation puts it behind a
+    /// <see cref="ConditionalNotationCell"/>, the node is drawn collapsed, or the concept's notation leaves the
+    /// slot out - and none of them is a reason the language cannot state the value.
+    /// </para>
+    /// <para>
+    /// The caller names the node it means, so this is not a way to reach around the caret: an edit that touches a
+    /// node the user is not looking at says so by passing that node's id.
+    /// </para>
+    /// </remarks>
+    public bool SetProperty(Node node, string slot, string text)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (!ReferenceEquals(node.Model, _document.Model)
+            || node.Concept.FindProperty(slot) is not { } property
+            || !property.Type.IsValid(text))
+        {
+            return false;
+        }
+
+        node.Set(slot, text);
 
         return true;
     }
