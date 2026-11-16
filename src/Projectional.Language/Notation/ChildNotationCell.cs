@@ -37,5 +37,17 @@ public sealed class ChildNotationCell : BlockNotationCell
                 "The spacing of a child slot cannot be negative.");
     }
 
-    public override string ToString() => $"children {Slot}";
+    /// <summary>
+    /// Whether every child is drawn on a line of its own instead of beside its neighbours.
+    /// </summary>
+    /// <remarks>
+    /// The child slot of a block language usually wants one child per line and the child slot of an
+    /// expression wants them side by side, so the direction is a property of the notation rather than a
+    /// separate cell kind: both draw the same cell holding the same children. <see cref="Spacing"/> is
+    /// the gap <em>between</em> children in a line and does not apply here - stacked children already
+    /// start on a new line.
+    /// </remarks>
+    public bool Stacked { get; init; }
+
+    public override string ToString() => Stacked ? $"children {Slot} (stacked)" : $"children {Slot}";
 }

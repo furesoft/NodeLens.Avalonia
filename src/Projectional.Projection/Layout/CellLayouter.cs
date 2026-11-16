@@ -69,6 +69,7 @@ public sealed class CellLayouter
             ContainerCell { Orientation: CellOrientation.Horizontal } line => ArrangeInline(line.Content, x, y, placed, text),
             ContainerCell stack => ArrangeStacked(stack, x, y, placed, text),
             ChildCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
+            ChildCell { IsStacked: true } stacked => ArrangeVertical(stacked.Content, x, x, y, placed, text),
             ChildCell child => ArrangeInline(child.Content, x, y, placed, text),
             CollectionCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
             CollectionCell collection => ArrangeInline(collection.Content, x, y, placed, text),
@@ -113,13 +114,39 @@ public sealed class CellLayouter
         double x,
         double y,
         List<PlacedCell> placed,
+        Dictionary<EditorCell, LaidOutText> text) =>
+        ArrangeVertical(
+            container.Content,
+            container.IsIndented ? x + _measure.IndentWidth : x,
+            x,
+            y,
+            placed,
+            text);
+
+    /// <summary>Stacks <paramref name="cells"/> one above the other, starting at <paramref name="y"/>.</summary>
+    /// <param name="cells">The cells to stack, in document order.</param>
+    /// <param name="left">The x every cell starts at.</param>
+    /// <param name="x">The x the resulting box starts at, which differs from <paramref name="left"/> when indented.</param>
+    /// <param name="y">The top of the box.</param>
+    /// <param name="placed">The placement list being filled, in document order.</param>
+    /// <param name="text">The laid-out text being filled.</param>
+    /// <remarks>
+    /// One implementation for both a vertical container and a stacked child slot: an indented container
+    /// and a slot told to stack differ in where the box starts, not in how the stack behaves, and a
+    /// second copy would be a second chance to disagree about line height.
+    /// </remarks>
+    private LayoutSize ArrangeVertical(
+        IReadOnlyList<EditorCell> cells,
+        double left,
+        double x,
+        double y,
+        List<PlacedCell> placed,
         Dictionary<EditorCell, LaidOutText> text)
     {
-        var left = container.IsIndented ? x + _measure.IndentWidth : x;
         var cursorY = y;
         var right = x;
 
-        foreach (var child in container.Content)
+        foreach (var child in cells)
         {
             var size = Arrange(child, left, cursorY, placed, text);
 

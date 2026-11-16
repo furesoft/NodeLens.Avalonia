@@ -106,7 +106,14 @@ public sealed class EditorTreeBuilder
                 CellOrientation.Vertical,
                 isIndented: true,
                 BuildBlocks(indent.Content, node, emphasis)),
-            ChildNotationCell children => BuildChildren(children.Slot, children.EmptyText, node, emphasis, rootAddress, children.Spacing),
+            ChildNotationCell children => BuildChildren(
+                children.Slot,
+                children.EmptyText,
+                node,
+                emphasis,
+                rootAddress,
+                children.Spacing,
+                children.Stacked),
             CollectionNotationCell collection => BuildCollection(collection, node, emphasis, rootAddress),
             TableNotationCell table => BuildTable(table, node, emphasis, rootAddress),
             _ => throw new ProjectionException(
@@ -268,7 +275,8 @@ public sealed class EditorTreeBuilder
         Node node,
         TextEmphasis emphasis,
         CellAddress? rootAddress,
-        int spacing)
+        int spacing,
+        bool stacked = false)
     {
         if (node.Concept.FindChild(slot) is null)
         {
@@ -278,12 +286,18 @@ public sealed class EditorTreeBuilder
 
         var children = node.GetChildren(slot);
         var address = rootAddress ?? CellAddress.OfSlot(node.Id, slot);
-        var content = new EditorCell[children.Count + (Math.Max(0, children.Count - 1) * spacing)];
+
+        // A stacked slot needs no gap cells: a new line is already the gap, and a space cell would become
+        // a line of its own under the vertical arrangement.
+        var content = new EditorCell[stacked
+            ? children.Count
+            : children.Count + (Math.Max(0, children.Count - 1) * spacing)];
+
         var next = 0;
 
         for (var i = 0; i < children.Count; i++)
         {
-            if (i > 0)
+            if (!stacked && i > 0)
             {
                 for (var space = 0; space < spacing; space++)
                 {
@@ -294,7 +308,7 @@ public sealed class EditorTreeBuilder
             content[next++] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
         }
 
-        return new ChildCell(address, slot, emptyText, content);
+        return new ChildCell(address, slot, emptyText, content) { IsStacked = stacked };
     }
 
     private CollectionCell BuildCollection(
