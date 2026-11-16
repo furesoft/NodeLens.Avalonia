@@ -8,6 +8,7 @@
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
     <Project Path="src/Projectional.Projection/Projectional.Projection.csproj" />
     <Project Path="src/Projectional.Samples/Projectional.Samples.csproj" />
+    <Project Path="src/Projectional.Samples.Checks/Projectional.Samples.Checks.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>

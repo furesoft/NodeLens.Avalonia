@@ -29,6 +29,14 @@ public static class RulesLanguage
     /// </remarks>
     public const string TableVariant = "table";
 
+    /// <summary>The slot of a ruleset that holds its rules.</summary>
+    /// <remarks>
+    /// Named here rather than written out in each place that needs it - the notation, the declarations and
+    /// the sample checks - because a slot name is part of the language, and a check that spelled it itself
+    /// would keep compiling after the language renamed it.
+    /// </remarks>
+    public const string RulesSlot = "rules";
+
     /// <summary>The concepts this language adds, which are the only ones it declares.</summary>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } = CreateDeclarations();
 
@@ -78,7 +86,7 @@ public static class RulesLanguage
             RulesConceptKeys.Ruleset,
             [
                 new PropertySlot("name", PropertyType.String, "unnamed"),
-                new ChildSlot("rules", RulesConceptKeys.Rule),
+                new ChildSlot(RulesSlot, RulesConceptKeys.Rule),
             ],
             nameSlot: "name"),
 
