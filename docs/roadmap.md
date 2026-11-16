@@ -34,8 +34,9 @@ What is next, in order:
    previews for the sample intentions (V6).
 
 **Slice Q7 - the standard checks as a package** is done: `Projectional.Checks` ships `STD001`, `STD003`,
-`STD010` and `STD040`, a language includes them by naming them in a `CheckSet`, and the safety class the
-catalogue needed (`EditSafety`) now decides which lone repairs the gesture may apply by itself. What is
+`STD010` and `STD040`, and a language includes them by naming them in a `CheckSet`. The safety class the
+catalogue needed (`EditSafety`) is carried on every offer, though the gesture no longer reads it: it always
+opens the list. What is
 still open from the catalogue is the fifteen checks the design lists after the first four, which land as a
 language asks for them rather than in one pass.
 

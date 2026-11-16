@@ -158,22 +158,24 @@ never shows.
 
 | Input | Effect |
 | --- | --- |
-| `Alt+Enter`, `Ctrl+.` | open the list for the caret; a lone plain *repair* runs without it, a lone intention never does |
+| `Alt+Enter`, `Ctrl+.` | open the list for the caret, always - one offer or ten |
 | click the bulb | same list, with the pointer |
 | `Esc` | close without editing |
 | `Up`/`Down`, `Enter` | move and run — the list is navigable without a mouse |
 | hover an entry for 700 ms | show what it would do, in place ([intention-preview.md](intention-preview.md)) |
 
-**A lone repair may run unasked; a lone intention may not, and that asymmetry is the point.** A repair answers
-a finding the editor already painted: the user aimed at a squiggle, the bulb lit for it, and one cure for one
-finding is one keystroke. An intention was announced nowhere - a language simply has something it could do here -
-so the gesture is the question "what can be done", and a menu with one row is still the answer to a question.
-Running it instead would make the same key mean "do the only thing there is" in a document where the user never
-saw that thing, and a language that later gains a second intention would silently change what the key does.
+**The gesture always shows the list, however few offers there are.** It never applies an offer by itself - not
+even the single plain repair for the finding under the caret.
 
-The entry's `Fix` is what tells the two apart, which is why every row carries it. A lone *destructive* or
-*disabled* offer opens the list as well, because the gesture asks what is available rather than acting on a
-guess.
+That uniformity is the decision, not a lost shortcut. "The only thing available sometimes runs by itself" makes
+one keystroke mean two things, *act* and *ask*, and the user cannot tell which is about to happen until it has.
+It also makes the key's meaning depend on how many offers a language happens to declare, so a language that gains
+a second intention silently changes what `Alt+Enter` does in a document nobody touched. One gesture, one sentence:
+this is what is there, pick one.
+
+`EditSafety` and the entry's `Fix` are therefore not read by the gesture any more. Both remain true statements
+about an offer, and both are still useful to a surface - a host can mark a destructive row, and one that binds a
+single offer to a key of its own should ask first - but neither decides anything here.
 
 The list reuses the context-menu model: entries are `EditorMenuEntry`s, so labels, gestures,
 enabled state, separators, nesting and execution are already built and tested, and
@@ -404,7 +406,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | D ✓ | `feat/intentions-menu` | the "Intentions" submenu in the context menu, beside "Quick fixes", both built from the one `IntentionList` so the menu and the popup cannot disagree; the bulb's second source landed with C |
 | E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers the providers in one method |
 | E2 ✓ | `feat/abstract-intention` | `INT060`/`INT061` in `Projectional.Structures.Intentions`: abstractness is drawn as the word `abstract` in a concept's header by a conditional cell, so it has no cell to type into and needs an entry; `SetNodePropertyAction` is the action for a property with no cell, which is the shape a collapsed node has too |
-| E3 ✓ | `feat/intention-popup` | the gesture stops running a lone intention: `ApplyOffers` applies without a list only when the entry carries a `Fix`, so `INT060`/`INT061` and every other declared intention open the popup even when they are the only row - what a repair keeps is the shortcut, because a finding announced it |
+| E3 ✓ | `feat/intention-popup` | the gesture stops applying anything: `ApplyOffers` always opens the list, so a lone plain repair opens a one-row popup too. One keystroke, one meaning - and `EditSafety`/`Intention.Fix` become surface information rather than what the gesture gates on |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
 | G | `feat/standard-intentions` | the primitives the catalogue still needs (subtree copy; insert-at-index landed with `feat/insert-at-index`, which gave `Enter` its place), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
 

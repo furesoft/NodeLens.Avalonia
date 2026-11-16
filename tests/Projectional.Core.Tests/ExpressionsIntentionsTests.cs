@@ -156,8 +156,8 @@ public sealed class ExpressionsIntentionsTests
     [Fact]
     public void TheGestureOpensAListForALoneIntention()
     {
-        // A negated condition offers only the parentheses, and the gesture still shows them: an intention is
-        // never run unasked, because nothing on screen said it was there.
+        // A negated condition offers only the parentheses, and the gesture still shows them: it never applies
+        // an offer by itself, however few there are.
         var (session, rule, condition) = Document();
 
         Caret(session, condition);

@@ -9,8 +9,8 @@ namespace Projectional.Editing;
 /// gesture without knowing anything else, which is what keeps the routing table headless and testable.
 /// </para>
 /// <para>
-/// What the session then does is not fixed here: it opens a list, and only a lone plain <em>repair</em> runs
-/// without one; with nothing to offer it leaves the model and the caret alone. Those are the answers of
+/// What the session then does is not fixed here: it opens a list of what can be done, always, and with nothing
+/// to offer it leaves the model, the caret and the list alone. Those are the answers of
 /// <see cref="EditorSession.ApplyOffers"/>.
 /// </para>
 /// </remarks>

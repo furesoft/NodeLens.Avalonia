@@ -9,14 +9,13 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The offers gesture: two spellings of one key, three answers from the session, and the rules that close an
+/// The offers gesture: two spellings of one key, two answers from the session, and the rules that close an
 /// offer again.
 /// </summary>
 /// <remarks>
-/// The answers are the whole design: nothing to offer, a lone plain repair applied without asking, and
-/// everything else listed - several offers, a destructive or disabled one, or a declared intention, which is
-/// never run unasked because nothing on screen announced it. The closing rules matter as much, because a list
-/// that outlives the caret it described offers actions for a place the user has left.
+/// The answers are the whole design: nothing to offer, or a list - one entry or several, because the gesture
+/// never applies an offer by itself. The closing rules matter as much, because a list that outlives the caret
+/// it described offers actions for a place the user has left.
 /// </remarks>
 public sealed class OfferKeysTests
 {
@@ -50,19 +49,26 @@ public sealed class OfferKeysTests
     }
 
     [Fact]
-    public void OneRepairIsAppliedWithoutAsking()
+    public void OneRepairOpensAListToo()
     {
+        // The gesture never applies anything by itself, not even the single cure for the single finding under
+        // the caret: one keystroke must not sometimes act and sometimes ask.
         var rule = RuleNamed("walk");
         using var session = TestEditor.Open(rule);
         Publish(session, rule, "walked");
 
         var result = session.Apply(new OfferAction());
 
-        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
+        Assert.Equal("walk", rule.GetOrNull("name"));
+        Assert.False(session.History.CanUndo);
+        Assert.Equal(1, Assert.IsType<OfferList>(session.Offered).Count);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Equal("walked", rule.GetOrNull("name"));
         Assert.Null(session.Offered);
 
-        // The gesture is one step of history, like any other edit.
+        // Accepting it is one step of history, like any other edit.
         Assert.True(session.Undo());
         Assert.Equal("walk", rule.GetOrNull("name"));
     }
@@ -224,9 +230,10 @@ public sealed class OfferKeysTests
     }
 
     [Fact]
-    public void ALoneDestructiveRepairAsksInsteadOfRunning()
+    public void ALoneDestructiveRepairIsListedLikeEverythingElse()
     {
-        // The gesture asks what is available; it must not also be the keystroke that removes something.
+        // It used to need a list of its own, because a lone plain offer ran. Now every offer gets a list;
+        // what is still worth pinning is that the row is there and says what it would do.
         var rule = RuleNamed("walk");
         using var session = TestEditor.Open(rule);
         var name = CellAddress.OfSlot(rule.Id, "name");
@@ -286,8 +293,9 @@ public sealed class OfferKeysTests
     }
 
     [Fact]
-    public void AListMayHoldOneEntrySoThatItCanAsk()
+    public void AListMayHoldOneEntry()
     {
+        // One entry is the ordinary case now, not an exception for destructive or disabled offers.
         var rule = RuleNamed("walk");
         var name = CellAddress.OfSlot(rule.Id, "name");
         var finding = Finding(rule, "one");
@@ -310,10 +318,9 @@ public sealed class OfferKeysTests
     }
 
     [Fact]
-    public void OneIntentionOpensAListOfOneInsteadOfRunning()
+    public void OneIntentionOpensAListOfOne()
     {
-        // A repair may run unasked because a finding announced it. An intention announced nothing, so the
-        // gesture is a question and the answer is a list - one row long, this time.
+        // An intention is a list entry like any other: the gesture shows what can be done and applies nothing.
         var rule = RuleNamed("walk");
         using var session = TestEditor.Open(rule);
         session.AddIntentions(new StubIntentions(IntentionNamed("test.rename", rule)));
