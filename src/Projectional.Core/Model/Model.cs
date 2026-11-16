@@ -269,7 +269,118 @@ public sealed class Model
         MarkMutated();
     }
 
+    /// <summary>
+    /// Copies this model into <paramref name="target"/> as a new model, keeping every node's identity.
+    /// </summary>
+    /// <param name="target">The project that receives the copy; it must not already hold these node ids.</param>
+    /// <param name="name">The name of the new model, or <see langword="null"/> to copy this model's.</param>
+    /// <returns>The new model, which shares no node with this one.</returns>
+    /// <exception cref="ModelInvariantException">
+    /// <paramref name="target"/> already holds one of these node ids, which is what happens when a copy is
+    /// taken into the project it came from.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The copy is exact: same ids, concepts, property values, reference targets and resolve info, same child
+    /// order and the same roots in the same order. That is what makes an edit action - a value addressing ids
+    /// and slots rather than positions - mean the same thing in the copy as in the original, which is the whole
+    /// reason a preview can be "do it to a copy" rather than "describe what you would do".
+    /// </para>
+    /// <para>
+    /// The ids have to be preserved for that to work, and that is also why the target project must be a
+    /// different one: <see cref="Project"/> indexes nodes by id, so a copy carrying the original's ids could
+    /// only live where those ids are still free. Nothing is shared afterwards - mutating the copy touches no
+    /// node of this model.
+    /// </para>
+    /// <para>
+    /// A failure leaves nothing behind: the nodes built so far are deleted without recording and the
+    /// half-built model is discarded from <paramref name="target"/>, the way a failed load cleans up.
+    /// </para>
+    /// </remarks>
+    public Model CopyTo(Project target, string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        var copy = target.NewModel(name ?? Name);
+
+        try
+        {
+            foreach (var root in Roots)
+            {
+                CopySubtree(root, copy, parent: null, slot: null);
+            }
+        }
+        catch
+        {
+            Abandon(copy, target);
+
+            throw;
+        }
+
+        return copy;
+    }
+
     public override string ToString() => Name ?? Id.ToString();
+
+    /// <summary>
+    /// Copies <paramref name="source"/> into <paramref name="copy"/>, hanging the new node into its place
+    /// before filling it.
+    /// </summary>
+    /// <remarks>
+    /// The order matters for the failure path: a node that is attached first and filled afterwards is always
+    /// reachable from the copy's roots, so <see cref="Abandon"/> can delete everything that was built. A node
+    /// left detached for a moment - a deep copy that builds bottom-up would do that - would be registered in
+    /// the target project with nothing pointing at it.
+    /// </remarks>
+    private static void CopySubtree(Node source, Model copy, Node? parent, string? slot)
+    {
+        var node = copy.CreateDetached(source.Id, source.Concept);
+
+        if (parent is null)
+        {
+            copy.AddRoot(node);
+        }
+        else
+        {
+            parent.AddChild(slot!, node);
+        }
+
+        foreach (var declaration in source.Concept.Slots)
+        {
+            switch (declaration)
+            {
+                case PropertySlot property when source.GetOrNull(property.Name) is { } value:
+                    node.Set(property.Name, value);
+
+                    break;
+
+                case ReferenceSlot reference when source.GetReference(reference.Name) is { } target:
+                    node.SetReference(reference.Name, target.Target, target.ResolveInfo);
+
+                    break;
+
+                case ChildSlot child:
+                    foreach (var sourceChild in source.GetChildren(child.Name))
+                    {
+                        CopySubtree(sourceChild, copy, node, child.Name);
+                    }
+
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Removes what a failed copy built and takes the model out of the target project.</summary>
+    private static void Abandon(Model copy, Project target)
+    {
+        foreach (var root in copy.Roots)
+        {
+            copy.DeleteSubtree(root, record: false);
+        }
+
+        target.DiscardModel(copy);
+    }
+
 
     /// <summary>
     /// Deletes a node and its subtree from the project and clears the references that pointed at
