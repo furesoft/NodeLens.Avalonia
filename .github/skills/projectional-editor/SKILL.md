@@ -956,11 +956,12 @@ Invariants that are cheap now and expensive later:
   constructing it eagerly made `SyntaxTheme`'s static initializer require a window and broke every
   headless test that compares themes. Keep `SyntaxTheme` free of anything that needs a platform.
 
-### Two tooltips, one pointer
+### Three tooltips, one pointer
 
-The control can show two boxes: the finding's message over a squiggle (`MarkerTip`) and a concept's
-description over any node (`ConceptTip`). They share `MarkerTipPresenter` and `MarkerTip.Place`, and
-they differ in exactly two ways that must not be "tidied" away:
+The control can show three boxes: the finding's message over a squiggle (`MarkerTip`), a concept's
+description over any node (`ConceptTip`) and a slot's description over an **empty property cell**
+(`PropertyTip`). All three share `MarkerTipPresenter` and `MarkerTip.Place`, and they differ in exactly
+two ways that must not be "tidied" away:
 
 - **The marker wins.** A finding is specific and asks for an action; a description is ambient. If both
   would apply under one pointer, only the finding's box is painted. Never paint both.
@@ -968,11 +969,27 @@ they differ in exactly two ways that must not be "tidied" away:
   is what the pointer crosses, so a description appears after 600 ms. A delay on the marker tip would
   make a hover feel broken.
 
-Both are dismissed through the one path that already existed (`ClearHover`, reached by pointer exit,
-any edit and any caret move). The concept tip is anchored to the node's own address
-(`new CellAddress(nodeId)`), not to the caret place the pointer resolved to, or it jumps while the
-pointer crosses a line of a node that spans several. `ConceptTip.Of(session, nodeId)` answers `null`
-for an id that no longer exists - a pointer can outlive its node, and a tooltip must never throw.
+All three are dismissed through the one path that already existed (`ClearHover`, reached by pointer exit,
+any edit and any caret move). `ConceptTip.Of(session, nodeId)` and `PropertyTip.Of(session, position)`
+answer `null` for something that no longer exists - a pointer can outlive its node, and a tooltip must
+never throw.
+
+**Both tips carry one shape**: `TipContent` is a heading plus a sentence, `TipLines.Of(content, width,
+measure)` is the one wrapper, and the control has one painter for both. A second content type would mean
+a second painter path.
+
+- **The concept tip is anchored to the node's own address** (`new CellAddress(nodeId)`), not to the
+  caret place the pointer resolved to, or it jumps while the pointer crosses a line of a node that spans
+  several.
+- **The property tip is anchored to the slot's cell**, and the property's sentence beats the concept's.
+  A slot tip is about that one box - and a node drawn only as a property (an `IntLiteral` is one cell)
+  has **no cell carrying its node address at all**, so anchoring a slot tip to the node would draw
+  nothing. `ConceptTipBounds` therefore asks the slot address first and falls back to the node address
+  (a fallback the real-window probe forced: the first implementation drew no box for a bare literal).
+- **`PropertySlot.description` shows only while the value is empty**, because the value is the answer
+  once there is one. A slot born with a `defaultValue` reads as filled, since the model cannot tell a
+  default from something the user typed. The hover keys on **(node, slot)**, so moving between two empty
+  properties of one node restarts the delay and moving inside one does not.
 
 ### Emphasis (bold, italic, underline, strikethrough)
 
@@ -1229,7 +1246,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1374 tests**; anything below that means tests were deleted.
+it. **Baseline is 1382 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

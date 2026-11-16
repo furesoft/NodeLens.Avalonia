@@ -47,7 +47,7 @@ internal static class TestLanguage
         new ConceptDeclaration(
             Step,
             [
-                new PropertySlot("text", PropertyType.String),
+                new PropertySlot("text", PropertyType.String, description: "What the step does."),
                 new PropertySlot("index", PropertyType.Integer),
                 new PropertySlot("due", PropertyType.Date),
                 new PropertySlot("status", PropertyType.Enum("draft", "approved")),

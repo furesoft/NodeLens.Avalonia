@@ -97,13 +97,13 @@ public static class RulesLanguage
             RulesConceptKeys.Rule,
             [
                 new PropertySlot("name", PropertyType.String, "unnamed"),
-                new PropertySlot("outcome", PropertyType.Enum([RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject]), RuleOutcomes.Review),
+                new PropertySlot("outcome", PropertyType.Enum([RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject]), RuleOutcomes.Review, "What a reviewer should do with this rule."),
                 new ChildSlot("condition", ExpressionsConceptKeys.Expression, Cardinality.One),
 
                 // The permission to fold, as a value on the node: a rule with a long body is worth
                 // hiding and its sibling with one line is not. Defaulting to true means every rule folds
                 // unless it opts out, which is the cheapest way for a language to say "this can be big".
-                new PropertySlot("foldable", PropertyType.Boolean, "true"),
+                new PropertySlot("foldable", PropertyType.Boolean, "true", "Whether the rule draws collapsed by default."),
             ],
             nameSlot: "name",
             description: "One rule: a name, an optional condition and the outcome it decides.",
