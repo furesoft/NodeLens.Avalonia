@@ -5,8 +5,9 @@ needs it: hovering a node of that concept, and next to the completion entry that
 The text is documentation, so it never becomes model data, never enters an undo step and is
 never stored per node.
 
-Status: planned. Slice D1 is delivered (the declaration and `Concept.Description`); D2 to D5 are
-listed at the end.
+Status: **delivered.** All five slices are in: the declaration and `Concept.Description` (D1), the headless
+tip (D2), the hover in the control (D3), the completion pane (D4) and descriptions on both shipped
+languages (D5).
 
 ## The text is a property of the concept
 
@@ -129,13 +130,36 @@ the honest name for the field in a .NET API.
 | Slice | Branch | Content | Status |
 | --- | --- | --- | --- |
 | D1 ✓ | `feat/concept-description` | `description` parameter, `Concept.Description`, normalization, registry plumbing, tests | delivered |
-| D2 | `feat/concept-tip` | `TipText.Wrap` extraction, `ConceptTip` (content and lines), tests | planned |
-| D3 | `feat/concept-tip-hover` | control: hover over any node, 600 ms delay, marker precedence, shared dismissal | planned |
-| D4 | `feat/concept-tip-completion` | `CompletionItem.Description`, description line in `CompletionPresenter` | planned |
-| D5 | `docs/concept-descriptions-samples` | descriptions on the sample and expression languages, `<<shortDescription>>` lowering note | planned |
+| D2 ✓ | `feat/concept-tip` | `TipText.Wrap` extraction, `ConceptTip` (content and lines), tests | delivered |
+| D3 ✓ | `feat/concept-tip-hover` | control: hover over any node, 600 ms delay, marker precedence, shared dismissal | delivered |
+| D4 ✓ | `feat/concept-tip-completion` | `CompletionItem.Description`, description line in `CompletionPresenter` | delivered |
+| D5 ✓ | `docs/concept-descriptions-samples` | descriptions on the sample and expression languages, `<<shortDescription>>` lowering note | delivered |
 
 D1 and D2 need no window and are pure library work; D3 is the only slice that needs the runtime
 probe. D4 depends on D1 only, so it can be taken before or after D3.
+
+## Decisions frozen with the slices
+
+What the implementation settled that the plan had left open, and the reason each one is a rule now:
+
+| Decision | Why |
+| --- | --- |
+| **One presenter for both tips.** `MarkerTipPresenter` paints a finished list of lines, so the concept tip reuses it instead of growing a second box painter. | The two boxes must look alike, and two painters would drift the moment one of them gained a border radius. The *content* is decided in the editing layer; only the pixels are shared. |
+| **`MarkerTip.Place` is reused, not copied.** | Flipping above when there is no room below, and clamping into the surface, is one rule about one kind of box. |
+| **The anchor is the node's own address** (`new CellAddress(nodeId)`), not the caret place the pointer resolved to. | A box anchored to the caret place jumps while the pointer crosses a line of a node that spans several; the node's outermost cell is stable. |
+| **The description is asked for again when the delay elapses**, not remembered from when the hover started. | The pointer can move onto a squiggle while the timer runs, and the marker must win. |
+| **`ConceptTip.Of(session, nodeId)` resolves the id and answers `null` when it is gone.** | A pointer can outlive the node it was over; a tooltip must not be the thing that throws. |
+| **`TipText.Wrap` is `internal` in `Editing`, not public.** | A host that wants a box calls `ConceptTip.Lines`; the wrapper is an implementation detail that must stay single. |
+| **The completion pane's height is reserved when *any* entry has a description**, not when the highlighted one does. | A box that grew and shrank while the arrow keys moved the highlight would make the whole list jump under the pointer. |
+| **The pane is one line, in the palette's line colour.** | A list palette has no secondary-text colour, and the same choice is already made for a quick-fix row that cannot run; wrapping the pane would change the list's height per entry. |
+
+Verified in a real window: hovering a node of the sample language paints `Rules.Ruleset` and its sentence
+below the node, and setting a marker hover on the same node paints only the finding's box.
+
+The completion pane is verified headlessly at the seam that matters - `CompletionActionTests` asserts the
+proposal carries the concept's sentence - and its drawing reuses the presenter path the quick-fix list
+already exercises. A probe could not reach it: the sample documents have no empty slot that accepts a
+described concept, so no such list opens without editing the document first.
 
 ## What this must not become
 

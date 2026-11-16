@@ -57,7 +57,7 @@ internal static class CompletionSource
         {
             if (!concept.IsAbstract && concept.IsOfferedInCompletion && concept.IsKindOf(declared))
             {
-                items.Add(new CompletionItem(concept.Key, CompletionKind.Node));
+                items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description));
             }
         }
 

@@ -88,7 +88,8 @@ public static class RulesLanguage
                 new PropertySlot("name", PropertyType.String, "unnamed"),
                 new ChildSlot(RulesSlot, RulesConceptKeys.Rule),
             ],
-            nameSlot: "name"),
+            nameSlot: "name",
+            description: "A named set of rules, evaluated in the order they are written."),
 
         new ConceptDeclaration(
             RulesConceptKeys.Rule,
@@ -97,6 +98,7 @@ public static class RulesLanguage
                 new PropertySlot("outcome", PropertyType.Enum([RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject]), RuleOutcomes.Review),
                 new ChildSlot("condition", ExpressionsConceptKeys.Expression, Cardinality.One),
             ],
-            nameSlot: "name"),
+            nameSlot: "name",
+            description: "One rule: a name, an optional condition and the outcome it decides."),
     ];
 }

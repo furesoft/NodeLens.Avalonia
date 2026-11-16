@@ -34,7 +34,8 @@ internal static class TestLanguage
                 new ReferenceSlot("inherits", Rule),
                 new ReferenceSlot("self", Rule, allowOwnSubtree: true),
             ],
-            nameSlot: "name"),
+            nameSlot: "name",
+            description: "A named rule with a body and an outcome."),
 
         new ConceptDeclaration(
             Body,

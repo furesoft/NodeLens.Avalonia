@@ -23,14 +23,26 @@ public sealed class CompletionItem
     /// <summary>Creates an item for <paramref name="conceptKey"/>.</summary>
     /// <param name="conceptKey">The concept the item inserts, spelled the way the language declares it.</param>
     /// <param name="kind">What the item stands for, which is what a host chooses an icon by.</param>
+    /// <param name="description">The concept's own sentence, or <see langword="null"/> when it declares none.</param>
     /// <exception cref="ArgumentException"><paramref name="conceptKey"/> is empty.</exception>
-    public CompletionItem(string conceptKey, CompletionKind kind)
+    public CompletionItem(string conceptKey, CompletionKind kind, string? description = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(conceptKey);
 
         ConceptKey = conceptKey;
         Kind = kind;
+        Description = description;
     }
+
+    /// <summary>
+    /// What the language says about the concept, so a host can explain an entry it is highlighting.
+    /// </summary>
+    /// <remarks>
+    /// Carried on the item rather than looked up by the presenter, because the editing layer is the layer
+    /// that knows the registry: a list is built once and painted many times, and a painter that consulted
+    /// the language would be a second place that knows what a proposal means.
+    /// </remarks>
+    public string? Description { get; }
 
     /// <summary>
     /// The payload of the item: a concept key for a node item, a symbol for a value item.

@@ -94,7 +94,10 @@ public static class ExpressionsLanguage
 
     private static List<ConceptDeclaration> CreateDeclarations() =>
     [
-        new ConceptDeclaration(ExpressionsConceptKeys.Expression, isAbstract: true),
+        new ConceptDeclaration(
+            ExpressionsConceptKeys.Expression,
+            isAbstract: true,
+            description: "Something that evaluates to a value."),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.IntLiteral,
@@ -118,7 +121,8 @@ public static class ExpressionsLanguage
             ExpressionsConceptKeys.Name,
             [new PropertySlot("name", PropertyType.String)],
             [ExpressionsConceptKeys.Expression],
-            nameSlot: "name"),
+            nameSlot: "name",
+            description: "A reference to a name that some scope resolves."),
 
         new ConceptDeclaration(
             ExpressionsConceptKeys.Binary,
