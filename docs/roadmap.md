@@ -14,6 +14,16 @@ produces something usable, and no milestone depends on a later one being finishe
   annoyed you before starting the next one. Skipping this is how feature-complete,
   unusable editors happen.
 
+## Next
+
+The feature to implement next is **quick fixes**: the repairs a diagnostic carries, reached
+with `Alt+Enter`/`Ctrl+.`, the marker's tooltip and the context menu, and applied as one undo
+step ([quick-fixes.md](architecture/quick-fixes.md)). It goes first because diagnostics
+already exist and nothing yet makes them actionable, and because it gives the planned
+intention list a second source to be designed against instead of a single one to be guessed
+from. Folding stays the last M1 item and resumes afterwards; the constraint engine that will
+produce diagnostics in volume stays where it is, in M4.
+
 ## Milestones
 
 ### M0 — Core model and persistence
@@ -110,7 +120,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Delivers | Details |
 | --- | --- |
 | Constraints | incremental validation, and diagnostics as wavy severity underlines ([markers.md](architecture/markers.md)) |
-| Quick fixes | a diagnostic carries its own fixes, and they appear in the same light bulb as intentions ([context-actions.md](architecture/context-actions.md)) |
+| Quick fixes | a diagnostic carries its own repairs, listed beside the marker set and reached with `Alt+Enter`/`Ctrl+.`, the marker tooltip and the context menu, applied as one undo step ([quick-fixes.md](architecture/quick-fixes.md)); implemented ahead of this milestone, with the intention list joining it in M3 |
 | Types | basic type system with `Unknown` semantics |
 | Text generation | template trees, traceability map |
 | Interpreter | evaluation with trace and step budget |

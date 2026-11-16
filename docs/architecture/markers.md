@@ -105,8 +105,8 @@ to think about.
 - **There is no `Fixes` field.** Quick fixes are a list of intentions that change the model,
   and putting them on the diagnostic would make the vocabulary of "what is wrong" also the
   vocabulary of "what to do about it" — the check that found the problem is not the thing that
-  knows how to repair it. A fix list belongs beside the set, keyed by diagnostic, when slice F
-  needs one.
+  knows how to repair it. The fix list is a separate host-supplied set beside the marker set,
+  keyed by the diagnostic record ([quick-fixes.md](quick-fixes.md)).
 - Nothing in a diagnostic mentions colour, thickness, or a wave. A severity is a *meaning*;
   the palette decides what it looks like.
 
@@ -339,7 +339,11 @@ long before a real one exists:
 | C ✓ | `feat/marker-paint` | `MarkerPalette` on `SyntaxTheme`, `MarkerRuns` (overlap merge), the wave in the control's `Render`, light and dark defaults, pattern-per-severity |
 | D ✓ | `feat/marker-hover` | `MarkerHit` and `MarkerHitTest` (which finding is under the pointer), `MarkerTip` (its text and where its box goes), `MarkerTipPalette`, `MarkerTipPresenter` on the control, and dropping the tip when the set is replaced |
 | E | (M4) `feat/validation-markers` | the constraint runner publishes diagnostics through `Markers`, incrementally, off the UI thread |
-| F | (M4) `feat/quick-fixes` | a diagnostic's fixes reach the light bulb, which is a change in [context-actions.md](context-actions.md) rather than here |
+
+Slice F of the original plan is gone: fixes have their own design and their own slices in
+[quick-fixes.md](quick-fixes.md), and they land **before** the constraint runner because
+diagnostics already exist and nothing yet makes them actionable. Nothing about the marker model
+changes for them.
 
 Still open from slice D: the click-to-caret gesture on a squiggle and `F8` ordering, which is a
 list function in the editing layer and a binding in the shell.
@@ -504,8 +508,10 @@ Two smaller consequences:
   being rebuilt on every pointer move while still reopening it for a second finding on the same
   text.
 - **The tip does not promise a fix it cannot deliver.** The severity word, the message and the
-  code, and nothing else - "N quick fixes" needs the fix list from slice F, and a line that
-  always reads "no fixes" is worse than no line.
+  code, and nothing else - "N quick fixes" needs the fix list from
+  [quick-fixes.md](quick-fixes.md) slice Q5, and a line that always reads "no fixes" is worse
+  than no line. When that slice lands, the tip gains a fourth line, read from the same set the
+  bulb reads.
 
 ## Testing
 
