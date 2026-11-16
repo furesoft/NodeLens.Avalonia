@@ -119,6 +119,21 @@ public static class EditorNotations
             ed.Indent(ed.Sequence(ed.Line(ed.Property("slot")))),
             ed.Line(ed.Keyword("/]"))));
 
+        // `[> if {slot} = "value"` reads as the question the cell asks, and the cells below it are what is drawn
+        // while the answer is yes.
+        notations.Add(EditorConceptKeys.Conditional, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[> if"),
+                ed.Space,
+                ed.Property("slot"),
+                ed.Space,
+                ed.Punct("="),
+                ed.Space,
+                ed.Punct("\""),
+                ed.Property("value"),
+                ed.Punct("\"")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
+
         notations.Add(EditorConceptKeys.Collection, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("[/ collection"),

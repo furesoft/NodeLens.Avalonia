@@ -169,6 +169,12 @@ produced it, and the editing layer never has to remember anything for undo.
 | `CutAction` | Ctrl+X | copy the selected text, then delete it |
 | `PasteAction` | Ctrl+V | type the clipboard text at the caret |
 
+Not every action has a key. A repair and an intention build their edit from what they found, so they name their
+target instead of depending on a caret: `SetPropertyAction` addresses a **cell** and is the right choice when the
+value has one, and `SetNodePropertyAction` addresses a **node and a slot** for a property with no cell - a value
+behind a [conditional](language.md#notation), a value on a collapsed node, or a slot the notation leaves out. Both
+go through `EditContext.SetProperty`, so both are refused by the same check a keystroke hits.
+
 The result of an apply is an `EditResult`: an `EditOutcome` (`Changed`, `Unchanged`,
 `Rejected`) plus the caret to place afterwards and the **coalescing key**. Two consecutive
 edits with the same key belong to one undo step, which is how a typed word becomes one undo

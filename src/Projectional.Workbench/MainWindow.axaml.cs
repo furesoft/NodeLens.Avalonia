@@ -16,6 +16,7 @@ using Projectional.Samples;
 using Projectional.Samples.Checks;
 using Projectional.Samples.Intentions;
 using Projectional.Semantics;
+using Projectional.Structures.Intentions;
 
 namespace Projectional.Workbench;
 
@@ -349,20 +350,24 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <param name="document">The document whose session gains them.</param>
     /// <remarks>
     /// <para>
-    /// This is the whole of what a host writes: two providers, registered once. The entries themselves come
-    /// from the languages' packages - the expression vocabulary's parentheses and negation, and the rules
-    /// language's "accept this rule" - and neither needs anything from the app beyond this call.
+    /// This is the whole of what a host writes: three providers, registered once. The entries themselves come
+    /// from the languages' packages - the expression vocabulary's parentheses and negation, the rules language's
+    /// "accept this rule", and the structure language's "make abstract" - and none of them needs anything from the
+    /// app beyond this call.
     /// </para>
     /// <para>
     /// Registered as <see cref="IntentionSource.Language"/> rather than as the host's own, because that is
     /// what they are: a language's answer to "what is meaningful here", which the list keeps behind a host's
-    /// commands.
+    /// commands. A provider that is not about the open document answers
+    /// <see cref="IntentionAvailability.Absent"/> at every caret, so registering all three for every document is
+    /// how a mixed set of languages is spelled.
     /// </para>
     /// </remarks>
     private static void RegisterIntentions(DocumentTab document)
     {
         document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
         document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
+        document.Session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
     }
 
     /// <summary>Applies a theme choice to the window, its chrome and every tab's control.</summary>

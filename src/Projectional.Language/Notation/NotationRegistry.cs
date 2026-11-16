@@ -242,6 +242,27 @@ public sealed class NotationRegistry
             case TableNotationCell table:
                 ValidateTable(concept, table);
                 break;
+
+            case ConditionalNotationCell conditional:
+                ValidateConditional(concept, conditional);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Checks a condition against the property it reads. A value the type would refuse can never hold, so the
+    /// conditional would never draw - a mistake that is invisible at run time and cheap to refuse here.
+    /// </summary>
+    private static void ValidateConditional(Concept concept, ConditionalNotationCell conditional)
+    {
+        var property = concept.FindProperty(conditional.Slot)
+            ?? throw new NotationException(
+                $"The notation of '{concept.Key}' draws cells when '{conditional.Slot}' holds a value, but the concept declares no such property.");
+
+        if (!property.Type.IsValid(conditional.Value))
+        {
+            throw new NotationException(
+                $"The notation of '{concept.Key}' draws cells when '{conditional.Slot}' is \"{conditional.Value}\", which is not a value of '{property.Type.Name}'.");
         }
     }
 

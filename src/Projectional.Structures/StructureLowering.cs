@@ -107,7 +107,7 @@ public static class StructureLowering
             concept.GetChildren(StructureLanguage.SuperTypeSlot)
                 .Select(super => Required(super, "conceptKey", $"'{key}'")),
             nameSlot: Optional(concept, "nameSlot"),
-            isAbstract: Flag(concept, "isAbstract"),
+            isAbstract: Flag(concept, StructureLanguage.IsAbstractProperty),
             isOfferedInCompletion: Flag(concept, "isOfferedInCompletion"),
             description: Optional(concept, "description"),
             collapseSlot: Optional(concept, "collapseSlot"));

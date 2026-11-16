@@ -143,6 +143,19 @@ public static class EditorLanguage
             nameSlot: "slot",
             description: "Many children, drawn as blocks."),
 
+        // Inline, and declared after the block cells on purpose: `abstract` is a word inside the concept's header
+        // line, so the only place a conditional can stand today is inside a line.
+        new ConceptDeclaration(
+            EditorConceptKeys.Conditional,
+            [
+                new PropertySlot("slot", PropertyType.String),
+                new PropertySlot("value", PropertyType.String),
+                new ChildSlot(CellSlot, EditorConceptKeys.InlineCell, Cardinality.Many),
+            ],
+            [EditorConceptKeys.InlineCell],
+            nameSlot: "slot",
+            description: "Inline cells drawn only while a property holds a value."),
+
         new ConceptDeclaration(
             EditorConceptKeys.Collection,
             [

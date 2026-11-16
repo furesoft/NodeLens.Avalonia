@@ -140,7 +140,8 @@ public sealed class StructureLoweringTests
     {
         // The rule of the plan: if the definition language needed a rendering exception it would not be a real
         // language. This is the snapshot of the shape - the header says what the concept is, the options say what
-        // it allows, and the three sections say what it holds.
+        // it allows, and the three sections say what it holds. A concrete concept says only `concept`, because
+        // `abstract` is a word in the header rather than an option.
         var definition = new DefinitionBuilder();
 
         definition.Enumeration("Rules.Outcome", "accept");
@@ -154,7 +155,6 @@ public sealed class StructureLoweringTests
                 "    accept",
                 "concepts:",
                 "  concept Rules.Rule",
-                "    is abstract: false",
                 "    offered in completion: true",
                 "    named by:",
                 "    collapsed by:",
@@ -170,6 +170,37 @@ public sealed class StructureLoweringTests
                 "    references:",
                 "      << ... >>"),
             LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120));
+    }
+
+    [Fact]
+    public void AnAbstractConceptSaysSoInItsHeader()
+    {
+        // MPS' spelling: `abstract` is a word of the header, not an option of the concept, so the same notation
+        // draws both concepts and the conditional cell is what makes the difference.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Element", isAbstract: true);
+
+        var drawn = LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120);
+
+        Assert.StartsWith("enumerations:", drawn, StringComparison.Ordinal);
+        Assert.Contains("\n  abstract concept Rules.Element\n", drawn, StringComparison.Ordinal);
+
+        // And the flag itself is not drawn as a value anywhere, which is the point of moving it into the header.
+        Assert.DoesNotContain("is abstract", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConcreteConceptDoesNotSayAbstract()
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Rule");
+
+        var drawn = LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120);
+
+        Assert.Contains("\n  concept Rules.Rule\n", drawn, StringComparison.Ordinal);
+        Assert.DoesNotContain("abstract", drawn, StringComparison.Ordinal);
     }
 
     [Fact]

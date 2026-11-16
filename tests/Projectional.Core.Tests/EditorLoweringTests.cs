@@ -104,6 +104,81 @@ public sealed class EditorLoweringTests
     }
 
     [Fact]
+    public void ADeclaredConditionalDrawsItsCellsOnlyWhileThePropertyHolds()
+    {
+        // The declared path has to be able to say everything C# can, so a conditional is a cell concept like any
+        // other - and it becomes the same ConditionalNotationCell the hand-written notation uses.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Rules.Rule",
+                [
+                    new PropertySlot("enabled", PropertyType.Boolean, "true"),
+                    new PropertySlot("name", PropertyType.String),
+                ],
+                nameSlot: "name"),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+        var line = notation.Line(root, EditorConceptKeys.Conditional, EditorConceptKeys.Keyword);
+        var cells = line.GetChildren(EditorLanguage.CellSlot);
+
+        cells[0].Set("slot", "enabled");
+        cells[0].Set("value", "true");
+        cells[1].Set("text", "rule");
+
+        // The space belongs to the conditional, not to the line: a gap outside it would stay behind as a leading
+        // blank in every drawing of a concrete concept.
+        notation.Cell(cells[0], EditorConceptKeys.Keyword, ("text", "on"));
+        notation.Cell(cells[0], EditorConceptKeys.Space);
+
+        var notations = EditorLowering.CreateRegistry(notation.Root, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("Rules.Rule");
+
+        Assert.Equal("on rule", LayoutSnapshot.Render(rule, notations, width: 40));
+
+        rule.Set("enabled", "false");
+
+        Assert.Equal("rule", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
+    public void ADeclaredConditionalIsValidatedByTheRegistry()
+    {
+        // The lowering adds no rule of its own here: a condition the notation layer would refuse is refused for a
+        // declared notation too, because it becomes the same cell.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Rules.Rule",
+                [
+                    new PropertySlot("enabled", PropertyType.Boolean, "true"),
+                    new ChildSlot("body", "Rules.Rule", Cardinality.Many),
+                ]),
+        ]);
+
+        Assert.Throws<NotationException>(() => Conditioned(concepts, "body", "true"));
+        Assert.Throws<NotationException>(() => Conditioned(concepts, "enabled", "yes"));
+    }
+
+    /// <summary>A one-line notation whose only cell is a conditional on <paramref name="slot"/>.</summary>
+    private static NotationRegistry Conditioned(ConceptRegistry concepts, string slot, string value)
+    {
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+        var cell = notation.Line(root, EditorConceptKeys.Conditional).GetChildren(EditorLanguage.CellSlot)[0];
+
+        cell.Set("slot", slot);
+        cell.Set("value", value);
+
+        return EditorLowering.CreateRegistry(notation.Root, concepts);
+    }
+
+    [Fact]
     public void AVariantTravelsWithTheNotation()
     {
         var concepts = ConceptRegistry.Create([new ConceptDeclaration("Rules.Rule")]);

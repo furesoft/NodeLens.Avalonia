@@ -126,32 +126,78 @@ public sealed class EditorTreeBuilder
         return built;
     }
 
+    /// <summary>
+    /// Builds a run of inline cells. A cell may answer more than one cell or none at all, which is what a
+    /// conditional does, so the result is a list rather than one cell per notation cell.
+    /// </summary>
     private EditorCell[] BuildInline(IReadOnlyList<InlineNotationCell> cells, Node node, TextEmphasis emphasis)
     {
-        var built = new EditorCell[cells.Count];
+        var built = new List<EditorCell>(cells.Count);
 
         for (var i = 0; i < cells.Count; i++)
         {
-            built[i] = BuildInline(cells[i], node, emphasis);
+            built.AddRange(BuildInline(cells[i], node, emphasis));
         }
 
-        return built;
+        return [.. built];
     }
 
-    private EditorCell BuildInline(InlineNotationCell cell, Node node, TextEmphasis emphasis) => cell switch
+    private EditorCell[] BuildInline(InlineNotationCell cell, Node node, TextEmphasis emphasis) => cell switch
     {
-        ConstantNotationCell constant => new ConstantCell(
-            new CellAddress(node.Id),
-            constant.Text,
-            constant.Kind,
-            emphasis | constant.Emphasis),
-        SpaceNotationCell => new SpaceCell(new CellAddress(node.Id)),
-        PropertyNotationCell property => BuildProperty(property, node, emphasis),
-        ReferenceNotationCell reference => BuildReference(reference, node, emphasis),
-        SingleChildNotationCell single => BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null, spacing: 0),
+        ConstantNotationCell constant =>
+        [
+            new ConstantCell(
+                new CellAddress(node.Id),
+                constant.Text,
+                constant.Kind,
+                emphasis | constant.Emphasis),
+        ],
+        SpaceNotationCell => [new SpaceCell(new CellAddress(node.Id))],
+        PropertyNotationCell property => [BuildProperty(property, node, emphasis)],
+        ReferenceNotationCell reference => [BuildReference(reference, node, emphasis)],
+        SingleChildNotationCell single =>
+            [BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null, spacing: 0)],
+        ConditionalNotationCell conditional => BuildConditional(conditional, node, emphasis),
         _ => throw new ProjectionException(
             $"The notation of '{node.Concept.Key}' uses an inline cell of unknown kind '{cell.GetType().Name}'."),
     };
+
+    /// <summary>
+    /// Builds one inline cell where the notation promises exactly one - a collection's separator or a table's
+    /// header. A conditional is refused there rather than silently dropped, because a gap with no separator
+    /// is a different notation than the one that was written.
+    /// </summary>
+    private EditorCell BuildOneInline(InlineNotationCell cell, Node node, TextEmphasis emphasis)
+    {
+        var built = BuildInline(cell, node, emphasis);
+
+        return built.Length == 1
+            ? built[0]
+            : throw new ProjectionException(
+                $"The notation of '{node.Concept.Key}' uses a '{cell.GetType().Name}' where exactly one cell has to be drawn, and it draws {built.Length}.");
+    }
+
+    /// <summary>
+    /// Builds the cells of a conditional, or nothing when its condition does not hold.
+    /// </summary>
+    /// <remarks>
+    /// The property is read as the node reports it - set or defaulted - because a language that writes a default
+    /// means it to be the value until somebody changes it. An unset property with no default answers
+    /// <see langword="null"/> and therefore never equals the condition's text, which is the right reading of
+    /// "nothing is there".
+    /// </remarks>
+    private EditorCell[] BuildConditional(ConditionalNotationCell conditional, Node node, TextEmphasis emphasis)
+    {
+        if (node.Concept.FindProperty(conditional.Slot) is null)
+        {
+            throw new ProjectionException(
+                $"The notation of '{node.Concept.Key}' draws cells when property '{conditional.Slot}' holds a value, but the concept declares no such property.");
+        }
+
+        return string.Equals(node.GetOrNull(conditional.Slot), conditional.Value, StringComparison.Ordinal)
+            ? BuildInline(conditional.Content, node, emphasis)
+            : [];
+    }
 
     private static PropertyCell BuildProperty(PropertyNotationCell notation, Node node, TextEmphasis emphasis) =>
         BuildProperty(notation.Slot, node, emphasis | notation.Emphasis);
@@ -281,7 +327,7 @@ public sealed class EditorTreeBuilder
 
             for (var i = 0; i < separators.Length; i++)
             {
-                separators[i] = BuildInline(separatorNotation, node, emphasis);
+                separators[i] = BuildOneInline(separatorNotation, node, emphasis);
             }
         }
 
@@ -326,7 +372,7 @@ public sealed class EditorTreeBuilder
 
         for (var i = 0; i < headers.Length; i++)
         {
-            headers[i] = BuildInline(notation.Columns[i].Header, node, emphasis);
+            headers[i] = BuildOneInline(notation.Columns[i].Header, node, emphasis);
         }
 
         var built = new EditorCell[rows.Count][];

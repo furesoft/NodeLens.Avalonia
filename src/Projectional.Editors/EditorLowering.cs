@@ -125,6 +125,10 @@ public static class EditorLowering
             EditorConceptKeys.Property => ed.Property(Required(cell, "slot")),
             EditorConceptKeys.Reference => ed.Reference(Required(cell, "slot")),
             EditorConceptKeys.ChildInline => new SingleChildNotationCell(Required(cell, "slot")),
+            EditorConceptKeys.Conditional => ed.Conditional(
+                Required(cell, "slot"),
+                Optional(cell, "value") ?? string.Empty,
+                [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerInline(child, conceptKey))]),
             _ => throw NotACell(cell, conceptKey, "not inline"),
         };
     }
