@@ -122,6 +122,15 @@ decides where text is entered, so there is no region of the surface where an arr
 telling the truth. It is an ordinary inherited `Control` property, so a host that wants a
 different pointer can still set one.
 
+Hovering changes it, and only hovering: a **hand** over the two things a press acts on - the
+quick-fix bulb and a fold twisty - and an **arrow** over the gutter's numbers, which do nothing.
+What is left is the page, which stays an I-beam. The rule is "a target promises, chrome does
+not, the page invites", and the control resolves it from the same geometry the paint and the
+press use (`BulbOnScreen`, `FoldAt`), so the shape under the pointer cannot disagree with what
+is drawn there or with what a click would reach. Only a crossing allocates a `Cursor`: the
+shape it last asked for is kept as a `StandardCursorType`, so a move that changes nothing sets
+no property.
+
 ## The action model
 
 Every input is an `EditAction`:

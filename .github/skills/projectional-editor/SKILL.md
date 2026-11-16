@@ -727,15 +727,19 @@ everything about the *list* is an offer: `OfferList` (of `Intention` entries), `
   `true`. `Render` skips the caret bar while `IsVisible` is false. Every edit/move/click path
   goes through `Show()`, which calls `Reset()` - do not invalidate the control directly from a
   new input path or the caret can be dark at the moment of typing.
-- **The pointer over the editor is an I-beam.** The constructor sets
-  `Cursor = new Cursor(StandardCursorType.Ibeam)` because the whole surface is text the user can
-  type into; an arrow would read as "a panel you look at". It is set once in the constructor and
-  never touched again, so a host may still override `Cursor` on the instance or an ancestor.
-  `Cursor` exposes no public getter for the standard type (only `ToString`, which prints
-  `Ibeam`), and the control cannot be constructed headlessly at all - its completion palette
-  builds `StreamGeometry` from platform services - so this is verified through a real-window
-  probe, not a unit test. Do not add a test that compares `Cursor.ToString()`; it would fail in
-  the constructor before reaching the assertion.
+- **The pointer is an I-beam over the page and a hand over anything a press acts on.**
+  `UpdatePointer(session, point)` runs from `OnPointerMoved` and resolves three shapes from the
+  same geometry the paint and the press use: `Hand` over the quick-fix bulb (`BulbOnScreen`) and
+  over a fold twisty (`FoldAt`), `Arrow` over the gutter, `Ibeam` over the page. The constructor's
+  `Cursor = new Cursor(StandardCursorType.Ibeam)` is only the resting shape. Two rules: the shape
+  is kept as a `StandardCursorType` so a move that changes nothing sets no property and allocates
+  no `Cursor`, and holding a `Cursor` in a field trips CA1001 (it is disposable, and the control is
+  not) - allocate on the transition instead. `Cursor` exposes no public getter for the standard
+  type (only `ToString`, which prints `Hand`/`Arrow`/`Ibeam`), and the control cannot be
+  constructed headlessly at all - its completion palette builds `StreamGeometry` from platform
+  services - so this is verified through a real-window probe, not a unit test. Do not add a test
+  that compares `Cursor.ToString()`; it would fail in the constructor before reaching the
+  assertion.
 - **Undo/redo report whether they did anything.** `Ctrl+Z`, `Ctrl+Shift+Z`/`Ctrl+Y` call
   `session.Undo()`/`Redo()` and only set `Handled` when the history had a step.
 - **The context menu is a description, not a widget.** `EditorMenu.For(session)` (in
@@ -769,6 +773,15 @@ everything about the *list* is an offer: `OfferList` (of `Intention` entries), `
   "the wheel moves the offset" and "a fitting document hands the event back" - can be driven
   end to end with `control.RaiseEvent(args)` and asserted on `args.Handled`. See the
   verification habits below.
+- **A pointer *move* is synthesizable too, but through the base class.** Avalonia 12.1.6 has
+  **no** `PointerMovedEventArgs` type; a move is a `PointerEventArgs` raised with
+  `InputElement.PointerMovedEvent`, whose public constructor is
+  `(RoutedEvent routedEvent, object source, IPointer pointer, Visual rootVisual, Point rootVisualPosition, ulong timestamp, PointerPointProperties properties, KeyModifiers modifiers)`.
+  Passing the control as `rootVisual` makes `e.GetPosition(control)` answer `rootVisualPosition`,
+  which is how "hovering the bulb gives a hand" was proven: raise the move, then read
+  `control.Cursor.ToString()`. Raising the real event rather than invoking the private method
+  proves the `OnPointerMoved` wiring as well as the decision. `Pointer` is ambiguous with
+  `System.Reflection.Pointer` once `System.Reflection` is imported - qualify it.
 
 ## How highlighting works
 
@@ -1277,6 +1290,11 @@ Facts that came out of doing this, and cost time to rediscover:
 - **`RaiseEvent` bubbles to ancestors**, so `Handled` can be `true` because `TopLevel` or a
   parent handled it, not because the control did. To isolate the control, raise the same event
   at a control that is in **no** visual tree.
+- **A pointer move is raisable as a plain `PointerEventArgs`** raised with
+  `InputElement.PointerMovedEvent` - there is no `PointerMovedEventArgs` in 12.1.6 - passing the
+  control as `rootVisual` so `GetPosition` answers the point you gave. Reading
+  `control.Cursor.ToString()` afterwards (`"Hand"`, `"Arrow"`, `"Ibeam"`) is how the hover shapes
+  are asserted.
 - **A local method named after a type breaks the file**: `void Key(Key key, ...)` makes every
   later `Key.Left` a method group (CS0119). Name the helper `Combo` or `Press`.
 - **Widgets are laid out lazily**, so a probe must `await Task.Delay` *after* the window opens
