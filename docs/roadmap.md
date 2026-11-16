@@ -16,13 +16,24 @@ produces something usable, and no milestone depends on a later one being finishe
 
 ## Next
 
-The feature to implement next is **quick fixes**: the repairs a diagnostic carries, reached
-with `Alt+Enter`/`Ctrl+.`, the marker's tooltip and the context menu, and applied as one undo
-step ([quick-fixes.md](architecture/quick-fixes.md)). It goes first because diagnostics
-already exist and nothing yet makes them actionable, and because it gives the planned
-intention list a second source to be designed against instead of a single one to be guessed
-from. Folding stays the last M1 item and resumes afterwards; the constraint engine that will
-produce diagnostics in volume stays where it is, in M4.
+**Quick fixes** are in delivery: the model, the apply step, one real check, the two gestures, the
+submenu, the tooltip line and list navigation are done
+([quick-fixes.md](architecture/quick-fixes.md)). What is left is the painted list of several
+repairs (slice Q8) and the light bulb (slice Q6). They go first because diagnostics already exist
+and nothing yet makes them actionable, and because they give the planned intention list a second
+source to be designed against instead of a single one to be guessed from.
+
+Immediately after them, a **two-pixel gap between the gutter and the page**
+([line-numbers.md](architecture/line-numbers.md), section "A gap between the gutter and the page"):
+a readability fix that is deliberately last in that queue, because it moves the number the caret,
+the markers and the hit test all derive from.
+
+Then **concept descriptions** ([concept-descriptions.md](architecture/concept-descriptions.md),
+slices D1 to D5): the sentence a language writes about a concept, shown on hover over a node and
+beside the completion entry that offers it.
+
+Folding stays the last M1 item and resumes afterwards; the constraint engine that will produce
+diagnostics in volume stays where it is, in M4.
 
 ## Milestones
 
