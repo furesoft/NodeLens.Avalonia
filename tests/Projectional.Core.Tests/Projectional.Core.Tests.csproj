@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Core\Projectional.Core.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
