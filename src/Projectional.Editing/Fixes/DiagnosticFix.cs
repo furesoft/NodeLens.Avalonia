@@ -41,6 +41,9 @@ public sealed class DiagnosticFix
     /// <param name="availability">
     /// Whether the fix can run now; <see cref="FixAvailability.Applies"/> when omitted.
     /// </param>
+    /// <param name="safety">
+    /// Whether applying the fix removes content; <see cref="EditSafety.Plain"/> when omitted.
+    /// </param>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="diagnostic"/> or <paramref name="create"/> is <see langword="null"/>.
     /// </exception>
@@ -51,7 +54,8 @@ public sealed class DiagnosticFix
         string label,
         Func<FixContext, EditAction?> create,
         string? description = null,
-        FixAvailability availability = default)
+        FixAvailability availability = default,
+        EditSafety safety = EditSafety.Plain)
     {
         ArgumentNullException.ThrowIfNull(diagnostic);
         ArgumentException.ThrowIfNullOrEmpty(id);
@@ -64,6 +68,7 @@ public sealed class DiagnosticFix
         Create = create;
         Description = description;
         Availability = availability;
+        Safety = safety;
     }
 
     /// <summary>The finding this fix repairs.</summary>
@@ -100,6 +105,19 @@ public sealed class DiagnosticFix
 
     /// <summary>Whether the fix is offered but cannot run.</summary>
     public bool IsDisabled => Availability.IsDisabled;
+
+    /// <summary>What applying the fix can take away, which decides whether it may run unasked.</summary>
+    /// <remarks>
+    /// A lone plain repair is applied by the gesture that asked for it, because a list of one costs a
+    /// keystroke and tells the user nothing. A lone destructive one opens that list instead: the same
+    /// keystroke that fills an empty slot must not be able to delete a node the user was only asking
+    /// about. The reading is done by <see cref="EditorSession.ApplyQuickFixes"/> and not by a surface, so
+    /// every host inherits the rule.
+    /// </remarks>
+    public EditSafety Safety { get; }
+
+    /// <summary>Whether applying the fix removes content.</summary>
+    public bool IsDestructive => Safety == EditSafety.Destructive;
 
     /// <summary>The text a menu shows under the label: the fix's own sentence, or the finding's.</summary>
     public string Tip => Description ?? Diagnostic.Message;

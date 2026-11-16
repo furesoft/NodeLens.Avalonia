@@ -223,15 +223,83 @@ public sealed class QuickFixKeysTests
     }
 
     [Fact]
-    public void TheMustBeAtLeastTwoRepairsInAList()
+    public void ALoneDestructiveRepairAsksInsteadOfRunning()
+    {
+        // The gesture asks what is available; it must not also be the keystroke that removes something.
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+        var finding = Finding(rule, "the name says nothing");
+
+        session.Markers = new MarkerSet(finding);
+        session.Fixes = new FixSet(DestructiveRenameFix(finding, name, "walked"));
+
+        var result = session.Apply(new QuickFixAction());
+
+        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
+
+        var offered = Assert.IsType<QuickFixList>(session.OfferedFixes);
+        Assert.Equal(1, offered.Count);
+    }
+
+    [Fact]
+    public void ALoneDestructiveRepairStillRunsFromTheListItOpened()
+    {
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var name = CellAddress.OfSlot(rule.Id, "name");
+        var finding = Finding(rule, "the name says nothing");
+        var fix = DestructiveRenameFix(finding, name, "walked");
+
+        session.Markers = new MarkerSet(finding);
+        session.Fixes = new FixSet(fix);
+
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new QuickFixAction()).Outcome);
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptQuickFixAction()).Outcome);
+        Assert.Equal("walked", rule.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void ALoneRepairThatCannotRunIsShownWithItsReason()
+    {
+        // Applying it silently would answer the user with nothing at all; the list at least says what is
+        // there, and accepting the entry reports the reason the check gave.
+        var rule = RuleNamed("walk");
+        using var session = TestEditor.Open(rule);
+        var finding = Finding(rule, "the name says nothing");
+        var fix = new DiagnosticFix(
+            finding,
+            "rename",
+            "Rename to \"walked\"",
+            _ => new SetPropertyAction(CellAddress.OfSlot(rule.Id, "name"), "walked"),
+            availability: FixAvailability.Disabled("the document is open read-only"));
+
+        session.Markers = new MarkerSet(finding);
+        session.Fixes = new FixSet(fix);
+
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(new QuickFixAction()).Outcome);
+
+        var offered = Assert.IsType<QuickFixList>(session.OfferedFixes);
+        Assert.Equal(1, offered.Count);
+        Assert.True(offered[0].IsDisabled);
+    }
+
+    [Fact]
+    public void AListMayHoldOneEntrySoThatItCanAsk()
     {
         var rule = RuleNamed("walk");
         var name = CellAddress.OfSlot(rule.Id, "name");
         var finding = Finding(rule, "one");
 
         Assert.Throws<ArgumentException>(() => new QuickFixList([]));
-        Assert.Throws<ArgumentException>(() => new QuickFixList([RenameFix(finding, name, "one")]));
         Assert.Throws<ArgumentNullException>(() => new QuickFixList(null!));
+
+        var single = new QuickFixList([DestructiveRenameFix(finding, name, "one")]);
+
+        Assert.Equal(1, single.Count);
+        Assert.Equal(0, single.Selected);
+        Assert.Equal("Rename to \"one\"", single.SelectedFix.Label);
+        Assert.True(single.SelectedFix.IsDestructive);
     }
 
     [Fact]
@@ -263,6 +331,15 @@ public sealed class QuickFixKeysTests
 
     private static DiagnosticFix RenameFix(Diagnostic finding, CellAddress name, string text) =>
         new(finding, $"rename.{text}", $"Rename to \"{text}\"", _ => new SetPropertyAction(name, text));
+
+    /// <summary>One repair that removes something, which is what makes the gesture ask first.</summary>
+    private static DiagnosticFix DestructiveRenameFix(Diagnostic finding, CellAddress name, string text) =>
+        new(
+            finding,
+            $"rename.{text}",
+            $"Rename to \"{text}\"",
+            _ => new SetPropertyAction(name, text),
+            safety: EditSafety.Destructive);
 
     private static Diagnostic Finding(Node rule, string message) =>
         new(DiagnosticSeverity.Warning, rule.Id, message, role: "name", range: CharacterRange.Of(0, 4));

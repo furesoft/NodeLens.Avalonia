@@ -215,8 +215,9 @@ public sealed class EditorSession : IDisposable
     /// situation as the caret moving out of it.
     /// </para>
     /// <para>
-    /// Never set to a list of one: a single repair is applied by the gesture that asked for it, so this
-    /// property answers "the user is choosing between several" and nothing else.
+    /// Set to a list of one only when the gesture may not run that repair by itself - it is destructive or
+    /// it cannot run - so the property answers "the user is choosing between several" or "the user is being
+    /// asked about one" and nothing else.
     /// </para>
     /// </remarks>
     public QuickFixList? OfferedFixes { get; private set; }
@@ -528,8 +529,15 @@ public sealed class EditorSession : IDisposable
     /// <summary>Answers the quick-fix gesture: nothing to offer, one repair, or a list to choose from.</summary>
     /// <remarks>
     /// <para>
-    /// One repair is applied immediately. The common case is a single cure for a single finding, and a list
-    /// with one entry costs the user a keystroke to say what the editor already knew.
+    /// One repair is applied immediately when it is plain and can run. The common case is a single cure for
+    /// a single finding, and a list with one entry costs the user a keystroke to say what the editor already
+    /// knew.
+    /// </para>
+    /// <para>
+    /// One repair that is destructive, or that cannot run at all, opens the list instead. The gesture asks
+    /// what is available; it must not also be the keystroke that deletes a node or that does nothing while a
+    /// reason exists. A list of one therefore means "this is what is here, do you mean it", which is the
+    /// same shape as a choice and a different sentence.
     /// </para>
     /// <para>
     /// Several repairs open a list, and the answer is <see cref="EditOutcome.Unchanged"/>: the gesture was
@@ -554,7 +562,7 @@ public sealed class EditorSession : IDisposable
             return EditResult.Unchanged(Selection);
         }
 
-        if (offered.Count == 1)
+        if (offered.Count == 1 && offered[0] is { Safety: EditSafety.Plain, IsDisabled: false })
         {
             OfferedFixes = null;
 
