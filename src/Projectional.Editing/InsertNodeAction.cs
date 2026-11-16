@@ -72,6 +72,11 @@ public sealed class InsertNodeAction : EditAction
     }
 
     /// <summary>Adds another element to the list slot the caret's node sits in.</summary>
+    /// <remarks>
+    /// The new element goes <em>after</em> the one the caret is in, not at the end of the list. "Another thing
+    /// here" means here: appending would put what the user just made at the far end of a list they were not
+    /// looking at, and the caret would follow it there.
+    /// </remarks>
     private static EditResult AddSibling(EditContext context, Selection selection)
     {
         if (context.NodeOf(selection.Caret.Address) is not { } node
@@ -82,7 +87,7 @@ public sealed class InsertNodeAction : EditAction
             return EditResult.Unchanged(selection);
         }
 
-        var created = context.AddChild(parent, slot, node.Concept.Key);
+        var created = context.AddChild(parent, slot, node.IndexInParent + 1, node.Concept.Key);
 
         return EditResult.Applied(
             Selection.At(CellAddress.OfElement(parent.Id, slot, created.IndexInParent)));

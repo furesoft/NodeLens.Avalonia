@@ -547,7 +547,6 @@ errors, such as opening a session on a node that is not in a model.
 
 | Missing | Consequence | Arrives with |
 | --- | --- | --- |
-| Insert at index | Enter appends to the end of a list, not below the caret | M2 (tables need it) |
 | Property defaults are materialized | typing into a default inserts into it (`"unnamed"` + `"P"` → `"Punnamed"`) instead of replacing it, except in a node an edit has just created, whose value arrives selected | `feat/property-defaults` after M1 |
 | Completion of a filled slot (substitution) | a list only offers concepts for an empty slot; replacing an existing child arrives with the language's substitution rules | M3 ([completion.md](completion.md)) |
 | Multi-cell text editing | a selection behaves like a caret for text input | M3 |

@@ -537,8 +537,12 @@ dependency, so every action is testable headlessly.
   then re-resolves the caret against the new generation, and hands the coalescing key back to
   the caller so a run of typed characters stays one undoable step. Rebuilding everything on
   every keystroke is deliberate M1 policy, not an oversight.
-- **Enter appends.** `Model.NewChild` adds to the end of a list; there is no insert-at-index
-  API yet, so Enter on a slot in the middle of a list puts the child last.
+- **Enter inserts after the node the caret is in.** `InsertNodeAction.AddSibling` asks for
+  `node.IndexInParent + 1` through `EditContext.AddChild(parent, slot, index, conceptKey)`, which is
+  `Model.NewChildAt` - one `NodeAdded`, so undo takes the node out of the place it went into. Appending
+  (`Model.NewChild`) is what the *slot-filling* half uses, where there is nothing to be after. It used to
+  append everywhere, which made Enter in the middle of a body put the new step at the far end and drag the
+  caret there; `EnterInTheMiddleOfAListDoesNotJumpToTheEnd` pins the fix.
 - **Typing into an empty slot creates what you are describing.** `TypeTextAction`'s second case:
   an empty `ChildCell`/`CollectionCell` with a collapsed selection asks the language's
   `ITypingRules` which concept claims the text, creates it there and writes the text into the
@@ -1246,7 +1250,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1382 tests**; anything below that means tests were deleted.
+it. **Baseline is 1388 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

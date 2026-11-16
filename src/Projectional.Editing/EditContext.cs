@@ -206,6 +206,36 @@ public sealed class EditContext
     }
 
     /// <summary>
+    /// Adds a new child of <paramref name="conceptKey"/> to <paramref name="parent"/> at
+    /// <paramref name="index"/>, which is where the caret was.
+    /// </summary>
+    /// <param name="parent">The node that gains the child.</param>
+    /// <param name="slot">The child slot of <paramref name="parent"/>.</param>
+    /// <param name="index">Where among the slot's children the new node goes.</param>
+    /// <param name="conceptKey">The concept of the new child.</param>
+    /// <returns>The node that was created.</returns>
+    /// <exception cref="EditingException"><paramref name="parent"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// Separate from <see cref="AddChild(Node, string, string)"/> rather than an optional parameter, so that a
+    /// caller which does not know a position cannot silently get "append" - the one place that asks for a
+    /// position is the key that knows where the caret stands.
+    /// </remarks>
+    public Node AddChild(Node parent, string slot, int index, string conceptKey)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentException.ThrowIfNullOrEmpty(conceptKey);
+
+        if (!ReferenceEquals(parent.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {parent.Id} belongs to another model than the document being edited.");
+        }
+
+        return parent.Model.NewChildAt(parent, slot, index, conceptKey);
+    }
+
+    /// <summary>
     /// Adds a new child of <paramref name="conceptKey"/> to <paramref name="parent"/> and fills one of
     /// its properties with <paramref name="text"/>, as a single undo step.
     /// </summary>
