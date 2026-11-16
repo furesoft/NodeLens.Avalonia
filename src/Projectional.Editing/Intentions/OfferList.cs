@@ -17,9 +17,10 @@ namespace Projectional.Editing;
 /// </para>
 /// <para>
 /// It is never empty: none is the absence of an answer rather than an empty list. It may hold exactly one,
-/// which happens only when the lone offer is not one the gesture may run by itself - a destructive offer, or
-/// one that cannot run at all. The list is then not offering a choice, it is asking whether the user means
-/// it, and that is a different sentence with the same shape.
+/// which happens whenever the lone offer is not one the gesture may run by itself - a destructive offer, one
+/// that cannot run at all, or a declared intention, which is never run unasked because nothing on screen
+/// announced it. The list is then not offering a choice, it is asking whether the user means it, and that is a
+/// different sentence with the same shape.
 /// </para>
 /// </remarks>
 public sealed class OfferList

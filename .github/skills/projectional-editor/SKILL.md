@@ -779,10 +779,12 @@ transaction and rolls back completely if a step is rejected.
   `QuickFixes.At(session)` answers the caret's line (resolved geometrically, `MarkerGeometry` tops against
   `CaretBounds`), worst finding first; `QuickFixes.Of(session, diagnostic)` answers one finding. Both are
   derived per call and never cached.
-- **`EditSafety` decides whether a lone offer may run.** `EditorSession.ApplyOffers()` applies a lone
-  offer only when it is `EditSafety.Plain` *and* not disabled; anything else opens a `OfferList`. A list
-  of one is therefore legal **only** because a destructive or disabled repair is asking rather than being
-  offered - do not restore the old "at least two" rule.
+- **Two things decide whether a lone offer may run: `EditSafety` and `Intention.Fix`.** `ApplyOffers()`
+  applies a lone offer only when it is `EditSafety.Plain`, not disabled, **and carries a `Fix`** - that is, when
+  it is a *repair*. A lone declared intention opens an `OfferList` of one row instead, because nothing on screen
+  announced it: the gesture asks what can be done, and a menu with one row still answers a question. Do not
+  "simplify" this to `Safety` alone, and do not restore the old "at least two offers" rule - a list of one is
+  legal for three reasons now (destructive, disabled, and a declared intention).
 - **A fix's label names the result** ("Rename to \"Check2\"") and `Description` is part of the contract; a
   menu falls back to the finding's message. The id is stable and never translated.
 - **Safety is on the offer, not on the fix type**, because the intention catalogue carries the same enum.
@@ -882,8 +884,9 @@ everything about the *list* is an offer: `OfferList` (of `Intention` entries), `
 "a quick fix is an intention carrying its `DiagnosticFix`" readable.
 
 - **`ApplyOffers()` asks `IntentionList.For(session)`**, so the popup lists host, language and fixes
-  together. The lone-plain rule therefore covers both catalogues; an entry that is `Disabled` or
-  `Destructive` opens the list (including a one-entry list).
+  together. What may run without one is narrower than "plain": a lone entry runs only when it carries
+  `Intention.Fix`, i.e. when it is a repair. A `Disabled` or `Destructive` entry opens the list too - a
+  one-entry list has three legal reasons, and a declared intention is one of them.
 - **`AcceptOffer` calls `Apply(Intention)`**, which routes an entry carrying `Intention.Fix` through
   `Apply(DiagnosticFix)` - so accepting a repair keeps its re-resolution, and accepting an intention builds
   its action at that moment.

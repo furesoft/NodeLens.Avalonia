@@ -193,20 +193,23 @@ was handed.
 The four surfaces are delivered in dependency order, and only the last one needs a window:
 
 1. **`Alt+Enter` and `Ctrl+.` in the control**, the two spellings of the same command in the two
-   editors this one is modelled on (MPS and Visual Studio). If the line offers exactly one repair and
-   it is plain and able to run, the gesture applies it immediately - the common case is a single
-   repair, and a popup with one entry costs the user a keystroke for nothing. Otherwise the list opens,
-   including for a lone destructive or disabled repair: the gesture asks what is available, and it must
-   not also be the keystroke that deletes something or that answers with nothing at all.
+   editors this one is modelled on (MPS and Visual Studio). If the line offers exactly one *repair* and
+   it is plain and able to run, the gesture applies it immediately - the common case is a single repair
+   for a finding the editor already painted, and a popup with one entry costs the user a keystroke for
+   nothing. Otherwise the list opens: for several offers, for a lone destructive or disabled repair, and
+   for a lone *intention*, which was announced nowhere and is therefore a question rather than an answer.
+   The gesture asks what is available, and it must not also be the keystroke that deletes something or
+   that answers with nothing at all.
    Both are exceptions to "keys held with Control or Alt are the host's", and they are taken
    deliberately and early: a quick-fix gesture that moves after users have learned it is worse than
    one gesture reserved from the host on day one. [context-actions.md](context-actions.md) already
    names both for the intention list, and there must be one binding, not two.
 
    **Delivered as far as the editing layer goes.** `EditorKey.QuickFix` carries the gesture,
-   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyOffers()` gives the three
-   answers: nothing offered, one plain offer applied as its own undo step, or a list held in
-   `Offered` for whoever draws them. Q7 added the safety class that decides the second and third
+   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyOffers()` gives the answers:
+   nothing offered, a lone plain *repair* applied as its own undo step, or a list held in
+   `Offered` for whoever draws them. A *declared intention* is never applied from the gesture,
+   however few of them there are - see [context-actions.md](context-actions.md#interaction). Q7 added the safety class that decides the second and third
    case, and Q8 (`OfferPresenter`) draws them beside the caret - a list of one included, because a
    destructive offer that opened it is asking rather than offering. **Slice C of
    [context-actions.md](context-actions.md) turned the same gesture into the intentions gesture**:
@@ -446,9 +449,10 @@ same classification and one enum serves both), and the
 gesture applies a lone repair only when it is plain; a lone destructive repair opens the list, which is
 then allowed to hold one entry precisely because it is asking rather than offering. **Delivered in Q7**:
 `DiagnosticFix.Safety` defaults to `Plain`, `OfferList` accepts one entry, and
-`EditorSession.ApplyOffers` applies a lone offer only when it is plain *and* able to run - a lone
+`EditorSession.ApplyOffers` applies a lone *repair* only when it is plain *and* able to run - a lone
 disabled repair opens the list too, because a gesture that silently does nothing is the same complaint
-in another costume. Open question 73.
+in another costume. The same reading refuses to run a lone declared intention: nothing announced it, so the
+list is the answer (see [context-actions.md](context-actions.md#interaction)). Open question 73.
 
 **A standard rename may not break another model.** `STD002` is safe only while nothing references the
 name it changes: in a language where a rule's name is what other models point at, renaming it silently

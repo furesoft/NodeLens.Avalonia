@@ -13,10 +13,10 @@ namespace Projectional.Core.Tests;
 /// offer again.
 /// </summary>
 /// <remarks>
-/// The three answers are the whole design: nothing to offer, one plain offer applied without asking, several
-/// listed. The closing rules matter as much, because a list that outlives the caret it described offers
-/// actions for a place the user has left. The gesture asks the merged list, so an intention behaves exactly
-/// like a repair here - including a destructive one having to ask.
+/// The answers are the whole design: nothing to offer, a lone plain repair applied without asking, and
+/// everything else listed - several offers, a destructive or disabled one, or a declared intention, which is
+/// never run unasked because nothing on screen announced it. The closing rules matter as much, because a list
+/// that outlives the caret it described offers actions for a place the user has left.
 /// </remarks>
 public sealed class OfferKeysTests
 {
@@ -310,17 +310,21 @@ public sealed class OfferKeysTests
     }
 
     [Fact]
-    public void OneIntentionIsAppliedWithoutAsking()
+    public void OneIntentionOpensAListOfOneInsteadOfRunning()
     {
-        // The gesture does not care where the offer came from: a single plain intention runs exactly as a
-        // single plain repair does.
+        // A repair may run unasked because a finding announced it. An intention announced nothing, so the
+        // gesture is a question and the answer is a list - one row long, this time.
         var rule = RuleNamed("walk");
         using var session = TestEditor.Open(rule);
         session.AddIntentions(new StubIntentions(IntentionNamed("test.rename", rule)));
 
         var result = session.Apply(new OfferAction());
 
-        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.Equal(EditOutcome.Unchanged, result.Outcome);
+        Assert.Equal("walk", rule.GetOrNull("name"));
+        Assert.Equal(1, session.Offered!.Count);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Equal("renamed", rule.GetOrNull("name"));
         Assert.Null(session.Offered);
     }

@@ -5,8 +5,8 @@ namespace Projectional.Editing;
 /// <para>
 /// The classification belongs to the <em>offer</em> rather than to the fix, because a second catalogue needs
 /// the same answer: an intention that deletes a node and a repair that clears a reference are the same
-/// hazard, and one enum for both keeps a surface from having to decide twice. It is also what the gesture
-/// reads, so the rule "run a lone offer immediately" cannot be written once for fixes and once for
+/// hazard, and one enum for both keeps a surface from having to decide twice. It is one of the two things the
+/// gesture reads before it runs an offer unasked, so the rule cannot be written once for fixes and once for
 /// intentions and then drift apart. It therefore lives beside <see cref="EditAction"/> at the root of this
 /// layer rather than in the quick-fix folder it was introduced with.
 /// </para>
