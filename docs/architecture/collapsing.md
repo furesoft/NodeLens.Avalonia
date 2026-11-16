@@ -329,6 +329,29 @@ a gutter - an embedded editor in a table cell, a reader view - can still fold.
 | Double-click or ellipsis-click to unfold | One gesture, in the gutter. A click on the placeholder has to stay a caret placement, or the caret could not enter a folded node at all. |
 | Animating the fold | The layout is rebuilt on every view-state change; an animation would need a stable geometry across two generations. |
 
+## A defect the probe found
+
+The runtime probe rendered a folded rules document and showed the fold working - one line reading
+`Approved …` where the body used to be - but **no arrow in the margin**, and a gutter exactly as wide as
+before folding.
+
+The cause is an assumption in `FoldMarks.Of`: it looks for a placed cell whose address is the node's own
+address (`new CellAddress(nodeId)`, slot null). That is true only for the **document root**. Every other
+node is projected under its parent's *element* address - `CellAddress.OfElement(parentId, slot, index)` -
+because the address names where the cell sits in the parent, not which node it draws. So the owner of a
+child's cell is its parent, the `Slot` is not null, and the filter rejects every candidate.
+
+The fix has two parts and is the next slice (S7):
+
+- **Resolve a node's address through the model**: `new CellAddress(node.Id)` for the root, and
+  `CellAddress.OfElement(parent.Id, slotName, index)` otherwise, found from the parent's child slot.
+- **Look it up in one pass, not per node**: build an `address -> bounds` map from `layout.Cells` once,
+  then read each foldable node's entry. Asking `BoundsOf` per node instead would reintroduce the nested
+  scan this document warns about.
+
+`FoldHitTest`, `GutterWidth`, the glyph painting and the press path are all correct as written; only the
+mark list is empty, which is why the feature looks like it does nothing.
+
 ## Slices
 
 - **S1 - the permission.** `ConceptDeclaration(collapseSlot:)`, `Concept.CollapseSlot`, the
