@@ -183,7 +183,6 @@ public sealed class PreviewSandboxTests
             model.Roots[0],
             RulesLanguage.CreateNotations(model.Concepts),
             emphasis: RulesLanguage.Emphasis,
-            typing: RulesLanguage.TypingRules,
-            triggers: RulesLanguage.Triggers);
+            typing: RulesLanguage.TypingRules);
     }
 }

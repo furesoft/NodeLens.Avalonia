@@ -170,15 +170,15 @@ public sealed class TypeTextAction : EditAction
             return null;
         }
 
-        var (node, trigger) = found;
+        var (node, triggered) = found;
 
         var wrapper = context.WrapChild(
             node,
-            trigger.ConceptKey,
-            trigger.AnchorSlot,
-            PresetsOf(context, trigger));
+            triggered.Concept.Key,
+            triggered.Trigger.AnchorSlot,
+            PresetsOf(context, triggered));
 
-        return EditResult.Applied(Selection.At(ContinueAt(wrapper, trigger)));
+        return EditResult.Applied(Selection.At(ContinueAt(wrapper, triggered.Trigger)));
     }
 
     /// <summary>The trigger this keystroke fires, and the node it would go around.</summary>
@@ -189,35 +189,29 @@ public sealed class TypeTextAction : EditAction
     /// and within one candidate the language's declaration order decides, so the answer is always the first
     /// trigger that matches rather than a vote between them.
     /// </remarks>
-    private (Node Node, ConceptTrigger Trigger)? TriggerAt(EditContext context, CaretPlace place)
+    private (Node Node, TriggeredConcept Triggered)? TriggerAt(EditContext context, CaretPlace place)
     {
-        if (context.Triggers.IsEmpty)
-        {
-            return null;
-        }
-
         foreach (var anchor in TriggerAnchors.Of(context, place, context.Selection.Caret.Offset))
         {
-            if (TriggerFor(context, anchor) is { } trigger)
+            if (TriggerFor(context, anchor) is { } triggered)
             {
-                return (anchor.Node, trigger);
+                return (anchor.Node, triggered);
             }
         }
 
         return null;
     }
 
-    /// <summary>The first trigger declared for <paramref name="anchor"/> that claims this text.</summary>
+    /// <summary>The first concept declared for <paramref name="anchor"/> that claims this text.</summary>
     /// <param name="context">The apply in progress.</param>
     /// <param name="anchor">The node and the end of it the caret stands at.</param>
     /// <remarks>
-    /// A trigger whose wrapper could not legally stand where the anchor stands is skipped rather than tried:
-    /// the model refuses such a wrap with a <see cref="ModelInvariantException"/>, and the checks here are the
-    /// same ones, done early so that a declared-but-impossible trigger is a keystroke that does nothing instead
-    /// of an editor that throws. Everything else about a bad declaration - a concept key that does not exist,
-    /// a slot that holds no children - is caught by the same guard.
+    /// Concepts come in declaration order, so the first match is the language's own answer when two of them claim
+    /// the same character on the same side. A trigger whose concept could not stand where the anchor stands is
+    /// skipped rather than tried: the model refuses such a wrap, and checking first makes a
+    /// declared-but-impossible gesture a keystroke that does nothing instead of an editor that throws.
     /// </remarks>
-    private ConceptTrigger? TriggerFor(EditContext context, TriggerAnchor anchor)
+    private TriggeredConcept? TriggerFor(EditContext context, TriggerAnchor anchor)
     {
         if (anchor.Node.Parent is not { } parent || anchor.Node.ParentSlot is not { } slot)
         {
@@ -225,52 +219,42 @@ public sealed class TypeTextAction : EditAction
             return null;
         }
 
-        foreach (var trigger in context.Triggers.Find(anchor.Node.Concept))
+        foreach (var triggered in context.Concepts.TriggersFor(anchor.Node.Concept))
         {
-            if (trigger.Side == anchor.Side
-                && trigger.Claims(Text)
-                && Fits(context, parent, slot, anchor.Node, trigger))
+            if (triggered.Trigger.Side == anchor.Side
+                && triggered.Trigger.Claims(Text)
+                && Fits(parent, slot, triggered))
             {
-                return trigger;
+                return triggered;
             }
         }
 
         return null;
     }
 
-    /// <summary>Whether <paramref name="trigger"/> is a wrap the model would accept around <paramref name="node"/>.</summary>
-    private static bool Fits(
-        EditContext context,
-        Node parent,
-        string slot,
-        Node node,
-        ConceptTrigger trigger)
-    {
-        if (!context.Concepts.TryGet(trigger.ConceptKey, out var wrapper) || wrapper.IsAbstract)
-        {
-            return false;
-        }
-
-        return parent.Concept.FindChild(slot) is { } place
-            && wrapper.IsKindOf(place.ChildConceptKey)
-            && wrapper.Applicability.Allows(parent.Concept, slot)
-            && wrapper.FindChild(trigger.AnchorSlot) is { Cardinality: Cardinality.One } inner
-            && node.Concept.IsKindOf(inner.ChildConceptKey);
-    }
+    /// <summary>Whether the concept a trigger creates is a wrap the model would accept here.</summary>
+    /// <remarks>
+    /// Only the two questions registration could not ask: whether the wrapper conforms to the slot the anchor
+    /// stands in, and whether <see cref="Applicability"/> allows it there. Everything else - the anchor slot is a
+    /// single child, the anchor conforms to it, the property and caret slots exist, the concept is concrete - was
+    /// checked when the language was registered.
+    /// </remarks>
+    private static bool Fits(Node parent, string slot, TriggeredConcept triggered) =>
+        parent.Concept.FindChild(slot) is { } place
+        && triggered.Concept.IsKindOf(place.ChildConceptKey)
+        && triggered.Concept.Applicability.Allows(parent.Concept, slot);
 
     /// <summary>The values the wrapper is born with: the typed text, when the trigger says where it goes.</summary>
-    private Dictionary<string, string>? PresetsOf(EditContext context, ConceptTrigger trigger)
+    private Dictionary<string, string>? PresetsOf(EditContext context, TriggeredConcept triggered)
     {
-        if (trigger.PropertySlot is not { } slot)
+        if (triggered.Trigger.PropertySlot is not { } slot)
         {
             return null;
         }
 
-        return context.Concepts.TryGet(trigger.ConceptKey, out var wrapper)
-            && wrapper.FindProperty(slot) is { } property
-            && property.Type.IsValid(Text)
-                ? new Dictionary<string, string>(StringComparer.Ordinal) { [slot] = Text }
-                : null;
+        return triggered.Concept.FindProperty(slot) is { } property && property.Type.IsValid(Text)
+            ? new Dictionary<string, string>(StringComparer.Ordinal) { [slot] = Text }
+            : null;
     }
 
     /// <summary>Where the caret goes once the wrapper exists.</summary>

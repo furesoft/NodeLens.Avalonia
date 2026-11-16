@@ -63,8 +63,7 @@ internal sealed class DocumentTab : IDisposable
         ITextMeasure measure,
         string? filePath = null,
         ICellEmphasis? emphasis = null,
-        ITypingRules? typing = null,
-        ITriggerRules? triggers = null)
+        ITypingRules? typing = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
@@ -78,7 +77,7 @@ internal sealed class DocumentTab : IDisposable
 
         Model = model;
         FilePath = filePath;
-        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, triggers: triggers);
+        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing);
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.

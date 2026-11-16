@@ -19,7 +19,8 @@ public sealed class ConceptDeclaration
         bool isOfferedInCompletion = true,
         string? description = null,
         string? collapseSlot = null,
-        Applicability? applicability = null)
+        Applicability? applicability = null,
+        IEnumerable<ConceptTrigger>? triggers = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -79,6 +80,7 @@ public sealed class ConceptDeclaration
         IsOfferedInCompletion = isOfferedInCompletion;
         CollapseSlot = collapseSlot;
         Applicability = applicability ?? Applicability.Anywhere;
+        Triggers = [.. triggers ?? []];
 
         // Trimmed, and an empty one is no description at all: "declared nothing" and "declared a blank"
         // have to be one state, or a language ships a tooltip that shows nothing.
@@ -164,6 +166,30 @@ public sealed class ConceptDeclaration
     /// </para>
     /// </remarks>
     public Applicability Applicability { get; }
+
+    /// <summary>
+    /// The gestures that create this concept by typing at the edge of a node that already exists, in declaration
+    /// order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Empty is the normal case: a concept is created from completion or from an empty slot unless the language
+    /// says that a character at a neighbouring node means it. <c>5</c> followed by <c>+</c> is the reference
+    /// case - the property refuses the character, and this list is what makes it an addition instead
+    /// ([triggers.md](../architecture/triggers.md)).
+    /// </para>
+    /// <para>
+    /// <b>Not inherited.</b> A trigger creates the concept it is declared on, so a subtype reusing its super
+    /// concept's trigger would create the super concept. A language that wants the gesture below itself declares
+    /// it again, which is also what makes the intent visible.
+    /// </para>
+    /// <para>
+    /// The registry checks every trigger at registration - the anchor concept exists, the anchor slot is a
+    /// single child of this concept and accepts the anchor, the property and caret slots exist, and the concept
+    /// is concrete - so a typo is a language error at load rather than a keystroke that silently does nothing.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<ConceptTrigger> Triggers { get; }
 
     public override string ToString() => Key;
 }
