@@ -5,9 +5,10 @@ A projectional editor knows which node a keystroke is about and owns every chang
 This document is the design of the layer between a finding and the edit that removes it: what a
 fix is, where it lives, how it reaches the user, and in which order the slices land.
 
-Status: **in progress.** Slices Q1 and Q2 are delivered - the fix model, the fix set on the session,
-the query that answers which repairs the caret's line offers, and applying one as a single undo step
-through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md). Q3 to Q6 are planned.
+Status: **in progress.** Slices Q1 to Q3 are delivered - the fix model, the fix set on the session,
+the query that answers which repairs the caret's line offers, applying one as a single undo step
+through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), and two real checks that
+carry repairs, one in a language package and one in the host. Q4 to Q6 are planned.
 Markers are delivered for M1 (slices A-D in [markers.md](markers.md)); this feature is not the
 constraint engine that will produce findings in volume at M4 - it is the half that makes the findings
 that already exist actionable.
@@ -212,23 +213,34 @@ finding has none. That is slice Q5 and it is a change in `MarkerTip`, not in the
 
 ## The first real checks
 
-A check that carries fixes must be testable headlessly, and the only real check in the repository is
-`Projectional.Workbench/Checks/DefaultNames.cs` - `internal`, in the shell, unreachable from the test
-project. So the plan puts the first **language-authored** check where a language lives and keeps the
-shell's own check as the host-supplied proof:
+Two checks ship with the slice, and they carry the two claims this feature has to make: that a language
+can supply checks with its own vocabulary, and that a host can supply them without any privileged
+access.
 
 | Check | Where | Diagnostic | Fix |
 | --- | --- | --- | --- |
-| two rules with one name among siblings | `Projectional.Samples`, reachable from the tests | `RULES001` on the second rule | rename to the first free suffix (`Check2`, `Check3`, ...) - one property write |
-| a name still carrying its concept's placeholder | `Projectional.Workbench` (existing `SHELL001`) | unchanged | name it after its concept (`Rule1`) - one property write |
+| two rules of one ruleset with the same name | `Projectional.Samples.Checks` | `RULES001` on the later rule, targeting its name | rename to the first free suffix (`Check2`, `Check3`, ...) - one property write |
+| a name still carrying its concept's placeholder | `Projectional.Workbench/Checks/DefaultNames.cs` | `SHELL001`, unchanged | name it after its concept (`Rule1`) - one property write |
 
-The first needs no scope resolution, no type inference and no constraint engine: it walks one
-collection slot and compares sibling names. The second proves the claim [standalone.md](standalone.md)
-exists to make - a host with no internals and no editing knowledge can supply a diagnostic *and* a
-repair through the public surface alone.
+Neither needs scope resolution, type inference or a constraint engine: the first walks one child slot and
+compares sibling names, the second compares a name against the concept's declared default. Both are
+model-only edits, both are one property write, and both are undoable by the mechanism that already
+exists.
 
-Both are model-only edits, both are one property write, and both are undoable by the mechanism that
-already exists. Neither needs `Projectional.Semantics` to grow a runner.
+**The check did not go inside the language package, and that is a correction to this plan.** A fix
+produces an `EditAction` and a diagnostic, so a check needs `Projectional.Editing` and
+`Projectional.Semantics` - but `Projectional.Samples` references only `Language` and `Expressions`
+precisely so that a language can be used headlessly. Putting the check there would have made every
+consumer of the sample drag in the editor. The shape that ships is therefore **a checks package beside
+the language**: `Projectional.Samples` declares the language, `Projectional.Samples.Checks` declares what
+is wrong with a model of it. That is also the recommendation for a real DSL, and it is open question 59
+answered.
+
+One thing fell out of doing it that way: the check answers with `IReadOnlyList<DiagnosticFix>` rather
+than with diagnostics, because every finding it makes has a cure and a fix carries its own diagnostic.
+The host derives the marker set from the fixes, so the two sets cannot describe different states of the
+document - worth doing where it is available, and impossible where a check reports a problem it cannot
+repair.
 
 ## Slices
 
@@ -238,7 +250,7 @@ Each slice is its own branch and its own merge, per the working rules.
 | --- | --- | --- |
 | Q1 ✓ | `feat/quick-fix-model` | `FixAvailability`, `DiagnosticFix`, `FixContext`, `FixSet`, `EditorSession.Fixes`, `QuickFixes.At/Of`, tests for keying, duplicate rejection, order, disabled, and a marker on a wrapped line |
 | Q2 ✓ | `feat/quick-fix-apply` | `EditorSession.Apply(DiagnosticFix)`, `EditProgram`, re-resolution by id, one-undo-step, stale rejection, rollback |
-| Q3 | `feat/quick-fix-sample` | `RULES001` and its rename fix in `Projectional.Samples`, a fix for the workbench's `SHELL001`, both published to the editor at open and on `Model.Changed` |
+| Q3 ✓ | `feat/quick-fix-sample` | `RULES001` and its rename fix in `Projectional.Samples.Checks`, a fix for the workbench's `SHELL001`, both published to the editor at open and on `Model.Changed` |
 | Q4 | `feat/quick-fix-keys` | `Alt+Enter`/`Ctrl+.` in `EditorKeyMap` and `KeyRouter`, run-when-single, popup from `EditorMenuEntry`s, verified with a probe |
 | Q5 | `feat/quick-fix-menu` | "Quick fixes" submenu in `EditorMenu`; the fix line in `MarkerTip` |
 | Q6 | `feat/quick-fix-bulb` | `QuickFixBulb.BoundsOf`, the margin glyph, its hit test, its repaint policy, and the bulb showing for a marked line |

@@ -147,7 +147,7 @@ The repairs a diagnostic carries, and how they are reached. The design is
 | # | Question | State | Recommendation | Decide by |
 | --- | --- | --- | --- | --- |
 | 58 | How does a fix find its diagnostic again after the checks re-ran? | Leaning | Joined on `(Diagnostic, Id)` against the current set, and a pick that no longer resolves is rejected with a reason - never re-matched by node, because "some fix for this node" is how a repair lands on a problem it was not built for. | M1 |
-| 59 | Do a language's own checks live in the language package or in the framework? | Leaning | In the language package, beside its notation and emphasis, so referencing the package is enough for a host to get them. The framework ships no check runner before M4 and gains one only when a second language needs it. | M1 |
+| 59 | Do a language's own checks live in the language package or in the framework? | Leaning (answered by Q3) | In a checks package *beside* the language, not inside it: a check produces diagnostics and repairs, so it needs `Semantics` and `Editing`, while a language package references only `Language` so that it can be used headlessly. `Projectional.Samples` plus `Projectional.Samples.Checks` is the shipped shape. The framework still ships no check runner before M4. | M1 |
 | 60 | Can one fix repair several diagnostics at once ("fix all")? | Open | Not in the first slice. Repairs that overlap or contradict need a conflict policy (apply in which order? re-check between steps?), and that policy is not a side effect of one fix. Reopen at M4, when the constraint engine produces findings in volume. | M4 |
 
 ## Language authoring
