@@ -124,7 +124,7 @@ The vocabulary, and what each piece lowers to:
 | `<<property name : string>>` | a property slot plus its `PropertyType` | `<<property>>` |
 | `<<child steps : Step[0..n]>>` | a child slot plus its cardinality | `<<child>>` |
 | `<<reference target : Rule[0..1]>>` | a reference slot plus its cardinality | `<<reference>>` |
-| `<<shortDescription : ...>>` | the concept's documentation | `<<shortDescription>>` |
+| `<<shortDescription : ...>>` | the concept's documentation ([concept-descriptions.md](concept-descriptions.md); lowered to `ConceptDeclaration(description:)`) | `<<shortDescription>>` |
 | `<<nameSlot : name>>`, `<<collapseSlot : visible>>` | a designated slot ([language.md](language.md#the-two-designated-slots)) | none - MPS has no analogue |
 | `<<offeredInCompletion : false>>` | `isOfferedInCompletion` | `<<hideInEditor>>`-style flags |
 
