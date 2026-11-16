@@ -213,6 +213,13 @@ there. `TypeTextAction` has three cases in this order:
    which concept claims the text, create it there and write the text into its property;
 3. otherwise: `Unchanged`.
 
+…and a keystroke that lands in case 1 *refused*, or in case 3, asks one more question: is the
+caret at the edge of a node, and does the language have a trigger for that side and this text? If
+so the node is wrapped in the concept the trigger names - `5` then `+` gives `5 + <empty>` - and
+that is [triggers.md](triggers.md). The trigger is asked *after* the property, never before, which
+is the rule that keeps `-` in front of a `5` a negative number rather than a negation; case 2 is
+the typing rules' alone, because an empty slot has no node of its own to grow from.
+
 Case 2 cannot be inferred from the concepts. Walking the descendants in declaration order and
 taking the first whose property accepts the text gives `StringLiteral` for `abc`, because a
 string property accepts anything — but the user meant `Name`. Only the language knows that a
@@ -246,8 +253,9 @@ throwing — a keystroke must not be able to fail because a language author made
 
 A non-empty selection is case 3, not case 2: typing over a range is a future structural edit, and
 creating a node in the slot the caret happens to sit in would silently discard what the user
-selected. A language that declares no typing rules at all is also case 3, which is what every
-language did before this existed.
+selected. A trigger is not asked either - wrapping a range needs a wrapper that can hold one, which
+is what the intention list is for. A language that declares no typing rules at all is also case 3,
+which is what every language did before this existed.
 
 **Case 1 can refuse a keystroke the user meant.** A property whose type is an enumeration accepts
 only its symbols, so the first character of a new value — a prefix of one — is not a legal value
