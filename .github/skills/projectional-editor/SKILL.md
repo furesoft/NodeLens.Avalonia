@@ -309,6 +309,16 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   "is this a language".
 - **The namespace is `Projectional.Structures`, not `Projectional.Structure`**: CA1716 is an error here and
   `Structure` is a VB keyword. The class names keep `Structure`.
+- **`Projectional.Editors` is the other half (slice P2)**: the editor language, fifteen concepts whose nodes are a
+  notation, and `EditorLowering` into real `Notation`s. It is a *separate* language from the structure one, because
+  a definition that mixes the domain with the presentation cannot be reviewed. The **inline/block split is carried
+  by slot declarations** here - `Editor.Line.cells` holds `Editor.InlineCell` - so `ed.Line(ed.Indent(...))`'s
+  compile error becomes `ModelInvariantException` at the edit, and the lowering has no such check of its own.
+  **The lowering goes through `NotationEditor`, not around it**, so a declared notation *is* a builder call; it
+  checks only that a notation names a declared concept, and leaves undeclared slots and duplicate variants to
+  `NotationRegistry`. The namespace is `Projectional.Editors` (plural) because `Projectional.Editor` would shadow
+  every `Editor*` type of `Projectional.Editing`, and the notation of the notation lives in `…Editors.Rendering`
+  because `…Notation` would shadow the `Notation` type.
 
 ## How notation is declared
 
@@ -1294,7 +1304,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1406 tests**; anything below that means tests were deleted.
+it. **Baseline is 1414 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
