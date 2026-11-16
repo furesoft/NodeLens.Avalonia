@@ -8,6 +8,44 @@ public sealed class ConceptRegistryTests
         ConceptRegistry.Create(declarations);
 
     [Fact]
+    public void AConceptCarriesItsDescription()
+    {
+        var registry = Create(new ConceptDeclaration(
+            "Rules.Rule",
+            [new PropertySlot("name", PropertyType.String)],
+            description: "One rule of a ruleset."));
+
+        Assert.Equal("One rule of a ruleset.", registry.Get("Rules.Rule").Description);
+    }
+
+    [Fact]
+    public void ADescriptionIsTrimmedAndABlankOneIsNoDescription()
+    {
+        // "declared nothing" and "declared a blank" have to be one state, or a language ships a tooltip
+        // that shows nothing.
+        var registry = Create(
+            new ConceptDeclaration("Rules.A", description: "  spaced  "),
+            new ConceptDeclaration("Rules.B", description: "   "),
+            new ConceptDeclaration("Rules.C"));
+
+        Assert.Equal("spaced", registry.Get("Rules.A").Description);
+        Assert.Null(registry.Get("Rules.B").Description);
+        Assert.Null(registry.Get("Rules.C").Description);
+    }
+
+    [Fact]
+    public void ADescriptionIsNotInherited()
+    {
+        // The super's sentence describes the super, not the node the user is looking at.
+        var registry = Create(
+            new ConceptDeclaration("Base", description: "a base"),
+            new ConceptDeclaration("Leaf", superConcepts: ["Base"]));
+
+        Assert.Equal("a base", registry.Get("Base").Description);
+        Assert.Null(registry.Get("Leaf").Description);
+    }
+
+    [Fact]
     public void AConceptExposesItsSlotsInDeclarationOrder()
     {
         var registry = Create(new ConceptDeclaration(

@@ -16,7 +16,8 @@ public sealed class ConceptDeclaration
         IEnumerable<string>? superConcepts = null,
         string? nameSlot = null,
         bool isAbstract = false,
-        bool isOfferedInCompletion = true)
+        bool isOfferedInCompletion = true,
+        string? description = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -69,6 +70,10 @@ public sealed class ConceptDeclaration
         NameSlot = nameSlot;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
+
+        // Trimmed, and an empty one is no description at all: "declared nothing" and "declared a blank"
+        // have to be one state, or a language ships a tooltip that shows nothing.
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
     }
 
     public string Key { get; }
@@ -106,6 +111,19 @@ public sealed class ConceptDeclaration
     /// in an empty slot. Otherwise a language would have no way left to create it.
     /// </remarks>
     public bool IsOfferedInCompletion { get; }
+
+    /// <summary>
+    /// One sentence of documentation about this concept, shown where the concept is met: on hover over a
+    /// node of it and beside the completion entry that offers it. <see langword="null"/> when the language
+    /// declared none.
+    /// </summary>
+    /// <remarks>
+    /// Language data, not model data: it is not persisted per node, creates no undo step and is not
+    /// inherited - a super concept's sentence describes the super concept, not the node the user is
+    /// looking at. A surface shows nothing at all when it is absent, because an empty box that repeats
+    /// the concept key teaches the user that hovering is pointless.
+    /// </remarks>
+    public string? Description { get; }
 
     public override string ToString() => Key;
 }
