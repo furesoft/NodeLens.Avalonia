@@ -733,6 +733,68 @@ public sealed class EditorSession : IDisposable
             : ApplyCore(action, ContextFor(action), coalescingKey: null);
     }
 
+    /// <summary>Applies <paramref name="intention"/> as an undo step of its own, or rejects it.</summary>
+    /// <param name="intention">The offer the user picked, as the list handed it over.</param>
+    /// <remarks>
+    /// <para>
+    /// The intention builds its action <em>now</em>, against the model the caret is in, so a long-lived
+    /// declaration cannot produce an edit for a document that has moved on. What it answers is applied the
+    /// way a keystroke is - with the coalescing key cleared - so the offer is one undo step and a following
+    /// keystroke starts another. A repair that needs several edits answers an <see cref="EditProgram"/> and
+    /// the session runs it in one transaction, so a step that is refused takes the whole offer back.
+    /// </para>
+    /// <para>
+    /// An offer from the quick-fix catalogue (one carrying a <see cref="Intention.Fix"/>) is routed back
+    /// through <see cref="Apply(DiagnosticFix)"/> instead. That path re-resolves the repair against the
+    /// current fix set and refuses a pick whose finding is gone - a guarantee the general route does not
+    /// need, because a declared intention is derived from the caret it is applied at.
+    /// </para>
+    /// <para>
+    /// An intention that no longer applies - absent by now, or disabled - is refused with its reason rather
+    /// than applied, for the same reason a stale fix is: the user's list described a document that may have
+    /// been edited since, and an offer is not a promise that it is still true.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="intention"/> is <see langword="null"/>.</exception>
+    public EditResult Apply(Intention intention)
+    {
+        ArgumentNullException.ThrowIfNull(intention);
+
+        // The user chose this offer instead of the ones that were listed, so any open list is about a place
+        // they have left.
+        OfferedFixes = null;
+
+        if (intention.Fix is { } fix)
+        {
+            return Apply(fix);
+        }
+
+        if (intention.Availability.Reason is { } reason)
+        {
+            return EditResult.Rejected(Selection, reason);
+        }
+
+        if (intention.Availability.IsAbsent)
+        {
+            return EditResult.Rejected(
+                Selection,
+                $"The intention \"{intention.Label}\" no longer applies at this caret.");
+        }
+
+        var action = intention.Create(CreateIntentionContext());
+
+        if (action is null)
+        {
+            return EditResult.Rejected(
+                Selection,
+                $"The intention \"{intention.Label}\" has nothing to do for this document.");
+        }
+
+        return action is EditProgram program
+            ? Apply(program)
+            : ApplyCore(action, ContextFor(action), coalescingKey: null);
+    }
+
     /// <summary>The fix in the current set that <paramref name="fix"/> names, or <see langword="null"/>.</summary>
     private DiagnosticFix? Current(DiagnosticFix fix)
     {

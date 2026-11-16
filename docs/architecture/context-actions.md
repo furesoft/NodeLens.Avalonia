@@ -1,16 +1,16 @@
 # Context actions (intentions)
 
-*Partly delivered: the model and the list (slices A and B).* This document is the design for the light
-bulb: the affordance that offers, at the caret, the edits that make sense *there* — "wrap in
+*Partly delivered: the model, the list and applying one (slices A and B).* This document is the design for
+the light bulb: the affordance that offers, at the caret, the edits that make sense *there* — "wrap in
 parentheses", "negate", "add the missing condition", "extract this into a rule". It is written before the
 code so that the three layers it touches — language, editing, control — agree on who owns what, and so the
 milestone that implements it has a gate instead of an ambition.
 
-What exists today is everything a surface needs and nothing that draws: `Intention`,
-`IntentionContext`, `IntentionAvailability`, `IIntentionProvider` and `IntentionList.For(session)` in
-`Projectional.Editing`, the two registration groups on the session, and the order and de-duplication rules
-below. The bulb, the popup entry and the context-menu submenu are the quick-fix affordances that already
-ship, and teaching them a second source is slice C onwards.
+What exists today is everything a surface needs and nothing that draws: `Intention`, `IntentionContext`,
+`IntentionAvailability`, `IIntentionProvider` and `IntentionList.For(session)` in `Projectional.Editing`,
+the two registration groups on the session, `EditorSession.Apply(Intention)`, and the order and
+de-duplication rules below. The bulb, the popup entry and the context-menu submenu are the quick-fix
+affordances that already ship, and teaching them a second source is slice C onwards.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -206,11 +206,26 @@ The session grows one method:
 public EditResult Apply(Intention intention);
 ```
 
-It resolves the caret, asks the intention for its action, and applies it with the coalescing
-key disabled. An intention that needs several edits returns a program
-(`EditProgram.Of(action1, action2, …)`) which the session runs inside a single transaction;
-if any step is rejected the transaction is rolled back and the result is `Rejected` with the
-step's reason, so a half-applied intention never reaches the model.
+It asks the intention for its action and applies it with the coalescing key disabled. An intention that
+needs several edits returns a program (`EditProgram.Of(action1, action2, …)`) which the session runs inside
+a single transaction; if any step is rejected the transaction is rolled back and the result is `Rejected`
+with the step's reason, so a half-applied intention never reaches the model.
+
+**Delivered, with three rules worth keeping.**
+
+- **The action is built when the offer runs, not when it was declared.** A declaration outlives many carets;
+  building its edit against the model of the moment it was declared is how an offer lands on a document that
+  has moved on.
+- **An offer that no longer applies is refused, not applied.** Absent by now, or disabled, both answer
+  `EditResult.Rejected` with the reason - the same outcome a stale fix gives. The list described a moment,
+  and an offer is not a promise that the moment is still true.
+- **An entry carrying a fix goes back through `Apply(DiagnosticFix)`.** That path joins on (finding, id)
+  against the current `FixSet`, so the repair that runs is the one the checks most recently published. The
+  general route does not need that guarantee, because a declared intention is derived from the caret it is
+  applied at.
+
+Applying an offer also closes an open quick-fix list: the user chose this instead of the entries that were
+listed, which is the same "the offer described a place they have left" rule that closes it on a caret move.
 
 This is a *narrower* promise than "an intention may do arbitrary work": programs of
 `EditAction`s are what keeps an intention undoable, testable headlessly and legal in a
@@ -355,7 +370,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | Slice | Branch | Delivers |
 | --- | --- | --- |
 | A ✓ | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider`, `IntentionList.For(session)`, the two registration groups on the session, one fixture intention beside the test language, tests for order, availability, dedup and the two-source resolution order (host, language, fixes) |
-| B | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced |
+| B ✓ | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced, the refusal of an offer that no longer applies, and the routing of a fix's entry back through the fix path |
 | C | `feat/intentions-keys` | the intention list in the `Alt+Enter` / `Ctrl+.` popup beside the fixes, built from `EditorMenuEntry`s through `EditorMenuPresenter` |
 | D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
 | E | `feat/intentions-sample` | two real intentions in `Projectional.Expressions` (wrap in parentheses, negate) and one in `Projectional.Samples`, proving a host adds none of the plumbing |

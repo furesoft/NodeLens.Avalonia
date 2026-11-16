@@ -23,10 +23,13 @@ only for the document root, so no arrow ever appeared. Both the defect and its r
 
 What is next, in order:
 
-1. **The intention list** ([context-actions.md](architecture/context-actions.md), slices G), with
-   `WrapInAction` as the flagship. Quick fixes were built first on purpose: they gave the intention layer a
-   second source to be designed against instead of a single one to be guessed from, and Q7 already landed
-   the primitives that slice needs (`EditSafety`, `WrapInAction`, `InsertChildAction`).
+1. **The intention list** ([context-actions.md](architecture/context-actions.md)). Slices A and B are done -
+   `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider`, `IntentionList.For(session)`
+   and `EditorSession.Apply(Intention)`, with host, language and quick-fix sources in a fixed order. What is
+   left is the part that draws: slice C (the list in the `Alt+Enter` popup), D (the "Intentions" submenu and
+   the bulb), E (two real intentions in `Projectional.Expressions` and one in `Projectional.Samples`), F (the
+   preview) and G (the rest of the standard catalogue). `WrapInAction` is already there, so `INT006`/`INT040`
+   are compositions rather than new primitives.
 2. **The preview** ([intention-preview.md](architecture/intention-preview.md), slices V), which only makes
    sense once there are intentions whose result is worth imagining.
 
