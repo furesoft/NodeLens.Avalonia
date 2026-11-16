@@ -13,32 +13,34 @@ records what was actually verified.
 2. [Model](architecture/model.md) — nodes, identity, and the change-event backbone.
 3. [Language definition](architecture/language.md) — concepts, aspects, and the
    three bootstrap stages.
-4. [Projection](architecture/projection.md) — from model to pixels.
-5. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
-6. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
+4. [Language authoring](architecture/language-authoring.md) — how a language is written down,
+   in C# declarations or as structure and editor models in the project.
+5. [Projection](architecture/projection.md) — from model to pixels.
+6. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
+7. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
    the first slice is implemented.
-7. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
+8. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
    the first slice is implemented.
-8. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
+9. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned; after quick fixes).
-9. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+10. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (delivered).
-10. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
+11. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
     reach the user (planned; next).
-11. [Line numbers](architecture/line-numbers.md) — numbering the rows a
+12. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
-12. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
+13. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
     (delivered).
-13. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+14. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard (delivered).
-14. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-15. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-16. [Integration](architecture/integration.md) — how host applications embed this.
-17. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+15. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+16. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+17. [Integration](architecture/integration.md) — how host applications embed this.
+18. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-18. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-19. [Roadmap](roadmap.md) — milestones and acceptance gates.
-20. [Open questions](open-questions.md) — what is deliberately still undecided.
+19. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+20. [Roadmap](roadmap.md) — milestones and acceptance gates.
+21. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
@@ -77,3 +79,4 @@ directory stays authoritative whenever the two disagree.
 | [0011](adr/0011-standalone-editor.md) | A standalone editor ships, as a plain consumer of the public API |
 | [0012](adr/0012-concept-rendered-more-than-one-way.md) | A concept may be rendered more than one way |
 | [0013](adr/0013-markers-are-view-state.md) | Markers are view state: the frame never carries them |
+| [0014](adr/0014-both-authoring-paths-are-permanent.md) | Languages are defined in code and in the project, both permanently |

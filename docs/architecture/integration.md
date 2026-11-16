@@ -103,6 +103,11 @@ services.AddProjectional().AddProject(@"C:\App\Dsl");
 | Trust | same as the host app | data only, cannot execute code |
 | Extensibility by users | no | yes |
 
+Neither column replaces the other, and neither stops being supported: behaviour aspects can
+only live in a built-in assembly, and a project file cannot ship a package. Both paths are
+permanent ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)), and how a language is
+written down on either side is [language-authoring.md](language-authoring.md).
+
 This is the security-relevant distinction: **declared languages are data and cannot
 run code.** Interpretation of a model is performed by the language's `Evaluate`
 aspect, which lives in a built-in assembly. A user who edits a model cannot introduce

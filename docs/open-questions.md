@@ -150,6 +150,20 @@ The repairs a diagnostic carries, and how they are reached. The design is
 | 59 | Do a language's own checks live in the language package or in the framework? | Leaning | In the language package, beside its notation and emphasis, so referencing the package is enough for a host to get them. The framework ships no check runner before M4 and gains one only when a second language needs it. | M1 |
 | 60 | Can one fix repair several diagnostics at once ("fix all")? | Open | Not in the first slice. Repairs that overlap or contradict need a conflict policy (apply in which order? re-check between steps?), and that policy is not a side effect of one fix. Reopen at M4, when the constraint engine produces findings in volume. | M4 |
 
+## Language authoring
+
+A language can be written in C# or in the project, and both stay
+([ADR 0014](adr/0014-both-authoring-paths-are-permanent.md),
+[language-authoring.md](architecture/language-authoring.md)). These are the parts of that
+arrangement that are not mechanics.
+
+| # | Question | State | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 61 | Is the definition language one language with an aspect per section, or one language per aspect? | Leaning | One language per aspect, as in MPS. A new kind of aspect is then a new language plus an annotation concept rather than a new value in an enum the framework owns - and "the set of aspects is closed" is the one thing a language workbench must not decide. | M5, with P3 |
+| 62 | Is exported C# a one-way artefact or can it be re-imported? | Leaning | One-way, with a generated header saying so. The declared model stays the source of truth ([ADR 0002](adr/0002-model-as-source-of-truth.md)); allowing an edit of the generated file back into the project would give one language two sources that diverge on the first behaviour change. | P6 |
+| 63 | What does the workbench show for a declared concept that has no editor model? | Open | The same `MissingNotationCell` a C# language shows, plus the editor model opened at that concept. A generic fallback form would hide the notation work behind something that looks finished, and every language would ship with it. | M5, with P5 |
+| 64 | Does a slot carry a minimum cardinality, and where? | Leaning | A minimum on the slot declaration, not on `Cardinality`: `One`/`Many` describes storage, while "at least two rules" is a validity statement the constraint engine reads. The bracket syntax (`Rule[1..n]`) already promises it, so dropping it silently is the one option that is not available. | P4 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
@@ -185,5 +199,6 @@ Listed here so they are not reopened accidentally; the authoritative text is the
 | Editor control | custom-drawn, structural caret | [0009](adr/0009-custom-drawn-editor-control.md) |
 | Public API | `Core` + `Avalonia` only | [0010](adr/0010-public-api-surface.md) |
 | Standalone editor | ships, and is a plain consumer of the public API | [0011](adr/0011-standalone-editor.md) |
+| Language authoring | C# and project paths, both permanent | [0014](adr/0014-both-authoring-paths-are-permanent.md) |
 | Execution | interpreter *and* text generation | ADR to be written (M4) |
 | Pilot DSL | rule/decision tables | ADR to be written (M4) |
