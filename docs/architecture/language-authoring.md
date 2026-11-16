@@ -336,10 +336,11 @@ shippable at the end of each, and so that the parity test exists before the seco
 | --- | --- | --- | --- |
 | C1 | `feat/toolkit-builder` | M2 | the public `Projectional.Toolkit` surface a language package needs, one shipped language re-expressed through it, and the `dotnet new` template |
 | C2 ✓ | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage` - delivered, see [language-parity.md](language-parity.md) |
-| P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B, provisional shape): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
+| P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 ✓ | `feat/declared-editor` | M2 | `Projectional.Editors` (stage B): notation as nodes, lowering into `Notation` - delivered, see [declared-editor.md](declared-editor.md) |
+| P2b ✓ | `feat/mps-shaped-notation` | M2 | both definition languages drawn in MPS' shape - a header, a block of options, one section per kind of slot, `<< ... >>` for an empty section, `[/ ... /]` and `[>` for the cell model. **Ahead of P4/P5 in the one part that is only notation**; what P4/P5 still add are the cell *glyphs* and the file layout |
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)) |
-| P4 | `feat/structure-notation` | M5 | `Projectional.Structures` with its *own* notation - `concept`, `<<property>>`, cardinalities - replacing the provisional form |
+| P4 | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation: `<<property>>`-style slot markers where a section heading is not enough, conditional cells, and the file layout P3 needs |
 | P5 | `feat/editor-notation` | M5 | `Projectional.Editor` with its own notation - the cell glyphs - and the table variant |
 | P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
 | P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structures` and `Projectional.Editors`, with the C# declarations as the fail-safe |
