@@ -140,7 +140,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules);
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules, triggers: RulesLanguage.Triggers);
     }
 
     private void OpenDocument(
@@ -148,7 +148,8 @@ public sealed partial class MainWindow : Window, IDisposable
         NotationRegistry notations,
         string? filePath = null,
         ICellEmphasis? emphasis = null,
-        ITypingRules? typing = null)
+        ITypingRules? typing = null,
+        ITriggerRules? triggers = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -163,7 +164,7 @@ public sealed partial class MainWindow : Window, IDisposable
         // applied afterwards would have to rebuild a layout that was already laid out at 14.
         editor.FontSize = _fontSize;
 
-        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing);
+        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing, triggers);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
         editor.ShowLineNumbers = _showLineNumbers;
@@ -539,7 +540,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private void OnNewDocument(object? sender, RoutedEventArgs e)
     {
         _error = null;
-        OpenDocument(PayrollSample.NewEmptyModel(), RulesLanguage.CreateNotations(RulesLanguage.Concepts), typing: RulesLanguage.TypingRules);
+        OpenDocument(PayrollSample.NewEmptyModel(), RulesLanguage.CreateNotations(RulesLanguage.Concepts), typing: RulesLanguage.TypingRules, triggers: RulesLanguage.Triggers);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)
@@ -583,7 +584,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), filePath: path, emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules);
+        OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), filePath: path, emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules, triggers: RulesLanguage.Triggers);
     }
 
     private async void OnSaveDocument(object? sender, RoutedEventArgs e)

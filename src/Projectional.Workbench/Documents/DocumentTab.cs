@@ -52,6 +52,10 @@ internal sealed class DocumentTab : IDisposable
     /// What the language says about text typed into an empty slot, or <see langword="null"/> when typing
     /// there should be ignored.
     /// </param>
+    /// <param name="triggers">
+    /// What the language says about text typed at the edge of a node that already exists, or
+    /// <see langword="null"/> when such a keystroke should do nothing.
+    /// </param>
     /// <exception cref="InvalidOperationException">The model has no root to edit.</exception>
     internal DocumentTab(
         Model model,
@@ -59,7 +63,8 @@ internal sealed class DocumentTab : IDisposable
         ITextMeasure measure,
         string? filePath = null,
         ICellEmphasis? emphasis = null,
-        ITypingRules? typing = null)
+        ITypingRules? typing = null,
+        ITriggerRules? triggers = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
@@ -73,7 +78,7 @@ internal sealed class DocumentTab : IDisposable
 
         Model = model;
         FilePath = filePath;
-        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing);
+        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, triggers: triggers);
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.

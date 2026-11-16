@@ -71,6 +71,16 @@ public static class RulesLanguage
     /// </remarks>
     public static ITypingRules TypingRules => ExpressionsLanguage.TypingRules;
 
+    /// <summary>What an operator typed next to a condition produces.</summary>
+    /// <remarks>
+    /// Forwarded for the same reason <see cref="TypingRules"/> is: the trigger that turns an operator into a
+    /// binary belongs to the language that declares binary expressions. A rule's condition is declared over an
+    /// expression, so <c>5</c> followed by <c>+</c> works inside one without this language knowing what a
+    /// binary is.
+    /// </remarks>
+    public static ITriggerRules Triggers => ExpressionsLanguage.Triggers;
+
+
     /// <summary>
     /// What decorates a model of this language beyond what its notation already says.
     /// </summary>

@@ -87,6 +87,48 @@ public static class ExpressionsLanguage
         .Add(ExpressionsConceptKeys.Name, ClaimsName, "name")
         .Add(ExpressionsConceptKeys.Parenthesized, text => text.StartsWith('('));
 
+    /// <summary>What an operator typed at the edge of an existing expression produces.</summary>
+    /// <remarks>
+    /// <para>
+    /// The other half of <see cref="TypingRules"/>: once there is an expression to stand next to, an operator
+    /// is no longer a character a property could hold. Typing <c>+</c> after <c>5</c> is refused by the number,
+    /// so the language answers instead - a binary whose left operand is the five, whose operator is the typed
+    /// character, and whose caret continues in the right operand. Typing it in front of an expression gives the
+    /// mirror image, with the existing expression on the right.
+    /// </para>
+    /// <para>
+    /// The negation is declared first because it is the narrower reading of <c>-</c>: in front of something
+    /// that is not a number both a unary and a binary trigger claim the character, and a language that means
+    /// "negate it" should say so before it says "and then subtract". A number is the other way round - <c>-5</c>
+    /// is a number, so typing <c>-</c> in front of one never reaches a trigger at all.
+    /// </para>
+    /// </remarks>
+    public static ITriggerRules Triggers { get; } = TriggerRegistry.Empty
+        .Add(new ConceptTrigger(
+            ExpressionsConceptKeys.Unary,
+            ExpressionsConceptKeys.Expression,
+            TriggerSide.Left,
+            text => ExpressionOperators.Unary.Contains(text),
+            anchorSlot: "operand",
+            propertySlot: "operator"))
+        .Add(new ConceptTrigger(
+            ExpressionsConceptKeys.Binary,
+            ExpressionsConceptKeys.Expression,
+            TriggerSide.Left,
+            text => ExpressionOperators.Binary.Contains(text),
+            anchorSlot: "right",
+            propertySlot: "operator",
+            caretSlot: "left"))
+        .Add(new ConceptTrigger(
+            ExpressionsConceptKeys.Binary,
+            ExpressionsConceptKeys.Expression,
+            TriggerSide.Right,
+            text => ExpressionOperators.Binary.Contains(text),
+            anchorSlot: "left",
+            propertySlot: "operator",
+            caretSlot: "right"));
+
+
     private static bool ClaimsName(string text) =>
         text.Length > 0
         && (char.IsAsciiLetter(text[0]) || text[0] == '_')
