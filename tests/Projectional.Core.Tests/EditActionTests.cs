@@ -280,7 +280,7 @@ public sealed class EditActionTests
     }
 
     [Fact]
-    public void EnterInsideAListAppendsASibling()
+    public void EnterInsideAListInsertsAfterTheNodeTheCaretIsIn()
     {
         var (rule, body) = TestEditor.RuleWithBody();
         var first = body.Model.NewChild(body, "steps", TestLanguage.Step);
@@ -293,6 +293,46 @@ public sealed class EditActionTests
         Assert.Equal(2, steps.Count);
         Assert.Equal(1, steps[1].IndexInParent);
         Assert.Equal(CellAddress.OfSlot(steps[1].Id, "index"), session.Selection.Caret.Address);
+    }
+
+    [Fact]
+    public void EnterInTheMiddleOfAListDoesNotJumpToTheEnd()
+    {
+        // "Another thing here" means here. Appending put the new step at the far end of a list the user was not
+        // looking at, and the caret followed it there - which made Enter useless in the middle of a body.
+        var (rule, body) = TestEditor.RuleWithBody();
+        var first = body.Model.NewChild(body, "steps", TestLanguage.Step);
+        var last = body.Model.NewChild(body, "steps", TestLanguage.Step);
+        using var session = TestEditor.Open(rule);
+
+        session.Select(Selection.At(CellAddress.OfSlot(first.Id, "index")));
+        session.Apply(KeyRouter.For(EditorKey.Enter));
+
+        var steps = body.GetChildren("steps");
+
+        Assert.Equal(3, steps.Count);
+        Assert.Same(first, steps[0]);
+        Assert.Same(last, steps[2]);
+        Assert.Equal(1, steps[1].IndexInParent);
+        Assert.Equal(CellAddress.OfSlot(steps[1].Id, "index"), session.Selection.Caret.Address);
+    }
+
+    [Fact]
+    public void TheInsertedStepIsItsOwnUndoStep()
+    {
+        // One press of Enter is one step, and undoing it puts the list back exactly as it was - the sibling that
+        // was after the caret returns to index 1.
+        var (rule, body) = TestEditor.RuleWithBody();
+        var first = body.Model.NewChild(body, "steps", TestLanguage.Step);
+        var last = body.Model.NewChild(body, "steps", TestLanguage.Step);
+        using var session = TestEditor.Open(rule);
+
+        session.Select(Selection.At(CellAddress.OfSlot(first.Id, "index")));
+        session.Apply(KeyRouter.For(EditorKey.Enter));
+
+        Assert.True(session.Undo());
+        Assert.Equal([first, last], body.GetChildren("steps"));
+        Assert.Equal(1, last.IndexInParent);
     }
 
     [Fact]

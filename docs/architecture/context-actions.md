@@ -379,7 +379,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | D ✓ | `feat/intentions-menu` | the "Intentions" submenu in the context menu, beside "Quick fixes", both built from the one `IntentionList` so the menu and the popup cannot disagree; the bulb's second source landed with C |
 | E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers both providers in one method |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
-| G | `feat/standard-intentions` | the first primitives the catalogue still needs (insert-at-index, subtree copy), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
+| G | `feat/standard-intentions` | the primitives the catalogue still needs (subtree copy; insert-at-index landed with `feat/insert-at-index`, which gave `Enter` its place), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.

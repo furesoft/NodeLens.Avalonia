@@ -21,6 +21,11 @@ rule.SetRef("condition", expressionNode);      // reference, target may be unres
 rule.AddChild("outcome", actionNode);          // child
 ```
 
+Two creators exist for a child, and the difference is a position: `NewChild` appends, `NewChildAt`
+places. The second one is what `Enter` in the middle of a list uses, because appending there puts what
+the user just made at the far end of a list they were not looking at. Both publish exactly one
+`NodeAdded`, so undo takes the node out of the place it actually went into.
+
 Deliberate restrictions:
 
 - **No free-form dictionaries.** Every slot is declared by the concept, so typos and

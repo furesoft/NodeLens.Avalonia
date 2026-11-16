@@ -133,6 +133,42 @@ public sealed class Model
         return node;
     }
 
+    /// <summary>Creates a node and hangs it into <paramref name="parent"/> at <paramref name="index"/>.</summary>
+    /// <param name="parent">The node that gains the child.</param>
+    /// <param name="slot">The child slot of <paramref name="parent"/>.</param>
+    /// <param name="index">Where among the slot's children the new node goes.</param>
+    /// <param name="conceptKey">The concept of the new child.</param>
+    /// <returns>The node that was created.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="parent"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
+    /// <exception cref="ModelInvariantException">
+    /// The concept is unknown, does not conform to the slot, or is not allowed there.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The same operation as <see cref="NewChild"/>, except that the new node is placed rather than appended -
+    /// which is what pressing <c>Enter</c> in the middle of a list means. Appending there puts the thing the
+    /// user just made at the far end of a list they were not looking at.
+    /// </para>
+    /// <para>
+    /// An <paramref name="index"/> past the end appends, because that is what the position means once the list
+    /// is shorter than the caller expected. One <see cref="NodeAdded"/> is published either way, so undo takes
+    /// the node out of the place it actually went into.
+    /// </para>
+    /// </remarks>
+    public Node NewChildAt(Node parent, string slot, int index, string conceptKey)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        using var transaction = BeginTransaction();
+        var node = CreateDetached(Project.Concepts.Get(conceptKey));
+        parent.InsertChild(slot, index, node);
+        MarkMutated();
+        transaction.Complete();
+        return node;
+    }
+
     /// <summary>Puts <paramref name="node"/> inside a new node of <paramref name="wrapperConceptKey"/>.</summary>
     /// <param name="node">The node to surround, which keeps its identity and its subtree.</param>
     /// <param name="wrapperConceptKey">The concept of the node to create around it.</param>
