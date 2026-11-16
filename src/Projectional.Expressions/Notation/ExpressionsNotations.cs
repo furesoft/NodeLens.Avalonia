@@ -51,5 +51,19 @@ internal static class ExpressionsNotations
             ed.Punct("("),
             ed.ChildInline("inner"),
             ed.Punct(")")));
+
+        // One line, because every expression notation has to be one: an inline child refuses anything else.
+        notations.Add(ExpressionsConceptKeys.If, ed => ed.Line(
+            ed.Keyword("if"),
+            ed.Space,
+            ed.ChildInline("condition"),
+            ed.Space,
+            ed.Keyword("then"),
+            ed.Space,
+            ed.ChildInline("then"),
+            ed.Space,
+            ed.Keyword("else"),
+            ed.Space,
+            ed.ChildInline("else")));
     }
 }

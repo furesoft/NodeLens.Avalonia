@@ -783,9 +783,9 @@ a trigger declared on a concept answers for the edge of a node that already exis
   deliberate and cheaper than threading a plan through the session.
 - **A selection is never a trigger.** Wrapping a range needs a wrapper that can hold one, which is the
   intention list's job; typing over a selection stays "replace the text".
-- The shipped catalogue lives on `Binary`, `Unary` and `Parenthesized` in `ExpressionsLanguage`: operators on
-  either side become `Binary` (caret in the empty operand), `-`/`!` on the left become `Unary`, and `(` on the
-  left becomes `Parenthesized`. `Binary`'s left trigger deliberately does **not** claim `-`, so the negation is
+- The shipped catalogue lives on `Binary`, `Unary`, `Parenthesized` and `If` in `ExpressionsLanguage`: operators on
+  either side become `Binary` (caret in the empty operand), `-`/`!` on the left become `Unary`, `(` on the
+  left becomes `Parenthesized`, and `?` on the right becomes the `condition` of an `If`. `Binary`'s left trigger deliberately does **not** claim `-`, so the negation is
   the single reading of a leading minus without needing Unary to outrank Binary in the concept order.
 
 ## How the control paints and takes input
@@ -1196,7 +1196,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1331 tests**; anything below that means tests were deleted.
+it. **Baseline is 1333 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

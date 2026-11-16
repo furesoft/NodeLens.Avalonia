@@ -157,7 +157,7 @@ was already checked at load.
 
 ## What the shipped languages declare
 
-Declared on `Binary`, `Unary` and `Parenthesized` in `ExpressionsLanguage`, so `RulesLanguage` inherits them with
+Declared on `Binary`, `Unary`, `Parenthesized` and `If` in `ExpressionsLanguage`, so `RulesLanguage` inherits them with
 the concepts it borrows:
 
 | Typed | At the edge of | Result |
@@ -166,6 +166,7 @@ the concepts it borrows:
 | `+` `-` `*` ... | any expression, left | `Binary` with the expression on the right, caret in the empty `left` |
 | `-` `!` | any expression, left | `Unary` with the expression as its operand |
 | `(` | any expression, left | `Parenthesized` around it, caret inside |
+| `?` | any expression, right | `If` with the expression as its `condition`, caret in the empty `then` |
 
 A leading minus is a negation and nothing else, so `Binary`'s left trigger does not claim `-`. Leaving the tie to
 declaration order would have forced `Unary` above `Binary` in the concept list, and that same order ranks the

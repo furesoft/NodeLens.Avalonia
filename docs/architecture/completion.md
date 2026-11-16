@@ -25,10 +25,10 @@ A slot declares the concept its children must be:
 ChildSlot("condition", ExpressionsConceptKeys.Expression, Cardinality.One)
 ```
 
-`Expression` is abstract, so no node can be an instance of it, and seven concrete concepts sit
-below it. **Four** of them are the proposals for that slot, in **declaration order** — the order
+`Expression` is abstract, so no node can be an instance of it, and eight concrete concepts sit
+below it. **Five** of them are the proposals for that slot, in **declaration order** — the order
 the language author wrote them in, which is the author's ranking of what a user most likely
-wants. The other three are the literals, hidden from the list on purpose (see below).
+wants. The others are the three literals, hidden from the list on purpose (see below).
 
 Enter without a list still creates the first concrete concept, which for the rules sample is
 `IntLiteral` — so the top entry and the default disagree whenever a hidden concept precedes a
@@ -367,8 +367,8 @@ the public path — `EditorSession` plus `KeyRouter`:
 - `CompletionItemTests` covers the two labelling rules a value introduces: a symbol is its own
   label with its dots intact, and the kind survives construction.
 - `CompletionActionTests` covers the gestures end to end over the rules sample, whose `condition`
-  slot is declared over an abstract concept with four offered concrete ones: Ctrl+Space opens
-  four in declaration order; Down wraps; typing narrows; Backspace widens and then closes; Enter
+  slot is declared over an abstract concept with five offered concrete ones: Ctrl+Space opens
+  five in declaration order; Down wraps; typing narrows; Backspace widens and then closes; Enter
   creates the concept and leaves the caret inside it; Escape closes without changing the model; a
   key the list does not claim closes it and the key still reaches the model. One test pins the
   asymmetry the flag introduces: the three literals are absent from the list *and* still created

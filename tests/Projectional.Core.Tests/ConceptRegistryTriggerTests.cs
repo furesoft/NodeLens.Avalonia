@@ -49,11 +49,11 @@ public sealed class ConceptRegistryTriggerTests
     [Fact]
     public void TheAnswerIsTheLanguageAndNotTheCaller()
     {
-        // The expression language has four gestures: two for a binary, one for a negation and one for a
-        // parenthesis. The count is what makes "the catalogue is declared on the concepts" checkable.
+        // Five gestures: two for a binary, one for a negation, one for a parenthesis and one for a conditional.
+        // The count is what makes "the catalogue is declared on the concepts" checkable.
         var triggered = ExpressionsLanguage.Concepts.TriggersFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Expression));
 
-        Assert.Equal(4, triggered.Count);
+        Assert.Equal(5, triggered.Count);
     }
 
     [Fact]

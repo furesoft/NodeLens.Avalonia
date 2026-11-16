@@ -34,9 +34,9 @@ public sealed class CompletionActionTests
 
             var list = Assert.IsType<CompletionList>(session.Completion);
 
-            // Seven concrete Expression concepts, minus the three literals the language hides; the
+            // Eight concrete Expression concepts, minus the three literals the language hides; the
             // abstract base is not a candidate either, because no node can be an instance of it.
-            Assert.Equal(4, list.Count);
+            Assert.Equal(5, list.Count);
             Assert.DoesNotContain(ExpressionsConceptKeys.Expression, list.Matches.Select(item => item.ConceptKey));
 
             // Declaration order, so the first proposal is the first concept worth choosing.
@@ -232,7 +232,7 @@ public sealed class CompletionActionTests
 
             session.Apply(KeyRouter.For(session, EditorKey.Backspace));
 
-            Assert.Equal(4, session.Completion?.Count);
+            Assert.Equal(5, session.Completion?.Count);
 
             // With no prefix left there is nothing to widen, so the key falls through to the ordinary
             // path - which is a non-completion action, and therefore closes the list.

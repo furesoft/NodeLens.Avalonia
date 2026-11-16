@@ -355,6 +355,49 @@ public sealed class TypeTextTriggerTests
     }
 
     [Fact]
+    public void AQuestionMarkAfterAnExpressionMakesItTheConditionOfAChoice()
+    {
+        // The conditional is the one concept here that is not a rearrangement: the expression the caret left
+        // becomes its condition, and the caret continues in the branch the user writes next.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(KeyRouter.Type("?")).Outcome);
+
+        var choice = Assert.Single(group.GetChildren("inner"));
+
+        Assert.Equal(ExpressionsConceptKeys.If, choice.Concept.Key);
+        Assert.Same(literal, choice.GetChild("condition"));
+        Assert.Empty(choice.GetChildren("then"));
+        Assert.Empty(choice.GetChildren("else"));
+        Assert.Equal(CellAddress.OfSlot(choice.Id, "then"), session.Selection.Caret.Address);
+
+        Assert.Equal(
+            "((if 5 then <empty> else <empty>))",
+            LayoutSnapshot.Render(session.Layout, width: 60));
+    }
+
+    [Fact]
+    public void AQuestionMarkAfterAQuestionMarkChoiceContinuesInTheOtherBranch()
+    {
+        // The other branch is still empty, so a second question mark would have to mean "wrap the whole choice"
+        // - which is what it does, because the caret sits inside the choice rather than at its edge.
+        var (outer, group, literal) = Grouped();
+        using var session = Open(outer);
+
+        CaretAtEnd(session, literal, "value");
+        session.Apply(KeyRouter.Type("?"));
+        session.Apply(KeyRouter.Type("1"));
+
+        var choice = Assert.Single(group.GetChildren("inner"));
+        var then = Assert.Single(choice.GetChildren("then"));
+
+        Assert.Equal("1", then.GetOrNull("value"));
+    }
+
+    [Fact]
     public void AnOpeningParenthesisTypedBeforeAnExpressionGroupsIt()
     {
         // A parenthesis is a gesture rather than a value: nothing is written, and the caret stays inside the
