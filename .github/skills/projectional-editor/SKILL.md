@@ -320,6 +320,19 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   every `Editor*` type of `Projectional.Editing`, and the notation of the notation lives in `…Editors.Rendering`
   because `…Notation` would shadow the `Notation` type.
 
+### The parity rule is executed by three tests
+
+`LanguageParityTests` + `ParityHarness` compare `TestLanguage` (C#) with `DeclaredTestLanguage` (the same language
+as a model, lowered by the shipping code): **registry dump** (ordered text - order decides default fill and
+completion ranking, so never compare sets), **snapshot** (one document drawn through both notation registries) and
+**findings** (a `CheckSet` over two documents built the same way). Findings are compared **by place in document
+order, never by node id** - two documents built the same way have different identities, and a finding promises
+*where*. The harness returns text rather than booleans so a failure reads as a diff.
+
+**A parity gap is a defect, not a test problem.** Writing the twin immediately found two: `collapseSlot` and a
+collection's separator were expressible in C# and not as data. Both are data now. When a declared language cannot
+express something C# can, fix the language - ADR 0014 rule 2.
+
 ## How notation is declared
 
 `Projectional.Language` is where notation lives: declarative data that the projection engine
@@ -1304,7 +1317,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1414 tests**; anything below that means tests were deleted.
+it. **Baseline is 1417 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

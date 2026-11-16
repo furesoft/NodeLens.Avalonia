@@ -59,6 +59,10 @@ The registry dump is the interesting one, because order is part of the contract:
 order decides what an empty slot is filled with ([language.md](language.md#concept)), so a
 parity test that compared sets instead of sequences would miss a real difference.
 
+All three are implemented (`feat/language-parity`, over the declared twin of `TestLanguage`); how each one is
+made comparable, and the two parity gaps it found on its first run, are in
+[language-parity.md](language-parity.md).
+
 ## What a language project is
 
 A language is a **project folder**, not a file, and that shape is taken from MPS because it is
@@ -331,7 +335,7 @@ shippable at the end of each, and so that the parity test exists before the seco
 | Slice | Branch | M | Delivers |
 | --- | --- | --- | --- |
 | C1 | `feat/toolkit-builder` | M2 | the public `Projectional.Toolkit` surface a language package needs, one shipped language re-expressed through it, and the `dotnet new` template |
-| C2 | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage`, so the rule of this document is executable before any declared feature exists |
+| C2 ✓ | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage` - delivered, see [language-parity.md](language-parity.md) |
 | P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B, provisional shape): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 ✓ | `feat/declared-editor` | M2 | `Projectional.Editors` (stage B): notation as nodes, lowering into `Notation` - delivered, see [declared-editor.md](declared-editor.md) |
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages |

@@ -29,7 +29,8 @@ internal sealed class DefinitionBuilder
         IReadOnlyList<string>? supers = null,
         bool isAbstract = false,
         string? nameSlot = null,
-        string? description = null)
+        string? description = null,
+        string? collapseSlot = null)
     {
         var concept = _model.NewChild(Root, StructureLanguage.ConceptSlot, StructureConceptKeys.Concept);
 
@@ -44,6 +45,11 @@ internal sealed class DefinitionBuilder
         if (description is not null)
         {
             concept.Set("description", description);
+        }
+
+        if (collapseSlot is not null)
+        {
+            concept.Set("collapseSlot", collapseSlot);
         }
 
         foreach (var super in supers ?? [])
@@ -82,12 +88,17 @@ internal sealed class DefinitionBuilder
     }
 
     /// <summary>A reference slot.</summary>
-    public Node Reference(string name, string targetConceptKey)
+    public Node Reference(string name, string targetConceptKey, bool allowOwnSubtree = false)
     {
         var reference = _model.NewNode(StructureConceptKeys.ReferenceDecl);
 
         reference.Set("name", name);
         reference.Set("targetConceptKey", targetConceptKey);
+
+        if (allowOwnSubtree)
+        {
+            reference.Set("allowOwnSubtree", "true");
+        }
 
         return reference;
     }

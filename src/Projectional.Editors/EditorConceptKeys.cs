@@ -53,4 +53,7 @@ public static class EditorConceptKeys
 
     /// <summary>Many children, as blocks.</summary>
     public const string Children = "Editor.Children";
+
+    /// <summary>Many children with a separator between them, as blocks.</summary>
+    public const string Collection = "Editor.Collection";
 }

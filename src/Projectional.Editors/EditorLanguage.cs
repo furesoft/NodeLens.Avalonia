@@ -142,6 +142,17 @@ public static class EditorLanguage
             [EditorConceptKeys.BlockCell],
             nameSlot: "slot",
             description: "Many children, drawn as blocks."),
+
+        new ConceptDeclaration(
+            EditorConceptKeys.Collection,
+            [
+                new PropertySlot("slot", PropertyType.String),
+                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new ChildSlot("separator", EditorConceptKeys.InlineCell, Cardinality.One),
+            ],
+            [EditorConceptKeys.BlockCell],
+            nameSlot: "slot",
+            description: "Many children with a separator between them, drawn as blocks."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>
