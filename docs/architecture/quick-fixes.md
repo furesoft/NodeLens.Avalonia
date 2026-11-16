@@ -8,7 +8,7 @@ fix is, where it lives, how it reaches the user, and in which order the slices l
 Status: **delivered.** Slices Q1 to Q8 are done - the fix model, the fix set on the session,
 the query that answers which repairs the caret's line offers, applying one as a single undo step
 through [ADR 0016](../adr/0016-quick-fixes-are-edits-a-host-supplies.md), two real checks that carry
-repairs, the `Alt+Enter`/`Ctrl+.` gesture with its three answers, the keyboard-navigable list, the
+repairs, the `Alt+Enter`/`Ctrl+.` gesture that always opens the list, the keyboard-navigable list, the
 context-menu submenu, the tip line, the painted popup and the bulb in the margin. Slice Q7 then added
 the safety class the catalogue needed and shipped the catalogue itself as `Projectional.Checks`, so a
 language author includes the standard checks by naming them.
@@ -193,23 +193,21 @@ was handed.
 The four surfaces are delivered in dependency order, and only the last one needs a window:
 
 1. **`Alt+Enter` and `Ctrl+.` in the control**, the two spellings of the same command in the two
-   editors this one is modelled on (MPS and Visual Studio). If the line offers exactly one *repair* and
-   it is plain and able to run, the gesture applies it immediately - the common case is a single repair
-   for a finding the editor already painted, and a popup with one entry costs the user a keystroke for
-   nothing. Otherwise the list opens: for several offers, for a lone destructive or disabled repair, and
-   for a lone *intention*, which was announced nowhere and is therefore a question rather than an answer.
-   The gesture asks what is available, and it must not also be the keystroke that deletes something or
-   that answers with nothing at all.
+   editors this one is modelled on (MPS and Visual Studio). The gesture always opens the list - for one
+   offer as much as for ten. It used to apply a lone plain repair immediately, and that shortcut was
+   removed: one keystroke that sometimes acts and sometimes asks is a keystroke the user has to guess
+   about, and the meaning would change as soon as a language declared a second offer. The gesture asks
+   what is available, and *only* that.
    Both are exceptions to "keys held with Control or Alt are the host's", and they are taken
    deliberately and early: a quick-fix gesture that moves after users have learned it is worse than
    one gesture reserved from the host on day one. [context-actions.md](context-actions.md) already
    names both for the intention list, and there must be one binding, not two.
 
    **Delivered as far as the editing layer goes.** `EditorKey.QuickFix` carries the gesture,
-   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyOffers()` gives the answers:
-   nothing offered, a lone plain *repair* applied as its own undo step, or a list held in
-   `Offered` for whoever draws them. A *declared intention* is never applied from the gesture,
-   however few of them there are - see [context-actions.md](context-actions.md#interaction). Q7 added the safety class that decides the second and third
+   `EditorKeyMap` maps both spellings to it, and `EditorSession.ApplyOffers()` gives two answers:
+   nothing offered, or a list held in `Offered` for whoever draws them - one entry or several, the
+   gesture never applies an offer by itself. See
+   [context-actions.md](context-actions.md#interaction). Q7 added the safety class that decides the second and third
    case, and Q8 (`OfferPresenter`) draws them beside the caret - a list of one included, because a
    destructive offer that opened it is asking rather than offering. **Slice C of
    [context-actions.md](context-actions.md) turned the same gesture into the intentions gesture**:
@@ -441,18 +439,15 @@ being worth its demonstration.
 
 ### Two rules the catalogue forces
 
-**A repair that destroys something may never run from a single gesture.** Q4 applies a lone repair
-immediately, which is right for `Trim to "Rule"` and wrong for `Delete the empty rule`: the same
-keystroke would delete a node the user was only asking about. So an offer carries a safety class
-(`EditSafety` - named for the offer rather than for the fix, because the intention catalogue needs the
-same classification and one enum serves both), and the
-gesture applies a lone repair only when it is plain; a lone destructive repair opens the list, which is
-then allowed to hold one entry precisely because it is asking rather than offering. **Delivered in Q7**:
-`DiagnosticFix.Safety` defaults to `Plain`, `OfferList` accepts one entry, and
-`EditorSession.ApplyOffers` applies a lone *repair* only when it is plain *and* able to run - a lone
-disabled repair opens the list too, because a gesture that silently does nothing is the same complaint
-in another costume. The same reading refuses to run a lone declared intention: nothing announced it, so the
-list is the answer (see [context-actions.md](context-actions.md#interaction)). Open question 73.
+**A repair that destroys something may never run from a single gesture.** Q4 ran a lone plain repair
+immediately, which was right for `Trim to "Rule"` and wrong for `Delete the empty rule`: the same
+keystroke would delete a node the user was only asking about. Q7 answered that by putting a safety class
+on the offer (`EditSafety` - named for the offer rather than for the fix, because the intention catalogue
+needs the same classification and one enum serves both) and by running a lone repair only when it was
+plain. **The shortcut is gone now**: the gesture always opens the list, so the hazard cannot arise at all,
+and `EditSafety` is carried for a surface rather than read as a rule - `DiagnosticFix.Safety` still
+defaults to `Plain`, and `OfferList` still accepts one entry, which is now the ordinary case. Open
+question 73.
 
 **A standard rename may not break another model.** `STD002` is safe only while nothing references the
 name it changes: in a language where a rule's name is what other models point at, renaming it silently

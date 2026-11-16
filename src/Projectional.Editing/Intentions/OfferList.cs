@@ -16,11 +16,10 @@ namespace Projectional.Editing;
 /// second source.
 /// </para>
 /// <para>
-/// It is never empty: none is the absence of an answer rather than an empty list. It may hold exactly one,
-/// which happens whenever the lone offer is not one the gesture may run by itself - a destructive offer, one
-/// that cannot run at all, or a declared intention, which is never run unasked because nothing on screen
-/// announced it. The list is then not offering a choice, it is asking whether the user means it, and that is a
-/// different sentence with the same shape.
+/// It is never empty: none is the absence of an answer rather than an empty list. One entry is ordinary - the
+/// gesture always shows the list, so a caret with a single offer gets a single row and one `Enter`. Making the
+/// gesture run that row by itself would give one keystroke two meanings, "do it" and "show me what there is", and
+/// the user cannot know which one is about to happen.
 /// </para>
 /// </remarks>
 public sealed class OfferList

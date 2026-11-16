@@ -621,7 +621,7 @@ public sealed class EditorSession : IDisposable
         return result;
     }
 
-    /// <summary>Answers the offers gesture: nothing here, one plain offer, or a list to choose from.</summary>
+    /// <summary>Answers the offers gesture: a list of what can be done here, or nothing at all.</summary>
     /// <remarks>
     /// <para>
     /// The question is <see cref="IntentionList.For(EditorSession)"/>, not "which repairs exist": the user
@@ -629,29 +629,25 @@ public sealed class EditorSession : IDisposable
     /// all candidates for the same keystroke.
     /// </para>
     /// <para>
-    /// A lone <em>repair</em> is applied immediately when it is plain and can run. The common case is a single
-    /// cure for a single finding the editor has already painted, and a list with one entry would cost the user a
-    /// keystroke to say what the squiggle already knew.
+    /// Exactly one answer, and it is the same one whatever the list holds: <em>a list</em>. The gesture never
+    /// applies an offer by itself, not even a lone plain repair for a finding the editor painted.
     /// </para>
     /// <para>
-    /// A lone <em>intention</em> opens the list, even though there is only one of them. An intention is not a
-    /// repair: nothing on screen announced it, so the gesture is the question "what can be done here", and the
-    /// answer is a list even when it has one row. Applying it unasked would make the same key mean "do the only
-    /// thing there is" in a document where the user never saw that thing - and a language that later gains a
-    /// second intention would silently change what the key does. `Fix` is what tells the two apart, which is why
-    /// the entry carries it.
+    /// That uniformity is the point rather than a lost shortcut. "The only thing available sometimes runs by
+    /// itself" makes one keystroke mean two things - act, or ask - and the user cannot tell which is about to
+    /// happen until it has. It also makes the key's meaning depend on how many offers a language happens to
+    /// declare, so a language that gains a second intention silently changes what `Ctrl+.` does in a document
+    /// nobody touched. One gesture, one sentence: this is what is there, pick one.
     /// </para>
     /// <para>
-    /// One offer that is destructive, or that cannot run at all, opens the list too. The gesture asks what is
-    /// available; it must not also be the keystroke that deletes a node or that does nothing while a reason
-    /// exists. A list of one therefore means "this is what is here, do you mean it", which is the same shape as
-    /// a choice and a different sentence.
+    /// It is also why <see cref="EditSafety"/> is no longer read here. Nothing runs from the gesture, so nothing
+    /// needs classifying before it can: safety stayed on the offer as something a surface may show, and
+    /// <see cref="Intention.Fix"/> stayed for routing a repair through its own apply path.
     /// </para>
     /// <para>
-    /// Several offers open a list, and the answer is <see cref="EditOutcome.Unchanged"/>: the gesture was
-    /// handled, but nothing about the model changed. The list is what the caller reads to draw it - the
-    /// same contract the completion list has, which is why the control only has to look at the session
-    /// after the gesture.
+    /// The answer is <see cref="EditOutcome.Unchanged"/> either way: the gesture was handled, but nothing about
+    /// the model changed. The list is what the caller reads to draw it - the same contract the completion list
+    /// has, which is why the control only has to look at the session after the gesture.
     /// </para>
     /// <para>
     /// Nothing to offer answers unchanged as well and leaves no list behind. A refused gesture would leak
@@ -663,24 +659,7 @@ public sealed class EditorSession : IDisposable
     {
         var offered = IntentionList.For(this);
 
-        if (offered.Count == 0)
-        {
-            Offered = null;
-
-            return EditResult.Unchanged(Selection);
-        }
-
-        // Only a repair may run unasked: it answers a finding the editor painted, so one cure is one keystroke.
-        // A declared intention is a menu of what the language allows here, and a menu with one entry is still a
-        // menu - see the remarks for why `Fix` is the right thing to test.
-        if (offered.Count == 1 && offered[0] is { Safety: EditSafety.Plain, IsDisabled: false, Fix: not null })
-        {
-            Offered = null;
-
-            return Apply(offered[0]);
-        }
-
-        Offered = new OfferList(offered);
+        Offered = offered.Count == 0 ? null : new OfferList(offered);
 
         return EditResult.Unchanged(Selection);
     }

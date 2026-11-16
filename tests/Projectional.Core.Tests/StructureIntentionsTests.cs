@@ -77,8 +77,8 @@ public sealed class StructureIntentionsTests
     [Fact]
     public void TheGestureOpensTheListEvenWithOnlyOneIntention()
     {
-        // The route the user actually takes. An intention is never run unasked: nothing on screen announced it,
-        // so the keystroke asked what can be done here and the answer is a list - of one row, this time.
+        // The route the user actually takes: the keystroke asks what can be done here, and the answer is a
+        // list - of one row, this time, because the gesture applies nothing by itself.
         var (session, concept) = Document(isAbstract: false);
 
         Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);

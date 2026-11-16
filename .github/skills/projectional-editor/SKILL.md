@@ -779,12 +779,13 @@ transaction and rolls back completely if a step is rejected.
   `QuickFixes.At(session)` answers the caret's line (resolved geometrically, `MarkerGeometry` tops against
   `CaretBounds`), worst finding first; `QuickFixes.Of(session, diagnostic)` answers one finding. Both are
   derived per call and never cached.
-- **Two things decide whether a lone offer may run: `EditSafety` and `Intention.Fix`.** `ApplyOffers()`
-  applies a lone offer only when it is `EditSafety.Plain`, not disabled, **and carries a `Fix`** - that is, when
-  it is a *repair*. A lone declared intention opens an `OfferList` of one row instead, because nothing on screen
-  announced it: the gesture asks what can be done, and a menu with one row still answers a question. Do not
-  "simplify" this to `Safety` alone, and do not restore the old "at least two offers" rule - a list of one is
-  legal for three reasons now (destructive, disabled, and a declared intention).
+- **`ApplyOffers()` never applies anything. It always opens the list** - one offer or ten. Do not reintroduce a
+  "lone plain offer runs immediately" shortcut in any form, and do not gate it on `EditSafety` or on
+  `Intention.Fix` either: one keystroke that sometimes acts and sometimes asks is one the user has to guess
+  about, and its meaning would change the moment a language declared a second offer. `EditSafety` and
+  `Intention.Fix` are still on the offer as *information* (a surface may mark a destructive row; `Fix` is what
+  routes a repair through its own apply path) - they are not permissions. A one-entry `OfferList` is the
+  ordinary case, not an exception.
 - **A fix's label names the result** ("Rename to \"Check2\"") and `Description` is part of the contract; a
   menu falls back to the finding's message. The id is stable and never translated.
 - **Safety is on the offer, not on the fix type**, because the intention catalogue carries the same enum.
@@ -884,9 +885,7 @@ everything about the *list* is an offer: `OfferList` (of `Intention` entries), `
 "a quick fix is an intention carrying its `DiagnosticFix`" readable.
 
 - **`ApplyOffers()` asks `IntentionList.For(session)`**, so the popup lists host, language and fixes
-  together. What may run without one is narrower than "plain": a lone entry runs only when it carries
-  `Intention.Fix`, i.e. when it is a repair. A `Disabled` or `Destructive` entry opens the list too - a
-  one-entry list has three legal reasons, and a declared intention is one of them.
+  together, and it always opens a list - nothing is applied from the gesture, however few entries there are.
 - **`AcceptOffer` calls `Apply(Intention)`**, which routes an entry carrying `Intention.Fix` through
   `Apply(DiagnosticFix)` - so accepting a repair keeps its re-resolution, and accepting an intention builds
   its action at that moment.

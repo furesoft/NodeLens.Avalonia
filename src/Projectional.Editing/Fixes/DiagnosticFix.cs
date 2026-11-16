@@ -106,13 +106,12 @@ public sealed class DiagnosticFix
     /// <summary>Whether the fix is offered but cannot run.</summary>
     public bool IsDisabled => Availability.IsDisabled;
 
-    /// <summary>What applying the fix can take away, which decides whether it may run unasked.</summary>
+    /// <summary>What applying the fix can take away.</summary>
     /// <remarks>
-    /// A lone plain repair is applied by the gesture that asked for it, because a list of one costs a
-    /// keystroke and tells the user nothing. A lone destructive one opens that list instead: the same
-    /// keystroke that fills an empty slot must not be able to delete a node the user was only asking
-    /// about. The reading is done by <see cref="EditorSession.ApplyOffers"/> and not by a surface, so
-    /// every host inherits the rule.
+    /// Carried on the offer so both catalogues answer the same question the same way, and so a surface can mark
+    /// a row. The offers gesture no longer reads it: it always shows the list, which means the same keystroke
+    /// that fills an empty slot can never delete a node the user was only asking about - there is no gesture
+    /// left that applies anything unasked.
     /// </remarks>
     public EditSafety Safety { get; }
 

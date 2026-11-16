@@ -119,11 +119,11 @@ public sealed class Intention
     /// <summary>Whether it applies at this caret, cannot run there, or is not about this place.</summary>
     public IntentionAvailability Availability { get; }
 
-    /// <summary>What applying it can take away, which decides whether it may run unasked.</summary>
+    /// <summary>What applying it can take away.</summary>
     /// <remarks>
-    /// Shared with the fix catalogue: one enum, so "a destructive offer is never run from the gesture" cannot
-    /// drift between the two sources of the list. Being plain is only half of what the gesture asks - see
-    /// <see cref="Fix"/>, the other half.
+    /// Shared with the fix catalogue so both sources of the list answer the same question the same way. The
+    /// offers gesture no longer reads it - it always shows the list - so this is what a surface may use to mark a
+    /// row, and what a host should check before binding one offer to a key of its own.
     /// </remarks>
     public EditSafety Safety { get; }
 
@@ -135,9 +135,9 @@ public sealed class Intention
     /// general intention does not need and a fix cannot do without.
     /// </para>
     /// <para>
-    /// It is also the one thing that tells a repair from an intention, and therefore whether the offers gesture
-    /// may run a lone offer without showing it: a repair answers a finding the editor painted, while an
-    /// intention was never announced anywhere, so a menu with one row is still the honest answer.
+    /// It is also what tells a repair from an intention - a repair answers a finding the editor painted, an
+    /// intention was never announced anywhere - which a surface can use even though the offers gesture no longer
+    /// asks: it shows the list either way.
     /// </para>
     /// </remarks>
     public DiagnosticFix? Fix { get; }
