@@ -101,7 +101,7 @@ first.*
 | Concept declarations as nodes | structure language (stage B) - **delivered** as P1 ([declared-structure.md](architecture/declared-structure.md)) |
 | Notation declarations as nodes | editor language (stage B) - **delivered** as P2 ([declared-editor.md](architecture/declared-editor.md)) |
 | Generic renderer | renders any declared concept; the MPS-shaped definition languages replace it in M5 ([language-authoring.md](architecture/language-authoring.md)) |
-| Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable |
+| Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable; **delivered** as C2 ([language-parity.md](architecture/language-parity.md)) |
 | Language template | `dotnet new projectional-language`, plus the `Projectional.Toolkit` surface a package needs |
 | Tables | grid cell, column sizing, cell caret, add-row affordance |
 | Language loading | declared languages from the project directory |

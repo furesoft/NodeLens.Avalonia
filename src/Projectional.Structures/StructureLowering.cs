@@ -103,7 +103,8 @@ public static class StructureLowering
             nameSlot: Optional(concept, "nameSlot"),
             isAbstract: Flag(concept, "isAbstract"),
             isOfferedInCompletion: Flag(concept, "isOfferedInCompletion"),
-            description: Optional(concept, "description"));
+            description: Optional(concept, "description"),
+            collapseSlot: Optional(concept, "collapseSlot"));
     }
 
     private static SlotDeclaration LowerSlot(string owner, Node slot, Dictionary<string, IReadOnlyList<string>> enums)

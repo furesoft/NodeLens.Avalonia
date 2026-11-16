@@ -104,6 +104,10 @@ public static class EditorLowering
                 Required(cell, "slot"),
                 Optional(cell, "emptyText") ?? "<empty>",
                 Spacing(cell)),
+            EditorConceptKeys.Collection => ed.Collection(
+                Required(cell, "slot"),
+                cell.GetChild("separator") is { } separator ? LowerInline(separator, conceptKey) : null,
+                Optional(cell, "emptyText") ?? "<empty>"),
             _ => throw NotACell(cell, conceptKey, "not a block"),
         };
     }

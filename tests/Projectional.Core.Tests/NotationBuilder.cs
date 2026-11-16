@@ -52,6 +52,35 @@ internal sealed class NotationBuilder
         return cell;
     }
 
+    /// <summary>A keyword or a punctuation mark, which carries its own text.</summary>
+    public Node Word(Node parent, string conceptKey, string text) =>
+        Cell(parent, conceptKey, ("text", text));
+
+    /// <summary>A property or reference cell, which names a slot of the drawn concept.</summary>
+    public Node Slot(Node parent, string conceptKey, string slot) =>
+        Cell(parent, conceptKey, ("slot", slot));
+
+    /// <summary>The single child a cell draws.</summary>
+    public Node ChildIn(Node parent, string slot)
+    {
+        // The cell is itself an inline cell of the line; `slot` names the child of the drawn concept.
+        var child = _model.NewChild(parent, EditorLanguage.CellSlot, EditorConceptKeys.ChildInline);
+
+        child.Set("slot", slot);
+
+        return child;
+    }
+
+    /// <summary>The separator of a collection, which is an inline cell rather than part of its list.</summary>
+    public Node Separator(Node collection, string text)
+    {
+        var separator = _model.NewChild(collection, "separator", EditorConceptKeys.Punct);
+
+        separator.Set("text", text);
+
+        return separator;
+    }
+
     /// <summary>A line holding the given inline cells.</summary>
     public Node Line(Node parent, params string[] cells)
     {

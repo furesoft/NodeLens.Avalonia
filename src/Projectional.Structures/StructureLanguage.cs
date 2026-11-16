@@ -53,6 +53,7 @@ public static class StructureLanguage
                 new PropertySlot("isOfferedInCompletion", PropertyType.Boolean, "true"),
                 new PropertySlot("description", PropertyType.String),
                 new PropertySlot("nameSlot", PropertyType.String),
+                new PropertySlot("collapseSlot", PropertyType.String),
                 new ChildSlot(SuperTypeSlot, StructureConceptKeys.SuperType, Cardinality.Many),
                 new ChildSlot(SlotSlot, StructureConceptKeys.Slot, Cardinality.Many),
             ],
