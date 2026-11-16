@@ -70,6 +70,14 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// <summary>How much blank separates a row number from the edge of the gutter, in device pixels.</summary>
     private const double GutterGap = 6;
 
+    /// <summary>How much blank separates the whole margin from the first column of text, in device pixels.</summary>
+    /// <remarks>
+    /// Two pixels, and it is what makes a row number read as a label beside the document rather than as the
+    /// first thing on the line. It is added once, at the end, so it separates the margin as a whole from
+    /// the page - the bulb's own gap and this one are different jobs.
+    /// </remarks>
+    private const double PageMargin = 2;
+
     private SyntaxPalette _palette = SyntaxPalette.Light;
     private ICellStyler _styler = CellStyler.Default;
 
@@ -653,11 +661,20 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// is sometimes empty.
     /// </para>
     /// </remarks>
-    public double GutterWidth =>
-        (_showLineNumbers
-            ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
-            : 0)
-        + (ShowBulb ? BulbMargin : 0);
+    public double GutterWidth
+    {
+        get
+        {
+            var margin = (_showLineNumbers
+                    ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None)) + (2 * GutterGap)
+                    : 0)
+                + (ShowBulb ? BulbMargin : 0);
+
+            // Only when there is a margin to separate from: with neither numbers nor a bulb the page starts
+            // at the control's own edge, and a blank there would be a margin with nothing on its left.
+            return margin > 0 ? margin + PageMargin : 0;
+        }
+    }
 
     /// <summary>The numbered rows of the document as last laid out.</summary>
     /// <remarks>

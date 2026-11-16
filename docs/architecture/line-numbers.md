@@ -60,7 +60,11 @@ the numbers were counted from" is a reference comparison rather than a version n
 ```
 GutterWidth = (ShowLineNumbers ? DigitsOf(rows) * Measure("0") + 2 * GutterGap : 0)
             + (ShowBulb ? Round(LineHeight) + BulbGap : 0)
+            + PageMargin
 ```
+
+The last term is added only when the sum before it is positive - it separates the margin from the
+page, so a page with no margin has nothing to separate from.
 
 Both halves of the number part matter: `Measure("0")` is the only way to learn how wide a digit is
 in the current font, and the digits are counted by dividing the row count by ten (`9 -> 1`,
@@ -138,27 +142,31 @@ theme does not paint grey numbers on a dark page.
 
 ## A gap between the gutter and the page
 
-Planned, and small: **two device pixels** of blank between the right edge of the gutter and the
-first column of text, so a row number does not touch the document it labels.
+**Delivered.** Two device pixels of blank between the right edge of the margin and the first column of
+text, so a row number does not touch the document it labels.
 
-The gap is **chrome, not layout**, so it is added to `GutterWidth` and nowhere else:
+The gap is **chrome, not layout**, so it is added once, at the end of `GutterWidth`, and nowhere else:
 
 ```csharp
-public double GutterWidth => _showLineNumbers
-    ? (LineNumbers.DigitsOf(Rows) * TextMeasure.Measure("0", TextEmphasis.None))
-      + (2 * GutterGap) + PageMargin
-    : 0;
+var margin = (ShowLineNumbers ? DigitsOf(rows) * Measure("0") + 2 * GutterGap : 0)
+           + (ShowBulb ? Round(LineHeight) + BulbGap : 0);
+
+return margin > 0 ? margin + PageMargin : 0;   // PageMargin = 2
 ```
 
-`GutterWidth` is the page's left edge: painting translates by `gutter - offsetX`, and both the
-marker band hit test and the hover conversion translate back with `point.X - gutter + offsetX`. A
-gap introduced anywhere else - inside the page transform, as a spacer cell, or as padding on the
-control - would move the painted text without moving the rectangles that the caret, the markers
-and the hit test are computed from, and the symptom would be a caret that is two pixels off near
-the gutter. Adding it to `GutterWidth` keeps one number for "where the page starts".
+`GutterWidth` is the page's left edge: painting translates by `gutter - offsetX`, and both the marker
+band hit test and the hover conversion translate back with `point.X - gutter + offsetX`. A gap
+introduced anywhere else - inside the page transform, as a spacer cell, or as padding on the control -
+would move the painted text without moving the rectangles that the caret, the markers and the hit test
+are computed from, and the symptom would be a caret that is two pixels off near the gutter. Adding it
+to `GutterWidth` keeps one number for "where the page starts".
 
-It applies **only while the gutter is shown**. With `ShowLineNumbers` off there is no gutter to
-separate from, so the page starts at the control's own edge and `GutterWidth` stays `0`.
+It applies **only when there is a margin**. With neither row numbers nor a bulb the page starts at the
+control's own edge, so `GutterWidth` stays `0` rather than leaving two pixels of nothing.
+
+Verified in a real window: the margin measured 23 device pixels with the bulb and no numbers (18.6
+bulb square + 2 gap + 2 page margin) and 42.5 with numbers (7.5 digit + 12 gutter padding + 21 bulb
+margin + 2), with the numbers right-aligned against the bulb's margin rather than underneath it.
 
 ## What this is not
 
