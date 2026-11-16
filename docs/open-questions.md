@@ -215,5 +215,6 @@ Listed here so they are not reopened accidentally; the authoritative text is the
 | Standalone editor | ships, and is a plain consumer of the public API | [0011](adr/0011-standalone-editor.md) |
 | Language authoring | C# and project paths, both permanent | [0014](adr/0014-both-authoring-paths-are-permanent.md) |
 | Shell | a library a host composes, lockable to one language | [0015](adr/0015-shell-is-a-library.md) |
+| Quick fixes | edits a host supplies, applied by the session as one undo step | [0016](adr/0016-quick-fixes-are-edits-a-host-supplies.md) |
 | Execution | interpreter *and* text generation | ADR to be written (M4) |
 | Pilot DSL | rule/decision tables | ADR to be written (M4) |
