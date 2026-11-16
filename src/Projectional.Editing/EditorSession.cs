@@ -42,6 +42,11 @@ public sealed class EditorSession : IDisposable
     // rebuild and an undo that moves nodes around.
     private CollapsedNodeSet _collapsed = CollapsedNodeSet.Empty;
 
+    // The two sources of intentions, kept apart so the list's order is fixed rather than accidental. A host
+    // may register several; a language hands over one provider that composes what its packages declare.
+    private readonly List<IIntentionProvider> _hostIntentions = [];
+    private readonly List<IIntentionProvider> _languageIntentions = [];
+
     /// <summary>Opens <paramref name="document"/> for editing.</summary>
     /// <param name="document">The root of the model to edit.</param>
     /// <param name="notations">The notation that projects the document's concepts.</param>
@@ -205,6 +210,71 @@ public sealed class EditorSession : IDisposable
     /// </para>
     /// </remarks>
     public FixSet Fixes { get; set; } = FixSet.Empty;
+
+    /// <summary>
+    /// Registers a source of intentions, from the host or from the language the document is written in.
+    /// </summary>
+    /// <param name="provider">The source, asked afresh for every list.</param>
+    /// <param name="source">
+    /// Which group it belongs to, which decides where its entries appear in the list; a host's when omitted.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Registration rather than a property, because a host adds what only it can know - "deploy", "generate
+    /// now", "open the referenced model" - and a language may add what its concepts mean, and the two must
+    /// not overwrite each other. The order within a group is the order of registration; the order between
+    /// groups is fixed by <see cref="IntentionSource"/> and is not a host's to change.
+    /// </para>
+    /// <para>
+    /// Registering an intention does not rebuild the tree, the layout or the caret, and needs no refresh: the
+    /// list is derived per call, so the next question sees the new source. Registering twice adds it twice,
+    /// which is why the caller owns the list it passes rather than handing over the same provider per edit.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="provider"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="source"/> is not a defined value.</exception>
+    public void AddIntentions(IIntentionProvider provider, IntentionSource source = IntentionSource.Host)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+
+        if (!Enum.IsDefined(source))
+        {
+            throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown intention source.");
+        }
+
+        (source == IntentionSource.Host ? _hostIntentions : _languageIntentions).Add(provider);
+    }
+
+    /// <summary>Every registered source, in the order the list asks them.</summary>
+    /// <remarks>
+    /// Host before language, each in registration order - see <see cref="IntentionSource"/> for why. The
+    /// fixes are not a provider: they are published as a set and appended by
+    /// <see cref="IntentionList"/>.
+    /// </remarks>
+    internal IEnumerable<IIntentionProvider> IntentionProviders
+    {
+        get
+        {
+            foreach (var provider in _hostIntentions)
+            {
+                yield return provider;
+            }
+
+            foreach (var provider in _languageIntentions)
+            {
+                yield return provider;
+            }
+        }
+    }
+
+    /// <summary>The read-only view of the caret that an intention decides against.</summary>
+    /// <remarks>
+    /// Built from the tree, layout and selection as they are now, so a provider sees one consistent picture.
+    /// The place is resolved here rather than passed in, because an intention is offered for the cell the
+    /// caret stands in, and only the tree can answer which cell that is.
+    /// </remarks>
+    internal IntentionContext CreateIntentionContext() =>
+        new(Document, Tree, Layout, Measure, Selection, CaretNavigation.PlaceAt(Tree, Selection.Caret));
 
     /// <summary>The repairs a gesture offered and the user has not chosen between, or <see langword="null"/>.</summary>
     /// <remarks>

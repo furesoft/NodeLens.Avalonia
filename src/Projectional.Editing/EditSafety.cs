@@ -7,7 +7,8 @@ namespace Projectional.Editing;
 /// the same answer: an intention that deletes a node and a repair that clears a reference are the same
 /// hazard, and one enum for both keeps a surface from having to decide twice. It is also what the gesture
 /// reads, so the rule "run a lone offer immediately" cannot be written once for fixes and once for
-/// intentions and then drift apart.
+/// intentions and then drift apart. It therefore lives beside <see cref="EditAction"/> at the root of this
+/// layer rather than in the quick-fix folder it was introduced with.
 /// </para>
 /// <para>
 /// <see cref="Plain"/> is the default, which is the safe direction for a new kind of offer: a category that

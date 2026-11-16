@@ -1,10 +1,16 @@
 # Context actions (intentions)
 
-*Planned, not implemented.* This document is the design for the light bulb: the affordance
-that offers, at the caret, the edits that make sense *there* — "wrap in parentheses",
-"negate", "add the missing condition", "extract this into a rule". It is written before the
-code so that the three layers it touches — language, editing, control — agree on who owns
-what, and so the milestone that implements it has a gate instead of an ambition.
+*Partly delivered: the model and the list (slices A and B).* This document is the design for the light
+bulb: the affordance that offers, at the caret, the edits that make sense *there* — "wrap in
+parentheses", "negate", "add the missing condition", "extract this into a rule". It is written before the
+code so that the three layers it touches — language, editing, control — agree on who owns what, and so the
+milestone that implements it has a gate instead of an ambition.
+
+What exists today is everything a surface needs and nothing that draws: `Intention`,
+`IntentionContext`, `IntentionAvailability`, `IIntentionProvider` and `IntentionList.For(session)` in
+`Projectional.Editing`, the two registration groups on the session, and the order and de-duplication rules
+below. The bulb, the popup entry and the context-menu submenu are the quick-fix affordances that already
+ship, and teaching them a second source is slice C onwards.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -48,6 +54,18 @@ public sealed class Intention
 }
 ```
 
+**What was built differs from that sketch in three places, each for a reason.**
+
+- **Availability is data, not a predicate.** The sketch shows a per-caret question; the implementation puts
+  the answer on the value and gives it three states (`Applies`, `Disabled(reason)`, `Absent`). A provider is
+  asked per caret and answers with copies (`Intention.With(availability)`), which is what lets a language
+  declare its catalogue once and hand it back whole — the list filters `Absent` out.
+- **The description is required.** A fix falls back to the finding's message; an intention has nothing
+  behind it, and a label without a sentence is a riddle nothing downstream can solve.
+- **A fix is representable in the same list.** `Intention.FromFix` turns a `DiagnosticFix` into an entry and
+  keeps the fix on it, so nothing about the fix's identity — or the re-resolution contract applying it
+  needs — is lost when the two catalogues meet in one list.
+
 `IntentionContext` is the same view an `EditAction` already gets, plus what an intention
 needs to *decide*: the node the caret is on, the cell's address, the selection, and read-only
 access to the model. It deliberately does **not** expose the session's mutation methods —
@@ -58,22 +76,30 @@ deciding and applying stay separate, so an intention cannot half-apply while sti
 Two sources, because they answer different questions:
 
 1. **The language** says what is meaningful for a concept — an aspect, like every other
-   language aspect, so it is data in the declared stages (M2/M5) and a delegate now:
+   language aspect, so it is data in the declared stages (M2/M5). Until that exists it is an
+   `IIntentionProvider` beside the language, registered as `IntentionSource.Language`:
 
    ```csharp
-   concept.Intentions(caret => new[]
-   {
-       Intention.Of("expressions.wrap-in-parens", "Wrap in parentheses")
-           .Described("Surround this expression with ( ) so precedence changes.")
-           .When(n => n.Slot() is "operand")
-           .Do(n => new WrapInNodeAction(TestLanguage.Parens)),
-   });
+   // A language package declares its entries once, with everything that is true wherever they appear.
+   private static readonly Intention Wrap = new(
+       "expressions.wrap-in-parens",
+       "Wrap in parentheses",
+       "Surrounds this expression so the grouping is what the notation says.",
+       context => new WrapInAction(context.Node!.Id, ExpressionsConceptKeys.Parenthesized, "inner"));
+
+   public IReadOnlyList<Intention> At(IntentionContext context) =>
+       [Wrap.With(context.Node is { } node && node.Concept.IsKindOf(Binary) ? Applies : Absent)];
    ```
+
+   A language package that declares intentions references `Projectional.Editing`, so it is a
+   *behaviour* package beside the language - the same split `Projectional.Samples.Checks` made,
+   and for the same reason.
 
 2. **The host** adds actions that are not the language's business — "deploy", "generate
    now", "open the referenced model". These are registered on the session
-   (`session.AddIntentions(provider)`), filtered by a predicate over the caret, and are how an
-   embedding application puts its own commands next to the structural ones.
+   (`session.AddIntentions(provider, IntentionSource.Host)`, the source defaulting to
+   `Host`), each provider deciding for the caret it is handed, and are how an embedding
+   application puts its own commands next to the structural ones.
 
 Resolution order is host intentions, then language intentions, then [quick
 fixes](quick-fixes.md), each group filtered by availability and de-duplicated by id. Order is
@@ -328,7 +354,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 
 | Slice | Branch | Delivers |
 | --- | --- | --- |
-| A | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionList.For(session)`, provider registration on the session, one fixture intention in the test language, tests for order, availability, dedup, and the two-source resolution order (host, language, fixes) |
+| A ✓ | `feat/intentions-model` | `Intention`, `IntentionContext`, `IntentionAvailability`, `IIntentionProvider`, `IntentionList.For(session)`, the two registration groups on the session, one fixture intention beside the test language, tests for order, availability, dedup and the two-source resolution order (host, language, fixes) |
 | B | `feat/intentions-apply` | `EditorSession.Apply(Intention)`, one-undo-step and rollback tests against the `EditProgram` that quick fixes introduced |
 | C | `feat/intentions-keys` | the intention list in the `Alt+Enter` / `Ctrl+.` popup beside the fixes, built from `EditorMenuEntry`s through `EditorMenuPresenter` |
 | D | `feat/intentions-bulb` | the "Intentions" submenu in the context menu, and the bulb reporting intentions when the line carries no marker |
