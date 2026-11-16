@@ -270,7 +270,7 @@ before - the text above is the argument:
 | --- | --- |
 | The constraint engine that produces findings in volume | M4; this feature makes the findings that exist actionable first |
 | Fix all / batch repair (`Ctrl+Shift+.`) | one transaction over many fixes needs a policy for repairs that overlap or contradict, and that policy is not a side effect of one fix |
-| Preview or diff of what a fix will do | the label carries the result where it matters ("Rename to `Check2`"); a full preview needs a side-effect-free describe form per action |
+| Preview or diff of what a fix will do | the label carries the result where it matters ("Rename to `Check2`"); a repair is previewed by the intention preview instead, through the same sandbox ([intention-preview.md](intention-preview.md)) |
 | Fixes on save, or automatic repair | the model changes only when the user says so; MPS' transformation triggers are the substitution actions of M3 |
 | Severity thresholds ("show warnings only") | policy that belongs to the host that runs the checks, per ADR 0013 |
 | Localisation of labels and descriptions | strings until the M5 message-key pass |
