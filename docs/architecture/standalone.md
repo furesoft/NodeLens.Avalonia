@@ -194,6 +194,15 @@ Two rules make this cheap enough to be a shell preference rather than a document
   control gets the same mapping - including the inheritance walk that reads a host-defined
   `new ThemeVariant("Midnight", ThemeVariant.Dark)` as dark.
 
+A theme carries **every colour the control paints**, including the ones that are not the document:
+`Palette`, `Background`, `Chrome`, `Caret`, `Highlight`, `Gutter`, `LineNumber`, `Markers`,
+`Lists` (the completion and quick-fix lists), `Tip` (the marker tooltip) and `Bulb`. The last three
+were added after the first version shipped a white popup on a dark page: the surfaces that are
+*painted over* the document are read against it, so a host that themes the page and not its overlays
+has a bug the user can see. Applying a theme is one method on the window, and a tab opened later is
+themed before it is shown - both paths go through the same call, so a new member cannot be applied
+to one and forgotten in the other.
+
 ### Line numbers
 
 **View ▸ Line numbers** is a checkable item, off at first, that sets `ShowLineNumbers` on

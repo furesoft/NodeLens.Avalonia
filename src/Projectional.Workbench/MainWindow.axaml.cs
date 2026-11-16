@@ -405,7 +405,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private static void ApplyThemeTo(ProjectionalEditorControl editor, SyntaxTheme theme)
     {
-        // Six properties rather than one, because the control refuses to guess what surface its
+        // Ten properties rather than one, because the control refuses to guess what surface its
         // palette is meant for: a dark palette is only readable on a dark background.
         editor.Palette = theme.Palette;
         editor.Background = theme.Background;
@@ -414,6 +414,12 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.GutterBackground = theme.Gutter;
         editor.LineNumberBrush = theme.LineNumber;
         editor.MarkerColors = theme.Markers;
+
+        // The overlays as well, or a dark page gets white boxes on it: the completion list, the quick-fix
+        // list, the marker tooltip and the bulb are painted over the document and are read against it.
+        editor.ListPalette = theme.Lists;
+        editor.TipPalette = theme.Tip;
+        editor.BulbBrush = theme.Bulb;
     }
 
     private void UpdateStatus()

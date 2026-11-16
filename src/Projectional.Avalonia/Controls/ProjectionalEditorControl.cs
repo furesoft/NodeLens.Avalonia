@@ -140,7 +140,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     // a repaint per tick must not walk the document's findings. The layout is a fresh object after every
     // rebuild and both sets are immutable, so their identity is the invalidation.
     private bool _showBulb = true;
-    private IBrush _bulbBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE8, 0xA3, 0x3D));
+    private IBrush _bulbBrush = new SolidColorBrush(Color.FromRgb(0xC8, 0x87, 0x1C));
     private bool _bulbOffered;
     private (CellLayout Layout, CaretPosition Caret, MarkerSet Markers, FixSet Fixes)? _bulbOf;
 
