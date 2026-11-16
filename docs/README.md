@@ -38,9 +38,11 @@ records what was actually verified.
 17. [Integration](architecture/integration.md) — how host applications embed this.
 18. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-19. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-20. [Roadmap](roadmap.md) — milestones and acceptance gates.
-21. [Open questions](open-questions.md) — what is deliberately still undecided.
+19. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
+    composes, locked to one language.
+20. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+21. [Roadmap](roadmap.md) — milestones and acceptance gates.
+22. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
@@ -80,3 +82,4 @@ directory stays authoritative whenever the two disagree.
 | [0012](adr/0012-concept-rendered-more-than-one-way.md) | A concept may be rendered more than one way |
 | [0013](adr/0013-markers-are-view-state.md) | Markers are view state: the frame never carries them |
 | [0014](adr/0014-both-authoring-paths-are-permanent.md) | Languages are defined in code and in the project, both permanently |
+| [0015](adr/0015-shell-is-a-library.md) | The shell is a library a host composes, and it can be locked to one language |

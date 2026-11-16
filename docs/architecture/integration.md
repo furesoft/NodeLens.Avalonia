@@ -66,6 +66,7 @@ internals that change between minor versions.
 | --- | --- | --- |
 | **Single model** | one model, one editor, embedded in a pane | smallest surface |
 | **Full workbench** | tabs, model browser, language project | ships `Projectional.Workbench` as a library or app |
+| **Embedded shell** | the host's own window containing the shell, already locked to one language, with the host's storage and a reduced capability set ([embedded-shell.md](embedded-shell.md)) | `ShellView` from the shell library; no internals, no language picker, no global settings |
 | **Dialog** | modal editor for a small model, e.g. a rule set inside a settings dialog | fast open, single-document undo |
 | **Headless** | generation or interpretation without any UI | no Avalonia reference at all |
 
@@ -76,7 +77,12 @@ control inside it. The framework also ships its own host:
 | --- | --- | --- |
 | **Standalone app** | `Projectional.Workbench`, a desktop editor for projects, using only the public API | [standalone.md](standalone.md), [ADR 0011](../adr/0011-standalone-editor.md) |
 
-The standalone app is not a fifth hosting mode; it is a *consumer* of the modes above,
+The embedded-shell mode is the one that decides whether the shell is written as a library or as a
+window that happens to contain one, and the answer is fixed before the shell grows: the shell's
+content is a control, the window wraps it, and a language can be locked to it
+([ADR 0015](../adr/0015-shell-is-a-library.md)).
+
+The standalone app is not a separately-built mode; it is a *consumer* of the modes above,
 which is why it has no privileged access to the layers. Its existence is the check that
 the embedding API is complete: if the app needed an internal, a host would too.
 

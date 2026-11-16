@@ -74,7 +74,17 @@ window is wiring.
 5. **No feature exists only in the app.** If the app can do something a host cannot,
    either the public API grows or the feature is removed. This invariant is the whole
    point — without it the app silently becomes the only supported front end.
-6. **A type the app uses must arrive through a public member, not through a reference.**
+6. **The shell is a library; the window and the application are its configuration.**
+   The shell's content is a `ShellView` control, `ShellWindow` wraps it, and the standalone app is
+   `ShellWindow` with every capability and no language lock. That is what lets a host embed the
+   whole shell, locked to one language and saving into its own storage, instead of rebuilding it
+   ([embedded-shell.md](embedded-shell.md), [ADR 0015](../adr/0015-shell-is-a-library.md)).
+7. **No process-wide state, and no capability enforced only by hidden UI.** A shell instance
+   owns its documents, its preferences and its capability set; the menu reflects a capability and
+   the command refuses it. Two shells in one process must not see each other, and an embedded
+   instance must not write a settings file the app did not ask for
+   ([embedded-shell.md](embedded-shell.md#lifetime)).
+8. **A type the app uses must arrive through a public member, not through a reference.**
    The app names `MarkerSet` and `Diagnostic` when it publishes findings, and it does so
    with **no** `ProjectReference` of its own: `ProjectionalEditorControl.Markers` is
    public and is typed with them, so `Avalonia` must reference `Editing`, which must
@@ -229,7 +239,7 @@ Three things that follow, and that a host has to do as well:
   and `Info` as a dotted line and `Warning`/`Error` as a wave, so the severity is visible
   before the tooltip is opened.
 
-Nothing about this needs a reference of its own — see rule 6 under
+Nothing about this needs a reference of its own — see rule 8 under
 [Composition rules](#composition-rules). The app is using `Projectional.Avalonia`'s public
 surface exactly as a host would.
 

@@ -896,13 +896,22 @@ Rules that follow from that, and are easy to break by accident:
    on that tab's control. The menu is refreshed from `UpdateStatus()`, holds no state of its own
    and must stay disabled when there is nothing to switch.
 
+8. **The shell is a library, not only an app.** Its content is `ShellView` (a `Control`),
+   `ShellWindow` wraps it, and the standalone app is that window with every capability and no
+   language lock. A host embeds the shell locked to one language, with its own `IShellStorage`
+   and `IShellDialogs` ([embedded-shell.md](../../../docs/architecture/embedded-shell.md),
+   [ADR 0015](../../../docs/adr/0015-shell-is-a-library.md)). So write shell code as if a host
+   already owns it: no statics holding documents or preferences, no `Application.Current`, no
+   settings file, and never a capability enforced only by hiding a menu entry - the command
+   registry refuses it.
+
 Scope by milestone, so the app does not compete with the libraries: M1 = open project, tabs,
 edit, save, dirty prompt. M2 = model browser, problems panel, single-file build. M4 = output
-panel. M5 = language browser, live preview, language creation (the MPS moment). M7 = installers
-and file association.
+panel. M5 = language browser, live preview, language creation (the MPS moment). M6 = the shell
+as an embeddable, language-locked component. M7 = installers and file association.
 
 Work that touches any of this also touches a doc; the app's plan lives in
-`docs/architecture/standalone.md`, and the milestone scope in `docs/roadmap.md` M1/M2/M4/M5/M7.
+`docs/architecture/standalone.md`, and the milestone scope in `docs/roadmap.md` M1/M2/M4/M5/M6/M7.
 
 ## How the tests are organised
 
