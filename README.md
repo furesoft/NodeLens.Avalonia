@@ -274,7 +274,7 @@ Bold, italic, underline and strikethrough come from two places: the notation (`r
 
 An optional gutter tracks the projected lines instead of a text buffer's newlines, so a node that spans several lines is numbered where it is drawn.
 
-![Gutter with line numbers beside a three-line document](docs/images/feature-line-numbers.png)
+![Gutter with line numbers beside a ruleset of three rules](docs/images/feature-line-numbers.png)
 
 #### Markers
 
@@ -363,7 +363,7 @@ dotnet test
 ## Known Limitations
 
 - **Host scrollbars required:** The control implements `ILogicalScrollable`, so hosts must wrap it in a `ScrollViewer`.
-- **List slots project inline:** Children run horizontally until wrapped in `Sequence` or `Indent`.
+- **List slots project inline unless asked to stack:** `Children(slot)` runs children horizontally; `Children(slot, stacked: true)` starts each one on a new line.
 - **Default property typing:** Typing into a defaulted property inserts characters in front of the default value until proper defaults land.
 - **Append-only lists:** `Enter` appends items to list slots (insert-at-index is planned).
 - **Diagnostics clipping:** Tooltip boxes are rendered inside control bounds, which may clip text if near edges.

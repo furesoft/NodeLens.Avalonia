@@ -12,9 +12,10 @@ namespace Projectional.Projection;
 /// otherwise.
 /// </para>
 /// <para>
-/// A slot with cardinality one holds at most one root. Slots that hold many children are projected
-/// by <see cref="CollectionCell"/>, which shows the separator and the empty text that a collection
-/// needs and a single child does not.
+/// A slot with cardinality one holds at most one root. A slot that holds many keeps one root per child
+/// in document order, running them beside each other unless the notation asked for
+/// <see cref="IsStacked"/>, in which case layout starts each one on a new line. A collection with a
+/// separator is a <see cref="CollectionCell"/> instead.
 /// </para>
 /// </remarks>
 public sealed class ChildCell : StructureCell
@@ -33,6 +34,13 @@ public sealed class ChildCell : StructureCell
 
     /// <summary>What to show when the slot points at nothing, so that it can still be edited into.</summary>
     public string EmptyText { get; }
+
+    /// <summary>Whether every child starts on a line of its own rather than beside its neighbours.</summary>
+    /// <remarks>
+    /// A property of the projection, not of the model: the same slot may be drawn as a column of children
+    /// by one notation and as a list on one line by another. Layout is the only reader.
+    /// </remarks>
+    public bool IsStacked { get; init; }
 
     /// <summary>Whether the slot points at nothing and is showing <see cref="EmptyText"/> instead.</summary>
     public bool IsEmpty => Content.Count == 0;

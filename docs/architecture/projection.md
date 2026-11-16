@@ -43,7 +43,7 @@ Cells of the editor tree (namespace `Projectional.Projection`, folder `Tree/`):
 | `ConstantCell` | literal text (keyword, punctuation), with its `ConstantKind` |
 | `SpaceCell` | one column of blank the notation asked for |
 | `PropertyCell` | property text, its `PropertyType` and whether the slot is set |
-| `ChildCell` | one child slot: the child's projection, or its empty text, spaced apart |
+| `ChildCell` | one child slot: the child's projection, one per line when the notation asks for it, or its empty text |
 | `CollectionCell` | a list slot: items interleaved with separators and spacing |
 | `ReferenceCell` | target name, `<unresolved>`, or the notation's unset text |
 | `MissingNotationCell` | marker for a concept whose notation is not written yet |
@@ -53,7 +53,9 @@ Three notes on this shape, all of which were decided while building it:
 - **There is no inline/block split at runtime.** A layout container decides whether its
   content runs horizontally or vertically, so the same `ChildCell` can be stacked in one
   notation and run on a line in another. The inline/block distinction lives in the
-  notation types, where it is checked once at registration.
+  notation types, where it is checked once at registration. A notation asks for the column
+  form with `Children(slot, stacked: true)`; a `CollectionCell` stays inline, because a
+  separator drawn between two lines needs a rule of its own that no language has needed yet.
 - **Orientation is on the container, not on the child.** An inline child whose notation
   root is vertical breaks the line, exactly as `[ ... ]` does in MPS. Deciding this per
   child at runtime cannot work, because the child's notation is not visible from the

@@ -14,7 +14,7 @@ internal static class RulesNotations
 
         notations.Add(RulesConceptKeys.Ruleset, ed => ed.Sequence(
             ed.Line(ed.Keyword("ruleset", TextEmphasis.Bold), ed.Space, ed.Property("name"), ed.Space, ed.Punct("{")),
-            ed.Indent(ed.Children("rules")),
+            ed.Indent(ed.Children("rules", stacked: true)),
             ed.Line(ed.Punct("}"))));
 
         // The same ruleset read as a table: the rules are rows, so a reader comparing outcomes sees a

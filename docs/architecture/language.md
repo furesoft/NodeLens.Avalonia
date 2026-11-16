@@ -148,9 +148,14 @@ notation.Add("Sample.Ruleset", ed => ed.Sequence(
     ed.Line(
         ed.Keyword("ruleset"), ed.Space, ed.Property("name"),
         ed.Space, ed.Punct("{")),
-    ed.Indent(ed.Children("rules")),
+    ed.Indent(ed.Children("rules", stacked: true)),
     ed.Line(ed.Punct("}"))));
 ```
+
+A child slot is one line by default, because most slots hold a handful of words. The
+`stacked` flag asks for the other reading - one child per line, which is what a block language
+wants for its list of rules - and it is a property of the notation rather than of the model, so
+the same concept can be published as a row of items in one language and a column in another.
 
 Notation is **data, not code**, even in the built-in stage: it is a declarative
 structure that the projection engine walks. That is what allows stage C to edit the

@@ -303,6 +303,62 @@ public sealed class CellLayoutTests
         return notations;
     }
 
+    [Fact]
+    public void AStackedChildSlotStartsEveryChildOnItsOwnLine()
+    {
+        var stacked = ChildrenNotation(stacked: true);
+        var inline = ChildrenNotation(stacked: false);
+
+        var stackedLayout = Layouter.Layout(new EditorTreeBuilder(stacked).Build(Body(out var body)));
+
+        var first = stackedLayout.BoundsOf(CellAddress.OfElement(body.Id, "steps", 0));
+        var second = stackedLayout.BoundsOf(CellAddress.OfElement(body.Id, "steps", 1));
+
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+
+        // Same column, one line apart: the whole difference between a list and a column of children.
+        Assert.Equal(first.Value.X, second.Value.X);
+        Assert.Equal(first.Value.Y + MonospaceTextMeasure.Instance.LineHeight, second.Value.Y);
+
+        var inlineLayout = Layouter.Layout(new EditorTreeBuilder(inline).Build(Body(out var sideBySide)));
+
+        var left = inlineLayout.BoundsOf(CellAddress.OfElement(sideBySide.Id, "steps", 0));
+        var right = inlineLayout.BoundsOf(CellAddress.OfElement(sideBySide.Id, "steps", 1));
+
+        Assert.NotNull(left);
+        Assert.NotNull(right);
+        Assert.Equal(left.Value.Y, right.Value.Y);
+        Assert.True(right.Value.X > left.Value.X);
+    }
+
+    /// <summary>A body holding two one-letter steps, which is all a list needs to show its direction.</summary>
+    private static Node Body(out Node body)
+    {
+        var model = TestLanguage.NewModel();
+        body = model.NewNode(TestLanguage.Body);
+        model.AddRoot(body);
+
+        foreach (var text in (string[])["a", "b"])
+        {
+            var step = model.NewChild(body, "steps", TestLanguage.Step);
+            step.Set("text", text);
+        }
+
+        return body;
+    }
+
+    /// <summary>The test language's body, with its steps on one line or one per line.</summary>
+    private static NotationRegistry ChildrenNotation(bool stacked)
+    {
+        var notations = new NotationRegistry(TestLanguage.Registry);
+
+        notations.Add(TestLanguage.Body, ed => ed.Sequence(ed.Children("steps", stacked: stacked)));
+        notations.Add(TestLanguage.Step, ed => ed.Line(ed.Property("text")));
+
+        return notations;
+    }
+
     private static LayoutRect Bounds(CellLayout layout, EditorCell cell)
     {
         var bounds = layout.BoundsOf(cell);

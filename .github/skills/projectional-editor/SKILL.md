@@ -598,9 +598,11 @@ second tree.
 - **Nothing is zero width.** Empty text is measured as one space, because an unset property
   or empty slot must still be a column the caret can occupy. `PropertyCell.Text` is `""` when
   unset for the same reason.
-- **`ChildCell` and `CollectionCell` both lay their content out inline**; only the surrounding
-  container decides whether that line stacks. `Many`-slot children are inline by nature, so a
-  vertical list needs `Sequence(...)` around the `Children(...)`.
+- **`ChildCell` lays its content out inline unless the notation asked it to stack**;
+  `CollectionCell` always lays out inline. Only the surrounding container decides whether
+  that line stacks, which is why a vertical list is a property of the notation -
+  `Children(slot, stacked: true)` - and not something layout infers: the same language may
+  want `a, b, c` in one place and a column in another.
 - **A table is measured cell by cell, detached, and then translated.** `ArrangeTable` arranges
   each grid cell at the origin into a list of its own (`ArrangeDetached`), records the max width
   per column and the max height per row, computes the column lefts (one space gap) and row tops

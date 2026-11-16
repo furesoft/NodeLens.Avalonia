@@ -74,6 +74,26 @@ public sealed class RulesLanguageTests
     }
 
     [Fact]
+    public void ARulesetDrawsOneRulePerLine()
+    {
+        var model = PayrollSample.NewSampleModel();
+        var ruleset = model.Roots[0];
+        var rule = model.NewChild(ruleset, RulesLanguage.RulesSlot, RulesConceptKeys.Rule);
+
+        rule.Set("name", "Vendor");
+        rule.Set("outcome", RuleOutcomes.Reject);
+
+        Assert.Equal(
+            """
+            ruleset Payroll {
+              rule Approved when amount > 1000 then Accept
+              rule Vendor when <empty> then Reject
+            }
+            """,
+            LayoutSnapshot.Render(model, Notations, width: 60));
+    }
+
+    [Fact]
     public void AnEmptyRulesetDrawsItsSlotPlaceholderInsteadOfAVanishingBlock()
     {
         Assert.Equal(

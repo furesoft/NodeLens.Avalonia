@@ -55,8 +55,17 @@ public sealed class NotationEditor
 
     public IndentNotationCell Indent(params ReadOnlySpan<BlockNotationCell> content) => new(content);
 
-    public ChildNotationCell Children(string slot, string emptyText = "<empty>", int spacing = 1) =>
-        new(slot) { EmptyText = emptyText, Spacing = spacing };
+    /// <summary>Every child of <paramref name="slot"/>, on one line or one per line.</summary>
+    /// <param name="slot">The child slot to draw.</param>
+    /// <param name="emptyText">What the slot shows while it holds nothing.</param>
+    /// <param name="spacing">The gap between two children, in spaces; only used in a line.</param>
+    /// <param name="stacked">Whether each child starts on a new line.</param>
+    public ChildNotationCell Children(
+        string slot,
+        string emptyText = "<empty>",
+        int spacing = 1,
+        bool stacked = false) =>
+        new(slot) { EmptyText = emptyText, Spacing = spacing, Stacked = stacked };
 
     public CollectionNotationCell Collection(
         string slot,
