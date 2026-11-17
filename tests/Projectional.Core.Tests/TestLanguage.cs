@@ -54,7 +54,17 @@ internal static class TestLanguage
                 new ChildSlot("detail", Step, Cardinality.One),
             ]),
 
-        new ConceptDeclaration(Note, [new PropertySlot("text", PropertyType.String)]),
+        new ConceptDeclaration(
+            Note,
+            [
+                // Documented over the value as well: a note's text is free prose, so the sentence that says so is
+                // worth showing even after someone has written one.
+                new PropertySlot(
+                    "text",
+                    PropertyType.String,
+                    description: "What the note says.",
+                    showDescriptionWhenFilled: true),
+            ]),
     ]);
 
     public static Project NewProject() => new(Registry);

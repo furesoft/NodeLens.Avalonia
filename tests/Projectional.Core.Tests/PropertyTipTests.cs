@@ -7,12 +7,12 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The tooltip over a property that is still empty: the sentence the language declared on that slot.
+/// The tooltip over a property: the sentence the language declared on that slot.
 /// </summary>
 /// <remarks>
 /// The condition is the whole feature. A property is the one place where "nothing entered yet" is a visible state
-/// - the notation draws the cell even when it holds no text - so the box appears exactly there and disappears as
-/// soon as there is something to read instead.
+/// - the notation draws the cell even when it holds no text - so the box appears there without being asked for,
+/// and over a value only when the slot itself says its text does not explain it.
 /// </remarks>
 public sealed class PropertyTipTests
 {
@@ -39,6 +39,43 @@ public sealed class PropertyTipTests
         using var session = TestEditor.Open(step.Model.Roots[0]);
 
         Assert.Null(PropertyTip.Of(session, CaretPosition.At(CellAddress.OfSlot(step.Id, "text"))));
+    }
+
+    [Fact]
+    public void APropertyThatAsksForItsTipOverTheValueShowsIt()
+    {
+        // A language opts in per slot, for values whose text does not explain itself. A note's prose is exactly
+        // that case: the sentence says what belongs in the cell, which reading "remember the milk" does not.
+        var note = Note("remember the milk");
+        using var session = TestEditor.Open(note);
+
+        var content = PropertyTip.Of(session, CaretPosition.At(CellAddress.OfSlot(note.Id, "text")));
+
+        Assert.NotNull(content);
+        Assert.Equal("text", content.Heading);
+        Assert.Equal("What the note says.", content.Description);
+    }
+
+    [Fact]
+    public void ASlotThatAsksForItsTipOverTheValueShowsItWhileEmptyToo()
+    {
+        // The flag adds the filled case; it does not replace the empty one, which is the state the feature began
+        // with. A box that only appeared after typing would be missing exactly when the question is asked.
+        var note = Note();
+        using var session = TestEditor.Open(note);
+
+        Assert.NotNull(PropertyTip.Of(session, CaretPosition.At(CellAddress.OfSlot(note.Id, "text"))));
+    }
+
+    [Fact]
+    public void AnOptInWithoutADescriptionIsRefusedWhenTheLanguageDeclaresIt()
+    {
+        // The box would show nothing, ever. A language that asks for it has made a mistake, and the declaration
+        // is the earliest moment the mistake can be named.
+        Assert.Throws<ArgumentException>(() => new PropertySlot(
+            "text",
+            PropertyType.String,
+            showDescriptionWhenFilled: true));
     }
 
     [Fact]
@@ -105,5 +142,17 @@ public sealed class PropertyTipTests
     public void ABlankDescriptionIsRefusedWhenTheLanguageDeclaresIt()
     {
         Assert.Throws<ArgumentException>(() => new PropertySlot("text", PropertyType.String, description: " "));
+    }
+
+    private static Node Note(string? text = null)
+    {
+        var note = TestLanguage.NewModel().NewNode(TestLanguage.Note);
+
+        if (text is not null)
+        {
+            note.Set("text", text);
+        }
+
+        return note;
     }
 }

@@ -286,11 +286,13 @@ Hovering a squiggle opens its message, the severity, the check's code and the re
 
 ![Tooltip over a squiggle with its message and quick fix count](docs/images/feature-marker-tooltip.png)
 
-#### Concept descriptions
+#### Concept and property descriptions
 
-Hovering a node for a moment shows the description its concept declares; a slot's own description appears while the value is still empty, and a finding's tooltip always wins over a description.
+Hovering a node for a moment shows the description its concept declares; a slot's own description appears while the value is still empty, and — when the slot asks for it with `showDescriptionWhenFilled` — over a filled value too, which is what the built-in languages do for keys, type names and operators. A finding's tooltip always wins over a description.
 
 ![Concept description shown after hovering the ruleset](docs/images/feature-concept-tooltip.png)
+
+![Property description shown after hovering a filled outcome](docs/images/feature-property-tooltip.png)
 
 #### Font size
 

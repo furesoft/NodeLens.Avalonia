@@ -9,7 +9,8 @@ Status: **delivered.** All five slices are in: the declaration and `Concept.Desc
 tip (D2), the hover in the control (D3), the completion pane (D4) and descriptions on both shipped
 languages (D5). D6 extends the same mechanism to **slots**, which is where the documentation is needed most:
 a property is the one place in a document where an empty value is a visible state - the notation draws the
-cell whether or not it holds text.
+cell whether or not it holds text. D7 lets a slot ask for the same sentence **over a filled value**, for the
+texts that do not explain themselves.
 
 ## The text is a property of the concept
 
@@ -71,7 +72,7 @@ from the marker tip, which hovers a squiggle, so the two rules differ in one pla
 
 |  | Marker tip | Concept tip | Property tip |
 | --- | --- | --- | --- |
-| Target | a marker band | any cell of a node | an **empty** property cell |
+| Target | a marker band | any cell of a node | an **empty** property cell, and any property cell whose slot opted in |
 | Delay | none | 600 ms | 600 ms |
 | Precedence | wins | never shown while a marker band is hovered | beats the concept tip, loses to the marker |
 
@@ -101,18 +102,24 @@ So `PropertySlot` gains the same optional `description`:
 new PropertySlot("value", PropertyType.Integer, description: "A whole number, such as 42.")
 ```
 
-- **It appears only while the slot is empty.** Once there is text, the text is the answer and a box
-  over it would be in the way. This is the one condition that separates it from the concept tip, and it
-  is also why the feature is about properties at all: a property is the only place in a projectional
-  document where "nothing entered yet" is a *visible* state, because the notation draws the cell
-  whether or not it holds a value.
+- **It appears while the slot is empty without being asked for.** Once there is text, the text is the answer and
+  a box over it would be in the way - which is why the feature is about properties at all: a property is the only
+  place in a projectional document where "nothing entered yet" is a *visible* state, because the notation draws
+  the cell whether or not it holds a value.
+- **A slot may ask for the sentence over its value too** (`showDescriptionWhenFilled: true`). A language knows
+  which of its texts do not explain themselves - a key the notation never spells out, an operator symbol, a flag
+  whose two words are the whole meaning - and opts in per slot for exactly those. It is off by default, so
+  documentation does not start covering text that already says what it is, and a language that asks for it without
+  declaring a description is refused at construction: a box that could never show anything is a mistake, not a
+  setting without an effect.
 - **The heading is the slot name**, not the concept key: `value`, `operator`, `outcome`. It is what a
   language author greps for, exactly like the concept key in the concept tip.
-- **A defaulted property reads as filled.** The model cannot tell a default from a value the user
-  typed (`name` = `"unnamed"`), so a slot born with a default shows no tip. That is the honest reading
-  of "nothing entered yet" rather than a limitation to work around.
-- **The property's sentence wins over the concept's.** When the pointer is over an empty slot of a
-  documented concept, the more specific answer is the one about the box, not the one about the node.
+- **A defaulted property reads as filled.** The model cannot tell a default from a value the user typed
+  (`name` = `"unnamed"`), so a slot born with a default shows no tip unless it opted in. That is the honest
+  reading of "nothing entered yet" rather than a limitation to work around - and the reason the built-in
+  languages opt in on their defaulted slots: their descriptions were otherwise unreachable.
+- **The property's sentence wins over the concept's.** When the pointer is over a slot that has something to say -
+  empty, or filled and opted in - the more specific answer is the one about the box, not the one about the node.
 
 Two consequences the implementation had to accept:
 
@@ -121,12 +128,12 @@ Two consequences the implementation had to accept:
   as a property (an `IntLiteral` is one cell) has no cell carrying its node address at all, so anchoring
   to the node would have drawn nothing. `ConceptTipBounds` falls back to the node address when the slot's
   cell has gone.
-- **The hover keys on (node, slot)**, so moving from one empty property of a node to another restarts the
+- **The hover keys on (node, slot)**, so moving from one property of a node to another restarts the
   delay while moving inside one property does not.
 
-`PropertyTip.Of(session, position)` is the whole decision, headless: the place must be a `PropertyCell`
-with no text, the node must still exist, and the concept must declare a description for that slot.
-Anything else answers `null` and shows no box - a pointer can outlive its node, and a tooltip must never
+`PropertyTip.Of(session, position)` is the whole decision, headless: the place must be a `PropertyCell` with no
+text or with a slot that opted in, the node must still exist, and the concept must declare a description for that
+slot. Anything else answers `null` and shows no box - a pointer can outlive its node, and a tooltip must never
 throw at the moment the user moves the mouse.
 ## The headless half
 
@@ -178,6 +185,7 @@ the honest name for the field in a .NET API.
 | D4 ✓ | `feat/concept-tip-completion` | `CompletionItem.Description`, description line in `CompletionPresenter` | delivered |
 | D5 ✓ | `docs/concept-descriptions-samples` | descriptions on the sample and expression languages, `<<shortDescription>>` lowering note | delivered |
 | D6 ✓ | `feat/property-descriptions` | `PropertySlot.description`, `TipContent`/`TipLines` as the shared shape, `PropertyTip`, the hover keyed on (node, slot), slot descriptions on both shipped languages | delivered |
+| D7 ✓ | `feat/property-tip-over-a-value` | `PropertySlot.ShowDescriptionWhenFilled`, the same hover over a filled value, `showDescriptionWhenFilled` in the structure language and the notation, descriptions and opt-ins on every built-in slot | delivered |
 
 D1 and D2 need no window and are pure library work; D3 is the only slice that needs the runtime
 probe. D4 depends on D1 only, so it can be taken before or after D3.
@@ -196,9 +204,13 @@ What the implementation settled that the plan had left open, and the reason each
 | **`TipText.Wrap` is `internal` in `Editing`, not public.** | A host that wants a box calls `ConceptTip.Lines`; the wrapper is an implementation detail that must stay single. |
 | **The completion pane's height is reserved when *any* entry has a description**, not when the highlighted one does. | A box that grew and shrank while the arrow keys moved the highlight would make the whole list jump under the pointer. |
 | **The pane is one line, in the palette's line colour.** | A list palette has no secondary-text colour, and the same choice is already made for a quick-fix row that cannot run; wrapping the pane would change the list's height per entry. |
+| **The opt-in over a value is a slot flag, not a host setting.** `PropertySlot.ShowDescriptionWhenFilled` says it once, beside the sentence it shows. | Whether a text explains itself is a fact about the language, not about the window: the same document opened in two hosts must show the same boxes. A host switch would also have to be threaded through the headless tip for no gain. |
+| **The flag is refused without a description.** | A slot that asks for a box it can never show is a language mistake, and the declaration is the earliest moment it can be named - the same reason an unparseable `defaultValue` throws there. |
 
 Verified in a real window: hovering a node of the sample language paints `Rules.Ruleset` and its sentence
-below the node, and setting a marker hover on the same node paints only the finding's box.
+below the node, and setting a marker hover on the same node paints only the finding's box. The picture the
+README shows for the slot tip is produced the same way - the screenshots tool raises one pointer move onto the
+filled `outcome` of a rule, and the box that comes back is the control's own paint.
 
 The completion pane is verified headlessly at the seam that matters - `CompletionActionTests` asserts the
 proposal carries the concept's sentence - and its drawing reuses the presenter path the quick-fix list

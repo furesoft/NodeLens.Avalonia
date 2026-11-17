@@ -64,7 +64,16 @@ internal static class DeclaredTestLanguage
                 definition.Child("detail", TestLanguage.Step),
             ]);
 
-        definition.Concept(TestLanguage.Note, slots: [definition.Property("text", "string")]);
+        definition.Concept(
+            TestLanguage.Note,
+            slots:
+            [
+                definition.Property(
+                    "text",
+                    "string",
+                    description: "What the note says.",
+                    showDescriptionWhenFilled: true),
+            ]);
 
         // Declared after the concepts so the enumeration exists when the property names it.
         definition.Enumeration("Test.Status", "draft", "approved");

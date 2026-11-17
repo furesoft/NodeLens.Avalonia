@@ -52,7 +52,7 @@ and [testing.md](architecture/testing.md).
 | Emphasis (bold, italic, underline, strikethrough) that reaches the measure | `TextEmphasis`, `ICellEmphasis` | `TextEmphasisLayoutTests`, `EditorTreeEmphasisTests`, `RejectedRuleEmphasisTests` |
 | Context menu described by the editing layer | `EditorMenu`, `EditorMenuPresenter` | `EditorMenuTests` |
 | Markers with hover tooltips | `Projectional.Editing/Markers/` | `MarkerSetTests`, `MarkerGeometryTests`, `MarkerRunsTests`, `MarkerCellsTests`, `MarkerHitTestTests`, `MarkerTipTests` |
-| Concept and property descriptions on hover | `ConceptTip`, `PropertyTip` | `ConceptTipTests`, `PropertyTipTests` |
+| Concept and property descriptions on hover, and a slot's sentence over its value when the slot opts in | `ConceptTip`, `PropertyTip`, `PropertySlot.ShowDescriptionWhenFilled` | `ConceptTipTests`, `PropertyTipTests` |
 | Notation variants, chosen per concept as view state | `NotationChoice`, ADR 0012 | `NotationChoiceTests`, `NotationVariantsTests`, `NotationAlternativesTests`, `NotationVariantProjectionTests` |
 | Tables as a variant | `TableNotationCell`, `TableCell` | `TableNotationTests`, `TableProjectionTests`, `SampleTableVariantTests` |
 | Folding | `Foldable`, `FoldMarks`, `CollapsedCell` | `FoldableTests`, `FoldMarksTests`, `FoldedMarkerTests`, `CollapsedSessionTests`, `CollapsedNodeSetTests`, `CollapsedCellTests` |
