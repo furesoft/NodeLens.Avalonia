@@ -166,6 +166,29 @@ public sealed class TypeTextActionTests
         Assert.Empty(binary.GetChildren("right"));
     }
 
+    [Fact]
+    public void TypingIntoACellThatShowsAPlaceholderWritesOnlyWhatWasTyped()
+    {
+        // The stand-in is drawn, not stored: a cell that says `<<operator>>` still holds no text, so the
+        // keystroke starts the value rather than appending to the stand-in - and the stand-in is gone afterwards
+        // because there is now something to read.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+        model.AddRoot(binary);
+
+        using var session = Open(binary);
+
+        session.Select(Selection.At(CellAddress.OfSlot(binary.Id, "operator")));
+        session.Apply(KeyRouter.Type("+"));
+
+        Assert.Equal("+", binary.GetOrNull("operator"));
+
+        var drawn = LayoutSnapshot.Render(binary, Notations, width: 40);
+
+        Assert.Equal("<empty> + <empty>", drawn);
+        Assert.DoesNotContain("<<operator>>", drawn, StringComparison.Ordinal);
+    }
+
     /// <summary>An expression whose operator is set and whose two operands are empty slots.</summary>
     private static Node NewBinary()
     {

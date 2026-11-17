@@ -121,6 +121,31 @@ public sealed class ExpressionsLanguageTests
     }
 
     [Fact]
+    public void AnExpressionWithoutAnOperatorSaysThatOneIsExpected()
+    {
+        // A fresh Binary from Enter has no operator at all, and a blank of one space between its operands says
+        // nothing about what belongs there. The cell shows the slot it waits for instead.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var sum = model.NewNode(ExpressionsConceptKeys.Binary);
+        model.NewChild(sum, "left", ExpressionsConceptKeys.IntLiteral).Set("value", 1);
+        model.NewChild(sum, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
+        model.AddRoot(sum);
+
+        Assert.Equal("1 <<operator>> 2", LayoutSnapshot.Render(model, Notations, width: 40));
+    }
+
+    [Fact]
+    public void AUnaryExpressionWithoutAnOperatorSaysThatOneIsExpectedToo()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var negation = model.NewNode(ExpressionsConceptKeys.Unary);
+        model.NewChild(negation, "operand", ExpressionsConceptKeys.Name).Set("name", "amount");
+        model.AddRoot(negation);
+
+        Assert.Equal("<<operator>>amount", LayoutSnapshot.Render(model, Notations, width: 40));
+    }
+
+    [Fact]
     public void AStringLiteralIsQuotedSoThatItCannotBeMistakenForAName()
     {
         var model = ExpressionsLanguage.NewProject().NewModel();
