@@ -35,6 +35,23 @@ public sealed class SampleTableVariantTests
     }
 
     [Fact]
+    public void AnEmptyRulesetReadAsATableShowsItsHeaderAndTheAddRowAffordance()
+    {
+        var model = RulesLanguage.NewProject().NewModel("rules");
+        var ruleset = model.NewNode(RulesConceptKeys.Ruleset);
+        ruleset.Set("name", "Empty");
+        model.AddRoot(ruleset);
+
+        Assert.Equal(
+            """
+            ruleset Empty
+              rule   then when
+              + rule
+            """,
+            LayoutSnapshot.Render(model, Notations, width: 60, AsTable));
+    }
+
+    [Fact]
     public void TheSameModelReadsAsABlockWhenTheChoiceExpressesNoOpinion()
     {
         Assert.Equal(

@@ -376,12 +376,8 @@ public sealed class EditorTreeBuilder
         var rows = node.GetChildren(slot);
 
         // Headers belong to the table's notation, so they are projected once, from the node that
-        // owns the table - never from a row, which may not exist at all.
-        if (rows.Count == 0)
-        {
-            return new TableCell(address, slot, notation.EmptyText, [], []);
-        }
-
+        // owns the table - never from a row, which may not exist at all. That is also why an empty
+        // table still draws them: the header is the only thing that says what the columns are.
         var headers = new EditorCell[notation.Columns.Count];
 
         for (var i = 0; i < headers.Length; i++)
@@ -404,7 +400,7 @@ public sealed class EditorTreeBuilder
             built[r] = cells;
         }
 
-        return new TableCell(address, slot, notation.EmptyText, headers, built);
+        return new TableCell(address, slot, notation.EmptyText, headers, built, CellAddress.OfSlot(node.Id, slot));
     }
 
     /// <summary>Projects one column of one row, which is a property or a single child of the row.</summary>

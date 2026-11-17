@@ -39,7 +39,10 @@ public sealed class CellStyler : ICellStyler
             ReferenceCell reference => OfReference(reference.State),
             ChildCell { IsEmpty: true } => TextStyleKind.Placeholder,
             CollectionCell { IsEmpty: true } => TextStyleKind.Placeholder,
-            TableCell { IsEmpty: true } => TextStyleKind.Placeholder,
+
+            // The affordance row is a statement that the slot is empty, which is what the placeholder
+            // kind means - the same reason an empty child slot is styled that way.
+            AddRowCell => TextStyleKind.Placeholder,
             MissingNotationCell => TextStyleKind.Missing,
 
             // A summary is not a value, it is a statement that something is missing from view - which is

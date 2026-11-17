@@ -113,12 +113,28 @@ public sealed class TableNotationTests
     }
 
     [Fact]
-    public void ATableCellRefusesHeadersWithoutRows()
+    public void ATableCellRefusesATableWithoutColumns()
     {
         var exception = Assert.Throws<ProjectionException>(
-            () => new TableCell(Address(), "items", "<empty>", [Header()], []));
+            () => new TableCell(Address(), "items", "<empty>", [], []));
 
-        Assert.Contains("shows its placeholder", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("no columns", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEmptyTableCellDrawsItsHeaderAndOneAffordanceRow()
+    {
+        var address = Address();
+        var table = new TableCell(address, "items", "+ row", [Header()], []);
+
+        Assert.True(table.IsEmpty);
+        Assert.Empty(table.Rows);
+        Assert.Equal(2, table.Content.Count);
+
+        var affordance = Assert.IsType<AddRowCell>(table.Content[1]);
+        Assert.Equal("items", affordance.Slot);
+        Assert.Equal("+ row", affordance.Text);
+        Assert.Equal(address, affordance.Address);
     }
 
     private static CellAddress Address() =>

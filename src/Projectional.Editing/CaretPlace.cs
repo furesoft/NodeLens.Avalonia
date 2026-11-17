@@ -55,7 +55,12 @@ public readonly record struct CaretPlace
     public bool IsEditable => Cell is PropertyCell;
 
     /// <summary>Whether this stop is a child slot waiting to be filled.</summary>
-    public bool IsEmptySlot => Cell is ChildCell { IsEmpty: true } or CollectionCell { IsEmpty: true };
+    /// <remarks>
+    /// A table's affordance row counts: it stands for the rows slot, which is empty, and it is the only
+    /// place in an empty table where the first row can be created.
+    /// </remarks>
+    public bool IsEmptySlot =>
+        Cell is ChildCell { IsEmpty: true } or CollectionCell { IsEmpty: true } or AddRowCell;
 
     /// <summary>Whether this stop is a place the user can put something, which is what Tab visits.</summary>
     public bool IsSlot => IsEditable || IsEmptySlot;
