@@ -33,7 +33,7 @@ public sealed class ListType : IType
     {
         ArgumentNullException.ThrowIfNull(actual);
 
-        return actual switch
+        return NamedType.Unwrap(actual) switch
         {
             UnknownType => true,
             ListType list => Element.Accepts(list.Element),

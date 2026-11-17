@@ -62,12 +62,14 @@ public sealed class RecordType : IType
     {
         ArgumentNullException.ThrowIfNull(actual);
 
-        if (actual is UnknownType)
+        var unwrapped = NamedType.Unwrap(actual);
+
+        if (unwrapped is UnknownType)
         {
             return true;
         }
 
-        if (actual is not RecordType record || record._fields.Count != _fields.Count)
+        if (unwrapped is not RecordType record || record._fields.Count != _fields.Count)
         {
             return false;
         }

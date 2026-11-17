@@ -41,11 +41,11 @@ public sealed class OptionalType : IType
     {
         ArgumentNullException.ThrowIfNull(actual);
 
-        return actual switch
+        return NamedType.Unwrap(actual) switch
         {
             UnknownType => true,
             OptionalType optional => Inner.Accepts(optional.Inner),
-            _ => Inner.Accepts(actual),
+            var unwrapped => Inner.Accepts(unwrapped),
         };
     }
 
