@@ -15,7 +15,7 @@ namespace Projectional.Workbench;
 /// convenience file was locked would be a shell that lost the user's work to keep a menu.
 /// </para>
 /// </remarks>
-internal sealed class TextRecentFilesStore : IRecentFilesStore
+internal sealed class TextRecentFilesStore
 {
     private readonly string _path;
 
@@ -30,7 +30,7 @@ internal sealed class TextRecentFilesStore : IRecentFilesStore
         _path = path;
     }
 
-    /// <inheritdoc />
+    /// <summary>The stored paths, in the order they were written.</summary>
     public IReadOnlyList<string> Read()
     {
         try
@@ -49,7 +49,7 @@ internal sealed class TextRecentFilesStore : IRecentFilesStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>Replaces what is stored.</summary>
     public void Write(IReadOnlyList<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
