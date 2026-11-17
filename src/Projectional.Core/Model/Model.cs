@@ -303,6 +303,98 @@ public sealed class Model
         return created;
     }
 
+    /// <summary>Puts a node of <paramref name="conceptKey"/> where <paramref name="node"/> stands.</summary>
+    /// <param name="node">The node whose place is taken; it is deleted with its whole subtree.</param>
+    /// <param name="conceptKey">The concept of the node that takes its place.</param>
+    /// <returns>The node that was created, already attached where <paramref name="node"/> was.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="conceptKey"/> is empty.</exception>
+    /// <exception cref="KeyNotFoundException">The concept is not part of the language of this project.</exception>
+    /// <exception cref="ModelInvariantException">
+    /// <paramref name="node"/> belongs to a different model, the concept is abstract, it does not conform to the
+    /// slot <paramref name="node"/> stands in, or it may not stand there.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// A replacement is a deletion and a creation at one place, and one transaction around both: the user sees one
+    /// undo step, and undo puts the <em>old</em> node back with its identity and its whole subtree rather than a
+    /// rebuilt copy of it.
+    /// </para>
+    /// <para>
+    /// The two steps cannot be swapped or overlapped. A single-valued slot holds at most one child, so the old node
+    /// has to leave before the new one arrives; and the new node is born detached so that it is never briefly a
+    /// root, which would also make one replacement two change sets.
+    /// </para>
+    /// <para>
+    /// What the old node held does not travel. Its properties, references and children are gone with it, and the
+    /// references that pointed into its subtree are cleared, exactly as a deletion clears them - a "replace" that
+    /// carried values over would need a per-concept correspondence between old and new slots, which no declaration
+    /// describes. The answer is an empty node at the place the user pointed at, which is what they then fill.
+    /// </para>
+    /// <para>
+    /// Everything a placement could refuse is refused before anything moves, so a concept that cannot stand there
+    /// cannot leave the document missing a node.
+    /// </para>
+    /// </remarks>
+    public Node Replace(Node node, string conceptKey)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(conceptKey);
+
+        if (!ReferenceEquals(node.Model, this))
+        {
+            throw new ModelInvariantException(
+                $"Node {node.Id} belongs to a different model and cannot be replaced by this one's concepts.");
+        }
+
+        var concept = Project.Concepts.Get(conceptKey);
+        var parent = node.Parent;
+        var slot = node.ParentSlot;
+        var index = node.IndexInParent;
+
+        if (parent is { } place && slot is not null)
+        {
+            if (place.Concept.FindChild(slot) is not { } declared)
+            {
+                throw new ModelInvariantException(
+                    $"Slot '{slot}' of concept '{place.Concept.Key}' holds no children, so nothing can be replaced in it.");
+            }
+
+            if (!concept.IsKindOf(declared.ChildConceptKey))
+            {
+                throw new ModelInvariantException(
+                    $"Concept '{conceptKey}' does not conform to slot '{slot}' of concept '{place.Concept.Key}', which holds '{declared.ChildConceptKey}'.");
+            }
+        }
+
+        using var transaction = BeginTransaction();
+
+        var created = CreateDetached(concept);
+
+        // The model's own answer to "may this concept stand here", asked before anything moves. It covers the
+        // root case as well, which is the one a replacement at the top of a document asks.
+        RequireApplicable(created, parent, slot);
+
+        DeleteSubtree(node);
+
+        if (parent is { } host && slot is not null)
+        {
+            // Journals the NodeAdded itself, so the pair of entries is the whole replacement.
+            host.InsertChild(slot, index, created);
+        }
+        else
+        {
+            InsertRootAt(index, created);
+            RecordAdded(created, parent: null, role: null, index: created.IndexInParent);
+        }
+
+        MarkMutated();
+
+        transaction.Complete();
+
+        return created;
+    }
+
     /// <summary>Turns an existing node of this model into a root.</summary>
     public void AddRoot(Node node)
     {
