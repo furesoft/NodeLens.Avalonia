@@ -69,11 +69,16 @@ makes it a usable test of the integration surface
 | `Projectional.Samples.Intentions` | What can be done at a caret in the sample language - "accept this rule" - and the working example of an intention package | none |
 | `Projectional.Expressions.Intentions` | The one intention the expression vocabulary ships with: negate (the grouping entry retired in favour of the catalogue's `Wrap in "Parenthesized"`) | none |
 | `Projectional.Checks` | The standard catalogue a language includes by naming it: name, structure, value and expression checks, each with its repair | none |
+| `Projectional.Toolkit` | The surface a language package is written against: one reference that brings `Core`, `Language`, `Projection` and `Persistence`, plus `LanguageSnapshot` - the drawing a notation test asserts on ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)) | none |
 | `tests/*` | Unit and snapshot tests | none |
 
-Only `Projectional.Core` and `Projectional.Avalonia` expose public API. Everything
-else is `internal` with `InternalsVisibleTo` for tests — see
-[ADR 0010](../adr/0010-public-api-surface.md). `Projectional.Workbench` deliberately
+Three assemblies expose public API: `Projectional.Core`, `Projectional.Avalonia` and - since
+[ADR 0019](../adr/0019-toolkit-is-the-language-surface.md) - `Projectional.Toolkit`, which is what a
+language package references instead of reaching into four assemblies. `Language`, `Projection` and
+`Persistence` are public as a consequence of being aggregated there; `Editing` and `Semantics` stay
+internal, which is what keeps a language headless. Everything else is `internal` with
+`InternalsVisibleTo` for tests and for the one friend each layer names —
+see [ADR 0010](../adr/0010-public-api-surface.md). `Projectional.Workbench` deliberately
 has no such exemption: it is the reference consumer that keeps the public API honest
 ([ADR 0011](../adr/0011-standalone-editor.md), [standalone.md](standalone.md)).
 
