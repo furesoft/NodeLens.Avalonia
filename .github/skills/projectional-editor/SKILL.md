@@ -11,8 +11,9 @@ A projectional editor for .NET, modelled on JetBrains MPS. The abstract syntax t
 the program. Notation is computed from the model by projections; there is no text buffer
 and no parser. Target users are people who build their own DSLs or embed a DSL editor as
 a component inside a host application. Planning is finished and lives in `docs/`;
-milestones **M0, M1 and M2 are complete** (model, change events, undo/redo, XML persistence, test
-harness, CI; projection and editing; declarative languages and the standalone editor). The declarative notation layer
+milestones **M0, M1, M2 and M3 are complete** (model, change events, undo/redo, XML persistence, test
+harness, CI; projection and editing; declarative languages and the standalone editor; scopes, completion,
+triggers, intentions with preview, and the text-or-fragment clipboard). The declarative notation layer
 in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/`, the
 measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapshot renderer in
 `Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/`, the first
@@ -991,6 +992,47 @@ dependency, so every action is testable headlessly.
 - A cross-cell selection reports `IsSingleCell == false` and `HasText == false`, so no text
   action mistakes it for one. `SelectionRects.Of` already draws it correctly (both ends
   trimmed, intermediate cells whole, one rect per line) - the rendering needed no change.
+
+## How interpretation works
+
+A language says what its nodes *mean* through one function per concept, and the framework runs it. The design is
+`docs/architecture/semantics.md` §Interpretation; the invariants that are expensive to retrofit are these.
+
+- **The aspect is in `Projectional.Language/Evaluation/`, the runtime in `Projectional.Semantics/Interpretation/`.**
+  Same split as the type rules: a language package must declare meanings without referencing the layer that
+  consumes them, so `IEvaluationRule`, `EvaluationRegistry`, `EvaluationContext`, `Value` and its subclasses live
+  beside the notation; `Interpreter`, `InterpretationResult`, `TraceEntry` and `InterpretationFailure` live above
+  it. `DelegateEvaluationRule` exists because most meanings are one expression long and C# has no lambda-to-
+  interface conversion - a language writes `.Add(Key, new DelegateEvaluationRule(ctx => ...))`.
+- **A concept with no rule has no value.** Unlike `IType`, there is no `UnknownValue`: `Interpreter` fails with
+  "declares no evaluation rule". Do not invent a fallback value - a half-written document must stop the run
+  where it stopped being meaningful, not hand out a guess that a generator would then trust.
+- **`EvaluationContext` is read-only and fails through `Error(message)`.** It offers `Eval(node)`,
+  `EvalChild(slot)` (exactly one child, so an empty slot is a failure naming the slot), `Variable(name)`,
+  `PropertyValue(slot)` and `Error(message)`. `PropertyValue` maps through the property's declared
+  `PropertyType.TryParse` - the same authority the model validates writes with - so a literal cannot mean one
+  thing in the interpreter and another in the document. Never add a mutation method here.
+- **The interpreter owns the budget, the stack and the trace; a rule owns only its node.** Every `Eval` is one
+  step, checked against `DefaultBudget` (10 000) and the caller's `CancellationToken` *between* nodes; the trace
+  is post-order (a child's entry precedes the line of the node that asked for it), which is the order a reader
+  follows the answer back. **Nothing is cached**: asking for a child twice costs two steps and appears twice.
+  A failure records the *innermost* node once - the first `catch` wins, and ancestors add no line of their own.
+- **A failure is a result, not an exception escaping the host.** `EvaluationException` is what a rule throws;
+  `Run` catches it and answers `InterpretationResult` with an `InterpretationFailure` that carries the `NodeId`
+  (not the node: the result outlives the call). Budget and cancellation are failures with their own `Kind` and
+  are raised through the internal `EvaluationStoppedException` sentinel, so a rule's own `catch` cannot mistake
+  them for model problems.
+- **A run resets the previous one.** `Run` clears trace, steps and variables, so one `Interpreter` serves a
+  session that runs the same table against different inputs. Creating a new interpreter per run is also fine.
+- **A ruleset is a decision list.** `RulesEvaluation` makes a rule the truth of its condition and a ruleset the
+  outcome of the **first** rule that applies; no match is a failure, because inventing `Review` would hide a
+  table whose conditions leave a gap. Its `Registry` composes `ExpressionsEvaluation.Registry`, so a condition
+  runs without a host bolting two registries together.
+- **Values are content-compared records** (`IntValue`, `BoolValue`, `StringValue`, `DateValue`), with `Display`
+  for the trace. A trace is read by a user, so `Display` is a rendering and never an identity. A record or list
+  value arrives with the first language that evaluates one - do not add kinds speculatively.
+- **Tests pass the test token.** Any call to `Interpreter.Run` in a test passes
+  `cancellationToken: TestContext.Current.CancellationToken`, or xUnit1051 is an error.
 
 ## How checks and quick fixes work
 
