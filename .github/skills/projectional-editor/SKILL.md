@@ -1574,6 +1574,31 @@ dotnet build
 dotnet test
 ```
 
+`global.json` also carries `"test": { "runner": "Microsoft.Testing.Platform" }`. Without it `dotnet test` on this
+SDK falls back to VSTest and every xunit.v3 project fails with "Testing with VSTest target is no longer
+supported". A template that ships a `global.json` must carry that section for the same reason - and only that
+section, never an SDK pin, or a generated project would refuse to build on a machine with a different SDK.
+
+### The language template
+
+`templates/projectional-language/` is a `dotnet new` template, not a solution project: it is not in
+`Projectional.slnx` and `dotnet build` never touches it. Verify it the way it is used, in a folder outside the
+repository:
+
+```powershell
+dotnet new install .\templates\projectional-language --force
+dotnet new projectional-language -n Demo -o "$env:TEMP\Demo"
+# swap the template's PackageReference for a ProjectReference - the package is not published
+dotnet test "$env:TEMP\Demo\Demo.Tests"
+dotnet new uninstall .\templates\projectional-language
+```
+
+Two defects were found exactly that way and are invisible by reading: **the SDK's compile glob reaches into the
+sibling test folder** (the language csproj must `Compile Remove` it, or the tests compile into the language), and
+the runner opt-in above. Regenerating is the only honest test of a template - `--force` on install is required
+because `dotnet new` caches by identity, not by content.
+
+
 - All shared properties live in `Directory.Build.props`; all package versions in
   `Directory.Packages.props`. A `.csproj` should not repeat `TargetFramework` and should not
   carry a `Version`.
