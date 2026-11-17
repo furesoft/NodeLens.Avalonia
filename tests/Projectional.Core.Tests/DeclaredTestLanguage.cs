@@ -69,7 +69,7 @@ internal static class DeclaredTestLanguage
         // Declared after the concepts so the enumeration exists when the property names it.
         definition.Enumeration("Test.Status", "draft", "approved");
 
-        return StructureLowering.CreateRegistry(definition.Root);
+        return StructureLowering.CreateRegistry(definition.Roots);
     }
 
     private static NotationRegistry Notation()
@@ -139,6 +139,6 @@ internal static class DeclaredTestLanguage
         notation.Cell(noteLine, EditorConceptKeys.Space);
         notation.Slot(noteLine, EditorConceptKeys.Property, "text");
 
-        return EditorLowering.CreateRegistry(notation.Root, Concepts);
+        return EditorLowering.CreateRegistry(notation.Roots, Concepts);
     }
 }

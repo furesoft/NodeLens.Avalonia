@@ -74,14 +74,56 @@ public sealed class LanguageProjectTests
     }
 
     [Fact]
-    public void AProjectWithoutAStructureFileIsRefused()
+    public void AProjectWithoutAStructureFolderIsRefused()
     {
         using var folder = new TemporaryDirectory();
 
         var language = LanguageProject.Open(folder.Root, out var error);
 
         Assert.Null(language);
+        Assert.Contains("structure", error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AProjectInTheOldSingleFileShapeSaysHowToSplitIt()
+    {
+        // The file that used to be the answer is still there, so the message names it and says what to do. "Not a
+        // language project" would send its author looking for a different problem.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        File.Move(
+            Path.Combine(folder.Root, LanguageProject.StructureFolder, "Rules.Rule.mps"),
+            Path.Combine(folder.Root, "structure.mps"));
+        Directory.Delete(Path.Combine(folder.Root, LanguageProject.StructureFolder));
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
         Assert.Contains("structure.mps", error!, StringComparison.Ordinal);
+        Assert.Contains("one definition per document", error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADocumentHoldingTwoDefinitionsIsRefused()
+    {
+        // One root per document is the shape being enforced: two definitions in one file is what the layout exists
+        // to remove, and silently taking the first would hide the second.
+        using var folder = new TemporaryDirectory();
+        var structure = Path.Combine(folder.Root, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+
+        var model = StructureLanguage.NewModel("Two");
+
+        model.AddRoot(model.NewNode(StructureConceptKeys.Concept));
+        model.AddRoot(model.NewNode(StructureConceptKeys.Concept));
+        ModelFile.Save(model, Path.Combine(structure, "Two.mps"));
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains("Two.mps", error!, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -129,12 +171,7 @@ public sealed class LanguageProjectTests
         using var folder = new TemporaryDirectory();
 
         WriteStructure(folder.Root);
-
-        var notation = new NotationBuilder();
-
-        notation.SetRoot(notation.Notation("Rules.Missing"), EditorConceptKeys.Sequence);
-
-        ModelFile.Save(notation.Root.Model, Path.Combine(folder.Root, LanguageProject.EditorFile));
+        WriteNotationFor(folder.Root, "Rules.Missing");
 
         var language = LanguageProject.Open(folder.Root, out var error);
 
@@ -154,14 +191,28 @@ public sealed class LanguageProjectTests
             LanguageProject.Open(folder.Root, out _)!.Name);
     }
 
-    /// <summary>Writes a one-concept structure model, optionally with a wrong property type.</summary>
+    /// <summary>Writes a notation for a concept the structure does not declare, into its own editor document.</summary>
+    private static void WriteNotationFor(string directory, string conceptKey)
+    {
+        var notation = new NotationBuilder();
+
+        notation.SetRoot(notation.Notation(conceptKey), EditorConceptKeys.Sequence);
+
+        var editor = Path.Combine(directory, LanguageProject.EditorFolder);
+
+        Directory.CreateDirectory(editor);
+        ModelFile.Save(notation.Documents[0], Path.Combine(editor, $"{conceptKey}.mps"));
+    }
     private static void WriteStructure(string directory, string typeName = "string")
     {
         var definition = new DefinitionBuilder();
 
         definition.Concept("Rules.Rule", slots: [definition.Property("name", typeName)], nameSlot: "name");
 
-        ModelFile.Save(definition.Root.Model, Path.Combine(directory, LanguageProject.StructureFile));
+        var structure = Path.Combine(directory, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+        ModelFile.Save(definition.Documents[0], Path.Combine(structure, "Rules.Rule.mps"));
     }
 
     /// <summary>Writes the notation of that concept: the keyword <c>rule</c>, a gap, the name.</summary>
@@ -175,6 +226,9 @@ public sealed class LanguageProjectTests
         notation.Cell(line, EditorConceptKeys.Space);
         notation.Slot(line, EditorConceptKeys.Property, "name");
 
-        ModelFile.Save(notation.Root.Model, Path.Combine(directory, LanguageProject.EditorFile));
+        var editor = Path.Combine(directory, LanguageProject.EditorFolder);
+
+        Directory.CreateDirectory(editor);
+        ModelFile.Save(notation.Documents[0], Path.Combine(editor, "Rules.Rule.mps"));
     }
 }

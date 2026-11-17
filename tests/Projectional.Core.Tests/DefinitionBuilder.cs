@@ -4,35 +4,50 @@ using Projectional.Structures;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// Writes a language definition the way a user would: one model, nodes created through it.
+/// Writes a language definition the way a user would: one document per definition, nodes created through it.
 /// </summary>
 /// <remarks>
-/// A helper rather than five static methods because every node of a definition has to belong to the same model -
-/// the model refuses a child from another one, and a fixture that built each node separately would fail on the
-/// first insert for a reason that has nothing to do with the test.
+/// <para>
+/// A helper rather than five static methods because every slot of a concept has to belong to the same model as the
+/// concept - the model refuses a child from another one, and a fixture that built each node separately would fail on
+/// the first insert for a reason that has nothing to do with the test.
+/// </para>
+/// <para>
+/// Each definition is a document of its own, which is what a language project stores: one concept or one enumeration
+/// per file. The builder therefore keeps a document per definition and the slots always go into the current one,
+/// which is the document that was created last.
+/// </para>
 /// </remarks>
 internal sealed class DefinitionBuilder
 {
-    private readonly Model _model = StructureLanguage.NewModel();
+    private readonly Project _project = StructureLanguage.NewProject();
+    private readonly List<Model> _documents = [];
+    private readonly List<Node> _roots = [];
 
-    /// <summary>The root the definition is written into, created on first use.</summary>
-    public Node Root { get; }
+    private Model _current;
 
-    public DefinitionBuilder() => Root = _model.NewNode(StructureConceptKeys.Language);
+    public DefinitionBuilder() => _current = NewDocument();
 
-    public DefinitionBuilder(Node root) => Root = root;
+    /// <summary>The first definition's root, which is what a single-definition test lowers.</summary>
+    public Node Root => _roots[0];
+
+    /// <summary>The root of every definition, in the order they were written.</summary>
+    public IReadOnlyList<Node> Roots => _roots;
+
+    /// <summary>One document per definition, in the order they were written.</summary>
+    public IReadOnlyList<Model> Documents => _documents;
 
     /// <summary>Adds a concept to the definition and answers the node, so slots can be added easily.</summary>
     public Node Concept(
         string key,
-        IReadOnlyList<Node>? slots = null,
+        IReadOnlyList<SlotSpec>? slots = null,
         IReadOnlyList<string>? supers = null,
         bool isAbstract = false,
         string? nameSlot = null,
         string? description = null,
         string? collapseSlot = null)
     {
-        var concept = _model.NewChild(Root, StructureLanguage.ConceptSlot, StructureConceptKeys.Concept);
+        var concept = Start(StructureConceptKeys.Concept);
 
         concept.Set(StructureLanguage.KeySlot, key);
         concept.Set(StructureLanguage.IsAbstractProperty, isAbstract ? "true" : "false");
@@ -54,91 +69,153 @@ internal sealed class DefinitionBuilder
 
         foreach (var super in supers ?? [])
         {
-            _model.NewChild(concept, StructureLanguage.SuperTypeSlot, StructureConceptKeys.SuperType)
+            concept.Model.NewChild(concept, StructureLanguage.SuperTypeSlot, StructureConceptKeys.SuperType)
                 .Set("conceptKey", super);
         }
 
         foreach (var slot in slots ?? [])
         {
-            // Each kind goes into its own collection, which is what a language author's `properties:` /
-            // `children:` / `references:` sections are.
-            concept.AddChild(
-                slot.Concept.Key switch
-                {
-                    StructureConceptKeys.PropertyDecl => StructureLanguage.PropertiesSlot,
-                    StructureConceptKeys.ChildDecl => StructureLanguage.ChildrenSlot,
-                    _ => StructureLanguage.ReferencesSlot,
-                },
-                slot);
+            Add(concept, slot);
         }
 
         return concept;
     }
 
-    /// <summary>A property slot, which belongs to the same model as the concept that will hold it.</summary>
-    public Node Property(string name, string typeName, string? defaultValue = null, string? description = null)
-    {
-        var property = _model.NewNode(StructureConceptKeys.PropertyDecl);
-
-        property.Set("name", name);
-        property.Set("typeName", typeName);
-
-        if (defaultValue is not null)
-        {
-            property.Set("defaultValue", defaultValue);
-        }
-
-        if (description is not null)
-        {
-            property.Set("description", description);
-        }
-
-        return property;
-    }
+    /// <summary>A property slot, described so that it can be written into the concept's own document.</summary>
+    public SlotSpec Property(string name, string typeName, string? defaultValue = null, string? description = null) =>
+        Slot(new SlotSpec(StructureConceptKeys.PropertyDecl, name, typeName, defaultValue, description));
 
     /// <summary>A reference slot.</summary>
-    public Node Reference(string name, string targetConceptKey, bool allowOwnSubtree = false)
-    {
-        var reference = _model.NewNode(StructureConceptKeys.ReferenceDecl);
-
-        reference.Set("name", name);
-        reference.Set("targetConceptKey", targetConceptKey);
-
-        if (allowOwnSubtree)
-        {
-            reference.Set("allowOwnSubtree", "true");
-        }
-
-        return reference;
-    }
+    public SlotSpec Reference(string name, string targetConceptKey, bool allowOwnSubtree = false) =>
+        Slot(new SlotSpec(
+            StructureConceptKeys.ReferenceDecl,
+            name,
+            TargetConceptKey: targetConceptKey,
+            AllowOwnSubtree: allowOwnSubtree));
 
     /// <summary>A child slot.</summary>
-    public Node Child(string name, string childConceptKey, string cardinality = "one")
+    public SlotSpec Child(string name, string childConceptKey, string cardinality = "one") =>
+        Slot(new SlotSpec(
+            StructureConceptKeys.ChildDecl,
+            name,
+            ChildConceptKey: childConceptKey,
+            Cardinality: cardinality));
+
+    /// <summary>Checks that a slot's kind is a concept the structure language declares.</summary>
+    /// <remarks>
+    /// A fixture that named a kind the language does not have would write a document nothing can load, and the
+    /// failure would surface in whichever test happened to load it. Asking the registry here is the same guarantee
+    /// the notation registry gives a language author: the earliest moment the answer exists.
+    /// </remarks>
+    private SlotSpec Slot(SlotSpec slot)
     {
-        var child = _model.NewNode(StructureConceptKeys.ChildDecl);
+        _project.Concepts.Get(slot.ConceptKey);
 
-        child.Set("name", name);
-        child.Set("childConceptKey", childConceptKey);
-        child.Set("cardinality", cardinality);
-
-        return child;
+        return slot;
     }
 
-    /// <summary>An enumeration with its symbols, added to the definition.</summary>
+    /// <summary>Writes one described slot into <paramref name="concept"/>'s own document.</summary>
+    /// <remarks>
+    /// The three kinds go into their own collections, which is what a language author's <c>properties:</c> /
+    /// <c>children:</c> / <c>references:</c> sections are.
+    /// </remarks>
+    private static void Add(Node concept, SlotSpec slot)
+    {
+        var model = concept.Model;
+
+        var node = model.NewChild(
+            concept,
+            slot.ConceptKey switch
+            {
+                StructureConceptKeys.PropertyDecl => StructureLanguage.PropertiesSlot,
+                StructureConceptKeys.ChildDecl => StructureLanguage.ChildrenSlot,
+                _ => StructureLanguage.ReferencesSlot,
+            },
+            slot.ConceptKey);
+
+        node.Set("name", slot.Name);
+
+        switch (slot.ConceptKey)
+        {
+            case StructureConceptKeys.PropertyDecl:
+                node.Set("typeName", slot.TypeName!);
+
+                if (slot.DefaultValue is not null)
+                {
+                    node.Set("defaultValue", slot.DefaultValue);
+                }
+
+                if (slot.Description is not null)
+                {
+                    node.Set("description", slot.Description);
+                }
+
+                break;
+
+            case StructureConceptKeys.ChildDecl:
+                node.Set("childConceptKey", slot.ChildConceptKey!);
+                node.Set("cardinality", slot.Cardinality ?? "one");
+                break;
+
+            default:
+                node.Set("targetConceptKey", slot.TargetConceptKey!);
+
+                if (slot.AllowOwnSubtree)
+                {
+                    node.Set("allowOwnSubtree", "true");
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>An enumeration with its symbols, as a document of its own.</summary>
     public Node Enumeration(string key, params string[] symbols)
     {
-        var enumeration = _model.NewChild(
-            Root,
-            StructureLanguage.EnumerationSlot,
-            StructureConceptKeys.Enumeration);
+        var enumeration = Start(StructureConceptKeys.Enumeration);
 
         enumeration.Set(StructureLanguage.KeySlot, key);
 
         foreach (var symbol in symbols)
         {
-            _model.NewChild(enumeration, "symbols", StructureConceptKeys.EnumSymbol).Set("symbol", symbol);
+            enumeration.Model.NewChild(enumeration, "symbols", StructureConceptKeys.EnumSymbol).Set("symbol", symbol);
         }
 
         return enumeration;
+    }
+
+    /// <summary>Starts a document whose root is one empty definition, and makes it the current one.</summary>
+    private Node Start(string conceptKey)
+    {
+        var root = Current().NewNode(conceptKey);
+
+        _roots.Add(root);
+
+        return root;
+    }
+
+    /// <summary>The document the next definition is written into.</summary>
+    /// <remarks>
+    /// A document holds exactly one definition, so the builder advances as soon as the current document has a root.
+    /// <see cref="Model.NewNode"/> already makes the new node a root, which is why nothing here re-parents it.
+    /// </remarks>
+    private Model Current()
+    {
+        if (_current.Roots.Count > 0)
+        {
+            _current = NewDocument();
+        }
+
+        return _current;
+    }
+
+    /// <summary>A new empty document, which the next definition is written into.</summary>
+    private Model NewDocument()
+    {
+        var model = _project.NewModel($"definition{_documents.Count + 1}");
+
+        _documents.Add(model);
+
+        return model;
     }
 }

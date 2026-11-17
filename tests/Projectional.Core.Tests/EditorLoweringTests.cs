@@ -47,7 +47,7 @@ public sealed class EditorLoweringTests
         line.GetChildren(EditorLanguage.CellSlot)[0].Set("text", "rule");
         line.GetChildren(EditorLanguage.CellSlot)[2].Set("slot", "name");
 
-        var notations = EditorLowering.CreateRegistry(notation.Root, concepts);
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
         var model = new Project(concepts).NewModel();
         var rule = model.NewNode("Rules.Rule");
 
@@ -79,7 +79,7 @@ public sealed class EditorLoweringTests
 
         notation.SetRoot(declared, EditorConceptKeys.Sequence);
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => EditorLowering.Lower(notation.Root, concepts));
+        var error = Assert.Throws<ConceptDefinitionException>(() => EditorLowering.Lower(notation.Roots, concepts));
 
         Assert.Contains("Rules.Missing", error.Message, StringComparison.Ordinal);
         Assert.Contains("does not declare", error.Message, StringComparison.Ordinal);
@@ -100,7 +100,7 @@ public sealed class EditorLoweringTests
 
         line.GetChildren(EditorLanguage.CellSlot)[0].Set("slot", "nope");
 
-        Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Root, concepts));
+        Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Roots, concepts));
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class EditorLoweringTests
         notation.Cell(cells[0], EditorConceptKeys.Keyword, ("text", "on"));
         notation.Cell(cells[0], EditorConceptKeys.Space);
 
-        var notations = EditorLowering.CreateRegistry(notation.Root, concepts);
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
         var model = new Project(concepts).NewModel();
         var rule = model.NewNode("Rules.Rule");
 
@@ -175,7 +175,7 @@ public sealed class EditorLoweringTests
         cell.Set("slot", slot);
         cell.Set("value", value);
 
-        return EditorLowering.CreateRegistry(notation.Root, concepts);
+        return EditorLowering.CreateRegistry(notation.Roots, concepts);
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public sealed class EditorLoweringTests
 
         notation.SetRoot(declared, EditorConceptKeys.Sequence);
 
-        var lowered = Assert.Single(EditorLowering.Lower(notation.Root, concepts));
+        var lowered = Assert.Single(EditorLowering.Lower(notation.Roots, concepts));
 
         Assert.Equal("table", lowered.Variant);
     }
@@ -205,7 +205,7 @@ public sealed class EditorLoweringTests
 
         notation.Cell(root, EditorConceptKeys.Children, ("slot", "body"), ("emptyText", "<no rules>"));
 
-        var notations = EditorLowering.CreateRegistry(notation.Root, concepts);
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
         var model = new Project(concepts).NewModel();
         var rule = model.NewNode("Rules.Rule");
 
@@ -228,13 +228,12 @@ public sealed class EditorLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "notations:",
-                "  editor for concept Rules.Rule variant: default",
-                "  node cell layout:",
-                "    [/",
-                "      [> line",
-                "        [> constant \"rule\" [> space [> {name}",
-                "    /]"),
+                "editor for concept Rules.Rule variant: default",
+                "node cell layout:",
+                "  [/",
+                "    [> line",
+                "      [> constant \"rule\" [> space [> {name}",
+                "  /]"),
             LayoutSnapshot.Render(notation.Root, EditorNotations.Create(), width: 120));
     }
 
@@ -247,7 +246,7 @@ public sealed class EditorLoweringTests
 
         model.AddRoot(cell);
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => EditorLowering.Lower(cell, concepts));
+        var error = Assert.Throws<ConceptDefinitionException>(() => EditorLowering.Lower([cell], concepts));
 
         Assert.Contains("is not a notation", error.Message, StringComparison.Ordinal);
     }
