@@ -223,6 +223,23 @@ description cannot drift from the language. What is open is its shape.
 | 83 | Where does the description generator live: the toolkit, `Semantics`, or a package of its own? | Leaning | A package of its own (`Projectional.Descriptions`), the way the check and intention catalogues are: it needs `Semantics` for constraints, and [ADR 0019](adr/0019-toolkit-is-the-language-surface.md) deliberately keeps `Semantics` out of the toolkit surface. | M8 |
 | 84 | Does the operation protocol name nodes by path or by id? | Leaning | By path (`0/rules/2/condition`), because an id is internal and a model cannot know one. The path is resolved when the proposal applies, so a stale proposal is refused with a reason instead of landing on whatever inherited that id. | M8 |
 
+## Model generation
+
+Planned as M6, in [model-generation.md](architecture/model-generation.md). The pipeline is
+decided - reduce into a model of the target language, then let that language's generator print
+it - because a target with concepts of its own cannot be printed from templates without keeping
+its grammar in strings. What is open is how far one rule may go.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 85 | May a rule produce nothing at all, and what happens to a reference whose target produced nothing? | Leaning | Yes to the first: an `Empty` rule is a decision, exactly as an empty template is, and a source concept that lowers to nothing is common (a keyword, an annotation, a shorthand). A reference *to* something that produced nothing then fails the run, because the alternative is a dangling reference in a model that gets printed. | M6 |
+| 86 | Is exactly one output node per source node too strict for a construct that lowers to several statements? | Leaning | For the first slice, yes to one node: the extra statements are its children, which is what keeps "where did this node go" answerable when the parent's slot is single-valued. Revisit when a target language has a construct that cannot be nested inside the node its source maps to. | M6 |
+| 87 | Does a rule ever need a computed value - an index, a concatenation, a formatted number? | Leaning | No. A part only copies, chooses and reduces. A computed value would make a transformation a programming language with no debugger, and the declared form could not express it ([ADR 0014](adr/0014-both-authoring-paths-are-permanent.md)); the answer is a concept in the target language that computes it at run time, or a generator in the host's code. | M6 |
+| 88 | How does a mapping in a language folder name the language it targets? | Open | The lowering takes the target registry as an argument until a language project can declare dependencies (M5's language-project row), then `mapping.mps` names the language root it maps to. Naming by concept-key prefix would be a second way to say "language" and would break when two languages share a key. | M5 |
+| 89 | Is the generated model kept after a transformation? | Leaning | No: it is printed and discarded unless the caller asks for it, and the migration tool is the caller that does. A generated model kept as a document would be a second thing the editor owns, with a save prompt and a dirty flag, for a value the source can always produce again. | M6 |
+| 90 | Is a pipeline the unit a host offers, or does the shell pair a model generator with the target's first text generator? | Leaning | The pipeline, declared by name. A menu that guessed which text generator to print with would change its output silently the moment a language added one, which is the opposite of what a generated artefact has to promise. | M6 |
+| 91 | Does a transformation ever reorder or group children - sort a list, hoist declarations? | Open | Not in the first slice: `Children` keeps document order, and a target that needs another order needs a part that says so. Sorting in a rule would be a second ordering rule beside the model's, and the first consumer (a decision table becoming a method) does not need one. | M6 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:

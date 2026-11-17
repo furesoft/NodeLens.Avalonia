@@ -124,6 +124,14 @@ because it needs no change to any already-written slot.
 
 ## Generation
 
+**Where the C# concepts come from** is not this document's subject: a DSL that must *become*
+C# - a decision table that lowers to a class with a method - reduces its own concepts into
+`Class`, `Method`, `If`, `Return` nodes first, and only then are those printed
+([model-generation.md](model-generation.md)). Writing C# from templates instead would keep the
+grammar in strings as well as in the notation and skip the target's checks. What follows is
+about printing the concepts, which is what makes the target a language rather than a naming
+convention.
+
 Reuse the template tree from [semantics.md](semantics.md#generation) - `TextConstant`,
 `PropertyRef`, `ChildExpansion`, `ChildrenExpansion`, `Conditional`, `Loop`, `LineBreak`,
 `Indent`. Nothing about C# needs a new node kind; what it needs is two rules.

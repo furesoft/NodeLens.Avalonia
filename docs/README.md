@@ -39,14 +39,16 @@ records what was actually verified.
     text clipboard (delivered).
 17. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
 18. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-19. [Integration](architecture/integration.md) — how host applications embed this.
-20. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+19. [Model generation](architecture/model-generation.md) — reducing a document into a model of
+    a target language, which that language's generator then prints (planned; M6).
+20. [Integration](architecture/integration.md) — how host applications embed this.
+21. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-21. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
+22. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
     composes, locked to one language.
-22. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-23. [Roadmap](roadmap.md) — milestones and acceptance gates.
-24. [Open questions](open-questions.md) — what is deliberately still undecided.
+23. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+24. [Roadmap](roadmap.md) — milestones and acceptance gates.
+25. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
