@@ -217,8 +217,27 @@ internal static class SelectionRanges
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var selection = context.Selection;
-        var places = context.Places;
+        return NodesIn(context.Document, context.Places, context.Selection);
+    }
+
+    /// <summary>
+    /// The nodes a selection covers completely, for a caller that has a tree rather than an apply - the
+    /// intention context, which is built while the list is derived and holds no mutation methods.
+    /// </summary>
+    /// <param name="document">The node the tree was built from, which is never reported.</param>
+    /// <param name="places">The caret places of <paramref name="document"/>'s tree, in document order.</param>
+    /// <param name="selection">The range to read.</param>
+    /// <remarks>
+    /// A thin overload rather than a second implementation: "which nodes does this range cover" must have
+    /// one answer, or an intention would act on a different set of nodes than a delete does.
+    /// </remarks>
+    public static IReadOnlyList<Node> NodesIn(
+        Node document,
+        IReadOnlyList<CaretPlace> places,
+        Selection selection)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(places);
 
         if (selection.IsEmpty || places.Count == 0)
         {
@@ -235,10 +254,10 @@ internal static class SelectionRanges
 
         var start = Math.Min(anchor, caret);
         var end = Math.Max(anchor, caret);
-        var spans = Spans(context.Document, places);
+        var spans = Spans(document, places);
         var nodes = new List<Node>();
         var pending = new Stack<Node>();
-        pending.Push(context.Document);
+        pending.Push(document);
 
         while (pending.Count > 0)
         {
@@ -247,7 +266,7 @@ internal static class SelectionRanges
             if (spans.TryGetValue(node.Id, out var span) &&
                 span.Min >= start &&
                 span.Max <= end &&
-                !ReferenceEquals(node, context.Document))
+                !ReferenceEquals(node, document))
             {
                 nodes.Add(node);
                 continue;

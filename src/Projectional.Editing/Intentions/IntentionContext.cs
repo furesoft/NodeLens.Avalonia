@@ -74,6 +74,24 @@ public sealed class IntentionContext
     /// <summary>The concept of <see cref="Node"/>, or <see langword="null"/>.</summary>
     public Concept? Concept => Node?.Concept;
 
+    /// <summary>The nodes the selection covers completely, outermost first, in document order.</summary>
+    /// <remarks>
+    /// <para>
+    /// Empty for a caret and for a range that covers no whole node, which is the ordinary case: a range
+    /// inside one value is about that value. One node is the ordinary case too - the per-node entries are
+    /// what a caret in it means - so an entry that acts on several is offered only from two upwards.
+    /// </para>
+    /// <para>
+    /// Asked through <see cref="SelectionRanges.NodesIn"/>, the same computation <see cref="DeleteSelectionAction"/>
+    /// uses, so "what this range covers" has one answer and a menu cannot act on a different set of nodes than
+    /// a keystroke. It is derived on first use, because the walk over the tree's caret places is not free and
+    /// most entries never look at a selection - the catalogue asks only when a range spans cells, which is the
+    /// only shape that can cover more than one node.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<Node> SelectedNodes =>
+        field ??= Selection.IsEmpty ? [] : SelectionRanges.NodesIn(Document, CaretPlaces.Of(Tree), Selection);
+
     /// <summary>Whether the caret stands in a slot waiting to be filled.</summary>
     public bool IsEmptySlot => Place is { IsEmptySlot: true };
 
