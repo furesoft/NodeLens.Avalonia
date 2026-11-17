@@ -1423,6 +1423,16 @@ Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
 ## How the standalone app fits
 
+`Projectional.Workbench/Documents/` also owns the **recent list**: `RecentFiles` is the value (newest first, no
+repeats, ten entries, case-insensitive because a Windows path is) and `TextRecentFilesStore` is a text file under
+`%LOCALAPPDATA%` with a path per line. The split is the point - the list owns the rules so "what counts as the same
+file" is answered once, and the store owns the bytes and **never throws**: a missing, unreadable or unwritable file
+answers with what is still true, because a shell that refused to start over its own convenience file would be losing
+work to keep a menu. What the store reads back is validated by `RecentFiles.From`, since a file a user can edit is one
+they will edit. There is deliberately **no `IRecentFilesStore`**: it existed for one commit, had exactly one
+implementer, and the analyzer was right that it was an abstraction waiting for a second caller that never came - the
+tests exercise the list and the store directly.
+
 `Projectional.Workbench/Outline/` is the model browser: `Outline.Of(model)` lists every node, depth first, and the
 window fills a flat list. It walks the **model**, not the projection - the opposite of `Finder`, and deliberately:
 a browser answers "what is this document made of", so a concept with no notation is still part of it, while find
@@ -1520,7 +1530,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1596 tests**; anything below that means tests were deleted.
+it. **Baseline is 1606 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

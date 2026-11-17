@@ -38,17 +38,15 @@ What is next, in order:
    M2's gate is one step away: what it still asks for is a DSL defined entirely in *project files* - the declared
    path - and the template is the C# half of that story.
 
-2. **The shell's M2 half**: recent projects and the self-contained single-file build.
-   The problems panel is done - diagnostics of the active document in document order, choosing a row puts the
-   caret on the cell the finding is about ([standalone.md](architecture/standalone.md#the-problems-panel)) - and
-   it is the model for the rest: the row-building half is headless and tested, only the list and the scroll need
-   a window. Find and replace are done: `Projectional.Editing/Find/` searches the caret places, `FindNextAction`
-   walks the occurrences with wraparound, `ReplaceMatchAction` and `ReplaceAllAction` are edits like any other, and
-   the app shows it as a strip (`Ctrl+F`) rather than a dialog
-   ([standalone.md](architecture/standalone.md#find)).
-   The model browser is done as well: a left panel lists every node of the active document, depth first
-   ([standalone.md](architecture/standalone.md#the-model-browser)); it walks the model rather than the projection,
-   which is what separates it from Find.
+2. **The shell's M2 half**: the self-contained single-file build is all that is left, and it is publishing
+   infrastructure rather than shell code.
+   Done and documented: the **problems panel** (diagnostics in document order, choosing a row puts the caret on the
+   cell the finding is about - [standalone.md](architecture/standalone.md#the-problems-panel)), **find and replace**
+   (`Projectional.Editing/Find/` plus a `Ctrl+F` strip - [standalone.md](architecture/standalone.md#find)), the
+   **model browser** ([standalone.md](architecture/standalone.md#the-model-browser)) and **recent files**
+   ([standalone.md](architecture/standalone.md#recent-files)). The first three share one shape worth keeping: the
+   rows are built in a non-Avalonia type and tested, and the window only fills a list - which is why none of them
+   needed a UI test harness.
    The language picker that used to sit in this list is done too - File > *Open language project...*
    loads a folder of `structure.mps` + `editor.mps` into the shell's own registry.
    The language picker that used to sit in this list is done too - File > *Open language project...*

@@ -50,6 +50,7 @@ shell.
 | model browser | tree of models and their root elements - **delivered** as a left panel listing every node of the active document, clicking a row puts the caret on it (`Outline/`) | M2 |
 | language browser | declared languages in the project, open their definitions | M5 |
 | problems panel | diagnostics of the active document, in document order, jumping to the cell the finding is about - **delivered** in `MainWindow` + `Problems/` (M2) | M2 |
+| recent files | the last ten opened or saved files, remembered between runs - **delivered** in `Documents/RecentFiles` + `TextRecentFilesStore` | M2 |
 | output panel | generator and interpreter results, traces | M4 |
 | live preview | split a language definition against a model using it | M5 |
 
@@ -183,6 +184,26 @@ Routing rule: the **focused session** receives editing commands; application com
 (open, save, close) act on the active document. A key that the session handles must not
 also trigger a command, which is why the control reports unhandled keys rather than
 swallowing them.
+
+### Recent files
+
+**File ▸ Recent** lists the files opened lately, newest first. `Documents/RecentFiles.cs` is the list and
+`Documents/TextRecentFilesStore.cs` is where it is kept: a text file under `%LOCALAPPDATA%\Projectional\recent.txt`,
+one path per line.
+
+- **The list owns the rules, the store owns the bytes.** De-duplication, order and the ten-entry cap are the
+  record's, so "what counts as the same file" is answered once; comparison is case-insensitive because a Windows path
+  is, and a list that showed `C:\a.mps` twice would lie about what the user did.
+- **What comes back is validated, not trusted.** A file a user can edit is one they will edit, so `RecentFiles.From`
+  drops blanks, repeats and anything past the cap.
+- **Every store failure is silent** - missing file, unreadable file, failed write - and answered with what is still
+  true. A shell that refused to start over its own convenience file would be losing work to keep a menu.
+- **One open path.** The picker and the recent entry both call `TryOpenPath`, so a missing file, an already-open
+  document and a language mismatch are handled in one place. A file that can no longer be opened is **dropped** from
+  the list: a menu that keeps offering a click that fails is worse than a shorter menu. Saving puts the file at the
+  top.
+- **The entry is disabled, not hidden, when the list is empty**, so the menu does not change shape depending on what
+  the user did last.
 
 ### The model browser
 
