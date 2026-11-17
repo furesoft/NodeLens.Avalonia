@@ -124,6 +124,31 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
+    public void ADescribedSlotTravelsWithItsSentenceAndTheOptInOverAValue()
+    {
+        // Both halves of the documentation are data: the sentence, and whether a hover shows it over a value too.
+        // A declared language that could write only one of them would be weaker than a hand-written one.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept(
+            "Rules.Rule",
+            slots:
+            [
+                definition.Property(
+                    "name",
+                    "string",
+                    description: "The name this rule is known by.",
+                    showDescriptionWhenFilled: true),
+            ]);
+
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
+        var name = registry.Get("Rules.Rule").FindProperty("name")!;
+
+        Assert.Equal("The name this rule is known by.", name.Description);
+        Assert.True(name.ShowDescriptionWhenFilled);
+    }
+
+    [Fact]
     public void AReferenceSlotPointsAtAnotherConcept()
     {
         var definition = new DefinitionBuilder();
@@ -167,6 +192,7 @@ public sealed class StructureLoweringTests
                 "    name : string",
                 "      default:",
                 "      described as:",
+                "      described when filled: false",
                 "  children:",
                 "    << ... >>",
                 "  references:",

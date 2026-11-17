@@ -82,8 +82,19 @@ internal sealed class DefinitionBuilder
     }
 
     /// <summary>A property slot, described so that it can be written into the concept's own document.</summary>
-    public SlotSpec Property(string name, string typeName, string? defaultValue = null, string? description = null) =>
-        Slot(new SlotSpec(StructureConceptKeys.PropertyDecl, name, typeName, defaultValue, description));
+    public SlotSpec Property(
+        string name,
+        string typeName,
+        string? defaultValue = null,
+        string? description = null,
+        bool showDescriptionWhenFilled = false) =>
+        Slot(new SlotSpec(
+            StructureConceptKeys.PropertyDecl,
+            name,
+            typeName,
+            defaultValue,
+            description,
+            ShowDescriptionWhenFilled: showDescriptionWhenFilled));
 
     /// <summary>A reference slot.</summary>
     public SlotSpec Reference(string name, string targetConceptKey, bool allowOwnSubtree = false) =>
@@ -148,6 +159,11 @@ internal sealed class DefinitionBuilder
                 if (slot.Description is not null)
                 {
                     node.Set("description", slot.Description);
+                }
+
+                if (slot.ShowDescriptionWhenFilled)
+                {
+                    node.Set("showDescriptionWhenFilled", "true");
                 }
 
                 break;

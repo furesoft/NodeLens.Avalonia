@@ -10,6 +10,7 @@ namespace Projectional.Core.Tests;
 /// <param name="Cardinality">Whether a child slot holds one child or many.</param>
 /// <param name="TargetConceptKey">The concept a reference slot points at.</param>
 /// <param name="AllowOwnSubtree">Whether a reference may point into its own node's subtree.</param>
+/// <param name="ShowDescriptionWhenFilled">Whether a hover shows the sentence over a value as well.</param>
 /// <remarks>
 /// A description rather than a node, because a slot is named in the call that also creates its concept -
 /// <c>Concept("Rules.Rule", slots: [Property(...)])</c> evaluates the list first - while the node has to exist in the
@@ -25,4 +26,5 @@ internal sealed record SlotSpec(
     string? ChildConceptKey = null,
     string? Cardinality = null,
     string? TargetConceptKey = null,
-    bool AllowOwnSubtree = false);
+    bool AllowOwnSubtree = false,
+    bool ShowDescriptionWhenFilled = false);

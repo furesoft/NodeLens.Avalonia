@@ -71,7 +71,8 @@ public static class StructureNotations
             ed.Line(ed.Property("name"), ed.Space, ed.Punct(":"), ed.Space, ed.Property("typeName")),
             ed.Indent(ed.Sequence(
                 ed.Line(ed.Keyword("default:"), ed.Space, ed.Property("defaultValue")),
-                ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description"))))));
+                ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
+                ed.Line(ed.Keyword("described when filled:"), ed.Space, ed.Property("showDescriptionWhenFilled"))))));
 
         notations.Add(StructureConceptKeys.ChildDecl, ed => ed.Line(
             ed.Property("name"),

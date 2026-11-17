@@ -138,7 +138,8 @@ public static class StructureLowering
                 name,
                 TypeNamed(Required(slot, "typeName", $"slot '{name}'"), owner, name, enums),
                 Optional(slot, "defaultValue"),
-                Optional(slot, "description")),
+                Optional(slot, "description"),
+                Flag(slot, "showDescriptionWhenFilled")),
 
             StructureConceptKeys.ChildDecl => new ChildSlot(
                 name,

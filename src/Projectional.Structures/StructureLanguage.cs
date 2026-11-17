@@ -94,6 +94,10 @@ public static class StructureLanguage
                 new PropertySlot("typeName", PropertyType.String),
                 new PropertySlot("defaultValue", PropertyType.String),
                 new PropertySlot("description", PropertyType.String),
+
+                // The sentence a hover shows over a *filled* value, as a flag: the description alone is shown
+                // while the slot is empty, and a language that wants it over its text says so here.
+                new PropertySlot("showDescriptionWhenFilled", PropertyType.Boolean, "false"),
             ],
             [StructureConceptKeys.Slot],
             description: "A slot holding one primitive value: a built-in type name or a declared enumeration."),

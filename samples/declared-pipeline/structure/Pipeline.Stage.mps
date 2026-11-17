@@ -15,12 +15,14 @@
             <name>name</name>
             <typeName>string</typeName>
             <defaultValue>unnamed</defaultValue>
+            <showDescriptionWhenFilled>false</showDescriptionWhenFilled>
           </properties>
         </node>
         <node id="c5d12f99-423a-4fee-a67f-79528e321d23" concept="Structure.PropertyDecl" name="command">
           <properties>
             <name>command</name>
             <typeName>string</typeName>
+            <showDescriptionWhenFilled>false</showDescriptionWhenFilled>
           </properties>
         </node>
         <node id="fc3058de-f44c-4c1b-b737-d22ee91defd2" concept="Structure.PropertyDecl" name="retries">
@@ -28,6 +30,7 @@
             <name>retries</name>
             <typeName>int</typeName>
             <defaultValue>0</defaultValue>
+            <showDescriptionWhenFilled>false</showDescriptionWhenFilled>
           </properties>
         </node>
       </children>
