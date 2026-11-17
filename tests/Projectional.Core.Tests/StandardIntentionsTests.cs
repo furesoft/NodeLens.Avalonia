@@ -286,6 +286,90 @@ public sealed class StandardIntentionsTests
         Assert.Equal(["c", "a", "b"], [.. body.GetChildren("steps").Select(step => step.GetOrNull("text"))]);
     }
 
+    [Fact]
+    public void EveryConceptThatCouldStandThereOffersAReplace()
+    {
+        var (session, _, condition) = Document();
+
+        using (session)
+        {
+            Caret(session, condition.GetChild("left")!);
+
+            var replace = Replaces(session);
+
+            // The slot is declared over `Expression`, so everything else that is an expression stands there.
+            Assert.Contains(StandardIntentions.ReplacePrefix + ExpressionsConceptKeys.IntLiteral, replace);
+            Assert.Contains(StandardIntentions.ReplacePrefix + ExpressionsConceptKeys.Parenthesized, replace);
+
+            // The concept the node already is, and the abstract one the slot is declared over, are not offered.
+            Assert.DoesNotContain(StandardIntentions.ReplacePrefix + ExpressionsConceptKeys.Name, replace);
+            Assert.DoesNotContain(StandardIntentions.ReplacePrefix + ExpressionsConceptKeys.Expression, replace);
+
+            Assert.Equal(replace.Count, replace.Distinct(StringComparer.Ordinal).Count());
+        }
+    }
+
+    [Fact]
+    public void AReplaceIsNotOfferedOnARoot()
+    {
+        // The document *is* a root, so replacing it would take the node the editor is drawn from.
+        using var session = Session(TestEditor.BareRule());
+
+        Assert.Empty(Replaces(session));
+    }
+
+    [Fact]
+    public void AReplaceIsNotOfferedWhereOnlyItsOwnConceptCouldStand()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[0]);
+
+        // A step stands in a slot declared over steps: swapping it for another step would only empty it.
+        Assert.Empty(Replaces(session));
+    }
+
+    [Fact]
+    public void ApplyingAReplaceEntrySwapsTheNodeAndCanBeUndone()
+    {
+        var (session, _, condition) = Document();
+
+        using (session)
+        {
+            Caret(session, condition.GetChild("left")!);
+
+            Assert.Equal(
+                EditOutcome.Applied,
+                session.Apply(Offer(session, StandardIntentions.ReplacePrefix + ExpressionsConceptKeys.IntLiteral))
+                    .Outcome);
+
+            Assert.Equal(ExpressionsConceptKeys.IntLiteral, condition.GetChild("left")!.Concept.Key);
+
+            Assert.True(session.Undo());
+
+            var restored = condition.GetChild("left")!;
+
+            Assert.Equal(ExpressionsConceptKeys.Name, restored.Concept.Key);
+            Assert.Equal("amount", restored.GetOrNull("name"));
+        }
+    }
+
+    [Fact]
+    public void AReplaceEntryIsMarkedDestructive()
+    {
+        var (session, _, condition) = Document();
+
+        using (session)
+        {
+            Caret(session, condition.GetChild("left")!);
+
+            var offer = Offer(session, StandardIntentions.ReplacePrefix + ExpressionsConceptKeys.IntLiteral);
+
+            Assert.Equal(EditSafety.Destructive, offer.Safety);
+        }
+    }
+
     /// <summary>Opens <paramref name="document"/> with the standard catalogue registered.</summary>
     private static EditorSession Session(Node document)
     {
@@ -323,6 +407,10 @@ public sealed class StandardIntentionsTests
     /// <summary>The wrap ids offered at the caret.</summary>
     private static IReadOnlyList<string> Wraps(EditorSession session) =>
         [.. Ids(session).Where(id => id.StartsWith(StandardIntentions.WrapPrefix, StringComparison.Ordinal))];
+
+    /// <summary>The replace ids offered at the caret.</summary>
+    private static IReadOnlyList<string> Replaces(EditorSession session) =>
+        [.. Ids(session).Where(id => id.StartsWith(StandardIntentions.ReplacePrefix, StringComparison.Ordinal))];
 
     /// <summary>The one entry with <paramref name="id"/>.</summary>
     private static Intention Offer(EditorSession session, string id) =>

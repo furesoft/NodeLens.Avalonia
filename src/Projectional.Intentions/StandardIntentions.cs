@@ -68,6 +68,15 @@ public sealed class StandardIntentions : IIntentionProvider
     /// </remarks>
     public const string WrapPrefix = "standard.wrap.";
 
+    /// <summary>
+    /// What every replace id starts with (`INT007`); the concept's own key follows, so one concept is one id.
+    /// </summary>
+    /// <remarks>
+    /// Per concept for the same reason as <see cref="WrapPrefix"/>: <c>Replace with "IntLiteral"</c> and
+    /// <c>Replace with "Name"</c> are two different edits, and a list keyed by id drops all but the first.
+    /// </remarks>
+    public const string ReplacePrefix = "standard.replace.";
+
     /// <summary>The provider a host registers with <c>session.AddIntentions(...)</c>.</summary>
     public static StandardIntentions Provider { get; } = new();
 
@@ -95,6 +104,11 @@ public sealed class StandardIntentions : IIntentionProvider
             foreach (var candidate in WrapperConcepts.Of(node, context.Concepts))
             {
                 entries.Add(Wrap(candidate));
+            }
+
+            foreach (var candidate in ReplacementConcepts.Of(node, context.Concepts))
+            {
+                entries.Add(Replace(candidate));
             }
         }
 
@@ -236,6 +250,26 @@ public sealed class StandardIntentions : IIntentionProvider
 
     /// <summary>Whether <paramref name="node"/> stands in a slot that can hold more than one child.</summary>
     private static bool IsSibling(Node? node) => node is not null && List(node) is not null;
+
+    /// <summary>One entry per concept that could take the place of the node the caret stands on.</summary>
+    /// <param name="concept">The concept that would replace it.</param>
+    /// <remarks>
+    /// The label names the concept and the description says that what is there goes, because this is the one entry in
+    /// the catalogue that loses something. It is marked <see cref="EditSafety.Destructive"/> rather than hidden: a
+    /// surface should be able to warn, and a user asking what can be done here is entitled to see it.
+    /// </remarks>
+    private static Intention Replace(Concept concept)
+    {
+        var key = concept.Key;
+        var name = ConceptNames.Of(key);
+
+        return new Intention(
+            ReplacePrefix + key,
+            $"Replace with \"{name}\"",
+            $"Swaps this node for an empty {name}; what it held is gone.",
+            live => live.Node is { } node ? new ReplaceNodeAction(node.Id, key) : null,
+            safety: EditSafety.Destructive);
+    }
 
     /// <summary>The entry that writes a property's declared default over whatever is in it.</summary>
     /// <remarks>
