@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Editors\Projectional.Editors.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Intentions\Projectional.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Languages\Projectional.Languages.csproj" />

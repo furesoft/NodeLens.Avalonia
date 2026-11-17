@@ -1,7 +1,7 @@
 # Context actions (intentions)
 
-*Partly delivered: the model, the list, applying one, the popup, the menu, the preview and real intentions
-(slices A-E, F).*
+*Partly delivered: the model, the list, applying one, the popup, the menu, the preview, real intentions and
+the first entries of the standard catalogue (slices A-G).*
 This document is the design for the light bulb: the affordance that offers, at the caret, the edits that make
 sense *there* — "wrap in parentheses", "negate", "add the missing condition", "extract this into a rule". It
 is written before the code so that the three layers it touches — language, editing, control — agree on who
@@ -15,8 +15,9 @@ merged list, which holds the host's commands, the language's intentions and the 
 its description and then the result of its edit, because the popup drives the preview ladder
 ([intention-preview.md](intention-preview.md), slices V1-V6). Two packages ship real entries:
 `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
-(accept this rule), and their previews are proven by tests. What is left is the rest of the standard
-catalogue (G).
+(accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
+`Projectional.Intentions` ships `INT001` (rename), `INT006` (wrap in X) and `INT020` (reset to the default)
+for any language. What is left is the rest of that catalogue (`INT002` onwards, table by table).
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -283,12 +284,12 @@ missing entry is easy to spot, and every entry names the data that produces it.
 
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
-| `INT001` | `Rename` | puts the caret in the name slot, the value selected | plain | new: a caret jump that selects, which is `MoveCaretAction` plus `SelectsLandedValue` |
+| `INT001` | `Rename` | puts the caret in the name slot, the value selected | plain | - (`SelectSlotAction`, which is the caret jump the row above used to ask for) |
 | `INT002` | `Duplicate` | copies the subtree as the next sibling | plain | new: subtree copy plus insert-at-index |
 | `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`) |
 | `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`) |
 | `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | new: insert-at-index |
-| `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction`, which the quick-fix catalogue already landed |
+| `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction` and the concept search of `Projectional.Intentions` - **shipped** |
 | `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | `DefaultInstantiableFor` plus a replace action |
 | `INT008` | `Select parent` / `Select node` | widens the selection one rung | plain | - (`SelectAllAction`'s ladder) |
 
@@ -315,7 +316,7 @@ from a menu, and it costs nothing because the actions exist.
 
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
-| `INT020` | `Reset to the default` | writes the declared default over the current value | plain | - (`SetPropertyAction`) |
+| `INT020` | `Reset to the default` | writes the declared default over the current value | plain | - (`SetPropertyAction`, in `Projectional.Intentions` - **shipped**) |
 | `INT021` | `Select the value` | selects the whole text of the cell | plain | - (`SelectValueAction`) |
 
 `INT020` is the cheapest useful intention in the framework: always correct, always local, always one
@@ -370,18 +371,18 @@ exists, because "the value the user can see" is the narrower claim and the caret
 
 Nine of the entries above are configurations of actions that already exist
 (`InsertNodeAction`, `DeleteNodeAction`, `MoveNodeAction`, `SelectAllAction`, `SelectValueAction`,
-`SetPropertyAction`, `EditProgram`). Four are not, and they reduce to three primitives:
+`SetPropertyAction`, `EditProgram`). The rest needed three primitives, and two of them have landed:
 
-| Missing primitive | Blocks | Why it is a primitive, not a per-feature hack |
+| Primitive | Blocks | State |
 | --- | --- | --- |
-| `Model.InsertChild(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | the model appends today, so "insert here" is impossible for anything; a list needs it whichever feature asks |
-| a subtree copy (`Node.CopyTo(sibling)`) | `INT002` | the same walk `Model.CopyTo` needs for the preview sandbox, reused instead of written twice |
-| ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot; the intention entries reuse it |
-| `SortAction` | `INT031` | a stable permutation of one slot, which a program of moves cannot express without colliding |
+| `Model.NewChildAt(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | **landed with `feat/insert-at-index`**: the model could only append, so "insert here" was impossible for anything; `Enter` was its first customer, and the entries above are its next |
+| ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot |
+| a subtree copy (`Node.CopyTo(sibling)`) | `INT002` | **open**, and deliberately left with `INT002`: it is the same walk `Model.CopyTo` needs for the preview sandbox, reused rather than written twice, and a primitive with no entry calling it would be dead public API |
+| `SortAction` | `INT031` | **open**: a stable permutation of one slot, which a program of moves cannot express without colliding |
 
-That table is the plan's real content: the catalogue is not nineteen features, it is **four primitives
-and fifteen four-line compositions**. One of the four already exists because `STD040` needed it, and
-`EditSafety` - the other thing slice G was going to introduce - landed with it.
+That table is the plan's real content: the catalogue is not nineteen features, it is a handful of
+primitives and fifteen four-line compositions. `EditSafety` - the other thing slice G was going to
+introduce - landed with the quick-fix catalogue, so the entries inherit it rather than deciding again.
 
 ### Two rules, one of them shared with the fixes
 
@@ -413,7 +414,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | E2 ✓ | `feat/abstract-intention` | `INT060`/`INT061` in `Projectional.Structures.Intentions`: abstractness is drawn as the word `abstract` in a concept's header by a conditional cell, so it has no cell to type into and needs an entry; `SetNodePropertyAction` is the action for a property with no cell, which is the shape a collapsed node has too |
 | E3 ✓ | `feat/intention-popup` | the gesture stops applying anything: `ApplyOffers` always opens the list, so a lone plain repair opens a one-row popup too. One keystroke, one meaning - and `EditSafety`/`Intention.Fix` become surface information rather than what the gesture gates on |
 | F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder, the ghost and the wiring are specified. V1-V6 ✓ |
-| G | `feat/standard-intentions` | the primitives the catalogue still needs (subtree copy; insert-at-index landed with `feat/insert-at-index`, which gave `Enter` its place), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
+| G ✓ | `feat/standard-intentions` | `Projectional.Intentions` ships `INT001` (rename, on the new `SelectSlotAction`), `INT006` (wrap in X, one entry per concept its declarations allow) and `INT020` (reset to the default), with the absence rules that keep a no-op out of the list. The subtree copy stayed with `INT002`, which is where a caller for it exists. **Not yet registered by the workbench**: doing that while `Expressions.Intentions` still ships its own wrap would show two rows for one operation, so the app switches when `INT041` lands and both language entries can be retired in one step |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.

@@ -27,7 +27,8 @@ size, model-defined markers with hover tooltips, concept descriptions shown on h
 completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin), the standard
 check catalogue as a package (`Projectional.Checks`), the intention model and its per-caret list, the hover
 preview of an offer (its description, then the result of its edit shown in place as a ghost of a discarded
-copy), and logical
+copy), the framework's own intention catalogue (rename, wrap in X, reset to the default, in
+`Projectional.Intentions`), and logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
@@ -871,8 +872,22 @@ Intentions are *behaviour*, so they cannot live in a language package (which mus
 the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`:
 `Projectional.Expressions.Intentions` (wrap in parentheses, negate), `Projectional.Samples.Intentions`
 (accept this rule) and `Projectional.Structures.Intentions` (make abstract / make concrete).
-`docs/architecture/context-actions.md` carries the plan and the remaining slices (F onwards: preview,
-standard catalogue).
+`docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered.
+
+- **`Projectional.Intentions` is the framework's own catalogue**, not a language's: `StandardIntentions`
+  derives `INT001` (rename), `INT006` (wrap in X) and `INT020` (reset to the default) from the *shape* of the
+  caret's place, so any language gains them by registering the provider. `WrapperConcepts.Of` is the whole of
+  "wrap in X": a concrete concept whose single-child slot accepts this node's concept and whose own concept
+  fits the parent's slot (and whose `Applicability` allows that place) is a wrapper - the first such slot in
+  declaration order, and one id per concept (`standard.wrap.<conceptKey>`) so two wrappers cannot collide in
+  the list. A root is never wrappable, because a wrapper has to take the node's *place*. The app does not
+  register it yet: with `Expressions.Intentions` still shipping its own wrap, both would show one row per
+  operation, so the switch waits for `INT041` (negate) and then retires both language entries at once.
+- **A caret jump is an action, not a mode of `MoveCaretAction`.** `SelectSlotAction(CellAddress)` moves the
+  caret into a slot and selects its text (a bare caret when the slot is empty), answering
+  `EditResult.Unchanged` because a navigation is not an edit. It is what makes rename plain rather than a
+  refactoring: nothing in another model can break, because no model was touched. Its address is always a
+  *cell*, since a rename names the value a user can see.
 
 - **A value with no cell needs an action that names the node, not the cell.** `SetPropertyAction` addresses a
   `CellAddress` and is right when the user can see the value; `SetNodePropertyAction` addresses a `NodeId` + slot
@@ -1404,7 +1419,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1475 tests**; anything below that means tests were deleted.
+it. **Baseline is 1486 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

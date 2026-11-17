@@ -23,16 +23,17 @@ only for the document root, so no arrow ever appeared. Both the defect and its r
 
 What is next, in order:
 
-1. **The intention list** ([context-actions.md](architecture/context-actions.md)). Slices A to F are done -
+1. **The intention list** ([context-actions.md](architecture/context-actions.md)). Slices A to G are done -
    the model, the list, `EditorSession.Apply(Intention)`, the `Alt+Enter` popup, the "Intentions" submenu, the
-   hover preview and two packages of real intentions (wrap in parentheses, negate, accept this rule), all
-   reading one `IntentionList` of host commands, language intentions and quick fixes. What is left is G, the
-   rest of the standard catalogue, which lands as a language asks for each entry.
-2. **The preview** ([intention-preview.md](architecture/intention-preview.md), slices V) is **complete**. The
-   copy and the diff (V1), the sandbox (V2), the ladder (V3), the ghost (V4), the wiring (V5) and the previews
-   of what the shipped packages offer (V6) are delivered: hovering an entry shows its description and then the
-   result of its edit, in place, with the live document untouched. A preview of a change across several files
-   stays M6, with the refactorings that need it.
+   hover preview ([intention-preview.md](architecture/intention-preview.md), slices V1-V6, complete), two
+   packages of real intentions (wrap in parentheses, negate, accept this rule) and the first
+   entries of the framework's own catalogue (`INT001` rename, `INT006` wrap in X, `INT020` reset to the default,
+   in `Projectional.Intentions`), all reading one `IntentionList` of host commands, language intentions and
+   quick fixes. What is left is the rest of that catalogue, entry by entry as a language asks for it - starting
+   with `INT002` (duplicate), which brings the subtree copy with it.
+2. **The standard catalogue in the app.** `Projectional.Intentions` is a package a host registers; the
+   workbench registers it once `INT041` (negate) lands, so the two entries `Expressions.Intentions` ships can be
+   retired in one step instead of showing two rows for one operation.
 
 **Slice Q7 - the standard checks as a package** is done: `Projectional.Checks` ships `STD001`, `STD003`,
 `STD010` and `STD040`, and a language includes them by naming them in a `CheckSet`. The safety class the
