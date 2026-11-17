@@ -20,7 +20,7 @@ produces something usable, and no milestone depends on a later one being finishe
 test that proves each row. This section keeps only what is left, and a feature moves out of it into
 that file in the same commit that finishes it.
 
-M3 has one row left (the structural clipboard), M4 about half, M5 started, and M6 and M7 are
+M3 has one row left (the structural clipboard), M4 about half, M5 started, and M6 to M8 are
 untouched.
 
 What is next, in order:
@@ -159,6 +159,25 @@ the gate (compiled output and the interpreter must agree on the corpus):
 **Gate:** a developer unfamiliar with the project builds a small DSL by following the
 tutorial, without asking questions — and a user who does not write C# can install the
 standalone editor and work with an existing DSL.
+
+### M8 — Language descriptions for LLMs (after 1.0)
+
+*Last on purpose: a description of a language is worth shipping only once the language surface is
+finished, text import exists and the public API is frozen - otherwise it describes something that is
+still moving.*
+
+| Delivers | Details |
+| --- | --- |
+| The description | one walk over a language's declarations produces a machine-readable schema and a prose guide: concepts, slots and cardinalities, types, enumerations and defaults, applicability, notation, triggers, typing rules and declared constraints ([llm-language-description.md](architecture/llm-language-description.md)) |
+| Model generation | a model writes a document in the existing interchange format, and the framework loads it through the path a user's file takes - reporting what it refused rather than guessing or repairing |
+| AST operations | a serializable operation list over document **paths**, applied through the edit actions that already exist, in one transaction, so a proposal is one undo step and previewable by the intention sandbox |
+| Repair loop | the findings (format, concept, constraint, check) are the answer that goes back to the model; the framework owns no loop and no provider |
+
+**Gate:** two documents generated from the guide alone - one for the payroll sample, one for the
+declared pipeline - load, pass their language's checks and round-trip byte-identically; an operation
+list applies as one undo step and is refused with a reason when it names a slot that does not exist;
+the description of the workbench's own languages is stable enough to be diffed in git.
+*Effort: 3-4 weeks.*
 
 ## What 1.0 means
 
