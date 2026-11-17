@@ -6,7 +6,8 @@ What is finished, where it lives, and what proves it. This file is the record of
 **The rule: a feature moves here in the same commit that finishes it.** A row is added when the
 acceptance gate it belongs to passes, not when the code compiles. If a row is here, the feature is
 done and a later change must not quietly undo it; if a feature is not here, it is not done, however
-much of it exists.
+much of it exists. The other half of the rule: **a milestone whose gate has passed is removed from the
+roadmap**, so that file never lists work that is done.
 
 A row is written as **feature | where it lives | proof**. The proof is the test file that would fail
 if the feature were removed, or - where a test cannot reach it - the verification that was actually
