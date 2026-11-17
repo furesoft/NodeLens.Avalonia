@@ -57,6 +57,15 @@ internal sealed class DocumentTab : IDisposable
     /// What the language says about text typed at the edge of a node that already exists, or
     /// <see langword="null"/> when such a keystroke should do nothing.
     /// </param>
+    /// <param name="types">
+    /// The language's type rules, or <see langword="null"/> when it declares none.
+    /// </param>
+    /// <param name="clipboard">
+    /// What copy, cut and paste read and write, or <see langword="null"/> for a private in-memory clipboard.
+    /// A shell passes one adapter to every tab, because a copy in one document has to be pasteable in another -
+    /// and because the control refreshes the adapter it was given, so a session on a different one would paste
+    /// text the platform has long replaced.
+    /// </param>
     /// <exception cref="InvalidOperationException">The model has no root to edit.</exception>
     internal DocumentTab(
         Model model,
@@ -65,7 +74,8 @@ internal sealed class DocumentTab : IDisposable
         string? filePath = null,
         ICellEmphasis? emphasis = null,
         ITypingRules? typing = null,
-        TypeRegistry? types = null)
+        TypeRegistry? types = null,
+        IEditorClipboard? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
@@ -80,7 +90,7 @@ internal sealed class DocumentTab : IDisposable
         Model = model;
         FilePath = filePath;
         Types = types;
-        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing);
+        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.
