@@ -104,7 +104,8 @@ and [testing.md](architecture/testing.md).
 | Standard intention catalogue (replace, sort, select node, select slot, wrap, negate, accept rule, make abstract/concrete) | `Projectional.Intentions/` | `StandardIntentionsTests`, `ExpressionsIntentionsTests`, `RulesIntentionsTests`, `StructureIntentionsTests` |
 | The app registers the standard catalogue once, at open | `MainWindow.RegisterIntentions` | `StandardIntentionsTests` (one row per operation) |
 
-Not done in M3: scopes and scope-driven completion.
+Not done in M3: an intention acting on a **selection of several nodes** - the list re-derives its
+target from the caret, so the milestone's "wrap a selection in an `if`" clause is unmet.
 
 ## M4 - Checks and quick fixes (partly, landed early)
 
@@ -125,7 +126,8 @@ Not done in M3: scopes and scope-driven completion.
 | Standard check catalogue as a package (`STD001`, `STD003`, `STD010`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `BinaryGroupingCheckTests` |
 | The app's own checks (default names, duplicate rule names) | `Projectional.Workbench/Checks/` | `DefaultNamesTests`, `DuplicateRuleNamesTests` |
 
-Not done in M4: types, text generation, the interpreter.
+Not done in M4: text generation, the interpreter and the cross-check tests that make the two agree
+on the corpus.
 
 ## M5 - Self-hosting (started)
 
