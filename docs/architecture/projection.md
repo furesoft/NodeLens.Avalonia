@@ -280,6 +280,15 @@ selection            →  "Wrap in condition", "Extract to action", "Convert to 
 Actions come from an aspect per concept, filtered by what is legal at that caret. Each
 action produces an edit action, so undo and change tracking are automatic.
 
+**Landed as the intention list.** An action provider is an `IIntentionProvider`
+(`Projectional.Editing/Intentions/`), the list is derived per caret from the host's and the
+language's providers plus the quick fixes, and the standard operations - rename, duplicate,
+delete, move, wrap in X, replace with Y, sort, insert, select - ship in
+`Projectional.Intentions`. [context-actions.md](context-actions.md) is the plan of record and
+[implemented.md](../implemented.md) the status. What is **not** delivered is a menu for a
+*range*: an entry acts on the node the caret is in, so selecting several nodes and wrapping
+them together is still open.
+
 ## Tables
 
 Tables are a first-class cell, not a hack, because the pilot DSL needs them. The design
