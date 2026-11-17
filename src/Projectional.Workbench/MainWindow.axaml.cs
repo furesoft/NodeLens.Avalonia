@@ -165,7 +165,8 @@ public sealed partial class MainWindow : Window, IDisposable
         NotationRegistry notations,
         string? filePath = null,
         ICellEmphasis? emphasis = null,
-        ITypingRules? typing = null)
+        ITypingRules? typing = null,
+        TypeRegistry? types = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -180,7 +181,7 @@ public sealed partial class MainWindow : Window, IDisposable
         // applied afterwards would have to rebuild a layout that was already laid out at 14.
         editor.FontSize = _fontSize;
 
-        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing);
+        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing, types);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
         editor.ShowLineNumbers = _showLineNumbers;
@@ -370,7 +371,7 @@ public sealed partial class MainWindow : Window, IDisposable
         List<Diagnostic> findings =
         [
             .. fixes.Select(fix => fix.Diagnostic),
-            .. new ConstraintEngine(SampleConstraints.All, types: SampleTypes.All).Check(document.Model),
+            .. new ConstraintEngine(SampleConstraints.All, types: document.Types ?? SampleTypes.All).Check(document.Model),
         ];
 
         editor.Markers = new MarkerSet([.. findings]);
@@ -873,7 +874,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        foreach (var file in new[] { LanguageProject.StructureFile, LanguageProject.EditorFile })
+        foreach (var file in new[] { LanguageProject.StructureFile, LanguageProject.EditorFile, LanguageProject.TypesFile })
         {
             var path = Path.Combine(directory, file);
 
@@ -907,7 +908,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing);
+        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)

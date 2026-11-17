@@ -115,6 +115,7 @@ Not done in M3: scopes and scope-driven completion.
 | Type model: `IType`, `PrimitiveType`, `UnknownType`, the `TypeFor` aspect and a registry inherited by sub-concepts | `Projectional.Semantics/Types/` | `TypeRegistryTests` |
 | The expression language's types, and a constraint that a rule's condition must be a truth value | `SampleTypes`, `SampleConstraints.ConditionMustBeBoolean` | `SampleConstraintsTests` |
 | The declared type-rule language: a rule as a model, lowered into the same `ITypeRule` | `Projectional.TypeRules/` | `TypeRuleLoweringTests` (incl. parity with `SampleTypes`), `TypeRuleNotationTests` |
+| A language project's `types.mps` loads into the registry a constraint asks for types, and the app checks each document with its own language's rules | `LanguageProject.Types`, `DocumentTab.Types` | `LanguageProjectTypesTests` |
 | Quick fixes at the caret, the bulb, the offer list | `QuickFixes`, `OfferList` | `QuickFixesTests`, `QuickFixBulbTests`, `EditorSessionFixTests` |
 | Standard check catalogue as a package (`STD001`, `STD003`, `STD010`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `BinaryGroupingCheckTests` |
 | The app's own checks (default names, duplicate rule names) | `Projectional.Workbench/Checks/` | `DefaultNamesTests`, `DuplicateRuleNamesTests` |

@@ -2,6 +2,7 @@ using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Projection;
+using Projectional.Semantics;
 
 namespace Projectional.Workbench;
 
@@ -63,7 +64,8 @@ internal sealed class DocumentTab : IDisposable
         ITextMeasure measure,
         string? filePath = null,
         ICellEmphasis? emphasis = null,
-        ITypingRules? typing = null)
+        ITypingRules? typing = null,
+        TypeRegistry? types = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
@@ -77,6 +79,7 @@ internal sealed class DocumentTab : IDisposable
 
         Model = model;
         FilePath = filePath;
+        Types = types;
         Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing);
 
         // A document that has just been opened or created is by definition what the file holds. The
@@ -86,6 +89,16 @@ internal sealed class DocumentTab : IDisposable
 
     /// <summary>The model this tab edits.</summary>
     internal Model Model { get; }
+
+    /// <summary>
+    /// The type rules of the language this document belongs to, or <see langword="null"/> when it is a
+    /// document of the built-in sample.
+    /// </summary>
+    /// <remarks>
+    /// The tab carries it because the findings are published per document: a document of an opened
+    /// language must be checked with that language's rules, not with the sample's.
+    /// </remarks>
+    internal TypeRegistry? Types { get; }
 
     /// <summary>The session that edits it.</summary>
     internal EditorSession Session { get; }

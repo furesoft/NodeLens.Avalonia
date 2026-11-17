@@ -2,7 +2,9 @@ using Projectional.Core;
 using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Persistence;
+using Projectional.Semantics;
 using Projectional.Structures;
+using Projectional.TypeRules;
 
 namespace Projectional.Languages;
 
@@ -32,18 +34,23 @@ public sealed class LanguageProject
     /// <summary>The file holding the notation, which a language may leave out while it is being written.</summary>
     public const string EditorFile = "editor.mps";
 
+    /// <summary>The file holding the type rules, which a language may leave out until it has any.</summary>
+    public const string TypesFile = "types.mps";
+
     private LanguageProject(
         string name,
         string directory,
         IReadOnlyList<ConceptDeclaration> declarations,
         ConceptRegistry concepts,
-        NotationRegistry notations)
+        NotationRegistry notations,
+        TypeRegistry types)
     {
         Name = name;
         Directory = directory;
         Declarations = declarations;
         Concepts = concepts;
         Notations = notations;
+        Types = types;
     }
 
     /// <summary>The language's name, which is the name of the folder it lives in.</summary>
@@ -60,6 +67,17 @@ public sealed class LanguageProject
 
     /// <summary>The notation of those concepts; empty when the project has no <c>editor.mps</c>.</summary>
     public NotationRegistry Notations { get; }
+
+    /// <summary>The type rules of those concepts; empty when the project has no <c>types.mps</c>.</summary>
+    public TypeRegistry Types { get; }
+
+    /// <summary>Whether the project declared any type rule at all.</summary>
+    /// <remarks>
+    /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
+    /// when nobody said what a node evaluates to. Refusing to load would make "write the structure first"
+    /// impossible, the same reason a missing <c>editor.mps</c> is allowed.
+    /// </remarks>
+    public bool HasTypes => Types.Count > 0;
 
     /// <summary>Whether the project declared a notation at all.</summary>
     /// <remarks>
@@ -103,7 +121,8 @@ public sealed class LanguageProject
                 Path.GetFullPath(directory),
                 declarations,
                 concepts,
-                LowerNotation(directory, concepts));
+                LowerNotation(directory, concepts),
+                LowerTypes(directory));
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -124,6 +143,15 @@ public sealed class LanguageProject
     /// <summary>A model of this language, ready for one document.</summary>
     /// <param name="name">The model's name, which is also the file name it is saved under.</param>
     public Model NewModel(string name = "model") => NewProject().NewModel(name);
+
+    private static TypeRegistry LowerTypes(string directory)
+    {
+        var path = Path.Combine(directory, TypesFile);
+
+        return File.Exists(path)
+            ? TypeRuleLowering.CreateRegistry(ModelFile.Load(TypeRuleLanguage.NewProject(), path).Roots[0])
+            : TypeRegistry.Empty;
+    }
 
     private static NotationRegistry LowerNotation(string directory, ConceptRegistry concepts)
     {
