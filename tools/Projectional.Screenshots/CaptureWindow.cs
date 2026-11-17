@@ -50,7 +50,8 @@ internal sealed class CaptureWindow : Window
                 log.Add($"{shot.FileName}.png {size.Width}x{size.Height}");
             }
 
-            Environment.ExitCode = 0;
+            // After the editor shots, because each shell shot opens and closes a window of its own.
+            Environment.ExitCode = await ShellCapture.RunAsync(_output, log) ? 0 : 1;
         }
         catch (Exception exception)
         {

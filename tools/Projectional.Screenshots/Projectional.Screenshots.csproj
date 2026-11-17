@@ -7,6 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
   </ItemGroup>
 
   <ItemGroup>
@@ -14,6 +15,11 @@
     <ProjectReference Include="..\..\src\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
+    <!--
+      The shell's own features - a run's output panel, a document's generators - are states of the window, so the
+      tool hosts the shipping MainWindow for them. Nothing is reimplemented here: the picture is the app.
+    -->
+    <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
   </ItemGroup>
 
 </Project>
