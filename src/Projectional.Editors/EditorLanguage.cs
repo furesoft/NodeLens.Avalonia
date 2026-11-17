@@ -44,8 +44,17 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.Notation,
             [
-                new PropertySlot(ConceptKeySlot, PropertyType.String),
-                new PropertySlot("variant", PropertyType.String, Notation.DefaultVariant),
+                new PropertySlot(
+                    ConceptKeySlot,
+                    PropertyType.String,
+                    description: "The key of the concept this notation draws.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "variant",
+                    PropertyType.String,
+                    Notation.DefaultVariant,
+                    "Which of the concept's notations this is. Every concept has a default one.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot(RootSlot, EditorConceptKeys.BlockCell, Cardinality.One),
             ],
             nameSlot: ConceptKeySlot,
@@ -96,28 +105,52 @@ public static class EditorLanguage
 
         new ConceptDeclaration(
             EditorConceptKeys.Keyword,
-            [new PropertySlot("text", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "text",
+                    PropertyType.String,
+                    description: "The word the notation itself draws, such as if or rule.",
+                    showDescriptionWhenFilled: true),
+            ],
             [EditorConceptKeys.InlineCell],
             nameSlot: "text",
             description: "A word the notation itself provides."),
 
         new ConceptDeclaration(
             EditorConceptKeys.Punct,
-            [new PropertySlot("text", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "text",
+                    PropertyType.String,
+                    description: "The symbol the notation itself draws, such as a comma or a brace.",
+                    showDescriptionWhenFilled: true),
+            ],
             [EditorConceptKeys.InlineCell],
             nameSlot: "text",
             description: "A symbol the notation itself provides."),
 
         new ConceptDeclaration(
             EditorConceptKeys.Property,
-            [new PropertySlot("slot", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the property slot whose value this cell draws.",
+                    showDescriptionWhenFilled: true),
+            ],
             [EditorConceptKeys.InlineCell],
             nameSlot: "slot",
             description: "The text of a property."),
 
         new ConceptDeclaration(
             EditorConceptKeys.Reference,
-            [new PropertySlot("slot", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the reference slot whose target this cell draws.",
+                    showDescriptionWhenFilled: true),
+            ],
             [EditorConceptKeys.InlineCell],
             nameSlot: "slot",
             description: "The name of a reference's target."),
@@ -125,8 +158,17 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.ChildInline,
             [
-                new PropertySlot("slot", PropertyType.String),
-                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the single child slot this cell draws.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    "<empty>",
+                    "What the cell shows while the slot is empty. Never nothing: the caret needs a place.",
+                    showDescriptionWhenFilled: true),
             ],
             [EditorConceptKeys.InlineCell],
             nameSlot: "slot",
@@ -135,9 +177,23 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.Children,
             [
-                new PropertySlot("slot", PropertyType.String),
-                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
-                new PropertySlot("spacing", PropertyType.Integer, "1"),
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the child slot whose children this cell lists.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    "<empty>",
+                    "What the cell shows while the slot holds no children.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "spacing",
+                    PropertyType.Integer,
+                    "1",
+                    "How many spaces separate one child from the next.",
+                    showDescriptionWhenFilled: true),
             ],
             [EditorConceptKeys.BlockCell],
             nameSlot: "slot",
@@ -148,8 +204,16 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.Conditional,
             [
-                new PropertySlot("slot", PropertyType.String),
-                new PropertySlot("value", PropertyType.String),
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the property whose value decides whether these cells are drawn.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "value",
+                    PropertyType.String,
+                    description: "The value that property has to hold for the cells to be drawn.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot(CellSlot, EditorConceptKeys.InlineCell, Cardinality.Many),
             ],
             [EditorConceptKeys.InlineCell],
@@ -159,8 +223,17 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.Collection,
             [
-                new PropertySlot("slot", PropertyType.String),
-                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the child slot whose children this cell lists.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    "<empty>",
+                    "What the cell shows while the slot holds no children.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot("separator", EditorConceptKeys.InlineCell, Cardinality.One),
             ],
             [EditorConceptKeys.BlockCell],
@@ -170,8 +243,17 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.Table,
             [
-                new PropertySlot("slot", PropertyType.String),
-                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the child slot whose children are the rows.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    "<empty>",
+                    "What the one affordance row shows while there are no rows.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot(ColumnSlot, EditorConceptKeys.Column, Cardinality.Many),
             ],
             [EditorConceptKeys.BlockCell],
@@ -181,8 +263,17 @@ public static class EditorLanguage
         new ConceptDeclaration(
             EditorConceptKeys.Column,
             [
-                new PropertySlot("slot", PropertyType.String),
-                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of a slot of the row concept, which every row draws here.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    "<empty>",
+                    "What a row's cell shows when the row has nothing in this slot.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot("header", EditorConceptKeys.InlineCell, Cardinality.One),
             ],
             nameSlot: "slot",

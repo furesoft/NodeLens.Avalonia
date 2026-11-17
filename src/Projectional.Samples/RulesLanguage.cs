@@ -97,7 +97,15 @@ public static class RulesLanguage
             RulesConceptKeys.Rule,
             [
                 new PropertySlot("name", PropertyType.String, "unnamed"),
-                new PropertySlot("outcome", PropertyType.Enum([RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject]), RuleOutcomes.Review, "What a reviewer should do with this rule."),
+
+                // Documented over the value, because the default makes the slot read as filled: without the
+                // opt-in the sentence would sit in the declaration and never be shown.
+                new PropertySlot(
+                    "outcome",
+                    PropertyType.Enum([RuleOutcomes.Accept, RuleOutcomes.Review, RuleOutcomes.Reject]),
+                    RuleOutcomes.Review,
+                    "What a reviewer should do with this rule.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot("condition", ExpressionsConceptKeys.Expression, Cardinality.One),
 
                 // The permission to fold, as a value on the node: a rule with a long body is worth

@@ -144,7 +144,11 @@ public static class ExpressionsLanguage
         new ConceptDeclaration(
             ExpressionsConceptKeys.Binary,
             [
-                new PropertySlot("operator", ExpressionOperators.BinaryType, description: "The operator, such as + or &&."),
+                new PropertySlot(
+                    "operator",
+                    ExpressionOperators.BinaryType,
+                    description: "The operator, such as + or &&.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot("left", ExpressionsConceptKeys.Expression, Cardinality.One),
                 new ChildSlot("right", ExpressionsConceptKeys.Expression, Cardinality.One),
             ],
@@ -187,7 +191,11 @@ public static class ExpressionsLanguage
         new ConceptDeclaration(
             ExpressionsConceptKeys.Unary,
             [
-                new PropertySlot("operator", ExpressionOperators.UnaryType, description: "Either - or !."),
+                new PropertySlot(
+                    "operator",
+                    ExpressionOperators.UnaryType,
+                    description: "Either - or !.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot("operand", ExpressionsConceptKeys.Expression, Cardinality.One),
             ],
             [ExpressionsConceptKeys.Expression],

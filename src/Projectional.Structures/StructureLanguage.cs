@@ -56,12 +56,38 @@ public static class StructureLanguage
         new ConceptDeclaration(
             StructureConceptKeys.Concept,
             [
-                new PropertySlot(KeySlot, PropertyType.String),
-                new PropertySlot(IsAbstractProperty, PropertyType.Boolean, "false"),
-                new PropertySlot("isOfferedInCompletion", PropertyType.Boolean, "true"),
-                new PropertySlot("description", PropertyType.String),
-                new PropertySlot("nameSlot", PropertyType.String),
-                new PropertySlot("collapseSlot", PropertyType.String),
+                new PropertySlot(
+                    KeySlot,
+                    PropertyType.String,
+                    description: "The key every other definition, notation and reference names this concept by.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    IsAbstractProperty,
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether the concept can only be extended: an abstract concept is never a node.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "isOfferedInCompletion",
+                    PropertyType.Boolean,
+                    "true",
+                    "Whether completion lists the concept. A hidden one can still be created with Enter.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "description",
+                    PropertyType.String,
+                    description: "One sentence about what the concept is, shown on hover and beside its completion entry.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "nameSlot",
+                    PropertyType.String,
+                    description: "The name of the slot that holds this concept's name, or empty when it has none.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "collapseSlot",
+                    PropertyType.String,
+                    description: "The name of the boolean property that says whether a node may be folded.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot(SuperTypeSlot, StructureConceptKeys.SuperType, Cardinality.Many),
 
                 // Three collections rather than one `slots`: it is how MPS writes a structure model, it makes the
@@ -76,13 +102,25 @@ public static class StructureLanguage
 
         new ConceptDeclaration(
             StructureConceptKeys.SuperType,
-            [new PropertySlot("conceptKey", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "conceptKey",
+                    PropertyType.String,
+                    description: "The key of the concept this one extends.",
+                    showDescriptionWhenFilled: true),
+            ],
             nameSlot: "conceptKey",
             description: "A super concept, named by key."),
 
         new ConceptDeclaration(
             StructureConceptKeys.Slot,
-            [new PropertySlot("name", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "name",
+                    PropertyType.String,
+                    description: "The slot's name, which is how the notation and the model address it.",
+                    showDescriptionWhenFilled: true),
+            ],
             nameSlot: "name",
             isAbstract: true,
             isOfferedInCompletion: false,
@@ -91,13 +129,30 @@ public static class StructureLanguage
         new ConceptDeclaration(
             StructureConceptKeys.PropertyDecl,
             [
-                new PropertySlot("typeName", PropertyType.String),
-                new PropertySlot("defaultValue", PropertyType.String),
-                new PropertySlot("description", PropertyType.String),
+                new PropertySlot(
+                    "typeName",
+                    PropertyType.String,
+                    description: "The type of the value: string, int, bool, date, or the key of a declared enumeration.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "defaultValue",
+                    PropertyType.String,
+                    description: "The value a fresh node starts with. Empty when the slot has no default.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "description",
+                    PropertyType.String,
+                    description: "One sentence about what belongs in this slot, shown as a tooltip.",
+                    showDescriptionWhenFilled: true),
 
                 // The sentence a hover shows over a *filled* value, as a flag: the description alone is shown
                 // while the slot is empty, and a language that wants it over its text says so here.
-                new PropertySlot("showDescriptionWhenFilled", PropertyType.Boolean, "false"),
+                new PropertySlot(
+                    "showDescriptionWhenFilled",
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether that sentence is also shown on hover while the slot holds a value.",
+                    showDescriptionWhenFilled: true),
             ],
             [StructureConceptKeys.Slot],
             description: "A slot holding one primitive value: a built-in type name or a declared enumeration."),
@@ -105,8 +160,17 @@ public static class StructureLanguage
         new ConceptDeclaration(
             StructureConceptKeys.ChildDecl,
             [
-                new PropertySlot("childConceptKey", PropertyType.String),
-                new PropertySlot("cardinality", PropertyType.Enum(["one", "many"]), "one"),
+                new PropertySlot(
+                    "childConceptKey",
+                    PropertyType.String,
+                    description: "The key of the concept a child of this slot has to conform to.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "cardinality",
+                    PropertyType.Enum(["one", "many"]),
+                    "one",
+                    "Whether the slot holds one child or a list of them.",
+                    showDescriptionWhenFilled: true),
             ],
             [StructureConceptKeys.Slot],
             description: "A slot holding children of a declared concept."),
@@ -114,8 +178,17 @@ public static class StructureLanguage
         new ConceptDeclaration(
             StructureConceptKeys.ReferenceDecl,
             [
-                new PropertySlot("targetConceptKey", PropertyType.String),
-                new PropertySlot("allowOwnSubtree", PropertyType.Boolean, "false"),
+                new PropertySlot(
+                    "targetConceptKey",
+                    PropertyType.String,
+                    description: "The key of the concept this slot points at.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "allowOwnSubtree",
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether a node may point into its own subtree, which is a cycle and usually refused.",
+                    showDescriptionWhenFilled: true),
             ],
             [StructureConceptKeys.Slot],
             description: "A slot pointing at a node owned elsewhere."),
@@ -123,7 +196,11 @@ public static class StructureLanguage
         new ConceptDeclaration(
             StructureConceptKeys.Enumeration,
             [
-                new PropertySlot(KeySlot, PropertyType.String),
+                new PropertySlot(
+                    KeySlot,
+                    PropertyType.String,
+                    description: "The key a property names as its type.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot("symbols", StructureConceptKeys.EnumSymbol, Cardinality.Many),
             ],
             nameSlot: KeySlot,
@@ -131,7 +208,13 @@ public static class StructureLanguage
 
         new ConceptDeclaration(
             StructureConceptKeys.EnumSymbol,
-            [new PropertySlot("symbol", PropertyType.String)],
+            [
+                new PropertySlot(
+                    "symbol",
+                    PropertyType.String,
+                    description: "One symbol of the enumeration, in the order the values are offered.",
+                    showDescriptionWhenFilled: true),
+            ],
             nameSlot: "symbol",
             description: "One symbol of an enumeration."),
     ];
