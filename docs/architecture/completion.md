@@ -1,7 +1,8 @@
 # Completion
 
-*Slice A — concepts into an empty slot — and slice A2 — the values of an enumeration — are
-implemented. The rest of this document is the plan.*
+*Slices A — concepts into an empty slot —, A2 — the values of an enumeration —, B — reference
+targets — and C — completing a filled slot — are implemented. The rest of this document is the
+plan.*
 
 In a text editor, completion guesses what word the user is typing and offers vocabulary from
 the file, the project or a language server. Here there is nothing to guess: the caret is in an
@@ -320,7 +321,7 @@ stands for, so there is nothing created to resolve the caret into.
 | A | `feat/completion` | `CompletionKind`/`Item`/`List`/`Slot`/`Source`, the six actions, `EditorSession.Completion`, `EditorKey.ControlSpace`/`Escape`, the two mappings, `CompletionPalette`/`Icon`/`GeometryImage`/`Presenter`, the control's painting and click handling, tests |
 | A2 | `feat/enum-completion` | `CompletionKind.Value`, `PropertyType.Symbols`, `CompletionSource.Values`, the value branch of accept, arrival-based offers from `EditorSession`, tests |
 | B ✓ | `feat/scope-completion` | `Kind.Reference` and reference targets as proposals, answered by the scope chain (`Projectional.Semantics/Scopes`, [language.md](language.md#scope-model)) - the first completion that reads the model rather than the registry. Accepting re-resolves the *name* through the scope, so a target renamed or removed after the list opened is refused rather than linked |
-| C | `feat/completion-fill` | completing a **filled** slot: replacing the child a caret is inside, which is the MPS `Substitute` action and needs the substitution rules a language declares |
+| C ✓ | `feat/completion-filled-slot` | completing a **filled** slot: the list offers what could stand in the child's place instead, and accepting runs `ReplaceNodeAction` - one undo step, through the same action the intention catalogue's "replace with" entry uses. Only a child with **no children of its own** is offered: what a leaf loses is the text on screen, while a subtree is not something a single Enter should discard (see below) |
 | D | `feat/completion-words` | narrowing over a *typed* prefix in a property cell, which is the VS Code behaviour users expect and which slice A deliberately does not do |
 | E | `feat/completion-tooltip` | a detail pane: the concept's documentation and its declared slots, which needs the language to carry documentation |
 
@@ -333,7 +334,7 @@ share one implementation.
 
 | Left out | Why |
 | --- | --- |
-| Completing a slot that already has a child | it destroys what is there, so it is a substitution with replacement rules, not an insertion |
+| Completing a slot whose child has a **subtree** | replacing it would discard work the caret gives no sign of. A leaf is offered because what is lost is the text on screen and one undo step brings it back; a subtree stays with the intention catalogue's labelled "replace with", where the user chose it from a menu |
 | Word-based completion inside a property cell | the model has no vocabulary to complete from; the text of a cell is a value, not a token stream. A cell whose *type* names its values is the opposite case and is implemented — see [Values](#values) |
 | Fuzzy matching | the filter is `Contains` over a short name; a scoring function is a user-experience feature that needs a list long enough to matter |
 | Sorting by relevance | declaration order *is* the relevance, and reordering it would contradict what Enter does without a list |
