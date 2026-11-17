@@ -57,7 +57,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Delivers | Details |
 | --- | --- |
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
-| Text generation | the template tree, the engine with its traceability map, two generators for the sample language and the declared generator language (`generator.mps`) are in [implemented.md](implemented.md); what is left is the generator for a second consumer (the C# base language, M6) |
+| Text generation | the template tree, the engine with its traceability map, two generators for the sample language and the declared generator language (`generator.mps`) are in [implemented.md](implemented.md); what is left is the generator for a second consumer (the C# base language, M6), whose target needs the model-producing stage ([model-generation.md](architecture/model-generation.md)) |
 | Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, the pilot's decision-list rules, and the shell's Run command with its output panel are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
 | Cross-check tests | generated code and interpreter agree on the corpus |
 
@@ -101,7 +101,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Refactorings | rename, extract, inline, move — as edit-action programs |
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
-| Model-to-model generation | optional second generator stage |
+| Model-to-model generation | a generator whose output is a model of a target language, which that language's own text generator then prints: the rule vocabulary, the build and link phases, the reverse map that keeps "go to source" working through both stages ([model-generation.md](architecture/model-generation.md)) |
 | Text import | JSON and XML reference languages behind an `ITextImporter` ([import.md](architecture/import.md)) |
 | Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
 | Embedded shell | the shell as a control a host composes: locked to one language, its storage and dialogs supplied by the host, its capabilities declared once and enforced by the command registry ([embedded-shell.md](architecture/embedded-shell.md)) |
@@ -120,6 +120,22 @@ writes text back. Two reference languages ship with it, JSON and XML, because a 
 imports and generates a format everyone already has is the cheapest possible proof that the
 mapping layer is sound. Details, including why a construct the language does not model is kept
 as raw text rather than dropped: [import.md](architecture/import.md).
+
+#### Model-to-model generation
+
+Text generation treats the target as text. That is enough while the target *is* text, and it is
+what the JSON and C# fragment generators of the pilot do. It stops being enough when the target
+is a language of its own: emitting the projected C# base language's syntax out of templates would
+keep its grammar in string fragments and leave its checks with nothing to run on.
+
+The second stage therefore reduces a document into a model of the target language and lets that
+language's own generator print it. The vocabulary is a closed set of parts - create a node, set a
+property, reduce a child, reduce a list, copy a subtree the target shares, retarget a reference,
+choose a branch, lower to nothing - so a transformation is data like a template and not a second
+programming language. The build and the link phase are separate because a reference cannot be
+written before its target exists, and the reverse map is what lets a generated line still point
+at the DSL node that wrote it. Rules, failure discipline, the declared `mapping.mps` and the
+slices: [model-generation.md](architecture/model-generation.md).
 
 #### Projected C#
 
