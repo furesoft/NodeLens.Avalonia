@@ -34,6 +34,27 @@ public sealed class StandardIntentions : IIntentionProvider
     /// <summary>The stable id of the duplicate entry (`INT002`).</summary>
     public const string DuplicateId = "standard.duplicate";
 
+    /// <summary>The stable id of the delete entry (`INT003`).</summary>
+    public const string DeleteId = "standard.delete";
+
+    /// <summary>The stable id of "move one place towards the front" (`INT004`).</summary>
+    public const string MoveUpId = "standard.move-up";
+
+    /// <summary>The stable id of "move one place towards the end" (`INT004`).</summary>
+    public const string MoveDownId = "standard.move-down";
+
+    /// <summary>The stable id of "move to the first place" (`INT005`).</summary>
+    public const string MoveToFrontId = "standard.move-front";
+
+    /// <summary>The stable id of "move to the last place" (`INT005`).</summary>
+    public const string MoveToBackId = "standard.move-back";
+
+    /// <summary>The stable id of "insert an empty sibling before this one" (`INT030`).</summary>
+    public const string InsertBeforeId = "standard.insert-before";
+
+    /// <summary>The stable id of "insert an empty sibling after this one" (`INT030`).</summary>
+    public const string InsertAfterId = "standard.insert-after";
+
     /// <summary>The stable id of the reset entry (`INT020`).</summary>
     public const string ResetId = "standard.reset";
 
@@ -56,7 +77,18 @@ public sealed class StandardIntentions : IIntentionProvider
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        List<Intention> entries = [Rename(context), Duplicate(context)];
+        List<Intention> entries =
+        [
+            Rename(context),
+            Duplicate(context),
+            Delete(context),
+            Move(context, MoveUpId, "Move up", "Swaps this node with the one before it.", NodeMove.Up),
+            Move(context, MoveDownId, "Move down", "Swaps this node with the one after it.", NodeMove.Down),
+            Move(context, MoveToFrontId, "Move to front", "Puts this node first in its list.", NodeMove.ToFront),
+            Move(context, MoveToBackId, "Move to back", "Puts this node last in its list.", NodeMove.ToBack),
+            Insert(context, InsertBeforeId, "Insert before", SiblingPlace.Before),
+            Insert(context, InsertAfterId, "Insert after", SiblingPlace.After),
+        ];
 
         if (context.Node is { } node)
         {
@@ -112,11 +144,98 @@ public sealed class StandardIntentions : IIntentionProvider
             availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
     }
 
-    /// <summary>Whether <paramref name="node"/> stands in a slot that can hold more than one child.</summary>
-    private static bool IsSibling(Node node) =>
+    /// <summary>The entry that removes the node under the caret, exactly as the key does.</summary>
+    /// <remarks>
+    /// It is marked <see cref="EditSafety.Destructive"/> rather than hidden: a surface may paint a warning, but the
+    /// user asking what can be done here is entitled to see the one thing that removes something. A root is not
+    /// offered it, because the key does not delete a root either.
+    /// </remarks>
+    private static Intention Delete(IntentionContext context)
+    {
+        var applies = context.Node is { Parent: not null };
+
+        return new Intention(
+            DeleteId,
+            "Delete",
+            "Removes this node and everything inside it.",
+            live => live.Node is { Parent: not null } ? new DeleteNodeAction() : null,
+            safety: EditSafety.Destructive,
+            availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
+    }
+
+    /// <summary>The entry that reorders the node one place, or to an end of its list.</summary>
+    /// <param name="context">The caret the entry is derived at.</param>
+    /// <param name="id">The entry's stable id.</param>
+    /// <param name="label">What the entry says.</param>
+    /// <param name="description">One sentence saying what it does.</param>
+    /// <param name="move">The direction, including the two extremes.</param>
+    /// <remarks>
+    /// Absent where the move would change nothing - the first node cannot move up, the last cannot move down - which
+    /// is the catalogue's rule that an intention which would do nothing is not offered. The action itself also
+    /// answers <see cref="EditResult.Unchanged"/> there, because the list may be older than the document.
+    /// </remarks>
+    private static Intention Move(
+        IntentionContext context,
+        string id,
+        string label,
+        string description,
+        NodeMove move)
+    {
+        var applies = CanMove(context.Node, move);
+
+        return new Intention(
+            id,
+            label,
+            description,
+            live => CanMove(live.Node, move) ? new MoveNodeAction(move) : null,
+            availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
+    }
+
+    /// <summary>The entry that inserts an empty sibling on one side of the node.</summary>
+    /// <param name="context">The caret the entry is derived at.</param>
+    /// <param name="id">The entry's stable id.</param>
+    /// <param name="label">What the entry says.</param>
+    /// <param name="place">Which side the new node goes on.</param>
+    private static Intention Insert(IntentionContext context, string id, string label, SiblingPlace place)
+    {
+        var applies = IsSibling(context.Node);
+        var side = place == SiblingPlace.Before ? "before" : "after";
+
+        return new Intention(
+            id,
+            label,
+            $"Inserts an empty node of the same concept {side} this one.",
+            live => live.Node is { } node && IsSibling(node)
+                ? new InsertSiblingAction(node.Id, place)
+                : null,
+            availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
+    }
+
+    /// <summary>Whether <paramref name="move"/> would take <paramref name="node"/> somewhere else.</summary>
+    private static bool CanMove(Node? node, NodeMove move)
+    {
+        if (node is null || List(node) is not { } siblings)
+        {
+            return false;
+        }
+
+        return move switch
+        {
+            NodeMove.Up or NodeMove.ToFront => node.IndexInParent > 0,
+            _ => node.IndexInParent < siblings.Count - 1,
+        };
+    }
+
+    /// <summary>The siblings a node stands among, when its slot holds more than one.</summary>
+    private static IReadOnlyList<Node>? List(Node node) =>
         node.Parent is { } parent
         && node.ParentSlot is { } slot
-        && parent.Concept.FindChild(slot) is { Cardinality: Cardinality.Many };
+        && parent.Concept.FindChild(slot) is { Cardinality: Cardinality.Many }
+            ? parent.GetChildren(slot)
+            : null;
+
+    /// <summary>Whether <paramref name="node"/> stands in a slot that can hold more than one child.</summary>
+    private static bool IsSibling(Node? node) => node is not null && List(node) is not null;
 
     /// <summary>The entry that writes a property's declared default over whatever is in it.</summary>
     /// <remarks>

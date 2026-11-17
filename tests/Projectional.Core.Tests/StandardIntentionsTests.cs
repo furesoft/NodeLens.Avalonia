@@ -188,6 +188,104 @@ public sealed class StandardIntentionsTests
         Assert.DoesNotContain(StandardIntentions.DuplicateId, Ids(session));
     }
 
+    [Fact]
+    public void TheStructuralEntriesAreOfferedOnAChildOfAList()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b", "c");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[1]);
+
+        var ids = Ids(session);
+
+        Assert.Contains(StandardIntentions.DuplicateId, ids);
+        Assert.Contains(StandardIntentions.DeleteId, ids);
+        Assert.Contains(StandardIntentions.MoveUpId, ids);
+        Assert.Contains(StandardIntentions.MoveDownId, ids);
+        Assert.Contains(StandardIntentions.MoveToFrontId, ids);
+        Assert.Contains(StandardIntentions.MoveToBackId, ids);
+        Assert.Contains(StandardIntentions.InsertBeforeId, ids);
+        Assert.Contains(StandardIntentions.InsertAfterId, ids);
+    }
+
+    [Fact]
+    public void TheEndsOfAListDoNotOfferTheMovesThatWouldChangeNothing()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+
+        using var session = Session(body.Parent!);
+
+        Caret(session, steps[0]);
+
+        var first = Ids(session);
+
+        Assert.DoesNotContain(StandardIntentions.MoveUpId, first);
+        Assert.DoesNotContain(StandardIntentions.MoveToFrontId, first);
+        Assert.Contains(StandardIntentions.MoveDownId, first);
+        Assert.Contains(StandardIntentions.MoveToBackId, first);
+
+        Caret(session, steps[1]);
+
+        var last = Ids(session);
+
+        Assert.Contains(StandardIntentions.MoveUpId, last);
+        Assert.DoesNotContain(StandardIntentions.MoveDownId, last);
+        Assert.DoesNotContain(StandardIntentions.MoveToBackId, last);
+    }
+
+    [Fact]
+    public void DeleteIsOfferedAsADestructiveEntry()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[0]);
+
+        var offer = Offer(session, StandardIntentions.DeleteId);
+
+        Assert.Equal(EditSafety.Destructive, offer.Safety);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+        Assert.Equal("b", Assert.Single(body.GetChildren("steps")).GetOrNull("text"));
+    }
+
+    [Fact]
+    public void InsertBeforePutsAnEmptySiblingInFront()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[1]);
+
+        Assert.Equal(
+            EditOutcome.Applied,
+            session.Apply(Offer(session, StandardIntentions.InsertBeforeId)).Outcome);
+
+        var after = body.GetChildren("steps");
+
+        Assert.Equal(3, after.Count);
+        Assert.Equal("a", after[0].GetOrNull("text"));
+        Assert.True(string.IsNullOrEmpty(after[1].GetOrNull("text")));
+        Assert.Equal("b", after[2].GetOrNull("text"));
+
+        // A new node is something to name, so the caret lands inside it - which cell the notation draws first is
+        // the notation's business, the node is the answer.
+        Assert.Equal(after[1].Id, session.Selection.Caret.Address.Owner);
+    }
+
+    [Fact]
+    public void MoveToFrontReordersThroughTheEntry()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b", "c");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[2]);
+
+        session.Apply(Offer(session, StandardIntentions.MoveToFrontId));
+
+        Assert.Equal(["c", "a", "b"], [.. body.GetChildren("steps").Select(step => step.GetOrNull("text"))]);
+    }
+
     /// <summary>Opens <paramref name="document"/> with the standard catalogue registered.</summary>
     private static EditorSession Session(Node document)
     {
