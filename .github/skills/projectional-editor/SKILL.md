@@ -706,6 +706,15 @@ notation is registered per concept **and** variant
   written inside a `Line` used to be inexpressible - the declared language was weaker than C# for a
   purely notational reason. Both list cells now build the same runtime `CollectionCell` (which arranges
   inline either way); the difference is only whether the list may stand inside a line.
+- **A declared name is transparent, and the *accepter* unwraps it.** `NamedType(name, expansion)` keeps the
+  name for the message and the expansion for the meaning; every `IType.Accepts` starts with
+  `NamedType.Unwrap(actual)`, because a primitive that did not look through would refuse an `Amount` that
+  *is* an `int`. `NamedType.Unwrap` is also what a generator calls before deciding what kind of type it has
+  (the same rule as `type is UnknownType`). A named type is a **root of the types model** (not a second
+  list inside the rules document), `TypeRule.Ref` names it by a string the lowering resolves like
+  `conceptKey`, and undeclared/duplicate/self-referential names are load-time errors - the last one needs
+  the chain of names being expanded threaded through `LowerType`, which is exactly the bug a fresh set per
+  call would reintroduce (infinite recursion, a StackOverflow crash rather than a failing test).
 
 ### The framework ships one: ambiguity
 
@@ -1709,7 +1718,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1742 tests**; anything below that means tests were deleted.
+it. **Baseline is 1755 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

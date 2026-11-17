@@ -41,11 +41,15 @@ public sealed class PrimitiveType : IType
     /// An <see cref="UnknownType"/> is accepted, because refusing it would turn one mistake into a finding
     /// on every expression that reads it.
     /// </remarks>
+    /// <remarks>
+    /// A declared name is looked through first: an <c>Amount</c> that means <c>int</c> is an <c>int</c>, so a
+    /// primitive that refused it would make every alias a nominal type by accident.
+    /// </remarks>
     public bool Accepts(IType actual)
     {
         ArgumentNullException.ThrowIfNull(actual);
 
-        return actual switch
+        return NamedType.Unwrap(actual) switch
         {
             UnknownType => true,
             PrimitiveType primitive => string.Equals(primitive.Name, Name, StringComparison.Ordinal),
