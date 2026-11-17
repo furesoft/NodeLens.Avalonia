@@ -575,6 +575,38 @@ notation is registered per concept **and** variant
   uses; a column's `header` is lowered as an inline cell, so a header naming a slot is refused by
   `TableColumn` rather than answered by whichever row came first.
 
+## How scopes work
+
+`Projectional.Semantics/Scopes/` answers "what may this reference point at", and the design is
+`docs/architecture/language.md` §Scope model.
+
+- **`IScope` is asked two questions and they are the same question**: `Entries` is "what may I
+  reference here" (the completion list) and `Resolve(name)` is "what does this name mean" (a typed
+  name). One implementation, two consumers - a second lookup that answered differently would let the
+  list offer something the name cannot mean.
+- **A level does not deduplicate.** Two entries with one name inside a level are exactly what makes a
+  name ambiguous; collapsing them would turn a decision the user has to make into a silent pick.
+- **`ScopeChain` does not fall through an ambiguity.** A nearer level that knows the name twice makes
+  the name ambiguous; looking further for a unique answer would make a nearer declaration lose to a
+  farther one, which is the opposite of what a chain is for.
+- **`DefaultScopeProvider` is local, ancestors, model, project** - nearest first. Only named nodes
+  contribute (no name slot or an empty name is not something a name could mean), and **the node being
+  resolved is excluded everywhere**: a reference that could point at the thing holding it is a cycle
+  the model already refuses. The "imported models" step of the design is not implemented - a project
+  has no import list yet, so the project level stands in for it.
+- **`EditorSession.Scopes` is the aspect**, defaulting to `DefaultScopeProvider.Instance`. It is a
+  property rather than a constructor argument because a language package cannot reference the editing
+  layer, so the host installs a replacement.
+- **A reference completion carries a *name*, not an id.** `AcceptCompletionAction` re-resolves it
+  through the scope at the moment the key is pressed, so a target renamed or removed after the list
+  opened is refused instead of linked, and a name that has become ambiguous is refused rather than
+  picked. That is the same "re-resolve at apply time" rule a `DiagnosticFix` follows.
+- **`EditContext.NodeOf` searches the document, not the model.** A reference target is often a
+  *sibling root*, so resolving one through `NodeOf` returns null and the edit silently does nothing -
+  use `node.Model.Project.FindNode(id)`. This cost a debugging round; do not "simplify" it back.
+- **`SelectCompletionAction` takes a delta, not an index**, and `CompletionList.Move(0)` throws. A
+  freshly opened list already selects index 0, so a test that wants the first entry accepts directly.
+
 ## How the editor tree is built
 
 `Projectional.Projection/Tree/` is the runtime tree: notation cells are *data describing* what
@@ -1561,7 +1593,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1635 tests**; anything below that means tests were deleted.
+it. **Baseline is 1659 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

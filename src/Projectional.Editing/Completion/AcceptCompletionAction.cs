@@ -1,4 +1,5 @@
 using Projectional.Projection;
+using Projectional.Semantics;
 
 namespace Projectional.Editing;
 
@@ -49,6 +50,26 @@ public sealed class AcceptCompletionAction : CompletionAction
             return Accepts(property, item) && context.SetProperty(property, item.ConceptKey)
                 ? EditResult.Applied(selection)
                 : EditResult.Unchanged(selection);
+        }
+
+        if (slot.Reference is { } reference)
+        {
+            context.Completion = null;
+
+            // The name is re-resolved against the scope as it is now, not trusted from the list: a list
+            // survives between keystrokes and the document does not. A name that has become ambiguous is
+            // refused rather than picked, which is the rule the scope model states.
+            var resolution = context.Scopes.ScopeOf(slot.Owner, reference.Slot).Resolve(item.ConceptKey);
+
+            if (item.Kind != CompletionKind.Reference
+                || resolution.Kind != ScopeResolutionKind.Found
+                || slot.Owner.Model.Project.FindNode(resolution.Entry.Node) is not { } target
+                || !context.SetReference(slot.Owner, reference.Slot, target))
+            {
+                return EditResult.Unchanged(selection);
+            }
+
+            return EditResult.Applied(selection);
         }
 
         if (!Accepts(context, slot, item))

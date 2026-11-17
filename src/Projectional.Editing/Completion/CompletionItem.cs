@@ -80,6 +80,18 @@ public sealed class CompletionItem
     /// <exception cref="ArgumentException"><paramref name="symbol"/> is empty.</exception>
     public static CompletionItem ForValue(string symbol) => new(symbol, CompletionKind.Value);
 
+    /// <summary>Creates an item for one thing a reference may point at.</summary>
+    /// <param name="name">The target's name, which is what the user sees and what the slot will show.</param>
+    /// <param name="description">The target concept's own sentence, or <see langword="null"/>.</param>
+    /// <remarks>
+    /// The payload is the <em>name</em>, not the target's id, and that is deliberate: accepting re-resolves
+    /// the name through the scope at the moment the key is pressed, exactly like a repair re-resolves its
+    /// finding. A list that carried an id would link to a node the document may have moved on from, and a
+    /// name that has since become ambiguous is refused instead of silently picking one of the two.
+    /// </remarks>
+    public static CompletionItem ForReference(string name, string? description = null) =>
+        new(name, CompletionKind.Reference, description);
+
     private static string LabelOf(string conceptKey)
     {
         var dot = conceptKey.LastIndexOf('.');

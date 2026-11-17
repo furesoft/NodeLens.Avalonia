@@ -392,6 +392,48 @@ replace any step. Ambigous results are diagnostics, not silent picks.
 The scope chain is also what completion lists are built from — one implementation,
 two consumers.
 
+### What is implemented
+
+`Projectional.Semantics/Scopes/` holds the model, and `DefaultScopeProvider` is the chain a
+language gets when it says nothing.
+
+| Type | Job |
+| --- | --- |
+| `ScopeEntry` | one thing a name can mean: the name, the node, the concept key |
+| `IScope` | `Entries` (what may I reference here) and `Resolve(name)` (what does this name mean) |
+| `Scope` | one level; **deliberately not deduplicated** |
+| `ScopeChain` | the levels in priority order, first match wins |
+| `ScopeResolution` | `Found` / `Ambiguous` / `Missing`, with the candidates on an ambiguity |
+| `IScopeProvider` | the aspect: `ScopeOf(node, referenceSlot)` |
+
+Four rules are worth knowing because each is a decision rather than a detail:
+
+- **A level does not deduplicate.** Two entries with one name inside a level are exactly what makes a
+  name ambiguous; collapsing them would turn a decision the user has to make into a silent pick.
+- **The chain does not fall through an ambiguity.** A nearer level that knows the name twice makes the
+  name ambiguous; looking further for a unique answer would make a nearer declaration lose to a farther
+  one, which is the opposite of what a chain is for.
+- **Only named nodes contribute**, and the node being resolved is excluded everywhere. A node with no
+  name slot or an empty name is not something a name could mean, and a reference that could point at
+  the thing holding it is a cycle the model already refuses.
+- **The default chain is local, ancestors, model, project** - in that order, nearest first. The
+  "imported models" step is not implemented: a project has no import list yet, so the project level
+  stands in for it.
+
+`EditorSession.Scopes` is the aspect, defaulting to `DefaultScopeProvider.Instance`. It is a property
+rather than a constructor argument because a language package cannot reference the editing layer, so
+the host is what installs a replacement.
+
+### The two consumers
+
+- **Completion.** A caret in a `ReferenceCell` offers the scope's entries that fit the slot's declared
+  concept (`CompletionKind.Reference`). Accepting one re-resolves the *name* through the scope at the
+  moment the key is pressed - the list carries a name, not an id - so a target that was renamed or
+  removed after the list opened is refused instead of linked. A name that has become ambiguous is
+  refused too, which is the "no silent pick" rule applied to the gesture.
+- **A typed name** is the other consumer and is not implemented yet: typing into a reference cell still
+  does nothing, so a reference is created by choosing from the list.
+
 ## Languages come in two flavours
 
 Both implement the same `ILanguage`; nothing else in the system distinguishes them.
