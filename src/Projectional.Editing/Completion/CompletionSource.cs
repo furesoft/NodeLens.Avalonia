@@ -90,9 +90,55 @@ internal static class CompletionSource
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        if (slot.Reference is { } reference)
+        {
+            return References(context, slot.Owner, reference.Slot);
+        }
+
         return slot.Property is { } property
             ? Values(property)
             : Open(context, slot.Owner, slot.Slot);
+    }
+
+    /// <summary>
+    /// The things the reference in <paramref name="slot"/> of <paramref name="owner"/> may point at, or
+    /// <see langword="null"/> when the scope holds nothing that fits.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The scope is the aspect's answer, so this is the same list a typed name resolves against - one
+    /// implementation, two consumers. Entries are filtered by the slot's declared concept, because a scope
+    /// describes what is <em>visible</em> and the slot says what is <em>legal</em>; offering a visible node
+    /// the slot refuses would be a list whose entries cannot be accepted.
+    /// </para>
+    /// <para>
+    /// A name the scope resolves ambiguously is offered once per candidate: the list is where the user sees
+    /// that two things are called the same, and picking one is exactly the decision the model refuses to
+    /// make for them.
+    /// </para>
+    /// </remarks>
+    internal static CompletionList? References(EditContext context, Node owner, string slot)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+
+        if (owner.Concept.FindReference(slot) is not { } reference)
+        {
+            return null;
+        }
+
+        List<CompletionItem> items = [];
+
+        foreach (var entry in context.Scopes.ScopeOf(owner, slot).Entries)
+        {
+            if (entry.Fits(reference.TargetConceptKey, context.Concepts))
+            {
+                items.Add(CompletionItem.ForReference(entry.Name));
+            }
+        }
+
+        return items.Count == 0 ? null : new CompletionList(items);
     }
 
     /// <summary>

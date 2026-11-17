@@ -319,15 +319,15 @@ stands for, so there is nothing created to resolve the caret into.
 | --- | --- | --- |
 | A | `feat/completion` | `CompletionKind`/`Item`/`List`/`Slot`/`Source`, the six actions, `EditorSession.Completion`, `EditorKey.ControlSpace`/`Escape`, the two mappings, `CompletionPalette`/`Icon`/`GeometryImage`/`Presenter`, the control's painting and click handling, tests |
 | A2 | `feat/enum-completion` | `CompletionKind.Value`, `PropertyType.Symbols`, `CompletionSource.Values`, the value branch of accept, arrival-based offers from `EditorSession`, tests |
-| B | `feat/completion-references` | `Kind.Reference` and reference targets as proposals, which needs a *scope* to answer "what may be referenced here" — the first completion that reads the model rather than the registry |
+| B ✓ | `feat/scope-completion` | `Kind.Reference` and reference targets as proposals, answered by the scope chain (`Projectional.Semantics/Scopes`, [language.md](language.md#scope-model)) - the first completion that reads the model rather than the registry. Accepting re-resolves the *name* through the scope, so a target renamed or removed after the list opened is refused rather than linked |
 | C | `feat/completion-fill` | completing a **filled** slot: replacing the child a caret is inside, which is the MPS `Substitute` action and needs the substitution rules a language declares |
 | D | `feat/completion-words` | narrowing over a *typed* prefix in a property cell, which is the VS Code behaviour users expect and which slice A deliberately does not do |
 | E | `feat/completion-tooltip` | a detail pane: the concept's documentation and its declared slots, which needs the language to carry documentation |
 
-Slice B is the one that makes the feature feel finished, and it is deliberately second: proposals
-from a scope need a scope, and a scope is the semantics layer
-([semantics.md](semantics.md)), not the editing layer. A slice that faked it by listing every
-node in the document would have to be thrown away.
+Slice B is the one that makes the feature feel finished, and it was deliberately second: proposals
+from a scope need a scope, and a scope is the semantics layer, not the editing layer. It landed with
+the scope model itself (`Projectional.Semantics/Scopes`), which is why the list and a typed name can
+share one implementation.
 
 ## What this plan deliberately leaves out
 

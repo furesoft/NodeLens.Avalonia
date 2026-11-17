@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.Projection;
+using Projectional.Semantics;
 
 namespace Projectional.Editing;
 
@@ -182,6 +183,16 @@ public sealed class EditorSession : IDisposable
     /// the gesture that changes it is <see cref="SetColumnWidth"/>.
     /// </remarks>
     public ColumnWidths ColumnWidths { get; private set; } = ColumnWidths.Empty;
+
+    /// <summary>
+    /// What a reference may point at.
+    /// </summary>
+    /// <remarks>
+    /// The aspect, so a host or a language replaces the chain by setting it; the default is the chain
+    /// <see cref="DefaultScopeProvider"/> describes. It is a property rather than a constructor argument
+    /// because a language package cannot reference the editing layer, so the host is what installs it.
+    /// </remarks>
+    public IScopeProvider Scopes { get; set; } = DefaultScopeProvider.Instance;
 
     /// <summary>
     /// The completion list open at the caret, or <see langword="null"/> when none is.
@@ -913,7 +924,7 @@ public sealed class EditorSession : IDisposable
 
     /// <summary>The context one action sees, built from the tree and layout as they are now.</summary>
     private EditContext ContextFor(EditAction action) =>
-        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing)
+        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing, Scopes)
         {
             Completion = action is CompletionAction ? Completion : null,
 

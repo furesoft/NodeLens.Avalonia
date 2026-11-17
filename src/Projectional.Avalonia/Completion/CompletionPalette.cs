@@ -36,6 +36,9 @@ public sealed class CompletionPalette
     /// <summary>The shape of a proposal that inserts a node.</summary>
     private const string NodePath = "M 8,1 L 15,8 L 8,15 L 1,8 Z";
 
+    /// <summary>The shape drawn for a reference target: an arrow, because accepting one links rather than creates.</summary>
+    private const string ReferencePath = "M 2,8 L 12,8 M 9,5 L 12,8 L 9,11";
+
     /// <summary>The shape drawn for a kind the palette does not mention.</summary>
     private const string MarkerPath = "M 5,5 L 11,5 L 11,11 L 5,11 Z";
 
@@ -64,7 +67,8 @@ public sealed class CompletionPalette
         Paint("#1E1E1E"),
         Paint("#0060C0"),
         Paint("#FFFFFF"),
-        [Icon(CompletionKind.Node, NodePath, "#B06A00")]);
+        [Icon(CompletionKind.Node, NodePath, "#B06A00"),
+            Icon(CompletionKind.Reference, ReferencePath, "#2F6FBF")]);
 
     /// <summary>The palette for a dark background.</summary>
     public static CompletionPalette Dark { get; } = Create(
@@ -73,7 +77,8 @@ public sealed class CompletionPalette
         Paint("#D4D4D4"),
         Paint("#04395E"),
         Paint("#FFFFFF"),
-        [Icon(CompletionKind.Node, NodePath, "#E0A030")]);
+        [Icon(CompletionKind.Node, NodePath, "#E0A030"),
+            Icon(CompletionKind.Reference, ReferencePath, "#6FA8E0")]);
 
     /// <summary>What is painted behind the rows.</summary>
     public IBrush Background { get; }

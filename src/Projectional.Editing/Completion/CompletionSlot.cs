@@ -25,7 +25,7 @@ namespace Projectional.Editing;
 /// <see cref="EditContext.PlaceAt"/> resolves the document-order hint, so the cell here is that cell.
 /// </para>
 /// </remarks>
-internal readonly record struct CompletionSlot(Node Owner, string Slot, PropertyCell? Property)
+internal readonly record struct CompletionSlot(Node Owner, string Slot, PropertyCell? Property, ReferenceCell? Reference = null)
 {
     /// <summary>What the caret of <paramref name="context"/> could be completed with, or <see langword="null"/>.</summary>
     internal static CompletionSlot? At(EditContext context)
@@ -41,6 +41,15 @@ internal readonly record struct CompletionSlot(Node Owner, string Slot, Property
         {
             return context.NodeOf(place.Address) is { } declared
                 ? new CompletionSlot(declared, property.Slot, property)
+                : null;
+        }
+
+        // A reference cell is always filled - it shows the target's name or a placeholder - so it is not
+        // an empty slot. What it offers is the scope's entries, and accepting one re-links the slot.
+        if (place.Cell is ReferenceCell reference)
+        {
+            return context.NodeOf(place.Address) is { } referrer
+                ? new CompletionSlot(referrer, reference.Slot, Property: null, reference)
                 : null;
         }
 
@@ -65,4 +74,7 @@ internal readonly record struct CompletionSlot(Node Owner, string Slot, Property
     /// complete" from becoming a special case at every call site.
     /// </remarks>
     internal bool HasProposals => Property is { } property ? property.Type.Symbols.Count > 0 : true;
+
+    /// <summary>Whether this slot is a reference, which is answered from the scope rather than the registry.</summary>
+    internal bool IsReference => Reference is not null;
 }

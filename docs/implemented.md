@@ -92,6 +92,9 @@ and [testing.md](architecture/testing.md).
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
 | Reference cells with three states (unset, unresolved, resolved) | `ReferenceCell`, `ReferenceState` | `NodeReferenceTests`, the `references.mps` corpus document |
+| Scope model: a chain of levels, first match wins, ambiguity as a value | `Projectional.Semantics/Scopes/` | `ScopeTests`, `ScopeChainTests` |
+| The default chain: local, ancestors, model, project; only named nodes, never the node itself | `DefaultScopeProvider` | `DefaultScopeProviderTests` |
+| Scope-driven completion: a reference offers the scope's entries and accepting re-resolves the name | `CompletionSource.References`, `CompletionKind.Reference` | `ScopeCompletionTests` |
 | Concept triggers: a typed character at the edge of a node creates and wraps | `ConceptTrigger`, `TriggerAnchors` | `ConceptTriggerTests`, `ConceptRegistryTriggerTests`, `TypeTextTriggerTests` |
 | Intention model, per-caret list, apply path, popup, menu split | `Projectional.Editing/Intentions/` | `IntentionTests`, `IntentionListTests`, `IntentionAvailabilityTests`, `EditorSessionIntentionTests`, `OfferKeysTests` |
 | Intention preview: sandbox copy, diff, marks, hover ladder, ghost frame | `Projectional.Editing/Preview/`, ADR 0017 | `PreviewSandboxTests`, `ModelCopyTests`, `ModelDiffTests`, `PreviewMarksTests`, `PreviewDelayTests`, `PreviewStateTests`, `GhostFrameTests`, `PreviewBadgeTests`, `OfferPreviewTests`, `SamplePreviewTests` |

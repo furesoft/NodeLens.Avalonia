@@ -23,4 +23,14 @@ public enum CompletionKind
     /// that a value is a choice among the words this slot allows, not something new.
     /// </remarks>
     Value,
+
+    /// <summary>
+    /// One thing a reference may point at, which is what accepting it links the slot to.
+    /// </summary>
+    /// <remarks>
+    /// A reference is neither a node to create nor a value to write: accepting one leaves the model's
+    /// nodes alone and changes a link, so a host that drew it like a node would be hiding that nothing
+    /// new appears in the document.
+    /// </remarks>
+    Reference,
 }

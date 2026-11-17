@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.Projection;
+using Projectional.Semantics;
 
 namespace Projectional.Editing;
 
@@ -36,7 +37,8 @@ public sealed class EditContext
         double pageHeight,
         Selection selection,
         ITextClipboard clipboard,
-        ITypingRules typing)
+        ITypingRules typing,
+        IScopeProvider scopes)
     {
         _document = document;
         _places = CaretPlaces.Of(tree);
@@ -48,10 +50,17 @@ public sealed class EditContext
         Selection = selection;
         Clipboard = clipboard;
         _typing = typing;
+        Scopes = scopes;
     }
 
     /// <summary>The node being edited, which is the root of the tree.</summary>
     public Node Document => _document;
+
+    /// <summary>
+    /// What a reference may point at, which is the aspect a language replaces when the default chain is
+    /// not what it means.
+    /// </summary>
+    public IScopeProvider Scopes { get; }
 
     /// <summary>The tree the caret was resolved against.</summary>
     public EditorTree Tree { get; }
@@ -213,6 +222,36 @@ public sealed class EditContext
         }
 
         node.Set(slot, text);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Points the reference in <paramref name="slot"/> of <paramref name="node"/> at <paramref name="target"/>.
+    /// </summary>
+    /// <param name="node">The node that owns the reference.</param>
+    /// <param name="slot">The reference slot.</param>
+    /// <param name="target">The node to point at.</param>
+    /// <returns>Whether the reference was set.</returns>
+    /// <remarks>
+    /// The target's name travels with the link as its <c>resolveInfo</c>, so a reference whose target is
+    /// later removed still says what it meant - the same fallback a loaded document uses.
+    /// </remarks>
+    public bool SetReference(Node node, string slot, Node target)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentNullException.ThrowIfNull(target);
+
+        if (!ReferenceEquals(node.Model, _document.Model)
+            || !ReferenceEquals(target.Model, _document.Model)
+            || node.Concept.FindReference(slot) is not { } reference
+            || !target.Concept.IsKindOf(reference.TargetConceptKey))
+        {
+            return false;
+        }
+
+        node.SetReference(slot, target.Id, target.Concept.NameSlot is { } nameSlot ? target.GetOrNull(nameSlot.Name) : null);
 
         return true;
     }
