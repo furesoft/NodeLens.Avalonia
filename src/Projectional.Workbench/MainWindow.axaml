@@ -8,7 +8,7 @@
     <Menu DockPanel.Dock="Top">
       <MenuItem Header="_File">
         <MenuItem Header="_New" HotKey="Ctrl+N" Click="OnNewDocument" />
-        <MenuItem Header="New language _definition" Click="OnNewLanguageDefinition" />
+        <MenuItem Header="New _concept" Click="OnNewConcept" />
         <MenuItem Header="New _enumeration" Click="OnNewEnumeration" />
         <MenuItem Header="New _notation" Click="OnNewNotation" />
         <MenuItem Header="New document of an _opened language" Click="OnNewLanguageDocument" />
