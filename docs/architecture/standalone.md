@@ -174,7 +174,7 @@ command object, so a command cannot be enabled in one place and dead in another.
 | Save / Save all | `Ctrl+S` / `Ctrl+Shift+S` | active document dirty |
 | Close document | `Ctrl+W` | a document is open |
 | Undo / Redo | `Ctrl+Z` / `Ctrl+Y` | session reports availability |
-| Find | `Ctrl+F` | a document is open |
+| Find | `Ctrl+F` - **delivered** as View ▸ Find..., a menu `HotKey` in the app rather than a registry entry (no `CommandRegistry` exists yet) | a document is open |
 | Validate project | `F5` | a project is open |
 | Generate | `Ctrl+G` | language provides a generator |
 | Next / previous problem | `F8` / `Shift+F8` | diagnostics exist |
@@ -183,6 +183,27 @@ Routing rule: the **focused session** receives editing commands; application com
 (open, save, close) act on the active document. A key that the session handles must not
 also trigger a command, which is why the control reports unhandled keys rather than
 swallowing them.
+
+### Find
+
+**View ▸ Find...** (`Ctrl+F`) opens a strip above the document with a query box, a match-case toggle, the match
+count and Previous/Next. `Projectional.Editing/Find/` is the whole of it:
+`Finder.Find` answers the occurrences, `FindNextAction` selects the next or previous one, and the app only counts
+and scrolls.
+
+- **A strip, not a dialog.** A search is repeated, so it must not take the caret away from the document it
+  searches; the count stays visible while the user reads the result.
+- **The search walks caret places, not the model**, because "where is this text" is a question about the page -
+  and a property the notation hides is therefore not found, which is the rule the caret already obeys. Only
+  property cells are searched: a keyword is drawn from the notation, so a match in one would be an offer no edit
+  can keep.
+- **Enter is forward, Shift+Enter backward, Escape gives the keyboard back** - the same three gestures as
+  everywhere else, and the reason the bar needs no buttons to be usable.
+- **The count is asked on every change**, never remembered: the query and the document both move.
+
+Replace is deliberately not part of this: replacing is an edit, so it belongs with the editing layer's text
+actions (`TypeTextAction` over the selection a match produces) rather than in a box that writes while the user
+types. A "replace all" would be one transaction over the matches `Finder` already answers.
 
 ### Representations
 

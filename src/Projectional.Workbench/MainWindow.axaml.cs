@@ -356,6 +356,101 @@ public sealed partial class MainWindow : Window, IDisposable
         document.Problems = ProblemList.Of(document.Model, findings);
     }
 
+    /// <summary>Opens the find bar and puts the caret in it.</summary>
+    private void OnFindText(object? sender, RoutedEventArgs e)
+    {
+        FindBar.IsVisible = true;
+        FindInput.Focus();
+        FindInput.SelectAll();
+        UpdateFindCount();
+    }
+
+    /// <summary>Re-counts the matches as the query changes.</summary>
+    /// <remarks>
+    /// The count is asked of <see cref="Finder"/> rather than kept from the last search, because the query and the
+    /// document both change: a number that outlived either would be a number nobody can act on.
+    /// </remarks>
+    private void OnFindQueryChanged(object? sender, RoutedEventArgs e) => UpdateFindCount();
+
+    /// <summary>Enter searches forward, Shift+Enter backward, Escape leaves the bar.</summary>
+    private void OnFindKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter when e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                FindStep(FindDirection.Backward);
+                break;
+
+            case Key.Enter:
+                FindStep(FindDirection.Forward);
+                break;
+
+            case Key.Escape:
+                CloseFind();
+                break;
+
+            default:
+                return;
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnFindNext(object? sender, RoutedEventArgs e) => FindStep(FindDirection.Forward);
+
+    private void OnFindPrevious(object? sender, RoutedEventArgs e) => FindStep(FindDirection.Backward);
+
+    /// <summary>Selects the next occurrence and tells the user where it is.</summary>
+    private void FindStep(FindDirection direction)
+    {
+        if (Query is not { } query
+            || _documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.Apply(new FindNextAction(query, direction));
+
+        // The session changes nothing the control can observe, so the host repaints - the same rule the
+        // representation menu follows.
+        editor.Refresh();
+        editor.ScrollToCaret();
+
+        UpdateFindCount();
+    }
+
+    /// <summary>Fills in the match count for the active document.</summary>
+    private void UpdateFindCount()
+    {
+        if (Query is not { } query)
+        {
+            FindCount.Text = string.Empty;
+            return;
+        }
+
+        var matches = _documents.Active is { } document ? Finder.Find(document.Session, query) : [];
+
+        FindCount.Text = matches.Count switch
+        {
+            0 => "no matches",
+            1 => "1 match",
+            _ => $"{matches.Count} matches",
+        };
+    }
+
+    /// <summary>Hides the bar and gives the keyboard back to the document.</summary>
+    private void CloseFind()
+    {
+        FindBar.IsVisible = false;
+        FocusActiveDocument();
+    }
+
+    /// <summary>The query the bar describes, or <see langword="null"/> while it holds no text.</summary>
+    private FindQuery? Query =>
+        FindInput.Text is { Length: > 0 } text ? new FindQuery(text, FindCase.IsChecked == true) : null;
+
     /// <summary>Fills the problems panel from the active document, and hides it when there is nothing to report.</summary>
     private void ShowProblems()
     {
