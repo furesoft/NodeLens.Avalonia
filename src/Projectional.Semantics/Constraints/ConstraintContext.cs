@@ -22,10 +22,11 @@ public sealed class ConstraintContext
 {
     private readonly List<Diagnostic> _diagnostics = [];
 
-    internal ConstraintContext(Node node, IScopeProvider scopes)
+    internal ConstraintContext(Node node, IScopeProvider scopes, TypeRegistry types)
     {
         Node = node;
         Scopes = scopes;
+        Types = types;
     }
 
     /// <summary>The node being checked.</summary>
@@ -33,6 +34,17 @@ public sealed class ConstraintContext
 
     /// <summary>What a reference may point at, which is the aspect a language replaces.</summary>
     public IScopeProvider Scopes { get; }
+
+    /// <summary>The language's type rules, so a rule can ask what a child evaluates to.</summary>
+    public TypeRegistry Types { get; }
+
+    /// <summary>What <paramref name="node"/> evaluates to, or <see cref="UnknownType"/> when nothing says.</summary>
+    public IType TypeOf(Node node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        return Types.TypeOf(node);
+    }
 
     /// <summary>Everything reported so far, in the order it was reported.</summary>
     public IReadOnlyList<Diagnostic> Diagnostics => _diagnostics;

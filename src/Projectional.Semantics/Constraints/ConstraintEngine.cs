@@ -26,20 +26,23 @@ public sealed class ConstraintEngine
 {
     private readonly ConstraintSet _constraints;
     private readonly IScopeProvider _scopes;
+    private readonly TypeRegistry _types;
 
     /// <summary>Creates an engine for <paramref name="constraints"/>.</summary>
     /// <param name="constraints">The language's rules.</param>
+    /// <param name="types">The language's type rules, or <see langword="null"/> when it declares none.</param>
     /// <param name="scopes">
     /// What a reference may point at, or <see langword="null"/> for the default chain. A language that
     /// replaced a level of the chain passes the same provider here, so a constraint and the editor agree
     /// about what is visible.
     /// </param>
-    public ConstraintEngine(ConstraintSet constraints, IScopeProvider? scopes = null)
+    public ConstraintEngine(ConstraintSet constraints, IScopeProvider? scopes = null, TypeRegistry? types = null)
     {
         ArgumentNullException.ThrowIfNull(constraints);
 
         _constraints = constraints;
         _scopes = scopes ?? DefaultScopeProvider.Instance;
+        _types = types ?? TypeRegistry.Empty;
     }
 
     /// <summary>The rules this engine runs.</summary>
@@ -88,7 +91,7 @@ public sealed class ConstraintEngine
     {
         foreach (var constraint in _constraints.For(node.Concept))
         {
-            var context = new ConstraintContext(node, _scopes);
+            var context = new ConstraintContext(node, _scopes, _types);
 
             constraint.Check(context);
 

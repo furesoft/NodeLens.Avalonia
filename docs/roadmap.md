@@ -71,7 +71,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Delivers | Details |
 | --- | --- |
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
-| Types | basic type system with `Unknown` semantics |
+| Types | the primitive and `Unknown` kinds, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the named and structural kinds ([semantics.md](architecture/semantics.md#types)) |
 | Text generation | template trees, traceability map |
 | Interpreter | evaluation with trace and step budget |
 | Cross-check tests | generated code and interpreter agree on the corpus |
