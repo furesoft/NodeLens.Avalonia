@@ -432,11 +432,13 @@ meant. The replacement branch is checked *before* the property branch, because t
 usually in one of the child's own property cells and "write a value here" would otherwise answer
 first.
 
-**An intention acts on the node the caret is in, not on the selection.** Wrapping "a selection"
-therefore wraps the node whose cell holds the caret: a `Ctrl+A` selection that moved the caret out
-of that node describes a range the intention list cannot see. That is the one place where the
-substitution story is still incomplete, and it is why the milestone's gate says *selection*
-explicitly.
+**An intention acts on the node the caret is in, and a second one acts on the range.** `Wrap in "X"`
+surrounds the node whose cell holds the caret; `Wrap selection in "X"` surrounds every node the range
+covers completely (`IntentionContext.SelectedNodes`), which is the entry that makes wrapping several
+siblings one undo step - `Model.Wrap` takes the run and the whole change is one transaction. The two are
+separate entries with separate ids, because a selection does not remove the caret: both are listed, and
+they describe different edits. A range that is not a run of consecutive siblings has no entry at all,
+since `WrapperConcepts` asks the question the model would answer with a refusal.
 
 ## The context menu
 

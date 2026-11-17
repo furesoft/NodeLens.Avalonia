@@ -87,7 +87,7 @@ and [testing.md](architecture/testing.md).
 | Self-contained single file, with a `--self-check` the bundle runs on itself | `Projectional.Workbench.csproj`, `SelfCheck.cs`, `ci.yml` | the `single-file` CI job: publish, assert one file, run the check |
 | **The M2 gate**: a DSL that exists only as data - `structure.mps`, `editor.mps` and a document | `samples/declared-pipeline/` | `DeclaredSampleLanguageTests` (loads, draws as a table, edits, saves, reloads byte-identically, hands the folder to the shell) |
 
-## M3 - References, triggers and intentions (partly, landed early)
+## M3 - References, triggers and intentions (all but the structural clipboard)
 
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
@@ -99,14 +99,20 @@ and [testing.md](architecture/testing.md).
 | Per-language scope overrides: a concept declares a provider, inherited by the concepts below it | `ScopeProviderRegistry` | `ScopeProviderRegistryTests` |
 | Ambiguity diagnostics: a reference whose name no longer identifies its target is reported on the reference slot | `AmbiguousReferenceConstraint`, `ScopeConstraints.All` | `AmbiguousReferenceConstraintTests` |
 | Completing a filled slot: the list offers what could replace the child, accepting replaces it in one undo step | `CompletionSlot.Replace`, `CompletionSource.Replacements`, `ReplacementConcepts` | `CompletionActionTests` |
+| Wrapping a selection: the range entry, its search, and the model's run form of the wrap | `StandardIntentions.WrapSelectionPrefix`, `WrapperConcepts.Of(nodes, ...)`, `Model.Wrap(IReadOnlyList<Node>, ...)`, `IntentionContext.SelectedNodes` | `StandardIntentionsTests`, `WrapInActionTests` |
 | Concept triggers: a typed character at the edge of a node creates and wraps | `ConceptTrigger`, `TriggerAnchors` | `ConceptTriggerTests`, `ConceptRegistryTriggerTests`, `TypeTextTriggerTests` |
 | Intention model, per-caret list (MPS' transformation menu), apply path, popup, menu split | `Projectional.Editing/Intentions/` | `IntentionTests`, `IntentionListTests`, `IntentionAvailabilityTests`, `EditorSessionIntentionTests`, `OfferKeysTests` |
 | Intention preview: sandbox copy, diff, marks, hover ladder, ghost frame | `Projectional.Editing/Preview/`, ADR 0017 | `PreviewSandboxTests`, `ModelCopyTests`, `ModelDiffTests`, `PreviewMarksTests`, `PreviewDelayTests`, `PreviewStateTests`, `GhostFrameTests`, `PreviewBadgeTests`, `OfferPreviewTests`, `SamplePreviewTests` |
 | Standard intention catalogue (replace, sort, select node, select slot, wrap, negate, accept rule, make abstract/concrete) | `Projectional.Intentions/` | `StandardIntentionsTests`, `ExpressionsIntentionsTests`, `RulesIntentionsTests`, `StructureIntentionsTests` |
 | The app registers the standard catalogue once, at open | `MainWindow.RegisterIntentions` | `StandardIntentionsTests` (one row per operation) |
 
-Not done in M3: an intention acting on a **selection of several nodes** - the list re-derives its
-target from the caret, so the milestone's "wrap a selection in an `if`" clause is unmet.
+The gate's three clauses hold: a reference into another model resolves, a rename leaves every model intact
+because the reference stores `resolveInfo`, and wrapping a selection is one undo step. The last one is proven
+on a wrapper that holds a list (`GroupLanguage` in the tests) rather than on an `if`, because no shipped
+language has a statement body yet - the operation is generic, so the `if` arrives with the code DSL in M6.
+
+Not done in M3: the structural clipboard - copying, cutting and pasting a **subtree** across slots, which is
+a payload of its own rather than text inside one cell ([clipboard.md](architecture/clipboard.md)).
 
 ## M4 - Checks and quick fixes (partly, landed early)
 
@@ -151,7 +157,7 @@ Nothing is delivered. M6 (the shell as an embeddable, language-locked component)
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1757 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1765 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

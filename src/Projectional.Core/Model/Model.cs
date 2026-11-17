@@ -179,24 +179,9 @@ public sealed class Model
     /// </param>
     /// <returns>The node that was created.</returns>
     /// <remarks>
-    /// <para>
-    /// Wrapping cannot be written as "create the wrapper, then move the node into it": a single-valued slot
-    /// holds at most one child, so there is no moment at which both the node and its wrapper could be in
-    /// the slot together. The node therefore leaves first and returns inside the wrapper, and all three
-    /// steps run in one transaction so that the user sees one undo step and so that a failure cannot leave
-    /// the node outside the document.
-    /// </para>
-    /// <para>
-    /// The node keeps its id, which is what makes the operation safe to undo: every reference that points
-    /// into its subtree and every caret address that names one of its cells still resolves afterwards.
-    /// </para>
-    /// <para>
-    /// <paramref name="presets"/> exists because some wrappers only mean something with a value:
-    /// "negate" is a <c>Unary</c> whose operator is <c>!</c>, and a caller cannot write that value
-    /// afterwards, because the wrapper's id does not exist until it is created. Every preset is validated
-    /// against the wrapper's declarations before anything is touched, so a wrong one fails without leaving
-    /// the node detached.
-    /// </para>
+    /// The one-node case of <see cref="Wrap(IReadOnlyList{Node}, string, string, IReadOnlyDictionary{string, string})"/>,
+    /// which is where the reasoning lives: a wrapper that already holds something is the same operation with a
+    /// run of siblings instead of one node.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
@@ -204,8 +189,8 @@ public sealed class Model
     /// </exception>
     /// <exception cref="ModelInvariantException">
     /// <paramref name="node"/> is not part of this model, has no place, cannot be wrapped by that concept
-    /// in that slot, the wrapper declares no single-child slot of that name, or a preset names a property
-    /// the wrapper does not declare or a value its type refuses.
+    /// in that slot, the wrapper declares no child slot of that name that can hold it, or a preset names a
+    /// property the wrapper does not declare or a value its type refuses.
     /// </exception>
     public Node Wrap(
         Node node,
@@ -214,19 +199,90 @@ public sealed class Model
         IReadOnlyDictionary<string, string>? presets = null)
     {
         ArgumentNullException.ThrowIfNull(node);
+
+        return Wrap([node], wrapperConceptKey, wrapperSlot, presets);
+    }
+
+    /// <summary>
+    /// Puts a run of sibling nodes inside one new node of <paramref name="wrapperConceptKey"/>.
+    /// </summary>
+    /// <param name="nodes">
+    /// The nodes to surround, which keep their identity, their subtrees and their order. They must be siblings
+    /// standing next to each other in one slot.
+    /// </param>
+    /// <param name="wrapperConceptKey">The concept of the node to create around them.</param>
+    /// <param name="wrapperSlot">
+    /// The slot of that concept which receives them - a many-valued one unless there is a single node.
+    /// </param>
+    /// <param name="presets">
+    /// Values the wrapper is born with, or <see langword="null"/> for a wrapper holding only its defaults.
+    /// </param>
+    /// <returns>The node that was created.</returns>
+    /// <remarks>
+    /// <para>
+    /// Wrapping cannot be written as "create the wrapper, then move the nodes into it": a single-valued slot
+    /// holds at most one child, so there is no moment at which both a node and its wrapper could be in
+    /// the slot together. The nodes therefore leave first and return inside the wrapper, and all steps run
+    /// in one transaction so that the user sees one undo step and so that a failure cannot leave the nodes
+    /// outside the document.
+    /// </para>
+    /// <para>
+    /// The nodes keep their ids, which is what makes the operation safe to undo and what makes several nodes
+    /// one operation: every reference that points into their subtrees and every caret address that names one
+    /// of their cells still resolves afterwards.
+    /// </para>
+    /// <para>
+    /// A run, not a set: the nodes must name the place each other stands in, so a selection that skipped one
+    /// of their siblings is refused rather than silently leaving that sibling outside the wrapper. Nothing
+    /// here decides what a user selected - <c>SelectionRanges.NodesIn</c> answers in document order, and the
+    /// order this operation keeps is the order a reader sees.
+    /// </para>
+    /// <para>
+    /// <paramref name="presets"/> exists because some wrappers only mean something with a value:
+    /// "negate" is a <c>Unary</c> whose operator is <c>!</c>, and a caller cannot write that value
+    /// afterwards, because the wrapper's id does not exist until it is created. Every preset is validated
+    /// against the wrapper's declarations before anything is touched, so a wrong one fails without leaving
+    /// the nodes detached.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="nodes"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="nodes"/> is empty, or <paramref name="wrapperConceptKey"/> or
+    /// <paramref name="wrapperSlot"/> is empty.
+    /// </exception>
+    /// <exception cref="ModelInvariantException">
+    /// A node is not part of this model, has no place, the nodes are not consecutive siblings, they cannot be
+    /// wrapped by that concept in that slot, the wrapper declares no slot of that name that can hold them all,
+    /// or a preset names a property the wrapper does not declare or a value its type refuses.
+    /// </exception>
+    public Node Wrap(
+        IReadOnlyList<Node> nodes,
+        string wrapperConceptKey,
+        string wrapperSlot,
+        IReadOnlyDictionary<string, string>? presets = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodes);
         ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
         ArgumentException.ThrowIfNullOrEmpty(wrapperSlot);
 
-        if (!ReferenceEquals(node.Model, this))
+        if (nodes.Count == 0)
         {
-            throw new ModelInvariantException(
-                $"Node {node.Id} belongs to a different model and cannot be wrapped by this one's concepts.");
+            throw new ArgumentException("A wrap needs at least one node.", nameof(nodes));
         }
 
-        if (node.Parent is not { } parent || node.ParentSlot is not { } slot)
+        var first = nodes[0];
+        ArgumentNullException.ThrowIfNull(first);
+
+        if (!ReferenceEquals(first.Model, this))
         {
             throw new ModelInvariantException(
-                $"Node {node.Id} has no place, so there is nothing to wrap it in.");
+                $"Node {first.Id} belongs to a different model and cannot be wrapped by this one's concepts.");
+        }
+
+        if (first.Parent is not { } parent || first.ParentSlot is not { } slot)
+        {
+            throw new ModelInvariantException(
+                $"Node {first.Id} has no place, so there is nothing to wrap it in.");
         }
 
         if (!Project.Concepts.TryGet(wrapperConceptKey, out var wrapper))
@@ -247,19 +303,66 @@ public sealed class Model
                 $"Concept '{wrapperConceptKey}' cannot stand in slot '{slot}' of concept '{parent.Concept.Key}'.");
         }
 
-        if (wrapper.FindChild(wrapperSlot) is not { Cardinality: Cardinality.One } inner)
+        if (wrapper.FindChild(wrapperSlot) is not { } inner)
         {
             throw new ModelInvariantException(
-                $"Concept '{wrapperConceptKey}' declares no single-child slot named '{wrapperSlot}'.");
+                $"Concept '{wrapperConceptKey}' declares no child slot named '{wrapperSlot}'.");
         }
 
-        if (!node.Concept.IsKindOf(inner.ChildConceptKey))
+        if (inner.Cardinality == Cardinality.One && nodes.Count > 1)
         {
             throw new ModelInvariantException(
-                $"Concept '{node.Concept.Key}' does not conform to slot '{wrapperSlot}' of concept '{wrapperConceptKey}'.");
+                $"Slot '{wrapperSlot}' of concept '{wrapperConceptKey}' holds one child, so it cannot take {nodes.Count} nodes.");
         }
 
-        // Validated before anything moves: a preset the wrapper refuses must not leave the node detached.
+        var seen = new HashSet<NodeId>();
+        var ordered = new Node[nodes.Count];
+
+        for (var index = 0; index < nodes.Count; index++)
+        {
+            var node = nodes[index];
+            ArgumentNullException.ThrowIfNull(node);
+
+            if (!ReferenceEquals(node.Model, this))
+            {
+                throw new ModelInvariantException(
+                    $"Node {node.Id} belongs to a different model and cannot be wrapped by this one's concepts.");
+            }
+
+            if (!seen.Add(node.Id))
+            {
+                throw new ModelInvariantException($"Node {node.Id} was named twice, so it cannot be wrapped once.");
+            }
+
+            if (!ReferenceEquals(node.Parent, parent) || !string.Equals(node.ParentSlot, slot, StringComparison.Ordinal))
+            {
+                throw new ModelInvariantException(
+                    $"Node {node.Id} does not stand in slot '{slot}' of the same parent as node {first.Id}, so the nodes are not consecutive siblings.");
+            }
+
+            if (!node.Concept.IsKindOf(inner.ChildConceptKey))
+            {
+                throw new ModelInvariantException(
+                    $"Concept '{node.Concept.Key}' does not conform to slot '{wrapperSlot}' of concept '{wrapperConceptKey}'.");
+            }
+
+            ordered[index] = node;
+        }
+
+        // Sorted by the order a reader sees, then required to be a run: a selection that left a sibling in
+        // between would otherwise put the wrapper over some nodes and leave that sibling outside it.
+        Array.Sort(ordered, (left, right) => left.IndexInParent.CompareTo(right.IndexInParent));
+
+        for (var index = 1; index < ordered.Length; index++)
+        {
+            if (ordered[index].IndexInParent != ordered[index - 1].IndexInParent + 1)
+            {
+                throw new ModelInvariantException(
+                    $"Node {ordered[index].Id} does not stand directly after node {ordered[index - 1].Id}, so the nodes are not consecutive siblings.");
+            }
+        }
+
+        // Validated before anything moves: a preset the wrapper refuses must not leave the nodes detached.
         if (presets is not null)
         {
             foreach (var (presetSlot, value) in presets)
@@ -278,15 +381,22 @@ public sealed class Model
             }
         }
 
-        var index = node.IndexInParent;
+        var at = ordered[0].IndexInParent;
 
         using var transaction = BeginTransaction();
 
-        node.Detach();
+        foreach (var node in ordered)
+        {
+            node.Detach();
+        }
 
         var created = CreateDetached(wrapper);
-        parent.InsertChild(slot, Math.Min(index, parent.GetChildren(slot).Count), created);
-        created.InsertChild(wrapperSlot, 0, node);
+        parent.InsertChild(slot, Math.Min(at, parent.GetChildren(slot).Count), created);
+
+        for (var index = 0; index < ordered.Length; index++)
+        {
+            created.InsertChild(wrapperSlot, index, ordered[index]);
+        }
 
         if (presets is not null)
         {

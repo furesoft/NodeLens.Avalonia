@@ -6,14 +6,21 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// Surrounding a node with a new parent, which is the repair for an expression whose grouping the drawing
-/// does not show.
+/// Surrounding a node, or a run of siblings, with a new parent, which is the repair for an expression
+/// whose grouping the drawing does not show and for a selection of lines that wants a shared wrapper.
 /// </summary>
 /// <remarks>
-/// The fixture has no purpose-built wrapper concept, so the tests wrap a step inside a step's
+/// <para>
+/// The fixture has no purpose-built wrapper concept, so the single-node tests wrap a step inside a step's
 /// <c>detail</c> slot: structurally that is exactly the case that matters - a concept that can stand in the
 /// node's place and has a single-child slot that accepts it - without growing the shared language a concept
 /// only these tests would use.
+/// </para>
+/// <para>
+/// A run needs the other shape, a many-valued slot on a concept that can stand where the run stands, and
+/// <see cref="GroupLanguage"/> is that shape: an item can be wrapped in a group, and a group holds any
+/// number of items. The run tests are written there because the single-node fixture cannot express one.
+/// </para>
 /// </remarks>
 public sealed class WrapInActionTests
 {
@@ -215,5 +222,100 @@ public sealed class WrapInActionTests
         Assert.Throws<ArgumentException>(() => new WrapInAction(NodeId.Empty, TestLanguage.Step, "detail"));
         Assert.Throws<ArgumentException>(() => new WrapInAction(NodeId.New(), string.Empty, "detail"));
         Assert.Throws<ArgumentException>(() => new WrapInAction(NodeId.New(), TestLanguage.Step, string.Empty));
+        Assert.Throws<ArgumentException>(() => new WrapInAction([], TestLanguage.Step, "detail"));
+        Assert.Throws<ArgumentException>(() => new WrapInAction([NodeId.Empty], TestLanguage.Step, "detail"));
+    }
+
+    [Fact]
+    public void TheWrapperTakesTheRunsPlaceAndKeepsTheirOrder()
+    {
+        var (group, items) = GroupEditor.GroupWithItems("first", "second");
+
+        using var session = GroupEditor.Open(group);
+
+        var result = session.Apply(new WrapInAction([.. items.Select(item => item.Id)], GroupLanguage.Group, "items"));
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+
+        var wrapper = Assert.Single(group.GetChildren("items"));
+
+        Assert.Equal(GroupLanguage.Group, wrapper.Concept.Key);
+        Assert.Equal(["first", "second"], wrapper.GetChildren("items").Select(item => item.GetOrNull("name")));
+        Assert.All(items, item => Assert.Same(wrapper, item.Parent));
+    }
+
+    [Fact]
+    public void AWrapOfSeveralNodesIsOneUndoStep()
+    {
+        var (group, items) = GroupEditor.GroupWithItems("first", "second", "third");
+
+        // Opened after the fixture exists, so the wrap is the only step the history holds.
+        using var session = GroupEditor.Open(group);
+
+        session.Apply(new WrapInAction([items[0].Id, items[1].Id], GroupLanguage.Group, "items"));
+
+        Assert.True(session.Undo());
+
+        Assert.Equal(items, group.GetChildren("items"));
+        Assert.All(items, item => Assert.Same(group, item.Parent));
+        Assert.False(session.History.CanUndo);
+
+        Assert.True(session.Redo());
+
+        var children = group.GetChildren("items");
+        var wrapper = children[0];
+
+        Assert.Equal(2, children.Count);
+        Assert.Equal(GroupLanguage.Group, wrapper.Concept.Key);
+        Assert.Equal([items[0], items[1]], wrapper.GetChildren("items"));
+        Assert.Same(items[2], children[1]);
+    }
+
+    [Fact]
+    public void SiblingsThatAreNotNextToEachOtherAreRefused()
+    {
+        var (group, items) = GroupEditor.GroupWithItems("first", "second", "third");
+
+        using var session = GroupEditor.Open(group);
+
+        // The first and the last of three: a wrapper would leave the second one outside it, which is not
+        // what a selection that covered two of them asked for.
+        var result = session.Apply(new WrapInAction([items[0].Id, items[2].Id], GroupLanguage.Group, "items"));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Equal(items, group.GetChildren("items"));
+        Assert.False(session.History.CanUndo);
+    }
+
+    [Fact]
+    public void NodesOfDifferentParentsAreRefused()
+    {
+        var (root, nested, items) = GroupEditor.NestedGroupWithItems();
+        var sibling = root.Model.NewChild(root, "items", GroupLanguage.Item);
+
+        using var session = GroupEditor.Open(root);
+
+        var result = session.Apply(new WrapInAction([items[0].Id, sibling.Id], GroupLanguage.Group, "items"));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Equal(items, nested.GetChildren("items"));
+        Assert.Same(root, sibling.Parent);
+    }
+
+    [Fact]
+    public void ASlotThatHoldsOneChildCannotTakeARun()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
+
+        using var session = TestEditor.Open(body);
+
+        // A step's `detail` holds one child, so it cannot take both steps even though each of them conforms.
+        var result = session.Apply(new WrapInAction(
+            [steps[0].Id, steps[1].Id],
+            TestLanguage.Step,
+            "detail"));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Equal(steps, body.GetChildren("steps"));
     }
 }

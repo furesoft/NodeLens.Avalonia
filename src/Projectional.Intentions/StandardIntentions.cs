@@ -78,6 +78,17 @@ public sealed class StandardIntentions : IIntentionProvider
     public const string WrapPrefix = "standard.wrap.";
 
     /// <summary>
+    /// What every "wrap the selection" id starts with (`INT006`); the concept's own key follows.
+    /// </summary>
+    /// <remarks>
+    /// A prefix of its own rather than <see cref="WrapPrefix"/>, because a selection does not remove the caret:
+    /// the node the caret is in is one of the selected ones, so both entries are listed and their ids must
+    /// differ - a shared id would drop one of them in <see cref="IntentionList"/>, and the one that survived
+    /// would be whichever the order happened to reach first.
+    /// </remarks>
+    public const string WrapSelectionPrefix = "standard.wrap-selection.";
+
+    /// <summary>
     /// What every replace id starts with (`INT007`); the concept's own key follows, so one concept is one id.
     /// </summary>
     /// <remarks>
@@ -121,6 +132,17 @@ public sealed class StandardIntentions : IIntentionProvider
             foreach (var candidate in ReplacementConcepts.Of(node, context.Concepts))
             {
                 entries.Add(Replace(candidate));
+            }
+        }
+
+        // A range entry needs a selection that spans cells: a range inside one value can cover at most the
+        // node that value belongs to, which is the per-node entry's business, and asking for the covered
+        // nodes costs a walk over every caret place.
+        if (context.Selection.SpansCells)
+        {
+            foreach (var candidate in WrapperConcepts.Of(context.SelectedNodes, context.Concepts))
+            {
+                entries.Add(WrapSelection(candidate));
             }
         }
 
@@ -368,6 +390,44 @@ public sealed class StandardIntentions : IIntentionProvider
                 : "Writes the value this property is declared with over what is there now.",
             live => ResetFor(live) is { } now ? new SetPropertyAction(now.Cell.Address, now.Default) : null,
             availability: target is null ? IntentionAvailability.Absent : IntentionAvailability.Applies);
+    }
+
+    /// <summary>One entry per concept that could surround the nodes the selection covers.</summary>
+    /// <param name="candidate">A concept and the slot that would receive the run.</param>
+    /// <remarks>
+    /// The entry re-derives the run when it runs, exactly as the per-node entries re-derive their node: a
+    /// selection is not a thing an action can hold, and a list that was open while the document changed would
+    /// otherwise wrap whatever those ids happened to mean by then. The action has the last word on whether the
+    /// nodes are still consecutive siblings - this function only refuses a run that is no longer one.
+    /// </remarks>
+    private static Intention WrapSelection(WrapperCandidate candidate)
+    {
+        var concept = candidate.Wrapper.Key;
+        var slot = candidate.Slot.Name;
+        var name = ConceptNames.Of(concept);
+
+        return new Intention(
+            WrapSelectionPrefix + concept,
+            $"Wrap selection in \"{name}\"",
+            $"Puts the selected nodes inside the \"{slot}\" of a new {name}.",
+            live =>
+            {
+                var nodes = live.SelectedNodes;
+
+                if (nodes.Count < 2)
+                {
+                    return null;
+                }
+
+                List<NodeId> ids = [];
+
+                foreach (var node in nodes)
+                {
+                    ids.Add(node.Id);
+                }
+
+                return new WrapInAction(ids, concept, slot);
+            });
     }
 
     /// <summary>One entry per concept that could surround the node the caret stands on.</summary>
