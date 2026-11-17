@@ -20,8 +20,7 @@ produces something usable, and no milestone depends on a later one being finishe
 test that proves each row. This section keeps only what is left, and a feature moves out of it into
 that file in the same commit that finishes it.
 
-M3 has one row left (the structural clipboard), M4 about half, M5 started, and M6 and M7 are
-untouched.
+M3 is complete, M4 about half, M5 started, and M6 to M8 are untouched.
 
 What is next, in order:
 
@@ -47,21 +46,6 @@ where it is, in M4.
 
 The tables below are the **scope** of each milestone, not a status report: what is finished is in
 [implemented.md](implemented.md), and a finished milestone is removed from this file.
-
-### M3 — References, scopes and completion
-
-*Goal: it starts to feel like an editor instead of a structured form.*
-
-| Delivers | Details |
-| --- | --- |
-| Scopes | the chain, the default provider, per-language overrides, ambiguity as a value and ambiguity *diagnostics* are in [implemented.md](implemented.md) |
-| Completion | scope-driven entries, the value list, insert-then-keep-typing and completing a filled slot are in [implemented.md](implemented.md) |
-| Substitutions for a range | the intention list, the transformation menu, concept triggers and the range entry `Wrap selection in "X"` are in [implemented.md](implemented.md) |
-| Structural clipboard | copy, cut and paste of a **subtree** across slots, which needs a payload that can hold one - text inside one cell is what ships today ([clipboard.md](architecture/clipboard.md)) |
-
-**Gate:** referencing an element in another model works; renaming a target does not
-break models thanks to `resolveInfo`; wrapping a selection in an `if` is one undo step.
-*Effort: 6–8 weeks.* The three clauses pass; the milestone stays open for the clipboard row.
 
 ### M4 — Semantics and the pilot DSL
 

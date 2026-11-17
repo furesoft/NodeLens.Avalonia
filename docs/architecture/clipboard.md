@@ -1,7 +1,8 @@
 # Clipboard
 
-Status: **delivered** for M1. Copy, cut, paste, select all and `Delete` are routed in the
-control and covered by tests.
+Status: **delivered** - text for M1, structure for M3. Copy, cut, paste, select all and `Delete` are
+routed in the control and covered by tests; the clipboard carries either characters or a fragment of a
+model.
 
 Copy, cut and paste are the first edits whose result does not always land in the document.
 `Ctrl+C` writes to a place the editor does not own, `Ctrl+V` reads from a place the editor did
@@ -9,38 +10,41 @@ not write, and both of those places are shared with every other application on t
 This document states how the editing layer keeps that exchange honest without learning what a
 platform clipboard is.
 
-## Why text and not structure
+## Two payloads, one clipboard
 
-A projectional editor could copy a subtree - a whole `Rule`, a whole `Step` - and paste it as
-a structural fragment into another slot. That is a real feature and it is *not* this one. M1
-copies **text**, for the same reason every text action edits one property cell at a time:
+A projectional editor can copy a `Rule` or a `Step` and paste it somewhere else, and it can copy the word
+inside one property. Both are real, so the clipboard carries either **text**, which is what an editable cell
+holds and what another application can receive, or a **fragment** (`ModelFragment`), which is a subtree with
+its values, references and children and which can only become nodes again in a model whose language declares
+its concepts.
 
-- the model is the only source of truth, and a fragment would have to survive leaving the
-  process as text and coming back as a node, which means a serialisation format, a concept
-  resolution step, and a repair path for a fragment pasted into a language that does not
-  declare its concept;
-- a selection is a range inside one cell, so a structural copy would have to answer "what did
-  the user select" for a range that spans two nodes - a question the selection type does not
-  currently answer;
-- text is what an editable cell *holds*, so copying text needs no new model concept at all.
+One at a time, never both: the platform clipboard holds one value, and a paste must act on what the user
+copied last. Which payload a gesture means is decided at the moment it is pressed (`KeyRouter`), not stored:
+`Ctrl+C` over a selection that covers nodes copies structure, and over a selection inside one value it copies
+text.
 
-Structural fragments are planned for M3, where substitution rules exist and a pasted fragment
-has somewhere to be validated. Until then the clipboard carries characters.
+The fragment stays **inside the process**. Text is the only thing that crosses to another application, so a
+fragment is not serialized here - a wire format would be a second format beside the document format, a
+concept-resolution step, and a repair path for a fragment whose language does not declare its concepts
+([open question 82](../open-questions.md)). [llm-language-description](llm-language-description.md) plans to
+reuse that shape when a generated document has to arrive as text.
 
-## The seam: `ITextClipboard`
+## The seam: `IEditorClipboard`
 
 `Projectional.Editing` must not reference Avalonia ([ADR 0010](../adr/0010-public-api-surface.md)),
-so the clipboard is an interface in the editing layer and an adapter in the frontend:
-
-```csharp
-public interface ITextClipboard
+so the clipboard is an interface in the editing layer and an adapter in the frontend:```csharp
+public interface IEditorClipboard
 {
     string? Text { get; set; }
+    ModelFragment? Fragment { get; set; }
     Task RefreshAsync() => Task.CompletedTask;
 }
 ```
 
-Three decisions are in that tiny surface.
+The name is `IEditorClipboard` rather than `IClipboard` because Avalonia owns that name for its own
+abstraction, and an adapter is exactly where the two meet.
+
+Four decisions are in that surface.
 
 **Synchronous read and write.** A key arrives synchronously and an action applies
 synchronously, so an asynchronous contract would put an `await` into every action that touches
@@ -57,18 +61,30 @@ synchronously - fire and forget, and a discarded `ValueTask` is an analyzer erro
 **`null` means empty.** `Text` is `string?`; `null` is "the clipboard holds no text", which is
 what a paste checks before doing anything. An empty string is a real, if uninteresting, value.
 
+**One payload at a time.** Writing `Text` clears `Fragment` and writing `Fragment` clears `Text`. An
+implementation that kept both would let a paste act on something the user did not just copy, and the
+platform adapter additionally drops its fragment when a refresh finds text this editor did not write -
+another application has put something on the clipboard since, so the fragment is no longer the last thing
+copied.
+
 `InMemoryClipboard` is the fallback an `EditorSession` gets when no host supplies one: one
 string and nothing else. It is what makes every clipboard test headless, and what a host
 without a clipboard (an embedded editor in a test, a headless build) gets for free.
 
-## The four actions
+## The seven actions
 
 | Action | Key | Effect |
 | --- | --- | --- |
 | `SelectAllAction` | `Ctrl+A` | widen the selection: the property, then the node, then the document |
 | `CopyAction` | `Ctrl+C` | put the selected text on the clipboard, leave the document alone |
-| `CutAction` | `Ctrl+X` | copy, then delete the selection |
+| `CutAction` | `Ctrl+X` | copy the text, then delete the selection |
 | `PasteAction` | `Ctrl+V` | type the clipboard text at the caret |
+| `CopySelectionAction` | `Ctrl+C` over nodes | put the nodes the selection covers on the clipboard as a fragment |
+| `CutSelectionAction` | `Ctrl+X` over nodes | copy the fragment, then remove the nodes |
+| `PasteFragmentAction` | `Ctrl+V` with a fragment | create the fragment's nodes where the caret says |
+
+Which of the two copies a gesture means is `KeyRouter`'s decision, and the menu runs the same routing
+(`KeyRouter.For(session, EditorKey.Copy)`) so an entry and its key cannot disagree about what they do.
 
 ### Select all is a ladder
 
@@ -102,9 +118,9 @@ transaction, so from a property value `Ctrl+A Ctrl+A Delete` removes the node th
 belongs to, and the document rung removes every node it covers in one undo step - the
 document root itself stays, because it is the document, not its own child. A range that
 covers a node only partly removes nothing, because guessing which half was meant is worse
-than doing nothing. Cut stays text-only for now: it would have to write `SelectedText`,
-which is `null` for a node selection, so it would silently lose data.
-[editing.md](editing.md#selection) records the action; structural copy and cut are M3.
+than doing nothing. Copy and Cut act on it too, through the structural actions below: a selection that
+covers nodes is copied as a fragment rather than as text, because there is no text to hand them.
+[editing.md](editing.md#selection) records the selection actions.
 
 `SelectionRanges` (`Projectional.Editing/SelectionRanges.cs`) is the single place that
 answers "what range covers this value, this node, this document", so a host that wants to
@@ -152,6 +168,47 @@ that could accept what typing rejects.
 `CoalescingKey` returns `null`: pasting is a deliberate action, not a run of typing, so it
 never merges into the surrounding text.
 
+## Structural copy, cut and paste
+
+`CopySelectionAction`, `CutSelectionAction` and `PasteFragmentAction` are the same three gestures over
+nodes instead of characters. They are separate types rather than a flag on the text actions, because
+nothing about them is shared: one writes characters into a cell, the other creates nodes in a slot.
+
+**The payload.** `ModelFragment` holds one or more `FragmentNode`s, each with the concept key, the id it came
+from (`Origin`), the properties that were **written** (`Node.IsSet`, so a value the model defaults stays
+defaulted rather than being copied as materialized), its references with both halves of the stored
+reference, and its children paired with the slot they stood in. `Origin` is not an identity - a pasted node
+gets a new one - it exists so that a reference *between* copied nodes can be rebound to the copy.
+
+**Copy and Cut** ask `SelectionRanges.NodesIn`, the same computation Delete uses: a range that fully covers a
+node copies that node, and a range that covers nothing whole copies nothing. Cut delegates the removal to
+`DeleteSelectionAction`, so the caret lands where deleting the range leaves it and the whole cut is one undo
+step.
+
+**Paste** decides its place from the caret, and never replaces anything:
+
+| Caret is | Paste |
+| --- | --- |
+| in an **empty slot** | fills it - that is what an empty slot is for, including an empty single-valued one |
+| in a node of a **list** | inserts directly after that node |
+| in a node of a **filled single-valued slot** | refused with a reason: there is no "next to it", and replacing is a labelled entry, not a paste |
+| on a **root** | refused: the fragment has no place to take |
+
+Before anything is created, the paste checks that the language declares every concept in the fragment
+(`ModelFragment.MissingConcept`, which names the first one it does not know) and that each root conforms to
+the slot and may stand there. A fragment from another language is the ordinary case, and a refusal that
+names the concept is more useful than a half-built tree.
+
+**The insertion** is `EditContext.InsertFragment`: one transaction, nodes created top-down (attached, then
+filled), references written in a second pass because a fragment may point forward. A reference between two
+copied nodes is rebound to the copy; one that pointed outside the fragment keeps its target id and its
+`resolveInfo`, so it resolves if the target exists in the new model and otherwise draws as unresolved and can
+be re-linked - the degradation ADR 0004 asks for. Nothing is dropped: a value the target concept refuses is
+an exception rather than a skipped value.
+
+**The caret** lands on the first pasted node, the same landing `InsertNodeAction` uses for what it creates.
+A paste never coalesces, so it is one undo step.
+
 ## The shared text read
 
 `SelectedText.Of(context)` is one implementation rather than one per action, because "what
@@ -181,11 +238,11 @@ the structural edits. Availability is decided before the entry is shown:
 
 - `Select All` is always enabled: the ladder always has a rung left until the document is
   selected, and a host that hides the entry could not reach the node rung at all;
-- `Copy` and `Cut` are enabled only when the selection has text **and** the caret's cell is a
-  `PropertyCell` - the same predicate, `CanCopyText`, for both, because a selection that cannot
-  be copied cannot be cut either. A node selection has no text, so those two entries go grey
-  while `Select All` has widened past the value - structural copy is a later change;
-- `Paste` is enabled only when `session.Clipboard.Text` is non-empty.
+- `Copy` and `Cut` are enabled when the selection has text **or** when it covers nodes -
+  `CanCopy`, which asks the same two questions the routing asks: a `PropertyCell` under a text
+  selection, or `KeyRouter.CopiesNodes`. A selection that spans cells but covers no whole node is
+  neither, so those entries go grey instead of doing nothing;
+- `Paste` is enabled when the clipboard holds text **or** a fragment, because both are something to insert.
 
 The commands *are* the actions, so the gesture the menu prints cannot drift from the binding.
 `EditorMenuItem.Execute` refuses a disabled entry as well, so a stale menu cannot edit.
@@ -210,22 +267,35 @@ paste is applied, so a `Ctrl+V` sees what another application put there. It also
 the platform's own paste gesture so the text goes through `PasteAction` rather than being
 inserted behind the editor's back.
 
+The shell hands the **same** adapter to every tab (`MainWindow._clipboard`, passed into each
+`DocumentTab` and assigned to each control). Two consequences, both intended: a subtree copied in one
+document can be pasted in another, and the adapter the control refreshes is the one the session reads -
+a per-tab adapter would refresh its own cache while the session pasted from a different one.
+
 ## What this does not do
 
 | Missing | Consequence | Arrives with |
 | --- | --- | --- |
-| Structural copy | only text inside one cell can be copied; a whole node cannot | M3 |
-| Rich clipboard payloads | only text is exchanged; no formatting, no concept reference | not planned |
-| Cross-editor fragment paste | a fragment pasted from another document has no concept resolution | M3 |
+| A fragment outside the process | a copied subtree cannot cross to another application, because a fragment is not text | not scheduled; the wire format is [open question 82](../open-questions.md) |
+| A fragment into another language | the paste is refused, naming the first concept that language does not declare; nothing is half-built | not planned - a mapping between two languages needs decisions no declaration makes |
+| Rich clipboard payloads | no formatting, no images, no MIME types | not planned |
 | Clipboard history | one value at a time, as the platform provides | host's business |
 
 ## Testing
 
 All of it is headless, because the clipboard is an interface and the actions are plain types:
 
-- `InMemoryClipboardTests` covers the fallback clipboard;
-- `SelectAllActionTests`, `CopyActionTests`, `CutActionTests`, `PasteActionTests` cover the
-  four actions against a real session with an `InMemoryClipboard`;
+- `InMemoryClipboardTests` covers the fallback clipboard, including that writing one payload clears the
+  other;
+- `ModelFragmentTests` covers what a fragment keeps: written values, children with their slots, both halves
+  of a reference, and the first concept its target language lacks;
+- `SelectAllActionTests`, `CopyActionTests`, `CutActionTests`, `PasteActionTests` cover the text actions
+  against a real session with an `InMemoryClipboard`;
+- `CopySelectionActionTests`, `CutSelectionActionTests`, `PasteFragmentActionTests` cover the structural
+  ones: where a paste lands, that identities are new, that a reference between copied nodes is rebound,
+  that one outside the fragment degrades to unresolved, and that each is one undo step;
+- `KeyRouterTests` proves which gesture is which - structure over nodes, text inside a value, and a paste
+  that follows the payload;
 - `EditorKeyMapTests` proves the four gestures reach the editor and that a bare letter, Alt
   and Meta do not;
 - `EditorMenuTests` proves availability and that picking an entry runs the same action.

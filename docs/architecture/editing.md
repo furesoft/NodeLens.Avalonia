@@ -556,10 +556,10 @@ needs a clipboard format that can hold a subtree — that is M3, and
 ## The clipboard
 
 Copy, Cut, Paste and Select All are ordinary `EditAction`s, which is what keeps them testable
-without a window. `ITextClipboard` is the only platform seam: one `string? Text` and a default
-`RefreshAsync`. A host without a clipboard gets `InMemoryClipboard`; the Avalonia control
-supplies `AvaloniaClipboard`, which caches the platform clipboard so a synchronous key press can
-read it. [clipboard.md](clipboard.md) is the full account — what each action means, why copy
+without a window. `IEditorClipboard` is the only platform seam: `string? Text`, `ModelFragment? Fragment`
+and a default `RefreshAsync`. A host without a clipboard gets `InMemoryClipboard`; the Avalonia control
+supplies `AvaloniaClipboard`, which caches the platform clipboard so a synchronous key press can read it.
+Which payload a gesture carries is decided in `KeyRouter`, not by the interface. [clipboard.md](clipboard.md) is the full account — what each action means, why copy
 produces no undo step, and why a refused cut leaves the text on the clipboard.
 
 ## Error handling
