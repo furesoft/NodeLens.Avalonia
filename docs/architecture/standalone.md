@@ -487,7 +487,7 @@ review or documentation pipeline.
 | Artifact | Form | Milestone |
 | --- | --- | --- |
 | Developer build | `dotnet run --project src/Projectional.Workbench` | M1 |
-| Self-contained single file | `projectional.exe`, no .NET install required | M2 |
+| Self-contained single file | one executable, no .NET install required | M2, done |
 | Per-OS installer | `.msi`/`.dmg`/`.AppImage`, file association for `.prj` | M7 |
 | Scoop / winget / Homebrew | package manifest | M7 |
 
@@ -495,6 +495,30 @@ Self-contained single file is the M2 target because it is what makes
 "try before embedding" work for someone without a .NET SDK. Installers wait for M7
 because an installer implies a stable file format and update policy, neither of which
 should be frozen before the language format settles.
+
+### The single file
+
+```powershell
+dotnet publish src/Projectional.Workbench -c Release -r win-x64 -p:PublishSingleFile=true -o publish
+```
+
+The bundle is a **publish** shape, not a build shape: a normal build stays framework-dependent and
+multi-file so the inner loop is fast, and the single-file properties in the csproj are guarded by
+`'$(PublishSingleFile)' == 'true'`. Three things make "one file" true rather than nearly true:
+
+- `IncludeNativeLibrariesForSelfExtract` puts Avalonia's native dependencies inside the bundle
+  instead of a folder of `.dll`/`.so` beside it.
+- `DebugType=none` and `AllowedReferenceRelatedFileExtensions=none` stop a portable PDB per
+  referenced project from being copied next to the bundle.
+- A `RemovePublishPdbs` target deletes the native PDBs SkiaSharp and HarfBuzz ship, which the
+  native-asset copy step brings along whatever the reference settings say.
+
+`Projectional.Workbench --self-check` is what CI runs against the bundle. It builds the shell's
+language registry - the sample language composed with both definition languages - projects a
+document through it and prints the concept and cell counts, then exits. It runs **before Avalonia
+starts**, so it needs no display and works on a build agent, and it fails if a language package or
+the projection layer is missing from the bundle. The `single-file` CI job publishes for `win-x64`
+and `linux-x64`, asserts that `publish/` holds exactly one file, and runs the check.
 
 AOT is validated at M7 like the libraries
 ([roadmap](../roadmap.md)), and the app is the right place to validate it: it is the
@@ -527,7 +551,7 @@ The rest is scheduled rather than described as existing:
 - **Not wired at all.** The `## Command line` table above is a target: the args reach
   `StartWithClassicDesktopLifetime` and nothing reads them, so `projectional <model-file>`
   opens an empty shell. There are no recent files either.
-- **M2.** Model browser, problems panel, self-contained single-file build.
+- **M2.** Model browser, problems panel, self-contained single-file build - all three done.
 - **M3.** Projects — everything here is still one model per file.
 - **M4.** Output panel, and the validation that produces the markers a reader would want a
   panel for.
