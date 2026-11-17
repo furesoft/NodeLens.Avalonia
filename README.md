@@ -49,15 +49,15 @@ The editor is designed to be embedded as a component in other .NET applications:
 
 | Metric | Details |
 | --- | --- |
-| **Milestones** | **M0 complete**, **M1 (projection and editing) in progress** |
+| **Milestones** | **M0 and M1 complete**, **M2 (declarative languages) in progress** |
 | **Runtime** | `net10.0`, C# 14, Avalonia 12 |
-| **Tests** | 880 passing (`dotnet test`) |
+| **Tests** | 1606 passing (`dotnet test`) |
 | **CI** | Windows and Linux, plus a Linux-only job that guards the file format |
 
 ### What that means in practice:
-You can declare a language, project it, open a document, edit it structurally with keyboard and mouse, copy and paste, undo and redo, complete slots, switch a concept's representation, see diagnostics as squiggles, show line numbers, zoom the font, scroll a document larger than the window with real scrollbars, and save to XML and load it back byte-identically.
+You can declare a language in C# or as a model, project it, open a document, edit it structurally with keyboard and mouse, copy and paste, undo and redo, complete slots, switch a concept's representation, see diagnostics as squiggles and repair them from the intention list, preview an intention by hovering it, find and replace, browse the model, read the problems panel, reopen a recent file, show line numbers, zoom the font, scroll a document larger than the window with real scrollbars, and save to XML and load it back byte-identically.
 
-*Not there yet:* a model browser, a problems panel, generators, and interpreters. See the [roadmap](docs/roadmap.md).
+*Not there yet:* scopes, generators, interpreters, and the self-contained single-file build. What is finished is recorded in [implemented.md](docs/implemented.md); what is left is in the [roadmap](docs/roadmap.md).
 
 ---
 

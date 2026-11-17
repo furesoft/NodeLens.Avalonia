@@ -16,62 +16,42 @@ produces something usable, and no milestone depends on a later one being finishe
 
 ## Next
 
-**M1 is complete.** The last entry on its table - folding - landed as slices S1 to S6 plus one fix the
-runtime probe forced: `FoldMarks` had assumed a node's cell carries the node's own address, which is true
-only for the document root, so no arrow ever appeared. Both the defect and its repair are written down in
-[collapsing.md](architecture/collapsing.md).
+**What is finished is recorded in [implemented.md](implemented.md)** - milestone by milestone, with the
+test that proves each row. This section keeps only what is left, and a feature moves out of it into
+that file in the same commit that finishes it.
 
-**The intention list is done** ([context-actions.md](architecture/context-actions.md)): slices A to G, the hover
-preview ([intention-preview.md](architecture/intention-preview.md), V1-V6), three language packages and the
-framework's own catalogue - rename, duplicate, delete, the moves, both insertions, sorting, the two selections,
-wrap, replace and reset, all derived from the shape of the caret's place (`Projectional.Intentions`). The
-workbench registers it for every document, as the host's own so the generic operations sit above a language's,
-and `Expressions.Intentions` retired its duplicate "wrap in parentheses" in the same step. "Negate" stayed: a
-`Unary` born with `operator = "!"` is not what a bare wrap produces, and no declaration says which operator a
-fresh `Unary` should start with - declared intentions (M5) are what would close that gap.
+M0 and M1 are complete. M2 is one step from its gate, M3 and M4 have landed their first halves early,
+M5 has started, M6 and M7 are untouched.
 
 What is next, in order:
 
-1. **The language template is done** (`dotnet new projectional-language`, `templates/projectional-language`):
-   concepts, notation, a sample model and two tests, written against `Projectional.Toolkit` alone
-   ([language-authoring.md](architecture/language-authoring.md), slices C1a/C1b, [ADR 0019](adr/0019-toolkit-is-the-language-surface.md)).
-   M2's gate is one step away: what it still asks for is a DSL defined entirely in *project files* - the declared
-   path - and the template is the C# half of that story.
-
-2. **The shell's M2 half**: the self-contained single-file build is all that is left, and it is publishing
-   infrastructure rather than shell code.
-   Done and documented: the **problems panel** (diagnostics in document order, choosing a row puts the caret on the
-   cell the finding is about - [standalone.md](architecture/standalone.md#the-problems-panel)), **find and replace**
-   (`Projectional.Editing/Find/` plus a `Ctrl+F` strip - [standalone.md](architecture/standalone.md#find)), the
-   **model browser** ([standalone.md](architecture/standalone.md#the-model-browser)) and **recent files**
-   ([standalone.md](architecture/standalone.md#recent-files)). The first three share one shape worth keeping: the
-   rows are built in a non-Avalonia type and tested, and the window only fills a list - which is why none of them
-   needed a UI test harness.
-   The language picker that used to sit in this list is done too - File > *Open language project...*
-   loads a folder of `structure.mps` + `editor.mps` into the shell's own registry.
-   The language picker that used to sit in this list is done too - File > *Open language project...*
-   loads a folder of `structure.mps` + `editor.mps` into the shell's own registry.
-   **Known gap, recorded rather than fixed here:** `standalone.md` and
-   [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
-   `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and none of those types exist yet - the
-   app is `MainWindow` alone. ADR 0015 puts that extraction at M6, so the M2 features are being added to
-   `MainWindow`; whoever does M6 moves them.
+1. **The self-contained single-file build** - M2's last row, and publishing infrastructure rather than
+   shell code: a publish profile plus a CI job. It is not done because it needs a CI run to verify.
+2. **A DSL defined entirely in project files** - M2's gate and M5's stage C. The declared path exists in
+   both halves (the definition languages, the folder loader, the app's language picker) and the template
+   (`dotnet new projectional-language`) is the C# half of the story; what is missing is the step that
+   makes the declared path sufficient on its own, with no C# in the loop.
 3. **The table's writing affordances** (adding a row, resizing a column). The grid itself is delivered and the
    flattened navigation is correct but not what a user expects in a grid; [projection.md](architecture/projection.md)
    and open question 29 hold the detail.
 4. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
    languages that need them.
+5. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
+   `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
 
-**Slice Q7 - the standard checks as a package** is done: `Projectional.Checks` ships `STD001`, `STD003`,
-`STD010` and `STD040`, and a language includes them by naming them in a `CheckSet`. The safety class the
-catalogue needed (`EditSafety`) is carried on every offer, though the gesture no longer reads it: it always
-opens the list. What is
-still open from the catalogue is the fifteen checks the design lists after the first four, which land as a
-language asks for them rather than in one pass.
+**Known gap, recorded rather than fixed here:** `standalone.md` and
+[ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
+`IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and none of those types exist yet - the
+app is `MainWindow` alone. ADR 0015 puts that extraction at M6, so the M2 features were added to
+`MainWindow`; whoever does M6 moves them.
 
 The constraint engine that will produce diagnostics in volume stays where it is, in M4.
+
 ## Milestones
+
+The tables below are the **scope** of each milestone, not a status report: what is finished is in
+[implemented.md](implemented.md).
 
 ### M0 — Core model and persistence
 
@@ -89,7 +69,7 @@ The constraint engine that will produce diagnostics in volume stays where it is,
 and redo restore exact model states; invariant violations fail debug assertions.
 *Effort: 2–3 weeks.*
 
-**Delivered.** Invariants are enforced on every mutation rather than by assertion, and the
+Invariants are enforced on every mutation rather than by assertion, and the
 stored form is pinned by a round-trip corpus that CI runs on every push. What M0 actually
 implements is recorded in [persistence.md](architecture/persistence.md#what-m0-implements)
 and [testing.md](architecture/testing.md).
@@ -101,19 +81,19 @@ and [testing.md](architecture/testing.md).
 | Delivers | Details |
 | --- | --- |
 | Editor tree + layout | cells, measure/arrange, line-based layout |
-| Editing layer | caret, edit actions, key routing, undo/redo — **delivered** |
-| Headless snapshot render | ASCII grid, used by all notation tests — **delivered** |
-| Avalonia control | rendering, caret, selection, wheel scrolling — **delivered**; host scrollbars via `ILogicalScrollable` ([scrolling.md](architecture/scrolling.md)) — **delivered**; virtualization is planned |
-| Input | typing, arrows, tab, enter, delete, undo/redo — **delivered** |
-| Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) — **delivered** |
-| Clipboard | Ctrl+A/C/X/V: Ctrl+A widens the selection from the value to the node to the document, the other three copy, cut and paste text within one property cell through a host-supplied `ITextClipboard` ([clipboard.md](architecture/clipboard.md)) — **delivered** (text only) |
-| Completion | Ctrl+Space offers the concepts an empty slot accepts, filtering by typed prefix, with a host-supplied icon per kind ([completion.md](architecture/completion.md)) — **delivered** (concepts only) |
-| Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model — **delivered** |
-| Text decorations | bold/italic/underline/strikethrough decided by the model, per cell — **delivered** |
-| Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) — **delivered** |
-| Folding | a node folds to a one-cell summary when its concept nominates a boolean collapse slot, with an arrow in the gutter; the fold set is view state and never persisted ([collapsing.md](architecture/collapsing.md)) — **delivered** |
-| Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) — **delivered** |
-| Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) — **delivered** |
+| Editing layer | caret, edit actions, key routing, undo/redo |
+| Headless snapshot render | ASCII grid, used by all notation tests |
+| Avalonia control | rendering, caret, selection, wheel scrolling; host scrollbars via `ILogicalScrollable` ([scrolling.md](architecture/scrolling.md)); virtualization is planned |
+| Input | typing, arrows, tab, enter, delete, undo/redo |
+| Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) |
+| Clipboard | Ctrl+A/C/X/V: Ctrl+A widens the selection from the value to the node to the document, the other three copy, cut and paste text within one property cell through a host-supplied `ITextClipboard` ([clipboard.md](architecture/clipboard.md)); text only |
+| Completion | Ctrl+Space offers the concepts an empty slot accepts, filtering by typed prefix, with a host-supplied icon per kind ([completion.md](architecture/completion.md)); concepts only |
+| Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model |
+| Text decorations | bold/italic/underline/strikethrough decided by the model, per cell |
+| Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) |
+| Folding | a node folds to a one-cell summary when its concept nominates a boolean collapse slot, with an arrow in the gutter; the fold set is view state and never persisted ([collapsing.md](architecture/collapsing.md)) |
+| Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) |
+| Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) |
 
 **Gate:** a user can edit a nested model with a text-like look, using only the
 keyboard, without the caret ever getting lost; typing latency and incremental layout
@@ -129,13 +109,13 @@ first.*
 
 | Delivers | Details |
 | --- | --- |
-| Concept declarations as nodes | structure language (stage B) - **delivered** as P1 ([declared-structure.md](architecture/declared-structure.md)) |
-| Notation declarations as nodes | editor language (stage B) - **delivered** as P2 ([declared-editor.md](architecture/declared-editor.md)) |
+| Concept declarations as nodes | structure language (stage B), slice P1 ([declared-structure.md](architecture/declared-structure.md)) |
+| Notation declarations as nodes | editor language (stage B), slice P2 ([declared-editor.md](architecture/declared-editor.md)) |
 | Generic renderer | renders any declared concept; the MPS-shaped definition languages replace it in M5 ([language-authoring.md](architecture/language-authoring.md)) |
-| Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable; **delivered** as C2 ([language-parity.md](architecture/language-parity.md)) |
+| Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable, slice C2 ([language-parity.md](architecture/language-parity.md)) |
 | Language template | `dotnet new projectional-language`, plus the `Projectional.Toolkit` surface a package needs |
 | Tables | grid cell, column sizing, cell caret, add-row affordance |
-| Language loading | declared languages from the project directory - a folder of `structure.mps` + `editor.mps` loads as a usable language ([language-projects.md](architecture/language-projects.md)); the app-side picker is what is left |
+| Language loading | declared languages from the project directory - a folder of `structure.mps` + `editor.mps` loads as a usable language ([language-projects.md](architecture/language-projects.md)); and the app's picker opens one |
 | Shell grows | model browser, problems panel, find/replace, recent projects, self-contained single-file build |
 
 **Gate:** a small DSL (including a table) is defined entirely in project files and is
@@ -154,9 +134,9 @@ twin is still in the repository and still agrees with it, because the parity har
 | Scopes | chain, defaults, per-language overrides, ambiguity diagnostics |
 | Reference cells | resolve, create-on-the-fly, unresolved state, chooser popup |
 | Completion | scope-driven entries alongside the concepts M1 already offers, insert-and-continue ([completion.md](architecture/completion.md)) |
-| Substitutions | transformation menus and wrapping; keyword-triggered insertion is **delivered ahead of this milestone** as concept triggers ([triggers.md](architecture/triggers.md)) |
+| Substitutions | transformation menus and wrapping; keyword-triggered insertion is concept triggers ([triggers.md](architecture/triggers.md)) |
 | Intentions (light bulb) | actions offered at the caret by the language and by the host, applied as one undo step ([context-actions.md](architecture/context-actions.md)) |
-| Intention preview | a longer hover shows what the highlighted entry would do, by applying it to a discarded copy and projecting that; the live model is never touched ([intention-preview.md](architecture/intention-preview.md)) - the copy and the diff (slice V1) are **delivered** |
+| Intention preview | a longer hover shows what the highlighted entry would do, by applying it to a discarded copy and projecting that; the live model is never touched ([intention-preview.md](architecture/intention-preview.md)) |
 
 **Gate:** referencing an element in another model works; renaming a target does not
 break models thanks to `resolveInfo`; wrapping a selection in an `if` is one undo step.
