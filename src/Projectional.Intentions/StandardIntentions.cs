@@ -37,6 +37,12 @@ public sealed class StandardIntentions : IIntentionProvider
     /// <summary>The stable id of the delete entry (`INT003`).</summary>
     public const string DeleteId = "standard.delete";
 
+    /// <summary>The stable id of "select this node" (`INT008`).</summary>
+    public const string SelectNodeId = "standard.select-node";
+
+    /// <summary>The stable id of "select the node that holds this one" (`INT008`).</summary>
+    public const string SelectParentId = "standard.select-parent";
+
     /// <summary>The stable id of "move one place towards the front" (`INT004`).</summary>
     public const string MoveUpId = "standard.move-up";
 
@@ -94,6 +100,8 @@ public sealed class StandardIntentions : IIntentionProvider
             Rename(context),
             Duplicate(context),
             Delete(context),
+            SelectNode(context),
+            SelectParent(context),
             Move(context, MoveUpId, "Move up", "Swaps this node with the one before it.", NodeMove.Up),
             Move(context, MoveDownId, "Move down", "Swaps this node with the one after it.", NodeMove.Down),
             Move(context, MoveToFrontId, "Move to front", "Puts this node first in its list.", NodeMove.ToFront),
@@ -178,6 +186,42 @@ public sealed class StandardIntentions : IIntentionProvider
             "Removes this node and everything inside it.",
             live => live.Node is { Parent: not null } ? new DeleteNodeAction() : null,
             safety: EditSafety.Destructive,
+            availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
+    }
+
+    /// <summary>The entry that selects the node the caret stands in, with everything inside it.</summary>
+    /// <remarks>
+    /// It is the same rung <see cref="SelectAllAction"/> reaches on its second press, asked for by name so that a user
+    /// who is deep in a subtree can go back out in one gesture. Unlike the ladder it is not hidden when it is already
+    /// the selection: the ladder must not stall, so it skips a rung it has already taken, while an addressed entry is
+    /// idempotent by construction and hiding it would make the row appear and disappear as the caret moves.
+    /// </remarks>
+    private static Intention SelectNode(IntentionContext context)
+    {
+        var applies = context.Node is not null;
+
+        return new Intention(
+            SelectNodeId,
+            "Select node",
+            "Selects this node and everything inside it.",
+            live => live.Node is { } node ? new SelectNodeAction(node.Id) : null,
+            availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
+    }
+
+    /// <summary>The entry that selects the node holding the one under the caret.</summary>
+    /// <remarks>
+    /// The widening step, addressed rather than climbed: a caret six levels down would need six presses on the ladder.
+    /// Absent on a root, because a root has no node that holds it.
+    /// </remarks>
+    private static Intention SelectParent(IntentionContext context)
+    {
+        var applies = context.Node is { Parent: not null };
+
+        return new Intention(
+            SelectParentId,
+            "Select parent",
+            "Selects the node that holds this one.",
+            live => live.Node is { Parent: { } parent } ? new SelectNodeAction(parent.Id) : null,
             availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
     }
 

@@ -445,6 +445,56 @@ public sealed class StandardIntentionsTests
         return (session, rule, rule.GetChild("condition")!);
     }
 
+    [Fact]
+    public void BothSelectionEntriesAreOfferedOnAChildOfAList()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[0]);
+
+        var ids = Ids(session);
+
+        Assert.Contains(StandardIntentions.SelectNodeId, ids);
+        Assert.Contains(StandardIntentions.SelectParentId, ids);
+    }
+
+    [Fact]
+    public void SelectParentSelectsTheNodeThatHoldsThisOne()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[0]);
+
+        Assert.Equal(
+            EditOutcome.Unchanged,
+            session.Apply(Offer(session, StandardIntentions.SelectParentId)).Outcome);
+
+        var entry = session.Selection;
+
+        Assert.False(entry.IsSingleCell);
+
+        // What the entry did is what the body's own action does - which is the point of the row: it names the parent,
+        // not the node the caret happens to be in.
+        session.Apply(new SelectNodeAction(body.Id));
+
+        Assert.Equal(entry.Anchor.Address, session.Selection.Anchor.Address);
+        Assert.Equal(entry.Anchor.Offset, session.Selection.Anchor.Offset);
+        Assert.Equal(entry.Caret.Address, session.Selection.Caret.Address);
+        Assert.Equal(entry.Caret.Offset, session.Selection.Caret.Offset);
+    }
+
+    [Fact]
+    public void SelectParentIsNotOfferedOnARoot()
+    {
+        // A root is in nothing, so there is no node that holds it - but the root itself can still be selected.
+        using var session = Session(TestEditor.BareRule());
+
+        Assert.DoesNotContain(StandardIntentions.SelectParentId, Ids(session));
+        Assert.Contains(StandardIntentions.SelectNodeId, Ids(session));
+    }
+
     /// <summary>A ruleset holding one named rule per entry, opened with the standard catalogue registered.</summary>
     private static (EditorSession Session, Node Ruleset, IReadOnlyList<Node> Rules) Ruleset(params string[] names)
     {

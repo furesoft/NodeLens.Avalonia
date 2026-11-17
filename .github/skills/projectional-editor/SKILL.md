@@ -884,7 +884,8 @@ the editor). The shipped shape is a package beside the language, exactly like `P
 
 - **`Projectional.Intentions` is the framework's own catalogue**, not a language's: `StandardIntentions`
   derives `INT001` (rename), `INT002` (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to
-  front/back), `INT030` (insert before/after), `INT031` (sort by name), `INT006` (wrap in X), `INT007`
+  front/back), `INT030` (insert before/after), `INT031` (sort by name), `INT008` (select node/parent), `INT006`
+  (wrap in X), `INT007`
   (replace with X) and `INT020`
   (reset to the default) from
   the *shape* of the caret's place, so any language gains them by registering the provider. Every entry is
@@ -923,6 +924,12 @@ the editor). The shipped shape is a package beside the language, exactly like `P
   declares no name slot - a partial sort would put the unnamed ones in an order nobody asked for.
   `SortChildrenAction` moves the caret with the node it was in, because an element address names a *position*, so
   leaving the caret alone would stand the user in whatever took that position.
+- **An addressed selection is idempotent; the ladder's is not.** `SelectNodeAction(NodeId)` selects a node's whole
+  range through `SelectionRanges.OfNode` - the same computation `SelectAllAction` uses, so a menu row and a keystroke
+  cannot disagree about what "this node" covers. The two differ in one way on purpose: the ladder must not stall, so
+  it **skips** a rung the selection already covers, while the catalogue rows are always there and re-establish the
+  range (hiding them would make the row appear and disappear while the caret moves inside one node). A node whose
+  notation draws no cells answers `Unchanged` and leaves the caret alone rather than collapsing onto nothing.
 - **A caret jump is an action, not a mode of `MoveCaretAction`.** `SelectSlotAction(CellAddress)` moves the
   caret into a slot and selects its text (a bare caret when the slot is empty), answering
   `EditResult.Unchanged` because a navigation is not an edit. It is what makes rename plain rather than a
@@ -1468,7 +1475,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1553 tests**; anything below that means tests were deleted.
+it. **Baseline is 1561 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
