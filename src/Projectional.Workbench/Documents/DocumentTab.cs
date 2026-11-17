@@ -80,6 +80,7 @@ internal sealed class DocumentTab : IDisposable
         ITypingRules? typing = null,
         TypeRegistry? types = null,
         EvaluationRegistry? evaluation = null,
+        IReadOnlyList<TextGenerator>? generators = null,
         IEditorClipboard? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -96,6 +97,7 @@ internal sealed class DocumentTab : IDisposable
         FilePath = filePath;
         Types = types;
         Evaluation = evaluation;
+        Generators = generators ?? [];
         Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
 
         // A document that has just been opened or created is by definition what the file holds. The
@@ -133,6 +135,14 @@ internal sealed class DocumentTab : IDisposable
     /// </para>
     /// </remarks>
     internal EvaluationRegistry? Evaluation { get; }
+
+    /// <summary>The text generators of the language this document belongs to; empty when it declares none.</summary>
+    /// <remarks>
+    /// A list, not one generator: a language decides how many text targets it has, and the shell offers them by name.
+    /// Deriving it here rather than at the command is the same rule the interpreter follows - what a document can do
+    /// is a fact about its language.
+    /// </remarks>
+    internal IReadOnlyList<TextGenerator> Generators { get; }
 
     /// <summary>The session that edits it.</summary>
     internal EditorSession Session { get; }
@@ -184,6 +194,13 @@ internal sealed class DocumentTab : IDisposable
     /// behalf because the variables came from them.
     /// </remarks>
     internal RunReport? Output { get; set; }
+
+    /// <summary>The text of the last generation, or <see langword="null"/> when nothing was generated.</summary>
+    /// <remarks>
+    /// Kept beside <see cref="Output"/> because the panel shows rows while a save writes the whole text: the report has
+    /// been split into lines by then, and rebuilding it from the rows would be a second generator's job.
+    /// </remarks>
+    internal string? Generated { get; set; }
 
     /// <summary>Turns the tab's session off. The model itself belongs to whoever opened it.</summary>
     public void Dispose()

@@ -209,6 +209,7 @@ public sealed partial class MainWindow : Window, IDisposable
             typing,
             types,
             WorkbenchLanguage.InterpreterFor(model),
+            WorkbenchLanguage.GeneratorsFor(model),
             _clipboard);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
@@ -375,6 +376,7 @@ public sealed partial class MainWindow : Window, IDisposable
             // A run is a snapshot of the document as it was, so an edit drops it. Findings can be derived again
             // from the new model; a run cannot, because the variables came from the user.
             document.Output = null;
+            document.Generated = null;
         }
 
         ShowProblems();
@@ -685,6 +687,25 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
+    /// <summary>Generates the document in front with <paramref name="generator"/> and shows the text.</summary>
+    private void RunGenerator(Projectional.Language.TextGenerator generator)
+    {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        _error = null;
+
+        var generated = DocumentGenerate.Generate(document.Root, generator);
+
+        document.Generated = generated.Text;
+        document.Output = DocumentGenerate.Report(generated, generator);
+
+        ShowOutput();
+        UpdateStatus();
+    }
+
     private void OnClearOutput(object? sender, RoutedEventArgs e)
     {
         if (_documents.Active is { } document)
@@ -866,6 +887,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         UpdateRepresentations();
         UpdateRunCommand();
+        UpdateGenerators();
     }
 
     /// <summary>Says whether the document in front can be run, and why not when it cannot.</summary>
@@ -885,6 +907,85 @@ public sealed partial class MainWindow : Window, IDisposable
             runnable
                 ? "Runs the document with its language's interpreter."
                 : "This document's language defines no interpreter.");
+    }
+
+    /// <summary>Fills the generate submenu from the active document's generators, and says whether saving is possible.</summary>
+    /// <remarks>
+    /// A language decides how many generators it has, so the menu is built from the document rather than written in
+    /// XAML - the same rule the representation submenu follows, and the reason there is no "the" generate command. It
+    /// is rebuilt whenever the status bar is, which is whenever anything about the document changed.
+    /// </remarks>
+    private void UpdateGenerators()
+    {
+        var generators = _documents.Active?.Generators ?? [];
+
+        GenerateItem.IsEnabled = generators.Count > 0;
+        GenerateItem.ItemsSource = generators
+            .Select(generator => new MenuItem { Header = generator.Name, Command = new RunGeneratorCommand(this, generator) })
+            .ToList();
+
+        SaveGeneratedItem.IsEnabled = _documents.Active?.Generated is not null;
+    }
+
+    /// <summary>A menu entry that generates one document with one generator.</summary>
+    private sealed class RunGeneratorCommand : System.Windows.Input.ICommand
+    {
+        private readonly MainWindow _window;
+        private readonly Projectional.Language.TextGenerator _generator;
+
+        internal RunGeneratorCommand(MainWindow window, Projectional.Language.TextGenerator generator)
+        {
+            _window = window;
+            _generator = generator;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _window.RunGenerator(_generator);
+    }
+
+    /// <summary>Writes the last generated text to a file the user picks.</summary>
+    /// <remarks>
+    /// The framework returns text and the host decides where it goes (open question 12), so writing the file is the
+    /// shell's job and not the generator's: a language component that wrote files would have to guess a path, an
+    /// encoding and a newline convention, and a host that embeds it could not decline.
+    /// </remarks>
+    private async void OnSaveGenerated(object? sender, RoutedEventArgs e)
+    {
+        if (_documents.Active is not { Generated: { } text } document)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save generated text",
+            SuggestedFileName = $"{document.Title}.txt",
+            FileTypeChoices = [new FilePickerFileType("Text") { Patterns = ["*.txt"] }],
+        });
+
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await File.WriteAllTextAsync(file.Path.LocalPath, text);
+            _error = $"Generated text written to {file.Name}.";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _error = exception.Message;
+        }
+
+        UpdateStatus();
     }
 
     /// <summary>The theme as the status bar names it, saying so when the desktop chose it.</summary>

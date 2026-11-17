@@ -993,6 +993,67 @@ dependency, so every action is testable headlessly.
   action mistakes it for one. `SelectionRects.Of` already draws it correctly (both ends
   trimmed, intermediate cells whole, one rect per line) - the rendering needed no change.
 
+## How text generation works
+
+A language turns a model into text through a template per concept. The template is **data** in
+`Projectional.Language/Generation/` (a language package declares one without referencing the layer that walks it);
+the walk is `Generator` in `Projectional.Semantics/Generation/`. `docs/architecture/semantics.md` §Generation is the
+design of record.
+
+- **Nine parts, and the set is closed.** `TextPart`, `PropertyPart`, `ChildPart`, `ChildrenPart`, `LoopPart`,
+  `IndentPart`, `LineBreakPart`, `ConditionalPart`, `SelfPart`. There is deliberately no "compute", no variable and no
+  counter: a part emits, reads a slot, expands a child or chooses, and anything else is a generator this framework does
+  not have. `SelfPart` exists for one reason - inside a `LoopPart` body "this node" is the child being visited.
+- **`TextTemplate.Of(...)` takes `params ReadOnlySpan<TemplatePart>`**, so a C# generator passes its parts without
+  allocating an array.
+- **A concept with no template is a failure; an empty template means "emits nothing".** Never collapse the two: the
+  first is "nobody said", the second is a decision, and a silent hole in the output is the worst of both.
+- **Indentation is the template's, never counted from the text.** `LineBreakPart` writes the newline *and* the current
+  indentation; `IndentPart` raises the level for the lines inside it. A separator is a `TextTemplate` too, which is why
+  a list on separate lines is `ChildrenPart(slot, Template(LineBreakPart))` inside an `IndentPart` - an "indent" flag
+  on the list would have made the drawing depend on what the child happened to emit.
+- **Every emitted stretch is a `GeneratedRegion(Node, Slot, Start, Length)`.** The map is the half that is impossible
+  to retrofit, and it costs one list while the text is built. Edits get no region (they have no node); a literal gets
+  one with `Slot` null, because "go to source" on a keyword must find the node that wrote it. `GeneratedText.RegionAt`
+  is a first-match scan - do not build a per-character index for a lookup nobody asked for.
+- **A template that expands itself is stopped by `MaxDepth`, not by the stack.** A `SelfPart` outside a loop body
+  recurses for ever; a stack overflow cannot be reported to a user at all.
+- **The engine recognises only the parts it knows and fails on any other**, exactly like `CellLayouter` with cells: the
+  set is closed, so a new part is added on purpose rather than silently ignored.
+- **Generation is pure.** No file system, no clock, no culture, no model place - two runs produce the same bytes, which
+  is what a host's build and the golden tests both stand on. **The framework does not write files**: it returns text and
+  the host decides where it goes (open question 12), so writing is the shell's job and a language component can never
+  guess a path or an encoding.
+
+**A language has as many generators as it declares.** `TextGenerator` is a *name* plus a `TemplateRegistry` - not an
+aspect on the concept - so the host picks one, the way it picks a notation variant, and nothing about the model
+changes. `RulesTextGenerators` in `Projectional.Samples` ships two (JSON and a C# fragment) precisely so that is the
+proven case rather than a claim in a comment. The shell builds its Generate submenu from the active document's
+generators; there is no fixed "the generator" command, and a document whose language declares none simply has no
+entries.
+
+- **The declared form is `Projectional.TextGen`**, and it is `generator.mps` in a language folder beside
+  `structure.mps`/`editor.mps`/`types.mps`. A document holds any number of generators; a generator holds one mapping
+  per concept; a mapping holds a template; a template is a list of parts.
+- **`TextGenLowering` is the only lowering, and it validates at load**: unique generator names, a concept the language
+  actually has, and every part's slot existing on the mapped concept *as the kind it is* (a `Child` part on a list slot
+  is a load error). That is the notation registry's rule applied to templates - the earliest moment the author is
+  looking at the file.
+- **ADR 0014's parity rule is executed by `TextGenLoweringTests`**: a generator written as a model must produce exactly
+  the text of its hand-written twin, compared as text because that is what a consumer sees. A declared construct that
+  could not be lowered would be a defect in the language, not in the test.
+- **A binary expression is always parenthesised by the pilot's generator.** A template cannot compute precedence - no
+  part asks how an operand binds - so omitting the parentheses would be right only for the tree it saw. The pretty
+  version belongs to the C# base language's generator (`docs/architecture/csharp.md`).
+- **Strings are emitted verbatim, with no escaping.** A template that put a value inside quotes does not escape it;
+  escaping is a property of the target text, and it arrives with the reference languages rather than as a part.
+
+**The output panel is shared with the interpreter**, and that is deliberate: a run report and a generated file are both
+"what this document produced", so one panel and one row type serve both. A generation shows one row per line and each
+row points at the node that wrote the beginning of that line, which turns the traceability map into a gesture - clicking
+a line of the generated file moves the caret to what produced it. A run's rows are its trace. An edit drops both, because
+neither can be derived again from the new model.
+
 ## How interpretation works
 
 A language says what its nodes *mean* through one function per concept, and the framework runs it. The design is

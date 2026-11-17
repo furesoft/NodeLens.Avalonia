@@ -134,6 +134,11 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | The interpreter: explicit stack, post-order trace, step budget, cancellation, and a failure that names its node | `Interpreter`, `InterpretationResult`, `TraceEntry`, `InterpretationFailure` | `InterpreterTests` |
 | The value model: int, bool, string and date as content-compared records, read through a property's declared type | `Value`, `IntValue`, `BoolValue`, `StringValue`, `DateValue`, `EvaluationContext.PropertyValue` | `ExpressionsEvaluationTests` |
 | The shipped meanings: the expression language, and the pilot's decision list (first matching rule wins; no match is a failure) | `ExpressionsEvaluation`, `RulesEvaluation` | `ExpressionsEvaluationTests`, `RulesEvaluationTests` |
+| Text generation from a template tree per concept: literal, property, child, list, loop, indent, line break, conditional, self | `TextTemplate` and nine `TemplatePart` kinds in `Projectional.Language/Generation/` | `GeneratorTests` |
+| The generator engine: indentation from the template, a depth guard, and a traceability map that answers what wrote a character | `Generator`, `GeneratedText`, `GeneratedRegion` | `GeneratorTests` |
+| Two generators for one language, proving a language has as many as it declares | `RulesTextGenerators` (JSON and a C# fragment) | `RulesTextGeneratorsTests` |
+| The declared generator language: many generators per document, a template per concept, lowered into the same runtime generator, loaded from `generator.mps` | `Projectional.TextGen/`, `LanguageProject.Generators` | `TextGenLoweringTests` (incl. parity with the C# twin) |
+| The shell offers a document's generators by name, shows one row per generated line, and saves the text to a file the user picks | `MainWindow.UpdateGenerators`, `DocumentGenerate`, `MainWindow.OnSaveGenerated` | verified in a real window (probe: JSON 116/20, C# 52/13, save enabled) |
 | The variables a run is given, read from one line of `name=value` pairs (number, flag, ISO date, else text) | `Projectional.Workbench/Run/RunInputs` | `RunInputsTests` |
 | Running a document: its language's interpreter, the answer or the failure as a headline, and the trace as rows that jump to their node | `DocumentRun`, `RunReport`, `RunRow`, `MainWindow.RunActiveDocument` | `DocumentRunTests` |
 | A document runs only when its language defines an interpreter, derived from its root concept rather than from the command that opened it | `WorkbenchLanguage.InterpreterFor`, `DocumentTab.Evaluation` | `WorkbenchLanguageTests`, `DocumentTabTests` |
@@ -163,7 +168,7 @@ Nothing is delivered. M6 (the shell as an embeddable, language-locked component)
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1860 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1888 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

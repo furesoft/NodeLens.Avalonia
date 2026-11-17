@@ -18,9 +18,12 @@ MyRules/
   structure.mps    concepts, slots, enumerations   (Projectional.Structures)
   editor.mps       notation, one per concept      (Projectional.Editors)
   types.mps        what a concept evaluates to    (Projectional.TypeRules)
+  generator.mps    how a model becomes text       (Projectional.TextGen)
 ```
 
-The folder's name is the language's name. `structure.mps` is required; `editor.mps` and `types.mps` are not.
+The folder's name is the language's name. `structure.mps` is required; `editor.mps`, `types.mps` and `generator.mps`
+are not. One `generator.mps` holds **every** generator of the language: a language declares as many text targets as it
+has, and they belong together the way the type rules do.
 
 ## Loading is best effort, and it does not guess
 
@@ -36,6 +39,7 @@ What it refuses, and why each one is an error rather than a warning:
 | a property naming an unknown type | the structure lowering's own error, with the concept and slot in it |
 | a notation for a concept that was never declared | caught during lowering, which is the earliest moment both halves exist |
 | a type rule with no body, an unknown type name, a value declared twice, a switch with no `otherwise` | the type-rule lowering's own errors, at load, where the author is looking |
+| two generators with one name, a mapping of a concept the language does not have, a part naming a slot the concept does not have (or naming it as the wrong kind) | the generator lowering's own errors, for the same reason |
 | two concepts with one key, an unknown super concept | `ConceptRegistry.Create`, which owns the graph |
 
 **A language without a notation loads.** Every node then draws as a missing-notation cell, which is a state a
@@ -72,7 +76,7 @@ them.
 | Missing | Why it is not in this slice |
 | --- | --- |
 | `language.mps` (name, version, dependencies, extended languages) | P3 proper: it needs the aspect models it names |
-| constraints, types, generators as declared aspects | M6 |
+| constraints as a declared aspect | M6 |
 | exporting a loaded language back to C# | P6 |
 
 Until the app loads a folder, a language project is usable by any host that calls `LanguageProject.Open` - which is
