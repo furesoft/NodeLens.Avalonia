@@ -40,9 +40,10 @@ shape, not as the tree, and add M2 features to `MainWindow` rather than inventin
 
 ## Status and where the truth lives
 
-- `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates.
+- `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates. It holds the **scope** of each milestone and what is left, not a status report.
+- `docs/implemented.md` - the record of delivery: every finished feature, where it lives and the test that proves it, milestone by milestone.
 - `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone, plus one document per planned feature: `completion.md`, `markers.md`, `node-moves.md`, `scrolling.md`, `import.md`, `csharp.md`.
-- `docs/adr/` - 13 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
+- `docs/adr/` - 19 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
 - `docs/open-questions.md` - open items, each with a recommendation and a decide-by milestone.
 
 A milestone is done when its acceptance gate passes, not when the code compiles.
@@ -110,6 +111,9 @@ even if the build stays green.
 - Conventional commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `test:`); the body explains
   *why*, not *what*.
 - Never mix an unrelated pre-existing fix into a commit that is about something else.
+- **A finished feature moves into `docs/implemented.md` in the same commit that finishes it** - a row
+  saying what it is, where it lives and the test that proves it. `docs/roadmap.md` keeps only the scope
+  of each milestone and what is left, so it never becomes a second status report.
 
 ## Code layout (explicit user requirement)
 
