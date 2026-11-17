@@ -29,9 +29,9 @@ What is next, in order:
    languages that need them.
 2. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
    `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **What is left of M4's semantics**: text generation, the interpreter and the cross-check tests that
-   make generated code and the interpreter agree on the corpus. The constraint engine, the type model and
-   the declared type-rule language are in [implemented.md](implemented.md).
+3. **What is left of M4's semantics**: text generation and the cross-check tests that make generated code and
+   the interpreter agree on the corpus. The constraint engine, the type model, the declared type-rule language
+   and the interpreter are in [implemented.md](implemented.md).
 
 **Known gap, recorded rather than fixed here:** `standalone.md` and
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
@@ -57,7 +57,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | --- | --- |
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
 | Text generation | template trees, traceability map |
-| Interpreter | evaluation with trace and step budget |
+| Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, and the pilot's decision-list rules are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
 | Cross-check tests | generated code and interpreter agree on the corpus |
 
 **Gate:** a user writes a decision table, sees errors immediately, runs it in the

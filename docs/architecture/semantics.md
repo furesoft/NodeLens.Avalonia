@@ -351,6 +351,41 @@ Because both a generator and an interpreter exist, they cross-check: for the pil
 a test asserts that generated code and interpretation produce identical results for the
 same model. That is the cheapest correctness net available for a language framework.
 
+### What is implemented
+
+The aspect is `IEvaluationRule` in `Projectional.Language/Evaluation/`, beside the notation, the typing rules
+and the type rules - a language package declares what its concepts mean without referencing the layer that runs
+them. `EvaluationRegistry` answers per concept and inherits from the super concepts, exactly as the type
+registry does; `EvaluationContext` gives a rule `Eval(node)`, `EvalChild(slot)`, `Variable(name)`,
+`PropertyValue(slot)` and `Error(message)`, and nothing that could mutate or reach the editor.
+
+The runtime is `Interpreter` in `Projectional.Semantics/Interpretation/`, because resolving a name is a
+semantic question and because a language package must not own the budget. It keeps the explicit stack, records
+every node that produced a value in **post-order** (a child's line precedes the line of the node that asked for
+it), counts steps, stops at `DefaultBudget` (10 000) or at the caller's token, and answers
+`InterpretationResult` - a value, or an `InterpretationFailure` naming the node it happened at.
+
+Three decisions are worth keeping:
+
+- **A concept with no rule has no value.** Unlike a type, there is no `UnknownValue` to fall back on: "nobody
+  said what this means" is a failure with a message, not a value. A half-written document therefore stops the
+  run where it stopped being meaningful.
+- **Nothing is cached.** Asking for the same child twice costs two steps and appears twice in the trace, which
+  is what makes the trace a record of what happened rather than of what could have been shared.
+- **Values are records, not objects.** `IntValue`, `BoolValue`, `StringValue`, `DateValue` compare by content,
+  so an interpreter test is an assertion. `PropertyValue` maps a property through its declared
+  `PropertyType.TryParse`, which is the same authority the model validates writes with.
+
+The shipped meanings: `ExpressionsEvaluation` (literals, names, arithmetic and comparison over whole numbers,
+equality by content, `&&`/`||`, unary `-`/`!`, `if`, parentheses) and `RulesEvaluation` (a rule is the truth of
+its condition; a ruleset is the outcome of the **first** rule that applies, and no match is a failure rather
+than a default). The rules registry of the pilot contains the expression rules, so one registry runs a
+document.
+
+Still open: stepping (a UI vocabulary, open question 11), value kinds for records and lists (they arrive with
+the first language that evaluates one), and the cross-check against generated code, which needs the generator
+first.
+
 ## Error recovery during editing
 
 - Unresolved reference → `Unknown` type, error marker, generation blocked for that
