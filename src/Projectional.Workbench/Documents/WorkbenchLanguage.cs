@@ -7,6 +7,7 @@ using Projectional.Languages;
 using Projectional.Samples;
 using Projectional.Structures;
 using Projectional.Structures.Notation;
+using Projectional.TypeRules;
 
 namespace Projectional.Workbench;
 
@@ -41,6 +42,7 @@ internal sealed class WorkbenchLanguage
             .. RulesLanguage.ConceptDeclarations,
             .. StructureLanguage.ConceptDeclarations,
             .. EditorLanguage.ConceptDeclarations,
+            .. TypeRuleLanguage.ConceptDeclarations,
         ]);
 
         Notations = CreateNotations(Concepts);
@@ -185,6 +187,7 @@ internal sealed class WorkbenchLanguage
 
         StructureNotations.AddTo(notations);
         EditorNotations.AddTo(notations);
+        TypeRuleNotations.AddTo(notations);
 
         return notations;
     }

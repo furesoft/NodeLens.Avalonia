@@ -19,6 +19,7 @@
     <Project Path="src/Projectional.Structures.Intentions/Projectional.Structures.Intentions.csproj" />
     <Project Path="src/Projectional.Toolkit/Projectional.Toolkit.csproj" />
     <Project Path="src/Projectional.Structures/Projectional.Structures.csproj" />
+    <Project Path="src/Projectional.TypeRules/Projectional.TypeRules.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>
   <Folder Name="/tests/">

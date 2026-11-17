@@ -190,6 +190,39 @@ arithmetic is as wide as its left operand, and a name is `Unknown` because what 
 declaration this language does not have. Type rules are behaviour, so they live beside the language
 rather than inside it - the same reason intentions and checks do.
 
+### The declared form
+
+`Projectional.TypeRules` is the language a type rule is written in, and it is the first *declared
+aspect*: a rule is a model, and `TypeRuleLowering` turns it into the same `ITypeRule` a C# author would
+have written ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)).
+
+| Concept | Says |
+| --- | --- |
+| `TypeRule.Rules` | the document: one language's rules |
+| `TypeRule.Rule` | `conceptKey` and a body |
+| `TypeRule.Fixed` | a type named outright: `string`, `int`, `bool`, `date` |
+| `TypeRule.Child` | the type of one of the node's children |
+| `TypeRule.Switch` | a choice between bodies, decided by a property's value, with an `otherwise` |
+| `TypeRule.Case` | one value of a switch and the body it selects |
+
+**Three bodies, not a statement list.** MPS' typesystem is imperative - `do { typeof(node) :== int; }` -
+and copying that would mean shipping an interpreter for a language whose only job is to answer one
+question per node. A fixed type, a child's type and a switch over a property cover what a DSL's rules
+actually say, and each lowers to a delegate the C# path could have written by hand.
+
+**A body that cannot be lowered is a load-time error**, not a rule that silently answers `Unknown`: a
+rule with no body, a type name the framework does not have, a switch that declares one value twice, and a
+switch with no `otherwise` all throw `ConceptDefinitionException` when the language is loaded, where the
+author is looking.
+
+**Only the four primitives are nameable.** An enumeration is a type a language declares, and a rule that
+named one would have to be resolved against that language's registry - the declared stage's job, not this
+one's.
+
+**The parity rule applies to types too.** `TypeRuleLoweringTests` writes the sample's type rules as a
+model and asserts that the declared registry and `SampleTypes` answer the same type for every node of the
+sample document - the same "two authoring paths, one answer" check the language layer has.
+
 ## Generation
 
 Text generation is a template tree per concept:

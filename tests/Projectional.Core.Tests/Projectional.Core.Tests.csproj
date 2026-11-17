@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Structures.Intentions\Projectional.Structures.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Structures\Projectional.Structures.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.TypeRules\Projectional.TypeRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
   </ItemGroup>
 
