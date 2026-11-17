@@ -95,6 +95,7 @@ and [testing.md](architecture/testing.md).
 | Scope model: a chain of levels, first match wins, ambiguity as a value | `Projectional.Semantics/Scopes/` | `ScopeTests`, `ScopeChainTests` |
 | The default chain: local, ancestors, model, project; only named nodes, never the node itself | `DefaultScopeProvider` | `DefaultScopeProviderTests` |
 | Scope-driven completion: a reference offers the scope's entries and accepting re-resolves the name | `CompletionSource.References`, `CompletionKind.Reference` | `ScopeCompletionTests` |
+| Typing a name into a reference cell resolves it through the same scope; ambiguous is refused with a reason | `TypeTextAction.ResolveReference` | `ScopeTypingTests` |
 | Concept triggers: a typed character at the edge of a node creates and wraps | `ConceptTrigger`, `TriggerAnchors` | `ConceptTriggerTests`, `ConceptRegistryTriggerTests`, `TypeTextTriggerTests` |
 | Intention model, per-caret list, apply path, popup, menu split | `Projectional.Editing/Intentions/` | `IntentionTests`, `IntentionListTests`, `IntentionAvailabilityTests`, `EditorSessionIntentionTests`, `OfferKeysTests` |
 | Intention preview: sandbox copy, diff, marks, hover ladder, ghost frame | `Projectional.Editing/Preview/`, ADR 0017 | `PreviewSandboxTests`, `ModelCopyTests`, `ModelDiffTests`, `PreviewMarksTests`, `PreviewDelayTests`, `PreviewStateTests`, `GhostFrameTests`, `PreviewBadgeTests`, `OfferPreviewTests`, `SamplePreviewTests` |

@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.Projection;
+using Projectional.Semantics;
 
 namespace Projectional.Editing;
 
@@ -82,7 +83,64 @@ public sealed class TypeTextAction : EditAction
             return Create(context, place, selection);
         }
 
+        // A reference cell holds a name, not text: what is typed is a name to resolve, and the scope is
+        // what says whether it means anything.
+        if (place.Cell is ReferenceCell reference)
+        {
+            return ResolveReference(context, place, selection, reference);
+        }
+
         return Refused(context, place, selection, EditResult.Unchanged(selection));
+    }
+
+    /// <summary>
+    /// Resolves the run of characters typed into a reference cell against the scope, and links the slot
+    /// when the name means exactly one thing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The run, not the single character: a name is spelt over several keystrokes, so the text is the
+    /// pending run plus this character - the same accumulation a trigger word uses, and for the same
+    /// reason. Nothing is written while the name is incomplete, so a half-typed name costs no undo step.
+    /// </para>
+    /// <para>
+    /// A name that means nothing yet is <see cref="EditOutcome.Unchanged"/> and the run is kept, because
+    /// the next character may complete it. A name that means two things is
+    /// <see cref="EditOutcome.Rejected"/> with a reason: the scope model says ambiguity is not a silent
+    /// pick, and a gesture that chose would be making the user's decision for them.
+    /// </para>
+    /// </remarks>
+    private EditResult ResolveReference(EditContext context, CaretPlace place, Selection selection, ReferenceCell reference)
+    {
+        if (context.NodeOf(place.Address) is not { } owner)
+        {
+            return EditResult.Unchanged(selection);
+        }
+
+        var name = string.Concat(context.PendingText ?? string.Empty, Text);
+        var resolution = context.Scopes.ScopeOf(owner, reference.Slot).Resolve(name);
+
+        switch (resolution.Kind)
+        {
+            case ScopeResolutionKind.Found
+                when owner.Model.Project.FindNode(resolution.Entry.Node) is { } target
+                    && context.SetReference(owner, reference.Slot, target):
+                context.PendingText = null;
+
+                return EditResult.Applied(selection);
+
+            case ScopeResolutionKind.Ambiguous:
+                context.PendingText = null;
+
+                return EditResult.Rejected(
+                    selection,
+                    $"'{name}' names {resolution.Candidates.Count} things here, so it does not name one of them.");
+
+            default:
+                context.PendingText = name;
+
+                return EditResult.Unchanged(selection);
+        }
     }
 
     /// <summary>

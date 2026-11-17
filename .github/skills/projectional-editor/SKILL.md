@@ -606,6 +606,12 @@ notation is registered per concept **and** variant
   use `node.Model.Project.FindNode(id)`. This cost a debugging round; do not "simplify" it back.
 - **`SelectCompletionAction` takes a delta, not an index**, and `CompletionList.Move(0)` throws. A
   freshly opened list already selects index 0, so a test that wants the first entry accepts directly.
+- **Typing into a reference cell resolves a name, it does not store text.** `TypeTextAction` asks the
+  scope for the pending run plus this character: `Found` links the slot, `Missing` keeps the run (a name
+  is spelt over several keystrokes), `Ambiguous` is `Rejected` with a reason. Nothing is written while
+  the name is incomplete, so a half-typed name costs no undo step. **`Select` clears `PendingText`**, so
+  a test that spells a name over several keystrokes must select once and then apply the keystrokes -
+  selecting before each one wipes the run and the name never completes.
 
 ## How the editor tree is built
 

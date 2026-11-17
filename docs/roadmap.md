@@ -24,9 +24,10 @@ M3 and M4 have landed their first halves early, M5 has started, M6 and M7 are un
 
 What is next, in order:
 
-1. **The rest of scopes** - the chain, the default provider and scope-driven completion are done; what is
-   left is per-language overrides (a language replacing a level) and ambiguity *diagnostics*, so a name
-   that matches two things is reported rather than only refused.
+1. **The rest of scopes** - the chain, the default provider, scope-driven completion and typing a name are
+   done; what is left is per-language overrides (a language replacing a level) and ambiguity *diagnostics*
+   in the problems panel, so a name that matches two things is reported rather than only refused at the
+   keystroke.
 2. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
    languages that need them.
