@@ -25,6 +25,10 @@ public static class CellText
 
         return cell switch
         {
+            // An empty property may show a stand-in the model does not hold: the notation says what belongs
+            // there, which is all a reader has until someone types a value. As soon as there is one it wins,
+            // which is why this case asks for empty text as well.
+            PropertyCell { Text.Length: 0, EmptyText.Length: > 0 } empty => empty.EmptyText,
             TextCell text => text.Text,
             ChildCell { IsEmpty: true } empty => empty.EmptyText,
             CollectionCell { IsEmpty: true } empty => empty.EmptyText,

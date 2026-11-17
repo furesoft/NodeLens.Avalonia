@@ -85,7 +85,11 @@ public static class EditorNotations
         notations.Add(EditorConceptKeys.Property, ed => ed.Line(
             ed.Keyword("[> {"),
             ed.Property("slot"),
-            ed.Punct("}")));
+            ed.Punct("}"),
+            ed.Space,
+            ed.Keyword("empty:"),
+            ed.Space,
+            ed.Property("emptyText")));
 
         notations.Add(EditorConceptKeys.Reference, ed => ed.Line(
             ed.Keyword("[> reference {"),

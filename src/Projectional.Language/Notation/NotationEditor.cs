@@ -27,8 +27,18 @@ public sealed class NotationEditor
 
     public SpaceNotationCell Space => SpaceNotationCell.Instance;
 
-    public PropertyNotationCell Property(string slot, TextEmphasis emphasis = TextEmphasis.None) =>
-        new(slot, emphasis);
+    /// <summary>A property slot, drawn where the notation puts it.</summary>
+    /// <param name="slot">The property to draw.</param>
+    /// <param name="emphasis">How the value is decorated wherever this notation shows it.</param>
+    /// <param name="emptyText">
+    /// What the cell shows while the slot holds no value - <c>&lt;&lt;operator&gt;&gt;</c> or a word - so a reader
+    /// sees that a value is expected. Display only: it is never a value, and typing starts from an empty cell.
+    /// </param>
+    public PropertyNotationCell Property(
+        string slot,
+        TextEmphasis emphasis = TextEmphasis.None,
+        string emptyText = "") =>
+        new(slot, emphasis, emptyText);
 
     public ReferenceNotationCell Reference(
         string slot,

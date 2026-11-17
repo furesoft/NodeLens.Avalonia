@@ -71,11 +71,19 @@ public sealed class CellStyler : ICellStyler
     /// <see cref="Projectional.Core.PropertyType"/> are internal and the name is the only public
     /// discriminator.
     /// </summary>
-    private static TextStyleKind OfValue(PropertyCell cell) => cell.Type.Name switch
-    {
-        "int" or "date" => TextStyleKind.Number,
-        "string" => TextStyleKind.Text,
-        // A bool and every enumeration hold one of a closed set of words the language chose.
-        _ => TextStyleKind.Keyword,
-    };
+    /// <remarks>
+    /// A cell that shows a placeholder instead of a value is not a value of its type: it is a statement that
+    /// something belongs there, which is what the placeholder kind means - the same reading an empty child slot
+    /// gets.
+    /// </remarks>
+    private static TextStyleKind OfValue(PropertyCell cell) =>
+        cell.Text.Length == 0 && cell.EmptyText.Length > 0
+            ? TextStyleKind.Placeholder
+            : cell.Type.Name switch
+            {
+                "int" or "date" => TextStyleKind.Number,
+                "string" => TextStyleKind.Text,
+                // A bool and every enumeration hold one of a closed set of words the language chose.
+                _ => TextStyleKind.Keyword,
+            };
 }

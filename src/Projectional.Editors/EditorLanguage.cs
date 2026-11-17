@@ -137,6 +137,11 @@ public static class EditorLanguage
                     PropertyType.String,
                     description: "The name of the property slot whose value this cell draws.",
                     showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    description: "What the cell shows while the property holds no value. Display only, never a value.",
+                    showDescriptionWhenFilled: true),
             ],
             [EditorConceptKeys.InlineCell],
             nameSlot: "slot",

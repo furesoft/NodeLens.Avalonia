@@ -155,7 +155,9 @@ public static class EditorLowering
             EditorConceptKeys.Space => ed.Space,
             EditorConceptKeys.Keyword => ed.Keyword(Required(cell, "text")),
             EditorConceptKeys.Punct => ed.Punct(Required(cell, "text")),
-            EditorConceptKeys.Property => ed.Property(Required(cell, "slot")),
+            EditorConceptKeys.Property => ed.Property(
+                Required(cell, "slot"),
+                emptyText: Optional(cell, "emptyText") ?? string.Empty),
             EditorConceptKeys.Reference => ed.Reference(Required(cell, "slot")),
             EditorConceptKeys.ChildInline => new SingleChildNotationCell(Required(cell, "slot")),
             EditorConceptKeys.Conditional => ed.Conditional(

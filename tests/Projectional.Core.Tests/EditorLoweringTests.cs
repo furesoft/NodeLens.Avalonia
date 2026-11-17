@@ -213,6 +213,30 @@ public sealed class EditorLoweringTests
     }
 
     [Fact]
+    public void APropertyCellKeepsTheEmptyTextTheAuthorWrote()
+    {
+        // The stand-in an empty property shows is notation data like the placeholder of a child slot, so a
+        // language written in project files can say it too - and the rendering proves it reaches the drawing.
+        var concepts = ConceptRegistry.Create(
+            [new ConceptDeclaration("Rules.Rule", [new PropertySlot("operator", PropertyType.Enum("+", "-"))])]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var sequence = notation.Sequence(notation.SetRoot(declared, EditorConceptKeys.Sequence));
+        var line = notation.Line(sequence);
+
+        notation.Cell(line, EditorConceptKeys.Property, ("slot", "operator"), ("emptyText", "<<operator>>"));
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("Rules.Rule");
+
+        model.AddRoot(rule);
+
+        Assert.Equal("<<operator>>", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
     public void ADefinitionOfANotationIsDrawnLikeAnyOtherModel()
     {
         // The plan's rule: a definition language that needed a rendering exception would not be a language. The
@@ -232,7 +256,7 @@ public sealed class EditorLoweringTests
                 "node cell layout:",
                 "  [/",
                 "    [> line",
-                "      [> constant \"rule\" [> space [> {name}",
+                "      [> constant \"rule\" [> space [> {name} empty:",
                 "  /]"),
             LayoutSnapshot.Render(notation.Root, EditorNotations.Create(), width: 120));
     }

@@ -81,6 +81,15 @@ public sealed class CellStylerTests
     }
 
     [Fact]
+    public void APlaceholderIsNotStyledLikeTheValueItStandsInFor()
+    {
+        // The box says "something belongs here", which is the placeholder kind - not the operator's own word.
+        var cell = new PropertyCell(Here, "op", PropertyType.Enum("+", "-"), string.Empty, isSet: false, emptyText: "<<operator>>");
+
+        Assert.Equal(TextStyleKind.Placeholder, CellStyler.Default.StyleOf(cell));
+    }
+
+    [Fact]
     public void AResolvedReferenceIsStyledAsAReference()
     {
         var cell = new ReferenceCell(Here, "tag", "basic", ReferenceState.Resolved, NodeId.New());
