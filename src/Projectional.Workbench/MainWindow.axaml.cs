@@ -1064,17 +1064,17 @@ public sealed partial class MainWindow : Window, IDisposable
         OpenDocument(PayrollSample.NewEmptyModel(), _language.Notations, typing: WorkbenchLanguage.Typing);
     }
 
-    /// <summary>Opens an empty language definition, so the declared path can be tried without setup.</summary>
+    /// <summary>Opens an empty concept document, so the declared path can be tried without setup.</summary>
     /// <remarks>
     /// The structure language is loaded into this app like any other, so this is only a convenience: the document
     /// it opens is a model written in that language, editable and saveable by the same editor as everything else.
     /// </remarks>
-    private void OnNewLanguageDefinition(object? sender, RoutedEventArgs e)
+    private void OnNewConcept(object? sender, RoutedEventArgs e)
     {
         _error = null;
 
         OpenDocument(
-            _language.NewLanguageDefinition(),
+            _language.NewConceptDefinition(),
             _language.Notations,
             typing: WorkbenchLanguage.Typing);
     }

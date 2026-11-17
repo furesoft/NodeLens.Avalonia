@@ -90,7 +90,7 @@ internal sealed class WorkbenchLanguage
     /// One definition per document, so the menu entry creates a concept and nothing else: an enumeration is a
     /// document of its own, because the two are edited at different times and a diff should read as one definition.
     /// </remarks>
-    internal Model NewLanguageDefinition() => NewDefinition(StructureConceptKeys.Concept, "concept");
+    internal Model NewConceptDefinition() => NewDefinition(StructureConceptKeys.Concept, "concept");
 
     /// <summary>A model of the structure language: one empty enumeration, ready to be written.</summary>
     internal Model NewEnumerationDefinition() => NewDefinition(StructureConceptKeys.Enumeration, "enumeration");

@@ -55,10 +55,10 @@ public sealed class WorkbenchLanguageTests
     }
 
     [Fact]
-    public void ANewLanguageDefinitionOpensInASessionAndCanBeWritten()
+    public void ANewConceptDocumentOpensInASessionAndCanBeWritten()
     {
         var language = new WorkbenchLanguage();
-        var model = language.NewLanguageDefinition();
+        var model = language.NewConceptDefinition();
 
         using var session = new EditorSession(model.Roots[0], language.Notations, typing: WorkbenchLanguage.Typing);
 
@@ -73,7 +73,7 @@ public sealed class WorkbenchLanguageTests
     public void ADefinitionSurvivesARoundTripThroughTheShellsLanguage()
     {
         var language = new WorkbenchLanguage();
-        var model = language.NewLanguageDefinition();
+        var model = language.NewConceptDefinition();
 
         model.Roots[0].Set(StructureLanguage.KeySlot, "Rules.Rule");
 
@@ -129,7 +129,7 @@ public sealed class WorkbenchLanguageTests
         // One definition per document: the root is the concept, so an empty one is the concept's own sections -
         // there is no list to be ambiguous about, which is what the old two-section shape needed headings for.
         var language = new WorkbenchLanguage();
-        var model = language.NewLanguageDefinition();
+        var model = language.NewConceptDefinition();
 
         using var session = new EditorSession(model.Roots[0], language.Notations);
 
@@ -227,7 +227,7 @@ public sealed class WorkbenchLanguageTests
         // shell answers "not runnable" instead of asking the interpreter at all.
         var language = new WorkbenchLanguage();
 
-        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewLanguageDefinition()));
+        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewConceptDefinition()));
         Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewNotationDefinition()));
     }
 
