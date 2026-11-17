@@ -128,6 +128,36 @@ public sealed class TypeRuleNotationTests
     }
 
     [Fact]
+    public void ADeclaredTypeDrawsItsNameAndReadsItBack()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var amount = model.NewNode(TypeRuleConceptKeys.Named);
+
+        amount.Set(TypeRuleLanguage.NameSlot, "Amount");
+        model.NewChild(amount, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+
+        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, TypeRuleConceptKeys.Named);
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Ref)
+            .Set(TypeRuleLanguage.NameSlot, "Amount");
+
+        Assert.Equal(
+            """
+            types
+              rule TypeRule.Named is
+                type Amount
+            """,
+            LayoutSnapshot.Render(document, TypeRuleNotations.Registry, width: 60));
+
+        // The name is what the finding quotes, which is the word the author wrote.
+        Assert.Equal("Amount", TypeRuleLowering.CreateRegistry(document).TypeOf(amount).Name);
+    }
+
+    [Fact]
     public void AnEmptyRulesDocumentShowsTheEmptySectionPlaceholder()
     {
         var model = TypeRuleLanguage.NewModel();

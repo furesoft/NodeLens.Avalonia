@@ -53,4 +53,10 @@ public static class TypeRuleConceptKeys
 
     /// <summary>A value that may be absent.</summary>
     public const string Optional = "TypeRule.Optional";
+
+    /// <summary>A type the language declared under a name.</summary>
+    public const string Named = "TypeRule.Named";
+
+    /// <summary>A type expression that names a declared type.</summary>
+    public const string Ref = "TypeRule.Ref";
 }

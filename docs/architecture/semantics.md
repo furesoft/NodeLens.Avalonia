@@ -163,8 +163,8 @@ beyond local propagation; if a language needs more, its concepts provide it.
 
 ### What is implemented
 
-`Projectional.Language/Types/` holds the model; the primitive, structural and `Unknown` kinds are done,
-the named kind is not.
+`Projectional.Language/Types/` holds the model; the primitive, structural, named and `Unknown` kinds are
+done.
 
 **It lives in `Projectional.Language`, beside the notation and the typing rules, because a type is a
 statement about what a language means.** The layer diagram puts `Semantics` above `Language`, so a
@@ -178,6 +178,7 @@ there. The consumers sit above and read the registry the language hands them.
 | `RecordType` | a fixed set of named fields, compared **by name, not by order** |
 | `ListType` | its element type; a length is a fact about a value, not about its type |
 | `OptionalType` | the inner type or nothing; accepts the inner type, and nesting is not collapsed |
+| `NamedType` | a name for a type: `Name` is what it is called, `Expansion` is what it means |
 | `UnknownType` | the answer when nothing says; accepts and is accepted |
 | `ITypeRule` | the aspect: `TypeFor(TypeContext)` |
 | `TypeContext` | the node and `TypeOf(node)` / `TypeOfChild(slot)` - the whole of local propagation |
@@ -203,6 +204,13 @@ Four rules worth knowing:
   absence may itself be absent, and a language that does not want that should not declare it.
 - **Every structural type accepts `Unknown`**, for the same reason `PrimitiveType` does: one mistake must
   not become a finding on every expression that reads the value.
+- **A name is a spelling, not a kind of value.** `NamedType` keeps `Name` (what the language calls it) and
+  `Expansion` (what it means) apart, and it stays structural: `Accepts` looks through a name on both sides,
+  so `Amount` that means `int` is accepted by `int` and two names for one type accept each other. The
+  looking-through is not the alias's privilege - every `Accepts` starts with `NamedType.Unwrap(actual)`,
+  because the *accepter* is who would otherwise refuse an alias. A consumer that has to know what kind of
+  type it has (a generator) calls `NamedType.Unwrap` explicitly, for the same reason it asks
+  `type is UnknownType` rather than relying on `Unknown` accepting everything.
 - **`ITypeRule.TypeFor`, not `TypeOf`**: CA1716 forbids a reserved word as an interface member, the same
   reason `ICheck.Find` is not called `Of`. The class member `TypeContext.TypeOf(Node)` keeps the natural
   name, because the rule does not apply to it.
@@ -241,6 +249,8 @@ have written ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)).
 | `TypeRule.Field` | `name` and `type` |
 | `TypeRule.List` | `element` |
 | `TypeRule.Optional` | `inner` |
+| `TypeRule.Ref` | `name`: a declared type, expanded where it is used |
+| `TypeRule.Named` | `name` and `type`: a type the language declares, written as a root of the types model |
 
 **A type is a separate family from a body, and that is the load-bearing split.** A body may read the node
 (`type of left`, `switch on operator`); a type may not. Mixing them would allow a record field whose type
@@ -259,15 +269,26 @@ and copying that would mean shipping an interpreter for a language whose only jo
 question per node. A fixed type, a child's type and a switch over a property cover what a DSL's rules
 actually say, and each lowers to a delegate the C# path could have written by hand.
 
+**A declared type is a root of the types model, not a second list inside the document.** So a types model
+keeps one shape a reader has to learn: the rules, and the names they may use. `TypeRule.Ref` names one by
+its `name` - a string the lowering resolves, the same way `TypeRule.Rule.conceptKey` names a concept -
+because the alternatives are worse here: a reference slot would buy completion and `<unresolved>` drawing,
+and it needs a scope provider over the document, which is a slice of its own.
+
+Three things are load-time errors, because nothing later could decide them: a name the model does not
+declare, a name declared twice, and a name written in terms of itself (`type A = [A]`, or `A` through
+`B`). The last is not a recursive type but a definition with no base - it would expand forever - so the
+lowering carries the chain of names being expanded and reports it with the chain in the message.
+
 **A body that cannot be lowered is a load-time error**, not a rule that silently answers `Unknown`: a
 rule with no body, a type name the framework does not have, a fixed body or a field with no type, a record
-that names one field twice, a switch that declares one value twice, and a switch with no `otherwise` all
-throw `ConceptDefinitionException` when the language is loaded, where the author is looking.
+that names one field twice, a switch that declares one value twice, a switch with no `otherwise`, and the
+three alias errors above all throw `ConceptDefinitionException` when the language is loaded, where the
+author is looking.
 
 **Only the primitives are nameable by a `Primitive` node.** An enumeration is a type a language declares,
 and a rule that named one would have to be resolved against that language's registry - the declared
-stage's job, not this
-one's.
+stage's job, not thisone's.
 
 **The parity rule applies to types too.** `TypeRuleLoweringTests` writes the sample's type rules as a
 model and asserts that the declared registry and `ExpressionsLanguage.Types` answer the same type for

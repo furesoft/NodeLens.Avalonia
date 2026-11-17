@@ -29,19 +29,51 @@ public static class TypeRuleLowering
     {
         ArgumentNullException.ThrowIfNull(document);
 
+        var aliases = Aliases(document);
         var registry = TypeRegistry.Empty;
 
         foreach (var rule in document.GetChildren(TypeRuleLanguage.RulesSlot))
         {
             var conceptKey = Required(rule, TypeRuleLanguage.ConceptKeySlot);
 
-            registry = registry.Add(conceptKey, LowerRule(rule, conceptKey));
+            registry = registry.Add(conceptKey, LowerRule(rule, conceptKey, aliases));
         }
 
         return registry;
     }
 
-    private static ITypeRule LowerRule(Node rule, string conceptKey)
+    /// <summary>
+    /// The types the model declares under a name, which are its roots beside the rules document.
+    /// </summary>
+    /// <remarks>
+    /// A named type is a root rather than a second list inside the document, so that a types model keeps
+    /// exactly one shape a reader has to learn: the rules, and the names they may use. Duplicates are a
+    /// load-time error here because nothing later could choose between them.
+    /// </remarks>
+    private static Dictionary<string, Node> Aliases(Node document)
+    {
+        Dictionary<string, Node> aliases = new(StringComparer.Ordinal);
+
+        foreach (var root in document.Model.Roots)
+        {
+            if (root.Concept.Key != TypeRuleConceptKeys.Named)
+            {
+                continue;
+            }
+
+            var name = Required(root, TypeRuleLanguage.NameSlot);
+
+            if (!aliases.TryAdd(name, root))
+            {
+                throw new ConceptDefinitionException(
+                    $"The types model declares the type '{name}' twice, so nothing says which one a rule means.");
+            }
+        }
+
+        return aliases;
+    }
+
+    private static ITypeRule LowerRule(Node rule, string conceptKey, Dictionary<string, Node> aliases)
     {
         if (rule.GetChild(TypeRuleLanguage.BodySlot) is not { } body)
         {
@@ -49,14 +81,14 @@ public static class TypeRuleLowering
                 $"The type rule for '{conceptKey}' has no body, so it answers nothing.");
         }
 
-        return LowerBody(body, conceptKey);
+        return LowerBody(body, conceptKey, aliases);
     }
 
-    private static ITypeRule LowerBody(Node body, string conceptKey) => body.Concept.Key switch
+    private static ITypeRule LowerBody(Node body, string conceptKey, Dictionary<string, Node> aliases) => body.Concept.Key switch
     {
-        TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey)),
+        TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey, aliases, [])),
         TypeRuleConceptKeys.Child => new ChildRule(Required(body, TypeRuleLanguage.SlotSlot)),
-        TypeRuleConceptKeys.Switch => LowerSwitch(body, conceptKey),
+        TypeRuleConceptKeys.Switch => LowerSwitch(body, conceptKey, aliases),
         _ => throw new ConceptDefinitionException(
             $"The type rule for '{conceptKey}' has a body of '{body.Concept.Key}', which is not a kind of body."),
     };
@@ -69,19 +101,59 @@ public static class TypeRuleLowering
     /// a structural walk and nothing more. Which is why a record field's type cannot be "the type of my
     /// left child": there is no node there to ask.
     /// </remarks>
-    private static IType LowerType(Node expr, string conceptKey) => expr.Concept.Key switch
+    private static IType LowerType(Node expr, string conceptKey, Dictionary<string, Node> aliases, HashSet<string> expanding) => expr.Concept.Key switch
     {
-        TypeRuleConceptKeys.Primitive => NamedType(Required(expr, TypeRuleLanguage.NameSlot), conceptKey),
-        TypeRuleConceptKeys.Record => LowerRecord(expr, conceptKey),
+        TypeRuleConceptKeys.Primitive => Primitive(Required(expr, TypeRuleLanguage.NameSlot), conceptKey),
+        TypeRuleConceptKeys.Record => LowerRecord(expr, conceptKey, aliases, expanding),
         TypeRuleConceptKeys.List => new ListType(
-            LowerType(RequiredChild(expr, TypeRuleLanguage.ElementSlot), conceptKey)),
+            LowerType(RequiredChild(expr, TypeRuleLanguage.ElementSlot), conceptKey, aliases, expanding)),
         TypeRuleConceptKeys.Optional => new OptionalType(
-            LowerType(RequiredChild(expr, TypeRuleLanguage.InnerSlot), conceptKey)),
+            LowerType(RequiredChild(expr, TypeRuleLanguage.InnerSlot), conceptKey, aliases, expanding)),
+        TypeRuleConceptKeys.Ref => Alias(Required(expr, TypeRuleLanguage.NameSlot), conceptKey, aliases, expanding),
         _ => throw new ConceptDefinitionException(
             $"The type rule for '{conceptKey}' names a type of '{expr.Concept.Key}', which is not a kind of type."),
     };
 
-    private static RecordType LowerRecord(Node expr, string conceptKey)
+    /// <summary>
+    /// The type a declared name stands for, expanded where it is used.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="expanding"/> is the chain of names currently being expanded, which is how a
+    /// declaration written in terms of itself is caught: <c>type A = [A]</c> is not a recursive type but a
+    /// definition with no base, and answering it would recurse forever. A name may of course be used twice
+    /// side by side - only a name on its own expansion path is the mistake.
+    /// </remarks>
+    private static NamedType Alias(
+        string name,
+        string conceptKey,
+        Dictionary<string, Node> aliases,
+        HashSet<string> expanding)
+    {
+        if (!aliases.TryGetValue(name, out var declaration))
+        {
+            throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' names the type '{name}', which the types model does not declare.");
+        }
+
+        if (!expanding.Add(name))
+        {
+            throw new ConceptDefinitionException(
+                $"The type '{name}' is declared in terms of itself ({string.Join(" -> ", expanding)} -> {name}), so it means nothing.");
+        }
+
+        try
+        {
+            return new NamedType(
+                name,
+                LowerType(RequiredChild(declaration, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding));
+        }
+        finally
+        {
+            expanding.Remove(name);
+        }
+    }
+
+    private static RecordType LowerRecord(Node expr, string conceptKey, Dictionary<string, Node> aliases, HashSet<string> expanding)
     {
         List<(string Name, IType Type)> fields = [];
 
@@ -89,7 +161,7 @@ public static class TypeRuleLowering
         {
             fields.Add((
                 Required(field, TypeRuleLanguage.NameSlot),
-                LowerType(RequiredChild(field, TypeRuleLanguage.TypeSlot), conceptKey)));
+                LowerType(RequiredChild(field, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding)));
         }
 
         try
@@ -105,7 +177,7 @@ public static class TypeRuleLowering
         }
     }
 
-    private static SwitchRule LowerSwitch(Node body, string conceptKey)
+    private static SwitchRule LowerSwitch(Node body, string conceptKey, Dictionary<string, Node> aliases)
     {
         var property = Required(body, TypeRuleLanguage.PropertySlot);
         var cases = new Dictionary<string, ITypeRule>(StringComparer.Ordinal);
@@ -120,7 +192,7 @@ public static class TypeRuleLowering
                     $"The case '{value}' of the type rule for '{conceptKey}' has no body.");
             }
 
-            if (!cases.TryAdd(value, LowerBody(caseBody, conceptKey)))
+            if (!cases.TryAdd(value, LowerBody(caseBody, conceptKey, aliases)))
             {
                 throw new ConceptDefinitionException(
                     $"The type rule for '{conceptKey}' switches on '{property}' and declares '{value}' twice.");
@@ -133,7 +205,7 @@ public static class TypeRuleLowering
                 $"The type rule for '{conceptKey}' switches on '{property}' but says nothing about any other value.");
         }
 
-        return new SwitchRule(property, cases, LowerBody(otherwise, conceptKey));
+        return new SwitchRule(property, cases, LowerBody(otherwise, conceptKey, aliases));
     }
 
     /// <summary>
@@ -144,7 +216,7 @@ public static class TypeRuleLowering
     /// that named one would have to be resolved against that language's registry - which is the declared
     /// stage's job, not this one's. Saying so at load is better than answering <c>Unknown</c> forever.
     /// </remarks>
-    private static PrimitiveType NamedType(string name, string conceptKey) => name switch
+    private static PrimitiveType Primitive(string name, string conceptKey) => name switch
     {
         "string" => PrimitiveType.Of(PropertyType.String),
         "int" => PrimitiveType.Of(PropertyType.Integer),

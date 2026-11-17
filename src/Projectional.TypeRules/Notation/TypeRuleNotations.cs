@@ -103,5 +103,20 @@ public static class TypeRuleNotations
         notations.Add(TypeRuleConceptKeys.Optional, ed => ed.Line(
             ed.ChildInline(TypeRuleLanguage.InnerSlot),
             ed.Keyword("?")));
+
+        // A name draws as itself; what it expands to is the model's business, not the reader's.
+        notations.Add(TypeRuleConceptKeys.Ref, ed => ed.Line(
+            ed.Property(TypeRuleLanguage.NameSlot)));
+
+        // The same "type" keyword a fixed body starts with, so one reading covers both: `type int` names the
+        // framework's type, `type Amount = int` names the language's.
+        notations.Add(TypeRuleConceptKeys.Named, ed => ed.Line(
+            ed.Keyword("type"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.NameSlot),
+            ed.Space,
+            ed.Keyword("="),
+            ed.Space,
+            ed.ChildInline(TypeRuleLanguage.TypeSlot)));
     }
 }

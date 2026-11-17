@@ -158,6 +158,22 @@ public static class TypeRuleLanguage
             [new ChildSlot(InnerSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One)],
             [TypeRuleConceptKeys.TypeExpr],
             description: "A value that may be absent."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Ref,
+            [new PropertySlot(NameSlot, PropertyType.String)],
+            [TypeRuleConceptKeys.TypeExpr],
+            nameSlot: NameSlot,
+            description: "A type expression that names a declared type."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Named,
+            [
+                new PropertySlot(NameSlot, PropertyType.String),
+                new ChildSlot(TypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            nameSlot: NameSlot,
+            description: "A type the language declares under a name, written as a root of the types model."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

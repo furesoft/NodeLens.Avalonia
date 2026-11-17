@@ -179,6 +179,86 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void ARuleCanNameADeclaredType()
+    {
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.Ref("Amount")));
+        });
+
+        var type = registry.TypeOf(Literal());
+
+        Assert.Equal("Amount", type.Name);
+        Assert.Equal("int", Assert.IsType<NamedType>(type).Expansion.Name);
+        Assert.True(type.Accepts(PrimitiveType.Of(PropertyType.Integer)));
+    }
+
+    [Fact]
+    public void ADeclaredTypeCanBeWrittenOnceAndUsedInsideAnother()
+    {
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Declare("Line", rules.Record(("amount", rules.Ref("Amount"))));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.ListOf(rules.Ref("Line"))));
+        });
+
+        var type = registry.TypeOf(Literal());
+
+        Assert.Equal("[Line]", type.Name);
+        Assert.True(type.Accepts(new ListType(new RecordType([("amount", PrimitiveType.Of(PropertyType.Integer))]))));
+    }
+
+    [Fact]
+    public void ATypeTheModelDoesNotDeclareIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => Lower(rules => rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.Ref("Amount")))));
+
+        Assert.Contains("Amount", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ATypeDeclaredTwiceIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Declare("Amount", rules.Primitive("string"));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.Ref("Amount")));
+        }));
+
+        Assert.Contains("twice", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ATypeDeclaredInTermsOfItselfIsALoadTimeError()
+    {
+        // Not a recursive type: a definition with no base, which would expand forever.
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules =>
+        {
+            rules.Declare("Amount", rules.ListOf(rules.Ref("Amount")));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.Ref("Amount")));
+        }));
+
+        Assert.Contains("in terms of itself", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ATypeDeclaredThroughAnotherItselfLoopsBackAndIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules =>
+        {
+            rules.Declare("First", rules.ListOf(rules.Ref("Second")));
+            rules.Declare("Second", rules.Ref("First"));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.Ref("First")));
+        }));
+
+        Assert.Contains("in terms of itself", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheDeclaredTwinOfTheSampleTypesAgreesWithIt()
     {
         // The parity rule of ADR 0014, applied to types: the same rules written as a model and as C#
@@ -344,6 +424,27 @@ public sealed class TypeRuleLoweringTests
             optional.AddChild(TypeRuleLanguage.InnerSlot, inner);
 
             return optional;
+        }
+
+        /// <summary>Declares a type under a name, as a root of the same model the rules live in.</summary>
+        public Node Declare(string name, Node type)
+        {
+            var named = _model.NewNode(TypeRuleConceptKeys.Named);
+
+            named.Set(TypeRuleLanguage.NameSlot, name);
+            named.AddChild(TypeRuleLanguage.TypeSlot, type);
+
+            return named;
+        }
+
+        /// <summary>A type expression that names a declared type.</summary>
+        public Node Ref(string name)
+        {
+            var reference = _model.NewNode(TypeRuleConceptKeys.Ref);
+
+            reference.Set(TypeRuleLanguage.NameSlot, name);
+
+            return reference;
         }
 
         public Node Child(string slot)
