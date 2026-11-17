@@ -211,6 +211,18 @@ shown is not.
 | 80 | Is the tip's heading the concept key (`Rules.Rule`) or a friendly label (`Rule`)? | Leaning | The key. The notation never shows it, and a language author reading a tip needs the name they can grep for; a label is friendlier for the language's user but leaves the author guessing which concept they are looking at. A short label can become a second line once a language declares one. | D3 |
 | 81 | Should a slot carry its own description? | Open | Not in D1. A slot is already named in the notation (`condition`), so the marginal value is smaller than for a concept, and it doubles the declaration surface. Revisit when a language has a slot whose name does not explain it. | D5 |
 
+## Language descriptions for LLMs
+
+Planned as M8, after 1.0, in [llm-language-description.md](architecture/llm-language-description.md).
+The principle is decided - one walk over the declarations produces the schema and the guide, so a
+description cannot drift from the language. What is open is its shape.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 82 | Which format does a generated document use: the existing XML, a JSON dialect, or both? | Leaning | The existing `.mps` XML and the clipboard's fragment shape, and no third format: a JSON dialect would be a second wire format to keep in step with the first, while the reader already refuses what it cannot build. Revisit only if evaluation shows parse errors dominating. | M8 |
+| 83 | Where does the description generator live: the toolkit, `Semantics`, or a package of its own? | Leaning | A package of its own (`Projectional.Descriptions`), the way the check and intention catalogues are: it needs `Semantics` for constraints, and [ADR 0019](adr/0019-toolkit-is-the-language-surface.md) deliberately keeps `Semantics` out of the toolkit surface. | M8 |
+| 84 | Does the operation protocol name nodes by path or by id? | Leaning | By path (`0/rules/2/condition`), because an id is internal and a model cannot know one. The path is resolved when the proposal applies, so a stale proposal is refused with a reason instead of landing on whatever inherited that id. | M8 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
