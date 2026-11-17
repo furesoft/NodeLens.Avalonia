@@ -56,8 +56,14 @@ even if the build stays green.
    The shipped languages hang off `Language`, not off each other's callers:
    `Expressions` -> `Language`, `Samples` -> `Expressions` + `Language`. `Core` must never
    reference `Language`; languages register into Core's registries from above.
-3. **Only `Projectional.Core` and `Projectional.Avalonia` expose public API.** Every other
-   assembly is `internal` plus `InternalsVisibleTo`.
+   `Toolkit` sits *beside* `Language` (it references `Core` + `Language` + `Projection` + `Persistence`) and is
+   what a language package may reference instead; nothing references `Toolkit` from below.
+3. **Three assemblies expose public API: `Projectional.Core`, `Projectional.Avalonia` and
+   `Projectional.Toolkit`** (the last is what a language package is written against - one reference plus
+   `LanguageSnapshot`, [ADR 0019](../../../docs/adr/0019-toolkit-is-the-language-surface.md)). Every other
+   assembly is `internal` plus `InternalsVisibleTo`, and `Language`/`Projection`/`Persistence` are public
+   only because the toolkit aggregates them. **Never aggregate `Editing` or `Semantics` into the toolkit**:
+   keeping them out is what makes "a language is headless" a property of the build instead of a rule.
 4. **All mutation happens inside a transaction** and emits change events. Subscribers must
    be passive: mutating the model from a change handler is a bug.
 5. **Language definitions are reflection-free.** Fluent builders registering into an explicit
@@ -1473,13 +1479,20 @@ Work that touches any of this also touches a doc; the app's plan lives in
 
 ## How the tests are organised
 
-`tests/Projectional.Core.Tests` is currently the only test project. It references `Core`,
+`tests/Projectional.Core.Tests` is the main test project. It references `Core`,
 `Language`, `Persistence`, `Projection`, `Editing` and - for the one pure type in it -
 `Avalonia`. `TestLanguage.cs` (five concepts: `Test.Tag`,
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1559 tests**; anything below that means tests were deleted.
+it. **Baseline is 1563 tests**; anything below that means tests were deleted.
+
+`tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
+references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
+`BoardNotations`) instead of borrowing the fixture. Its four tests are the compile-time proof of
+[ADR 0019](../../../docs/adr/0019-toolkit-is-the-language-surface.md) - a language that needed anything the
+toolkit does not bring would not build. Do not add a reference to it to "make an assertion possible"; that
+would delete the only test of the surface itself.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

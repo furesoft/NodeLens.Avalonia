@@ -301,7 +301,7 @@ What M2 delivers so a language author needs nothing else:
 
 | Piece | Content |
 | --- | --- |
-| `Projectional.Toolkit` package | one reference instead of five internals; aggregates `Language`, `Projection`, `Editing`, `Semantics` |
+| `Projectional.Toolkit` package | one reference instead of five internals; aggregates `Core`, `Language`, `Projection` and `Persistence` and exposes `LanguageSnapshot` ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)). `Editing` and `Semantics` are deliberately **not** aggregated: they are what keeps a language headless, and a language that needs behaviour ships a second package beside it |
 | `dotnet new projectional-language` | a template with a concept, its notation, a fixture model and a golden corpus, so a language starts testable |
 | Composition, not inheritance | `[.. ExpressionsLanguage.ConceptDeclarations, .. own]` - a language borrows, it does not descend |
 | Golden corpus | one `.mps` document per language as the byte-stability test ([persistence.md](persistence.md)) |
@@ -334,7 +334,8 @@ shippable at the end of each, and so that the parity test exists before the seco
 
 | Slice | Branch | M | Delivers |
 | --- | --- | --- | --- |
-| C1 | `feat/toolkit-builder` | M2 | the public `Projectional.Toolkit` surface a language package needs, one shipped language re-expressed through it, and the `dotnet new` template |
+| C1a ✓ | `feat/toolkit-builder` | M2 | the `Projectional.Toolkit` surface a language package needs: one reference that brings `Core`, `Language`, `Projection` and `Persistence`, plus `LanguageSnapshot` - the renderer a notation test asserts on, exposed through a friend grant rather than by opening the projection layer ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)). Proven by `tests/Projectional.Toolkit.Tests`, which references the toolkit and nothing else and declares, draws and round-trips a language. **Deliberately narrower than the slice planned**: no shipped language was re-expressed through it, because the shipped languages are packages *in this repository* that may keep their explicit references, and the template is still owed |
+| C1b | `feat/language-template` | M2 | `dotnet new projectional-language`: a concept, its notation, a fixture model and a golden corpus, so a language starts testable. What is left of C1 |
 | C2 ✓ | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage` - delivered, see [language-parity.md](language-parity.md) |
 | P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 ✓ | `feat/declared-editor` | M2 | `Projectional.Editors` (stage B): notation as nodes, lowering into `Notation` - delivered, see [declared-editor.md](declared-editor.md) |

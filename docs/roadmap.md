@@ -32,10 +32,12 @@ fresh `Unary` should start with - declared intentions (M5) are what would close 
 
 What is next, in order:
 
-1. **The language template** (`dotnet new projectional-language` plus the `Projectional.Toolkit` surface). M2's
-   gate asks for a small DSL defined entirely in project files, and that is the one piece of it that still needs
-   this repository: everything below the template - the structure and editor languages, the parity harness, the
-   folder loader - is delivered.
+1. **The language template** (`dotnet new projectional-language`). M2's gate asks for a small DSL defined
+   entirely in project files, and the template is the one piece of it that still needs this repository. The
+   surface it will be written against is delivered: `Projectional.Toolkit` is one reference in place of four,
+   and it exposes `LanguageSnapshot` so a generated project can test its own notation
+   ([ADR 0019](adr/0019-toolkit-is-the-language-surface.md), [language-authoring.md](architecture/language-authoring.md)
+   slice C1a). What the template adds is a concept, its notation, a fixture model and a golden corpus.
 2. **The shell's M2 half**: model browser, problems panel, find/replace, recent projects and the self-contained
    single-file build. The language picker that used to sit in this list is done - File > *Open language project...*
    loads a folder of `structure.mps` + `editor.mps` into the shell's own registry, and a document of that language
