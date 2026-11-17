@@ -98,12 +98,50 @@ public static class KeyRouter
 
         return key switch
         {
+            EditorKey.Copy => Clipboard(session, key),
+            EditorKey.Cut => Clipboard(session, key),
+            EditorKey.Paste => Clipboard(session, key),
             EditorKey.Enter when IsTextPlace(session) => new InsertLineBreakAction(),
             EditorKey.Backspace => Delete(session, DeleteDirection.Backward),
             EditorKey.Delete => Delete(session, DeleteDirection.Forward),
             _ => For(key),
         };
     }
+
+    /// <summary>
+    /// Whether the selection covers nodes, which is what makes Copy and Cut structural rather than textual.
+    /// </summary>
+    /// <param name="session">The session whose selection is in question.</param>
+    /// <remarks>
+    /// The same rule the actions follow: a range that spans cells <em>and</em> fully covers at least one node is
+    /// a structural selection. A range inside one value is text, and a range that covers no whole node (it
+    /// starts in the middle of one) has nothing to copy as structure - both stay the text case, which is what
+    /// makes Ctrl+C in a word still copy the word.
+    /// </remarks>
+    internal static bool CopiesNodes(EditorSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        return session.Selection.SpansCells
+            && SelectionRanges.NodesIn(session.Document, CaretPlaces.Of(session.Tree), session.Selection).Count > 0;
+    }
+
+    /// <summary>Which clipboard action a gesture means, given what is selected and what the clipboard holds.</summary>
+    /// <remarks>
+    /// Copy and Cut follow the selection: structure when it covers nodes, text otherwise. Paste follows the
+    /// payload and prefers the structural one, because a fragment is only ever on the clipboard when this editor
+    /// put it there - it is the more specific thing the user just did. An empty clipboard is the text case, whose
+    /// action then reports "nothing to do".
+    /// </remarks>
+    private static EditAction Clipboard(EditorSession session, EditorKey key) => key switch
+    {
+        EditorKey.Copy => CopiesNodes(session) ? new CopySelectionAction() : new CopyAction(),
+        EditorKey.Cut => CopiesNodes(session) ? new CutSelectionAction() : new CutAction(),
+        EditorKey.Paste => session.Clipboard.Fragment is { IsEmpty: false }
+            ? new PasteFragmentAction()
+            : new PasteAction(),
+        _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Not a clipboard gesture."),
+    };
 
     /// <summary>The delete <paramref name="key"/> means where the caret currently is.</summary>
     /// <remarks>

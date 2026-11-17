@@ -56,16 +56,6 @@ internal static class GroupEditor
     /// Selects everything from the first cell of <paramref name="first"/> to the last cell of
     /// <paramref name="last"/>, which covers both nodes and every place between them.
     /// </summary>
-    public static void SelectRun(EditorSession session, Node first, Node last)
-    {
-        ArgumentNullException.ThrowIfNull(session);
-        ArgumentNullException.ThrowIfNull(first);
-        ArgumentNullException.ThrowIfNull(last);
-
-        var places = CaretPlaces.Of(session.Tree);
-        var start = places.First(place => place.Address.Owner == first.Id);
-        var end = places.Last(place => place.Address.Owner == last.Id);
-
-        session.Select(new Selection(CaretPosition.At(start, 0), CaretPosition.At(end, end.Length)));
-    }
+    public static void SelectRun(EditorSession session, Node first, Node last) =>
+        TestEditor.SelectRange(session, first, last);
 }
