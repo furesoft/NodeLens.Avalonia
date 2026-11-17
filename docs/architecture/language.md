@@ -374,6 +374,17 @@ The constraint language starts as C#. Making it a *declared* language later (M6)
 additive: a declared constraint is lowered to the same `Validate` delegate, so no
 aspect signature changes.
 
+Two of these are implemented, and both took a shape of their own: a constraint is an
+`IConstraint` (`Projectional.Semantics/Constraints/`) and a type rule is an `ITypeRule`
+(`Projectional.Language/Types/`, §Types in [semantics.md](semantics.md#types)).
+**Where an aspect lives is decided by what it needs.** One that only answers a question
+about a node belongs to the language, so the language package declaring the concepts can
+declare it too - that is why typing rules, emphasis and types are in `Projectional.Language`.
+One that produces *edits* has to reference `Editing`, so it lives beside the language in a
+package of its own: `Projectional.Expressions.Intentions`, `Projectional.Samples.Checks`.
+`ExpressionsLanguage.Types` is the worked example of the first rule, and the reason the
+type model is not in `Projectional.Semantics`.
+
 ## Scope model
 
 Reference resolution walks a chain of scopes, first match wins:
