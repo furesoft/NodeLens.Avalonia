@@ -17,9 +17,10 @@ one model per aspect in one directory, and the shape is taken from there because
 MyRules/
   structure.mps    concepts, slots, enumerations   (Projectional.Structures)
   editor.mps       notation, one per concept      (Projectional.Editors)
+  types.mps        what a concept evaluates to    (Projectional.TypeRules)
 ```
 
-The folder's name is the language's name. `structure.mps` is required; `editor.mps` is not.
+The folder's name is the language's name. `structure.mps` is required; `editor.mps` and `types.mps` are not.
 
 ## Loading is best effort, and it does not guess
 
@@ -34,10 +35,13 @@ What it refuses, and why each one is an error rather than a warning:
 | no `structure.mps` | the folder is not a language project; there is nothing to load |
 | a property naming an unknown type | the structure lowering's own error, with the concept and slot in it |
 | a notation for a concept that was never declared | caught during lowering, which is the earliest moment both halves exist |
+| a type rule with no body, an unknown type name, a value declared twice, a switch with no `otherwise` | the type-rule lowering's own errors, at load, where the author is looking |
 | two concepts with one key, an unknown super concept | `ConceptRegistry.Create`, which owns the graph |
 
 **A language without a notation loads.** Every node then draws as a missing-notation cell, which is a state a
 language being written passes through; refusing it would make "write the structure first" impossible.
+**A language without type rules loads too**, and every node is `UnknownType` - the honest answer when nobody
+said what a node evaluates to.
 
 ## The loop it closes
 
@@ -51,7 +55,8 @@ M2's gate in its smallest complete form.
 `WorkbenchLanguage` is **per shell** - an instance, not a static table - and it grows at runtime:
 
 - **File ▸ Open language…** picks a folder, loads it, and takes it into the set. The language's own
-  `structure.mps` and `editor.mps` open as documents afterwards, which is where the user edits them.
+  `structure.mps`, `editor.mps` and `types.mps` open as documents afterwards, which is where the user edits
+them.
 - **File ▸ New document of an opened language** creates a document of the first concept that can be a root: concrete,
   and naming no applicability places. A concept that names places needs a parent and a slot to exist, so it can never
   start a document - the same rule [language.md](language.md#applicability) states.

@@ -408,8 +408,8 @@ language definition is a model.
 
 ### A language project is a folder
 
-`Projectional.Languages` holds `LanguageProject`: a directory with `structure.mps` (required) and `editor.mps`
-(optional) becomes a `ConceptRegistry` + `NotationRegistry`. **`Open(directory, out error)` answers a usable
+`Projectional.Languages` holds `LanguageProject`: a directory with `structure.mps` (required), `editor.mps`
+(optional) and `types.mps` (optional) becomes a `ConceptRegistry` + `NotationRegistry` + `TypeRegistry`. **`Open(directory, out error)` answers a usable
 language or a message, never an exception** - opening is a user action, and a user action reports. The notation is
 lowered *against the concepts the structure model just declared*, so a notation for an undeclared concept is caught
 at the earliest moment both halves exist. **A language without `editor.mps` loads on purpose**: every node draws as a
@@ -1663,7 +1663,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1659 tests**; anything below that means tests were deleted.
+it. **Baseline is 1703 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
