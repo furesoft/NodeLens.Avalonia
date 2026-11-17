@@ -188,6 +188,7 @@ public sealed partial class MainWindow : Window, IDisposable
         Documents.Items.Add(tab);
         Documents.SelectedItem = tab;
 
+        ShowProblems();
         UpdateStatus();
     }
 
@@ -253,6 +254,7 @@ public sealed partial class MainWindow : Window, IDisposable
             Select(next);
         }
 
+        ShowProblems();
         UpdateStatus();
     }
 
@@ -306,6 +308,7 @@ public sealed partial class MainWindow : Window, IDisposable
             }
         }
 
+        ShowProblems();
         UpdateStatus();
     }
 
@@ -322,6 +325,7 @@ public sealed partial class MainWindow : Window, IDisposable
             PublishFindings(document, editor);
         }
 
+        ShowProblems();
         UpdateStatus();
     }
 
@@ -342,9 +346,46 @@ public sealed partial class MainWindow : Window, IDisposable
     private static void PublishFindings(DocumentTab document, ProjectionalEditorControl editor)
     {
         List<DiagnosticFix> fixes = [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
+        List<Diagnostic> findings = [.. fixes.Select(fix => fix.Diagnostic)];
 
-        editor.Markers = new MarkerSet([.. fixes.Select(fix => fix.Diagnostic)]);
+        editor.Markers = new MarkerSet([.. findings]);
         editor.Fixes = new FixSet([.. fixes]);
+
+        // The panel reads the same list the squiggles are drawn from, so the two cannot disagree about
+        // what was found - one of them would otherwise have to run the checks again.
+        document.Problems = ProblemList.Of(document.Model, findings);
+    }
+
+    /// <summary>Fills the problems panel from the active document, and hides it when there is nothing to report.</summary>
+    private void ShowProblems()
+    {
+        var rows = _documents.Active?.Problems ?? [];
+
+        Problems.ItemsSource = rows;
+        Problems.SelectedItem = null;
+        ProblemsPanel.IsVisible = rows.Count > 0;
+        ProblemsHeader.Text = $"Problems ({rows.Count})";
+    }
+
+    /// <summary>Puts the caret on what a chosen row is about.</summary>
+    /// <remarks>
+    /// The caret is the app's one answer to "show me this": selecting the place scrolls it into view, focuses the
+    /// editor and leaves the user where the row pointed - so the next keystroke, or Alt+Enter for the fix, acts on the
+    /// finding rather than on wherever the caret happened to be.
+    /// </remarks>
+    private void OnProblemChosen(object? sender, SelectionChangedEventArgs e)
+    {
+        if (Problems.SelectedItem is not ProblemEntry entry
+            || _documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.Select(Selection.At(entry.Place));
+        editor.ScrollToCaret();
+        editor.Focus();
     }
 
     /// <summary>Registers the framework's catalogue and the intentions the document's languages ship with.</summary>
