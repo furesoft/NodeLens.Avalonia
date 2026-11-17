@@ -597,6 +597,10 @@ notation is registered per concept **and** variant
 - **`EditorSession.Scopes` is the aspect**, defaulting to `DefaultScopeProvider.Instance`. It is a
   property rather than a constructor argument because a language package cannot reference the editing
   layer, so the host installs a replacement.
+- **A language replaces a level with `ScopeProviderRegistry`**, which is itself an `IScopeProvider`: it
+  maps a concept key to a provider, walks the super concepts in declaration order (the same order
+  notation and triggers resolve in) and falls through to the default. A host installs one by assigning it
+  to `EditorSession.Scopes` - one place decides which provider wins, not a second kind of provider.
 - **A reference completion carries a *name*, not an id.** `AcceptCompletionAction` re-resolves it
   through the scope at the moment the key is pressed, so a target renamed or removed after the list
   opened is refused instead of linked, and a name that has become ambiguous is refused rather than

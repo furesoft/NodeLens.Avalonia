@@ -424,6 +424,12 @@ Four rules are worth knowing because each is a decision rather than a detail:
 rather than a constructor argument because a language package cannot reference the editing layer, so
 the host is what installs a replacement.
 
+**A language replaces a level by declaring a provider.** `ScopeProviderRegistry` is itself an
+`IScopeProvider`: it maps a concept key to a provider, walks the super concepts in declaration order
+(the same order notation and triggers resolve in), and falls through to `DefaultScopeProvider` for
+everything else. A host installs one by assigning it to `EditorSession.Scopes`, so there is one place
+that decides which provider wins rather than a second kind of provider.
+
 ### The two consumers
 
 - **Completion.** A caret in a `ReferenceCell` offers the scope's entries that fit the slot's declared
