@@ -20,7 +20,8 @@ produces something usable, and no milestone depends on a later one being finishe
 test that proves each row. This section keeps only what is left, and a feature moves out of it into
 that file in the same commit that finishes it.
 
-M3 and M4 have landed their first halves early, M5 has started, M6 and M7 are untouched.
+M3 has landed nearly all of its scope early, M4 about half, M5 has started, and M6 and M7 are
+untouched.
 
 What is next, in order:
 
@@ -32,8 +33,9 @@ What is next, in order:
    languages that need them.
 3. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
    `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-4. **M4's semantics**: the constraint engine, types, text generation, the interpreter and the cross-check
-   tests that make generated code and the interpreter agree on the corpus.
+4. **What is left of M4's semantics**: text generation, the interpreter and the cross-check tests that
+   make generated code and the interpreter agree on the corpus. The constraint engine, the type model and
+   the declared type-rule language are in [implemented.md](implemented.md).
 
 **Known gap, recorded rather than fixed here:** `standalone.md` and
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
@@ -41,7 +43,8 @@ What is next, in order:
 app is `MainWindow` alone. ADR 0015 puts that extraction at M6, so the M2 features were added to
 `MainWindow`; whoever does M6 moves them.
 
-The constraint engine that will produce diagnostics in volume stays where it is, in M4.
+The dependency-set incrementality that lets the constraint engine produce diagnostics in volume stays
+where it is, in M4.
 
 ## Milestones
 
@@ -55,8 +58,7 @@ The tables below are the **scope** of each milestone, not a status report: what 
 | Delivers | Details |
 | --- | --- |
 | Scopes | the chain, the default provider, per-language overrides and ambiguity as a value are in [implemented.md](implemented.md); what is left is ambiguity *diagnostics* in the problems panel |
-| Completion | scope-driven entries are in [implemented.md](implemented.md); what is left is insert-and-continue and completing a filled slot ([completion.md](architecture/completion.md)) |
-| Substitutions | transformation menus; keyword-triggered insertion is concept triggers ([triggers.md](architecture/triggers.md)) |
+| Completion | scope-driven entries, the value list and insert-then-keep-typing are in [implemented.md](implemented.md); what is left is completing a slot that already has a child, which is the MPS `Substitute` action and needs the substitution rules a language declares ([completion.md](architecture/completion.md#slices), slice C) |
 
 **Gate:** referencing an element in another model works; renaming a target does not
 break models thanks to `resolveInfo`; wrapping a selection in an `if` is one undo step.
@@ -71,7 +73,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Delivers | Details |
 | --- | --- |
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
-| Types | the primitive, structural and `Unknown` kinds, the aspect, the declared form and the first consumer are in [implemented.md](implemented.md); what is left is the named/declared kind ([semantics.md](architecture/semantics.md#types)) |
+| Types | the primitive, structural and `Unknown` kinds, the aspect, the declared form and the first consumer are in [implemented.md](implemented.md); what is left is the named kind ([semantics.md](architecture/semantics.md#types)) |
 | Text generation | template trees, traceability map |
 | Interpreter | evaluation with trace and step budget |
 | Cross-check tests | generated code and interpreter agree on the corpus |
