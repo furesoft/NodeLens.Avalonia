@@ -1900,8 +1900,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         var place = PlaceAt(point);
         var node = place?.Address.Owner;
 
-        // A slot's own sentence only exists while the slot is empty, so asking the editing layer is also how the
-        // hover decides whether a slot or a node is what the pointer is on.
+        // A slot's own sentence exists while the slot is empty, and over a value the language asked for it too,
+        // so asking the editing layer is also how the hover decides whether a slot or a node is what the pointer
+        // is on.
         var slot = place is { } named && Session is { } session && PropertyTip.Of(session, named) is not null
             ? named.Address.Slot
             : null;
