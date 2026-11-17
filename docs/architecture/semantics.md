@@ -87,7 +87,7 @@ collector made explicit:
 | --- | --- |
 | `IConstraint` | the aspect: `Check(ConstraintContext)`, reports and never mutates |
 | `ConstraintContext` | the node, `ScopeOf(slot)`, and `Error`/`Warning`/`Hint`/`Report` |
-| `ConstraintSet` | the language's rules, keyed by concept, immutable |
+| `ConstraintSet` | the language's rules: keyed by concept, or declared for every node, immutable |
 | `ConstraintEngine` | walks a document (or one subtree) and answers the findings |
 
 - **A constraint reports; it never repairs.** The repair is a `DiagnosticFix` built by whoever knows how
@@ -97,6 +97,11 @@ collector made explicit:
   would be worse than saying one is missing.
 - **A concept inherits its super concepts' constraints**, in declaration order - the same rule notation,
   triggers and scope providers follow, so a language has one answer to "which declaration applies".
+- **A rule about any node is declared with `Everywhere`, not with a concept key**, and runs before the
+  concept's own. That is not a convenience: "this reference no longer identifies one element" is a fact
+  about references in general, and a language's concepts need not share a root, so a rule declared over
+  one root would silently skip every concept that does not inherit from it. `With(set)` composes two
+  sets in a predictable order, which is how a host adds the framework's scope rules to its own.
 - **The context is deliberately small**: the node, the scope and the collector. It cannot mutate, cannot
   reach the editor and cannot see a cell, so a rule that runs on a model nobody is drawing (a load, a
   batch check) works the same as one that runs on the open document.
@@ -105,9 +110,16 @@ collector made explicit:
   below is not implemented yet: today a caller rechecks the subtree that changed, which is correct and
   cheaper than the whole document, but it does not yet know that a *referencing* node's rule may have
   changed too.
-- **The first consumer is `SampleConstraints`** in `Projectional.Samples.Checks` (a rule needs a
-  condition), and the app merges its findings with the check catalogue's in `PublishFindings` - one list,
-  because the panel and the markers must not be two answers to "what is wrong".
+- **The consumers are two.** `SampleConstraints` in `Projectional.Samples.Checks` is a language's own
+  sentence (a rule needs a condition). `ScopeConstraints` in `Projectional.Semantics/Scopes/` is the
+  framework's: `AmbiguousReferenceConstraint` reports a reference whose name no longer identifies the
+  element it points at, which is the finding that closes the scope model. It reads the target's
+  **current** name rather than the `resolveInfo` it was written with, because a rename does not rewrite
+  the stored text and resolving it would report names no user ever sees; and it stays quiet on an
+  unresolved reference, which is already visibly wrong. The app composes both and merges the findings
+  with the check catalogue's in `PublishFindings` - one list, because the panel and the markers must not
+  be two answers to "what is wrong". It also passes `editor.Session.Scopes` to the engine, so a finding
+  about a name is about the scope the editor actually uses rather than the default chain.
 
 ### Incrementality
 

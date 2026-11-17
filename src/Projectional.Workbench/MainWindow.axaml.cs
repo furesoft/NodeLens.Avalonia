@@ -372,7 +372,14 @@ public sealed partial class MainWindow : Window, IDisposable
         List<Diagnostic> findings =
         [
             .. fixes.Select(fix => fix.Diagnostic),
-            .. new ConstraintEngine(SampleConstraints.All, types: document.Types ?? ExpressionsLanguage.Types).Check(document.Model),
+
+            // The session's scope provider, not the default one: a language may have replaced a level of
+            // the chain, and a finding about a name has to be about the scope the editor actually uses.
+            // A control with no session yet passes null, which the engine reads as the default chain.
+            .. new ConstraintEngine(
+                SampleConstraints.All.With(ScopeConstraints.All),
+                scopes: editor.Session?.Scopes,
+                types: document.Types ?? ExpressionsLanguage.Types).Check(document.Model),
         ];
 
         editor.Markers = new MarkerSet([.. findings]);

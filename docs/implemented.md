@@ -97,6 +97,7 @@ and [testing.md](architecture/testing.md).
 | Scope-driven completion: a reference offers the scope's entries and accepting re-resolves the name | `CompletionSource.References`, `CompletionKind.Reference` | `ScopeCompletionTests` |
 | Typing a name into a reference cell resolves it through the same scope; ambiguous is refused with a reason | `TypeTextAction.ResolveReference` | `ScopeTypingTests` |
 | Per-language scope overrides: a concept declares a provider, inherited by the concepts below it | `ScopeProviderRegistry` | `ScopeProviderRegistryTests` |
+| Ambiguity diagnostics: a reference whose name no longer identifies its target is reported on the reference slot | `AmbiguousReferenceConstraint`, `ScopeConstraints.All` | `AmbiguousReferenceConstraintTests` |
 | Concept triggers: a typed character at the edge of a node creates and wraps | `ConceptTrigger`, `TriggerAnchors` | `ConceptTriggerTests`, `ConceptRegistryTriggerTests`, `TypeTextTriggerTests` |
 | Intention model, per-caret list (MPS' transformation menu), apply path, popup, menu split | `Projectional.Editing/Intentions/` | `IntentionTests`, `IntentionListTests`, `IntentionAvailabilityTests`, `EditorSessionIntentionTests`, `OfferKeysTests` |
 | Intention preview: sandbox copy, diff, marks, hover ladder, ghost frame | `Projectional.Editing/Preview/`, ADR 0017 | `PreviewSandboxTests`, `ModelCopyTests`, `ModelDiffTests`, `PreviewMarksTests`, `PreviewDelayTests`, `PreviewStateTests`, `GhostFrameTests`, `PreviewBadgeTests`, `OfferPreviewTests`, `SamplePreviewTests` |

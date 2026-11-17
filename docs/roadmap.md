@@ -25,15 +25,12 @@ untouched.
 
 What is next, in order:
 
-1. **Ambiguity diagnostics** - the last piece of scopes: a name that matches two things is refused at the
-   keystroke today, but nothing reports it in the problems panel, so a document that already holds an
-   ambiguous reference says nothing about it.
-2. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
+1. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
    languages that need them.
-3. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
+2. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
    `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-4. **What is left of M4's semantics**: text generation, the interpreter and the cross-check tests that
+3. **What is left of M4's semantics**: text generation, the interpreter and the cross-check tests that
    make generated code and the interpreter agree on the corpus. The constraint engine, the type model and
    the declared type-rule language are in [implemented.md](implemented.md).
 
@@ -57,7 +54,6 @@ The tables below are the **scope** of each milestone, not a status report: what 
 
 | Delivers | Details |
 | --- | --- |
-| Scopes | the chain, the default provider, per-language overrides and ambiguity as a value are in [implemented.md](implemented.md); what is left is ambiguity *diagnostics* in the problems panel |
 | Completion | scope-driven entries, the value list and insert-then-keep-typing are in [implemented.md](implemented.md); what is left is completing a slot that already has a child, which is the MPS `Substitute` action and needs the substitution rules a language declares ([completion.md](architecture/completion.md#slices), slice C) |
 
 **Gate:** referencing an element in another model works; renaming a target does not

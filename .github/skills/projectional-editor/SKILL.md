@@ -632,6 +632,13 @@ notation is registered per concept **and** variant
   (a load, a batch check) works the same as one on the open document.
 - **A concept inherits its super concepts' constraints**, in declaration order - the same rule notation,
   triggers and scope providers follow.
+- **A rule about *any* node is `ConstraintSet.Everywhere`, not a concept key**, and runs before the
+  concept's own. A language's concepts need not share a root, so a rule declared over one root silently
+  skips every concept that does not inherit from it - that is the mistake this seam exists to prevent.
+  `With(set)` composes two sets in a predictable order (a host adds `ScopeConstraints.All` to its own).
+- **A constraint is not a check.** `ICheck.Find` returns `DiagnosticFix` and its contract says every
+  finding carries the repair that removes it, so a rule with no repair *cannot* be a check. If it only
+  reports, it is a constraint - which is why ambiguity diagnostics are one.
 - **`Check(Node)` is the incremental seam**: it answers that subtree's findings alone, so a caller that
   keeps the rest merges them itself. The dependency-set machinery of the design is **not** implemented -
   a caller rechecks the subtree that changed, which is correct and cheaper than the document, but it does
@@ -685,6 +692,22 @@ notation is registered per concept **and** variant
   be resolved against the language's own registry, which is the declared stage's job. The parity rule
   applies: `TypeRuleLoweringTests` asserts the declared registry and `ExpressionsLanguage.Types` answer
   the same type for every node of the sample document.
+
+### The framework ships one: ambiguity
+
+`ScopeConstraints.All` is `AmbiguousReferenceConstraint` declared for every node. It closes the scope
+model: a typed name and a completion pick both refuse an ambiguous name, so a document cannot be *made*
+ambiguous by typing - but renaming one element can make an existing reference share its name with
+another, and that reference keeps drawing as resolved because it points at a node id.
+
+Two decisions inside it, both load-bearing:
+
+- **It resolves the target's *current* name, not the stored `resolveInfo`.** A rename does not rewrite
+  the stored text (`SetReference` is its only writer), so resolving `resolveInfo` reports names no user
+  ever sees - a false positive on every renamed target. `resolveInfo` is the fallback for *re-linking*,
+  not a description of now.
+- **It stays quiet on an unresolved reference.** That one is already visibly wrong (`<unresolved>`) and
+  the text it fell back to may be stale, so reporting ambiguity there would blame the wrong problem.
 
 ## How the editor tree is built
 
@@ -1672,7 +1695,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1718 tests**; anything below that means tests were deleted.
+it. **Baseline is 1729 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
