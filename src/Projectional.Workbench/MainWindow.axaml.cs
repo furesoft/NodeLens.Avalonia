@@ -405,6 +405,63 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnFindPrevious(object? sender, RoutedEventArgs e) => FindStep(FindDirection.Backward);
 
+    /// <summary>Replaces the selected occurrence, or finds the next one when nothing is selected.</summary>
+    /// <remarks>
+    /// A button that is dead until the user has searched would be a button they cannot use to start: so the press
+    /// either replaces what is selected - when that is exactly an occurrence - or moves to the next occurrence, which
+    /// is also what the user wants when the first press came before the first search.
+    /// </remarks>
+    private void OnReplace(object? sender, RoutedEventArgs e)
+    {
+        if (Query is not { } query
+            || _documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        var replacement = ReplaceInput.Text ?? string.Empty;
+        var matches = Finder.Find(document.Session, query);
+        var selected = document.Session.Selection;
+
+        foreach (var match in matches)
+        {
+            if (!match.Address.Equals(selected.Caret.Address)
+                || match.Offset != selected.Start
+                || match.Length != selected.End - selected.Start)
+            {
+                continue;
+            }
+
+            document.Session.Apply(new ReplaceMatchAction(match, replacement));
+            break;
+        }
+
+        FindStep(FindDirection.Forward);
+
+        editor.Refresh();
+    }
+
+    /// <summary>Replaces every occurrence of the query, as one undo step.</summary>
+    private void OnReplaceAll(object? sender, RoutedEventArgs e)
+    {
+        if (Query is not { } query
+            || _documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.Apply(new ReplaceAllAction(query, ReplaceInput.Text ?? string.Empty));
+
+        editor.Refresh();
+        editor.ScrollToCaret();
+
+        UpdateFindCount();
+    }
+
     /// <summary>Selects the next occurrence and tells the user where it is.</summary>
     private void FindStep(FindDirection direction)
     {
