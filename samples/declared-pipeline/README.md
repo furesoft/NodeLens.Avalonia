@@ -6,9 +6,14 @@ sees" is not a claim to check - there is nothing to delete.
 
 | File | What it is |
 | --- | --- |
-| `structure.mps` | the language: two concepts, their slots and their defaults |
-| `editor.mps` | how those concepts are drawn - a header line and a table |
+| `structure/` | the language: one document per concept, with its slots and defaults |
+| `editor/` | how those concepts are drawn - one document per notation, a header line and a table |
 | `pipeline.mps` | a document of the language, so the folder is something to open |
+
+One definition per document, the way MPS stores a model: `structure/Pipeline.Pipeline.mps` holds the
+pipeline concept, `structure/Pipeline.Stage.mps` the stage concept, and the same two keys name the
+notation documents in `editor/`. The file name is also the declaration order, so the names are the
+concept keys.
 
 ## Open it
 
