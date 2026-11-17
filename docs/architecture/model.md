@@ -34,6 +34,12 @@ does not travel, since no declaration says which slot of one concept corresponds
 another. The deletion is a real one: references into the old subtree are cleared, exactly as they are
 when a node is deleted.
 
+A **reorder** is the mirror image: `ReorderChildren(parent, slot, order)` takes the order rather than
+deciding it. The model owns what must not vary - the slot holds the same children afterwards, no more
+and no fewer, and the whole rearrangement is one transaction - while "sorted by what" stays a rule of
+whoever asks, which is why `ChildOrder` lives in the editing layer. An order that already holds
+journals nothing.
+
 Deliberate restrictions:
 
 - **No free-form dictionaries.** Every slot is declared by the concept, so typos and
