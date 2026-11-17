@@ -74,6 +74,18 @@ public sealed class NotationEditor
         int spacing = 1) =>
         new(slot) { Separator = separator, EmptyText = emptyText, Spacing = spacing };
 
+    /// <summary>A separated list that stays inside the line it is drawn on.</summary>
+    /// <param name="slot">The child slot to draw.</param>
+    /// <param name="separator">Drawn between two children, or <see langword="null"/> for a bare gap.</param>
+    /// <param name="emptyText">What the slot shows while it holds nothing.</param>
+    /// <param name="spacing">The gap after a separator, or between two children without one.</param>
+    public InlineCollectionNotationCell InlineCollection(
+        string slot,
+        InlineNotationCell? separator = null,
+        string emptyText = "<empty>",
+        int spacing = 1) =>
+        new(slot) { Separator = separator, EmptyText = emptyText, Spacing = spacing };
+
     public TableColumn Column(string slot, InlineNotationCell header, string emptyText = "<empty>") =>
         new(slot, header) { EmptyText = emptyText };
 
