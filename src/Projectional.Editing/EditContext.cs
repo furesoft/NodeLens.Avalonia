@@ -396,6 +396,33 @@ public sealed class EditContext
         return node.Model.Wrap(node, wrapperConceptKey, wrapperSlot, presets);
     }
 
+    /// <summary>
+    /// Puts a new node of <paramref name="conceptKey"/> where <paramref name="node"/> stands, deleting that
+    /// node and everything inside it.
+    /// </summary>
+    /// <param name="node">The node whose place is taken.</param>
+    /// <param name="conceptKey">The concept of the node that takes its place.</param>
+    /// <returns>The node that was created, already attached where <paramref name="node"/> was.</returns>
+    /// <exception cref="EditingException"><paramref name="node"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// The model's own operation, for the same reason a wrap is: the old node has to leave before the new one
+    /// arrives in a single-valued slot, and one place has to stay one undo step. The concept is not validated
+    /// here - the model refuses a concept that cannot stand there, before it deletes anything.
+    /// </remarks>
+    public Node ReplaceChild(Node node, string conceptKey)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(conceptKey);
+
+        if (!ReferenceEquals(node.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {node.Id} belongs to another model than the document being edited.");
+        }
+
+        return node.Model.Replace(node, conceptKey);
+    }
+
     private static Node? Find(Node node, NodeId id)
     {
         if (node.Id.Equals(id))

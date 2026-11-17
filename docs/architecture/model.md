@@ -26,6 +26,14 @@ places. The second one is what `Enter` in the middle of a list uses, because app
 the user just made at the far end of a list they were not looking at. Both publish exactly one
 `NodeAdded`, so undo takes the node out of the place it actually went into.
 
+A **replacement** takes a node's *place* rather than filling a slot: `Replace(node, conceptKey)` deletes
+the old subtree and hangs a new node of another concept where it stood, in one transaction, so one undo
+brings the old subtree back with its own identities. The new node is born detached and attached only
+after the old one has left, because a single-valued slot cannot hold both - and what the old node held
+does not travel, since no declaration says which slot of one concept corresponds to which slot of
+another. The deletion is a real one: references into the old subtree are cleared, exactly as they are
+when a node is deleted.
+
 Deliberate restrictions:
 
 - **No free-form dictionaries.** Every slot is declared by the concept, so typos and
