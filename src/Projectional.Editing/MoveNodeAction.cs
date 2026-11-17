@@ -61,9 +61,14 @@ public sealed class MoveNodeAction : EditAction
             return EditResult.Unchanged(selection);
         }
 
-        var target = node.IndexInParent + (Move == NodeMove.Up ? -1 : 1);
+        var target = Move switch
+        {
+            NodeMove.ToFront => 0,
+            NodeMove.ToBack => parent.GetChildren(slot).Count - 1,
+            _ => node.IndexInParent + (Move == NodeMove.Up ? -1 : 1),
+        };
 
-        if (target < 0 || target >= parent.GetChildren(slot).Count)
+        if (target < 0 || target >= parent.GetChildren(slot).Count || target == node.IndexInParent)
         {
             return EditResult.Unchanged(selection);
         }
@@ -73,5 +78,10 @@ public sealed class MoveNodeAction : EditAction
         return EditResult.Applied(selection);
     }
 
-    public override string ToString() => Move == NodeMove.Up ? "move node up" : "move node down";
+    public override string ToString() => Move switch
+    {
+        NodeMove.ToFront => "move node to the front",
+        NodeMove.ToBack => "move node to the back",
+        _ => Move == NodeMove.Up ? "move node up" : "move node down",
+    };
 }

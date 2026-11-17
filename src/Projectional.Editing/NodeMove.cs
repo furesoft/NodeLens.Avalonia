@@ -15,4 +15,15 @@ public enum NodeMove
 
     /// <summary>Towards the end of the slot.</summary>
     Down,
+
+    /// <summary>To the first place of the slot, however far that is.</summary>
+    /// <remarks>
+    /// A named extreme rather than "up, several times", because the catalogue's entry says where the node ends up:
+    /// a caller that asked for the front and got one step would have to run the action repeatedly, which is several
+    /// undo steps for one intention.
+    /// </remarks>
+    ToFront,
+
+    /// <summary>To the last place of the slot, however far that is.</summary>
+    ToBack,
 }

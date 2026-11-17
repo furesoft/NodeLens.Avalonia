@@ -16,9 +16,11 @@ its description and then the result of its edit, because the popup drives the pr
 ([intention-preview.md](intention-preview.md), slices V1-V6). Two packages ship real entries:
 `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
 (accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
-`Projectional.Intentions` ships `INT001` (rename), `INT002` (duplicate), `INT006` (wrap in X) and `INT020`
-(reset to the default) for any language. What is left is the rest of that catalogue (`INT005` onwards, table by
-table).
+`Projectional.Intentions` ships the structural entries for any language - `INT001` (rename), `INT002`
+(duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to front/back), `INT030` (insert
+before/after), `INT006` (wrap in X) and `INT020` (reset to the default). What is left is the rest of that
+catalogue: `INT007` (replace) and `INT031` (sort) need one action each, `INT008` (select parent/node) a rung
+of the ladder, and `INT010`/`INT011` (an empty slot) are what `Enter` and completion already do.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -287,9 +289,9 @@ missing entry is easy to spot, and every entry names the data that produces it.
 | --- | --- | --- | --- | --- |
 | `INT001` | `Rename` | puts the caret in the name slot, the value selected | plain | - (`SelectSlotAction`, which is the caret jump the row above used to ask for) |
 | `INT002` | `Duplicate` | copies the subtree as the next sibling | plain | - (`Model.InsertCopy` plus `NewChildAt`'s place, in `Projectional.Intentions` - **shipped**) |
-| `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`) |
-| `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`) |
-| `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | new: insert-at-index |
+| `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`, in `Projectional.Intentions` - **shipped**) |
+| `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`, **shipped**) |
+| `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | `NodeMove.ToFront`/`ToBack` - **shipped** as named extremes rather than repeated steps |
 | `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction` and the concept search of `Projectional.Intentions` - **shipped** |
 | `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | `DefaultInstantiableFor` plus a replace action |
 | `INT008` | `Select parent` / `Select node` | widens the selection one rung | plain | - (`SelectAllAction`'s ladder) |
@@ -327,7 +329,7 @@ undo step, and it is the one gesture a user reaches for after pasting a value th
 
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
-| `INT030` | `Insert before` / `Insert after` | a new empty sibling at that place | plain | new: insert-at-index |
+| `INT030` | `Insert before` / `Insert after` | a new empty sibling at that place | plain | `InsertSiblingAction` - **shipped**, `Enter`'s other half with a node and a side |
 | `INT031` | `Sort by name` | reorders the slot by the elements' name slot | **destructive** (order is data) | a program of moves, and a name slot on the element concept |
 
 ### With `Projectional.Expressions`
@@ -417,6 +419,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | F ✓ | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder, the ghost and the wiring are specified |
 | G ✓ | `feat/standard-intentions` | `Projectional.Intentions` ships `INT001` (rename, on the new `SelectSlotAction`), `INT006` (wrap in X, one entry per concept its declarations allow) and `INT020` (reset to the default), with the absence rules that keep a no-op out of the list. The subtree copy stayed with `INT002`, which is where a caller for it exists. **Not yet registered by the workbench**: doing that while `Expressions.Intentions` still ships its own wrap would show two rows for one operation, so the app switches when `INT041` lands and both language entries can be retired in one step |
 | G2 ✓ | `feat/duplicate-intention` | `INT002` (duplicate) and the subtree copy it needed: `Model.InsertCopy` puts a new-identity copy of a subtree into a place in its own model, one undo step, and the entry is offered only where a second sibling can exist |
+| G3 ✓ | `feat/structure-intentions` | the structural entries, all configurations of actions that exist or of two small ones: `INT003` (delete, the one destructive entry), `INT004` (move up/down), `INT005` (move to front/back, on `NodeMove.ToFront`/`ToBack`), `INT030` (insert before/after, on `InsertSiblingAction`) - each absent where it would change nothing |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.
