@@ -27,10 +27,11 @@ What is next, in order:
    the model, the list, `EditorSession.Apply(Intention)`, the `Alt+Enter` popup, the "Intentions" submenu, the
    hover preview ([intention-preview.md](architecture/intention-preview.md), slices V1-V6, complete), two
    packages of real intentions (wrap in parentheses, negate, accept this rule) and the first
-   entries of the framework's own catalogue (`INT001` rename, `INT006` wrap in X, `INT020` reset to the default,
-   in `Projectional.Intentions`), all reading one `IntentionList` of host commands, language intentions and
-   quick fixes. What is left is the rest of that catalogue, entry by entry as a language asks for it - starting
-   with `INT002` (duplicate), which brings the subtree copy with it.
+   entries of the framework's own catalogue (`INT001` rename, `INT002` duplicate, `INT006` wrap in X, `INT020`
+   reset to the default, in `Projectional.Intentions`), all reading one `IntentionList` of host commands,
+   language intentions and quick fixes. What is left is the rest of that catalogue, entry by entry as a language
+   asks for it - next `INT005`/`INT030` (move to an end, insert before/after), which `NewChildAt` already
+   gives them.
 2. **The standard catalogue in the app.** `Projectional.Intentions` is a package a host registers; the
    workbench registers it once `INT041` (negate) lands, so the two entries `Expressions.Intentions` ships can be
    retired in one step instead of showing two rows for one operation.

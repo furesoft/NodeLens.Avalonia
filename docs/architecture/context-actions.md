@@ -16,8 +16,9 @@ its description and then the result of its edit, because the popup drives the pr
 ([intention-preview.md](intention-preview.md), slices V1-V6). Two packages ship real entries:
 `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
 (accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
-`Projectional.Intentions` ships `INT001` (rename), `INT006` (wrap in X) and `INT020` (reset to the default)
-for any language. What is left is the rest of that catalogue (`INT002` onwards, table by table).
+`Projectional.Intentions` ships `INT001` (rename), `INT002` (duplicate), `INT006` (wrap in X) and `INT020`
+(reset to the default) for any language. What is left is the rest of that catalogue (`INT005` onwards, table by
+table).
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -285,7 +286,7 @@ missing entry is easy to spot, and every entry names the data that produces it.
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
 | `INT001` | `Rename` | puts the caret in the name slot, the value selected | plain | - (`SelectSlotAction`, which is the caret jump the row above used to ask for) |
-| `INT002` | `Duplicate` | copies the subtree as the next sibling | plain | new: subtree copy plus insert-at-index |
+| `INT002` | `Duplicate` | copies the subtree as the next sibling | plain | - (`Model.InsertCopy` plus `NewChildAt`'s place, in `Projectional.Intentions` - **shipped**) |
 | `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`) |
 | `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`) |
 | `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | new: insert-at-index |
@@ -377,7 +378,7 @@ Nine of the entries above are configurations of actions that already exist
 | --- | --- | --- |
 | `Model.NewChildAt(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | **landed with `feat/insert-at-index`**: the model could only append, so "insert here" was impossible for anything; `Enter` was its first customer, and the entries above are its next |
 | ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot |
-| a subtree copy (`Node.CopyTo(sibling)`) | `INT002` | **open**, and deliberately left with `INT002`: it is the same walk `Model.CopyTo` needs for the preview sandbox, reused rather than written twice, and a primitive with no entry calling it would be dead public API |
+| a subtree copy (`Model.InsertCopy(source, parent, slot, index)`) | `INT002` | **landed with `feat/duplicate-intention`**: `CopyTo` keeps ids because a preview addresses them, so a copy that stays in one model needs its own walk with new identities - the two are siblings rather than one routine with a flag |
 | `SortAction` | `INT031` | **open**: a stable permutation of one slot, which a program of moves cannot express without colliding |
 
 That table is the plan's real content: the catalogue is not nineteen features, it is a handful of
@@ -413,8 +414,9 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers the providers in one method |
 | E2 ✓ | `feat/abstract-intention` | `INT060`/`INT061` in `Projectional.Structures.Intentions`: abstractness is drawn as the word `abstract` in a concept's header by a conditional cell, so it has no cell to type into and needs an entry; `SetNodePropertyAction` is the action for a property with no cell, which is the shape a collapsed node has too |
 | E3 ✓ | `feat/intention-popup` | the gesture stops applying anything: `ApplyOffers` always opens the list, so a lone plain repair opens a one-row popup too. One keystroke, one meaning - and `EditSafety`/`Intention.Fix` become surface information rather than what the gesture gates on |
-| F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder, the ghost and the wiring are specified. V1-V6 ✓ |
+| F ✓ | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder, the ghost and the wiring are specified |
 | G ✓ | `feat/standard-intentions` | `Projectional.Intentions` ships `INT001` (rename, on the new `SelectSlotAction`), `INT006` (wrap in X, one entry per concept its declarations allow) and `INT020` (reset to the default), with the absence rules that keep a no-op out of the list. The subtree copy stayed with `INT002`, which is where a caller for it exists. **Not yet registered by the workbench**: doing that while `Expressions.Intentions` still ships its own wrap would show two rows for one operation, so the app switches when `INT041` lands and both language entries can be retired in one step |
+| G2 ✓ | `feat/duplicate-intention` | `INT002` (duplicate) and the subtree copy it needed: `Model.InsertCopy` puts a new-identity copy of a subtree into a place in its own model, one undo step, and the entry is offered only where a second sibling can exist |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.

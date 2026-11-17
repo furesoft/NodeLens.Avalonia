@@ -161,6 +161,14 @@ the sandbox and the answer the ghost is drawn from.
   original. Values, reference targets and fallback text, child order and root order come with it.
 - **The copy needs its own `Project`.** `Project.Register` asserts id uniqueness, so copying into the
   project the model came from throws `ModelInvariantException` - that is the correct answer, not a gap.
+- **`Model.InsertCopy(source, parent, slot, index)` is the copy that stays in one model**, and it must have
+  *new* identities: the `CopyTo` walk preserves ids because a preview addresses nodes by id, while a copy that
+  shares a project cannot, because ids are unique per project. The two are siblings rather than one routine with
+  a flag - "same ids or new ones" is the only thing either caller cares about. `InsertCopy` is `CopyTo` in
+  everything else (values, reference targets and resolve info, child order, the whole subtree, attached before
+  filled) and runs in one transaction, so a duplicated node is one undo step. A reference between two copied
+  nodes still points at the *original*, which is the only reading that does not need to know what a language
+  means by its references.
 - **Attach before filling.** `CopySubtree` creates the node with `CreateDetached(id, concept)`, hangs
   it into its place, and only then writes properties, references and children. A bottom-up copy would
   leave registered nodes that nothing points at, and the failure path could not clean up. On failure
@@ -875,8 +883,9 @@ the editor). The shipped shape is a package beside the language, exactly like `P
 `docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered.
 
 - **`Projectional.Intentions` is the framework's own catalogue**, not a language's: `StandardIntentions`
-  derives `INT001` (rename), `INT006` (wrap in X) and `INT020` (reset to the default) from the *shape* of the
-  caret's place, so any language gains them by registering the provider. `WrapperConcepts.Of` is the whole of
+  derives `INT001` (rename), `INT002` (duplicate), `INT006` (wrap in X) and `INT020` (reset to the default) from
+  the *shape* of the caret's place, so any language gains them by registering the provider. `WrapperConcepts.Of`
+  is the whole of
   "wrap in X": a concrete concept whose single-child slot accepts this node's concept and whose own concept
   fits the parent's slot (and whose `Applicability` allows that place) is a wrapper - the first such slot in
   declaration order, and one id per concept (`standard.wrap.<conceptKey>`) so two wrappers cannot collide in
@@ -1419,7 +1428,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1486 tests**; anything below that means tests were deleted.
+it. **Baseline is 1496 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
