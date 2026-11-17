@@ -20,25 +20,20 @@ produces something usable, and no milestone depends on a later one being finishe
 test that proves each row. This section keeps only what is left, and a feature moves out of it into
 that file in the same commit that finishes it.
 
-M2 is one step from its gate, M3 and M4 have landed their first halves early, M5 has started, M6 and
-M7 are untouched.
+M3 and M4 have landed their first halves early, M5 has started, M6 and M7 are untouched.
 
 What is next, in order:
 
-1. **The self-contained single-file build** - M2's last row, and publishing infrastructure rather than
-   shell code: a publish profile plus a CI job. It is not done because it needs a CI run to verify.
-2. **A DSL defined entirely in project files** - M2's gate and M5's stage C. The declared path exists in
-   both halves (the definition languages, the folder loader, the app's language picker) and the template
-   (`dotnet new projectional-language`) is the C# half of the story; what is missing is the step that
-   makes the declared path sufficient on its own, with no C# in the loop.
-3. **The table's writing affordances** (adding a row, resizing a column). The grid exists and the
-   flattened navigation is correct, but neither is what a user expects in a grid; [projection.md](architecture/projection.md)
-   and open question 29 hold the detail.
-4. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
+1. **Scopes** - M3's first row and the one that makes references feel like an editor: a chain, defaults,
+   per-language overrides and ambiguity diagnostics, then scope-driven completion beside the concepts
+   completion already offers.
+2. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
    languages that need them.
-5. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
+3. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
    `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
+4. **M4's semantics**: the constraint engine, types, text generation, the interpreter and the cross-check
+   tests that make generated code and the interpreter agree on the corpus.
 
 **Known gap, recorded rather than fixed here:** `standalone.md` and
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
@@ -52,22 +47,6 @@ The constraint engine that will produce diagnostics in volume stays where it is,
 
 The tables below are the **scope** of each milestone, not a status report: what is finished is in
 [implemented.md](implemented.md), and a finished milestone is removed from this file.
-
-### M2 — Declarative languages
-
-*Goal: a new language is added as data, without C# code.*
-
-| Delivers | Details |
-| --- | --- |
-| Tables | the add-row affordance and column resizing; the grid, the column sizing and the cell caret are in [implemented.md](implemented.md) |
-| Shell grows | the self-contained single-file build; the model browser, the problems panel, find/replace and recent files are in [implemented.md](implemented.md) |
-
-**Gate:** a small DSL (including a table) is defined entirely in project files and is
-editable with correct structural editing; deleting the language's C#
-code changes nothing about what the user sees. The declared DSL can be opened, edited
-and saved in the standalone app, which no longer needs C# to know the language. Its C#
-twin is still in the repository and still agrees with it, because the parity harness says so.
-*Effort: 6–8 weeks.*
 
 ### M3 — References, scopes and completion
 

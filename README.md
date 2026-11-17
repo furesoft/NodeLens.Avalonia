@@ -49,15 +49,15 @@ The editor is designed to be embedded as a component in other .NET applications:
 
 | Metric | Details |
 | --- | --- |
-| **Milestones** | **M0 and M1 complete**, **M2 (declarative languages) in progress** |
+| **Milestones** | **M0, M1 and M2 complete**, **M3 (references and scopes) in progress** |
 | **Runtime** | `net10.0`, C# 14, Avalonia 12 |
-| **Tests** | 1606 passing (`dotnet test`) |
+| **Tests** | 1635 passing (`dotnet test`) |
 | **CI** | Windows and Linux, plus a Linux-only job that guards the file format |
 
 ### What that means in practice:
 You can declare a language in C# or as a model, project it, open a document, edit it structurally with keyboard and mouse, copy and paste, undo and redo, complete slots, switch a concept's representation, see diagnostics as squiggles and repair them from the intention list, preview an intention by hovering it, find and replace, browse the model, read the problems panel, reopen a recent file, show line numbers, zoom the font, scroll a document larger than the window with real scrollbars, and save to XML and load it back byte-identically.
 
-*Not there yet:* scopes, generators, interpreters, and the self-contained single-file build. What is finished is recorded in [implemented.md](docs/implemented.md); what is left is in the [roadmap](docs/roadmap.md).
+*Not there yet:* scopes, generators and interpreters. What is finished is recorded in [implemented.md](docs/implemented.md); what is left is in the [roadmap](docs/roadmap.md).
 
 ---
 
@@ -341,7 +341,8 @@ The dependency arrows point downward only. `Projection` and `Editing` never refe
 | [docs/architecture/overview.md](docs/architecture/overview.md) | Layers, projects, data flow |
 | [docs/architecture/model.md](docs/architecture/model.md) | Node model, identity, change tracking |
 | [docs/architecture/language.md](docs/architecture/language.md) | Concepts, notation, variants |
-| [docs/roadmap.md](docs/roadmap.md) | Milestones M0–M7 with acceptance gates |
+| [docs/roadmap.md](docs/roadmap.md) | What is left, milestone by milestone |
+| [docs/implemented.md](docs/implemented.md) | What is finished, where it lives and what proves it |
 | [docs/adr/](docs/adr/) | Architecture Decision Records |
 
 ---

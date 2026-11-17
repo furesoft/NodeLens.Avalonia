@@ -65,12 +65,12 @@ and [testing.md](architecture/testing.md).
 | `Samples`: the toy rules language and the shared payroll document | `Projectional.Samples/` | `RulesLanguageTests`, `RulesLanguageEditingTests` |
 | Standalone shell: tabs, menu bar, status bar, open/save, dirty prompt, theme | `Projectional.Workbench/` | `DocumentTabTests`, `DocumentSetTests`, `DocumentFileTests` |
 
-## M2 - Languages and the standalone editor (most of it)
+## M2 - Languages and the standalone editor (complete)
 
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
 | Structure language: nine concepts whose nodes *are* a language definition | `Projectional.Structures/` | `StructureLoweringTests` |
-| Editor language: sixteen concepts whose nodes *are* a notation | `Projectional.Editors/` | `EditorLoweringTests` |
+| Editor language: eighteen concepts whose nodes *are* a notation, including a table and its columns | `Projectional.Editors/` | `EditorLoweringTests` |
 | Both definition languages drawn in MPS' shape (header, options, one section per slot kind, `<< ... >>` for an empty section) | `Structures/Notation/StructureNotations.cs`, `Editors/Rendering/EditorNotations.cs` | the notations themselves; a definition document opens and draws in the app |
 | Parity harness: the same language as C# and as a model must agree | `LanguageParityTests`, `ParityHarness`, `DeclaredTestLanguage` | `LanguageParityTests` (registry dump, snapshot, findings) |
 | `Projectional.Toolkit`: the third public surface, so a language can be built without the editor | `Projectional.Toolkit/`, ADR 0019 | `tests/Projectional.Toolkit.Tests` (references the toolkit only) |
@@ -82,8 +82,10 @@ and [testing.md](architecture/testing.md).
 | Find: walks caret places in property cells, ordinal, skips the current match | `Projectional.Editing/Find/` | `FinderTests`, `FindNextActionTests` |
 | Replace one and replace all (one transaction, right to left, refused values skipped) | `Projectional.Editing/Find/` | `ReplaceMatchActionTests`, `ReplaceAllActionTests` |
 | Recent files (dedupe, order, cap, silent store failures) | `Projectional.Workbench/Documents/` | `RecentFilesTests`, `TextRecentFilesStoreTests` |
-
-Not done in M2: the self-contained single-file build.
+| Table add-row affordance: an empty table draws its header and one fillable `AddRowCell` row | `Projection/Tree/AddRowCell.cs`, `TableCell` | `TableProjectionTests`, `TableNotationTests`, `SampleTableVariantTests` |
+| Table column widths, dragged and reset, as view state | `Editing/Tables/ColumnWidths.cs`, `ColumnResize`, `IColumnWidths` | `ColumnWidthsTests`, `ColumnResizeTests` |
+| Self-contained single file, with a `--self-check` the bundle runs on itself | `Projectional.Workbench.csproj`, `SelfCheck.cs`, `ci.yml` | the `single-file` CI job: publish, assert one file, run the check |
+| **The M2 gate**: a DSL that exists only as data - `structure.mps`, `editor.mps` and a document | `samples/declared-pipeline/` | `DeclaredSampleLanguageTests` (loads, draws as a table, edits, saves, reloads byte-identically, hands the folder to the shell) |
 
 ## M3 - References, triggers and intentions (partly, landed early)
 

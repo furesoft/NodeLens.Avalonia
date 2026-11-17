@@ -11,8 +11,8 @@ A projectional editor for .NET, modelled on JetBrains MPS. The abstract syntax t
 the program. Notation is computed from the model by projections; there is no text buffer
 and no parser. Target users are people who build their own DSLs or embed a DSL editor as
 a component inside a host application. Planning is finished and lives in `docs/`;
-milestone **M0 is complete** (model, change events, undo/redo, XML persistence, test
-harness, CI). **M1 (projection and editing) is in progress**: the declarative notation layer
+milestones **M0, M1 and M2 are complete** (model, change events, undo/redo, XML persistence, test
+harness, CI; projection and editing; declarative languages and the standalone editor). The declarative notation layer
 in `Projectional.Language`, the runtime editor tree in `Projectional.Projection/Tree/`, the
 measure/arrange layout in `Projectional.Projection/Layout/`, the headless snapshot renderer in
 `Projectional.Projection/Snapshot/`, the edit-action layer in `Projectional.Editing/`, the first
@@ -415,6 +415,12 @@ lowered *against the concepts the structure model just declared*, so a notation 
 at the earliest moment both halves exist. **A language without `editor.mps` loads on purpose**: every node draws as a
 missing-notation cell, which is the state a language being written is in.
 
+**`samples/declared-pipeline` is the M2 gate made concrete**: a DSL that exists only as data - `structure.mps`,
+`editor.mps` and a document - with no C# anywhere. `DeclaredSampleLanguageTests` copies the folder next to the test
+assembly (a `<None Include="..\..\samples\...">` item) and loads exactly the files a user opens, so the sample cannot
+drift from what the code accepts without a test failing. It is the place to look when asking "can a language really
+be written without C#", and the place to extend when the declared path grows.
+
 **`WorkbenchLanguage` is per shell, not static** - it grows with **File ▸ Open language…**, and `TryAdd` builds both
 candidate registries first so a clash changes nothing (a half-added language gives documents a concept registry that
 disagrees with the notation registry in force). Growing the set re-declares every concept already in it
@@ -542,11 +548,32 @@ notation is registered per concept **and** variant
   columns against the child concept of the `Slot` - not against the concept owning the table.
   A column naming no slot, a name that is neither property nor child, and a many-valued child
   are all rejected at registration.
-- **An empty table has no header**: the builder passes no headers and `TableCell.Flatten` throws
-  if it is handed headers with no rows. `EmptyText` is what an empty slot shows, exactly like
-  `CollectionCell`.
+- **An empty table draws its header and one `AddRowCell` row.** The header is what says what the
+  columns are, and the affordance row is the only place the caret can stand to create the first
+  row: `CaretPlace.IsEmptySlot` counts it and `InsertNodeAction` fills the slot through the same
+  `InsertChildAction` an empty child slot uses. `TableCell.Flatten` refuses a table with **no
+  columns** instead. The affordance's text is the notation's `EmptyText`, so
+  `ed.Table("rules", "+ rule", ...)` is how a language says what an empty table looks like.
+- **The affordance carries the slot's address, not the table's.** A table that is the root of its
+  node's notation carries the node's address, which its headers carry too, so an affordance
+  addressed that way is indistinguishable from the first header and the caret lands on "rule".
+  `TableCell` therefore takes the slot address separately and the builder always passes it.
+- **Layout reads the drawn grid from `Content`, not from `Rows`**, because an empty table draws a
+  row the model does not have. `Rows` stays the model's rows; `IsEmpty` is `Rows.Count == 0`.
 - **Headers are projected from the node that owns the table, not from a row**, so a table with
   zero rows still knows its shape and a header can never be answered by a row.
+- **A column width is view state and a floor.** `IColumnWidths` (in `Projection/Layout`) is the
+  question layout asks, `ColumnWidths` (in `Editing/Tables`) the answer; `EditorSession.SetColumnWidth`
+  re-lays out without a transaction, so it is never saved and never an undo step. A width narrower
+  than the content is ignored - clipping a value would hide what the model says.
+  `ColumnResize.HandleAt` finds the boundary (the right edge of a column, **inside the header row
+  only** - the body is where the reader selects and types), and the control only turns a drag into
+  `SetColumnWidth`. The tolerance is horizontal only: a vertical one is a whole line in a monospaced
+  measure and would make the first body row a handle.
+- **`Editor.Table`/`Editor.Column` make a table declarable**, so a language defined in project files
+  can draw one. The lowering goes through the same `TableNotationCell`/`TableColumn` the C# path
+  uses; a column's `header` is lowered as an inline cell, so a header naming a slot is refused by
+  `TableColumn` rather than answered by whichever row came first.
 
 ## How the editor tree is built
 
@@ -1534,7 +1561,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1606 tests**; anything below that means tests were deleted.
+it. **Baseline is 1635 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
@@ -1622,6 +1649,24 @@ machine default. Do not remove it.
 dotnet build
 dotnet test
 ```
+
+The self-contained single file is a **publish** shape, not a build shape - the single-file
+properties in the Workbench csproj are guarded by `'$(PublishSingleFile)' == 'true'`, so a normal
+build stays framework-dependent and multi-file:
+
+```powershell
+dotnet publish src/Projectional.Workbench -c Release -r win-x64 -p:PublishSingleFile=true -o publish
+./publish/Projectional.Workbench.exe --self-check
+```
+
+Three things make "one file" true, and each was found by publishing and looking:
+`IncludeNativeLibrariesForSelfExtract` (Avalonia's native dependencies), `DebugType=none` plus
+`AllowedReferenceRelatedFileExtensions=none` (a portable PDB per referenced project), and a
+`RemovePublishPdbs` target (the native PDBs SkiaSharp and HarfBuzz ship, which the native-asset copy
+step brings along whatever the reference settings say). `--self-check` runs **before Avalonia
+starts**, so it needs no display: it builds the shell's language registry, projects a document and
+prints the counts. The `single-file` CI job publishes for `win-x64` and `linux-x64`, asserts
+`publish/` holds exactly one file, and runs the check.
 
 `global.json` also carries `"test": { "runner": "Microsoft.Testing.Platform" }`. Without it `dotnet test` on this
 SDK falls back to VSTest and every xunit.v3 project fails with "Testing with VSTest target is no longer
