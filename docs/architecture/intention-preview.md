@@ -6,11 +6,12 @@ For a rename that reads as the new names in place; for a conversion - a `for` tu
 rule turned into a table row - it is the only honest answer, because the question "what will this look
 like" has no good sentence.
 
-Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder), V4 (the ghost, painted by the
-control) and V5 (the wiring: hover tracking, the timer and the dismissals) are delivered; what is left is V6
-(previews for the sample intentions). The decision it rests on is
-[ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
+Status: **delivered for the shipped languages.** The intention list it needs exists ([context-actions.md](context-actions.md),
+slices A-E) and every slice is done: V1 (copy and diff), V2 (the sandbox), V3 (the ladder), V4 (the ghost, painted by the
+control), V5 (the wiring: hover tracking, the timer and the dismissals) and V6 (the previews of what the shipped
+packages actually offer). What is left is not this document: a preview of a refactoring that touches several files
+is M6, and the rest of the intention catalogue is [context-actions.md](context-actions.md) slice G. The decision it
+rests on is [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
 This document reverses a decision that was recorded twice: [context-actions.md](context-actions.md) and
 [quick-fixes.md](quick-fixes.md) both left previews out because they assumed a preview needs a
@@ -261,7 +262,7 @@ property of its implementation.
 | V3 ✓ | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewStage`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
 | V4 ✓ | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and the painting - marks and badge in `feat/preview-marks`, frame and anchor in `feat/preview-ghost`, `Ghost`/`GhostPresenter`/`PreviewPalette` in `feat/preview-paint`; verified with a probe that renders the ghost |
 | V5 ✓ | `feat/preview-wire` | M3 | `OfferPreview` joins the ladder to the sandbox and the ghost in `Projectional.Editing`, and the control owns the timer, tracks the row under the pointer, moves the highlight with it, paints the description under the list and drops the ghost on every documented event |
-| V6 | `feat/preview-sample` | M3 | previews for the sample intentions: rename in `Projectional.Samples`, wrap-in-parentheses and negate in `Projectional.Expressions` |
+| V6 ✓ | `feat/preview-sample` | M3 | the shipped entries are proven to preview, which is the only thing that made the slice worth its own branch: the samples' rename repair (`RULES001` - a rename reads as the new name in place), wrap-in-parentheses and negate in `Projectional.Expressions`, and accept this rule in `Projectional.Samples` |
 
 V1 and V2 hold the invariants and are testable without a window; V3 is headless by construction (it never asks what time it is); V4 and
 V5 are the first customers of the headless Avalonia harness the intention slices already need. A
