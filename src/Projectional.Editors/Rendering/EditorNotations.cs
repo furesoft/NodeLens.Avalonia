@@ -33,10 +33,6 @@ public static class EditorNotations
 
         var ed = NotationEditor.Create();
 
-        notations.Add(EditorConceptKeys.Notations, ed => ed.Sequence(
-            ed.Line(ed.Keyword("notations:")),
-            ed.Indent(ed.Children(EditorLanguage.NotationSlot, NoEntries))));
-
         notations.Add(EditorConceptKeys.Notation, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("editor for concept"),

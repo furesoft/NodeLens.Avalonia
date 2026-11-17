@@ -18,28 +18,32 @@ namespace Projectional.TextGen;
 /// </remarks>
 public static class TextGenLowering
 {
-    /// <summary>The generators the model in <paramref name="root"/> declares.</summary>
-    /// <param name="root">The <c>TextGen.Generators</c> node.</param>
+    /// <summary>The generators a language's generator documents declare.</summary>
+    /// <param name="generators">
+    /// The roots of those documents: one <see cref="TextGenConceptKeys.Generator"/> per document, in file order.
+    /// </param>
     /// <param name="concepts">The concepts its mappings may name, which is the target language's registry.</param>
-    /// <returns>The generators, in the order the document declares them.</returns>
+    /// <returns>The generators, in that order.</returns>
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
-    /// <exception cref="ConceptDefinitionException">The document cannot be lowered.</exception>
-    public static IReadOnlyList<TextGenerator> CreateGenerators(Node root, ConceptRegistry concepts)
+    /// <exception cref="ConceptDefinitionException">A document cannot be lowered.</exception>
+    public static IReadOnlyList<TextGenerator> CreateGenerators(IEnumerable<Node> generators, ConceptRegistry concepts)
     {
-        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(generators);
         ArgumentNullException.ThrowIfNull(concepts);
 
-        if (root.Concept.Key != TextGenConceptKeys.Generators)
-        {
-            throw new ConceptDefinitionException(
-                $"A generator document's root must be a {TextGenConceptKeys.Generators}, but this one is a {root.Concept.Key}.");
-        }
+        var roots = generators as IReadOnlyList<Node> ?? [.. generators];
 
-        List<TextGenerator> generators = [];
+        List<TextGenerator> lowered = [];
         HashSet<string> names = new(StringComparer.Ordinal);
 
-        foreach (var generator in root.GetChildren(TextGenLanguage.GeneratorsSlot))
+        foreach (var generator in roots)
         {
+            if (generator.Concept.Key != TextGenConceptKeys.Generator)
+            {
+                throw new ConceptDefinitionException(
+                    $"'{generator.Concept.Key}' is not a generator; a generator document holds one '{TextGenConceptKeys.Generator}'.");
+            }
+
             var name = NameOf(generator);
 
             if (!names.Add(name))
@@ -48,10 +52,10 @@ public static class TextGenLowering
                     $"Two generators are called '{name}'; a host picks one by name, so a name belongs to one generator.");
             }
 
-            generators.Add(new TextGenerator(name, CreateTemplates(generator, concepts)));
+            lowered.Add(new TextGenerator(name, CreateTemplates(generator, concepts)));
         }
 
-        return generators;
+        return lowered;
     }
 
     /// <summary>The templates of one generator, keyed by the concept each mapping names.</summary>

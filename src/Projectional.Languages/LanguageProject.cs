@@ -28,21 +28,17 @@ namespace Projectional.Languages;
 /// </remarks>
 public sealed class LanguageProject
 {
-    /// <summary>The file holding the concepts, which every language project needs.</summary>
-    public const string StructureFile = "structure.mps";
+    /// <summary>The folder holding the concepts and enumerations, which every language project needs.</summary>
+    public const string StructureFolder = "structure";
 
-    /// <summary>The file holding the notation, which a language may leave out while it is being written.</summary>
-    public const string EditorFile = "editor.mps";
+    /// <summary>The folder holding the notation, which a language may leave out while it is being written.</summary>
+    public const string EditorFolder = "editor";
 
-    /// <summary>The file holding the type rules, which a language may leave out until it has any.</summary>
-    public const string TypesFile = "types.mps";
+    /// <summary>The folder holding the type rules and the named types, which a language may leave out.</summary>
+    public const string TypesFolder = "types";
 
-    /// <summary>The file holding the text generators, which a language may leave out until it has any.</summary>
-    /// <remarks>
-    /// One file holds every generator of the language: a language declares as many as it has targets, and they belong
-    /// together the way the type rules do - one aspect, one model.
-    /// </remarks>
-    public const string GeneratorFile = "generator.mps";
+    /// <summary>The folder holding the text generators, which a language may leave out until it has any.</summary>
+    public const string GeneratorFolder = "generator";
 
     private LanguageProject(
         string name,
@@ -74,13 +70,13 @@ public sealed class LanguageProject
     /// <summary>The registry those declarations build.</summary>
     public ConceptRegistry Concepts { get; }
 
-    /// <summary>The notation of those concepts; empty when the project has no <c>editor.mps</c>.</summary>
+    /// <summary>The notation of those concepts; empty when the project has no <c>editor</c> folder.</summary>
     public NotationRegistry Notations { get; }
 
-    /// <summary>The type rules of those concepts; empty when the project has no <c>types.mps</c>.</summary>
+    /// <summary>The type rules of those concepts; empty when the project has no <c>types</c> folder.</summary>
     public TypeRegistry Types { get; }
 
-    /// <summary>The text generators the language declares; empty when it has no <c>generator.mps</c>.</summary>
+    /// <summary>The text generators the language declares; empty when it has no <c>generator</c> folder.</summary>
     /// <remarks>
     /// A language may declare several, and the host picks one by name - which is why this is a list and the framework
     /// has no "the" generator. A language without one loads, and its documents simply cannot be generated.
@@ -94,7 +90,7 @@ public sealed class LanguageProject
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
     /// when nobody said what a node evaluates to. Refusing to load would make "write the structure first"
-    /// impossible, the same reason a missing <c>editor.mps</c> is allowed.
+    /// impossible, the same reason a missing <c>editor</c> folder is allowed.
     /// </remarks>
     public bool HasTypes => Types.Count > 0;
 
@@ -106,31 +102,41 @@ public sealed class LanguageProject
     public bool HasNotation => Notations.Notations.Count > 0;
 
     /// <summary>Loads the language project in <paramref name="directory"/>.</summary>
-    /// <param name="directory">The folder holding <c>structure.mps</c>, and optionally <c>editor.mps</c>.</param>
+    /// <param name="directory">The folder holding the aspect folders, one definition per document.</param>
     /// <param name="error">Why the project could not be loaded, or <see langword="null"/> on success.</param>
     /// <returns>The language, or <see langword="null"/> with a message.</returns>
     /// <exception cref="ArgumentException"><paramref name="directory"/> is blank.</exception>
     /// <remarks>
-    /// The notation is lowered against the concepts the structure model just declared, so a notation for a concept
-    /// that was never declared is refused here - the earliest point at which both halves exist.
+    /// <para>
+    /// Each aspect is a folder of documents, and a document holds exactly one definition: one concept, one
+    /// enumeration, one notation, one rule or one named type, one generator. That is MPS' shape - one root per
+    /// file - and it is what keeps a language reviewable: a diff of one concept is a diff of one file.
+    /// </para>
+    /// <para>
+    /// Files are read in ordinal order of their names, and that order is the declaration order - which decides what
+    /// an empty slot is filled with and how completion ranks. The file name is therefore part of the language, and
+    /// naming the documents after what they hold is the way to keep the order readable.
+    /// </para>
+    /// <para>
+    /// The notation is lowered against the concepts the structure documents just declared, so a notation for a
+    /// concept that was never declared is refused here - the earliest point at which both halves exist.
+    /// </para>
     /// </remarks>
     public static LanguageProject? Open(string directory, out string? error)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
-        var structurePath = Path.Combine(directory, StructureFile);
-
-        if (!File.Exists(structurePath))
+        if (!System.IO.Directory.Exists(Path.Combine(directory, StructureFolder)))
         {
-            error = $"'{directory}' holds no {StructureFile}, so it is not a language project.";
+            error = MissingStructure(directory);
 
             return null;
         }
 
         try
         {
-            var structure = ModelFile.Load(StructureLanguage.NewProject(), structurePath);
-            var declarations = StructureLowering.Lower(structure.Roots[0]);
+            var definitions = Read(directory, StructureFolder, new Project(StructureLanguage.Concepts));
+            var declarations = StructureLowering.Lower(definitions);
             var concepts = ConceptRegistry.Create(declarations);
 
             error = null;
@@ -157,6 +163,60 @@ public sealed class LanguageProject
         }
     }
 
+    /// <summary>The one root of every document in one aspect folder, in ordinal order of their file names.</summary>
+    /// <remarks>
+    /// A document that holds no root or more than one is refused rather than searched: a document with two roots is
+    /// two definitions in one file, which is the shape this layout exists to remove, and a document with none is a
+    /// file the user will otherwise wonder about.
+    /// </remarks>
+    private static List<Node> Read(string languageDirectory, string aspect, Project project)
+    {
+        var folder = Path.Combine(languageDirectory, aspect);
+
+        if (!System.IO.Directory.Exists(folder))
+        {
+            return [];
+        }
+
+        var files = System.IO.Directory
+            .EnumerateFiles(folder, "*.mps", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+            .ToList();
+
+        var roots = new List<Node>(files.Count);
+
+        foreach (var file in files)
+        {
+            var model = ModelFile.Load(project, file);
+
+            roots.Add(model.Roots.Count switch
+            {
+                1 => model.Roots[0],
+                0 => throw new ConceptDefinitionException(
+                    $"'{Path.GetFileName(file)}' holds no definition; a document in '{aspect}' holds exactly one."),
+                _ => throw new ConceptDefinitionException(
+                    $"'{Path.GetFileName(file)}' holds {model.Roots.Count} definitions; a document in '{aspect}' holds exactly one, so each definition gets its own file."),
+            });
+        }
+
+        return roots;
+    }
+
+    /// <summary>Why a folder with no <c>structure</c> directory is not a language project.</summary>
+    /// <remarks>
+    /// The old layout - one <c>structure.mps</c> holding the whole language - is named explicitly, because the file
+    /// that used to be the answer is still sitting there and "not a language project" would send its author looking
+    /// for a different problem.
+    /// </remarks>
+    private static string MissingStructure(string languageDirectory)
+    {
+        var legacy = Path.Combine(languageDirectory, StructureFolder + ".mps");
+
+        return File.Exists(legacy)
+            ? $"'{languageDirectory}' holds no {StructureFolder} folder but a {StructureFolder}.mps: a language keeps one definition per document now, so split that file into {StructureFolder}\\*.mps, one concept or enumeration each."
+            : $"'{languageDirectory}' holds no {StructureFolder} folder, so it is not a language project.";
+    }
+
     /// <summary>A project in which a document of this language can be created or loaded.</summary>
     public Project NewProject() => new(Concepts);
 
@@ -164,36 +224,26 @@ public sealed class LanguageProject
     /// <param name="name">The model's name, which is also the file name it is saved under.</param>
     public Model NewModel(string name = "model") => NewProject().NewModel(name);
 
-    private static TypeRegistry LowerTypes(string directory)
-    {
-        var path = Path.Combine(directory, TypesFile);
-
-        return File.Exists(path)
-            ? TypeRuleLowering.CreateRegistry(ModelFile.Load(TypeRuleLanguage.NewProject(), path).Roots[0])
-            : TypeRegistry.Empty;
-    }
+    private static TypeRegistry LowerTypes(string directory) =>
+        TypeRuleLowering.CreateRegistry(Read(directory, TypesFolder, new Project(TypeRuleLanguage.Concepts)));
 
     private static NotationRegistry LowerNotation(string directory, ConceptRegistry concepts)
     {
-        var path = Path.Combine(directory, EditorFile);
+        var notations = Read(directory, EditorFolder, new Project(EditorLanguage.Concepts));
 
-        return File.Exists(path)
-            ? EditorLowering.CreateRegistry(ModelFile.Load(EditorLanguage.NewProject(), path).Roots[0], concepts)
+        return notations.Count > 0
+            ? EditorLowering.CreateRegistry(notations, concepts)
             : new NotationRegistry(concepts);
     }
 
-    /// <summary>Every generator the project declares, or none when it has no <c>generator.mps</c>.</summary>
+    /// <summary>Every generator the project declares, or none when it has no <c>generator</c> folder.</summary>
     /// <remarks>
-    /// The lowering is given the concepts the structure model just declared, so a mapping that names a concept this
-    /// language does not have is refused here - the same "earliest moment both halves exist" rule the notation
+    /// The lowering is given the concepts the structure documents just declared, so a mapping that names a concept
+    /// this language does not have is refused here - the same "earliest moment both halves exist" rule the notation
     /// follows.
     /// </remarks>
-    private static IReadOnlyList<TextGenerator> LowerGenerators(string directory, ConceptRegistry concepts)
-    {
-        var path = Path.Combine(directory, GeneratorFile);
-
-        return File.Exists(path)
-            ? TextGenLowering.CreateGenerators(ModelFile.Load(TextGenLanguage.NewProject(), path).Roots[0], concepts)
-            : [];
-    }
+    private static IReadOnlyList<TextGenerator> LowerGenerators(string directory, ConceptRegistry concepts) =>
+        TextGenLowering.CreateGenerators(
+            Read(directory, GeneratorFolder, new Project(TextGenLanguage.Concepts)),
+            concepts);
 }

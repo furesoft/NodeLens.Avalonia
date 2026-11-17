@@ -22,39 +22,56 @@ namespace Projectional.TypeRules;
 /// </remarks>
 public static class TypeRuleLowering
 {
-    /// <summary>The rules <paramref name="document"/> declares, as a registry.</summary>
-    /// <param name="document">A node of <see cref="TypeRuleConceptKeys.Rules"/>.</param>
-    /// <exception cref="ConceptDefinitionException">A rule cannot be lowered.</exception>
-    public static TypeRegistry CreateRegistry(Node document)
+    /// <summary>The rules a language's type documents declare, as a registry.</summary>
+    /// <param name="documents">
+    /// The roots of those documents: one <see cref="TypeRuleConceptKeys.Rule"/> or one
+    /// <see cref="TypeRuleConceptKeys.Named"/> per document, in file order.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ConceptDefinitionException">A root is neither a rule nor a named type, or a rule cannot be lowered.</exception>
+    public static TypeRegistry CreateRegistry(IEnumerable<Node> documents)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(documents);
 
-        var aliases = Aliases(document);
+        var roots = documents as IReadOnlyList<Node> ?? [.. documents];
+        var aliases = Aliases(roots);
         var registry = TypeRegistry.Empty;
 
-        foreach (var rule in document.GetChildren(TypeRuleLanguage.RulesSlot))
+        foreach (var root in roots)
         {
-            var conceptKey = Required(rule, TypeRuleLanguage.ConceptKeySlot);
+            switch (root.Concept.Key)
+            {
+                case TypeRuleConceptKeys.Rule:
+                    var conceptKey = Required(root, TypeRuleLanguage.ConceptKeySlot);
 
-            registry = registry.Add(conceptKey, LowerRule(rule, conceptKey, aliases));
+                    registry = registry.Add(conceptKey, LowerRule(root, conceptKey, aliases));
+                    break;
+
+                case TypeRuleConceptKeys.Named:
+                    break;
+
+                default:
+                    throw new ConceptDefinitionException(
+                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}' or one '{TypeRuleConceptKeys.Named}'.");
+            }
         }
 
         return registry;
     }
 
     /// <summary>
-    /// The types the model declares under a name, which are its roots beside the rules document.
+    /// The types the language declares under a name, which are documents of their own beside the rules.
     /// </summary>
     /// <remarks>
-    /// A named type is a root rather than a second list inside the document, so that a types model keeps
+    /// A named type is a document rather than a second list inside one, so that a language's types aspect keeps
     /// exactly one shape a reader has to learn: the rules, and the names they may use. Duplicates are a
     /// load-time error here because nothing later could choose between them.
     /// </remarks>
-    private static Dictionary<string, Node> Aliases(Node document)
+    private static Dictionary<string, Node> Aliases(IReadOnlyList<Node> roots)
     {
         Dictionary<string, Node> aliases = new(StringComparer.Ordinal);
 
-        foreach (var root in document.Model.Roots)
+        foreach (var root in roots)
         {
             if (root.Concept.Key != TypeRuleConceptKeys.Named)
             {
@@ -66,7 +83,7 @@ public static class TypeRuleLowering
             if (!aliases.TryAdd(name, root))
             {
                 throw new ConceptDefinitionException(
-                    $"The types model declares the type '{name}' twice, so nothing says which one a rule means.");
+                    $"The language declares the type '{name}' twice, so nothing says which one a rule means.");
             }
         }
 

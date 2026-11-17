@@ -37,15 +37,6 @@ public static class StructureNotations
 
         var ed = NotationEditor.Create();
 
-        // The two lists are separate slots, so an unlabelled document would be two identical placeholders and no
-        // way to tell which one creates a concept. The heading is a constant of the notation, not a slot of the
-        // model: nothing is stored for it and nothing can be typed into it.
-        notations.Add(StructureConceptKeys.Language, ed => ed.Sequence(
-            ed.Line(ed.Keyword("enumerations:")),
-            ed.Indent(ed.Children(StructureLanguage.EnumerationSlot, NoEntries)),
-            ed.Line(ed.Keyword("concepts:")),
-            ed.Indent(ed.Children(StructureLanguage.ConceptSlot, NoEntries))));
-
         // `abstract concept Rule` rather than an option, which is how MPS writes it and how the word is read: as
         // part of what the concept is, not as one of its settings. The word exists in the notation always and in
         // the drawing only while the flag is true - a false one draws nothing at all, not an empty cell.

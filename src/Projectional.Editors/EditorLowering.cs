@@ -22,47 +22,54 @@ namespace Projectional.Editors;
 /// </remarks>
 public static class EditorLowering
 {
-    /// <summary>The notations a definition describes.</summary>
-    /// <param name="document">The notation, which is a root of <see cref="EditorConceptKeys.Notations"/>.</param>
+    /// <summary>The notations a language's editor documents describe, in the order they were written.</summary>
+    /// <param name="notations">
+    /// The roots of those documents: one <see cref="EditorConceptKeys.Notation"/> per document, in file order.
+    /// </param>
     /// <param name="concepts">The language the notations are about.</param>
-    /// <returns>One notation per <see cref="EditorConceptKeys.Notation"/> node, in the order they were written.</returns>
+    /// <returns>One notation per root, in that order.</returns>
     /// <exception cref="ArgumentNullException">A parameter is <see langword="null"/>.</exception>
     /// <exception cref="ConceptDefinitionException">
-    /// The document is not a notation, a notation names no concept, or it names one the registry does not declare.
+    /// A root is not a notation, a notation names no concept, or it names one the registry does not declare.
     /// </exception>
     /// <remarks>
     /// The concept is checked here rather than left to the registry because the message can then say <em>which
     /// notation</em> is about a concept that does not exist, which is the one thing an author can act on.
     /// </remarks>
-    public static IReadOnlyList<Notation> Lower(Node document, ConceptRegistry concepts)
+    public static IReadOnlyList<Notation> Lower(IEnumerable<Node> notations, ConceptRegistry concepts)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(notations);
         ArgumentNullException.ThrowIfNull(concepts);
 
-        if (document.Concept.Key != EditorConceptKeys.Notations)
+        var roots = notations as IReadOnlyList<Node> ?? [.. notations];
+
+        foreach (var root in roots)
         {
-            throw new ConceptDefinitionException(
-                $"'{document.Concept.Key}' is not a notation; expected '{EditorConceptKeys.Notations}'.");
+            if (root.Concept.Key != EditorConceptKeys.Notation)
+            {
+                throw new ConceptDefinitionException(
+                    $"'{root.Concept.Key}' is not a notation; an editor document holds one '{EditorConceptKeys.Notation}'.");
+            }
         }
 
-        return document.GetChildren(EditorLanguage.NotationSlot).Select(one => LowerNotation(one, concepts)).ToList();
+        return roots.Select(one => LowerNotation(one, concepts)).ToList();
     }
 
     /// <summary>A registry holding those notations, which is what a session draws with.</summary>
-    /// <param name="document">The notation.</param>
+    /// <param name="notations">The roots of the editor documents.</param>
     /// <param name="concepts">The language the notations are about.</param>
-    /// <exception cref="ConceptDefinitionException">The notation is malformed or draws something impossible.</exception>
+    /// <exception cref="ConceptDefinitionException">A notation is malformed or draws something impossible.</exception>
     /// <exception cref="NotationException">A notation names a slot its concept does not declare, or repeats one.</exception>
-    public static NotationRegistry CreateRegistry(Node document, ConceptRegistry concepts)
+    public static NotationRegistry CreateRegistry(IEnumerable<Node> notations, ConceptRegistry concepts)
     {
-        var notations = new NotationRegistry(concepts);
+        var registry = new NotationRegistry(concepts);
 
-        foreach (var notation in Lower(document, concepts))
+        foreach (var notation in Lower(notations, concepts))
         {
-            notations.Add(notation);
+            registry.Add(notation);
         }
 
-        return notations;
+        return registry;
     }
 
     private static Notation LowerNotation(Node notation, ConceptRegistry concepts)
