@@ -31,6 +31,10 @@ namespace Projectional.Workbench;
 /// </remarks>
 internal sealed class WorkbenchLanguage
 {
+    /// <summary>The concepts the sample rules language declares, which is what makes one of its documents runnable.</summary>
+    private static readonly HashSet<string> SampleConceptKeys =
+        [.. RulesLanguage.ConceptDeclarations.Select(declaration => declaration.Key)];
+
     private readonly List<LanguageProject> _opened = [];
 
     /// <summary>Builds the set every shell starts with.</summary>
@@ -59,6 +63,47 @@ internal sealed class WorkbenchLanguage
 
     /// <summary>The sample language's typing rules, which are the only ones the shell ships.</summary>
     internal static ITypingRules? Typing => RulesLanguage.TypingRules;
+
+    /// <summary>The interpreter of the language <paramref name="model"/> is written in, or <see langword="null"/>.</summary>
+    /// <param name="model">The model, whose first root decides which language it belongs to.</param>
+    /// <returns>The rules that give its nodes a meaning, or <see langword="null"/> when the language defines none.</returns>
+    /// <remarks>
+    /// <para>
+    /// A language says what its concepts mean, so "can this document be run" is answered by the concept its root is -
+    /// not by the menu entry that opened it. The shell ships an interpreter for the sample rules language and for
+    /// nothing else, so a document of a language opened from a folder, of either definition language or of the type
+    /// rule language is simply not runnable.
+    /// </para>
+    /// <para>
+    /// Answering <see langword="null"/> rather than falling back to the sample's rules is the whole point: running a
+    /// structure definition against them would report a missing rule for every concept, which is a wrong answer to a
+    /// question nobody should have been able to ask.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/>.</exception>
+    internal static EvaluationRegistry? InterpreterFor(Model model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        return model.Roots.Count > 0 && SampleConceptKeys.Contains(model.Roots[0].Concept.Key)
+            ? Evaluation
+            : null;
+    }
+
+    /// <summary>The sample language's interpreter, which is the only one the shell ships.</summary>
+    /// <remarks>
+    /// <para>
+    /// A document is runnable when its language defines an interpreter, so this registry is what makes the sample
+    /// rules language runnable and everything else - the two definition languages, a type ruleset, a document of a
+    /// language opened from a folder - not: evaluation is an aspect a language declares, and none of them declares
+    /// one yet.
+    /// </para>
+    /// <para>
+    /// It composes the expression rules, so a rule's condition runs without the shell bolting two registries
+    /// together.
+    /// </para>
+    /// </remarks>
+    internal static EvaluationRegistry Evaluation => RulesEvaluation.Registry;
 
     /// <summary>The languages opened from a folder, in the order they joined.</summary>
     internal IReadOnlyList<LanguageProject> Opened => _opened;

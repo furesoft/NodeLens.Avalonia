@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Projection;
+using Projectional.Samples;
 using Projectional.Workbench;
 using Xunit;
 
@@ -124,6 +125,29 @@ public sealed class DocumentTabTests
         var model = TestLanguage.NewModel();
 
         Assert.Throws<InvalidOperationException>(() => new DocumentTab(model, TestNotations.Registry, MonospaceTextMeasure.Instance));
+    }
+
+    [Fact]
+    public void ATabOpenedWithoutAnInterpreterIsNotRunnable()
+    {
+        // The default is "cannot run", so a caller that forgets the aspect gets a document that refuses to run rather
+        // than one that quietly runs with another language's semantics.
+        using var tab = OpenTab(ModelWithRule());
+
+        Assert.Null(tab.Evaluation);
+    }
+
+    [Fact]
+    public void ATabCarriesTheInterpreterOfItsLanguage()
+    {
+        var model = ModelWithRule();
+        using var tab = new DocumentTab(
+            model,
+            TestNotations.Registry,
+            MonospaceTextMeasure.Instance,
+            evaluation: RulesEvaluation.Registry);
+
+        Assert.Same(RulesEvaluation.Registry, tab.Evaluation);
     }
 
     [Fact]
