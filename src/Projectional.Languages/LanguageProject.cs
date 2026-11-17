@@ -3,6 +3,7 @@ using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Persistence;
 using Projectional.Structures;
+using Projectional.TextGen;
 using Projectional.TypeRules;
 
 namespace Projectional.Languages;
@@ -36,13 +37,21 @@ public sealed class LanguageProject
     /// <summary>The file holding the type rules, which a language may leave out until it has any.</summary>
     public const string TypesFile = "types.mps";
 
+    /// <summary>The file holding the text generators, which a language may leave out until it has any.</summary>
+    /// <remarks>
+    /// One file holds every generator of the language: a language declares as many as it has targets, and they belong
+    /// together the way the type rules do - one aspect, one model.
+    /// </remarks>
+    public const string GeneratorFile = "generator.mps";
+
     private LanguageProject(
         string name,
         string directory,
         IReadOnlyList<ConceptDeclaration> declarations,
         ConceptRegistry concepts,
         NotationRegistry notations,
-        TypeRegistry types)
+        TypeRegistry types,
+        IReadOnlyList<TextGenerator> generators)
     {
         Name = name;
         Directory = directory;
@@ -50,6 +59,7 @@ public sealed class LanguageProject
         Concepts = concepts;
         Notations = notations;
         Types = types;
+        Generators = generators;
     }
 
     /// <summary>The language's name, which is the name of the folder it lives in.</summary>
@@ -69,6 +79,16 @@ public sealed class LanguageProject
 
     /// <summary>The type rules of those concepts; empty when the project has no <c>types.mps</c>.</summary>
     public TypeRegistry Types { get; }
+
+    /// <summary>The text generators the language declares; empty when it has no <c>generator.mps</c>.</summary>
+    /// <remarks>
+    /// A language may declare several, and the host picks one by name - which is why this is a list and the framework
+    /// has no "the" generator. A language without one loads, and its documents simply cannot be generated.
+    /// </remarks>
+    public IReadOnlyList<TextGenerator> Generators { get; }
+
+    /// <summary>Whether the project declared a generator at all.</summary>
+    public bool HasGenerators => Generators.Count > 0;
 
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
@@ -121,7 +141,8 @@ public sealed class LanguageProject
                 declarations,
                 concepts,
                 LowerNotation(directory, concepts),
-                LowerTypes(directory));
+                LowerTypes(directory),
+                LowerGenerators(directory, concepts));
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -159,5 +180,20 @@ public sealed class LanguageProject
         return File.Exists(path)
             ? EditorLowering.CreateRegistry(ModelFile.Load(EditorLanguage.NewProject(), path).Roots[0], concepts)
             : new NotationRegistry(concepts);
+    }
+
+    /// <summary>Every generator the project declares, or none when it has no <c>generator.mps</c>.</summary>
+    /// <remarks>
+    /// The lowering is given the concepts the structure model just declared, so a mapping that names a concept this
+    /// language does not have is refused here - the same "earliest moment both halves exist" rule the notation
+    /// follows.
+    /// </remarks>
+    private static IReadOnlyList<TextGenerator> LowerGenerators(string directory, ConceptRegistry concepts)
+    {
+        var path = Path.Combine(directory, GeneratorFile);
+
+        return File.Exists(path)
+            ? TextGenLowering.CreateGenerators(ModelFile.Load(TextGenLanguage.NewProject(), path).Roots[0], concepts)
+            : [];
     }
 }

@@ -17,6 +17,7 @@
     <Project Path="src/Projectional.Samples.Intentions/Projectional.Samples.Intentions.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Structures.Intentions/Projectional.Structures.Intentions.csproj" />
+    <Project Path="src/Projectional.TextGen/Projectional.TextGen.csproj" />
     <Project Path="src/Projectional.Toolkit/Projectional.Toolkit.csproj" />
     <Project Path="src/Projectional.Structures/Projectional.Structures.csproj" />
     <Project Path="src/Projectional.TypeRules/Projectional.TypeRules.csproj" />
