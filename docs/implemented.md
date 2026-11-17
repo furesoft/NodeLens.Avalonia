@@ -60,6 +60,7 @@ clean on Windows and Linux.
 | `Expressions` language: abstract `Expression` plus seven concrete concepts | `Projectional.Expressions/` | `ExpressionsLanguageTests` |
 | `Samples`: the toy rules language and the shared payroll document | `Projectional.Samples/` | `RulesLanguageTests`, `RulesLanguageEditingTests` |
 | Standalone shell: tabs, menu bar, status bar, open/save, dirty prompt, theme | `Projectional.Workbench/` | `DocumentTabTests`, `DocumentSetTests`, `DocumentFileTests` |
+
 ## M2 - Languages and the standalone editor (most of it)
 
 | Feature | Where it lives | Proof |
