@@ -27,6 +27,7 @@ namespace Projectional.Projection;
 public sealed class CellLayouter
 {
     private readonly ITextMeasure _measure;
+    private readonly IColumnWidths? _columnWidths;
 
     /// <summary>Creates a layouter that places cells on a page of <paramref name="wrapWidth"/>.</summary>
     /// <param name="measure">Measures the text of a cell.</param>
@@ -34,11 +35,16 @@ public sealed class CellLayouter
     /// Where the page ends, and therefore where a text breaks, or <see langword="null"/> for a page that
     /// never ends - which is what a caller that has no width to give wants.
     /// </param>
-    public CellLayouter(ITextMeasure measure, double? wrapWidth = null)
+    /// <param name="columnWidths">
+    /// The widths the reader has given a table's columns, or <see langword="null"/> when nobody has
+    /// resized anything and every column is as wide as its content.
+    /// </param>
+    public CellLayouter(ITextMeasure measure, double? wrapWidth = null, IColumnWidths? columnWidths = null)
     {
         ArgumentNullException.ThrowIfNull(measure);
         _measure = measure;
         WrapWidth = wrapWidth;
+        _columnWidths = columnWidths;
     }
 
     /// <summary>Where the page ends, and therefore where a text breaks, if anywhere.</summary>
@@ -202,6 +208,13 @@ public sealed class CellLayouter
 
         for (var c = 0; c < columnCount; c++)
         {
+            // A width the reader dragged is a floor, never a ceiling: a column narrower than its content
+            // would clip a value or overlap its neighbour, and the model is what the reader came to read.
+            if (_columnWidths?.WidthOf(table.Address.Owner, table.Slot, c) is { } asked)
+            {
+                columns[c] = Math.Max(columns[c], asked);
+            }
+
             columnLeft[c] = cursorX;
             cursorX += columns[c] + gap;
         }

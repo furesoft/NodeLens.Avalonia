@@ -1113,6 +1113,28 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnResetFontSize(object? sender, RoutedEventArgs e) => ApplyFontSize(DefaultFontSize);
 
+    /// <summary>Puts every table column in the active document back to the width its content asks for.</summary>
+    /// <remarks>
+    /// Column widths are view state, so this is not an edit: it opens no transaction, creates no undo
+    /// step and does not mark the document modified. It is here rather than on the control because a
+    /// reader who has dragged a column too wide needs a way back that does not require aiming at the
+    /// boundary again.
+    /// </remarks>
+    private void OnResetColumnWidths(object? sender, RoutedEventArgs e)
+    {
+        if (_documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.ResetColumnWidths();
+
+        editor.InvalidateMeasure();
+        editor.InvalidateVisual();
+    }
+
     /// <summary>Routes the zoom gestures that a <c>MenuItem.HotKey</c> cannot express.</summary>
     /// <remarks>
     /// On a normal keyboard "+" is <see cref="Key.OemPlus"/> pressed <em>with</em> Shift, so a single
