@@ -110,6 +110,8 @@ Not done in M3: scopes and scope-driven completion.
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
 | Diagnostics and the fix contract: a fix produces an edit, never mutates | `Projectional.Semantics/`, `Projectional.Editing/Fixes/` | `DiagnosticFixTests`, `FixSetTests`, `FixAvailabilityTests`, `EditProgramTests` |
+| Constraint engine: a language's rules as an aspect, run over a document or one subtree | `Projectional.Semantics/Constraints/` | `ConstraintEngineTests` |
+| The sample language's own constraint (a rule needs a condition), merged into the app's findings | `SampleConstraints`, `MainWindow.PublishFindings` | `SampleConstraintsTests` |
 | Quick fixes at the caret, the bulb, the offer list | `QuickFixes`, `OfferList` | `QuickFixesTests`, `QuickFixBulbTests`, `EditorSessionFixTests` |
 | Standard check catalogue as a package (`STD001`, `STD003`, `STD010`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `BinaryGroupingCheckTests` |
 | The app's own checks (default names, duplicate rule names) | `Projectional.Workbench/Checks/` | `DefaultNamesTests`, `DuplicateRuleNamesTests` |

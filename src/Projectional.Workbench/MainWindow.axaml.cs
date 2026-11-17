@@ -363,7 +363,15 @@ public sealed partial class MainWindow : Window, IDisposable
     private static void PublishFindings(DocumentTab document, ProjectionalEditorControl editor)
     {
         List<DiagnosticFix> fixes = [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
-        List<Diagnostic> findings = [.. fixes.Select(fix => fix.Diagnostic)];
+
+        // A constraint reports and never repairs, so its findings reach the squiggles and the panel but
+        // not the quick-fix list. They are merged here rather than in a second pass because the panel and
+        // the markers must read one list - two lists would be two answers to "what is wrong".
+        List<Diagnostic> findings =
+        [
+            .. fixes.Select(fix => fix.Diagnostic),
+            .. new ConstraintEngine(SampleConstraints.All).Check(document.Model),
+        ];
 
         editor.Markers = new MarkerSet([.. findings]);
         editor.Fixes = new FixSet([.. fixes]);

@@ -78,6 +78,37 @@ concept.Validate((node, ctx) =>
 });
 ```
 
+### What is implemented
+
+`Projectional.Semantics/Constraints/` holds the engine, and the shape is the one above with the
+collector made explicit:
+
+| Type | Job |
+| --- | --- |
+| `IConstraint` | the aspect: `Check(ConstraintContext)`, reports and never mutates |
+| `ConstraintContext` | the node, `ScopeOf(slot)`, and `Error`/`Warning`/`Hint`/`Report` |
+| `ConstraintSet` | the language's rules, keyed by concept, immutable |
+| `ConstraintEngine` | walks a document (or one subtree) and answers the findings |
+
+- **A constraint reports; it never repairs.** The repair is a `DiagnosticFix` built by whoever knows how
+  to fix the finding, which is why a language author can write a rule without knowing what the editor
+  can do about it. A finding with no repair reaches the squiggles and the problems panel and not the
+  quick-fix list - which is the right answer for "a rule needs a condition", where inventing a condition
+  would be worse than saying one is missing.
+- **A concept inherits its super concepts' constraints**, in declaration order - the same rule notation,
+  triggers and scope providers follow, so a language has one answer to "which declaration applies".
+- **The context is deliberately small**: the node, the scope and the collector. It cannot mutate, cannot
+  reach the editor and cannot see a cell, so a rule that runs on a model nobody is drawing (a load, a
+  batch check) works the same as one that runs on the open document.
+- **`Check(Node)` is the incremental seam.** It answers that subtree's findings alone, so a caller that
+  keeps the rest merges them itself - only the caller knows what it kept. The dependency-set machinery
+  below is not implemented yet: today a caller rechecks the subtree that changed, which is correct and
+  cheaper than the whole document, but it does not yet know that a *referencing* node's rule may have
+  changed too.
+- **The first consumer is `SampleConstraints`** in `Projectional.Samples.Checks` (a rule needs a
+  condition), and the app merges its findings with the check catalogue's in `PublishFindings` - one list,
+  because the panel and the markers must not be two answers to "what is wrong".
+
 ### Incrementality
 
 Naive full revalidation does not scale to a million nodes. The mechanism:

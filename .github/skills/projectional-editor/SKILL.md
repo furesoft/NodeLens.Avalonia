@@ -617,6 +617,30 @@ notation is registered per concept **and** variant
   a test that spells a name over several keystrokes must select once and then apply the keystrokes -
   selecting before each one wipes the run and the name never completes.
 
+## How constraints work
+
+`Projectional.Semantics/Constraints/` is the language's own validation, and the design is
+`docs/architecture/semantics.md` §Constraints.
+
+- **A constraint reports; it never repairs and never mutates.** The repair is a `DiagnosticFix` built by
+  whoever knows how to fix the finding, which is why a language author can write a rule without knowing
+  what the editor can do about it. A finding with no repair reaches the squiggles and the problems panel
+  and not the quick-fix list - the right answer for "a rule needs a condition", where inventing a
+  condition would be worse than saying one is missing.
+- **`ConstraintContext` is deliberately small**: the node, `ScopeOf(slot)` and the collector. It cannot
+  mutate, cannot reach the editor and cannot see a cell, so a rule that runs on a model nobody is drawing
+  (a load, a batch check) works the same as one on the open document.
+- **A concept inherits its super concepts' constraints**, in declaration order - the same rule notation,
+  triggers and scope providers follow.
+- **`Check(Node)` is the incremental seam**: it answers that subtree's findings alone, so a caller that
+  keeps the rest merges them itself. The dependency-set machinery of the design is **not** implemented -
+  a caller rechecks the subtree that changed, which is correct and cheaper than the document, but it does
+  not yet know that a *referencing* node's rule may have changed too. Do not claim incrementality beyond
+  that.
+- **The app merges constraint findings with the check catalogue's in one list** (`PublishFindings`),
+  because the panel and the markers must not be two answers to "what is wrong". A constraint finding has
+  no fix, so it is a marker and a panel row only.
+
 ## How the editor tree is built
 
 `Projectional.Projection/Tree/` is the runtime tree: notation cells are *data describing* what
