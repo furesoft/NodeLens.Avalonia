@@ -18,8 +18,8 @@ its description and then the result of its edit, because the popup drives the pr
 (accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
 `Projectional.Intentions` ships the structural entries for any language - `INT001` (rename), `INT002`
 (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to front/back), `INT030` (insert
-before/after), `INT006` (wrap in X) and `INT020` (reset to the default). What is left is the rest of that
-catalogue: `INT007` (replace) and `INT031` (sort) need one action each, `INT008` (select parent/node) a rung
+before/after), `INT006` (wrap in X), `INT007` (replace with X) and `INT020` (reset to the default). What is
+left is the rest of that catalogue: `INT031` (sort) needs one action, `INT008` (select parent/node) a rung
 of the ladder, and `INT010`/`INT011` (an empty slot) are what `Enter` and completion already do.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
@@ -293,7 +293,7 @@ missing entry is easy to spot, and every entry names the data that produces it.
 | `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`, **shipped**) |
 | `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | `NodeMove.ToFront`/`ToBack` - **shipped** as named extremes rather than repeated steps |
 | `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction` and the concept search of `Projectional.Intentions` - **shipped** |
-| `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | `DefaultInstantiableFor` plus a replace action |
+| `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | one entry per concept that conforms to the slot and may stand there (`ReplacementConcepts`, `Model.Replace`) - **shipped** |
 | `INT008` | `Select parent` / `Select node` | widens the selection one rung | plain | - (`SelectAllAction`'s ladder) |
 
 `INT006` is the entry this catalogue exists for. It is how "surround with `if`" happens in a code DSL,
@@ -304,6 +304,17 @@ they are open questions 76 and 77.
 `INT001` deserves the note: it is a *navigation*, not a refactoring. It moves the caret into the name
 and lets the user type, so it cannot break a reference in another model - which is exactly the problem
 the standard rename *fix* has and cannot solve (open question 74).
+
+`INT007` deserves the opposite note: it is the one entry in the catalogue that *loses* something. It
+becomes the concept the user picked and nothing else - the old node's properties, references and
+children do not travel, because no declaration says which slot of one concept corresponds to which slot
+of another, and a correspondence guessed by name would silently drop what it did not recognise. So the
+answer is an empty node in the same place, the references that pointed into the old subtree are cleared
+the way any deletion clears them, and the entry carries `EditSafety.Destructive` so a surface can say
+so instead of hiding it. The same rule as the wrap entries runs the selection: the entry exists per
+concept the slot accepts, found by search rather than listed, and only where that set is not just the
+node's own concept - a slot declared over one concrete concept offers no replacement at all, since
+swapping a step for a step would only empty it.
 
 ### The caret stands on an empty slot
 
@@ -374,13 +385,15 @@ exists, because "the value the user can see" is the narrower claim and the caret
 
 Nine of the entries above are configurations of actions that already exist
 (`InsertNodeAction`, `DeleteNodeAction`, `MoveNodeAction`, `SelectAllAction`, `SelectValueAction`,
-`SetPropertyAction`, `EditProgram`). The rest needed three primitives, and two of them have landed:
+`SetPropertyAction`, `EditProgram`). The rest needed a handful of primitives; four have landed and one is
+still open:
 
 | Primitive | Blocks | State |
 | --- | --- | --- |
 | `Model.NewChildAt(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | **landed with `feat/insert-at-index`**: the model could only append, so "insert here" was impossible for anything; `Enter` was its first customer, and the entries above are its next |
 | ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot |
 | a subtree copy (`Model.InsertCopy(source, parent, slot, index)`) | `INT002` | **landed with `feat/duplicate-intention`**: `CopyTo` keeps ids because a preview addresses them, so a copy that stays in one model needs its own walk with new identities - the two are siblings rather than one routine with a flag |
+| `Model.Replace(node, conceptKey)` | `INT007` | **landed with `feat/replace-intention`**: a deletion and a creation at one place, in one transaction. It cannot be assembled from `DeleteChild` and `AddChild`, because a single-valued slot cannot take the new child before the old one has left, and the two halves would be two undo steps - so undo would restore a document where the node is gone and a stranger stands in its place |
 | `SortAction` | `INT031` | **open**: a stable permutation of one slot, which a program of moves cannot express without colliding |
 
 That table is the plan's real content: the catalogue is not nineteen features, it is a handful of
@@ -420,6 +433,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | G ✓ | `feat/standard-intentions` | `Projectional.Intentions` ships `INT001` (rename, on the new `SelectSlotAction`), `INT006` (wrap in X, one entry per concept its declarations allow) and `INT020` (reset to the default), with the absence rules that keep a no-op out of the list. The subtree copy stayed with `INT002`, which is where a caller for it exists. **Not yet registered by the workbench**: doing that while `Expressions.Intentions` still ships its own wrap would show two rows for one operation, so the app switches when `INT041` lands and both language entries can be retired in one step |
 | G2 ✓ | `feat/duplicate-intention` | `INT002` (duplicate) and the subtree copy it needed: `Model.InsertCopy` puts a new-identity copy of a subtree into a place in its own model, one undo step, and the entry is offered only where a second sibling can exist |
 | G3 ✓ | `feat/structure-intentions` | the structural entries, all configurations of actions that exist or of two small ones: `INT003` (delete, the one destructive entry), `INT004` (move up/down), `INT005` (move to front/back, on `NodeMove.ToFront`/`ToBack`), `INT030` (insert before/after, on `InsertSiblingAction`) - each absent where it would change nothing |
+| G4 ✓ | `feat/replace-intention` | `INT007` (replace with X) and the primitive it needed: `Model.Replace` deletes and creates at one place in one transaction, so the old subtree comes back on undo with its own identities. Offered per concept the slot accepts, found by search (`ReplacementConcepts`) rather than listed, and absent on a root and where only the node's own concept could stand |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.

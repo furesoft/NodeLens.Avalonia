@@ -884,10 +884,12 @@ the editor). The shipped shape is a package beside the language, exactly like `P
 
 - **`Projectional.Intentions` is the framework's own catalogue**, not a language's: `StandardIntentions`
   derives `INT001` (rename), `INT002` (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to
-  front/back), `INT030` (insert before/after), `INT006` (wrap in X) and `INT020` (reset to the default) from
+  front/back), `INT030` (insert before/after), `INT006` (wrap in X), `INT007` (replace with X) and `INT020`
+  (reset to the default) from
   the *shape* of the caret's place, so any language gains them by registering the provider. Every entry is
   **absent where it would change nothing** (the first node cannot move up, a root has no neighbour, a property
-  already holds its default) and `Delete` is the one marked `EditSafety.Destructive`, carried as information for a
+  already holds its default) and `Delete` and `Replace` are the ones marked `EditSafety.Destructive`, carried as
+  information for a
   surface rather than used to hide it. `WrapperConcepts.Of` is the whole of
   "wrap in X": a concrete concept whose single-child slot accepts this node's concept and whose own concept
   fits the parent's slot (and whose `Applicability` allows that place) is a wrapper - the first such slot in
@@ -895,6 +897,18 @@ the editor). The shipped shape is a package beside the language, exactly like `P
   the list. A root is never wrappable, because a wrapper has to take the node's *place*. The app does not
   register it yet: with `Expressions.Intentions` still shipping its own wrap, both would show one row per
   operation, so the switch waits for `INT041` (negate) and then retires both language entries at once.
+- **`ReplacementConcepts.Of` is the whole of "replace with X"**, and it is a search for the same reason: a
+  concrete concept that conforms to the slot, whose `Applicability` allows that place, **and is not the concept
+  the node already is**. A slot declared over one concrete concept therefore offers nothing - swapping a step for
+  a step would delete it and put an empty one in its place - and that emptiness is the answer, not a gap.
+  `Model.Replace(node, conceptKey)` is the primitive: delete and create at one place inside one transaction, so
+  undo restores the **old subtree with its own identities** rather than a rebuilt copy. It cannot be assembled
+  from `DeleteChild` + `AddChild` in an action, because a single-valued slot cannot take the new child until the
+  old one has left and the two halves would be two undo steps. What the old node held deliberately does not
+  travel - no declaration says which slot of one concept corresponds to which slot of another - and the deletion
+  clears the references into the subtree as any deletion does. Both the action and the entry refuse a **model
+  root**: the document a session draws *is* a root, so replacing it would take away the node the editor is built
+  from.
 - **A caret jump is an action, not a mode of `MoveCaretAction`.** `SelectSlotAction(CellAddress)` moves the
   caret into a slot and selects its text (a bare caret when the slot is empty), answering
   `EditResult.Unchanged` because a navigation is not an edit. It is what makes rename plain rather than a
@@ -1440,7 +1454,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1507 tests**; anything below that means tests were deleted.
+it. **Baseline is 1527 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
