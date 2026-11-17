@@ -30,6 +30,9 @@ clean on Windows and Linux.
 | Property types, including enumerations that name their own values | `Projectional.Language/` | `PropertyTypeTests` |
 | CI on Windows and Linux, plus a Linux-only corpus job | `.github/workflows/ci.yml` | the workflow itself |
 
+The stored form and the test harness are described in [persistence.md](architecture/persistence.md#what-m0-implements)
+and [testing.md](architecture/testing.md).
+
 ## M1 - Projection and editing (complete)
 
 | Feature | Where it lives | Proof |
