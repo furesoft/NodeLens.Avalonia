@@ -29,9 +29,10 @@ What is next, in order:
    languages that need them.
 2. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
    `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **What is left of M4's semantics**: text generation and the cross-check tests that make generated code and
-   the interpreter agree on the corpus. The constraint engine, the type model, the declared type-rule language
-   and the interpreter are in [implemented.md](implemented.md).
+3. **What is left of M4's semantics**: the cross-check tests that make generated code and
+   the interpreter agree on the corpus. The constraint engine, the type model, the declared type-rule language,
+   the interpreter and text generation (with the declared generator language) are in
+   [implemented.md](implemented.md).
 
 **Known gap, recorded rather than fixed here:** `standalone.md` and
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
@@ -56,7 +57,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Delivers | Details |
 | --- | --- |
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
-| Text generation | template trees, traceability map |
+| Text generation | the template tree, the engine with its traceability map, two generators for the sample language and the declared generator language (`generator.mps`) are in [implemented.md](implemented.md); what is left is the generator for a second consumer (the C# base language, M6) |
 | Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, the pilot's decision-list rules, and the shell's Run command with its output panel are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
 | Cross-check tests | generated code and interpreter agree on the corpus |
 

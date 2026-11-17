@@ -328,6 +328,44 @@ Two consumers of the same template tree are planned on top of this: projected C#
 language, whose generator has to parenthesise by precedence ([csharp.md](csharp.md)), and the
 JSON and XML reference languages, which exercise it in both directions.
 
+### What is implemented
+
+The template is data in `Projectional.Language/Generation/`: `TextTemplate` is an ordered list of `TemplatePart`s -
+`TextPart` (a literal), `PropertyPart` (a slot's value, verbatim), `ChildPart` (the single child's text),
+`ChildrenPart` (every child of a list, joined by a separator *template*), `LoopPart` (a body applied per child),
+`IndentPart` (one level deeper), `LineBreakPart` (a newline plus the current indentation), `ConditionalPart` (a
+property/value choice) and `SelfPart` (the node's own template, which is what a loop body needs). A generator is a
+`TextGenerator` - a name and a `TemplateRegistry` - and a language declares as many as it has targets.
+
+The walk is `Generator` in `Projectional.Semantics/Generation/`: it owns the indentation, a depth guard against a
+template that expands itself, and the **traceability map**. Every emitted stretch is recorded as a
+`GeneratedRegion(Node, Slot, Start, Length)`, and `GeneratedText.RegionAt(offset)` answers what wrote a character -
+which is what makes "go to source" from generated text possible without a second generator, and what the shell uses to
+let a click on a generated line move the caret to the node that wrote it.
+
+- **A concept with no template is a failure; an empty template means "emits nothing".** The first is "nobody said what
+  to emit", the second is a decision, and collapsing them would leave a silent hole in the output.
+- **Indentation comes from the template, never from counting the child's text.** A separator is a template as well, so
+  a list on separate lines is `ChildrenPart(slot, Template(LineBreakPart))` inside an `IndentPart` - no "indent" flag,
+  and a nested block cannot be indented by whatever its child happened to produce.
+- **Generation is pure by construction**: nothing reads the file system, the clock, the culture or the model's place,
+  so two runs produce the same bytes.
+- **A binary expression is parenthesised by the pilot's generator.** A template cannot compute precedence - no part asks
+  how an operand binds - so omitting the parentheses would be right only for the tree it happened to see.
+
+**The declared form is `Projectional.TextGen`**: a document holds any number of generators, a generator holds one
+mapping per concept, and a template is a list of parts, all of it drawn in MPS' shape. `TextGenLowering` turns that
+model into the same `TextGenerator` a C# author writes, and checks what a compiler would have checked - unique names,
+a concept the language has, a slot of that concept named as the kind it is - at load. `LanguageProject` loads
+`generator.mps` beside `structure.mps`/`editor.mps`/`types.mps`, so a language in a folder declares its generators too.
+The parity rule of ADR 0014 is executed by `TextGenLoweringTests`, which asserts a declared generator produces exactly
+the text of its hand-written twin.
+
+Not implemented, deliberately: model-to-model generators (MPS' second stage) before 1.0, escaping (a value is emitted
+verbatim, so a template that puts a string inside quotes does not escape it - that is a property of the reference
+languages, not of a template), and precedence-aware parenthesising, which is the C# base language's job
+([csharp.md](csharp.md)).
+
 ## Interpretation
 
 An `Evaluate` aspect per concept, walking the tree:
