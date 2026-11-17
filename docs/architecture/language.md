@@ -416,6 +416,7 @@ language gets when it says nothing.
 | `ScopeChain` | the levels in priority order, first match wins |
 | `ScopeResolution` | `Found` / `Ambiguous` / `Missing`, with the candidates on an ambiguity |
 | `IScopeProvider` | the aspect: `ScopeOf(node, referenceSlot)` |
+| `ScopeConstraints` | the framework's own rules about scopes, for a host to compose |
 
 Four rules are worth knowing because each is a decision rather than a detail:
 
@@ -456,6 +457,20 @@ that decides which provider wins rather than a second kind of provider.
 
 Both go through `IScope`, which is the point: a list that offered something the name cannot mean, or a
 name that resolved to something the list would not offer, would be two implementations disagreeing.
+
+- **A finding, for the ambiguity no keystroke causes.** Both gestures above refuse an ambiguous name, so
+  a document cannot be *made* ambiguous by typing. It can become ambiguous afterwards - rename one element
+  and a reference elsewhere shares its name with another - and that reference still draws as resolved,
+  because it points at a node id. `AmbiguousReferenceConstraint` (shipped in `ScopeConstraints.All`)
+  reports it: it resolves the **target's current name** in the reference's own scope and reports a
+  `Warning` on the reference slot when that name identifies more than one element. Resolving the stored
+  `resolveInfo` instead would report names no user ever sees, because a rename does not rewrite it; and an
+  unresolved reference is left alone, since it is already visibly wrong and its fallback text may be
+  stale. The rule is declared for every node rather than per concept - a reference slot can be declared by
+  any concept, and a language's concepts need not share a root.
+
+All three go through `IScope`. A rule that resolved differently from the gesture that wrote the
+reference would be a third answer to the same question.
 
 ## Languages come in two flavours
 
