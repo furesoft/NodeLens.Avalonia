@@ -431,8 +431,14 @@ the host is what installs a replacement.
   moment the key is pressed - the list carries a name, not an id - so a target that was renamed or
   removed after the list opened is refused instead of linked. A name that has become ambiguous is
   refused too, which is the "no silent pick" rule applied to the gesture.
-- **A typed name** is the other consumer and is not implemented yet: typing into a reference cell still
-  does nothing, so a reference is created by choosing from the list.
+- **A typed name.** Typing into a reference cell resolves the run of characters against the same
+  scope: a name that means exactly one thing links the slot, a name that means nothing yet writes
+  nothing and keeps the run (a name is spelt over several keystrokes), and a name that means two
+  things is **rejected with a reason** rather than picked. Nothing is written while the name is
+  incomplete, so a half-typed name costs no undo step.
+
+Both go through `IScope`, which is the point: a list that offered something the name cannot mean, or a
+name that resolved to something the list would not offer, would be two implementations disagreeing.
 
 ## Languages come in two flavours
 
