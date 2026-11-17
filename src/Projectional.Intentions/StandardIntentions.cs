@@ -31,6 +31,9 @@ public sealed class StandardIntentions : IIntentionProvider
     /// <summary>The stable id of the rename entry (`INT001`).</summary>
     public const string RenameId = "standard.rename";
 
+    /// <summary>The stable id of the duplicate entry (`INT002`).</summary>
+    public const string DuplicateId = "standard.duplicate";
+
     /// <summary>The stable id of the reset entry (`INT020`).</summary>
     public const string ResetId = "standard.reset";
 
@@ -53,7 +56,7 @@ public sealed class StandardIntentions : IIntentionProvider
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        List<Intention> entries = [Rename(context)];
+        List<Intention> entries = [Rename(context), Duplicate(context)];
 
         if (context.Node is { } node)
         {
@@ -91,6 +94,29 @@ public sealed class StandardIntentions : IIntentionProvider
                 : null,
             availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
     }
+
+    /// <summary>The entry that copies the node and everything below it into the position after it.</summary>
+    /// <remarks>
+    /// Offered only where a second sibling can exist: a node without a place has no next position, and the only
+    /// child of a single-valued slot has nowhere to be copied to.
+    /// </remarks>
+    private static Intention Duplicate(IntentionContext context)
+    {
+        var applies = context.Node is { } node && IsSibling(node);
+
+        return new Intention(
+            DuplicateId,
+            "Duplicate",
+            "Copies this node and everything inside it, right after this one.",
+            live => live.Node is { } node && IsSibling(node) ? new DuplicateNodeAction(node.Id) : null,
+            availability: applies ? IntentionAvailability.Applies : IntentionAvailability.Absent);
+    }
+
+    /// <summary>Whether <paramref name="node"/> stands in a slot that can hold more than one child.</summary>
+    private static bool IsSibling(Node node) =>
+        node.Parent is { } parent
+        && node.ParentSlot is { } slot
+        && parent.Concept.FindChild(slot) is { Cardinality: Cardinality.Many };
 
     /// <summary>The entry that writes a property's declared default over whatever is in it.</summary>
     /// <remarks>

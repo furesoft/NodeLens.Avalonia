@@ -146,6 +146,48 @@ public sealed class StandardIntentionsTests
         }
     }
 
+    [Fact]
+    public void DuplicateIsOfferedOnAChildOfAListAndCopiesItInPlace()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[0]);
+
+        Assert.Contains(StandardIntentions.DuplicateId, Ids(session));
+
+        Assert.Equal(
+            EditOutcome.Applied,
+            session.Apply(Offer(session, StandardIntentions.DuplicateId)).Outcome);
+
+        var after = body.GetChildren("steps");
+
+        Assert.Equal(3, after.Count);
+        Assert.Equal("a", after[1].GetOrNull("text"));
+        Assert.NotEqual(steps[0].Id, after[1].Id);
+    }
+
+    [Fact]
+    public void DuplicateIsNotOfferedOnARoot()
+    {
+        // A root has no place, so it has no next sibling to be copied to.
+        using var session = Session(TestEditor.BareRule());
+
+        Assert.DoesNotContain(StandardIntentions.DuplicateId, Ids(session));
+    }
+
+    [Fact]
+    public void DuplicateIsNotOfferedInASingleValuedSlot()
+    {
+        var outer = TestEditor.BareRule();
+        var inner = outer.Model.NewChild(outer, "extends", TestLanguage.Rule);
+
+        using var session = Session(outer);
+        Caret(session, inner);
+
+        Assert.DoesNotContain(StandardIntentions.DuplicateId, Ids(session));
+    }
+
     /// <summary>Opens <paramref name="document"/> with the standard catalogue registered.</summary>
     private static EditorSession Session(Node document)
     {
