@@ -18,9 +18,11 @@ its description and then the result of its edit, because the popup drives the pr
 (accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
 `Projectional.Intentions` ships the structural entries for any language - `INT001` (rename), `INT002`
 (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to front/back), `INT030` (insert
-before/after), `INT031` (sort by name), `INT006` (wrap in X), `INT007` (replace with X) and `INT020` (reset to
-the default). What is left is the rest of that catalogue: `INT008` (select parent/node) needs a rung of
-`SelectAllAction`'s ladder, and `INT010`/`INT011` (an empty slot) are what `Enter` and completion already do.
+before/after), `INT031` (sort by name), `INT008` (select node/parent), `INT006` (wrap in X), `INT007`
+(replace with X) and `INT020` (reset to
+the default). What is left of the caret-shape catalogue is the pair that needs no entry at all:
+`INT010`/`INT011` (an empty slot) are what `Enter` and completion already do, so listing them is a menu
+decision rather than an action to build.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -294,7 +296,7 @@ missing entry is easy to spot, and every entry names the data that produces it.
 | `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | `NodeMove.ToFront`/`ToBack` - **shipped** as named extremes rather than repeated steps |
 | `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction` and the concept search of `Projectional.Intentions` - **shipped** |
 | `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | one entry per concept that conforms to the slot and may stand there (`ReplacementConcepts`, `Model.Replace`) - **shipped** |
-| `INT008` | `Select parent` / `Select node` | widens the selection one rung | plain | - (`SelectAllAction`'s ladder) |
+| `INT008` | `Select node` / `Select parent` | selects that node and everything inside it | plain | `SelectNodeAction` over `SelectionRanges.OfNode` - **shipped**, and a root offers the parent row not at all |
 
 `INT006` is the entry this catalogue exists for. It is how "surround with `if`" happens in a code DSL,
 but in this framework it needs no `if`: any concept with a hole of the right shape is a wrapper, so the
@@ -315,6 +317,13 @@ so instead of hiding it. The same rule as the wrap entries runs the selection: t
 concept the slot accepts, found by search rather than listed, and only where that set is not just the
 node's own concept - a slot declared over one concrete concept offers no replacement at all, since
 swapping a step for a step would only empty it.
+
+`INT008` is the note that keeps the ladder honest: `Ctrl+A` climbs from where the caret is, one rung per
+press, so it also *skips* a rung the selection already covers - otherwise a press would do nothing and the
+ladder would stall. The catalogue's two selection entries are addressed instead of climbed, so they are
+idempotent rather than hidden: pressing "Select node" while the node is already selected re-establishes the
+same range, and hiding the row would make it appear and disappear as the caret moves inside one node. Both
+ask `SelectionRanges.OfNode`, so a menu entry and a keystroke cannot disagree about what "this node" covers.
 
 ### The caret stands on an empty slot
 
@@ -435,6 +444,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | G3 ✓ | `feat/structure-intentions` | the structural entries, all configurations of actions that exist or of two small ones: `INT003` (delete, the one destructive entry), `INT004` (move up/down), `INT005` (move to front/back, on `NodeMove.ToFront`/`ToBack`), `INT030` (insert before/after, on `InsertSiblingAction`) - each absent where it would change nothing |
 | G4 ✓ | `feat/replace-intention` | `INT007` (replace with X) and the primitive it needed: `Model.Replace` deletes and creates at one place in one transaction, so the old subtree comes back on undo with its own identities. Offered per concept the slot accepts, found by search (`ReplacementConcepts`) rather than listed, and absent on a root and where only the node's own concept could stand |
 | G5 ✓ | `feat/sort-intention` | `INT031` (sort by name) and the primitive it needed: `Model.ReorderChildren` takes an order, `ChildOrder` decides it, and `SortChildrenAction` is the join. One undo step, the caret follows the node it was in, and the entry is absent wherever the sort would move nothing |
+| G6 ✓ | `feat/select-node-intention` | `INT008` (select node / select parent) and the one action it needed: `SelectNodeAction` names a node and selects its whole range through the same `SelectionRanges.OfNode` the `Ctrl+A` ladder uses, so the two cannot disagree. Absent only where the node has no parent, and idempotent rather than hidden when the range is already the selection |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.
