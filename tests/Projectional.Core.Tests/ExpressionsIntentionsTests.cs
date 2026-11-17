@@ -9,65 +9,30 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The two intentions the expression vocabulary ships with, at the carets where they mean something and at
-/// the ones where they do not.
+/// The one intention the expression vocabulary still ships with - negate - at the carets where it means something
+/// and at the ones where it does not.
 /// </summary>
 /// <remarks>
-/// The fixture is the sample document - <c>rule Approved when amount &gt; 1000 then Accept</c> - so the
-/// wrappers are exercised where a real language meets them: around the condition, and around one of its
-/// operands.
+/// <para>
+/// The fixture is the sample document - <c>rule Approved when amount &gt; 1000 then Accept</c> - so the wrap is
+/// exercised where a real language meets it: around the condition, and around one of its operands.
+/// </para>
+/// <para>
+/// "Wrap in parentheses" is deliberately absent here: it is the standard catalogue's <c>Wrap in "Parenthesized"</c>
+/// now, and <see cref="StandardIntentionsTests"/> is where that is proven. What this file still owns is the part a
+/// generic entry cannot express - the operator the negation is born with.
+/// </para>
 /// </remarks>
 public sealed class ExpressionsIntentionsTests
 {
     [Fact]
-    public void AnExpressionOffersBothIntentions()
+    public void AnExpressionOffersTheNegation()
     {
         var (session, _, condition) = Document();
 
         Caret(session, condition);
 
-        Assert.Equal(
-            [ExpressionsIntentions.WrapInParenthesesId, ExpressionsIntentions.NegateId],
-            IntentionList.For(session).Select(offer => offer.Id));
-
-        // Both are plain, so the gesture has to ask rather than pick one.
-        Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
-        Assert.Equal(2, session.Offered!.Count);
-    }
-
-    [Fact]
-    public void WrappingTheConditionPutsParenthesesAroundIt()
-    {
-        var (session, rule, condition) = Document();
-
-        Caret(session, condition);
-
-        Assert.Equal(EditOutcome.Applied, session.Apply(Offer(session, ExpressionsIntentions.WrapInParenthesesId)).Outcome);
-
-        var grouped = Assert.Single(rule.GetChildren("condition"));
-
-        Assert.Equal(ExpressionsConceptKeys.Parenthesized, grouped.Concept.Key);
-        Assert.Same(condition, grouped.GetChild("inner"));
-
-        Assert.True(session.Undo());
-        Assert.Same(condition, Assert.Single(rule.GetChildren("condition")));
-    }
-
-    [Fact]
-    public void WrappingAnOperandPutsParenthesesInsideIt()
-    {
-        // The caret is on the operand, so the parentheses go around the operand - not around the condition.
-        var (session, _, condition) = Document();
-        var left = condition.GetChild("left")!;
-
-        Caret(session, left);
-
-        session.Apply(Offer(session, ExpressionsIntentions.WrapInParenthesesId));
-
-        var operand = Assert.Single(condition.GetChildren("left"));
-
-        Assert.Equal(ExpressionsConceptKeys.Parenthesized, operand.Concept.Key);
-        Assert.Same(left, operand.GetChild("inner"));
+        Assert.Equal([ExpressionsIntentions.NegateId], IntentionList.For(session).Select(offer => offer.Id));
     }
 
     [Fact]
@@ -90,25 +55,9 @@ public sealed class ExpressionsIntentionsTests
     }
 
     [Fact]
-    public void AnAlreadyGroupedExpressionOffersOnlyTheNegation()
+    public void AnAlreadyNegatedExpressionOffersNothing()
     {
-        // Wrapping it again would draw a second pair of parentheses without changing the meaning, so only
-        // the negation is left.
-        var (session, rule, condition) = Document();
-
-        Caret(session, condition);
-        session.Apply(Offer(session, ExpressionsIntentions.WrapInParenthesesId));
-
-        Caret(session, Assert.Single(rule.GetChildren("condition")));
-
-        Assert.Equal(
-            [ExpressionsIntentions.NegateId],
-            IntentionList.For(session).Select(offer => offer.Id));
-    }
-
-    [Fact]
-    public void AnAlreadyNegatedExpressionOffersOnlyTheParentheses()
-    {
+        // A second negation would draw another level without changing the meaning.
         var (session, rule, condition) = Document();
 
         Caret(session, condition);
@@ -116,9 +65,7 @@ public sealed class ExpressionsIntentionsTests
 
         Caret(session, Assert.Single(rule.GetChildren("condition")));
 
-        Assert.Equal(
-            [ExpressionsIntentions.WrapInParenthesesId],
-            IntentionList.For(session).Select(offer => offer.Id));
+        Assert.Empty(IntentionList.For(session));
     }
 
     [Fact]
@@ -156,23 +103,22 @@ public sealed class ExpressionsIntentionsTests
     [Fact]
     public void TheGestureOpensAListForALoneIntention()
     {
-        // A negated condition offers only the parentheses, and the gesture still shows them: it never applies
-        // an offer by itself, however few there are.
+        // One entry is the ordinary case, not an exception: the gesture never applies an offer by itself.
         var (session, rule, condition) = Document();
 
         Caret(session, condition);
-        session.Apply(Offer(session, ExpressionsIntentions.NegateId));
-
-        Caret(session, Assert.Single(rule.GetChildren("condition")));
 
         Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
-        Assert.Equal(ExpressionsIntentions.WrapInParenthesesId, Assert.Single(session.Offered!.Entries).Id);
+
+        Assert.Equal(ExpressionsIntentions.NegateId, Assert.Single(session.Offered!.Entries).Id);
 
         Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
-        Assert.Equal(
-            ExpressionsConceptKeys.Parenthesized,
-            Assert.Single(rule.GetChildren("condition")).Concept.Key);
+
+        var unary = Assert.Single(rule.GetChildren("condition"));
+
+        Assert.Equal(ExpressionsConceptKeys.Unary, unary.Concept.Key);
+        Assert.Same(condition, unary.GetChild("operand"));
     }
 
     private static (EditorSession Session, Node Rule, Node Condition) Document()

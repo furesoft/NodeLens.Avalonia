@@ -2,6 +2,7 @@ using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Expressions;
 using Projectional.Expressions.Intentions;
+using Projectional.Intentions;
 using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
@@ -73,7 +74,7 @@ public sealed class SamplePreviewTests
     }
 
     [Fact]
-    public void WrapInParenthesesPreviewsTheWrapper()
+    public void TheCataloguesWrapInParenthesesPreviewsTheWrapper()
     {
         var (session, _, condition) = Document();
 
@@ -82,7 +83,7 @@ public sealed class SamplePreviewTests
         {
             Caret(session, condition);
 
-            preview.Hover(Offer(session, ExpressionsIntentions.WrapInParenthesesId));
+            preview.Hover(Offer(session, StandardIntentions.WrapPrefix + ExpressionsConceptKeys.Parenthesized));
             preview.Tick(PreviewDelay.Default.Preview);
 
             var ghost = preview.Ghost(Viewport, 0, 0);
@@ -159,6 +160,7 @@ public sealed class SamplePreviewTests
         var rule = Assert.Single(model.Roots[0].GetChildren(RulesLanguage.RulesSlot));
 
         var session = new EditorSession(model.Roots[0], RulesLanguage.CreateNotations(model.Concepts));
+        session.AddIntentions(StandardIntentions.Provider);
         session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
 
         return (session, rule, rule.GetChild("condition")!);
