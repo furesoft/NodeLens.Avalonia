@@ -883,9 +883,12 @@ the editor). The shipped shape is a package beside the language, exactly like `P
 `docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered.
 
 - **`Projectional.Intentions` is the framework's own catalogue**, not a language's: `StandardIntentions`
-  derives `INT001` (rename), `INT002` (duplicate), `INT006` (wrap in X) and `INT020` (reset to the default) from
-  the *shape* of the caret's place, so any language gains them by registering the provider. `WrapperConcepts.Of`
-  is the whole of
+  derives `INT001` (rename), `INT002` (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to
+  front/back), `INT030` (insert before/after), `INT006` (wrap in X) and `INT020` (reset to the default) from
+  the *shape* of the caret's place, so any language gains them by registering the provider. Every entry is
+  **absent where it would change nothing** (the first node cannot move up, a root has no neighbour, a property
+  already holds its default) and `Delete` is the one marked `EditSafety.Destructive`, carried as information for a
+  surface rather than used to hide it. `WrapperConcepts.Of` is the whole of
   "wrap in X": a concrete concept whose single-child slot accepts this node's concept and whose own concept
   fits the parent's slot (and whose `Applicability` allows that place) is a wrapper - the first such slot in
   declaration order, and one id per concept (`standard.wrap.<conceptKey>`) so two wrappers cannot collide in
@@ -897,6 +900,15 @@ the editor). The shipped shape is a package beside the language, exactly like `P
   `EditResult.Unchanged` because a navigation is not an edit. It is what makes rename plain rather than a
   refactoring: nothing in another model can break, because no model was touched. Its address is always a
   *cell*, since a rename names the value a user can see.
+- **`NodeMove` has four members, and two of them are extremes.** `ToFront`/`ToBack` are named rather than
+  "up, several times", because a caller that asked for the front and got one step would run the action
+  repeatedly - several undo steps for one intention. `MoveNodeAction` answers `Unchanged` when the target index
+  is where the node already is, which is what lets an entry that survived a document change do nothing instead
+  of pushing an empty step onto the history.
+- **`InsertSiblingAction(node, place)` is `Enter`'s other half**, not a second `InsertNodeAction`: it names the
+  node and the side so a menu entry does not depend on where the caret is, it creates **the sibling's own
+  concept** (inserting beside a step makes a step - `InsertNodeAction` creates the slot's default instead), and
+  it refuses a root and a single-valued slot with a reason.
 
 - **A value with no cell needs an action that names the node, not the cell.** `SetPropertyAction` addresses a
   `CellAddress` and is right when the user can see the value; `SetNodePropertyAction` addresses a `NodeId` + slot
@@ -1428,7 +1440,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1496 tests**; anything below that means tests were deleted.
+it. **Baseline is 1507 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
