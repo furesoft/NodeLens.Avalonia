@@ -89,7 +89,7 @@ public sealed class EditorSession : IDisposable
 
         _notations = notations;
         _emphasis = emphasis;
-        _layouter = new CellLayouter(_measure);
+        _layouter = CreateLayouter();
         Choice = choice ?? NotationChoice.Default;
         Clipboard = clipboard ?? new InMemoryClipboard();
         Typing = typing ?? TypingRuleRegistry.Empty;
@@ -150,7 +150,7 @@ public sealed class EditorSession : IDisposable
             }
 
             _measure = value;
-            _layouter = new CellLayouter(value, _wrapWidth);
+            _layouter = CreateLayouter();
             Refresh();
         }
     }
@@ -172,6 +172,16 @@ public sealed class EditorSession : IDisposable
     /// state: two sessions can hold different choices over one document and edit the same model.
     /// </summary>
     public INotationChoice Choice { get; private set; }
+
+    /// <summary>
+    /// The widths the reader has dragged a table's columns to.
+    /// </summary>
+    /// <remarks>
+    /// View state, like <see cref="Choice"/>: never saved, never an undo step, and keyed by the stable
+    /// node id so it survives every rebuild. A host reads it to draw a resize handle at the right place;
+    /// the gesture that changes it is <see cref="SetColumnWidth"/>.
+    /// </remarks>
+    public ColumnWidths ColumnWidths { get; private set; } = ColumnWidths.Empty;
 
     /// <summary>
     /// The completion list open at the caret, or <see langword="null"/> when none is.
@@ -368,7 +378,7 @@ public sealed class EditorSession : IDisposable
             }
 
             _wrapWidth = value;
-            _layouter = new CellLayouter(Measure, value);
+            _layouter = CreateLayouter();
             Refresh();
         }
     }
@@ -454,6 +464,16 @@ public sealed class EditorSession : IDisposable
         new(_notations, _emphasis, Choice, _collapsed);
 
     /// <summary>
+    /// The layouter for the current measure, wrap width and column widths.
+    /// </summary>
+    /// <remarks>
+    /// One place, because the three inputs are set from three different members and a layouter built
+    /// without one of them would silently ignore it - which is exactly how a resized column would stop
+    /// being resized the moment the font changed.
+    /// </remarks>
+    private CellLayouter CreateLayouter() => new(_measure, _wrapWidth, ColumnWidths);
+
+    /// <summary>
     /// The concepts of this document that declare more than one notation, in the order the document
     /// first uses them.
     /// </summary>
@@ -521,6 +541,44 @@ public sealed class EditorSession : IDisposable
         }
 
         Choose((Choice as NotationChoice ?? NotationChoice.Default).With(conceptKey, variant));
+    }
+
+    /// <summary>
+    /// Sets how wide one column of one table is, and re-lays out.
+    /// </summary>
+    /// <param name="owner">The node that owns the table.</param>
+    /// <param name="slot">The child slot the table draws.</param>
+    /// <param name="column">The column's index, left to right.</param>
+    /// <param name="width">The width in layout units, which is a floor rather than an exact width.</param>
+    /// <remarks>
+    /// <para>
+    /// This is a view-state change, not an edit: it opens no transaction, journals nothing and creates no
+    /// undo step, exactly like <see cref="ChooseVariant"/>. Only the layout is rebuilt - the tree is the
+    /// same tree, because a width is not part of what the model says.
+    /// </para>
+    /// <para>
+    /// The width is a floor. A column narrower than its content would clip a value or overlap its
+    /// neighbour, and a projectional editor never hides what the model says.
+    /// </para>
+    /// </remarks>
+    public void SetColumnWidth(NodeId owner, string slot, int column, double width)
+    {
+        ColumnWidths = ColumnWidths.With(owner, slot, column, width);
+        _layouter = CreateLayouter();
+        Layout = _layouter.Layout(Tree);
+    }
+
+    /// <summary>Puts every column back to the width its content asks for.</summary>
+    public void ResetColumnWidths()
+    {
+        if (ColumnWidths.IsEmpty)
+        {
+            return;
+        }
+
+        ColumnWidths = ColumnWidths.Empty;
+        _layouter = CreateLayouter();
+        Layout = _layouter.Layout(Tree);
     }
 
     /// <summary>Applies <paramref name="action"/> and leaves the session consistent with the result.</summary>

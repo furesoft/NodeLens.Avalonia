@@ -26,6 +26,7 @@
         <MenuItem Header="_Find..." HotKey="Ctrl+F" Click="OnFindText" />
         <Separator />
         <MenuItem x:Name="Representations" Header="_Representation" />
+        <MenuItem Header="Reset column _widths" Click="OnResetColumnWidths" />
         <Separator />
         <MenuItem
           x:Name="LineNumbersItem"

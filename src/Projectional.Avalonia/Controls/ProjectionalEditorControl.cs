@@ -108,6 +108,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
     private bool _dragging;
 
+    // The column boundary the press grabbed, and where the pointer was when it did. Held here rather
+    // than in the session because it is the mouse's memory of the gesture, not the document's - the
+    // session only ever sees the width the drag has reached.
+    private ColumnHandle? _resizing;
+
+    private double _resizeOrigin;
+
     private readonly CaretBlink _blink = new();
 
     // The tick that makes the caret blink. Created on attach so a control that is never shown costs no
@@ -1609,6 +1616,19 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             return;
         }
 
+        // A column boundary is a target the user aimed at, so it reaches before the document: a press on
+        // it must not also move the caret into the header it belongs to.
+        if (ColumnAt(session, e.GetPosition(this)) is { } handle)
+        {
+            _resizing = handle;
+            _resizeOrigin = e.GetPosition(this).X;
+
+            e.Pointer.Capture(this);
+            e.Handled = true;
+
+            return;
+        }
+
         if (CaretAt(e) is not { } position)
         {
             return;
@@ -1655,6 +1675,24 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         if (session is null)
         {
+            return;
+        }
+
+        if (_resizing is { } handle)
+        {
+            var point = e.GetPosition(this);
+            var width = handle.Width + (point.X - _resizeOrigin);
+
+            // A drag that would make the column vanish is a drag the reader did not mean; the floor is
+            // one character, which is also the narrowest a column can be and still be pointed at.
+            var floor = session.Measure.Measure(" ", TextEmphasis.None);
+
+            session.SetColumnWidth(handle.Owner, handle.Slot, handle.Column, Math.Max(floor, width));
+
+            InvalidateMeasure();
+            RaiseScrollInvalidated();
+            Show();
+
             return;
         }
 
@@ -1763,6 +1801,11 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// </remarks>
     private StandardCursorType PointerShapeAt(EditorSession session, Point point)
     {
+        if (ColumnAt(session, point) is not null)
+        {
+            return StandardCursorType.SizeWestEast;
+        }
+
         if (IsTarget(session, point))
         {
             return StandardCursorType.Hand;
@@ -2067,6 +2110,14 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         base.OnPointerReleased(e);
 
+        if (_resizing is not null)
+        {
+            _resizing = null;
+
+            e.Pointer.Capture(null);
+            return;
+        }
+
         if (!_dragging)
         {
             return;
@@ -2311,6 +2362,26 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     }
 
     private LayoutSize ViewportSize => new(Math.Max(0, Bounds.Width - GutterWidth), Bounds.Height);
+
+    /// <summary>The table column boundary under <paramref name="point"/>, if any.</summary>
+    /// <remarks>
+    /// The tolerance is in device pixels and generous enough to hit without aiming - a boundary is a
+    /// line, not a box - and the point is converted the same way <see cref="CaretAt"/> converts it, so a
+    /// scrolled page grabs the boundary the reader sees rather than the one the layout remembers.
+    /// </remarks>
+    private ColumnHandle? ColumnAt(EditorSession session, Point point)
+    {
+        if (point.X < GutterWidth)
+        {
+            return null;
+        }
+
+        return ColumnResize.HandleAt(
+            session,
+            point.X - GutterWidth + _offsetX,
+            point.Y + _offsetY,
+            tolerance: 4);
+    }
 
     /// <summary>Where the completion list is drawn, in viewport coordinates.</summary>
     /// <remarks>

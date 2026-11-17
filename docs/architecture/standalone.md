@@ -326,6 +326,20 @@ the unshifted press, and `KeyGesture` would print the enum name to the user. The
 registered for the tunnelling phase, because the editor control claims keys of its own and a
 bubbling handler would race it.
 
+### Column widths
+
+A table's columns can be dragged wider by grabbing the right edge of a column in the header row;
+the pointer turns into a horizontal-resize arrow over it. **View ▸ Reset column widths** puts every
+column in the active document back to the width its content asks for.
+
+The width is view state, like the representation and the fold set: it is never saved, it creates no
+undo step and it does not mark the document modified. It is keyed by the node id and the column, so
+it survives a rebuild and an undo that moves nodes around. The width is a **floor** - a column
+narrower than its widest cell is drawn at its widest cell, because clipping a value would hide what
+the model says. The rule that finds the boundary is `ColumnResize.HandleAt` in
+`Projectional.Editing`, not in the control, so a host that draws its own surface gets it for free;
+see [projection.md](projection.md#tables).
+
 ### Findings
 
 The app publishes its own findings into the editor, and it is the reference for how a host does it.

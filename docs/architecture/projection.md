@@ -288,8 +288,15 @@ shape, and how much of it M1 already delivers:
 - Rows come from a child list; columns are fixed (declared) or taken from each row's
   roles. **M1: declared columns only.**
 - Column widths are computed per table; a cell edit invalidates the column, not the whole
-  model. **M1: computed per layout, and a cell edit re-lays out the table.** The column
-  cache belongs with the incremental invalidation slice.
+  model. **Computed per layout, and a cell edit re-lays out the table.** The column cache
+  belongs with the incremental invalidation slice. A reader may drag a column wider:
+  `IColumnWidths` is the question layout asks, `ColumnWidths` (in `Projectional.Editing`) is
+  the answer, and it is **view state** - never saved, never an undo step, keyed by the stable
+  node id. The width is a **floor, not an exact width**: a column narrower than its content
+  would clip a value or overlap its neighbour, and a projectional editor never hides what the
+  model says. `ColumnResize.HandleAt` finds the boundary under a point (the right edge of a
+  column, inside the header row only - the body is where the reader selects and types), and
+  the control turns a drag into `EditorSession.SetColumnWidth`.
 - The caret moves cell-wise with Tab and row-wise with Up/Down. **M1: Tab still inserts a
   sibling; the caret reaches the next column by walking to the end of the cell's text.**
 - A table with zero rows must render its header plus an "add row" affordance. **Done: an
