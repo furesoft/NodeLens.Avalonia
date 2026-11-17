@@ -1545,8 +1545,9 @@ Invariants that are cheap now and expensive later:
 ### Three tooltips, one pointer
 
 The control can show three boxes: the finding's message over a squiggle (`MarkerTip`), a concept's
-description over any node (`ConceptTip`) and a slot's description over an **empty property cell**
-(`PropertyTip`). All three share `MarkerTipPresenter` and `MarkerTip.Place`, and they differ in exactly
+description over any node (`ConceptTip`) and a slot's description over a property cell (`PropertyTip`) -
+over an empty one always, over a filled one when the slot declared `showDescriptionWhenFilled`. All three
+share `MarkerTipPresenter` and `MarkerTip.Place`, and they differ in exactly
 two ways that must not be "tidied" away:
 
 - **The marker wins.** A finding is specific and asks for an action; a description is ambient. If both
@@ -1572,10 +1573,12 @@ a second painter path.
   has **no cell carrying its node address at all**, so anchoring a slot tip to the node would draw
   nothing. `ConceptTipBounds` therefore asks the slot address first and falls back to the node address
   (a fallback the real-window probe forced: the first implementation drew no box for a bare literal).
-- **`PropertySlot.description` shows only while the value is empty**, because the value is the answer
-  once there is one. A slot born with a `defaultValue` reads as filled, since the model cannot tell a
-  default from something the user typed. The hover keys on **(node, slot)**, so moving between two empty
-  properties of one node restarts the delay and moving inside one does not.
+- **`PropertySlot.description` shows over an empty value without being asked for**, because an empty box is a
+  question the user is asking; a filled one shows it only when the slot opted in
+  (`PropertySlot.ShowDescriptionWhenFilled`, off by default), for text that does not explain itself. A slot born
+  with a `defaultValue` reads as filled, since the model cannot tell a default from something the user typed -
+  which is why the built-in languages opt in on their defaulted slots. The hover keys on **(node, slot)**, so
+  moving between two properties of one node restarts the delay and moving inside one does not.
 
 ### Emphasis (bold, italic, underline, strikethrough)
 

@@ -120,7 +120,7 @@ internal sealed class CaptureWindow : Window
         {
             var point = shot.Hover == HoverKind.Marker
                 ? MarkerPoint(editor, session)
-                : ConceptPoint(editor, session, shot.HoverAddress?.Invoke(session));
+                : TooltipPoint(editor, session, shot.HoverAddress?.Invoke(session));
 
             if (point is { } hover)
             {
@@ -189,8 +189,8 @@ internal sealed class CaptureWindow : Window
             line.Y + line.Height - 1 - editor.OffsetY);
     }
 
-    /// <summary>The middle of the cell a concept tooltip is asked about, in control coordinates.</summary>
-    private static Point? ConceptPoint(ProjectionalEditorControl editor, EditorSession session, CellAddress? address)
+    /// <summary>The middle of the cell a tooltip is asked about, in control coordinates.</summary>
+    private static Point? TooltipPoint(ProjectionalEditorControl editor, EditorSession session, CellAddress? address)
     {
         if (address is not { } cell || session.Layout.BoundsOf(cell) is not { } bounds)
         {

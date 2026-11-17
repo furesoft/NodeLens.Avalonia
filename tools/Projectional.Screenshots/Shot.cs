@@ -13,8 +13,8 @@ internal enum HoverKind
     /// <summary>A validation squiggle, so the finding's tooltip is painted.</summary>
     Marker,
 
-    /// <summary>A node's text, so the concept's description appears after the hover delay.</summary>
-    Concept,
+    /// <summary>A node's text, so the tooltip the slot or the concept declares appears after the hover delay.</summary>
+    Text,
 }
 
 /// <summary>One image to produce: the document, the view settings and the state to drive first.</summary>

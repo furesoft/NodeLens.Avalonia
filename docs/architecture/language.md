@@ -71,6 +71,13 @@ concept, not the node the user is looking at. It is trimmed at declaration and a
 `null`, so "declared nothing" and "declared a blank" are the same state and a language cannot ship
 a tip that shows nothing. `null` is also the default, so no existing language changes.
 
+A **slot** carries a sentence the same way (`PropertySlot.description`), shown over the cell while the slot is
+empty and - when the slot also declares `showDescriptionWhenFilled: true` - over a filled value too. The flag is
+the language author's answer to "this text does not explain itself": a key the notation never spells out, an
+operator symbol, a flag whose two words are the whole meaning. It is off by default, and asking for it without a
+description is refused at declaration. The hover and the built-in slots are
+[concept-descriptions.md](concept-descriptions.md)'s business.
+
 ## The two designated slots
 
 A concept may nominate one of its own properties as carrying a framework-wide meaning. There

@@ -89,8 +89,21 @@ internal static class Shots
             Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
             ExtraWidth: 520,
             ExtraHeight: 220,
-            Hover: HoverKind.Concept,
+            Hover: HoverKind.Text,
             HoverAddress: session => CellAddress.OfSlot(session.Document.Id, "name"),
+            HoverDelayMs: 750),
+
+        new(
+            "feature-property-tooltip",
+            Documents.ThreeRules,
+
+            // The caret stays on the ruleset's name: an enumerated property opens its value list the moment the
+            // caret arrives, and two boxes under one pointer would show the wrong thing.
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            ExtraWidth: 520,
+            ExtraHeight: 240,
+            Hover: HoverKind.Text,
+            HoverAddress: session => CellAddress.OfSlot(Rule(session, 0).Id, "outcome"),
             HoverDelayMs: 750),
 
         new(
