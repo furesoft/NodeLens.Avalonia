@@ -315,8 +315,12 @@ Properties:
   "go to source" from generated code is possible without reworking the generator.
 - Generation is pure: it does not read the file system or environment.
 
-Model-to-model generators (MPS' second generator stage) are deliberately excluded
-before 1.0. They double the conceptual surface and the debugging cost.
+A second stage that produces a *model* rather than text is planned for M6
+([model-generation.md](model-generation.md)): a target with its own concepts - the projected C#
+base language - cannot be printed from templates without keeping its grammar in string
+fragments and leaving its checks unrun. The earlier decision to leave that stage out was right
+while every consumer was text: it doubles the conceptual surface, and only a target that *is* a
+language pays for that.
 
 Generation is only half of the text story. The other half is import, which is the single
 place where a parser exists and the only path by which text becomes a model
@@ -361,10 +365,10 @@ a concept the language has, a slot of that concept named as the kind it is - at 
 The parity rule of ADR 0014 is executed by `TextGenLoweringTests`, which asserts a declared generator produces exactly
 the text of its hand-written twin.
 
-Not implemented, deliberately: model-to-model generators (MPS' second stage) before 1.0, escaping (a value is emitted
-verbatim, so a template that puts a string inside quotes does not escape it - that is a property of the reference
-languages, not of a template), and precedence-aware parenthesising, which is the C# base language's job
-([csharp.md](csharp.md)).
+Not implemented: the model-producing second stage, planned in
+[model-generation.md](model-generation.md); escaping (a value is emitted verbatim, so a template that puts a
+string inside quotes does not escape it - that is a property of the reference languages, not of a template); and
+precedence-aware parenthesising, which is the C# base language's job ([csharp.md](csharp.md)).
 
 ## Interpretation
 
