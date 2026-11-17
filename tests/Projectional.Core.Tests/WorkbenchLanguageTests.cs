@@ -182,6 +182,30 @@ public sealed class WorkbenchLanguageTests
         Assert.Equal("Rules.Thing", WorkbenchLanguage.NewDocument(opened)!.Roots[0].Concept.Key);
     }
 
+    [Fact]
+    public void TheSampleRuleLanguageIsRunnable()
+    {
+        Assert.NotNull(WorkbenchLanguage.InterpreterFor(PayrollSample.NewSampleModel()));
+    }
+
+    [Fact]
+    public void ALanguageThatDefinesNoInterpreterIsNotRunnable()
+    {
+        // Running one of these against the sample's rules would answer with a missing rule for every concept, so the
+        // shell answers "not runnable" instead of asking the interpreter at all.
+        var language = new WorkbenchLanguage();
+
+        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewLanguageDefinition()));
+        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewNotationDefinition()));
+    }
+
+    [Fact]
+    public void AModelWithoutARootIsNotRunnable()
+    {
+        // Nothing to run: the concept that would decide the language is the root's.
+        Assert.Null(WorkbenchLanguage.InterpreterFor(new WorkbenchLanguage().NewProject().NewModel("empty")));
+    }
+
     /// <summary>Writes a one-concept language project whose notation is the keyword <c>rule</c> and the name.</summary>
     private static void WriteLanguage(string directory, string conceptKey, string[] properties, string? alsoAbstract = null)
     {

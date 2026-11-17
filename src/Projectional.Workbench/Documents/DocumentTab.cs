@@ -60,6 +60,10 @@ internal sealed class DocumentTab : IDisposable
     /// <param name="types">
     /// The language's type rules, or <see langword="null"/> when it declares none.
     /// </param>
+    /// <param name="evaluation">
+    /// The language's interpreter - the rules that give its concepts a meaning - or <see langword="null"/> when it
+    /// defines none, in which case the document cannot be run at all.
+    /// </param>
     /// <param name="clipboard">
     /// What copy, cut and paste read and write, or <see langword="null"/> for a private in-memory clipboard.
     /// A shell passes one adapter to every tab, because a copy in one document has to be pasteable in another -
@@ -75,6 +79,7 @@ internal sealed class DocumentTab : IDisposable
         ICellEmphasis? emphasis = null,
         ITypingRules? typing = null,
         TypeRegistry? types = null,
+        EvaluationRegistry? evaluation = null,
         IEditorClipboard? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -90,6 +95,7 @@ internal sealed class DocumentTab : IDisposable
         Model = model;
         FilePath = filePath;
         Types = types;
+        Evaluation = evaluation;
         Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
 
         // A document that has just been opened or created is by definition what the file holds. The
@@ -109,6 +115,24 @@ internal sealed class DocumentTab : IDisposable
     /// language must be checked with that language's rules, not with the sample's.
     /// </remarks>
     internal TypeRegistry? Types { get; }
+
+    /// <summary>
+    /// The interpreter of the language this document belongs to, or <see langword="null"/> when that language
+    /// defines none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A language says what its nodes mean, so "can this document be run" is a fact about the language rather than
+    /// about the document - which is why the registry travels with the tab instead of being picked when the user
+    /// presses Run. A language with no interpreter is not runnable, and the shell refuses rather than running it
+    /// against another language's rules and reporting a failure that is really a missing declaration.
+    /// </para>
+    /// <para>
+    /// The default is <see langword="null"/> on purpose: a caller that forgets this aspect gets a document that
+    /// cannot be run, never one that silently runs with the sample language's semantics.
+    /// </para>
+    /// </remarks>
+    internal EvaluationRegistry? Evaluation { get; }
 
     /// <summary>The session that edits it.</summary>
     internal EditorSession Session { get; }
@@ -152,6 +176,14 @@ internal sealed class DocumentTab : IDisposable
     /// the same rule the editor's marker set follows.
     /// </remarks>
     internal IReadOnlyList<ProblemEntry> Problems { get; set; } = [];
+
+    /// <summary>What the last run of this document produced, or <see langword="null"/> when it has not been run.</summary>
+    /// <remarks>
+    /// Kept per tab so switching documents shows each one's own answer, and dropped when the model changes: a headline
+    /// about a document that no longer exists is worse than no headline, and a run cannot be repeated on the user's
+    /// behalf because the variables came from them.
+    /// </remarks>
+    internal RunReport? Output { get; set; }
 
     /// <summary>Turns the tab's session off. The model itself belongs to whoever opened it.</summary>
     public void Dispose()

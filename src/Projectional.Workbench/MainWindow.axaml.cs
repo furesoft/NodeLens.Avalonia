@@ -197,7 +197,19 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.FontSize = _fontSize;
         editor.Clipboard = _clipboard;
 
-        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing, types, _clipboard);
+        // The interpreter is derived from the model rather than passed in, because "can this document run" is a fact
+        // about the language it is written in - a caller cannot forget it and cannot hand a document someone else's
+        // semantics either.
+        var document = new DocumentTab(
+            model,
+            notations,
+            editor.TextMeasure,
+            filePath,
+            emphasis,
+            typing,
+            types,
+            WorkbenchLanguage.InterpreterFor(model),
+            _clipboard);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
         editor.ShowLineNumbers = _showLineNumbers;
@@ -219,6 +231,7 @@ public sealed partial class MainWindow : Window, IDisposable
         Documents.SelectedItem = tab;
 
         ShowProblems();
+        ShowOutput();
         ShowOutline();
         UpdateStatus();
     }
@@ -286,6 +299,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         ShowProblems();
+        ShowOutput();
         ShowOutline();
         UpdateStatus();
     }
@@ -341,6 +355,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         ShowProblems();
+        ShowOutput();
         ShowOutline();
         UpdateStatus();
     }
@@ -356,9 +371,14 @@ public sealed partial class MainWindow : Window, IDisposable
             && EditorOf(tab) is { } editor)
         {
             PublishFindings(document, editor);
+
+            // A run is a snapshot of the document as it was, so an edit drops it. Findings can be derived again
+            // from the new model; a run cannot, because the variables came from the user.
+            document.Output = null;
         }
 
         ShowProblems();
+        ShowOutput();
         ShowOutline();
         UpdateStatus();
     }
@@ -623,6 +643,95 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Focus();
     }
 
+    /// <summary>Runs the document in front and shows what came out.</summary>
+    /// <remarks>
+    /// The variables are read from the panel's line at the moment of the run, so a keystroke in that box is not a
+    /// command: a user who is half way through typing <c>amount=1500</c> must not see a failure about <c>amoun</c>.
+    /// </remarks>
+    private void OnRunDocument(object? sender, RoutedEventArgs e) => RunActiveDocument();
+
+    private void OnRunInputsKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        RunActiveDocument();
+    }
+
+    private void RunActiveDocument()
+    {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        // A language that defines no interpreter cannot be run at all, and saying so is better than running it
+        // against another language's rules and reporting a missing rule for every concept.
+        if (document.Evaluation is not { } rules)
+        {
+            _error = "This document's language defines no interpreter, so it cannot be run.";
+            UpdateStatus();
+
+            return;
+        }
+
+        _error = null;
+        document.Output = DocumentRun.Of(document.Root, rules, RunInputsInput.Text);
+
+        ShowOutput();
+        UpdateStatus();
+    }
+
+    private void OnClearOutput(object? sender, RoutedEventArgs e)
+    {
+        if (_documents.Active is { } document)
+        {
+            document.Output = null;
+        }
+
+        ShowOutput();
+    }
+
+    /// <summary>Shows the active document's last run, if it has one.</summary>
+    /// <remarks>
+    /// The headline is the answer, so it goes in the header rather than in a row: a first row that says <c>Accept</c>
+    /// would read as one more step of the trace, and the trace is exactly what must stay comparable across runs.
+    /// </remarks>
+    private void ShowOutput()
+    {
+        var report = _documents.Active?.Output;
+
+        RunOutput.ItemsSource = report?.Rows;
+        RunOutput.SelectedItem = null;
+        OutputPanel.IsVisible = report is not null;
+        OutputHeader.Text = report is null ? "Output" : $"Output - {report.Headline}";
+    }
+
+    /// <summary>Puts the caret on the node a trace line came from.</summary>
+    /// <remarks>
+    /// The pick is cleared afterwards, so the same row is clickable twice: a trace is something a user reads back
+    /// and forth between the document and the panel, unlike a problem, which is a state they are working through.
+    /// </remarks>
+    private void OnRunRowChosen(object? sender, SelectionChangedEventArgs e)
+    {
+        if (RunOutput.SelectedItem is not RunRow { Place: { } place }
+            || _documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.Select(Selection.At(place));
+        editor.ScrollToCaret();
+        editor.Focus();
+
+        RunOutput.SelectedItem = null;
+    }
+
     /// <summary>Registers the framework's catalogue and the intentions the document's languages ship with.</summary>
     /// <param name="document">The document whose session gains them.</param>
     /// <remarks>
@@ -756,6 +865,26 @@ public sealed partial class MainWindow : Window, IDisposable
         StatusText.Text = _error is null ? position : $"{position} | {_error}";
 
         UpdateRepresentations();
+        UpdateRunCommand();
+    }
+
+    /// <summary>Says whether the document in front can be run, and why not when it cannot.</summary>
+    /// <remarks>
+    /// A disabled entry states a fact the user cannot otherwise see - that the language in front defines no
+    /// interpreter - so the reason goes on the tooltip as well as into the status bar when F5 is pressed: the command
+    /// is refused rather than offered, and "why" must have an answer somewhere.
+    /// </remarks>
+    private void UpdateRunCommand()
+    {
+        var runnable = _documents.Active?.Evaluation is not null;
+
+        RunDocumentItem.IsEnabled = runnable;
+        ClearOutputItem.IsEnabled = _documents.Active?.Output is not null;
+        ToolTip.SetTip(
+            RunDocumentItem,
+            runnable
+                ? "Runs the document with its language's interpreter."
+                : "This document's language defines no interpreter.");
     }
 
     /// <summary>The theme as the status bar names it, saying so when the desktop chose it.</summary>
@@ -1176,6 +1305,16 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
+        // F5 is the run gesture and carries no modifier, so it is answered before the zoom block below - which
+        // deliberately ignores every key that is not Ctrl.
+        if (e.Key == Key.F5 && e.KeyModifiers == KeyModifiers.None)
+        {
+            e.Handled = true;
+            RunActiveDocument();
+
+            return;
+        }
+
         if ((e.KeyModifiers & ~KeyModifiers.Shift) != KeyModifiers.Control)
         {
             return;

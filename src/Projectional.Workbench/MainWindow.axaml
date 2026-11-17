@@ -22,6 +22,15 @@
         <Separator />
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
+      <MenuItem Header="_Run">
+        <!--
+          The gesture is written into the header rather than declared as a HotKey: the shell's own tunnelling
+          handler owns F5, so the run cannot be claimed by whichever control happens to have focus.
+        -->
+        <MenuItem x:Name="RunDocumentItem" Header="_Run document (F5)" Click="OnRunDocument" />
+        <Separator />
+        <MenuItem x:Name="ClearOutputItem" Header="_Clear output" Click="OnClearOutput" />
+      </MenuItem>
       <MenuItem Header="_View">
         <MenuItem Header="_Find..." HotKey="Ctrl+F" Click="OnFindText" />
         <Separator />
@@ -115,6 +124,56 @@
     <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Padding="8,4">
       <TextBlock x:Name="StatusText" FontSize="12" />
     </Border>
+    <!--
+      The output panel is where a run answers: the headline is the value or the reason there is none, and the
+      rows under it are the trace. It is hidden until a document is run, for the same reason the problems
+      panel is - an empty list that says nothing would cost a third of the window.
+    -->
+    <Border x:Name="OutputPanel" DockPanel.Dock="Bottom" IsVisible="False" BorderThickness="0,1,0,0">
+      <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="8,6,8,4">
+          <TextBlock
+            x:Name="OutputHeader"
+            Grid.Column="0"
+            FontSize="12"
+            FontWeight="SemiBold"
+            VerticalAlignment="Center"
+            Text="Output" />
+          <TextBox
+            x:Name="RunInputsInput"
+            Grid.Column="1"
+            Margin="12,0,0,0"
+            FontSize="12"
+            PlaceholderText="run inputs, e.g. amount=1500"
+            KeyDown="OnRunInputsKeyDown" />
+          <Button
+            Grid.Column="2"
+            Margin="8,0,0,0"
+            FontSize="12"
+            Content="Run"
+            Click="OnRunDocument" />
+        </Grid>
+        <ListBox
+          x:Name="RunOutput"
+          BorderThickness="0"
+          MaxHeight="180"
+          FontFamily="Consolas,Menlo,monospace"
+          FontSize="12"
+          SelectionChanged="OnRunRowChosen">
+          <!--
+            A trace row is one line of text, so it is not allowed the theme's 32-pixel row: with the default height
+            five steps overflow the panel and the last line - the answer's own line - is cut in half.
+          -->
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="MinHeight" Value="18" />
+              <Setter Property="Padding" Value="4,1" />
+            </Style>
+          </ListBox.Styles>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
     <!--
       The problems panel sits above the status bar and is hidden while there is nothing to report: an
       empty list would take a third of the window to say "no problems", which is the state a document is

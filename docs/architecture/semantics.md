@@ -382,6 +382,22 @@ its condition; a ruleset is the outcome of the **first** rule that applies, and 
 than a default). The rules registry of the pilot contains the expression rules, so one registry runs a
 document.
 
+**A language is runnable only when it defines an interpreter.** The registry is the language's, so the shell
+answers "can this document be run" from the document's root concept rather than from the command that opened
+it: `WorkbenchLanguage.InterpreterFor(model)` returns the sample language's rules for one of its documents and
+`null` for everything else - a structure definition, a notation, a type ruleset, a document of a language
+opened from a folder - and a document that carries no interpreter is refused instead of being run against
+another language's rules. Running a structure model through the expression rules would report a missing rule
+for every concept, which is a wrong answer to a question nobody should have been able to ask.
+
+The shell's Run command (`Projectional.Workbench/Run/`, `F5`) is the whole of the app's part: `DocumentRun.Of`
+takes the document, its interpreter and the variables the user typed, and answers a `RunReport` - the answer or
+the reason there is none in one line, and the trace as rows that each name the node they came from, so clicking
+one moves the caret there. The variables come from one line of `name=value` pairs (`RunInputs`): a value is read
+as a number, then a flag, then an `yyyy-MM-dd` date, and otherwise as text, and a malformed or repeated name is
+refused as a whole line rather than half-applied. A run is a snapshot, so an edit drops the report, exactly as
+an edit replaces the findings.
+
 Still open: stepping (a UI vocabulary, open question 11), value kinds for records and lists (they arrive with
 the first language that evaluates one), and the cross-check against generated code, which needs the generator
 first.
