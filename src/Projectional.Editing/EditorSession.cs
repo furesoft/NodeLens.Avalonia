@@ -78,7 +78,7 @@ public sealed class EditorSession : IDisposable
         ITextMeasure? measure = null,
         ICellEmphasis? emphasis = null,
         INotationChoice? choice = null,
-        ITextClipboard? clipboard = null,
+        IEditorClipboard? clipboard = null,
         ITypingRules? typing = null)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -349,7 +349,7 @@ public sealed class EditorSession : IDisposable
     /// whether Paste has anything to offer before it shows a menu entry.
     /// </para>
     /// </remarks>
-    public ITextClipboard Clipboard { get; }
+    public IEditorClipboard Clipboard { get; }
 
     /// <summary>What the language says about text typed while the caret is in an empty slot.</summary>
     /// <remarks>

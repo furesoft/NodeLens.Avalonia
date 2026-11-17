@@ -8,7 +8,7 @@ namespace Projectional.Core.Tests;
 /// </summary>
 /// <remarks>
 /// It is one string and nothing else, so the tests are about the two properties that matter: text survives
-/// being read back, and two clipboards do not share it. <see cref="ITextClipboard.RefreshAsync"/> is the
+/// being read back, and two clipboards do not share it. <see cref="IEditorClipboard.RefreshAsync"/> is the
 /// default implementation, which completes without doing anything because there is nothing to re-read.
 /// </remarks>
 public sealed class InMemoryClipboardTests
@@ -48,7 +48,7 @@ public sealed class InMemoryClipboardTests
     [Fact]
     public async Task RefreshAsyncCompletesWithoutChangingTheText()
     {
-        ITextClipboard clipboard = new InMemoryClipboard { Text = "abc" };
+        IEditorClipboard clipboard = new InMemoryClipboard { Text = "abc" };
 
         await clipboard.RefreshAsync();
 
@@ -67,5 +67,30 @@ public sealed class InMemoryClipboardTests
 
         Assert.Equal("first", first.Text);
         Assert.Equal("second", second.Text);
+    }
+
+    [Fact]
+    public void WritingTextClearsTheFragment()
+    {
+        var clipboard = new InMemoryClipboard
+        {
+            Fragment = ModelFragment.Of([TestEditor.BareStep()]),
+        };
+
+        clipboard.Text = "text";
+
+        Assert.Null(clipboard.Fragment);
+        Assert.Equal("text", clipboard.Text);
+    }
+
+    [Fact]
+    public void WritingAFragmentClearsTheText()
+    {
+        var clipboard = new InMemoryClipboard { Text = "text" };
+
+        clipboard.Fragment = ModelFragment.Of([TestEditor.BareStep()]);
+
+        Assert.Null(clipboard.Text);
+        Assert.NotNull(clipboard.Fragment);
     }
 }
