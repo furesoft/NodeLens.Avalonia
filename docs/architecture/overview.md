@@ -67,7 +67,7 @@ makes it a usable test of the integration surface
 | `Projectional.Samples` | The toy rules language and its sample document: the working example of composing `Expressions` | none |
 | `Projectional.Samples.Checks` | What is wrong with a model of the sample language: the working example of a check beside its language | none |
 | `Projectional.Samples.Intentions` | What can be done at a caret in the sample language - "accept this rule" - and the working example of an intention package | none |
-| `Projectional.Expressions.Intentions` | The intentions the expression vocabulary ships with: wrap in parentheses, negate | none |
+| `Projectional.Expressions.Intentions` | The one intention the expression vocabulary ships with: negate (the grouping entry retired in favour of the catalogue's `Wrap in "Parenthesized"`) | none |
 | `Projectional.Checks` | The standard catalogue a language includes by naming it: name, structure, value and expression checks, each with its repair | none |
 | `tests/*` | Unit and snapshot tests | none |
 

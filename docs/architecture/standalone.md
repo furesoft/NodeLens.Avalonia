@@ -289,21 +289,32 @@ surface exactly as a host would.
 
 ### Intentions
 
-`MainWindow.RegisterIntentions` is the whole of what the app writes for the light bulb: three providers,
-registered once per document as `IntentionSource.Language`.
+`MainWindow.RegisterIntentions` is the whole of what the app writes for the light bulb: one catalogue
+provider and three language providers, registered once per document.
 
 ```csharp
+document.Session.AddIntentions(StandardIntentions.Provider);
 document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
 document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
 document.Session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
 ```
 
-The entries come from `Projectional.Expressions.Intentions` (wrap in parentheses, negate),
+The first is `Projectional.Intentions`: the framework's own catalogue, which derives rename, duplicate,
+delete, the moves, both insertions, sorting, the two selections, wrap, replace and reset from the shape of the
+caret's place, so a document gains them without its language doing anything. It is registered **as the host's**
+because the app is what chose it, and host entries are listed before a language's - the generic operations above
+the specific ones. The other three are the languages' answers: `Projectional.Expressions.Intentions` (negate),
 `Projectional.Samples.Intentions` (accept this rule) and `Projectional.Structures.Intentions` (make abstract,
 make concrete). None of the packages knows about the shell, and the shell knows nothing about what they offer
-— which is the point of the slice: a language ships its intentions, a host registers them and the popup, the
+- which is the point of the slice: a language ships its intentions, a host registers them and the popup, the
 menu and the bulb follow. A provider that is not about the open document answers `Absent` at every caret, so
-the app registers all three for every document rather than deciding which language a tab holds.
+the app registers all four for every document rather than deciding which language a tab holds.
+
+The expression package used to ship "wrap in parentheses" as well; it does not any more, because the catalogue
+derives `Wrap in "Parenthesized"` from the same declarations and one operation must not appear twice. "Negate"
+stays where it is, and that asymmetry is the interesting part: the catalogue can find a wrapper concept, but it
+cannot know that a negation is a `Unary` born with `operator = "!"` - that value has to come from the language
+until a language can declare an intention of its own (M5).
 
 Two things a host has to get right, both of them the mirror of the findings rules:
 

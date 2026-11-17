@@ -36,9 +36,12 @@ What is next, in order:
    intentions and quick fixes. What is left of that catalogue is what `Enter` and completion already do
    (`INT010`/`INT011`, a menu decision rather than an action), and the language-side entries from `INT040` on,
    which arrive with the languages that need them.
-2. **The standard catalogue in the app.** `Projectional.Intentions` is a package a host registers; the
-   workbench registers it once `INT041` (negate) lands, so the two entries `Expressions.Intentions` ships can be
-   retired in one step instead of showing two rows for one operation.
+2. **The standard catalogue in the app - done.** `Projectional.Intentions` is a package a host registers, and
+   the workbench registers it for every document, as the host's own so the generic operations sit above a
+   language's. `Expressions.Intentions` retired its "wrap in parentheses" in the same step, because the
+   catalogue derives `Wrap in "Parenthesized"` and one operation must not appear twice. "Negate" stayed: a
+   `Unary` born with `operator = "!"` is not what a bare wrap produces, and no declaration says which operator
+   a fresh `Unary` should start with - declared intentions (M5) are what would close that gap.
 
 **Slice Q7 - the standard checks as a package** is done: `Projectional.Checks` ships `STD001`, `STD003`,
 `STD010` and `STD040`, and a language includes them by naming them in a `CheckSet`. The safety class the

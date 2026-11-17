@@ -10,6 +10,7 @@ using Projectional.Avalonia;
 using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Expressions.Intentions;
+using Projectional.Intentions;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Samples;
@@ -346,25 +347,33 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Fixes = new FixSet([.. fixes]);
     }
 
-    /// <summary>Registers the intentions the document's languages ship with.</summary>
+    /// <summary>Registers the framework's catalogue and the intentions the document's languages ship with.</summary>
     /// <param name="document">The document whose session gains them.</param>
     /// <remarks>
     /// <para>
-    /// This is the whole of what a host writes: three providers, registered once. The entries themselves come
-    /// from the languages' packages - the expression vocabulary's parentheses and negation, the rules language's
-    /// "accept this rule", and the structure language's "make abstract" - and none of them needs anything from the
-    /// app beyond this call.
+    /// This is the whole of what a host writes: four providers, registered once. The first is the framework's own
+    /// catalogue, which derives rename, duplicate, delete, the moves, the two sorts of insertion, sorting, the two
+    /// selections, wrap, replace and reset from the shape of the caret's place, so a document gains them without its
+    /// language doing anything. The other three are the languages' answers to "what is meaningful here": the
+    /// expression vocabulary's negation, the rules language's "accept this rule", and the structure language's
+    /// "make abstract".
     /// </para>
     /// <para>
-    /// Registered as <see cref="IntentionSource.Language"/> rather than as the host's own, because that is
-    /// what they are: a language's answer to "what is meaningful here", which the list keeps behind a host's
-    /// commands. A provider that is not about the open document answers
-    /// <see cref="IntentionAvailability.Absent"/> at every caret, so registering all three for every document is
-    /// how a mixed set of languages is spelled.
+    /// The catalogue is registered as the <em>host's</em> rather than as a language's, because the app is what chose
+    /// it: the list keeps host entries in front of a language's, which puts the generic operations above the
+    /// language-specific ones. That order is also why the expression package no longer ships "wrap in parentheses" -
+    /// the catalogue's own search offers <c>Wrap in "Parenthesized"</c> for every language, and one operation must not
+    /// appear twice.
+    /// </para>
+    /// <para>
+    /// The three language providers are registered as <see cref="IntentionSource.Language"/>, because that is what
+    /// they are. A provider that is not about the open document answers <see cref="IntentionAvailability.Absent"/> at
+    /// every caret, so registering all three for every document is how a mixed set of languages is spelled.
     /// </para>
     /// </remarks>
     private static void RegisterIntentions(DocumentTab document)
     {
+        document.Session.AddIntentions(StandardIntentions.Provider);
         document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
         document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
         document.Session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);

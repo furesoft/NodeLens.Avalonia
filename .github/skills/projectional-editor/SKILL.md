@@ -878,7 +878,7 @@ path a keystroke takes.
 
 Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
 the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`:
-`Projectional.Expressions.Intentions` (wrap in parentheses, negate), `Projectional.Samples.Intentions`
+`Projectional.Expressions.Intentions` (negate), `Projectional.Samples.Intentions`
 (accept this rule) and `Projectional.Structures.Intentions` (make abstract / make concrete).
 `docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered.
 
@@ -897,9 +897,7 @@ the editor). The shipped shape is a package beside the language, exactly like `P
   "wrap in X": a concrete concept whose single-child slot accepts this node's concept and whose own concept
   fits the parent's slot (and whose `Applicability` allows that place) is a wrapper - the first such slot in
   declaration order, and one id per concept (`standard.wrap.<conceptKey>`) so two wrappers cannot collide in
-  the list. A root is never wrappable, because a wrapper has to take the node's *place*. The app does not
-  register it yet: with `Expressions.Intentions` still shipping its own wrap, both would show one row per
-  operation, so the switch waits for `INT041` (negate) and then retires both language entries at once.
+  the list. A root is never wrappable, because a wrapper has to take the node's *place*.
 - **`ReplacementConcepts.Of` is the whole of "replace with X"**, and it is a search for the same reason: a
   concrete concept that conforms to the slot, whose `Applicability` allows that place, **and is not the concept
   the node already is**. A slot declared over one concrete concept therefore offers nothing - swapping a step for
@@ -912,6 +910,12 @@ the editor). The shipped shape is a package beside the language, exactly like `P
   clears the references into the subtree as any deletion does. Both the action and the entry refuse a **model
   root**: the document a session draws *is* a root, so replacing it would take away the node the editor is built
   from.
+- **The app registers the catalogue as the host's**, and that is why `Expressions.Intentions` no longer ships
+  "wrap in parentheses": the catalogue derives `Wrap in "Parenthesized"` from the same declarations, and two rows for
+  one operation is the thing the registration order would have made visible. What a language keeps is what a
+  declaration cannot express - "Negate" is a `Unary` born with `operator = "!"`, and no declaration says which of the
+  two unary operators a bare `Unary` should start with. Do not "fix" that by giving the concept a default operator
+  without deciding what a fresh `Unary` should be; declared intentions (M5) are the general answer.
 - **A permutation is not a program of moves, so the model takes the order.** `Model.ReorderChildren(parent, slot,
   order)` validates that the order is a rearrangement of the slot's children (each exactly once) before touching
   anything, then detaches them all and inserts them back in the new order - one transaction, one undo step. It is
@@ -1475,7 +1479,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1561 tests**; anything below that means tests were deleted.
+it. **Baseline is 1558 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:
