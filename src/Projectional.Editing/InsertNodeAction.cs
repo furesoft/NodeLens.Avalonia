@@ -50,6 +50,7 @@ public sealed class InsertNodeAction : EditAction
         {
             ChildCell child => FillSlot(context, selection, place, child.Slot),
             CollectionCell collection => FillSlot(context, selection, place, collection.Slot),
+            AddRowCell addRow => FillSlot(context, selection, place, addRow.Slot),
             _ => AddSibling(context, selection),
         };
     }

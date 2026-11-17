@@ -79,4 +79,14 @@ public sealed class NotationEditor
 
     public TableNotationCell Table(string slot, params ReadOnlySpan<TableColumn> columns) =>
         new(slot, columns);
+
+    /// <summary>
+    /// A table whose empty state says something more useful than the default placeholder.
+    /// </summary>
+    /// <remarks>
+    /// The text is drawn in the first column of the affordance row an empty table shows, so a language
+    /// that wants the reader to see "add a rule here" rather than "&lt;empty&gt;" says so once, here.
+    /// </remarks>
+    public TableNotationCell Table(string slot, string emptyText, params ReadOnlySpan<TableColumn> columns) =>
+        new(slot, columns) { EmptyText = emptyText };
 }

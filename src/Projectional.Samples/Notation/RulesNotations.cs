@@ -23,6 +23,7 @@ internal static class RulesNotations
             ed.Line(ed.Keyword("ruleset", TextEmphasis.Bold), ed.Space, ed.Property("name")),
             ed.Indent(ed.Table(
                 "rules",
+                "+ rule",
                 ed.Column("name", ed.Keyword("rule")),
                 ed.Column("outcome", ed.Keyword("then")),
                 ed.Column("condition", ed.Keyword("when"))))));

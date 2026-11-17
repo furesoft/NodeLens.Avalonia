@@ -292,9 +292,14 @@ shape, and how much of it M1 already delivers:
   cache belongs with the incremental invalidation slice.
 - The caret moves cell-wise with Tab and row-wise with Up/Down. **M1: Tab still inserts a
   sibling; the caret reaches the next column by walking to the end of the cell's text.**
-- A table with zero rows must render its header plus an "add row" affordance. **M1: an
-  empty table renders its `EmptyText` and hides the header**, because the slot still has
-  to be visible and clickable and there is nothing yet to hang a row affordance on.
+- A table with zero rows must render its header plus an "add row" affordance. **Done: an
+  empty table draws its header and one `AddRowCell` row**, whose text is the notation's
+  `EmptyText` (`ed.Table("rules", "+ rule", ...)`) and whose address is the *slot's*, not
+  the table's - a table that is the root of its node's notation carries the node's address,
+  which its headers carry too, so an affordance addressed that way would be
+  indistinguishable from the first header. Enter on it fills the slot through the same
+  `InsertChildAction` an empty child slot uses, and `CaretPlace.IsEmptySlot` counts it, so
+  Tab reaches it.
 
 ### What M1 implements
 
@@ -308,6 +313,7 @@ is what makes it work on a concept that also has a textual form
 | Language | `TableNotationCell` | the table: the child slot holding the rows, the ordered columns |
 | Language | `NotationRegistry.ValidateTable` | refuses a column naming no slot, a slot of another concept, or a many-valued slot |
 | Projection | `TableCell` | the shape: row-major flattened content, `Headers`, `Rows`, `ColumnCount`, `IsEmpty` |
+| Projection | `AddRowCell` | the one row an empty table draws: the placeholder in the first column, blanks in the rest |
 | Projection | `EditorTreeBuilder.BuildTable` | one cell per column per row, each row cell addressed exactly as the row's own notation would address it |
 | Layout | `CellLayouter.ArrangeTable` | column widths and row heights |
 | Snapshot | `LayoutSnapshot` | the text grid a test can compare |
@@ -323,10 +329,10 @@ constants and spaces — a header that named a slot would have to be answered by
 row happened to be first. That, the "no column twice", and the "at least one column" rules
 are all refused by the cell constructors, and the column's slot is checked against the row
 concept by `NotationRegistry`, so a broken table fails when the language is built. A table
-without rows keeps no header at all — the builder passes none, so no header can ever float
-above an empty list — and `TableCell` enforces that plus every row's column count with a
-`ProjectionException`, so even a table built by hand fails at the first projection instead
-of painting half a grid.
+without rows still draws its header, followed by the affordance row, so the reader can see
+what the columns are before there is anything in them; `TableCell` refuses a table with no
+columns and every row's column count with a `ProjectionException`, so even a table built by
+hand fails at the first projection instead of painting half a grid.
 
 ## Rendering in Avalonia
 

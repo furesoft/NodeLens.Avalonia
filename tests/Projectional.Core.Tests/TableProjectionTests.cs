@@ -41,13 +41,16 @@ public sealed class TableProjectionTests
     }
 
     [Fact]
-    public void AnEmptyTableShowsOnlyItsPlaceholder()
+    public void AnEmptyTableShowsItsHeaderAndAnAddRowAffordance()
     {
         var model = TestLanguage.NewModel();
         model.NewNode(TestLanguage.Body);
 
         Assert.Equal(
-            "<empty>",
+            """
+            step    no detail
+            <empty>
+            """,
             LayoutSnapshot.Render(model, TableNotations.Registry, width: 40));
     }
 
@@ -110,5 +113,63 @@ public sealed class TableProjectionTests
 
         // A row is a line, so the second one makes the grid taller without changing any column.
         Assert.True(session.Layout.Size.Height > shortest);
+    }
+
+    [Fact]
+    public void TheAffordanceOfAnEmptyTableIsAnEmptySlotTheCaretCanStandIn()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+
+        using var session = new EditorSession(body, TableNotations.Registry);
+
+        var place = CaretNavigation.PlaceAt(
+            session.Tree,
+            CaretPosition.At(CellAddress.OfSlot(body.Id, "steps"), 0));
+
+        Assert.NotNull(place);
+        Assert.IsType<AddRowCell>(place.Value.Cell);
+        Assert.True(place.Value.IsEmptySlot);
+    }
+
+    [Fact]
+    public void EnterOnTheAffordanceCreatesTheFirstRow()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+
+        using var session = new EditorSession(body, TableNotations.Registry);
+
+        session.Select(Selection.At(CaretPosition.At(CellAddress.OfSlot(body.Id, "steps"), 0)));
+        session.Apply(KeyRouter.For(session, EditorKey.Enter));
+
+        var row = Assert.Single(body.GetChildren("steps"));
+        Assert.Equal(TestLanguage.Step, row.Concept.Key);
+
+        // The affordance is gone: the table draws the row it just created.
+        Assert.DoesNotContain(session.Tree.Cells().OfType<AddRowCell>(), _ => true);
+    }
+
+    [Fact]
+    public void TabReachesTheAffordanceOfAnEmptyTable()
+    {
+        var model = TestLanguage.NewModel();
+        var body = model.NewNode(TestLanguage.Body);
+
+        using var session = new EditorSession(body, TableNotations.Registry);
+
+        session.Select(Selection.At(CaretPosition.At(new CellAddress(body.Id), 0)));
+
+        for (var press = 0; press < 8; press++)
+        {
+            if (CaretNavigation.PlaceAt(session.Tree, session.Selection.Caret) is { Cell: AddRowCell })
+            {
+                return;
+            }
+
+            session.Apply(KeyRouter.For(session, EditorKey.Tab));
+        }
+
+        Assert.Fail("Tab never reached the table's add-row affordance.");
     }
 }

@@ -73,7 +73,6 @@ public sealed class CellLayouter
             ChildCell child => ArrangeInline(child.Content, x, y, placed, text),
             CollectionCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
             CollectionCell collection => ArrangeInline(collection.Content, x, y, placed, text),
-            TableCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
             TableCell table => ArrangeTable(table, x, y, placed, text),
             _ => throw new ProjectionException($"The cell {cell} is of a kind that layout does not know."),
         };
@@ -171,7 +170,10 @@ public sealed class CellLayouter
     {
         var gap = _measure.Measure(" ", TextEmphasis.None);
         var columnCount = table.ColumnCount;
-        var rowCount = table.Rows.Count;
+
+        // The drawn grid, not the model's rows: an empty table draws one affordance row, and layout
+        // must place exactly the cells the tree walks or the caret would stand in a cell nobody drew.
+        var rowCount = (table.Content.Count / columnCount) - 1;
         var columns = new double[columnCount];
         var rowHeights = new double[rowCount + 1];
         var grid = new List<PlacedCell>[(rowCount + 1) * columnCount];
@@ -183,11 +185,15 @@ public sealed class CellLayouter
 
         for (var r = 0; r < rowCount; r++)
         {
-            var row = table.Rows[r];
-
             for (var c = 0; c < columnCount; c++)
             {
-                grid[((r + 1) * columnCount) + c] = ArrangeDetached(row[c], columns, rowHeights, c, r + 1, text);
+                grid[((r + 1) * columnCount) + c] = ArrangeDetached(
+                    table.Content[((r + 1) * columnCount) + c],
+                    columns,
+                    rowHeights,
+                    c,
+                    r + 1,
+                    text);
             }
         }
 

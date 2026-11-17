@@ -28,7 +28,6 @@ public static class CellText
             TextCell text => text.Text,
             ChildCell { IsEmpty: true } empty => empty.EmptyText,
             CollectionCell { IsEmpty: true } empty => empty.EmptyText,
-            TableCell { IsEmpty: true } empty => empty.EmptyText,
             _ => string.Empty,
         };
     }
