@@ -130,6 +130,15 @@ internal static class LayoutSnapshot
                 continue;
             }
 
+            // One line draws the cell's own text, which is not always the text the layout wrapped: a property
+            // that shows a placeholder instead of its empty value is one line of a text the model does not
+            // hold, and slicing the value's lines would draw nothing at all.
+            if (lines.IsSingleLine)
+            {
+                grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, Cut(text, available));
+                continue;
+            }
+
             for (var index = 0; index < lines.LineCount; index++)
             {
                 var line = lines.Lines[index];

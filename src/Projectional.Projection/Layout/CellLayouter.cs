@@ -280,6 +280,14 @@ public sealed class CellLayouter
         var lines = LaidOutText.Wrap(cell.Text, cell.Emphasis, _measure, LimitAt(x));
         text[cell] = lines;
 
+        // A property that shows a placeholder instead of its value is drawn where the (empty) value would go,
+        // so the box has to be as wide as the stand-in. It is one token and never wrapped: the lines above
+        // still describe the value, which is what the caret keeps standing in.
+        if (cell is PropertyCell { Text.Length: 0, EmptyText.Length: > 0 } empty)
+        {
+            return new LayoutSize(_measure.Measure(empty.EmptyText, empty.Emphasis), lines.Height);
+        }
+
         return new LayoutSize(lines.Width, lines.Height);
     }
 

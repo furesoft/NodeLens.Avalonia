@@ -36,15 +36,17 @@ internal static class ExpressionsNotations
 
         notations.Add(ExpressionsConceptKeys.Name, ed => ed.Line(ed.Property("name")));
 
+        // The operator is an empty cell until someone picks one - a fresh Binary from Enter, or a Unary that a
+        // trigger did not fill - so the cell says what it waits for instead of drawing a blank of one space.
         notations.Add(ExpressionsConceptKeys.Binary, ed => ed.Line(
             ed.ChildInline("left"),
             ed.Space,
-            ed.Property("operator"),
+            ed.Property("operator", emptyText: "<<operator>>"),
             ed.Space,
             ed.ChildInline("right")));
 
         notations.Add(ExpressionsConceptKeys.Unary, ed => ed.Line(
-            ed.Property("operator"),
+            ed.Property("operator", emptyText: "<<operator>>"),
             ed.ChildInline("operand")));
 
         notations.Add(ExpressionsConceptKeys.Parenthesized, ed => ed.Line(

@@ -258,6 +258,12 @@ Typing at the edge of a node asks the language what the character means when no 
 
 ![Typing a plus turns a literal into a binary expression](docs/images/feature-triggers.png)
 
+#### Empty values say what belongs there
+
+An empty slot is never invisible: a property cell shows the stand-in its notation declares—`<<operator>>` for an expression's operator—so a value that is still missing reads as a question rather than as a gap. The text is display only, drawn in the placeholder colour; typing starts from an empty cell and the value replaces the stand-in.
+
+![An insertion whose operator has not been picked yet](docs/images/feature-property-placeholder.png)
+
 #### Syntax highlighting
 
 The projection decides what a cell *means*; a swappable palette decides how it looks. Keywords, properties, numbers, enumerations and missing values each read differently, and changing the palette is a repaint rather than a re-projection.

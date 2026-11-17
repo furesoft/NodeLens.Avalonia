@@ -472,9 +472,11 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   (`ed.Conditional(..., ed.Keyword("abstract"), ed.Space)`, or every drawing without the word starts with a
   blank). `NotationRegistry` validates the slot is a property and the value is one its type accepts.
   Inline only - a block conditional is the same idea one level up, when something needs it.
-- **Every slot-bearing cell has an `EmptyText`** (`<empty>`, `<none>`). Empty is never
-  invisible: the caret needs something visible to attach to, and an empty list must stay
-  fillable. Do not make it empty-string to "tidy up" a rendering.
+- **Every slot-bearing cell has an `EmptyText`** (`<empty>`, `<none>`, and for a property
+  whatever the notation wants to say - `<<operator>>`). Empty is never invisible: the caret
+  needs something visible to attach to, and an empty list must stay fillable. Do not make it
+  empty-string to "tidy up" a rendering. A property's stand-in is display only: the caret
+  stands in the empty `Text`, so typing still starts from nothing.
 - `NotationWalker.ChildrenOf` is the **single** place that knows a cell's children. Anything
   that walks notation goes through it - adding a cell type without adding it there makes the
   cell invisible to validation and to `Notation.SelfAndDescendants()`.
@@ -834,7 +836,9 @@ second tree.
   `ITextMeasure.IndentWidth` (monospace: 2); width is the widest child, height is the stack.
 - **Nothing is zero width.** Empty text is measured as one space, because an unset property
   or empty slot must still be a column the caret can occupy. `PropertyCell.Text` is `""` when
-  unset for the same reason.
+  unset for the same reason. A property that declares an `EmptyText` is measured to that text
+  instead - the stand-in is one token, never wrapped, and the value replaces it once there is
+  one.
 - **`ChildCell` lays its content out inline unless the notation asked it to stack**;
   `CollectionCell` always lays out inline. Only the surrounding container decides whether
   that line stacks, which is why a vertical list is a property of the notation -
@@ -870,8 +874,10 @@ tested.
   `round(Bounds.X/Y)`; nothing recomputes a position. A snapshot failure is therefore a
   layout failure, not an artifact of the harness. Keep it that way - the moment this file
   starts measuring strings it becomes a second layout implementation.
-- **Draw only what has text**: `TextCell.Text`, plus the `EmptyText` of an empty `ChildCell`
-  or `CollectionCell`. Containers carry no text, so drawing in document order can never bury
+- **Draw only what has text**: `CellText.Of(cell)` - a `TextCell`'s own text, the `EmptyText` of an empty
+  `ChildCell` or `CollectionCell`, and the stand-in of a `PropertyCell` whose value is empty. The cell's own
+  text is what one line draws, because the text a property shows is not always the text layout wrapped.
+  Containers carry no text, so drawing in document order can never bury
   a child under its parent, and one `Write` per cell is enough because every text cell is one
   line tall.
 - **Empty slots must show their placeholder.** Layout already reserves `EmptyText`'s width;

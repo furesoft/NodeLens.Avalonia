@@ -39,6 +39,7 @@ and [testing.md](architecture/testing.md).
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
 | Runtime editor tree: cells, addresses, one tree per node | `Projectional.Projection/Tree/` | `EditorTreeTests`, `CellTextTests` |
+| Property placeholders: an empty property cell shows the notation's stand-in (`<<operator>>`), display only | `PropertyNotationCell.EmptyText`, `PropertyCell.EmptyText`, `CellText` | `CellTextTests`, `CellStylerTests`, `ExpressionsLanguageTests`, `EditorLoweringTests` |
 | Measure and arrange layout, hanging continuation, tables | `Projectional.Projection/Layout/` | `CellLayoutTests`, `LayoutRectTests`, `LayoutViewportTests` |
 | Headless snapshot renderer (notation tested as text, not pixels) | `Projectional.Projection/Snapshot/` | `LayoutSnapshotTests`, `SnapshotGridTests` |
 | Edit-action layer: caret navigation, selection, key routing | `Projectional.Editing/` | `CaretNavigationTests`, `KeyRouterTests`, `EditorKeyMapTests`, `EditActionTests`, `HitTestTests` |

@@ -13,6 +13,8 @@ public sealed class CellTextTests
 {
     private static readonly EditorTreeBuilder Builder = new(TestNotations.Registry);
 
+    private static readonly CellAddress Here = new(NodeId.New());
+
     [Fact]
     public void ATextCellAnswersWithItsOwnText()
     {
@@ -31,6 +33,35 @@ public sealed class CellTextTests
         Assert.True(notes.IsEmpty);
         Assert.Equal(notes.EmptyText, CellText.Of(notes));
         Assert.NotEqual(string.Empty, CellText.Of(notes));
+    }
+
+    [Fact]
+    public void AnEmptyPropertyAnswersWithThePlaceholderItsNotationAskedFor()
+    {
+        // The notation says what belongs in the slot, which is the only thing a reader has until someone
+        // types a value - a blank of one space tells them nothing.
+        var cell = new PropertyCell(Here, "operator", PropertyType.Enum("+", "-"), string.Empty, isSet: false, emptyText: "<<operator>>");
+
+        Assert.Equal("<<operator>>", CellText.Of(cell));
+        Assert.True(CellText.IsVisible(cell));
+    }
+
+    [Fact]
+    public void APropertyThatHoldsAValueShowsTheValueAndNotThePlaceholder()
+    {
+        var cell = new PropertyCell(Here, "operator", PropertyType.Enum("+", "-"), "+", isSet: true, emptyText: "<<operator>>");
+
+        Assert.Equal("+", CellText.Of(cell));
+    }
+
+    [Fact]
+    public void APropertyWithoutAPlaceholderStillAnswersWithNothing()
+    {
+        // The default: a language that did not ask for a stand-in draws the empty cell exactly as before.
+        var cell = new PropertyCell(Here, "operator", PropertyType.Enum("+", "-"), string.Empty, isSet: false);
+
+        Assert.Equal(string.Empty, CellText.Of(cell));
+        Assert.False(CellText.IsVisible(cell));
     }
 
     [Fact]

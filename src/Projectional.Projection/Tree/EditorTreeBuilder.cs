@@ -212,10 +212,10 @@ public sealed class EditorTreeBuilder
     }
 
     private static PropertyCell BuildProperty(PropertyNotationCell notation, Node node, TextEmphasis emphasis) =>
-        BuildProperty(notation.Slot, node, emphasis | notation.Emphasis);
+        BuildProperty(notation.Slot, node, emphasis | notation.Emphasis, notation.EmptyText);
 
     /// <summary>Projects one property of <paramref name="node"/>, whatever notation asked for it.</summary>
-    private static PropertyCell BuildProperty(string slot, Node node, TextEmphasis decoration)
+    private static PropertyCell BuildProperty(string slot, Node node, TextEmphasis decoration, string emptyText = "")
     {
         var declaration = node.Concept.FindProperty(slot)
             ?? throw new ProjectionException(
@@ -227,7 +227,8 @@ public sealed class EditorTreeBuilder
             declaration.Type,
             node.GetOrNull(slot) ?? string.Empty,
             node.IsSet(slot),
-            decoration);
+            decoration,
+            emptyText);
     }
 
     private static ReferenceCell BuildReference(ReferenceNotationCell notation, Node node, TextEmphasis emphasis)
@@ -414,7 +415,8 @@ public sealed class EditorTreeBuilder
     {
         if (row.Concept.FindProperty(column.Slot) is not null)
         {
-            return BuildProperty(column.Slot, row, emphasis);
+            // A column already says what an empty cell shows for a child slot, so it says it for a property too.
+            return BuildProperty(column.Slot, row, emphasis, column.EmptyText);
         }
 
         if (row.Concept.FindChild(column.Slot) is { } child)
