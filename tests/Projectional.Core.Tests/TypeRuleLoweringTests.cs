@@ -111,6 +111,74 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void AFixedRuleCanNameARecord()
+    {
+        var registry = Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.FixedAs(rules.Record(("amount", rules.Primitive("int")), ("currency", rules.Primitive("string"))))));
+
+        Assert.Equal("(amount: int, currency: string)", registry.TypeOf(Literal()).Name);
+    }
+
+    [Fact]
+    public void ATypeExpressionNests()
+    {
+        var registry = Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.FixedAs(rules.ListOf(rules.OptionalOf(rules.Primitive("int"))))));
+
+        Assert.Equal("[int?]", registry.TypeOf(Literal()).Name);
+    }
+
+    [Fact]
+    public void ARecordFieldWithoutATypeIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var record = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Record);
+        var field = model.NewChild(record, TypeRuleLanguage.FieldsSlot, TypeRuleConceptKeys.Field);
+
+        field.Set(TypeRuleLanguage.NameSlot, "amount");
+
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(document));
+
+        Assert.Contains("'type'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ARecordThatNamesOneFieldTwiceIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.FixedAs(rules.Record(
+                ("amount", rules.Primitive("int")),
+                ("amount", rules.Primitive("string")))))));
+
+        // The field name, not "fields" - the parameter name of an exception the author never saw.
+        Assert.Contains("'amount'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFixedBodyWithoutATypeIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+        model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(document));
+
+        Assert.Contains("'type'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheDeclaredTwinOfTheSampleTypesAgreesWithIt()
     {
         // The parity rule of ADR 0014, applied to types: the same rules written as a model and as C#
@@ -220,9 +288,62 @@ public sealed class TypeRuleLoweringTests
         {
             var body = _model.NewNode(TypeRuleConceptKeys.Fixed);
 
-            body.Set(TypeRuleLanguage.TypeNameSlot, typeName);
+            _model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+                .Set(TypeRuleLanguage.NameSlot, typeName);
 
             return body;
+        }
+
+        /// <summary>A fixed body holding an arbitrary type expression.</summary>
+        public Node FixedAs(Node type)
+        {
+            var body = _model.NewNode(TypeRuleConceptKeys.Fixed);
+
+            body.AddChild(TypeRuleLanguage.TypeSlot, type);
+
+            return body;
+        }
+
+        public Node Record(params (string Name, Node Type)[] fields)
+        {
+            var record = _model.NewNode(TypeRuleConceptKeys.Record);
+
+            foreach (var (name, type) in fields)
+            {
+                var field = _model.NewChild(record, TypeRuleLanguage.FieldsSlot, TypeRuleConceptKeys.Field);
+
+                field.Set(TypeRuleLanguage.NameSlot, name);
+                field.AddChild(TypeRuleLanguage.TypeSlot, type);
+            }
+
+            return record;
+        }
+
+        public Node Primitive(string name)
+        {
+            var primitive = _model.NewNode(TypeRuleConceptKeys.Primitive);
+
+            primitive.Set(TypeRuleLanguage.NameSlot, name);
+
+            return primitive;
+        }
+
+        public Node ListOf(Node element)
+        {
+            var list = _model.NewNode(TypeRuleConceptKeys.List);
+
+            list.AddChild(TypeRuleLanguage.ElementSlot, element);
+
+            return list;
+        }
+
+        public Node OptionalOf(Node inner)
+        {
+            var optional = _model.NewNode(TypeRuleConceptKeys.Optional);
+
+            optional.AddChild(TypeRuleLanguage.InnerSlot, inner);
+
+            return optional;
         }
 
         public Node Child(string slot)

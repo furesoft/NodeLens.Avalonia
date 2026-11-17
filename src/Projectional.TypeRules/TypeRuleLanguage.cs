@@ -37,8 +37,20 @@ public static class TypeRuleLanguage
     /// <summary>The concept a rule is about.</summary>
     public const string ConceptKeySlot = "conceptKey";
 
-    /// <summary>The type a fixed body names.</summary>
-    public const string TypeNameSlot = "typeName";
+    /// <summary>The type a fixed body, or a record field, holds.</summary>
+    public const string TypeSlot = "type";
+
+    /// <summary>The name of a primitive type or of a record field.</summary>
+    public const string NameSlot = "name";
+
+    /// <summary>The fields of a record.</summary>
+    public const string FieldsSlot = "fields";
+
+    /// <summary>The element type of a list.</summary>
+    public const string ElementSlot = "element";
+
+    /// <summary>What an optional value is when it is there.</summary>
+    public const string InnerSlot = "inner";
 
     /// <summary>The child slot a child body reads.</summary>
     public const string SlotSlot = "slot";
@@ -75,10 +87,9 @@ public static class TypeRuleLanguage
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.Fixed,
-            [new PropertySlot(TypeNameSlot, PropertyType.String)],
+            [new ChildSlot(TypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One)],
             [TypeRuleConceptKeys.Body],
-            nameSlot: TypeNameSlot,
-            description: "A type named outright: string, int, bool or date."),
+            description: "A type written out, so it is the same whatever the node holds."),
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.Child,
@@ -106,6 +117,47 @@ public static class TypeRuleLanguage
             ],
             nameSlot: ValueSlot,
             description: "One value of a switch, and the body it selects."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.TypeExpr,
+            [],
+            isAbstract: true,
+            isOfferedInCompletion: false,
+            description: "A type written as data, as one of the kinds below."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Primitive,
+            [new PropertySlot(NameSlot, PropertyType.String)],
+            [TypeRuleConceptKeys.TypeExpr],
+            nameSlot: NameSlot,
+            description: "A type named outright: string, int, bool or date."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Record,
+            [new ChildSlot(FieldsSlot, TypeRuleConceptKeys.Field, Cardinality.Many)],
+            [TypeRuleConceptKeys.TypeExpr],
+            description: "A record: a fixed set of named fields."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Field,
+            [
+                new PropertySlot(NameSlot, PropertyType.String),
+                new ChildSlot(TypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            nameSlot: NameSlot,
+            description: "One field of a record."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.List,
+            [new ChildSlot(ElementSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One)],
+            [TypeRuleConceptKeys.TypeExpr],
+            description: "A list: any number of values of one element type."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Optional,
+            [new ChildSlot(InnerSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One)],
+            [TypeRuleConceptKeys.TypeExpr],
+            description: "A value that may be absent."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

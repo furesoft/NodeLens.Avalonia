@@ -2,7 +2,6 @@ using Projectional.Core;
 using Projectional.Projection;
 using Projectional.TypeRules;
 using Xunit;
-
 namespace Projectional.Core.Tests;
 
 /// <summary>
@@ -20,7 +19,8 @@ public sealed class TypeRuleNotationTests
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
-        body.Set(TypeRuleLanguage.TypeNameSlot, "int");
+        model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
 
         Assert.Equal(
             """
@@ -45,8 +45,9 @@ public sealed class TypeRuleNotationTests
 
         var branch = model.NewChild(body, TypeRuleLanguage.CaseSlot, TypeRuleConceptKeys.Case);
         branch.Set(TypeRuleLanguage.ValueSlot, ">");
-        model.NewChild(branch, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed)
-            .Set(TypeRuleLanguage.TypeNameSlot, "bool");
+        var caseBody = model.NewChild(branch, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        model.NewChild(caseBody, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "bool");
 
         model.NewChild(body, TypeRuleLanguage.OtherwiseSlot, TypeRuleConceptKeys.Child)
             .Set(TypeRuleLanguage.SlotSlot, "left");
@@ -61,6 +62,69 @@ public sealed class TypeRuleNotationTests
                     type of left
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
+    public void ARecordDrawsTheWayItsTypeIsWritten()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+
+        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var record = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Record);
+
+        var amount = model.NewChild(record, TypeRuleLanguage.FieldsSlot, TypeRuleConceptKeys.Field);
+        amount.Set(TypeRuleLanguage.NameSlot, "amount");
+        model.NewChild(amount, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+
+        var currency = model.NewChild(record, TypeRuleLanguage.FieldsSlot, TypeRuleConceptKeys.Field);
+        currency.Set(TypeRuleLanguage.NameSlot, "currency");
+
+        // A list of optionals, so the nesting is drawn too.
+        var list = model.NewChild(currency, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.List);
+        var optional = model.NewChild(list, TypeRuleLanguage.ElementSlot, TypeRuleConceptKeys.Optional);
+        model.NewChild(optional, TypeRuleLanguage.InnerSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "string");
+
+        Assert.Equal(
+            """
+            types
+              rule Expressions.IntLiteral is
+                type (amount: int, currency: [string?])
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
+    public void ATypeExpressionDrawsExactlyWhatTheTypeIsCalled()
+    {
+        // The invariant that keeps the two halves honest: a finding quotes IType.Name, so a language author
+        // reading the rule and a user reading the finding have to see the same text.
+        var model = TypeRuleLanguage.NewModel();
+        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+
+        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, TypeRuleConceptKeys.Rules);
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var optional = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Optional);
+        var list = model.NewChild(optional, TypeRuleLanguage.InnerSlot, TypeRuleConceptKeys.List);
+        var record = model.NewChild(list, TypeRuleLanguage.ElementSlot, TypeRuleConceptKeys.Record);
+        var field = model.NewChild(record, TypeRuleLanguage.FieldsSlot, TypeRuleConceptKeys.Field);
+
+        field.Set(TypeRuleLanguage.NameSlot, "amount");
+        model.NewChild(field, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+
+        var drawn = LayoutSnapshot.Render(optional, TypeRuleNotations.Registry, width: 60).Trim();
+        var lowered = TypeRuleLowering.CreateRegistry(document).TypeOf(model.Roots[0]).Name;
+
+        Assert.Equal("[(amount: int)]?", drawn);
+        Assert.Equal(lowered, drawn);
     }
 
     [Fact]

@@ -65,8 +65,10 @@ public sealed class LanguageProjectTypesTests
         var document = types.NewNode(TypeRuleConceptKeys.Rules);
         var rule = types.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Pipeline.Stage");
-        types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed)
-            .Set(TypeRuleLanguage.TypeNameSlot, "decimal");
+
+        var body = types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        types.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "decimal");
 
         ModelFile.Save(types, Path.Combine(folder.Root, LanguageProject.TypesFile));
 
@@ -95,8 +97,10 @@ public sealed class LanguageProjectTypesTests
         var rule = types.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
 
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Pipeline.Stage");
-        types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed)
-            .Set(TypeRuleLanguage.TypeNameSlot, "int");
+
+        var body = types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        types.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
 
         ModelFile.Save(types, Path.Combine(directory, LanguageProject.TypesFile));
     }
