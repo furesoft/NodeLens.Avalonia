@@ -42,7 +42,7 @@ Cells of the editor tree (namespace `Projectional.Projection`, folder `Tree/`):
 | `TextCell` | abstract base for every cell whose content is one string |
 | `ConstantCell` | literal text (keyword, punctuation), with its `ConstantKind` |
 | `SpaceCell` | one column of blank the notation asked for |
-| `PropertyCell` | property text, its `PropertyType` and whether the slot is set |
+| `PropertyCell` | property text, its `PropertyType`, whether the slot is set, and the notation's stand-in while it is empty |
 | `ChildCell` | one child slot: the child's projection, one per line when the notation asks for it, or its empty text |
 | `CollectionCell` | a list slot: items interleaved with separators and spacing |
 | `ReferenceCell` | target name, `<unresolved>`, or the notation's unset text |
@@ -153,7 +153,10 @@ the tree, in abstract **layout units** rather than pixels.
   property and an empty slot are still positions the caret can occupy, so they must
   occupy a column. This is why `PropertyCell.Text` is the empty string when unset rather
   than null, and why an empty `ChildCell` or `CollectionCell` is measured to its
-  `EmptyText`: the placeholder is what fills the slot, so it is also what sizes it.
+  `EmptyText`: the placeholder is what fills the slot, so it is also what sizes it. A
+  property that declares an `EmptyText` - `<<operator>>` - is measured to that instead, and
+  the value replaces it the moment there is one. The placeholder is one token, never
+  wrapped, and never part of the text the caret moves through.
 - **Lookups.** `BoundsOf(EditorCell)` and `BoundsOf(CellAddress)` scan document order and
   answer with the outermost cell carrying that address; `Find(x, y)` scans in reverse and
   answers with the innermost cell under the point. `LayoutRect.Contains` is half-open, so

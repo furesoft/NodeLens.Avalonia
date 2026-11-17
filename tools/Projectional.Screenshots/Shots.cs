@@ -107,6 +107,11 @@ internal static class Shots
             HoverDelayMs: 750),
 
         new(
+            "feature-property-placeholder",
+            Documents.MissingOperator,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name"))),
+
+        new(
             "feature-font-size",
             Documents.AcceptedAndRejected,
             Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(Rule(session, 0).Id, "name")),

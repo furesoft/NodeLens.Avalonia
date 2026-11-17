@@ -58,6 +58,26 @@ internal static class Documents
         return model;
     }
 
+    /// <summary>One rule whose condition is a binary expression with no operator chosen yet.</summary>
+    /// <remarks>
+    /// A <c>Binary</c> created from the completion list is born without its operator, so the drawing has to say
+    /// that one is expected - this document is that state, and nothing else in the picture distracts from it.
+    /// </remarks>
+    internal static Model MissingOperator()
+    {
+        var model = NewPayroll();
+
+        AddRule(model, "Approved", RuleOutcomes.Accept, rule =>
+        {
+            var binary = model.NewChild(rule, "condition", ExpressionsConceptKeys.Binary);
+
+            model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral).Set("value", 1000);
+            model.NewChild(binary, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 2000);
+        });
+
+        return model;
+    }
+
     private static Model NewPayroll()
     {
         var model = RulesLanguage.NewProject().NewModel("payroll");

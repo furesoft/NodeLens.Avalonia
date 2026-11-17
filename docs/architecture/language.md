@@ -129,7 +129,7 @@ or an indent. That split is expressed in the type hierarchy, so a notation that
 misplaces a cell fails to compile rather than at startup.
 
 Empty slots are never invisible: a slot-bearing cell carries the text it shows while
-it is empty (`<empty>`, `<none>`). The caret always needs something visible to
+it is empty (`<empty>`, `<none>`, or for a property `<<operator>>`). The caret always needs something visible to
 attach to, and an empty list still has to be fillable.
 
 **A conditional cell is the one thing that is not there.** `ed.Conditional("isAbstract", "true",
