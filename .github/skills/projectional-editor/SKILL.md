@@ -1079,7 +1079,8 @@ Intentions are *behaviour*, so they cannot live in a language package (which mus
 the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`:
 `Projectional.Expressions.Intentions` (negate), `Projectional.Samples.Intentions`
 (accept this rule) and `Projectional.Structures.Intentions` (make abstract / make concrete).
-`docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered.
+`docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered, the last
+of them being the range form of `INT006` (`Wrap selection in "X"`).
 
 - **`Projectional.Intentions` is the framework's own catalogue**, not a language's: `StandardIntentions`
   derives `INT001` (rename), `INT002` (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to
@@ -1138,6 +1139,16 @@ the editor). The shipped shape is a package beside the language, exactly like `P
   `EditResult.Unchanged` because a navigation is not an edit. It is what makes rename plain rather than a
   refactoring: nothing in another model can break, because no model was touched. Its address is always a
   *cell*, since a rename names the value a user can see.
+
+- **A range entry has its own id and its own search.** `Wrap selection in "X"` surrounds every node the
+  selection covers completely (`IntentionContext.SelectedNodes`, which is `SelectionRanges.NodesIn` - the
+  same computation Delete uses), through the **run form** of `Model.Wrap` and `WrapInAction`, so it is one
+  undo step. Three rules: the id prefix is `standard.wrap-selection.` and not `WrapPrefix`, because a
+  selection keeps the caret inside one of the selected nodes and both rows are therefore listed; fewer than
+  two nodes is the per-node row's business; and the nodes must be **consecutive siblings**, which
+  `WrapperConcepts.Of(nodes, ...)` asks exactly as the model would refuse it, so an offer is never an edit
+  that comes back `Rejected`. A single node may go into a many-valued slot (a wrapper is born empty), which
+  is why a language whose only composition is a list gains both rows.
 - **`NodeMove` has four members, and two of them are extremes.** `ToFront`/`ToBack` are named rather than
   "up, several times", because a caller that asked for the front and got one step would run the action
   repeatedly - several undo steps for one intention. `MoveNodeAction` answers `Unchanged` when the target index
@@ -1496,9 +1507,11 @@ that are easy to break are these.
   no frequency ranking and no learned order - declaration order is the language author's
   ranking, and the first entry is what Enter would have created anyway.
 - **`CompletionSlot.At` is the only place that decides "can this caret be completed"**, and it
-  accepts exactly three cell shapes: an empty `ChildCell`, an empty `CollectionCell`, and a
-  `PropertyCell` whose type names its values. A filled slot or a constant gets nothing.
-  Substitution (replacing a filled child) is deliberately out of this slice.
+  accepts exactly four cell shapes: an empty `ChildCell`, an empty `CollectionCell`, a
+  `PropertyCell` whose type names its values, and a caret **inside a leaf that fills a
+  one-valued slot** - the last one is substitution (`Replace`), which offers what could take the
+  child's place instead. A filled slot elsewhere or a constant gets nothing, and a child with a
+  subtree of its own is never offered for replacement.
 - **A type that names its values is the second kind of proposal.** `PropertyType.Symbols` is
   empty by default and an enumeration answers with its symbols in declaration order, so
   `CompletionSource.Values` needs no registry walk. `CompletionKind.Value` tells the host to

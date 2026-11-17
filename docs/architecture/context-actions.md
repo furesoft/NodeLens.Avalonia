@@ -297,7 +297,7 @@ missing entry is easy to spot, and every entry names the data that produces it.
 | `INT003` | `Delete` | removes the node, exactly as the key does | **destructive** | - (`DeleteNodeAction`, in `Projectional.Intentions` - **shipped**) |
 | `INT004` | `Move up` / `Move down` | one place within its slot | plain | - (`MoveNodeAction`, **shipped**) |
 | `INT005` | `Move to front` / `Move to back` | to the first or last place of its slot | plain | `NodeMove.ToFront`/`ToBack` - **shipped** as named extremes rather than repeated steps |
-| `INT006` | `Wrap in "X"` | one entry per concept that has a single-child slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction` and the concept search of `Projectional.Intentions` - **shipped** |
+| `INT006` | `Wrap in "X"` | one entry per concept that has a slot accepting this node's concept and can itself stand in this node's place | plain | `WrapInAction` and the concept search of `Projectional.Intentions` - **shipped**, and the same search answers the range form below |
 | `INT007` | `Replace with "Y"` | swaps the node for another concept the slot accepts | **destructive** (the old subtree is gone) | one entry per concept that conforms to the slot and may stand there (`ReplacementConcepts`, `Model.Replace`) - **shipped** |
 | `INT008` | `Select node` / `Select parent` | selects that node and everything inside it | plain | `SelectNodeAction` over `SelectionRanges.OfNode` - **shipped**, and a root offers the parent row not at all |
 
@@ -305,6 +305,26 @@ missing entry is easy to spot, and every entry names the data that produces it.
 but in this framework it needs no `if`: any concept with a hole of the right shape is a wrapper, so the
 editor offers the language's own compositions instead of a fixed list. Two rules keep it honest, and
 they are open questions 76 and 77.
+
+**The same search answers a selection, and that is the range form of `INT006`.** `Wrap selection in "X"`
+surrounds every node the range covers completely (`IntentionContext.SelectedNodes`, which is
+`SelectionRanges.NodesIn` - the computation Delete already uses), and accepting it is one undo step, because
+the model detaches the run, creates the wrapper and re-attaches the nodes in one transaction
+(`Model.Wrap(IReadOnlyList<Node>, ...)`, the run form of the primitive the single-node entry uses).
+
+Three decisions live in that entry:
+
+- **It has an id prefix of its own** (`standard.wrap-selection.`). A selection does not remove the caret - the
+  node the caret is in is one of the selected ones - so both the per-node row and the range row are listed, and
+  they are different edits: one wraps a node, the other wraps what the user selected. A shared id would make
+  `IntentionList` drop whichever came second.
+- **Fewer than two nodes has no range entry.** One node is what the per-node entry means, and two rows for one
+  operation is the same duplication `INT040` was retired for.
+- **The nodes must be consecutive siblings, or there is no entry at all.** The search asks exactly what the
+  model would refuse, so an offer never describes an edit that would come back `Rejected`: a range that covers
+  two children of *different* parents, or two siblings with an unselected sibling between them, is not
+  something one wrapper can surround. A single node may go into a many-valued slot (a wrapper is born empty),
+  which is why a language whose only composition is a list gains both rows rather than only the range one.
 
 `INT001` deserves the note: it is a *navigation*, not a refactoring. It moves the caret into the name
 and lets the user type, so it cannot break a reference in another model - which is exactly the problem
@@ -403,7 +423,7 @@ still open:
 | Primitive | Blocks | State |
 | --- | --- | --- |
 | `Model.NewChildAt(parent, slot, index, concept)` | `INT002`, `INT005`, `INT030` | **landed with `feat/insert-at-index`**: the model could only append, so "insert here" was impossible for anything; `Enter` was its first customer, and the entries above are its next |
-| ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot |
+| ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot. **Its run form landed with `feat/selection-intentions`**: `Model.Wrap(IReadOnlyList<Node>, ...)` takes consecutive siblings into one wrapper, which is why the range entry needed no second primitive |
 | a subtree copy (`Model.InsertCopy(source, parent, slot, index)`) | `INT002` | **landed with `feat/duplicate-intention`**: `CopyTo` keeps ids because a preview addresses them, so a copy that stays in one model needs its own walk with new identities - the two are siblings rather than one routine with a flag |
 | `Model.Replace(node, conceptKey)` | `INT007` | **landed with `feat/replace-intention`**: a deletion and a creation at one place, in one transaction. It cannot be assembled from `DeleteChild` and `AddChild`, because a single-valued slot cannot take the new child before the old one has left, and the two halves would be two undo steps - so undo would restore a document where the node is gone and a stranger stands in its place |
 | `Model.ReorderChildren(parent, slot, order)` and `ChildOrder` | `INT031` | **landed with `feat/sort-intention`**: a permutation is not a program of relative moves - each move resolves against the tree the previous one left - so the model takes the order, and the rule that decides it (`by name`, ordinal, stable, only when every element has a name) stays in `Projectional.Editing`, where the action and the availability test can share it |
@@ -449,6 +469,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | G5 ✓ | `feat/sort-intention` | `INT031` (sort by name) and the primitive it needed: `Model.ReorderChildren` takes an order, `ChildOrder` decides it, and `SortChildrenAction` is the join. One undo step, the caret follows the node it was in, and the entry is absent wherever the sort would move nothing |
 | G6 ✓ | `feat/select-node-intention` | `INT008` (select node / select parent) and the one action it needed: `SelectNodeAction` names a node and selects its whole range through the same `SelectionRanges.OfNode` the `Ctrl+A` ladder uses, so the two cannot disagree. Absent only where the node has no parent, and idempotent rather than hidden when the range is already the selection |
 | G7 ✓ | `feat/app-standard-intentions` | the catalogue reaches the app: `MainWindow.RegisterIntentions` registers `StandardIntentions.Provider` as the host's (generic operations above a language's), and `Expressions.Intentions` retires its `INT040` entry because the catalogue derives `Wrap in "Parenthesized"` from the same declarations. `INT041` (negate) stays beside the language: a preset operator is not derivable from a slot declaration, which is exactly what M5's declared intentions would fix |
+| G8 ✓ | `feat/selection-intentions` | the range form of `INT006`: `Wrap selection in "X"` surrounds every node the selection covers completely, as one undo step, through the run form of `Model.Wrap`. The search asks what the edit would refuse - not siblings, not consecutive, no many-valued slot - so a range only ever offers an edit that can run, and one node keeps the per-node row |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.

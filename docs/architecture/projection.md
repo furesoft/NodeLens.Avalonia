@@ -290,9 +290,9 @@ action produces an edit action, so undo and change tracking are automatic.
 language's providers plus the quick fixes, and the standard operations - rename, duplicate,
 delete, move, wrap in X, replace with Y, sort, insert, select - ship in
 `Projectional.Intentions`. [context-actions.md](context-actions.md) is the plan of record and
-[implemented.md](../implemented.md) the status. What is **not** delivered is a menu for a
-*range*: an entry acts on the node the caret is in, so selecting several nodes and wrapping
-them together is still open.
+[implemented.md](../implemented.md) the status. A **range** is addressed too: `Wrap selection in
+"X"` acts on every node the selection covers completely, as one undo step, so selecting several
+siblings and surrounding them together is one entry rather than a keyboard-only gesture.
 
 ## Tables
 
