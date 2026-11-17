@@ -13,14 +13,17 @@ What exists today: `Intention`, `IntentionContext`, `IntentionAvailability`, `II
 merged list, which holds the host's commands, the language's intentions and the caret line's quick fixes as
 `Intention` entries — and a bulb that lights when any of them is offered. An entry hovered long enough shows
 its description and then the result of its edit, because the popup drives the preview ladder
-([intention-preview.md](intention-preview.md), slices V1-V6). Two packages ship real entries:
-`Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
-(accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
-`Projectional.Intentions` ships the structural entries for any language - `INT001` (rename), `INT002`
+([intention-preview.md](intention-preview.md), slices V1-V6). Three packages ship real entries:
+`Projectional.Expressions.Intentions` (negate), `Projectional.Samples.Intentions`
+(accept this rule) and `Projectional.Structures.Intentions` (make abstract / make concrete), and their previews are
+proven by tests. Beside them ships the framework's own catalogue:
+`Projectional.Intentions` offers the structural entries for any language - `INT001` (rename), `INT002`
 (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to front/back), `INT030` (insert
 before/after), `INT031` (sort by name), `INT008` (select node/parent), `INT006` (wrap in X), `INT007`
 (replace with X) and `INT020` (reset to
-the default). What is left of the caret-shape catalogue is the pair that needs no entry at all:
+the default) - and the workbench registers it for every document, so the app has both the generic operations and
+whatever the open document's language adds. What is left of the caret-shape catalogue is the pair that needs no
+entry at all:
 `INT010`/`INT011` (an empty slot) are what `Enter` and completion already do, so listing them is a menu
 decision rather than an action to build.
 
@@ -356,8 +359,8 @@ undo step, and it is the one gesture a user reaches for after pasting a value th
 
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
-| `INT040` | `Wrap in parentheses` | surrounds the expression with the grouping concept | plain | `WrapInAction`, the same one as `INT006` - **shipped** in `Projectional.Expressions.Intentions` |
-| `INT041` | `Negate` | puts a `Unary` over it | plain | `WrapInAction` with the operator preset, which is why `Model.Wrap` takes presets - **shipped** with it |
+| `INT040` | `Wrap in parentheses` | surrounds the expression with the grouping concept | plain | `WrapInAction`, the same one as `INT006` - **retired**: the catalogue's `Wrap in "Parenthesized"` is the same edit, and one operation must not appear twice |
+| `INT041` | `Negate` | puts a `Unary` over it | plain | `WrapInAction` with the operator preset, which is why `Model.Wrap` takes presets - **stays in `Projectional.Expressions.Intentions`**: the catalogue's `Wrap in "Unary"` is not the same edit, because a fresh `Unary` has no operator and no declaration says which of the two it should start with |
 | `INT042` | `Swap operands` | swaps left and right of a binary | plain | two `MoveNodeAction`s? no - a small swap action, because a move would renumber |
 
 `INT042` is the one place where "reuse the existing action" fails: swapping two children of one slot by
@@ -439,12 +442,13 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | E2 ✓ | `feat/abstract-intention` | `INT060`/`INT061` in `Projectional.Structures.Intentions`: abstractness is drawn as the word `abstract` in a concept's header by a conditional cell, so it has no cell to type into and needs an entry; `SetNodePropertyAction` is the action for a property with no cell, which is the shape a collapsed node has too |
 | E3 ✓ | `feat/intention-popup` | the gesture stops applying anything: `ApplyOffers` always opens the list, so a lone plain repair opens a one-row popup too. One keystroke, one meaning - and `EditSafety`/`Intention.Fix` become surface information rather than what the gesture gates on |
 | F ✓ | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder, the ghost and the wiring are specified |
-| G ✓ | `feat/standard-intentions` | `Projectional.Intentions` ships `INT001` (rename, on the new `SelectSlotAction`), `INT006` (wrap in X, one entry per concept its declarations allow) and `INT020` (reset to the default), with the absence rules that keep a no-op out of the list. The subtree copy stayed with `INT002`, which is where a caller for it exists. **Not yet registered by the workbench**: doing that while `Expressions.Intentions` still ships its own wrap would show two rows for one operation, so the app switches when `INT041` lands and both language entries can be retired in one step |
+| G ✓ | `feat/standard-intentions` | `Projectional.Intentions` ships `INT001` (rename, on the new `SelectSlotAction`), `INT006` (wrap in X, one entry per concept its declarations allow) and `INT020` (reset to the default), with the absence rules that keep a no-op out of the list. The subtree copy stayed with `INT002`, which is where a caller for it exists. The workbench registers the catalogue since slice G7 |
 | G2 ✓ | `feat/duplicate-intention` | `INT002` (duplicate) and the subtree copy it needed: `Model.InsertCopy` puts a new-identity copy of a subtree into a place in its own model, one undo step, and the entry is offered only where a second sibling can exist |
 | G3 ✓ | `feat/structure-intentions` | the structural entries, all configurations of actions that exist or of two small ones: `INT003` (delete, the one destructive entry), `INT004` (move up/down), `INT005` (move to front/back, on `NodeMove.ToFront`/`ToBack`), `INT030` (insert before/after, on `InsertSiblingAction`) - each absent where it would change nothing |
 | G4 ✓ | `feat/replace-intention` | `INT007` (replace with X) and the primitive it needed: `Model.Replace` deletes and creates at one place in one transaction, so the old subtree comes back on undo with its own identities. Offered per concept the slot accepts, found by search (`ReplacementConcepts`) rather than listed, and absent on a root and where only the node's own concept could stand |
 | G5 ✓ | `feat/sort-intention` | `INT031` (sort by name) and the primitive it needed: `Model.ReorderChildren` takes an order, `ChildOrder` decides it, and `SortChildrenAction` is the join. One undo step, the caret follows the node it was in, and the entry is absent wherever the sort would move nothing |
 | G6 ✓ | `feat/select-node-intention` | `INT008` (select node / select parent) and the one action it needed: `SelectNodeAction` names a node and selects its whole range through the same `SelectionRanges.OfNode` the `Ctrl+A` ladder uses, so the two cannot disagree. Absent only where the node has no parent, and idempotent rather than hidden when the range is already the selection |
+| G7 ✓ | `feat/app-standard-intentions` | the catalogue reaches the app: `MainWindow.RegisterIntentions` registers `StandardIntentions.Provider` as the host's (generic operations above a language's), and `Expressions.Intentions` retires its `INT040` entry because the catalogue derives `Wrap in "Parenthesized"` from the same declarations. `INT041` (negate) stays beside the language: a preset operator is not derivable from a slot declaration, which is exactly what M5's declared intentions would fix |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.
