@@ -25,7 +25,9 @@ enumerated property offering its values on arrival), and text
 clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
 size, model-defined markers with hover tooltips, concept descriptions shown on hover and in the
 completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin), the standard
-check catalogue as a package (`Projectional.Checks`), the intention model and its per-caret list, and logical
+check catalogue as a package (`Projectional.Checks`), the intention model and its per-caret list, the hover
+preview of an offer (its description, then the result of its edit shown in place as a ghost of a discarded
+copy), and logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar) is being delivered.
@@ -232,6 +234,19 @@ the sandbox and the answer the ghost is drawn from.
   entry cancels at once but leaving the *list* survives `Grace` with the clock **paused**; and
   `Invalidate` remembers the entry so the ladder does not restart on the next tick - only leaving and
   returning asks again. The stage follows elapsed hover time, so a late tick reaches the rung it passed.
+- **`OfferPreview` (`Projectional.Editing/Preview/`) is the only join of the three**, because a preview is a
+  property of the *list*: the bulb, the popup and a submenu all show one list and must not each write their own.
+  It opens the copy **lazily on the preview rung** (a pointer crossing a row must not copy a document), keeps a
+  frame until its viewport/offsets/styler change (a repaint per caret blink must not re-project), and on every
+  failure - no action, an edit that throws on the copy, over the copy budget - silences the ladder through
+  `PreviewState.Invalidate` instead of retrying each tick.
+- **The control owns the clock and nothing else about the ladder.** A 30 ms `DispatcherTimer` runs while an entry
+  is hovered and stops when none is; `ShowPreview()` is the one place `Ghost` is set or cleared, and every
+  dismissal path (an edit, a caret move, a closed list, a republished `Markers`, a detached control, the pointer
+  leaving) reaches it. Hovering a row also moves the list highlight, because rung zero *is* the list's hover
+  state; a pointer between rows gets `LeaveList` (the grace), never `Leave`. Only the ghost the control set is
+  taken back, so a host's own `Ghost` survives the ladder ending. The description rung is painted under the list
+  box rather than under a row - a row's screen position depends on the window the list scrolled to.
 
 ## How undo, redo and coalescing work
 
@@ -1389,7 +1404,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1460 tests**; anything below that means tests were deleted.
+it. **Baseline is 1471 tests**; anything below that means tests were deleted.
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
 layer composes:

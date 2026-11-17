@@ -7,9 +7,9 @@ rule turned into a table row - it is the only honest answer, because the questio
 like" has no good sentence.
 
 Status: **in progress.** The intention list it needs exists ([context-actions.md](context-actions.md),
-slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder) and V4 (the ghost, painted by the control)
-are delivered; what is left is V5 (the hover tracking and the timer that set the ghost) and V6 (previews for the sample
-intentions). The decision it rests on is
+slices A-E) and slices V1 (copy and diff), V2 (the sandbox), V3 (the ladder), V4 (the ghost, painted by the
+control) and V5 (the wiring: hover tracking, the timer and the dismissals) are delivered; what is left is V6
+(previews for the sample intentions). The decision it rests on is
 [ADR 0017](../adr/0017-preview-is-a-discarded-edit.md).
 
 This document reverses a decision that was recorded twice: [context-actions.md](context-actions.md) and
@@ -185,6 +185,45 @@ The rules the machine encodes, each of which is a case that would otherwise be a
 - **Late ticks are not lost.** The stage follows how long the entry has been hovered, not how often the host
   ticked, so a busy second does not leave a tooltip showing for another second.
 
+## Driving the ladder
+
+`OfferPreview` (`Projectional.Editing/Preview/`) is the one place the three ingredients are joined, because a
+preview is a property of the *list* rather than of one affordance: the bulb, the popup and a context-menu submenu
+all show the same list, so all three get their answers from one implementation instead of three. It owns no
+timer and no pixels - a host says `Hover`, `Tick` and `Ghost`, passing its own viewport and scroll offsets, which
+is what anchors the preview to the line the user is reading.
+
+The rules that make the join honest, each of which is a bug if it is "simplified" away:
+
+- **The copy is opened lazily, on the rung that asks for it.** A pointer crossing a row is not a request to copy a
+  document, so `Hover` only starts the clock and `Tick` - on reaching `Preview` - is what opens the sandbox.
+- **A failure silences the ladder instead of retrying it.** No action, an edit that throws on the copy, or a
+  document over the copy budget all answer "no preview", and the entry stays quiet until the pointer leaves and
+  comes back. Retrying per tick would copy a twenty-thousand-node document thirty times a second.
+- **A frame is kept until its question changes.** The viewport, the two offsets and the styler identify it, so a
+  repaint per caret blink never re-projects the copy.
+- **The host owns the clock.** The control runs a 30 ms `DispatcherTimer` while an entry is hovered and stops it
+  when none is - a document nobody is pointing at costs no timer. Nothing below the control asks what time it is,
+  which is why the timing needs no window to test.
+
+The control's half is one statement plus the pointer tracking that feeds it:
+
+- **Hovering a row moves the highlight**, because the first rung of the ladder is the list's own hover state: a
+  row that is previewed but not highlighted would describe one entry while looking as if it described another.
+- **A pointer between rows gets the grace period, never an immediate cancel** (`LeaveList`), which is what lets it
+  travel to and from the bulb without the preview flickering.
+- **An arrow key is the keyboard's version of hovering**: `SelectOfferAction` moves the highlight and the entry it
+  landed on starts the ladder, so a list walked with `Up`/`Down` does not flash a preview per row.
+- **`ShowPreview()` is the only place the ghost is set or cleared**, and every path that can end a hover reaches it
+  - an edit or a caret move (`Show`), the pointer leaving the surface, a republished marker set (a document that
+  changed under a hover), a closed list, and a detached control. One statement is what keeps "a preview never
+  outlives its list" true as paths are added.
+- **Only the ghost the control set is taken back.** A host that assigned its own `Ghost` is answering a different
+  question, and the ladder ending must not overwrite it.
+- **The middle rung is painted too**: the entry's sentence appears under the list box, not under the row, because
+  a row's screen position depends on the window the list scrolled to. A label says what an entry is called; the
+  sentence is what it would do.
+
 ## What a preview may not do
 
 - **Not mutate the live model**, its journal or its version. A preview is not undoable because it never
@@ -221,7 +260,7 @@ property of its implementation.
 | V2 ✓ | `feat/preview-sandbox` | M3 | `PreviewSandbox.Open(session)`, applying one action to the copy, reading back tree and layout; tests that the live model, journal and version are untouched and that a failed preview leaves nothing |
 | V3 ✓ | `feat/preview-delay` | M3 | `PreviewDelay`, `PreviewStage`, `PreviewState`, the ladder and its cancellation, headless with a fake clock |
 | V4 ✓ | `feat/preview-ghost` | M3 | `CellChange` marks from the diff, the ghost frame, the badge, the anchor and the painting - marks and badge in `feat/preview-marks`, frame and anchor in `feat/preview-ghost`, `Ghost`/`GhostPresenter`/`PreviewPalette` in `feat/preview-paint`; verified with a probe that renders the ghost |
-| V5 | `feat/preview-wire` | M3 | the popup and the menu ask the state machine, set `Ghost`, and dismiss on every documented event - the control side of this exists since V4, so what is left is the hover tracking and the timer |
+| V5 ✓ | `feat/preview-wire` | M3 | `OfferPreview` joins the ladder to the sandbox and the ghost in `Projectional.Editing`, and the control owns the timer, tracks the row under the pointer, moves the highlight with it, paints the description under the list and drops the ghost on every documented event |
 | V6 | `feat/preview-sample` | M3 | previews for the sample intentions: rename in `Projectional.Samples`, wrap-in-parentheses and negate in `Projectional.Expressions` |
 
 V1 and V2 hold the invariants and are testable without a window; V3 is headless by construction (it never asks what time it is); V4 and
@@ -241,7 +280,8 @@ policy for the ghost.
 | timing | the ladder with a fake clock: tooltip at 300, preview at 700, cancelled by leave, by close, by a model change; the grace period - `PreviewStateTests`, plus `PreviewDelayTests` for the numbers themselves |
 | marks | `PreviewMarksTests`: an added node marks the cells it owns, a rewritten property marks its own cell with the old value, a removal marks the slot it left, the budget truncates and counts, an undrawn difference is counted and not marked - `PreviewBadgeTests` for the grammar |
 | frame | `GhostFrameTests`: the ghost draws the copy and not the page, a touched cell is not dimmed while every other one is, a wrapper marks its own text, the badge says what happened, and the ghost takes the page's (clamped) offset instead of choosing its own view |
-| wiring | `Avalonia.Headless.XUnit` once it exists, with a probe standing in until then: the ghost replaces the page, the badge counts, `Esc` restores |
+| join | `OfferPreviewTests`: hovering copies nothing, the copy is taken on the preview rung, the ghost says what the copy says while the live model's value, version, history and drawing stay as they were, leaving drops the ghost, the grace period keeps it and then drops it, an entry with no action and an edit that throws are both "no preview", a changed document silences the entry until the pointer returns, and a frame is reused until its viewport or offset changes |
+| wiring | a real-window probe, since the control cannot be constructed headlessly: hovering a row puts the ghost on screen with the copy's change, another row previews another edit, the description appears under the list, `Esc`, a pointer leaving and an edit each restore the page - verified for `feat/preview-wire`, which is also the slice that made `OfferPreviewTests` prove the join itself |
 
 ## Open questions
 

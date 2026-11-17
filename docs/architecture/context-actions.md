@@ -1,6 +1,7 @@
 # Context actions (intentions)
 
-*Partly delivered: the model, the list, applying one, the popup, the menu and real intentions (slices A-E).*
+*Partly delivered: the model, the list, applying one, the popup, the menu, the preview and real intentions
+(slices A-E, F).*
 This document is the design for the light bulb: the affordance that offers, at the caret, the edits that make
 sense *there* — "wrap in parentheses", "negate", "add the missing condition", "extract this into a rule". It
 is written before the code so that the three layers it touches — language, editing, control — agree on who
@@ -10,9 +11,12 @@ What exists today: `Intention`, `IntentionContext`, `IntentionAvailability`, `II
 `IntentionList.For(session)` in `Projectional.Editing`, the two registration groups on the session,
 `EditorSession.Apply(Intention)`, the `Alt+Enter` popup and the "Intentions" submenu — both reading the one
 merged list, which holds the host's commands, the language's intentions and the caret line's quick fixes as
-`Intention` entries — and a bulb that lights when any of them is offered. Two packages ship real entries:
+`Intention` entries — and a bulb that lights when any of them is offered. An entry hovered long enough shows
+its description and then the result of its edit, because the popup drives the preview ladder
+([intention-preview.md](intention-preview.md), slices V1-V5). Two packages ship real entries:
 `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and `Projectional.Samples.Intentions`
-(accept this rule). What is left is the preview (F) and the rest of the standard catalogue (G).
+(accept this rule). What is left is the previews of those sample entries (F's last slice, V6) and the rest of
+the standard catalogue (G).
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -162,6 +166,7 @@ never shows.
 | click the bulb | same list, with the pointer |
 | `Esc` | close without editing |
 | `Up`/`Down`, `Enter` | move and run — the list is navigable without a mouse |
+| hover an entry for 300 ms | show its description, under the list |
 | hover an entry for 700 ms | show what it would do, in place ([intention-preview.md](intention-preview.md)) |
 
 **The gesture always shows the list, however few offers there are.** It never applies an offer by itself - not
@@ -407,7 +412,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | E ✓ | `feat/intentions-sample` | two real intentions in `Projectional.Expressions.Intentions` (wrap in parentheses, negate) and one in `Projectional.Samples.Intentions` (accept this rule), plus `Model.Wrap` presets so a wrapper can be born as the negation it means; the workbench registers the providers in one method |
 | E2 ✓ | `feat/abstract-intention` | `INT060`/`INT061` in `Projectional.Structures.Intentions`: abstractness is drawn as the word `abstract` in a concept's header by a conditional cell, so it has no cell to type into and needs an entry; `SetNodePropertyAction` is the action for a property with no cell, which is the shape a collapsed node has too |
 | E3 ✓ | `feat/intention-popup` | the gesture stops applying anything: `ApplyOffers` always opens the list, so a lone plain repair opens a one-row popup too. One keystroke, one meaning - and `EditSafety`/`Intention.Fix` become surface information rather than what the gesture gates on |
-| F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder and the ghost are specified |
+| F | `feat/intentions-preview` | the longer-hover preview: slices V1-V6 in [intention-preview.md](intention-preview.md), which is where the copy, the diff, the ladder, the ghost and the wiring are specified. V1-V5 ✓; V6 is the previews of the sample entries |
 | G | `feat/standard-intentions` | the primitives the catalogue still needs (subtree copy; insert-at-index landed with `feat/insert-at-index`, which gave `Enter` its place), then the first four entries (`INT001`, `INT006`, `INT020`, `INT040`). `EditSafety` and `WrapInAction` are already there - they landed with the quick-fix catalogue |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
