@@ -376,6 +376,105 @@ public sealed class Model
         return copy;
     }
 
+    /// <summary>Inserts a copy of <paramref name="source"/> at a place in this model, with new identities.</summary>
+    /// <param name="source">The node to copy; it stays where it is.</param>
+    /// <param name="parent">The node that receives the copy.</param>
+    /// <param name="slot">The child slot of <paramref name="parent"/> the copy goes into.</param>
+    /// <param name="index">Where in that slot it goes; past the end appends, as <see cref="NewChildAt"/> does.</param>
+    /// <returns>The copied node, which is the root of a copied subtree.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/> or <paramref name="parent"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
+    /// <exception cref="ModelInvariantException">
+    /// Either node belongs to another model, the slot does not hold children of the copy's concept, the copy may not
+    /// stand there, or the slot is single-valued and already full.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This is <see cref="CopyTo"/>'s walk with the one difference that makes a second copy possible: the nodes are
+    /// <em>new</em>. <see cref="CopyTo"/> has to preserve identities, because a preview addresses nodes by id and an
+    /// action has to mean the same thing in the copy; a copy that stays in the same model cannot, because ids are
+    /// unique per project. The two therefore cannot share one routine without a flag that says "same ids or new
+    /// ones", and the flag would be the only thing either caller cares about - so they are siblings instead.
+    /// </para>
+    /// <para>
+    /// The copy is exact in everything else: concepts, property values, reference targets and resolve info, child
+    /// order, and the whole subtree. A reference is copied as it stands, so a subtree that referred to something
+    /// outside itself still does; a reference from one copied node to another also still points at the
+    /// <em>original</em>, because "the copy refers to the same thing" is the only reading that does not need to know
+    /// what the language means by its references.
+    /// </para>
+    /// <para>
+    /// Everything runs in one transaction, and each node is hung into its place before it is filled - the order
+    /// <see cref="CopyTo"/> uses, so a failure can never leave a registered node that nothing points at. One undo
+    /// step takes the whole copy back out.
+    /// </para>
+    /// </remarks>
+    public Node InsertCopy(Node source, Node parent, string slot, int index)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        if (!ReferenceEquals(source.Model, this) || !ReferenceEquals(parent.Model, this))
+        {
+            throw new ModelInvariantException("A copy is taken inside one model: both nodes must belong to it.");
+        }
+
+        using var transaction = BeginTransaction();
+
+        var copy = CopyFresh(source, parent, slot, index);
+
+        MarkMutated();
+
+        transaction.Complete();
+
+        return copy;
+    }
+
+    /// <summary>Copies one node with a new identity into its place, then everything below it.</summary>
+    /// <remarks>
+    /// Attached before it is filled, for the reason <see cref="CopySubtree"/> gives: a node that is reachable from
+    /// the roots at every step is one a rollback can always find.
+    /// </remarks>
+    private Node CopyFresh(Node source, Node parent, string slot, int index)
+    {
+        var copy = CreateDetached(source.Concept);
+
+        parent.InsertChild(slot, index, copy);
+
+        foreach (var declaration in source.Concept.Slots)
+        {
+            switch (declaration)
+            {
+                case PropertySlot property when source.GetOrNull(property.Name) is { } value:
+                    copy.Set(property.Name, value);
+
+                    break;
+
+                case ReferenceSlot reference when source.GetReference(reference.Name) is { } target:
+                    copy.SetReference(reference.Name, target.Target, target.ResolveInfo);
+
+                    break;
+
+                case ChildSlot child:
+                    var position = 0;
+
+                    foreach (var sourceChild in source.GetChildren(child.Name))
+                    {
+                        CopyFresh(sourceChild, copy, child.Name, position++);
+                    }
+
+                    break;
+            }
+        }
+
+        return copy;
+    }
+
     public override string ToString() => Name ?? Id.ToString();
 
     /// <summary>

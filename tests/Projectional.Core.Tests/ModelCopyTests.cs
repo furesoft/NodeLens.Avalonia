@@ -5,12 +5,14 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// Copying a whole model into another project, which is what a preview sandbox is built from.
+/// Copying: a whole model into another project (which is what a preview sandbox is built from), and one subtree to
+/// a place inside its own model (which is what duplicating a node is).
 /// </summary>
 /// <remarks>
-/// The contract under test is identity: a copy carries the same node ids, so an edit that addresses ids and
-/// slots means the same thing in the copy as in the original. Everything else - values, references, order -
-/// follows from that being useful.
+/// The contract under test is identity, in both directions. A model copy carries the same node ids, so an edit that
+/// addresses ids and slots means the same thing in the copy as in the original. A subtree copy inside one model
+/// must carry <em>new</em> ids, because ids are unique per project - and it must carry everything else: values,
+/// references and order, with one undo step for the whole thing.
 /// </remarks>
 public sealed class ModelCopyTests
 {
@@ -155,6 +157,105 @@ public sealed class ModelCopyTests
         Assert.Equal(RulesLanguage.RulesSlot, NodePlace.Of(rule).Slot);
         Assert.Equal(0, NodePlace.Of(rule).Index);
         Assert.False(NodePlace.Of(rule).IsRoot);
+    }
+
+    [Fact]
+    public void AnInsertedCopyStandsRightAfterTheOriginal()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+
+        var copy = body.Model.InsertCopy(steps[0], body, "steps", 1);
+
+        var after = body.GetChildren("steps");
+
+        Assert.Equal(3, after.Count);
+        Assert.Equal(steps[0].Id, after[0].Id);
+        Assert.Equal(copy.Id, after[1].Id);
+        Assert.Equal("a", after[1].GetOrNull("text"));
+        Assert.NotEqual(steps[0].Id, copy.Id);
+    }
+
+    [Fact]
+    public void AnInsertedCopyCarriesTheWholeSubtreeWithNewIdentities()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+        var detail = body.Model.NewChild(steps[1], "detail", TestLanguage.Step);
+
+        detail.Set("text", "inside");
+
+        var copy = body.Model.InsertCopy(steps[1], body, "steps", 0);
+        var copiedDetail = copy.GetChild("detail");
+
+        Assert.NotNull(copiedDetail);
+        Assert.Equal("inside", copiedDetail.GetOrNull("text"));
+        Assert.NotEqual(detail.Id, copiedDetail.Id);
+        Assert.NotEqual(steps[1].Id, copy.Id);
+
+        // Nothing below the copy is shared, so editing the copy leaves the original alone.
+        copiedDetail.Set("text", "changed");
+
+        Assert.Equal("inside", detail.GetOrNull("text"));
+    }
+
+    [Fact]
+    public void AnInsertedCopyIsOneUndoStep()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+        var model = body.Model;
+        using var history = new UndoHistory(model);
+
+        model.InsertCopy(steps[0], body, "steps", 1);
+
+        Assert.Equal(3, body.GetChildren("steps").Count);
+        Assert.Equal(1, history.UndoDepth);
+
+        Assert.True(history.Undo());
+        Assert.Equal(2, body.GetChildren("steps").Count);
+        Assert.Equal(["a", "b"], [.. body.GetChildren("steps").Select(each => each.GetOrNull("text"))]);
+
+        Assert.True(history.Redo());
+        Assert.Equal(3, body.GetChildren("steps").Count);
+    }
+
+    [Fact]
+    public void AnInsertedCopyKeepsTheReferencesOfTheOriginal()
+    {
+        var model = TestLanguage.NewModel();
+        var tag = model.NewNode(TestLanguage.Tag);
+
+        model.AddRoot(tag);
+
+        var first = model.NewNode(TestLanguage.Rule);
+        first.Set("name", "First");
+        first.SetReference("tag", tag);
+
+        var second = model.NewNode(TestLanguage.Rule);
+
+        model.AddRoot(first);
+        model.AddRoot(second);
+
+        var copy = model.InsertCopy(first, second, "extends", 0);
+
+        Assert.Same(tag, copy.GetReferenceTarget("tag"));
+        Assert.Equal("First", copy.GetOrNull("name"));
+    }
+
+    [Fact]
+    public void ASingleValuedSlotThatIsFullRefusesACopy()
+    {
+        var (outer, _) = RuleExtendingRule();
+
+        // `extends` holds one rule already, so a copy has nowhere to go.
+        Assert.Throws<ModelInvariantException>(
+            () => outer.Model.InsertCopy(outer, outer, "extends", 1));
+    }
+
+    /// <summary>A rule sitting in another rule's <c>extends</c> slot, which is the smallest nested rule.</summary>
+    private static (Node Outer, Node Inner) RuleExtendingRule()
+    {
+        var outer = TestEditor.BareRule();
+
+        return (outer, outer.Model.NewChild(outer, "extends", TestLanguage.Rule));
     }
 
     /// <summary>Every node id of one model, in document order, depth first.</summary>
