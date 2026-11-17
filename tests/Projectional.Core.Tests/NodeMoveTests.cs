@@ -136,6 +136,57 @@ public sealed class NodeMoveTests
         }
     }
 
+    [Fact]
+    public void MovingToTheFrontPutsTheNodeFirst()
+    {
+        var (session, ruleset, rules) = OpenThreeRules();
+
+        using (session)
+        {
+            session.Select(Selection.At(CellAddress.OfSlot(rules[2].Id, "name")));
+
+            var result = session.Apply(new MoveNodeAction(NodeMove.ToFront));
+
+            Assert.Equal(EditOutcome.Applied, result.Outcome);
+            Assert.Equal("c,a,b", Order(ruleset));
+
+            // A move keeps the node's identity, so the caret is still in the rule it was in.
+            Assert.Equal(CellAddress.OfSlot(rules[2].Id, "name"), session.Selection.Caret.Address);
+        }
+    }
+
+    [Fact]
+    public void MovingToTheBackPutsTheNodeLast()
+    {
+        var (session, ruleset, rules) = OpenThreeRules();
+
+        using (session)
+        {
+            session.Select(Selection.At(CellAddress.OfSlot(rules[0].Id, "name")));
+
+            session.Apply(new MoveNodeAction(NodeMove.ToBack));
+
+            Assert.Equal("b,c,a", Order(ruleset));
+        }
+    }
+
+    [Fact]
+    public void AMoveThatWouldChangeNothingChangesNothing()
+    {
+        var (session, ruleset, rules) = OpenThreeRules();
+
+        using (session)
+        {
+            session.Select(Selection.At(CellAddress.OfSlot(rules[0].Id, "name")));
+
+            Assert.Equal(EditOutcome.Unchanged, session.Apply(new MoveNodeAction(NodeMove.ToFront)).Outcome);
+            Assert.Equal(EditOutcome.Unchanged, session.Apply(new MoveNodeAction(NodeMove.Up)).Outcome);
+
+            Assert.Equal("a,b,c", Order(ruleset));
+            Assert.Equal(0, session.History.UndoDepth);
+        }
+    }
+
     private static string Order(Node ruleset) =>
         string.Join(",", ruleset.GetChildren("rules").Select(rule => rule.Get("name")));
 
