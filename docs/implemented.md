@@ -134,6 +134,10 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | The interpreter: explicit stack, post-order trace, step budget, cancellation, and a failure that names its node | `Interpreter`, `InterpretationResult`, `TraceEntry`, `InterpretationFailure` | `InterpreterTests` |
 | The value model: int, bool, string and date as content-compared records, read through a property's declared type | `Value`, `IntValue`, `BoolValue`, `StringValue`, `DateValue`, `EvaluationContext.PropertyValue` | `ExpressionsEvaluationTests` |
 | The shipped meanings: the expression language, and the pilot's decision list (first matching rule wins; no match is a failure) | `ExpressionsEvaluation`, `RulesEvaluation` | `ExpressionsEvaluationTests`, `RulesEvaluationTests` |
+| The variables a run is given, read from one line of `name=value` pairs (number, flag, ISO date, else text) | `Projectional.Workbench/Run/RunInputs` | `RunInputsTests` |
+| Running a document: its language's interpreter, the answer or the failure as a headline, and the trace as rows that jump to their node | `DocumentRun`, `RunReport`, `RunRow`, `MainWindow.RunActiveDocument` | `DocumentRunTests` |
+| A document runs only when its language defines an interpreter, derived from its root concept rather than from the command that opened it | `WorkbenchLanguage.InterpreterFor`, `DocumentTab.Evaluation` | `WorkbenchLanguageTests`, `DocumentTabTests` |
+| The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | verified in a real window (probe: 5 steps for `amount=1500`, a failure for `amount=500`) |
 
 Not done in M4: text generation and the cross-check tests that make generated code and the interpreter agree
 on the corpus.
@@ -159,7 +163,7 @@ Nothing is delivered. M6 (the shell as an embeddable, language-locked component)
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1837 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1860 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

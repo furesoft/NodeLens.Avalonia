@@ -1034,6 +1034,32 @@ A language says what its nodes *mean* through one function per concept, and the 
 - **Tests pass the test token.** Any call to `Interpreter.Run` in a test passes
   `cancellationToken: TestContext.Current.CancellationToken`, or xUnit1051 is an error.
 
+**Running a document is a language capability, not a command.** A registry *is* the interpreter, so "can this
+document be run" is answered by the language it is written in - never by which menu opened it, and never by
+falling back to another language's rules.
+
+- **`WorkbenchLanguage.InterpreterFor(model)` is the one answer**, derived from the document's root concept: the
+  shell ships an interpreter for the sample rules language and for nothing else, so a structure definition, a
+  notation, a type ruleset and a document of a language opened from a folder all answer `null`. Running a
+  structure model through the expression rules would report a missing rule for every concept, which is a wrong
+  answer to a question nobody should have been able to ask.
+- **`DocumentTab.Evaluation` carries it and defaults to `null`** - a caller that forgets the aspect gets a
+  document that cannot be run, never one that silently runs with the sample's semantics.
+- **The shell refuses rather than runs**: the Run entry is disabled, the panel's tooltip and the status bar say
+  why, and `RunActiveDocument` returns before asking the interpreter.
+- **The app's part is small on purpose**: `DocumentRun.Of` (document + registry + the typed variables) answers a
+  `RunReport`; `RunInputs` reads the variables from one line of `name=value` pairs (number, then flag, then
+  `yyyy-MM-dd`, else text; a malformed or repeated name refuses the whole line instead of half-applying it); a row
+  is `RunRow(Text, Place)`, so clicking a trace line moves the caret to the node that produced it.
+- **A run is a snapshot**: an edit drops the report, exactly as an edit replaces the findings, because a headline
+  about a document that no longer exists is worse than none - and a run cannot be repeated on the user's behalf,
+  since the variables came from them.
+- **Trace rows are one line and must be styled that way.** Fluent's `ListBoxItem` is 32 px tall; five steps then
+  overflow the panel and the answer's own last line is cut in half. The output list sets `MinHeight` 18 and
+  `Padding` 4,1 for that reason - a picture of the panel, not a passing test, is what showed it.
+- **F5 is the shell's, through the window's tunnelling handler**, and the gesture is written into the menu header
+  rather than declared as a `HotKey`: one mechanism, not two that could both fire.
+
 ## How checks and quick fixes work
 
 A finding is a `Diagnostic` (in `Projectional.Semantics`); the repair is a `DiagnosticFix`

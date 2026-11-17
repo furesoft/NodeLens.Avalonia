@@ -57,7 +57,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | --- | --- |
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
 | Text generation | template trees, traceability map |
-| Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, and the pilot's decision-list rules are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
+| Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, the pilot's decision-list rules, and the shell's Run command with its output panel are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
 | Cross-check tests | generated code and interpreter agree on the corpus |
 
 **Gate:** a user writes a decision table, sees errors immediately, runs it in the
