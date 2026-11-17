@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Expressions;
+using Projectional.Expressions.Intentions;
 using Projectional.Intentions;
 using Projectional.Projection;
 using Projectional.Samples;
@@ -493,6 +494,34 @@ public sealed class StandardIntentionsTests
 
         Assert.DoesNotContain(StandardIntentions.SelectParentId, Ids(session));
         Assert.Contains(StandardIntentions.SelectNodeId, Ids(session));
+    }
+
+    [Fact]
+    public void TheProviderSetTheAppRegistersListsEachOperationOnce()
+    {
+        // Exactly what the workbench does at open: the catalogue as the host's, then the language's package. The
+        // expression package used to ship its own "wrap in parentheses" beside the catalogue's derived wrap, and one
+        // operation appearing twice is what this pins.
+        var model = PayrollSample.NewSampleModel();
+        var rule = Assert.Single(model.Roots[0].GetChildren(RulesLanguage.RulesSlot));
+
+        using var session = new EditorSession(rule, RulesLanguage.CreateNotations(model.Concepts));
+
+        session.AddIntentions(StandardIntentions.Provider);
+        session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
+
+        Caret(session, rule.GetChild("condition")!);
+
+        var ids = Ids(session);
+
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
+
+        Assert.Single(
+            ids,
+            id => string.Equals(
+                id,
+                StandardIntentions.WrapPrefix + ExpressionsConceptKeys.Parenthesized,
+                StringComparison.Ordinal));
     }
 
     /// <summary>A ruleset holding one named rule per entry, opened with the standard catalogue registered.</summary>
