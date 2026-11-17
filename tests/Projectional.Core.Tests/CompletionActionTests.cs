@@ -274,21 +274,71 @@ public sealed class CompletionActionTests
     }
 
     [Fact]
-    public void AFilledSlotHasNothingToComplete()
+    public void AFilledSlotOffersWhatCouldReplaceItsChild()
     {
         var model = PayrollSample.NewEmptyModel();
         var ruleset = model.Roots[0];
         var rule = model.NewChild(ruleset, "rules", RulesConceptKeys.Rule);
-        model.NewChild(rule, "condition", ExpressionsConceptKeys.IntLiteral);
+        var literal = model.NewChild(rule, "condition", ExpressionsConceptKeys.IntLiteral);
+        literal.Set("value", 1);
 
         using var session = new EditorSession(ruleset, Notations);
 
-        session.Select(Selection.At(CellAddress.OfElement(rule.Id, "condition", 0)));
+        session.Select(Selection.At(CellAddress.OfSlot(literal.Id, "value")));
         session.Apply(KeyRouter.For(session, EditorKey.ControlSpace));
 
-        // The caret is inside the created expression, where the slot at hand is a property - so there is
-        // no list rather than a list of everything the language owns.
+        // A leaf is what a user means when they type 1 and decide they wanted a name: what is lost is the
+        // text on screen, and one undo step brings it back.
+        var list = Assert.IsType<CompletionList>(session.Completion);
+
+        Assert.Contains(list.Items, item => item.ConceptKey == ExpressionsConceptKeys.Name);
+    }
+
+    [Fact]
+    public void AFilledSlotWithASubtreeOffersNothing()
+    {
+        var model = PayrollSample.NewEmptyModel();
+        var ruleset = model.Roots[0];
+        var rule = model.NewChild(ruleset, "rules", RulesConceptKeys.Rule);
+
+        // A parenthesised expression owns a child of its own, so replacing it would discard a subtree the
+        // caret gives no sign of. That stays with the intention catalogue's labelled "replace with".
+        var parentheses = model.NewChild(rule, "condition", ExpressionsConceptKeys.Parenthesized);
+        model.NewChild(parentheses, "inner", ExpressionsConceptKeys.IntLiteral);
+
+        using var session = new EditorSession(ruleset, Notations);
+
+        session.Select(Selection.At(new CellAddress(parentheses.Id)));
+        session.Apply(KeyRouter.For(session, EditorKey.ControlSpace));
+
         Assert.Null(session.Completion);
+    }
+
+    [Fact]
+    public void AcceptingAReplacementPutsTheChosenConceptInTheChildsPlace()
+    {
+        var model = PayrollSample.NewEmptyModel();
+        var ruleset = model.Roots[0];
+        var rule = model.NewChild(ruleset, "rules", RulesConceptKeys.Rule);
+        var literal = model.NewChild(rule, "condition", ExpressionsConceptKeys.IntLiteral);
+        literal.Set("value", 1);
+
+        using var session = new EditorSession(ruleset, Notations);
+
+        session.Select(Selection.At(CellAddress.OfSlot(literal.Id, "value")));
+        session.Apply(KeyRouter.For(session, EditorKey.ControlSpace));
+
+        // What the list says is what has to stand there afterwards, whichever entry the registry put first.
+        var chosen = session.Completion?.Selected?.ConceptKey;
+        var result = session.Apply(KeyRouter.For(session, EditorKey.Enter));
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.NotNull(chosen);
+        Assert.Equal(chosen, rule.GetChild("condition")?.Concept.Key);
+
+        // One undo step: the literal the user had typed comes back, not an empty node.
+        Assert.True(session.Undo());
+        Assert.Equal(ExpressionsConceptKeys.IntLiteral, rule.GetChild("condition")?.Concept.Key);
     }
 
     [Fact]

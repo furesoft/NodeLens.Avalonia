@@ -54,7 +54,9 @@ The tables below are the **scope** of each milestone, not a status report: what 
 
 | Delivers | Details |
 | --- | --- |
-| Completion | scope-driven entries, the value list and insert-then-keep-typing are in [implemented.md](implemented.md); what is left is completing a slot that already has a child, which is the MPS `Substitute` action and needs the substitution rules a language declares ([completion.md](architecture/completion.md#slices), slice C) |
+| Scopes | the chain, the default provider, per-language overrides, ambiguity as a value and ambiguity *diagnostics* are in [implemented.md](implemented.md) |
+| Completion | scope-driven entries, the value list, insert-then-keep-typing and completing a filled slot are in [implemented.md](implemented.md) |
+| Substitutions for a range | the intention list, the transformation menu and concept triggers are in [implemented.md](implemented.md); what is left is an entry acting on a **selection of several nodes**, because an intention re-derives its target from the caret and `Ctrl+A` moves that caret out of the node it selected ([editing.md](architecture/editing.md#completion)) |
 
 **Gate:** referencing an element in another model works; renaming a target does not
 break models thanks to `resolveInfo`; wrapping a selection in an `if` is one undo step.

@@ -420,6 +420,24 @@ how the list is painted and why items carry an `IImage` instead of a glyph — i
 which key does what, when the list closes) are in this layer and testable headlessly; only the
 painting is above it, and a host that renders its own list needs no editing knowledge at all.
 
+**A slot that already holds a child is completed by replacement, and only when the child is a
+leaf.** The caret is somewhere inside the child, so the list offers what could stand in the
+child's place (`ReplacementConcepts`, the same search the intention catalogue's "replace with"
+entry uses) and accepting runs `ReplaceNodeAction` - one undo step, which is what puts the old
+node back with its own identity. A child with children of its own is **not** offered: what a leaf
+loses is the text on screen, while discarding a subtree with a single Enter is a decision the
+user should make from a labelled menu instead. `CompletionSlot.At` derives both the slot and the
+node a list here would replace, so the list and the accept cannot disagree about which child is
+meant. The replacement branch is checked *before* the property branch, because the caret is
+usually in one of the child's own property cells and "write a value here" would otherwise answer
+first.
+
+**An intention acts on the node the caret is in, not on the selection.** Wrapping "a selection"
+therefore wraps the node whose cell holds the caret: a `Ctrl+A` selection that moved the caret out
+of that node describes a range the intention list cannot see. That is the one place where the
+substitution story is still incomplete, and it is why the milestone's gate says *selection*
+explicitly.
+
 ## The context menu
 
 `EditorMenu.For(session)` returns a list of `EditorMenuEntry` — labels, gestures, enabled

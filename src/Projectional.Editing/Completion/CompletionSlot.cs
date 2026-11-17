@@ -25,7 +25,12 @@ namespace Projectional.Editing;
 /// <see cref="EditContext.PlaceAt"/> resolves the document-order hint, so the cell here is that cell.
 /// </para>
 /// </remarks>
-internal readonly record struct CompletionSlot(Node Owner, string Slot, PropertyCell? Property, ReferenceCell? Reference = null)
+internal readonly record struct CompletionSlot(
+    Node Owner,
+    string Slot,
+    PropertyCell? Property,
+    ReferenceCell? Reference = null,
+    Node? Replace = null)
 {
     /// <summary>What the caret of <paramref name="context"/> could be completed with, or <see langword="null"/>.</summary>
     internal static CompletionSlot? At(EditContext context)
@@ -40,7 +45,7 @@ internal readonly record struct CompletionSlot(Node Owner, string Slot, Property
         if (place.Cell is PropertyCell property)
         {
             return context.NodeOf(place.Address) is { } declared
-                ? new CompletionSlot(declared, property.Slot, property)
+                ? new CompletionSlot(declared, property.Slot, property, Replace: Replaceable(declared))
                 : null;
         }
 
@@ -60,9 +65,48 @@ internal readonly record struct CompletionSlot(Node Owner, string Slot, Property
             _ => null,
         };
 
-        return slot is not null && context.NodeOf(place.Address) is { } owner
-            ? new CompletionSlot(owner, slot, Property: null)
+        if (slot is not null && context.NodeOf(place.Address) is { } owner)
+        {
+            return new CompletionSlot(owner, slot, Property: null);
+        }
+
+        // A filled slot produces no caret place of its own, so the caret is somewhere inside the child
+        // that fills it. That child is what a list here would replace, which is the one destructive
+        // completion - see Replaceable for what it is allowed to be.
+        return context.NodeOf(place.Address) is { } inside && Replaceable(inside) is { } replace
+            ? new CompletionSlot(replace.Parent!, replace.ParentSlot!, Property: null, Replace: replace)
             : null;
+    }
+
+    /// <summary>
+    /// <paramref name="node"/>, when its place could be taken by another concept, or <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two conditions, and the second is the whole safety argument. The node must fill a
+    /// <see cref="Cardinality.One"/> slot - replacing anything else would have to choose between siblings -
+    /// and it must have <em>no children</em>. A leaf is what a user means when they type <c>1</c> and then
+    /// decide they wanted a name: what is lost is the text on screen, and one undo step brings it back. A
+    /// node with a subtree is not offered at all, because a single Enter key would then discard work the
+    /// user cannot see from the caret - that stays with the intention catalogue's destructive
+    /// <c>Replace with "Y"</c>, which a reader chose from a labelled menu.
+    /// </para>
+    /// <para>
+    /// The document root has no place to take, so it is never offered - which is also what keeps the node
+    /// the editor is built from out of reach.
+    /// </para>
+    /// </remarks>
+    private static Node? Replaceable(Node node)
+    {
+        if (node.Parent is not { } parent
+            || node.ParentSlot is not { } slot
+            || parent.Concept.FindChild(slot) is not { Cardinality: Cardinality.One }
+            || node.ChildrenInDocumentOrder().Any())
+        {
+            return null;
+        }
+
+        return node;
     }
 
     /// <summary>
@@ -77,4 +121,7 @@ internal readonly record struct CompletionSlot(Node Owner, string Slot, Property
 
     /// <summary>Whether this slot is a reference, which is answered from the scope rather than the registry.</summary>
     internal bool IsReference => Reference is not null;
+
+    /// <summary>Whether accepting a proposal here would replace a node rather than fill an empty place.</summary>
+    internal bool IsReplacement => Replace is not null;
 }

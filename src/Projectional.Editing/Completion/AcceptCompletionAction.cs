@@ -1,3 +1,4 @@
+using Projectional.Core;
 using Projectional.Projection;
 using Projectional.Semantics;
 
@@ -43,6 +44,23 @@ public sealed class AcceptCompletionAction : CompletionAction
             return EditResult.Unchanged(selection);
         }
 
+        // A replacement comes first: the caret sits in a cell of a child that fills a single-valued slot,
+        // which may well be one of that child's property cells - and the property branch below would
+        // answer "write a value here" instead of "put another concept in the child's place".
+        if (slot.Replace is { } replace)
+        {
+            context.Completion = null;
+
+            if (item.Kind != CompletionKind.Node || !Offers(context, replace, item))
+            {
+                return EditResult.Unchanged(selection);
+            }
+
+            // Through the same action the intention catalogue's "replace with" entry uses, so a stale
+            // list and a stale menu entry decline identically instead of throwing.
+            return new ReplaceNodeAction(replace.Id, item.ConceptKey).Apply(context);
+        }
+
         if (slot.Property is { } property)
         {
             context.Completion = null;
@@ -84,6 +102,20 @@ public sealed class AcceptCompletionAction : CompletionAction
 
         return EditResult.Applied(
             Selection.At(CellAddress.OfElement(slot.Owner.Id, slot.Slot, created.IndexInParent)));
+    }
+
+    /// <summary>Whether the place still offers <paramref name="item"/> as a replacement for <paramref name="node"/>.</summary>
+    private static bool Offers(EditContext context, Node node, CompletionItem item)
+    {
+        foreach (var concept in ReplacementConcepts.Of(node, context.Concepts))
+        {
+            if (string.Equals(concept.Key, item.ConceptKey, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Whether the slot at the caret still offers <paramref name="item"/>.</summary>
