@@ -204,11 +204,11 @@ ADR 0014 rule 2 says a capability that only the code path has does not exist. So
 must be expressible as a model, in its own declared language:
 
 - **`Projectional.ModelGen`**, loaded from `mapping.mps` in a language folder beside
-  `structure.mps`, `editor.mps`, `types.mps` and `generator.mps` ([language-projects.md](language-projects.md)).
+  the `structure`, `editor`, `types` and `generator` folders ([language-projects.md](language-projects.md)).
   A document holds any number of generators; a generator holds one mapping per concept; a mapping
   holds its rule as a list of parts. It is drawn in MPS' shape, like the other definition
   languages.
-- **A separate language and a separate file**, not a second root kind in `generator.mps`. A
+- **A separate language and a separate folder**, not a second root kind beside a generator document. A
   template and a transformation share nothing but the word "generator": one emits characters, the
   other creates nodes, slots and references. One document carrying both vocabularies would make
   every mapping document also a template document that declares nothing, and the parity test would

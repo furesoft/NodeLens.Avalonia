@@ -104,7 +104,7 @@ written with - `Projectional.Structures` and `Projectional.Editors`.
 
 - **Composition, not a mode.** A project holds one registry, so a document the app can open has to be covered by
   one list. That is why the definition languages are registered up front rather than switched to: a
-  `structure.mps` opens, edits and saves by the same code path as the payroll sample, with no second editor and no
+  a concept document opens, edits and saves by the same code path as the payroll sample, with no second editor and no
   flag.
 - **The transitive closure is the host's job.** `RulesLanguage.ConceptDeclarations` is one language's *own*
   concepts; the rules language borrows `Expressions.Expression`, so a host composing it has to bring

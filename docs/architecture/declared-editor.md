@@ -4,14 +4,14 @@ The second half of "a language is data": how a concept is drawn, written as node
 `Notation` objects a language author writes by hand.
 
 Status: **delivered** as slice P2 of [language-authoring.md](language-authoring.md), and the surface now reads the
-way MPS writes `editor.mps` - brackets for the cell model. What is still missing are MPS' *cell glyphs* (borders,
+way MPS writes an editor document - brackets for the cell model. What is still missing are MPS' *cell glyphs* (borders,
 collapsible folds, the checkbox of an option), which is P5.
 
 ## One language per aspect, on purpose
 
 A definition that says "a rule is a name, a condition and an outcome" *and* "the name sits after the keyword `rule`"
 cannot be reviewed: the first half is the domain, the second is presentation. So the notation is its own model
-(`editor.mps`), written in its own language, and a definition names it separately. That is MPS' split, and it is the
+(one document per notation), written in its own language, and a definition names it separately. That is MPS' split, and it is the
 shape the whole plan is built on.
 
 ## The language

@@ -71,14 +71,21 @@ the shape the problem has:
 ```text
 MyRules/
   language.mps           the language root: name, version, dependencies, extended languages
-  structure.mps          concepts, slots, inheritance, enumerations
-  editor.mps             notation, one editor per concept
-  constraints.mps        validation rules                    (M6)
-  typesystem.mps         type and subtype rules              (M6)
-  generator.mps          generation rules                     (M6)
-  intentions.mps         actions offered at the caret        (M6)
-  textGen.mps            text output rules                    (M6)
-  accessories.mps        completion, keymap, node factories   (M6)
+  structure/             concepts, slots, inheritance, enumerations - one definition per document
+    Pipeline.Pipeline.mps
+    Pipeline.Stage.mps
+    Pipeline.Outcome.mps
+  editor/                notation, one editor per concept - one document per notation
+    Pipeline.Pipeline.mps
+    Pipeline.Stage.mps
+  constraints/           validation rules                    (M6)
+  types/                 type and subtype rules, one rule per document
+    Pipeline.Stage.mps
+    Amount.mps
+  generator/             text output rules, one generator per document
+    Json.mps
+  intentions/            actions offered at the caret        (M6)
+  accessories/           completion, keymap, node factories   (M6)
 ```
 
 One model per aspect, because the aspects are edited at different times by different concerns
@@ -86,10 +93,17 @@ and a language definition that mixes "what a rule is" with "what colour its keyw
 be reviewed. The `language` root is the only model every language has; the rest appear when the
 language has something to say in them ([persistence.md](persistence.md) for the on-disk layout).
 
-The file names are MPS' (`structure.mps`, `editor.mps`, ...), and so is the split, because the
-alternative - one file with every aspect as a section - loses exactly the property that makes MPS
-languages readable: you can open the structure model and see the shape of the domain without any
-presentation.
+**Each aspect is a folder of documents, and each document holds one definition** - one concept,
+one enumeration, one notation, one type rule or named type, one generator. That is how MPS stores
+a model: one root per file, named after what it holds. The split is not cosmetic; it is what makes
+the aspects readable and reviewable, because a diff of one concept is a diff of one file. Inside a
+document the root *is* the definition: there is no `language`-style container concept whose only
+job would be to list its children.
+
+The folder names are the aspects' (`structure`, `editor`, `types`, `generator`), and so is the
+split, because the alternative - one file with every aspect as a section - loses exactly the
+property that makes MPS languages readable: you can open one concept and see the shape of the
+domain without any presentation.
 
 ## How a concept reads
 
@@ -218,7 +232,7 @@ What that buys, and why it is not just syntax:
   language plus a new annotation concept, not a new field in a sealed enum of aspects - which is
   exactly how aspects grow in MPS, and the reason a language author can add one without a
   framework change. One of the list is delivered: `Projectional.TextGen` is the generator language,
-  and it is a language project's `generator.mps` beside the structure, the notation and the types.
+  and it is a language project's `generator` folder beside the structure, the notation and the types.
 - **The block is keyed by concept, and the aspect is collected per concept.** Lowering walks the
   aspect model once, gathers the block for each concept key and produces the delegate the C#
   author would have written. Concepts with no block get no delegate, which is the same state as
@@ -340,7 +354,7 @@ shippable at the end of each, and so that the parity test exists before the seco
 | C2 ✓ | `test/language-parity` | M2 | the three parity tests over a declared twin of `TestLanguage` - delivered, see [language-parity.md](language-parity.md) |
 | P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 ✓ | `feat/declared-editor` | M2 | `Projectional.Editors` (stage B): notation as nodes, lowering into `Notation` - delivered, see [declared-editor.md](declared-editor.md). `Editor.Table`/`Editor.Column` were added with the M2 gate, so a declared language can draw a table |
-| C3 ✓ | `feat/declared-dsl-gate` | M2 | **the M2 gate**: `samples/declared-pipeline` is a DSL that exists only as data - `structure.mps`, `editor.mps` and a document - and `DeclaredSampleLanguageTests` loads the folder, draws the document as a table, edits it structurally, saves it and reloads it byte-identically, and hands the folder to the shell's own `WorkbenchLanguage`. There is no C# twin to delete, which is the strongest form of the gate's "deleting the language's C# code changes nothing" |
+| C3 ✓ | `feat/declared-dsl-gate` | M2 | **the M2 gate**: `samples/declared-pipeline` is a DSL that exists only as data - a `structure` folder, an `editor` folder and a document - and `DeclaredSampleLanguageTests` loads the folder, draws the document as a table, edits it structurally, saves it and reloads it byte-identically, and hands the folder to the shell's own `WorkbenchLanguage`. There is no C# twin to delete, which is the strongest form of the gate's "deleting the language's C# code changes nothing" |
 | P2b ✓ | `feat/mps-shaped-notation` | M2 | both definition languages drawn in MPS' shape - a header, a block of options, one section per kind of slot, `<< ... >>` for an empty section, `[/ ... /]` and `[>` for the cell model. **Ahead of P4/P5 in the one part that is only notation**; what P4/P5 still add are the cell *glyphs* and the file layout |
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)) |
 | P4 | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation: `<<property>>`-style slot markers where a section heading is not enough, conditional cells, and the file layout P3 needs |
