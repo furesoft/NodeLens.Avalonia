@@ -937,7 +937,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// <para>
     /// Defaults to the window's platform clipboard, cached by <see cref="AvaloniaClipboard"/> because a
     /// key press is synchronous and a platform clipboard is not. A host that wants a private clipboard, or
-    /// that already has a clipboard service, assigns its own <see cref="ITextClipboard"/>.
+    /// that already has a clipboard service, assigns its own <see cref="IEditorClipboard"/>.
     /// </para>
     /// <para>
     /// The cache is refreshed exactly where the platform may have changed since the last look: on gaining
@@ -950,7 +950,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// <see cref="OpenSession"/> affects the next session rather than the current one.
     /// </para>
     /// </remarks>
-    public ITextClipboard Clipboard { get; set; }
+    public IEditorClipboard Clipboard { get; set; }
 
     /// <summary>The horizontal scroll offset, in layout units.</summary>
     public double OffsetX => _offsetX;

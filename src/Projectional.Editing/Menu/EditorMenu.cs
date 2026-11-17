@@ -17,9 +17,14 @@ namespace Projectional.Editing;
 /// <para>
 /// It offers what MPS offers at this point of the roadmap: the two history steps, inserting where the
 /// caret stands, deleting what it can reach, the clipboard group and switching the representation of a
-/// concept. Deleting reaches as far as the selection does, so a node selection removes nodes; copying one
-/// is still absent because a structural clipboard does not exist yet, and a menu entry that silently did
-/// nothing would be worse than no entry at all.
+/// concept. Deleting reaches as far as the selection does, so a node selection removes nodes; copying and
+/// cutting do the same in the other direction - a selection that covers nodes copies them as a fragment,
+/// while a selection inside one value copies its text.
+/// </para>
+/// <para>
+/// The clipboard entries run the same routing the Control-key gestures do (<see cref="KeyRouter"/>), so the
+/// gesture an entry prints cannot drift from the binding, and an entry cannot be available while its key
+/// would do something else.
 /// </para>
 /// <para>
 /// The clipboard entries are the same actions the Control-key gestures run, so the gesture an entry
@@ -113,9 +118,9 @@ public static class EditorMenu
                 CanDelete(session)),
             EditorMenuSeparator.Instance,
             EditorMenuItem.Run("Select All", () => session.Apply(new SelectAllAction()), SelectAllGesture),
-            EditorMenuItem.Run("Copy", () => session.Apply(new CopyAction()), CopyGesture, CanCopyText(session)),
-            EditorMenuItem.Run("Cut", () => session.Apply(new CutAction()), CutGesture, CanCopyText(session)),
-            EditorMenuItem.Run("Paste", () => session.Apply(new PasteAction()), PasteGesture, CanPasteText(session)),
+            EditorMenuItem.Run("Copy", () => session.Apply(KeyRouter.For(session, EditorKey.Copy)), CopyGesture, CanCopy(session)),
+            EditorMenuItem.Run("Cut", () => session.Apply(KeyRouter.For(session, EditorKey.Cut)), CutGesture, CanCopy(session)),
+            EditorMenuItem.Run("Paste", () => session.Apply(KeyRouter.For(session, EditorKey.Paste)), PasteGesture, CanPaste(session)),
         ]);
 
         var representations = Representations(session);
@@ -228,31 +233,35 @@ public static class EditorMenu
     }
 
     /// <summary>
-    /// Whether Copy and Cut have text to take, which is what makes those entries available.
+    /// Whether Copy and Cut have something to take, which is what makes those entries available.
     /// </summary>
     /// <remarks>
-    /// A selection that spans two cells is representable but not copyable, so the question is asked of
-    /// the same place the actions ask it: the caret must be inside a property cell and the selection must
-    /// not be empty. A constant cannot be copied, because its text belongs to the notation and not to
-    /// the model.
+    /// Two cases, and the entries are simply unavailable when neither holds: text inside one property cell, and
+    /// a selection that covers nodes. The predicate asks the same questions the actions do - the text case wants
+    /// the caret in a <see cref="PropertyCell"/>, and the structural case is <see cref="KeyRouter.CopiesNodes"/>,
+    /// which is what the gesture itself consults. A constant can be copied in neither sense, because its text
+    /// belongs to the notation and not to the model.
     /// </remarks>
-    private static bool CanCopyText(EditorSession session)
+    private static bool CanCopy(EditorSession session)
     {
         var selection = session.Selection;
 
-        return selection.HasText
-            && CaretPlaces.PlaceAt(CaretPlaces.Of(session.Tree), selection.Caret)?.Cell is PropertyCell;
+        return (selection.HasText
+                && CaretPlaces.PlaceAt(CaretPlaces.Of(session.Tree), selection.Caret)?.Cell is PropertyCell)
+            || KeyRouter.CopiesNodes(session);
     }
 
     /// <summary>
     /// Whether Paste has something to insert, which is what makes that entry available.
     /// </summary>
     /// <remarks>
-    /// The clipboard is read, not interrogated: an empty string and no text at all are the same outcome
-    /// for the user, and the action refuses both. Pasting into a place that cannot take text is not
-    /// checked here - the caret can be anywhere, and the action answers that by leaving the model alone.
+    /// The clipboard is read, not interrogated: text that is empty and no text at all are the same outcome for
+    /// the user, and the actions refuse both. A fragment counts even though it carries no text, because pasting
+    /// one creates nodes. Whether the caret is somewhere a fragment can go is not checked here - the caret can
+    /// be anywhere, and the action answers that itself.
     /// </remarks>
-    private static bool CanPasteText(EditorSession session) => session.Clipboard.Text is { Length: > 0 };
+    private static bool CanPaste(EditorSession session) =>
+        session.Clipboard.Fragment is { IsEmpty: false } || session.Clipboard.Text is { Length: > 0 };
 
     /// <summary>The sentence a submenu entry shows under its label.</summary>
     /// <param name="offer">The offer the entry stands for.</param>

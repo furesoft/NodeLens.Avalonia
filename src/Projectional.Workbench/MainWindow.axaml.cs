@@ -57,6 +57,16 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly DocumentSet _documents = new();
     private readonly WorkbenchLanguage _language = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
+
+    /// <summary>
+    /// The one clipboard every tab reads and writes.
+    /// </summary>
+    /// <remarks>
+    /// Shared on purpose: a copied subtree has to be pasteable into another document, and the resource is the
+    /// window's platform clipboard rather than something per tab. It is also the adapter the controls refresh,
+    /// so a session on a different one would paste text the platform has already replaced.
+    /// </remarks>
+    private readonly AvaloniaClipboard _clipboard;
     private readonly TextRecentFilesStore _recentStore = new(
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -77,6 +87,10 @@ public sealed partial class MainWindow : Window, IDisposable
     public MainWindow()
     {
         InitializeComponent();
+
+        // Before the first tab exists: a session takes its clipboard when it is created, and the sample opens
+        // below.
+        _clipboard = new AvaloniaClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
 
         // Following the desktop is the choice the window starts with: opening light on a dark system looks
         // broken before the user has done anything.
@@ -181,8 +195,9 @@ public sealed partial class MainWindow : Window, IDisposable
         // Before the tab is built, not after: the session takes its measure from the control, so a size
         // applied afterwards would have to rebuild a layout that was already laid out at 14.
         editor.FontSize = _fontSize;
+        editor.Clipboard = _clipboard;
 
-        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing, types);
+        var document = new DocumentTab(model, notations, editor.TextMeasure, filePath, emphasis, typing, types, _clipboard);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
         editor.ShowLineNumbers = _showLineNumbers;

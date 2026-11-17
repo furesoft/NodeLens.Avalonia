@@ -1,4 +1,5 @@
 using Projectional.Editing;
+using Projectional.Projection;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -47,5 +48,46 @@ public sealed class KeyRouterTests
         var action = Assert.IsType<MoveCaretAction>(KeyRouter.For(key));
 
         Assert.Equal(expected, action.Move);
+    }
+
+    [Fact]
+    public void CopyOverANodeSelectionIsAStructuralCopy()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
+        using var session = TestEditor.Open(body);
+
+        TestEditor.SelectRange(session, steps[0], steps[1]);
+
+        Assert.IsType<CopySelectionAction>(KeyRouter.For(session, EditorKey.Copy));
+        Assert.IsType<CutSelectionAction>(KeyRouter.For(session, EditorKey.Cut));
+    }
+
+    [Fact]
+    public void CopyInsideOneValueStaysATextCopy()
+    {
+        var step = TestEditor.BareStep("abcdef");
+        using var session = TestEditor.Open(step);
+        var text = CellAddress.OfSlot(step.Id, "text");
+
+        session.Select(new Selection(CaretPosition.At(text, 1), CaretPosition.At(text, 4)));
+
+        Assert.IsType<CopyAction>(KeyRouter.For(session, EditorKey.Copy));
+        Assert.IsType<CutAction>(KeyRouter.For(session, EditorKey.Cut));
+    }
+
+    [Fact]
+    public void PasteFollowsThePayloadRatherThanTheCaret()
+    {
+        var step = TestEditor.BareStep("abcdef");
+        var clipboard = new InMemoryClipboard { Text = "typing" };
+        using var session = TestEditor.Open(step, clipboard);
+
+        Assert.IsType<PasteAction>(KeyRouter.For(session, EditorKey.Paste));
+
+        // A fragment wins because it is the more specific thing the user just copied; the text action would
+        // write nothing here, since writing text is not what a fragment is.
+        clipboard.Fragment = ModelFragment.Of([TestEditor.BareStep()]);
+
+        Assert.IsType<PasteFragmentAction>(KeyRouter.For(session, EditorKey.Paste));
     }
 }

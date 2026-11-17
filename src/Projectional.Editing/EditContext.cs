@@ -36,7 +36,7 @@ public sealed class EditContext
         ITextMeasure measure,
         double pageHeight,
         Selection selection,
-        ITextClipboard clipboard,
+        IEditorClipboard clipboard,
         ITypingRules typing,
         IScopeProvider scopes)
     {
@@ -130,7 +130,7 @@ public sealed class EditContext
     /// whether a clipboard exists. Which clipboard it is - the platform's or the session's own - is a
     /// wiring decision the editing layer never makes.
     /// </remarks>
-    public ITextClipboard Clipboard { get; }
+    public IEditorClipboard Clipboard { get; }
 
     /// <summary>The concepts of the language the document is written in.</summary>
     public ConceptRegistry Concepts => _document.Model.Concepts;
@@ -459,6 +459,129 @@ public sealed class EditContext
         }
 
         return _document.Model.Wrap(nodes, wrapperConceptKey, wrapperSlot, presets);
+    }
+
+    /// <summary>
+    /// Creates the nodes of <paramref name="fragment"/> in <paramref name="slot"/> of
+    /// <paramref name="parent"/>, starting at <paramref name="index"/>.
+    /// </summary>
+    /// <param name="fragment">The copied subtrees to insert, in the order they should appear.</param>
+    /// <param name="parent">The node that gains them.</param>
+    /// <param name="slot">The child slot of <paramref name="parent"/> which receives them.</param>
+    /// <param name="index">Where among the slot's children the first root goes.</param>
+    /// <returns>The node created for the fragment's first root.</returns>
+    /// <remarks>
+    /// <para>
+    /// Everything happens in one transaction, so a fragment is one undo step and a failure cannot leave half of
+    /// it behind. The nodes are created top-down - attached first, then filled - because that is the order the
+    /// mutation API offers and the order that keeps every node reachable while it is being written.
+    /// </para>
+    /// <para>
+    /// References are written in a second pass, because a fragment may point forward: a rule can refer to a
+    /// sibling that has not been created yet. A reference between two copied nodes is rebound to the copy; one
+    /// that pointed outside the fragment keeps its target id and its <c>resolveInfo</c>, so it either resolves
+    /// in the target project or draws as unresolved and can be re-linked - the same degradation a loaded
+    /// document gets (ADR 0004). Nothing is silently dropped.
+    /// </para>
+    /// <para>
+    /// The fragment must be expressible in this document's language; a property value the target concept
+    /// refuses is an exception rather than a skipped value, because dropping it would be a paste that loses
+    /// what it copied.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="fragment"/> or <paramref name="parent"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="slot"/> is empty, or the fragment holds nothing.
+    /// </exception>
+    /// <exception cref="EditingException">
+    /// <paramref name="parent"/> belongs to another model, the language does not declare a concept the fragment
+    /// names, or a value could not be written.
+    /// </exception>
+    public Node InsertFragment(ModelFragment fragment, Node parent, string slot, int index)
+    {
+        ArgumentNullException.ThrowIfNull(fragment);
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+
+        if (fragment.IsEmpty)
+        {
+            throw new ArgumentException("A paste needs a fragment with at least one node.", nameof(fragment));
+        }
+
+        if (!ReferenceEquals(parent.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {parent.Id} belongs to another model than the document being edited.");
+        }
+
+        if (fragment.MissingConcept(_document.Model.Concepts) is { } missing)
+        {
+            throw new EditingException(
+                $"Concept '{missing}' is not part of the language of this document, so the fragment cannot be pasted here.");
+        }
+
+        List<(Node Node, FragmentNode Piece)> created = [];
+        Dictionary<NodeId, NodeId> rebinding = [];
+        var model = _document.Model;
+
+        using var transaction = model.BeginTransaction();
+
+        var at = index;
+
+        foreach (var root in fragment.Roots)
+        {
+            Create(root, parent, slot, at, created, rebinding);
+            at++;
+        }
+
+        foreach (var (node, piece) in created)
+        {
+            foreach (var (name, value) in piece.Properties)
+            {
+                if (!SetProperty(node, name, value))
+                {
+                    throw new EditingException(
+                        $"Value \"{value}\" is not valid for property '{name}' of concept '{piece.ConceptKey}'.");
+                }
+            }
+
+            foreach (var reference in piece.References)
+            {
+                var target = rebinding.TryGetValue(reference.Target, out var copy) ? copy : reference.Target;
+
+                node.SetReference(reference.Slot, target, reference.ResolveInfo);
+            }
+        }
+
+        transaction.Complete();
+
+        return created[0].Node;
+    }
+
+    /// <summary>Creates one copied node and everything below it, remembering where each copy came from.</summary>
+    /// <remarks>
+    /// Recursive rather than iterative because a child is created into its new parent, so the parent has to exist
+    /// first - the recursion <em>is</em> the attach order.
+    /// </remarks>
+    private void Create(
+        FragmentNode piece,
+        Node parent,
+        string slot,
+        int index,
+        List<(Node Node, FragmentNode Piece)> created,
+        Dictionary<NodeId, NodeId> rebinding)
+    {
+        var node = AddChild(parent, slot, index, piece.ConceptKey);
+
+        rebinding[piece.Origin] = node.Id;
+        created.Add((node, piece));
+
+        foreach (var child in piece.Children)
+        {
+            Create(child.Node, node, child.Slot, node.GetChildren(child.Slot).Count, created, rebinding);
+        }
     }
 
     /// <summary>

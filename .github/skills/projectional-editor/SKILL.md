@@ -22,7 +22,8 @@ syntax highlighting from the meaning on a run to a host-swappable palette, model
 decorations, cell-wise caret motion with a blinking caret, a context menu described by the
 editing layer, concept- and value-driven completion (Ctrl+Space, icons as host images, an
 enumerated property offering its values on arrival), and text
-clipboard editing (Ctrl+A/C/X/V through a host-supplied `ITextClipboard`), line numbers, font
+clipboard editing (Ctrl+A/C/X/V through a host-supplied `IEditorClipboard`, text inside one cell and a
+structural fragment with new identities), line numbers, font
 size, model-defined markers with hover tooltips, concept descriptions shown on hover and in the
 completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the margin), the standard
 check catalogue as a package (`Projectional.Checks`), the intention model and its per-caret list, the hover
@@ -980,8 +981,9 @@ dependency, so every action is testable headlessly.
   document root) and removes them in one `Model.BeginTransaction()`, because `EditorSession.Apply`
   opens none and each `DeleteChild` journals its own step. A partly covered node removes
   nothing. `DeleteNodeAction.Landing` is `internal static` and shared, so both deletes land the
-  caret in the same place. Cut/Copy on a cross-cell selection are still not implemented - a
-  structural clipboard needs a payload that can hold a subtree (M3).
+  caret in the same place. Cut and Copy do act on a cross-cell selection: they copy the covered nodes as a
+  fragment (`CopySelectionAction`/`CutSelectionAction`) instead of text, which is what the structural
+  clipboard is for.
 - **`Model.DeleteSubtree` unlinks the top node only.** Descendants stay attached to each other
   and are merely unregistered from the project index, which is exactly what lets one
   `SubtreeSnapshot` undo restore the whole thing. So `body.GetChildren("steps")` still answers
@@ -1556,15 +1558,17 @@ that are easy to break are these.
 
 ## How the clipboard works
 
-`Ctrl+A`/`Ctrl+C`/`Ctrl+X`/`Ctrl+V` select all, copy, cut and paste. Copy, cut and paste are
-**text inside one property cell**; select-all widens. `docs/architecture/clipboard.md` is the
-contract. The clipboard is text and not structure on purpose: a structural copy (a subtree, a
-slot's children) is a different feature with a different payload and a different paste rule,
-and it is scheduled for M3.
+`Ctrl+A`/`Ctrl+C`/`Ctrl+X`/`Ctrl+V` select all, copy, cut and paste. Copy, cut and paste carry **either text
+inside one property cell or a fragment of the model**; select-all widens. `docs/architecture/clipboard.md` is
+the contract. Which of the two a gesture means is decided when it is pressed (`KeyRouter`), never stored: a
+selection that covers nodes copies structure, a selection inside one value copies text, and a paste follows
+the payload the clipboard holds, preferring the fragment.
 
-- **The seam is `ITextClipboard`**: one `string? Text` property and one default
-  `Task RefreshAsync() => Task.CompletedTask`. Nothing else. `null` means "the clipboard holds
-  no text", so an empty clipboard is not an empty string.
+- **The seam is `IEditorClipboard`**: `string? Text`, `ModelFragment? Fragment` and one default
+  `Task RefreshAsync() => Task.CompletedTask`. It is not called `IClipboard` because Avalonia owns that name
+  for its own abstraction, and the adapter is where the two meet. `null` means "no payload", so an empty
+  clipboard is not an empty string, and **writing one payload clears the other** - a clipboard holds one
+  thing, and a paste must act on what the user copied last.
 - **Read and write are synchronous, and must stay synchronous.** A key arrives synchronously and
   an action applies synchronously; an asynchronous contract would put an `await` into every
   action that touches text. A platform whose clipboard can only be read asynchronously caches
@@ -1573,22 +1577,41 @@ and it is scheduled for M3.
 - **`RefreshAsync` returns `Task`, not `ValueTask`.** The callers that cannot await fire and
   forget, and a discarded `ValueTask` is an analyzer error because it may be pooled. A `Task`
   can be dropped without pretending anything was consumed. Do not "modernise" this signature.
-- **`InMemoryClipboard` is what a session gets when the host supplies none.** It keeps a string
-  and nothing else; its `RefreshAsync` is the inherited default. Tests use it. A host with a
-  real clipboard adapts it - `AvaloniaClipboard` in `Projectional.Avalonia/Input/` is that
-  adapter, and it caches the platform's text so a synchronous `Ctrl+V` sees what another
-  application put there.
+- **`InMemoryClipboard` is what a session gets when the host supplies none.** It keeps both payloads, each
+  write clearing the other; its `RefreshAsync` is the inherited default. Tests use it. A host with a real
+  clipboard adapts it - `AvaloniaClipboard` in `Projectional.Avalonia/Input/` is that adapter, and it caches
+  the platform's text so a synchronous `Ctrl+V` sees what another application put there. It also drops its
+  fragment when a refresh reads text this editor did not write, because another application has written
+  something since.
 - **`SelectedText.Of(context)` is the single answer to "what does the selection say".** It is
   `internal`, clamps to the cell's length, and returns `null` unless the selection is inside one
   `PropertyCell`. Every text action goes through it; a second reading of the selection is a bug
   waiting to happen. Because `EditorSession.Select` already clamps, the clamp is unreachable
   through the public API - cover it through `CopyAction`/`CutAction`, not by calling it.
-- **The four actions are in `Projectional.Editing/Clipboard/`.** `SelectAllAction` climbs the
+- **The actions are in `Projectional.Editing/Clipboard/`.** `SelectAllAction` climbs the
   ladder (see the editing section above) rather than selecting one cell. `CopyAction` writes the
   text and returns `EditResult.Unchanged` - a copy never changes the document. `CutAction`
   writes, then applies `DeleteTextAction(DeleteDirection.Forward)`. `PasteAction` hands the text
   to `TypeTextAction`, so a paste gets exactly the same validation and the same refusal as
   typing; an empty or null clipboard is `Unchanged` ("nothing to do"), never a rejection.
+  `CopySelectionAction`, `CutSelectionAction` and `PasteFragmentAction` are the same three over
+  nodes: `SelectionRanges.NodesIn` decides what is copied (the same computation Delete uses),
+  Cut delegates the removal to `DeleteSelectionAction`, and Paste goes through
+  `EditContext.InsertFragment`.
+- **A fragment keeps what a paste has to put back.** `FragmentNode` records the concept key, the
+  `Origin` id, the properties that were **written** (`Node.IsSet` - a defaulted value stays
+  defaulted), both halves of every reference, and each child paired with its slot. `Origin` is not an
+  identity - the copy gets a new id - it exists so that a reference *between* copied nodes is rebound to
+  the copy; one that pointed outside keeps its id and `resolveInfo` and degrades to unresolved
+  (ADR 0004). A value the target concept would refuse is an exception, never a skipped value.
+- **A paste never replaces anything.** An empty slot takes the fragment (including an empty
+  single-valued one), a node in a **list** takes it directly after itself, a node in a **filled
+  single-valued slot** is refused with a reason (replacing is the labelled `Replace with "X"`
+  entry), and a root is refused. Before anything is created the paste asks
+  `ModelFragment.MissingConcept` and the slot's conformity, so a fragment from another language is
+  refused by name instead of half-built.
+- **A fragment does not leave the process.** There is no wire format: text is what crosses to another
+  application. If that changes, the format belongs beside `ModelXml`, not in a second serializer here.
 - **A paste never coalesces.** `PasteAction.CoalescingKey` is `null` (and `CutAction`'s too), so
   a paste is its own undo step and never merges into the typing around it. `ToString()` returns
   `"paste"`, which is what the undo label shows.
@@ -1596,19 +1619,24 @@ and it is scheduled for M3.
   `null` for Control combinations except the documented ones, and `A`, `C`, `X`, `V` join
   `Left`/`Right`/`Space` in that list. Shift does not change them: `Ctrl+Shift+C` is still Copy.
   A bare letter is never in the key map - it is text input, not a routed key.
-- **The menu decides availability from state, not from a flag.** `EditorMenu.For` lists
-  `Select All`, `Copy`, `Cut`, `Paste` after the edit entries. `Select All` has **no** predicate
-  - the ladder always has a rung left until the document is selected, and greying it out would
-  make the node rung unreachable. `CanCopyText(session)` is true only when the selection has
-  text *and* the caret resolves to a `PropertyCell`, so Copy and Cut go grey while a node
-  selection is in force; they share one predicate because they are the same read.
-  `CanPasteText(session)` is true only when `session.Clipboard.Text` has length.
+- **The menu runs the routing, not a fixed action.** `EditorMenu.For` lists `Select All`, `Copy`,
+  `Cut`, `Paste` after the edit entries, and each clipboard entry executes
+  `session.Apply(KeyRouter.For(session, EditorKey.Copy))` (and so on) rather than constructing an
+  action: the entry and its gesture cannot disagree about which payload they mean. `Select All` has
+  **no** predicate - the ladder always has a rung left until the document is selected, and greying
+  it out would make the node rung unreachable. `CanCopy` is true for text in a `PropertyCell` **or**
+  for `KeyRouter.CopiesNodes(session)`; `CanPaste` is true for text of length **or** a non-empty
+  fragment.
 - **The Avalonia adapter resolves the platform clipboard lazily and swallows its failures.** A
   control that is not yet in a visual tree has no `TopLevel`, and a platform clipboard that
   refuses must not take the editor down with it - a copy that cannot reach the platform leaves
   the cached text alone. The control refreshes the clipboard on focus and before opening the
   context menu, and intercepts the platform's own paste so `Ctrl+V` goes through
   `PasteAction` (one undo step, one validation path) instead of the toolkit's default.
+- **The shell hands one adapter to every tab.** `MainWindow._clipboard` goes into each `DocumentTab`
+  (which passes it to the session) and onto each control. Without that, a subtree copied in one document
+  could not be pasted in another, and - worse - the control would refresh an adapter the session does
+  not read, so a text paste would use text the platform has already replaced.
 
 Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
@@ -1923,7 +1951,7 @@ because `dotnet new` caches by identity, not by content.
 - Do not put Avalonia types, `Dispatcher`, or `Control` references into `Projection` or `Editing`.
 - Do not introduce reflection or source generators for language definition.
 - Do not reorder children or renumber IDs during save.
-- Do not make `ITextClipboard` asynchronous. A synchronous key needs a synchronous clipboard;
+- Do not make `IEditorClipboard` asynchronous. A synchronous key needs a synchronous clipboard;
   `RefreshAsync` is the only async seam and it stays fire-and-forget.
 - Do not preview an edit by applying it to the live model and rolling back, and do not give each
   action a "describe" method. A preview applies the real action to a **discarded copy in its own

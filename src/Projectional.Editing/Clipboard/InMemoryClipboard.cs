@@ -16,8 +16,34 @@ namespace Projectional.Editing;
 /// adapter.
 /// </para>
 /// </remarks>
-public sealed class InMemoryClipboard : ITextClipboard
+public sealed class InMemoryClipboard : IEditorClipboard
 {
+    private string? _text;
+    private ModelFragment? _fragment;
+
     /// <inheritdoc />
-    public string? Text { get; set; }
+    /// <remarks>Writing text clears the fragment: a clipboard holds one payload at a time.</remarks>
+    public string? Text
+    {
+        get => _text;
+
+        set
+        {
+            _text = value;
+            _fragment = null;
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Writing a fragment clears the text, for the same reason.</remarks>
+    public ModelFragment? Fragment
+    {
+        get => _fragment;
+
+        set
+        {
+            _fragment = value;
+            _text = null;
+        }
+    }
 }
