@@ -7,6 +7,7 @@ using Projectional.Languages;
 using Projectional.Samples;
 using Projectional.Structures;
 using Projectional.Structures.Notation;
+using Projectional.TextGen;
 using Projectional.TypeRules;
 
 namespace Projectional.Workbench;
@@ -47,6 +48,7 @@ internal sealed class WorkbenchLanguage
             .. StructureLanguage.ConceptDeclarations,
             .. EditorLanguage.ConceptDeclarations,
             .. TypeRuleLanguage.ConceptDeclarations,
+            .. TextGenLanguage.ConceptDeclarations,
         ]);
 
         Notations = CreateNotations(Concepts);
@@ -63,6 +65,36 @@ internal sealed class WorkbenchLanguage
 
     /// <summary>The sample language's typing rules, which are the only ones the shell ships.</summary>
     internal static ITypingRules? Typing => RulesLanguage.TypingRules;
+
+    /// <summary>The text generators of the language <paramref name="model"/> is written in.</summary>
+    /// <param name="model">The model, whose first root decides which language it belongs to.</param>
+    /// <returns>The generators, or an empty list when the language declares none.</returns>
+    /// <remarks>
+    /// A language declares as many generators as it has targets, so this answers a list and the shell lets the user
+    /// pick one - there is no "the" generator. Which generators a document has is a fact about its language, exactly
+    /// like whether it can be run, so it is derived from the root's concept rather than from the command that opened
+    /// the document.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/>.</exception>
+    internal static IReadOnlyList<TextGenerator> GeneratorsFor(Model model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        return model.Roots.Count > 0 && SampleConceptKeys.Contains(model.Roots[0].Concept.Key)
+            ? RulesTextGenerators.All
+            : [];
+    }
+
+    /// <summary>A model of the generator language: an empty generators document, ready to be written.</summary>
+    internal Model NewGeneratorDefinition()
+    {
+        var model = NewProject().NewModel("generator");
+        var generators = model.NewNode(TextGenConceptKeys.Generators);
+
+        model.AddRoot(generators);
+
+        return model;
+    }
 
     /// <summary>The interpreter of the language <paramref name="model"/> is written in, or <see langword="null"/>.</summary>
     /// <param name="model">The model, whose first root decides which language it belongs to.</param>
@@ -233,6 +265,7 @@ internal sealed class WorkbenchLanguage
         StructureNotations.AddTo(notations);
         EditorNotations.AddTo(notations);
         TypeRuleNotations.AddTo(notations);
+        TextGenNotations.AddTo(notations);
 
         return notations;
     }
