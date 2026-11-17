@@ -59,4 +59,10 @@ public static class EditorConceptKeys
 
     /// <summary>Inline cells drawn only while a property of the node holds a value.</summary>
     public const string Conditional = "Editor.Conditional";
+
+    /// <summary>Many children drawn as a grid: one row per child, one cell per column.</summary>
+    public const string Table = "Editor.Table";
+
+    /// <summary>One column of a table: a slot of the row concept, under a header.</summary>
+    public const string Column = "Editor.Column";
 }

@@ -30,6 +30,9 @@ public static class EditorLanguage
     /// <summary>The cells a block stacks.</summary>
     public const string CellSlot = "cells";
 
+    /// <summary>The columns of a table, left to right.</summary>
+    public const string ColumnSlot = "columns";
+
     /// <summary>The key of the concept a notation draws.</summary>
     public const string ConceptKeySlot = "conceptKey";
 
@@ -166,6 +169,27 @@ public static class EditorLanguage
             [EditorConceptKeys.BlockCell],
             nameSlot: "slot",
             description: "Many children with a separator between them, drawn as blocks."),
+
+        new ConceptDeclaration(
+            EditorConceptKeys.Table,
+            [
+                new PropertySlot("slot", PropertyType.String),
+                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new ChildSlot(ColumnSlot, EditorConceptKeys.Column, Cardinality.Many),
+            ],
+            [EditorConceptKeys.BlockCell],
+            nameSlot: "slot",
+            description: "Many children drawn as a grid: one row per child, one cell per column."),
+
+        new ConceptDeclaration(
+            EditorConceptKeys.Column,
+            [
+                new PropertySlot("slot", PropertyType.String),
+                new PropertySlot("emptyText", PropertyType.String, "<empty>"),
+                new ChildSlot("header", EditorConceptKeys.InlineCell, Cardinality.One),
+            ],
+            nameSlot: "slot",
+            description: "One column of a table: a slot of the row concept, under a header."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

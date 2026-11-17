@@ -81,6 +81,26 @@ internal sealed class NotationBuilder
         return separator;
     }
 
+    /// <summary>One column of a table, which hangs off the table's own slot rather than off <c>cells</c>.</summary>
+    public Node Column(Node table, string slot)
+    {
+        var column = _model.NewChild(table, EditorLanguage.ColumnSlot, EditorConceptKeys.Column);
+
+        column.Set("slot", slot);
+
+        return column;
+    }
+
+    /// <summary>The header of a column, which is the column's own single child rather than a cell of a line.</summary>
+    public Node Header(Node column, string conceptKey, string text)
+    {
+        var header = _model.NewChild(column, "header", conceptKey);
+
+        header.Set("text", text);
+
+        return header;
+    }
+
     /// <summary>A line holding the given inline cells.</summary>
     public Node Line(Node parent, params string[] cells)
     {
