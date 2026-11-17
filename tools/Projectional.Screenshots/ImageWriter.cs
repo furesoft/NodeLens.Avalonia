@@ -76,6 +76,21 @@ internal static class ImageWriter
         return frame;
     }
 
+    /// <summary>Writes <paramref name="source"/> exactly as it was rendered.</summary>
+    /// <remarks>
+    /// A window is its own frame - the menu bar at the top and the status bar at the bottom are the picture -
+    /// so cropping it to the pixels that differ from a background would cut away what the shot is about.
+    /// </remarks>
+    internal static PixelSize Write(RenderTargetBitmap source, string path)
+    {
+        using (var stream = File.Create(path))
+        {
+            source.Save(stream, PngBitmapEncoderOptions.Default);
+        }
+
+        return source.PixelSize;
+    }
+
     /// <summary>The rectangle holding the document: full width, and the rows that are not page.</summary>
     private static PixelRect ContentBounds(byte[] pixels, PixelSize size, Color background, Color gutter)
     {
