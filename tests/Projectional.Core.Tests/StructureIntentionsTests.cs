@@ -101,11 +101,11 @@ public sealed class StructureIntentionsTests
         // its options and its section headings. A property of it is a node of its own, and making an ancestor
         // abstract from there would edit something the list is not about.
         var definition = new DefinitionBuilder();
-        var property = definition.Property("name", "string");
+        var concept = definition.Concept("Rules.Rule", slots: [definition.Property("name", "string")]);
 
-        definition.Concept("Rules.Rule", slots: [property]);
+        using var session = new EditorSession(concept, StructureNotations.Create());
 
-        using var session = new EditorSession(definition.Root, StructureNotations.Create());
+        var property = concept.GetChildren(StructureLanguage.PropertiesSlot)[0];
 
         session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
         session.Select(Selection.At(new CellAddress(property.Id)));
@@ -114,18 +114,18 @@ public sealed class StructureIntentionsTests
     }
 
     [Fact]
-    public void ACaretOutsideAConceptOffersNothing()
+    public void ACaretOnAnEnumerationOffersNothing()
     {
+        // An enumeration is a definition of its own, and "make abstract" is about a concept: the list is empty
+        // where the definition cannot become abstract, rather than offering an edit that would be refused.
         var definition = new DefinitionBuilder();
+        var enumeration = definition.Enumeration("Rules.Outcome", "accept", "review");
 
-        definition.Concept("Rules.Rule");
-
-        using var session = new EditorSession(definition.Root, StructureNotations.Create());
+        using var session = new EditorSession(enumeration, StructureNotations.Create());
 
         session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
 
-        // The document root is the definition, not a concept: `enumerations:` and `concepts:` belong to it.
-        session.Select(Selection.At(new CellAddress(definition.Root.Id)));
+        session.Select(Selection.At(new CellAddress(enumeration.Id)));
 
         Assert.Empty(IntentionList.For(session));
     }

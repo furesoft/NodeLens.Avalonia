@@ -13,9 +13,8 @@ public sealed class TypeRuleNotationTests
     public void ARuleDocumentDrawsItsHeaderAndBody()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.Roots[0];
 
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
@@ -24,9 +23,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            types
-              rule Expressions.IntLiteral is
-                type int
+            rule Expressions.IntLiteral is
+              type int
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -35,9 +33,8 @@ public sealed class TypeRuleNotationTests
     public void ASwitchDrawsItsCasesAndItsFallback()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.Roots[0];
 
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.Binary");
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Switch);
@@ -54,12 +51,11 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            types
-              rule Expressions.Binary is
-                switch on operator
-                  when > then type bool
-                  otherwise:
-                    type of left
+            rule Expressions.Binary is
+              switch on operator
+                when > then type bool
+                otherwise:
+                  type of left
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -68,9 +64,8 @@ public sealed class TypeRuleNotationTests
     public void ARecordDrawsTheWayItsTypeIsWritten()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.Roots[0];
 
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
@@ -92,9 +87,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            types
-              rule Expressions.IntLiteral is
-                type (amount: int, currency: [string?])
+            rule Expressions.IntLiteral is
+              type (amount: int, currency: [string?])
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -105,10 +99,9 @@ public sealed class TypeRuleNotationTests
         // The invariant that keeps the two halves honest: a finding quotes IType.Name, so a language author
         // reading the rule and a user reading the finding have to see the same text.
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
+        var rule = model.Roots[0];
 
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
-        rule.Set(TypeRuleLanguage.ConceptKeySlot, TypeRuleConceptKeys.Rules);
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, TypeRuleConceptKeys.Rule);
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
         var optional = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Optional);
@@ -121,7 +114,7 @@ public sealed class TypeRuleNotationTests
             .Set(TypeRuleLanguage.NameSlot, "int");
 
         var drawn = LayoutSnapshot.Render(optional, TypeRuleNotations.Registry, width: 60).Trim();
-        var lowered = TypeRuleLowering.CreateRegistry(document).TypeOf(model.Roots[0]).Name;
+        var lowered = TypeRuleLowering.CreateRegistry(model.Roots).TypeOf(model.Roots[0]).Name;
 
         Assert.Equal("[(amount: int)]?", drawn);
         Assert.Equal(lowered, drawn);
@@ -130,15 +123,19 @@ public sealed class TypeRuleNotationTests
     [Fact]
     public void ADeclaredTypeDrawsItsNameAndReadsItBack()
     {
-        var model = TypeRuleLanguage.NewModel();
-        var amount = model.NewNode(TypeRuleConceptKeys.Named);
+        // A named type is a document of its own, beside the rules that refer to it: two roots, two files, one
+        // registry when the language project lowers them together.
+        var name = TypeRuleLanguage.NewProject().NewModel("Amount");
+        var amount = name.NewNode(TypeRuleConceptKeys.Named);
 
+        name.AddRoot(amount);
         amount.Set(TypeRuleLanguage.NameSlot, "Amount");
-        model.NewChild(amount, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
+        name.NewChild(amount, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
             .Set(TypeRuleLanguage.NameSlot, "int");
 
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
         rule.Set(TypeRuleLanguage.ConceptKeySlot, TypeRuleConceptKeys.Named);
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
@@ -147,27 +144,14 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            types
-              rule TypeRule.Named is
-                type Amount
-            """,
-            LayoutSnapshot.Render(document, TypeRuleNotations.Registry, width: 60));
-
-        // The name is what the finding quotes, which is the word the author wrote.
-        Assert.Equal("Amount", TypeRuleLowering.CreateRegistry(document).TypeOf(amount).Name);
-    }
-
-    [Fact]
-    public void AnEmptyRulesDocumentShowsTheEmptySectionPlaceholder()
-    {
-        var model = TypeRuleLanguage.NewModel();
-        model.NewNode(TypeRuleConceptKeys.Rules);
-
-        Assert.Equal(
-            """
-            types
-              << ... >>
+            rule TypeRule.Named is
+              type Amount
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+
+        Assert.Equal("type Amount = int", LayoutSnapshot.Render(amount, TypeRuleNotations.Registry, width: 60));
+
+        // The name is what the finding quotes, which is the word the author wrote.
+        Assert.Equal("Amount", TypeRuleLowering.CreateRegistry([amount, rule]).TypeOf(amount).Name);
     }
 }

@@ -22,9 +22,6 @@ namespace Projectional.TypeRules;
 /// </remarks>
 public static class TypeRuleLanguage
 {
-    /// <summary>The slot holding the rules of one language.</summary>
-    public const string RulesSlot = "rules";
-
     /// <summary>The slot holding a rule's body.</summary>
     public const string BodySlot = "body";
 
@@ -62,13 +59,13 @@ public static class TypeRuleLanguage
     public const string ValueSlot = "value";
 
     /// <summary>The concept declarations of the language.</summary>
+    /// <remarks>
+    /// A rule is a document of its own, and so is a named type: the root <em>is</em> the definition, the shape MPS
+    /// stores one root per file in, so a language's types aspect is a folder of rules rather than one document that
+    /// lists them.
+    /// </remarks>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
     [
-        new ConceptDeclaration(
-            TypeRuleConceptKeys.Rules,
-            [new ChildSlot(RulesSlot, TypeRuleConceptKeys.Rule, Cardinality.Many)],
-            description: "One language's type rules."),
-
         new ConceptDeclaration(
             TypeRuleConceptKeys.Rule,
             [
@@ -182,6 +179,17 @@ public static class TypeRuleLanguage
     /// <summary>A project in which a type rule can be written.</summary>
     public static Project NewProject() => new(Concepts);
 
-    /// <summary>A model holding one empty rules document.</summary>
-    public static Model NewModel(string name = "types") => NewProject().NewModel(name);
+    /// <summary>A model holding one empty rule, ready to be written.</summary>
+    /// <remarks>
+    /// A rule is the only thing a types document can hold, so the helper creates it: a language with two kinds of
+    /// definition (the structure language's concept and enumeration) leaves that choice to the caller.
+    /// </remarks>
+    public static Model NewModel(string name = "rule")
+    {
+        var model = NewProject().NewModel(name);
+
+        model.NewNode(TypeRuleConceptKeys.Rule);
+
+        return model;
+    }
 }

@@ -37,10 +37,6 @@ public static class TextGenNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(TextGenConceptKeys.Generators, ed => ed.Sequence(
-            ed.Line(ed.Keyword("generators", TextEmphasis.Bold)),
-            ed.Indent(ed.Children(TextGenLanguage.GeneratorsSlot, NoEntries))));
-
         notations.Add(TextGenConceptKeys.Generator, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("generate", TextEmphasis.Bold),

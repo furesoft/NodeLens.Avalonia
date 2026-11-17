@@ -24,7 +24,7 @@ public sealed class StructureLoweringTests
 
         definition.Concept("Rules.Rule", slots: [definition.Property("name", "string")], nameSlot: "name");
 
-        var registry = StructureLowering.CreateRegistry(definition.Root);
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
         var model = new Project(registry).NewModel();
         var rule = model.NewNode("Rules.Rule");
 
@@ -49,7 +49,7 @@ public sealed class StructureLoweringTests
             slots: [definition.Child("steps", "Rules.Step", "many")]);
         definition.Concept("Rules.Step", supers: ["Rules.Element"], slots: [definition.Property("text", "string")]);
 
-        var registry = StructureLowering.CreateRegistry(definition.Root);
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
         var model = new Project(registry).NewModel();
 
         Assert.True(registry.Get("Rules.Element").IsAbstract);
@@ -85,7 +85,7 @@ public sealed class StructureLoweringTests
                 definition.Property("name", "string"),
             ]);
 
-        var declared = StructureLowering.Lower(definition.Root).Single(c => c.Key == "Rules.Rule");
+        var declared = StructureLowering.Lower(definition.Roots).Single(c => c.Key == "Rules.Rule");
 
         Assert.Equal(["name", "body", "condition"], declared.Slots.Select(slot => slot.Name));
     }
@@ -98,7 +98,7 @@ public sealed class StructureLoweringTests
         definition.Enumeration("Rules.Outcome", "accept", "review", "reject");
         definition.Concept("Rules.Rule", slots: [definition.Property("outcome", "Rules.Outcome")]);
 
-        var registry = StructureLowering.CreateRegistry(definition.Root);
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
         var model = new Project(registry).NewModel();
         var rule = model.NewNode("Rules.Rule");
 
@@ -118,7 +118,7 @@ public sealed class StructureLoweringTests
             "Rules.Rule",
             slots: [definition.Property("outcome", "Rules.Outcome", defaultValue: "review")]);
 
-        var registry = StructureLowering.CreateRegistry(definition.Root);
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
 
         Assert.Equal("review", registry.Get("Rules.Rule").FindProperty("outcome")!.DefaultValue);
     }
@@ -131,7 +131,7 @@ public sealed class StructureLoweringTests
         definition.Concept("Rules.Rule", slots: [definition.Reference("condition", "Rules.Condition")]);
         definition.Concept("Rules.Condition", slots: [definition.Property("text", "string")]);
 
-        var registry = StructureLowering.CreateRegistry(definition.Root);
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
 
         Assert.Equal("Rules.Condition", registry.Get("Rules.Rule").FindReference("condition")!.TargetConceptKey);
     }
@@ -140,37 +140,38 @@ public sealed class StructureLoweringTests
     public void ADefinitionIsDrawnLikeAnyOtherModel()
     {
         // The rule of the plan: if the definition language needed a rendering exception it would not be a real
-        // language. This is the snapshot of the shape - the header says what the concept is, the options say what
-        // it allows, and the three sections say what it holds. A concrete concept says only `concept`, because
-        // `abstract` is a word in the header rather than an option.
+        // language. Each document holds one definition, so each is drawn as that definition - the header says what
+        // it is, the options say what it allows, and the three sections say what it holds.
         var definition = new DefinitionBuilder();
 
-        definition.Enumeration("Rules.Outcome", "accept");
-        definition.Concept("Rules.Rule", slots: [definition.Property("name", "string")]);
+        var outcome = definition.Enumeration("Rules.Outcome", "accept");
+        var rule = definition.Concept("Rules.Rule", slots: [definition.Property("name", "string")]);
+
+        var notations = StructureNotations.Create();
+
+        Assert.Equal(
+            string.Join('\n', "enum Rules.Outcome", "  accept"),
+            LayoutSnapshot.Render(outcome, notations, width: 120));
 
         Assert.Equal(
             string.Join(
                 '\n',
-                "enumerations:",
-                "  enum Rules.Outcome",
-                "    accept",
-                "concepts:",
-                "  concept Rules.Rule",
-                "    offered in completion: true",
-                "    named by:",
-                "    collapsed by:",
-                "    described as:",
-                "    extends:",
-                "      << ... >>",
-                "    properties:",
-                "      name : string",
-                "        default:",
-                "        described as:",
-                "    children:",
-                "      << ... >>",
-                "    references:",
-                "      << ... >>"),
-            LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120));
+                "concept Rules.Rule",
+                "  offered in completion: true",
+                "  named by:",
+                "  collapsed by:",
+                "  described as:",
+                "  extends:",
+                "    << ... >>",
+                "  properties:",
+                "    name : string",
+                "      default:",
+                "      described as:",
+                "  children:",
+                "    << ... >>",
+                "  references:",
+                "    << ... >>"),
+            LayoutSnapshot.Render(rule, notations, width: 120));
     }
 
     [Fact]
@@ -184,8 +185,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120);
 
-        Assert.StartsWith("enumerations:", drawn, StringComparison.Ordinal);
-        Assert.Contains("\n  abstract concept Rules.Element\n", drawn, StringComparison.Ordinal);
+        Assert.StartsWith("abstract concept Rules.Element", drawn, StringComparison.Ordinal);
 
         // And the flag itself is not drawn as a value anywhere, which is the point of moving it into the header.
         Assert.DoesNotContain("is abstract", drawn, StringComparison.Ordinal);
@@ -200,7 +200,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120);
 
-        Assert.Contains("\n  concept Rules.Rule\n", drawn, StringComparison.Ordinal);
+        Assert.StartsWith("concept Rules.Rule", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("abstract", drawn, StringComparison.Ordinal);
     }
 
@@ -211,7 +211,7 @@ public sealed class StructureLoweringTests
 
         definition.Concept("Rules.Rule", slots: [definition.Property("name", "")]);
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(definition.Root));
+        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(definition.Roots));
 
         Assert.Contains("does not say its 'typeName'", error.Message, StringComparison.Ordinal);
     }
@@ -223,7 +223,7 @@ public sealed class StructureLoweringTests
 
         definition.Concept("Rules.Rule", slots: [definition.Property("name", "text")]);
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(definition.Root));
+        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(definition.Roots));
 
         Assert.Contains("'text'", error.Message, StringComparison.Ordinal);
         Assert.Contains("declared enumeration", error.Message, StringComparison.Ordinal);
@@ -236,7 +236,7 @@ public sealed class StructureLoweringTests
 
         definition.Enumeration("Rules.Outcome");
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(definition.Root));
+        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(definition.Roots));
 
         Assert.Contains("declares no symbols", error.Message, StringComparison.Ordinal);
     }
@@ -250,7 +250,7 @@ public sealed class StructureLoweringTests
         definition.Concept("Rules.Rule");
         definition.Concept("Rules.Rule");
 
-        Assert.Throws<ConceptDefinitionException>(() => StructureLowering.CreateRegistry(definition.Root));
+        Assert.Throws<ConceptDefinitionException>(() => StructureLowering.CreateRegistry(definition.Roots));
     }
 
     [Fact]
@@ -260,19 +260,39 @@ public sealed class StructureLoweringTests
 
         definition.Concept("Rules.Rule", supers: ["Rules.Nope"]);
 
-        Assert.Throws<ConceptDefinitionException>(() => StructureLowering.CreateRegistry(definition.Root));
+        Assert.Throws<ConceptDefinitionException>(() => StructureLowering.CreateRegistry(definition.Roots));
     }
 
     [Fact]
     public void ADocumentThatIsNotADefinitionIsRefused()
     {
         var model = StructureLanguage.NewModel();
-        var concept = model.NewNode(StructureConceptKeys.Concept);
+        var slot = model.NewNode(StructureConceptKeys.PropertyDecl);
 
-        model.AddRoot(concept);
+        model.AddRoot(slot);
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower(concept));
+        var error = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower([slot]));
 
-        Assert.Contains("is not a language definition", error.Message, StringComparison.Ordinal);
+        Assert.Contains("is not a definition", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EnumerationsFromOtherDocumentsAreVisibleToEveryConcept()
+    {
+        // A property may name an enumeration that lives in another file, which is why the lowering reads every
+        // enumeration before it lowers the first concept.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept(
+            "Rules.Rule",
+            slots: [definition.Property("name", "string"), definition.Property("status", "Rules.Status")],
+            nameSlot: "name");
+
+        definition.Enumeration("Rules.Status", "draft", "approved");
+
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
+
+        Assert.True(registry.TryGet("Rules.Rule", out var rule));
+        Assert.Equal(["draft", "approved"], Assert.IsType<PropertySlot>(rule!.Slots[1]).Type.Symbols);
     }
 }

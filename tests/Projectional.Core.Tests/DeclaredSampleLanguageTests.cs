@@ -1,8 +1,10 @@
 using Projectional.Core;
 using Projectional.Editing;
+using Projectional.Editors;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
+using Projectional.Structures;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -130,6 +132,48 @@ public sealed class DeclaredSampleLanguageTests
         finally
         {
             directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void EveryDefinitionDocumentSavesBackByteIdentically()
+    {
+        // The layout is a wire format too: each definition file is one root, and re-saving it must not move a byte.
+        // A file that only round-trips *after* an edit would hide a writer that reorders a split document.
+        var directory = Path.Combine(AppContext.BaseDirectory, "Declared");
+        var temporary = Directory.CreateTempSubdirectory("declared-definitions");
+
+        try
+        {
+            var structure = Directory.EnumerateFiles(Path.Combine(directory, "structure"), "*.mps").ToList();
+            var editor = Directory.EnumerateFiles(Path.Combine(directory, "editor"), "*.mps").ToList();
+
+            Assert.Equal(2, structure.Count);
+            Assert.Equal(2, editor.Count);
+
+            foreach (var file in structure)
+            {
+                AssertRoundTrips(file, new Project(StructureLanguage.Concepts));
+            }
+
+            foreach (var file in editor)
+            {
+                AssertRoundTrips(file, new Project(EditorLanguage.Concepts));
+            }
+        }
+        finally
+        {
+            temporary.Delete(recursive: true);
+        }
+
+        void AssertRoundTrips(string file, Project project)
+        {
+            var model = ModelFile.Load(project, file);
+            var target = Path.Combine(temporary.FullName, Path.GetFileName(file));
+
+            ModelFile.Save(model, target);
+
+            Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(target));
         }
     }
 }

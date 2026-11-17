@@ -54,7 +54,7 @@ public sealed class LanguageProjectTypesTests
     }
 
     [Fact]
-    public void ATypesFileThatCannotBeLoweredIsAMessageNotAnException()
+    public void ATypesDocumentThatCannotBeLoweredIsAMessageNotAnException()
     {
         using var folder = new TemporaryDirectory();
 
@@ -62,15 +62,19 @@ public sealed class LanguageProjectTypesTests
 
         // A rule naming a type the framework does not have.
         var types = TypeRuleLanguage.NewModel();
-        var document = types.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = types.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var rule = types.Roots[0];
+
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Pipeline.Stage");
 
         var body = types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+
         types.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
             .Set(TypeRuleLanguage.NameSlot, "decimal");
 
-        ModelFile.Save(types, Path.Combine(folder.Root, LanguageProject.TypesFile));
+        var rules = Path.Combine(folder.Root, LanguageProject.TypesFolder);
+
+        Directory.CreateDirectory(rules);
+        ModelFile.Save(types, Path.Combine(rules, "Pipeline.Stage.mps"));
 
         var language = LanguageProject.Open(folder.Root, out var error);
 
@@ -87,21 +91,27 @@ public sealed class LanguageProjectTypesTests
             slots: [definition.Property("name", "string", defaultValue: "unnamed")],
             nameSlot: "name");
 
-        ModelFile.Save(definition.Root.Model, Path.Combine(directory, LanguageProject.StructureFile));
+        var structure = Path.Combine(directory, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+        ModelFile.Save(definition.Documents[0], Path.Combine(structure, "Pipeline.Stage.mps"));
     }
 
     private static void WriteTypes(string directory)
     {
         var types = TypeRuleLanguage.NewModel();
-        var document = types.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = types.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var rule = types.Roots[0];
 
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Pipeline.Stage");
 
         var body = types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+
         types.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive)
             .Set(TypeRuleLanguage.NameSlot, "int");
 
-        ModelFile.Save(types, Path.Combine(directory, LanguageProject.TypesFile));
+        var rules = Path.Combine(directory, LanguageProject.TypesFolder);
+
+        Directory.CreateDirectory(rules);
+        ModelFile.Save(types, Path.Combine(rules, "Pipeline.Stage.mps"));
     }
 }

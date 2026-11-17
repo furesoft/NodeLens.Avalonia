@@ -126,8 +126,8 @@ MyDsl/
     Rules/
       language.xml            # name, version, dependencies
       models/
-        structure.mps         # concept declarations (declared languages)
-        editor.mps            # notation declarations
+        structure/            # concept declarations (declared languages), one definition per file
+        editor/               # notation declarations, one notation per file
   models/
     payroll.mps               # user models
   generators/

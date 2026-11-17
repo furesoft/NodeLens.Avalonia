@@ -85,13 +85,28 @@ internal sealed class WorkbenchLanguage
             : [];
     }
 
-    /// <summary>A model of the generator language: an empty generators document, ready to be written.</summary>
-    internal Model NewGeneratorDefinition()
-    {
-        var model = NewProject().NewModel("generator");
-        var generators = model.NewNode(TextGenConceptKeys.Generators);
+    /// <summary>A model of the structure language: one empty concept, ready to be written.</summary>
+    /// <remarks>
+    /// One definition per document, so the menu entry creates a concept and nothing else: an enumeration is a
+    /// document of its own, because the two are edited at different times and a diff should read as one definition.
+    /// </remarks>
+    internal Model NewLanguageDefinition() => NewDefinition(StructureConceptKeys.Concept, "concept");
 
-        model.AddRoot(generators);
+    /// <summary>A model of the structure language: one empty enumeration, ready to be written.</summary>
+    internal Model NewEnumerationDefinition() => NewDefinition(StructureConceptKeys.Enumeration, "enumeration");
+
+    /// <summary>A model of the editor language: one empty notation, ready to be written.</summary>
+    internal Model NewNotationDefinition() => NewDefinition(EditorConceptKeys.Notation, "notation");
+
+    /// <summary>A model of the generator language: one empty generator, ready to be written.</summary>
+    internal Model NewGeneratorDefinition() => NewDefinition(TextGenConceptKeys.Generator, "generator");
+
+    /// <summary>A model holding exactly one new root of <paramref name="conceptKey"/>.</summary>
+    private Model NewDefinition(string conceptKey, string name)
+    {
+        var model = NewProject().NewModel(name);
+
+        model.AddRoot(model.NewNode(conceptKey));
 
         return model;
     }
@@ -200,28 +215,6 @@ internal sealed class WorkbenchLanguage
         error = null;
 
         return true;
-    }
-
-    /// <summary>A model of the structure language: an empty language definition, ready to be written.</summary>
-    internal Model NewLanguageDefinition()
-    {
-        var model = NewProject().NewModel("structure");
-        var definition = model.NewNode(StructureConceptKeys.Language);
-
-        model.AddRoot(definition);
-
-        return model;
-    }
-
-    /// <summary>A model of the editor language: an empty notation, ready to be written.</summary>
-    internal Model NewNotationDefinition()
-    {
-        var model = NewProject().NewModel("editor");
-        var notations = model.NewNode(EditorConceptKeys.Notations);
-
-        model.AddRoot(notations);
-
-        return model;
     }
 
     /// <summary>A document of <paramref name="language"/>, or <see langword="null"/> when it has no root concept.</summary>

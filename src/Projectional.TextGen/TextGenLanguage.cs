@@ -22,9 +22,6 @@ namespace Projectional.TextGen;
 /// </remarks>
 public static class TextGenLanguage
 {
-    /// <summary>The slot holding every generator of one language.</summary>
-    public const string GeneratorsSlot = "generators";
-
     /// <summary>The slot holding a generator's mappings.</summary>
     public const string MappingsSlot = "mappings";
 
@@ -56,13 +53,12 @@ public static class TextGenLanguage
     public const string ValueSlot = "value";
 
     /// <summary>The concept declarations of the language.</summary>
+    /// <remarks>
+    /// A generator is a document of its own, so a language's generator aspect is a folder with one generator per
+    /// file - the same shape the other definition languages use since one root per document became the rule.
+    /// </remarks>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
     [
-        new ConceptDeclaration(
-            TextGenConceptKeys.Generators,
-            [new ChildSlot(GeneratorsSlot, TextGenConceptKeys.Generator, Cardinality.Many)],
-            description: "Every text generator of one language."),
-
         new ConceptDeclaration(
             TextGenConceptKeys.Generator,
             [
@@ -172,12 +168,12 @@ public static class TextGenLanguage
     /// <summary>A project in which a generator can be written.</summary>
     public static Project NewProject() => new(Concepts);
 
-    /// <summary>A model holding one empty generators document, ready to be written.</summary>
+    /// <summary>A model holding one empty generator, ready to be written.</summary>
     public static Model NewModel(string name = "generator")
     {
         var model = NewProject().NewModel(name);
 
-        model.AddRoot(model.NewNode(TextGenConceptKeys.Generators));
+        model.NewNode(TextGenConceptKeys.Generator);
 
         return model;
     }

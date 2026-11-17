@@ -23,49 +23,64 @@ namespace Projectional.Structures;
 /// </remarks>
 public static class StructureLowering
 {
-    /// <summary>The declarations a definition describes, in the order they were written.</summary>
-    /// <param name="document">The definition, which is a root of <see cref="StructureConceptKeys.Language"/>.</param>
-    /// <returns>One declaration per <see cref="StructureConceptKeys.Concept"/> node.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="document"/> is <see langword="null"/>.</exception>
+    /// <summary>The declarations a language's definition documents describe, in the order they were written.</summary>
+    /// <param name="definitions">
+    /// The roots of the language's structure documents: one <see cref="StructureConceptKeys.Concept"/> or one
+    /// <see cref="StructureConceptKeys.Enumeration"/> per document, in the order the files are read.
+    /// </param>
+    /// <returns>One declaration per concept root, in that order.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="definitions"/> is <see langword="null"/>.</exception>
     /// <exception cref="ConceptDefinitionException">
-    /// A concept or enumeration key is declared twice, a property names no type or an unknown one, an
-    /// enumeration holds no symbols, a child or reference slot names no concept, or the node is not a language
-    /// definition at all.
+    /// A root is neither a concept nor an enumeration, a concept or enumeration key is declared twice, a property
+    /// names no type or an unknown one, an enumeration holds no symbols, or a child or reference slot names no
+    /// concept.
     /// </exception>
-    public static IReadOnlyList<ConceptDeclaration> Lower(Node document)
+    /// <remarks>
+    /// The enumerations are collected before any concept is lowered, because a property may be declared over an
+    /// enumeration that lives in another document - the reason the order is two passes rather than one walk.
+    /// </remarks>
+    public static IReadOnlyList<ConceptDeclaration> Lower(IEnumerable<Node> definitions)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(definitions);
 
-        if (document.Concept.Key != StructureConceptKeys.Language)
-        {
-            throw new ConceptDefinitionException(
-                $"'{document.Concept.Key}' is not a language definition; expected '{StructureConceptKeys.Language}'.");
-        }
-
-        var enums = Enumerations(document);
+        var roots = definitions as IReadOnlyList<Node> ?? [.. definitions];
+        var enums = Enumerations(roots);
         var declarations = new List<ConceptDeclaration>();
 
-        foreach (var concept in document.GetChildren(StructureLanguage.ConceptSlot))
+        foreach (var root in roots)
         {
-            declarations.Add(LowerConcept(concept, enums));
+            switch (root.Concept.Key)
+            {
+                case StructureConceptKeys.Concept:
+                    declarations.Add(LowerConcept(root, enums));
+                    break;
+
+                case StructureConceptKeys.Enumeration:
+                    break;
+
+                default:
+                    throw new ConceptDefinitionException(
+                        $"'{root.Concept.Key}' is not a definition; a structure document holds one concept or one enumeration.");
+            }
         }
 
         return declarations;
     }
 
     /// <summary>The registry those declarations build, which validates the graph between them.</summary>
-    /// <param name="document">The definition.</param>
+    /// <param name="definitions">The roots of the structure documents.</param>
     /// <exception cref="ConceptDefinitionException">
-    /// The definition is malformed, or the graph it describes is not a valid language.
+    /// A definition is malformed, or the graph it describes is not a valid language.
     /// </exception>
-    public static ConceptRegistry CreateRegistry(Node document) => ConceptRegistry.Create(Lower(document));
+    public static ConceptRegistry CreateRegistry(IEnumerable<Node> definitions) =>
+        ConceptRegistry.Create(Lower(definitions));
 
     /// <summary>The declared enumerations, keyed by name, so a property can be declared over one.</summary>
-    private static Dictionary<string, IReadOnlyList<string>> Enumerations(Node document)
+    private static Dictionary<string, IReadOnlyList<string>> Enumerations(IReadOnlyList<Node> roots)
     {
         var enums = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
-        foreach (var declaration in document.GetChildren(StructureLanguage.EnumerationSlot))
+        foreach (var declaration in roots.Where(root => root.Concept.Key == StructureConceptKeys.Enumeration))
         {
             var key = Required(declaration, StructureLanguage.KeySlot, "enumeration");
 

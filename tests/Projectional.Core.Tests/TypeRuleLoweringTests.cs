@@ -63,12 +63,11 @@ public sealed class TypeRuleLoweringTests
     public void ARuleWithoutABodyIsALoadTimeError()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var rule = model.Roots[0];
 
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
 
-        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(document));
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
 
         Assert.Contains("no body", exception.Message, StringComparison.Ordinal);
     }
@@ -98,14 +97,13 @@ public sealed class TypeRuleLoweringTests
     public void ASwitchWithoutAFallbackIsALoadTimeError()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var rule = model.Roots[0];
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.Binary");
 
         var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Switch);
         body.Set(TypeRuleLanguage.PropertySlot, "operator");
 
-        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(document));
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
 
         Assert.Contains("any other value", exception.Message, StringComparison.Ordinal);
     }
@@ -134,8 +132,7 @@ public sealed class TypeRuleLoweringTests
     public void ARecordFieldWithoutATypeIsALoadTimeError()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var rule = model.Roots[0];
 
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
 
@@ -145,7 +142,7 @@ public sealed class TypeRuleLoweringTests
 
         field.Set(TypeRuleLanguage.NameSlot, "amount");
 
-        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(document));
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
 
         Assert.Contains("'type'", exception.Message, StringComparison.Ordinal);
     }
@@ -167,13 +164,12 @@ public sealed class TypeRuleLoweringTests
     public void AFixedBodyWithoutATypeIsALoadTimeError()
     {
         var model = TypeRuleLanguage.NewModel();
-        var document = model.NewNode(TypeRuleConceptKeys.Rules);
-        var rule = model.NewChild(document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+        var rule = model.Roots[0];
 
         rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
         model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
 
-        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(document));
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
 
         Assert.Contains("'type'", exception.Message, StringComparison.Ordinal);
     }
@@ -344,21 +340,28 @@ public sealed class TypeRuleLoweringTests
 
         declare(builder);
 
-        return TypeRuleLowering.CreateRegistry(builder.Document);
+        return TypeRuleLowering.CreateRegistry(builder.Roots);
     }
 
-    /// <summary>Writes type rules the way a language author would: one model, rules created through it.</summary>
+    /// <summary>
+    /// Writes type rules the way a language author would: one rule per root, in one model the fixture owns.
+    /// </summary>
+    /// <remarks>
+    /// A rule is the root of its own document in a language project; here the roots share one model, which is
+    /// exactly what the lowering takes - the project, not the lowering, is what enforces one root per file.
+    /// </remarks>
     private sealed class RuleBuilder
     {
-        private readonly Model _model = TypeRuleLanguage.NewModel();
+        private readonly Model _model = TypeRuleLanguage.NewProject().NewModel("rules");
 
-        public RuleBuilder() => Document = _model.NewNode(TypeRuleConceptKeys.Rules);
-
-        public Node Document { get; }
+        /// <summary>The root of every rule and named type, in the order they were declared.</summary>
+        public IReadOnlyList<Node> Roots => _model.Roots;
 
         public void Rule(string conceptKey, Node body)
         {
-            var rule = _model.NewChild(Document, TypeRuleLanguage.RulesSlot, TypeRuleConceptKeys.Rule);
+            var rule = _model.NewNode(TypeRuleConceptKeys.Rule);
+
+            _model.AddRoot(rule);
 
             rule.Set(TypeRuleLanguage.ConceptKeySlot, conceptKey);
             rule.AddChild(TypeRuleLanguage.BodySlot, body);

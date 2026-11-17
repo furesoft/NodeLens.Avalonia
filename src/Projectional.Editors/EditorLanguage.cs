@@ -21,9 +21,6 @@ namespace Projectional.Editors;
 /// </remarks>
 public static class EditorLanguage
 {
-    /// <summary>The slot holding the notations of one language definition.</summary>
-    public const string NotationSlot = "notations";
-
     /// <summary>The notation's root block.</summary>
     public const string RootSlot = "root";
 
@@ -37,13 +34,13 @@ public static class EditorLanguage
     public const string ConceptKeySlot = "conceptKey";
 
     /// <summary>The concept's declarations.</summary>
+    /// <remarks>
+    /// A notation is a document of its own: its root <em>is</em> the notation for one concept and one variant, so a
+    /// language's editor aspect is the set of its editor documents. There is no container concept, for the same
+    /// reason the structure language has none.
+    /// </remarks>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
     [
-        new ConceptDeclaration(
-            EditorConceptKeys.Notations,
-            [new ChildSlot(NotationSlot, EditorConceptKeys.Notation, Cardinality.Many)],
-            description: "How one language is drawn: one notation per concept."),
-
         new ConceptDeclaration(
             EditorConceptKeys.Notation,
             [
@@ -200,5 +197,5 @@ public static class EditorLanguage
 
     /// <summary>A model of the editor language, ready for one language's notation.</summary>
     /// <param name="name">The model's name, which is also the file name it is saved under.</param>
-    public static Model NewModel(string name = "editor") => NewProject().NewModel(name);
+    public static Model NewModel(string name = "notation") => NewProject().NewModel(name);
 }

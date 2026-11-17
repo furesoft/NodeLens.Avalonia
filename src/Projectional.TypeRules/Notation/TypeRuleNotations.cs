@@ -37,10 +37,6 @@ public static class TypeRuleNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(TypeRuleConceptKeys.Rules, ed => ed.Sequence(
-            ed.Line(ed.Keyword("types", TextEmphasis.Bold)),
-            ed.Indent(ed.Children(TypeRuleLanguage.RulesSlot, NoEntries))));
-
         notations.Add(TypeRuleConceptKeys.Rule, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("rule", TextEmphasis.Bold),

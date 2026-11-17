@@ -25,7 +25,7 @@ public sealed class TextGenLoweringTests
         Text(model, template, "// ");
         Property(model, template, "name");
 
-        var declared = TextGenLowering.CreateGenerators(model.Roots[0], rules.Concepts).Single();
+        var declared = TextGenLowering.CreateGenerators(model.Roots, rules.Concepts).Single();
         var twin = new TextGenerator("Plain", TemplateRegistry.Empty.Add(
             RulesConceptKeys.Ruleset,
             TextTemplate.Of(new TextPart("// "), new PropertyPart("name"))));
@@ -38,28 +38,31 @@ public sealed class TextGenLoweringTests
     }
 
     [Fact]
-    public void OneDocumentCanDeclareSeveralGenerators()
+    public void ALanguageCanDeclareSeveralGenerators()
     {
-        var model = TextGenLanguage.NewModel();
+        // One generator per document: a language's generator aspect is a folder, and the names are what a host
+        // picks between - so several generators are several files, not a list in one.
+        var json = TextGenLanguage.NewModel("Json");
+        Text(json, Mapping(json, Generator(json, "Json"), RulesConceptKeys.Ruleset), "json");
 
-        Text(model, Mapping(model, Generator(model, "Json"), RulesConceptKeys.Ruleset), "json");
-        Text(model, Mapping(model, Generator(model, "Plain"), RulesConceptKeys.Ruleset), "plain");
+        var plain = TextGenLanguage.NewModel("Plain");
+        Text(plain, Mapping(plain, Generator(plain, "Plain"), RulesConceptKeys.Ruleset), "plain");
 
-        var generators = Lower(model);
+        var generators = Lower(json, plain);
 
-        // A language declares as many generators as it has targets; a host picks one by name.
         Assert.Equal(["Json", "Plain"], generators.Select(generator => generator.Name));
     }
 
     [Fact]
     public void TwoGeneratorsWithOneNameAreRefused()
     {
-        var model = TextGenLanguage.NewModel();
+        var first = TextGenLanguage.NewModel();
+        var second = TextGenLanguage.NewModel();
 
-        Generator(model, "Json");
-        Generator(model, "Json");
+        Generator(first, "Json");
+        Generator(second, "Json");
 
-        var error = Assert.Throws<ConceptDefinitionException>(() => Lower(model));
+        var error = Assert.Throws<ConceptDefinitionException>(() => Lower(first, second));
 
         Assert.Contains("Two generators", error.Message, StringComparison.Ordinal);
     }
@@ -67,11 +70,10 @@ public sealed class TextGenLoweringTests
     [Fact]
     public void AGeneratorWithoutANameIsRefused()
     {
-        var model = TextGenLanguage.NewModel();
+        // A new generator document holds one unnamed generator, which is exactly the state the lowering refuses.
+        var error = Assert.Throws<ConceptDefinitionException>(() => Lower(TextGenLanguage.NewModel()));
 
-        model.NewChild(model.Roots[0], TextGenLanguage.GeneratorsSlot, TextGenConceptKeys.Generator);
-
-        Assert.Throws<ConceptDefinitionException>(() => Lower(model));
+        Assert.Contains("name", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -136,7 +138,7 @@ public sealed class TextGenLoweringTests
         Text(model, Otherwise(model, conditional), "other");
 
         var concepts = PayrollSample.NewSampleModel().Concepts;
-        var lowered = TextGenLowering.CreateGenerators(model.Roots[0], concepts).Single();
+        var lowered = TextGenLowering.CreateGenerators(model.Roots, concepts).Single();
 
         Assert.True(concepts.TryGet(RulesConceptKeys.Ruleset, out var rulesetConcept));
 
@@ -148,12 +150,15 @@ public sealed class TextGenLoweringTests
         Assert.Equal(",", Assert.IsType<TextPart>(Assert.Single(children.Separator.Parts)).Text);
     }
 
-    private static IReadOnlyList<TextGenerator> Lower(Model model) =>
-        TextGenLowering.CreateGenerators(model.Roots[0], PayrollSample.NewSampleModel().Concepts);
+    private static IReadOnlyList<TextGenerator> Lower(params Model[] models) =>
+        TextGenLowering.CreateGenerators(
+            models.SelectMany(model => model.Roots),
+            PayrollSample.NewSampleModel().Concepts);
 
+    /// <summary>Names the one generator a fresh generator document holds.</summary>
     private static Node Generator(Model model, string name)
     {
-        var generator = model.NewChild(model.Roots[0], TextGenLanguage.GeneratorsSlot, TextGenConceptKeys.Generator);
+        var generator = model.Roots[0];
 
         generator.Set(TextGenLanguage.NameSlot, name);
 

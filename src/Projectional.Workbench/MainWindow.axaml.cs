@@ -1079,13 +1079,24 @@ public sealed partial class MainWindow : Window, IDisposable
             typing: WorkbenchLanguage.Typing);
     }
 
-    /// <summary>Opens an empty notation, which is the other half of a language definition.</summary>
+    /// <summary>Opens an empty notation, which is one half of a language definition.</summary>
     private void OnNewNotation(object? sender, RoutedEventArgs e)
     {
         _error = null;
 
         OpenDocument(
             _language.NewNotationDefinition(),
+            _language.Notations,
+            typing: WorkbenchLanguage.Typing);
+    }
+
+    /// <summary>Opens an empty enumeration, which is the other half of what a structure document can hold.</summary>
+    private void OnNewEnumeration(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        OpenDocument(
+            _language.NewEnumerationDefinition(),
             _language.Notations,
             typing: WorkbenchLanguage.Typing);
     }
@@ -1127,13 +1138,25 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        foreach (var file in new[] { LanguageProject.StructureFile, LanguageProject.EditorFile, LanguageProject.TypesFile })
+        // Every definition document of the folder opens, because that is where the user edits the language: one
+        // concept or enumeration per file, one notation per file, one rule or named type per file.
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder })
         {
-            var path = Path.Combine(directory, file);
+            var path = Path.Combine(directory, folder);
 
-            if (File.Exists(path) && DocumentFile.TryLoad(path, _language.NewProject(), out _) is { } model)
+            if (!System.IO.Directory.Exists(path))
             {
-                OpenDocument(model, _language.Notations, path, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+                continue;
+            }
+
+            foreach (var file in System.IO.Directory
+                .EnumerateFiles(path, "*.mps", SearchOption.TopDirectoryOnly)
+                .OrderBy(file => Path.GetFileName(file), StringComparer.Ordinal))
+            {
+                if (DocumentFile.TryLoad(file, _language.NewProject(), out _) is { } model)
+                {
+                    OpenDocument(model, _language.Notations, file, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+                }
             }
         }
 

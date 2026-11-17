@@ -19,12 +19,6 @@ namespace Projectional.Structures;
 /// </remarks>
 public static class StructureLanguage
 {
-    /// <summary>The slot holding the concepts of a language.</summary>
-    public const string ConceptSlot = "concepts";
-
-    /// <summary>The slot holding the enumerations a property may be declared over.</summary>
-    public const string EnumerationSlot = "enumerations";
-
     /// <summary>The slot naming a concept or an enumeration: the key other concepts refer to it by.</summary>
     public const string KeySlot = "key";
 
@@ -52,16 +46,13 @@ public static class StructureLanguage
     public const string IsAbstractProperty = "isAbstract";
 
     /// <summary>The concepts of the structure language itself.</summary>
+    /// <remarks>
+    /// There is no container concept: a document's root <em>is</em> the definition it holds - one concept, or one
+    /// enumeration - the way MPS stores one root per file. A language is the set of its documents, which is why
+    /// nothing here knows how many definitions a project has.
+    /// </remarks>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
     [
-        new ConceptDeclaration(
-            StructureConceptKeys.Language,
-            [
-                new ChildSlot(ConceptSlot, StructureConceptKeys.Concept, Cardinality.Many),
-                new ChildSlot(EnumerationSlot, StructureConceptKeys.Enumeration, Cardinality.Many),
-            ],
-            description: "One language definition: the concepts it declares and the symbols its properties accept."),
-
         new ConceptDeclaration(
             StructureConceptKeys.Concept,
             [
@@ -149,5 +140,6 @@ public static class StructureLanguage
 
     /// <summary>A model of the structure language, ready for one definition.</summary>
     /// <param name="name">The model's name, which is also the file name it is saved under.</param>
-    public static Model NewModel(string name = "structure") => NewProject().NewModel(name);
+    /// <remarks>One definition per model: a document holds the concept or the enumeration it is named after.</remarks>
+    public static Model NewModel(string name = "concept") => NewProject().NewModel(name);
 }

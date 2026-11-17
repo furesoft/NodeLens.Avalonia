@@ -361,7 +361,7 @@ let a click on a generated line move the caret to the node that wrote it.
 mapping per concept, and a template is a list of parts, all of it drawn in MPS' shape. `TextGenLowering` turns that
 model into the same `TextGenerator` a C# author writes, and checks what a compiler would have checked - unique names,
 a concept the language has, a slot of that concept named as the kind it is - at load. `LanguageProject` loads
-`generator.mps` beside `structure.mps`/`editor.mps`/`types.mps`, so a language in a folder declares its generators too.
+a `generator` folder beside `structure`, `editor` and `types`, so a language in a folder declares its generators too.
 The parity rule of ADR 0014 is executed by `TextGenLoweringTests`, which asserts a declared generator produces exactly
 the text of its hand-written twin.
 

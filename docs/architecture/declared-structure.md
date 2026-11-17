@@ -4,13 +4,13 @@ The first half of "a language is data": concepts, slots, inheritance and enumera
 lowering step that turns them into the `ConceptDeclaration`s every other layer already understands.
 
 Status: **delivered** as slice P1 of [language-authoring.md](language-authoring.md), and the surface now reads the
-way MPS writes `structure.mps` - one section per kind of slot. What is still provisional is the *file* layout
+way MPS writes a structure document - one section per kind of slot. What is still provisional is the *file* layout
 (`language.mps` as one model per aspect, dependencies), which is P3/P4.
 
 ## Why this and not a config file
 
 A language definition is a model, so it is edited by the same editor, saved by the same writer, undone by the same
-history and validated by the same registries. Nothing about a definition is special: `structure.mps` is a document
+history and validated by the same registries. Nothing about a definition is special: a file in the language's `structure` folder is a document
 whose concepts happen to be `Structure.Concept` and `Structure.Slot`.
 
 That is the property [ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md) needs. The declared path is
@@ -22,7 +22,7 @@ registry and no declared-only node kind.
 
 Nine concepts, and the small number is the design: a definition says what a concept **is**, never how it looks.
 Presentation is the editor language (P2), which is a separate model for the same reason MPS splits
-`structure.mps` from `editor.mps` - a definition that mixes the two cannot be reviewed.
+a structure document from an editor document - a definition that mixes the two cannot be reviewed.
 
 ```text
 enumerations:
@@ -140,7 +140,7 @@ classes keep their names (`StructureLanguage`, `StructureLowering`, `StructureCo
 
 | Missing | Arrives with |
 | --- | --- |
-| notation as data (`editor.mps`) | P2 |
+| notation as data (one editor document per notation) | P2 |
 | `language.mps` as one model per aspect, with dependencies | P3, P4 |
 | a block conditional, which would let a whole option line disappear | when a notation needs it |
 | toggling the flag from the header rather than from a menu | it is an [intention](context-actions.md), by design |

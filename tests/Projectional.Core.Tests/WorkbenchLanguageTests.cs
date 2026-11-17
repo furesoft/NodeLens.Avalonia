@@ -6,6 +6,8 @@ using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Structures;
+using Projectional.TextGen;
+using Projectional.TypeRules;
 using Projectional.Workbench;
 using Xunit;
 
@@ -27,8 +29,13 @@ public sealed class WorkbenchLanguageTests
         var language = new WorkbenchLanguage();
 
         Assert.True(language.Concepts.TryGet(RulesConceptKeys.Ruleset, out _));
-        Assert.True(language.Concepts.TryGet(StructureConceptKeys.Language, out _));
-        Assert.True(language.Concepts.TryGet(EditorConceptKeys.Notations, out _));
+
+        // One definition per document: what a document of each definition language starts with is the definition
+        // itself, so these are the concepts the shell has to know.
+        Assert.True(language.Concepts.TryGet(StructureConceptKeys.Concept, out _));
+        Assert.True(language.Concepts.TryGet(EditorConceptKeys.Notation, out _));
+        Assert.True(language.Concepts.TryGet(TypeRuleConceptKeys.Rule, out _));
+        Assert.True(language.Concepts.TryGet(TextGenConceptKeys.Generator, out _));
         Assert.Empty(language.Opened);
     }
 
@@ -55,9 +62,8 @@ public sealed class WorkbenchLanguageTests
 
         using var session = new EditorSession(model.Roots[0], language.Notations, typing: WorkbenchLanguage.Typing);
 
-        var concept = model.NewChild(model.Roots[0], StructureLanguage.ConceptSlot, StructureConceptKeys.Concept);
-
-        concept.Set(StructureLanguage.KeySlot, "Rules.Rule");
+        // One definition per document: the root *is* the concept, so naming it is the whole of writing the file.
+        model.Roots[0].Set(StructureLanguage.KeySlot, "Rules.Rule");
         session.Refresh();
 
         Assert.Contains("Rules.Rule", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
@@ -69,8 +75,7 @@ public sealed class WorkbenchLanguageTests
         var language = new WorkbenchLanguage();
         var model = language.NewLanguageDefinition();
 
-        model.NewChild(model.Roots[0], StructureLanguage.ConceptSlot, StructureConceptKeys.Concept)
-            .Set(StructureLanguage.KeySlot, "Rules.Rule");
+        model.Roots[0].Set(StructureLanguage.KeySlot, "Rules.Rule");
 
         var path = Path.Combine(Path.GetTempPath(), $"definition-{Guid.NewGuid():N}.mps");
 
@@ -91,33 +96,60 @@ public sealed class WorkbenchLanguageTests
     }
 
     [Fact]
-    public void ALanguageDefinitionOpensWithItsTwoSections()
+    public void EveryDefinitionDocumentOfTheSampleOpensAsADocument()
     {
-        // A new definition is two lists in two slots, so without a heading the two placeholders are the same
-        // picture - and picking the wrong one to press Enter in creates the wrong kind of declaration.
+        // What File > Open language... does after the folder loads: every definition file of the sample opens as a
+        // document of its own, which is where the user edits it.
+        var language = new WorkbenchLanguage();
+        var directory = Path.Combine(AppContext.BaseDirectory, "Declared");
+
+        var structure = Directory.EnumerateFiles(Path.Combine(directory, "structure"), "*.mps").ToList();
+        var editor = Directory.EnumerateFiles(Path.Combine(directory, "editor"), "*.mps").ToList();
+
+        Assert.Equal(2, structure.Count);
+        Assert.Equal(2, editor.Count);
+
+        foreach (var file in structure.Concat(editor))
+        {
+            var model = DocumentFile.TryLoad(file, language.NewProject(), out var error);
+
+            Assert.Null(error);
+            Assert.NotNull(model);
+            Assert.Single(model.Roots);
+
+            using var session = new EditorSession(model.Roots[0], language.Notations);
+
+            Assert.NotEmpty(LayoutSnapshot.Render(session.Layout, width: 120));
+        }
+    }
+
+    [Fact]
+    public void AConceptDocumentOpensAsOneDefinition()
+    {
+        // One definition per document: the root is the concept, so an empty one is the concept's own sections -
+        // there is no list to be ambiguous about, which is what the old two-section shape needed headings for.
         var language = new WorkbenchLanguage();
         var model = language.NewLanguageDefinition();
 
         using var session = new EditorSession(model.Roots[0], language.Notations);
 
-        Assert.Equal(
-            string.Join('\n', "enumerations:", "  << ... >>", "concepts:", "  << ... >>"),
-            LayoutSnapshot.Render(session.Layout, width: 120));
+        Assert.Single(model.Roots);
+        Assert.Equal(StructureConceptKeys.Concept, model.Roots[0].Concept.Key);
+        Assert.Contains("concept", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ANotationDefinitionOpensToo()
+    public void ANotationDocumentOpensAsOneNotation()
     {
         var language = new WorkbenchLanguage();
         var model = language.NewNotationDefinition();
 
         using var session = new EditorSession(model.Roots[0], language.Notations);
 
-        // The section placeholder of the MPS shape, not a prose sentence: an empty list of notations is the same
-        // state as an empty list of concepts, and one placeholder for both is one thing to learn.
-        Assert.Equal(
-            string.Join('\n', "notations:", "  << ... >>"),
-            LayoutSnapshot.Render(session.Layout, width: 120));
+        // One notation per document, so the empty state is the notation's own sections rather than a list of them.
+        Assert.Single(model.Roots);
+        Assert.Equal(EditorConceptKeys.Notation, model.Roots[0].Concept.Key);
+        Assert.Contains("editor for concept", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -207,6 +239,11 @@ public sealed class WorkbenchLanguageTests
     }
 
     /// <summary>Writes a one-concept language project whose notation is the keyword <c>rule</c> and the name.</summary>
+    /// <remarks>
+    /// One document per definition, so each concept and each notation gets its own file in its aspect folder, and
+    /// the file names are the concept keys - which is also what orders them, because the project reads a folder in
+    /// ordinal file-name order.
+    /// </remarks>
     private static void WriteLanguage(string directory, string conceptKey, string[] properties, string? alsoAbstract = null)
     {
         var definition = new DefinitionBuilder();
@@ -221,7 +258,16 @@ public sealed class WorkbenchLanguageTests
             slots: [.. properties.Select(property => definition.Property(property, "string"))],
             nameSlot: properties[0]);
 
-        ModelFile.Save(definition.Root.Model, Path.Combine(directory, LanguageProject.StructureFile));
+        var structure = Path.Combine(directory, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+
+        foreach (var document in definition.Documents)
+        {
+            var key = document.Roots[0].GetOrNull(StructureLanguage.KeySlot)!;
+
+            ModelFile.Save(document, Path.Combine(structure, $"{key}.mps"));
+        }
 
         var notation = new NotationBuilder();
         var declared = notation.Notation(conceptKey);
@@ -231,6 +277,9 @@ public sealed class WorkbenchLanguageTests
         notation.Cell(line, EditorConceptKeys.Space);
         notation.Slot(line, EditorConceptKeys.Property, properties[0]);
 
-        ModelFile.Save(notation.Root.Model, Path.Combine(directory, LanguageProject.EditorFile));
+        var editor = Path.Combine(directory, LanguageProject.EditorFolder);
+
+        Directory.CreateDirectory(editor);
+        ModelFile.Save(notation.Documents[0], Path.Combine(editor, $"{conceptKey}.mps"));
     }
 }

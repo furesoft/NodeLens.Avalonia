@@ -75,7 +75,7 @@ and [testing.md](architecture/testing.md).
 | Parity harness: the same language as C# and as a model must agree | `LanguageParityTests`, `ParityHarness`, `DeclaredTestLanguage` | `LanguageParityTests` (registry dump, snapshot, findings) |
 | `Projectional.Toolkit`: the third public surface, so a language can be built without the editor | `Projectional.Toolkit/`, ADR 0019 | `tests/Projectional.Toolkit.Tests` (references the toolkit only) |
 | `dotnet new projectional-language` template | `templates/projectional-language/` | verified end to end: install, generate, build, test |
-| A language project is a folder (`structure.mps` + optional `editor.mps`) | `Projectional.Languages/` | `LanguageProjectTests` |
+| A language project is a folder of aspect folders, one definition per document (`structure/*.mps`, optional `editor`, `types`, `generator`), read in file-name order | `Projectional.Languages/`, `LanguageProject.Read` | `LanguageProjectTests` (incl. a document with two roots being refused) |
 | The app composes the sample language with both definition languages and opens a language folder as a document | `WorkbenchLanguage`, File > Open language | `WorkbenchLanguageTests` |
 | Model browser (walks the model, not the projection) | `Projectional.Workbench/Outline/` | `OutlineTests` |
 | Problems panel (document order, jump target, stale findings last) | `Projectional.Workbench/Problems/` | `ProblemListTests` |
@@ -85,7 +85,7 @@ and [testing.md](architecture/testing.md).
 | Table add-row affordance: an empty table draws its header and one fillable `AddRowCell` row | `Projection/Tree/AddRowCell.cs`, `TableCell` | `TableProjectionTests`, `TableNotationTests`, `SampleTableVariantTests` |
 | Table column widths, dragged and reset, as view state | `Editing/Tables/ColumnWidths.cs`, `ColumnResize`, `IColumnWidths` | `ColumnWidthsTests`, `ColumnResizeTests` |
 | Self-contained single file, with a `--self-check` the bundle runs on itself | `Projectional.Workbench.csproj`, `SelfCheck.cs`, `ci.yml` | the `single-file` CI job: publish, assert one file, run the check |
-| **The M2 gate**: a DSL that exists only as data - `structure.mps`, `editor.mps` and a document | `samples/declared-pipeline/` | `DeclaredSampleLanguageTests` (loads, draws as a table, edits, saves, reloads byte-identically, hands the folder to the shell) |
+| **The M2 gate**: a DSL that exists only as data - `structure/` and `editor/` folders of one-definition documents, plus a document | `samples/declared-pipeline/` | `DeclaredSampleLanguageTests` (loads, draws as a table, edits, saves, reloads byte-identically, hands the folder to the shell) |
 
 ## M3 - References, triggers and intentions (complete)
 
@@ -126,7 +126,7 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | Type expressions as data: primitive, record, list and optional, nested; the drawing of a type is exactly its `IType.Name` | `TypeRuleConceptKeys.TypeExpr` + four kinds, `TypeRuleLowering.LowerType` | `TypeRuleLoweringTests`, `TypeRuleNotationTests` |
 | Named types: a type declared under a name and referenced from rules and other types, transparent and cycle-checked at load | `NamedType`, `TypeRule.Named`, `TypeRule.Ref` | `NamedTypeTests`, `TypeRuleLoweringTests`, `TypeRuleNotationTests` |
 | Inline collection notation: a separated list that stays inside its line, so a record's fields can be written on one | `InlineCollectionNotationCell`, `NotationEditor.InlineCollection` | `InlineCollectionNotationTests` |
-| A language project's `types.mps` loads into the registry a constraint asks for types, and the app checks each document with its own language's rules | `LanguageProject.Types`, `DocumentTab.Types` | `LanguageProjectTypesTests` |
+| A language project's `types` folder loads into the registry a constraint asks for types, one rule or named type per document, and the app checks each document with its own language's rules | `LanguageProject.Types`, `DocumentTab.Types` | `LanguageProjectTypesTests` |
 | Quick fixes at the caret, the bulb, the offer list | `QuickFixes`, `OfferList` | `QuickFixesTests`, `QuickFixBulbTests`, `EditorSessionFixTests` |
 | Standard check catalogue as a package (`STD001`, `STD003`, `STD010`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `BinaryGroupingCheckTests` |
 | The app's own checks (default names, duplicate rule names) | `Projectional.Workbench/Checks/` | `DefaultNamesTests`, `DuplicateRuleNamesTests` |
@@ -137,7 +137,7 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | Text generation from a template tree per concept: literal, property, child, list, loop, indent, line break, conditional, self | `TextTemplate` and nine `TemplatePart` kinds in `Projectional.Language/Generation/` | `GeneratorTests` |
 | The generator engine: indentation from the template, a depth guard, and a traceability map that answers what wrote a character | `Generator`, `GeneratedText`, `GeneratedRegion` | `GeneratorTests` |
 | Two generators for one language, proving a language has as many as it declares | `RulesTextGenerators` (JSON and a C# fragment) | `RulesTextGeneratorsTests` |
-| The declared generator language: many generators per document, a template per concept, lowered into the same runtime generator, loaded from `generator.mps` | `Projectional.TextGen/`, `LanguageProject.Generators` | `TextGenLoweringTests` (incl. parity with the C# twin) |
+| The declared generator language: one generator per document, a template per concept, lowered into the same runtime generator, loaded from the `generator` folder | `Projectional.TextGen/`, `LanguageProject.Generators` | `TextGenLoweringTests` (incl. parity with the C# twin) |
 | The shell offers a document's generators by name, shows one row per generated line, and saves the text to a file the user picks | `MainWindow.UpdateGenerators`, `DocumentGenerate`, `MainWindow.OnSaveGenerated` | shown in a real window by `tools/Projectional.Screenshots` (`feature-generate-output.png`: C# 52 character(s), 13 region(s)) |
 | The variables a run is given, read from one line of `name=value` pairs (number, flag, ISO date, else text) | `Projectional.Workbench/Run/RunInputs` | `RunInputsTests` |
 | Running a document: its language's interpreter, the answer or the failure as a headline, and the trace as rows that jump to their node | `DocumentRun`, `RunReport`, `RunRow`, `MainWindow.RunActiveDocument` | `DocumentRunTests` |

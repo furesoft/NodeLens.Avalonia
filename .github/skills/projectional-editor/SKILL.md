@@ -340,7 +340,7 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   the two authoring paths of ADR 0014 equal. `StructureLanguage.ConceptDeclarations` is the C# twin of the
   definition language itself.
 - **The language says what a concept *is*, never how it looks.** Presentation is the editor language (P2), in a
-  separate model, for the same reason MPS splits `structure.mps` from `editor.mps`.
+  separate model, for the same reason MPS splits structure documents from editor documents.
 - **Two spellings are data**: `cardinality` is the text `one`/`many` and `typeName` is a name an author types, so the
   *lowering* validates them. A model that refused them would have to know the concept registry.
 - **`StructureLowering` checks what a compiler would have checked** (every property names a known type, an
@@ -395,7 +395,7 @@ express something C# can, fix the language - ADR 0014 rule 2.
 
 `WorkbenchLanguage` (`Projectional.Workbench/Documents/`) is the app's **one** registry and **one** notation
 registry: it composes the sample rules language with `Projectional.Structures` and `Projectional.Editors`, and
-`DocumentFile.TryLoad` loads against it. A `structure.mps` therefore opens in the app like any other document - a
+`DocumentFile.TryLoad` loads against it. A concept document therefore opens in the app like any other document - a
 language definition is a model.
 
 - **Include the transitive closure.** `RulesLanguage.ConceptDeclarations` is that language's *own* concepts; it
@@ -410,18 +410,30 @@ language definition is a model.
 
 ### A language project is a folder
 
-`Projectional.Languages` holds `LanguageProject`: a directory with `structure.mps` (required), `editor.mps`
-(optional) and `types.mps` (optional) becomes a `ConceptRegistry` + `NotationRegistry` + `TypeRegistry`. **`Open(directory, out error)` answers a usable
+`Projectional.Languages` holds `LanguageProject`: a directory with a `structure` folder (required) and optional
+`editor`, `types` and `generator` folders becomes a `ConceptRegistry` + `NotationRegistry` + `TypeRegistry`.
+**`Open(directory, out error)` answers a usable
 language or a message, never an exception** - opening is a user action, and a user action reports. The notation is
-lowered *against the concepts the structure model just declared*, so a notation for an undeclared concept is caught
-at the earliest moment both halves exist. **A language without `editor.mps` loads on purpose**: every node draws as a
-missing-notation cell, which is the state a language being written is in.
+lowered *against the concepts the structure documents just declared*, so a notation for an undeclared concept is
+caught at the earliest moment both halves exist. **A language without an `editor` folder loads on purpose**: every
+node draws as a missing-notation cell, which is the state a language being written is in.
 
-**`samples/declared-pipeline` is the M2 gate made concrete**: a DSL that exists only as data - `structure.mps`,
-`editor.mps` and a document - with no C# anywhere. `DeclaredSampleLanguageTests` copies the folder next to the test
+**One document holds one definition**, and the folder is read in ordinal file-name order - that order is the
+declaration order, which decides default fill and completion ranking. A structure document's root *is* a
+`Structure.Concept` or a `Structure.Enumeration`; an editor document's root is one `Editor.Notation`; a types
+document's root is one `TypeRule.Rule` or one `TypeRule.Named`; a generator document's root is one
+`TextGen.Generator`. **There is no container concept** (`Structure.Language`, `Editor.Notations`, `TypeRule.Rules`,
+`TextGen.Generators` were deleted): a container with one child would be a second place to say which definitions
+exist. Do not reintroduce one to "simplify" a fixture - a document with two roots is refused by `LanguageProject.Read`
+and by the rules of MPS' file layout.
+
+**`samples/declared-pipeline` is the M2 gate made concrete**: a DSL that exists only as data - a `structure` folder,
+an `editor` folder and a document - with no C# anywhere. `DeclaredSampleLanguageTests` copies the folder next to the test
 assembly (a `<None Include="..\..\samples\...">` item) and loads exactly the files a user opens, so the sample cannot
 drift from what the code accepts without a test failing. It is the place to look when asking "can a language really
-be written without C#", and the place to extend when the declared path grows.
+be written without C#", and the place to extend when the declared path grows. The definition files there are the
+*writer's* output - `EveryDefinitionDocumentSavesBackByteIdentically` re-saves each one and demands the same bytes -
+so generate them with `ModelFile.Save` rather than by hand.
 
 **`WorkbenchLanguage` is per shell, not static** - it grows with **File ▸ Open language…**, and `TryAdd` builds both
 candidate registries first so a clash changes nothing (a half-added language gives documents a concept registry that
@@ -1032,8 +1044,8 @@ proven case rather than a claim in a comment. The shell builds its Generate subm
 generators; there is no fixed "the generator" command, and a document whose language declares none simply has no
 entries.
 
-- **The declared form is `Projectional.TextGen`**, and it is `generator.mps` in a language folder beside
-  `structure.mps`/`editor.mps`/`types.mps`. A document holds any number of generators; a generator holds one mapping
+- **The declared form is `Projectional.TextGen`**, and it is a `generator` folder in a language project beside
+  the `structure`, `editor` and `types` folders, one generator per document. A generator holds one mapping
   per concept; a mapping holds a template; a template is a list of parts.
 - **`TextGenLowering` is the only lowering, and it validates at load**: unique generator names, a concept the language
   actually has, and every part's slot existing on the mapped concept *as the kind it is* (a `Child` part on a list slot
