@@ -654,6 +654,11 @@ notation is registered per concept **and** variant
   That is the "cannot leak into generation unnoticed" rule - the type does not stop the caller, it makes
   the caller say what it does about not knowing.
 - **A concept with no rule is `Unknown`**, not an error. Nobody said, so nothing is known.
+- **A record is compared by name, not by order**; the order is kept for display only. **An optional
+  accepts its inner type, and a plain type does not accept an optional** - "may be absent" is a promise
+  about what a reader has to handle, so a slot that promised a value must not be handed one that might
+  not be there. Nesting is not collapsed: `int??` says the absence may itself be absent. **Every
+  structural type accepts `Unknown`**, for the same reason `PrimitiveType` does.
 - **`ITypeRule.TypeFor`, not `TypeOf`**: CA1716 forbids a reserved word as an interface member, the same
   reason `ICheck.Find` is not called `Of`. The class member `TypeContext.TypeOf(Node)` keeps the natural
   name because the rule does not apply to it.
@@ -1663,7 +1668,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1703 tests**; anything below that means tests were deleted.
+it. **Baseline is 1714 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

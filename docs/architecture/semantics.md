@@ -151,13 +151,16 @@ beyond local propagation; if a language needs more, its concepts provide it.
 
 ### What is implemented
 
-`Projectional.Semantics/Types/` holds the model; the primitive and `Unknown` kinds are done, the
-named and structural kinds are not.
+`Projectional.Semantics/Types/` holds the model; the primitive, structural and `Unknown` kinds are done,
+the named/declared kind is not.
 
 | Type | Job |
 | --- | --- |
 | `IType` | `Name` and `Accepts(actual)` - assignability, asked in that direction |
 | `PrimitiveType` | wraps a `PropertyType`, so a language declares its primitives where it already declares properties |
+| `RecordType` | a fixed set of named fields, compared **by name, not by order** |
+| `ListType` | its element type; a length is a fact about a value, not about its type |
+| `OptionalType` | the inner type or nothing; accepts the inner type, and nesting is not collapsed |
 | `UnknownType` | the answer when nothing says; accepts and is accepted |
 | `ITypeRule` | the aspect: `TypeFor(TypeContext)` |
 | `TypeContext` | the node and `TypeOf(node)` / `TypeOfChild(slot)` - the whole of local propagation |
@@ -175,6 +178,14 @@ Four rules worth knowing:
   does not stop the caller, it makes the caller say what it does about not knowing.
 - **A concept with no rule is `Unknown`**, not an error. Nobody said, so nothing is known, and every
   consumer is told that rather than handed a guess.
+- **A record is compared by name, not by order.** Two records that differ only in the order their fields
+  were written are the same shape; the order is kept for display.
+- **An optional accepts its inner type, and a plain type does not accept an optional.** "May be absent"
+  is a promise about what a reader has to handle, not a different kind of value - so a slot that promised
+  a value must not be handed one that might not be there. Nesting is not collapsed: `int??` says the
+  absence may itself be absent, and a language that does not want that should not declare it.
+- **Every structural type accepts `Unknown`**, for the same reason `PrimitiveType` does: one mistake must
+  not become a finding on every expression that reads the value.
 - **`ITypeRule.TypeFor`, not `TypeOf`**: CA1716 forbids a reserved word as an interface member, the same
   reason `ICheck.Find` is not called `Of`. The class member `TypeContext.TypeOf(Node)` keeps the natural
   name, because the rule does not apply to it.
