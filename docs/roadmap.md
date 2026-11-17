@@ -70,7 +70,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 
 | Delivers | Details |
 | --- | --- |
-| Constraints | the constraint engine: incremental validation in volume, on top of the diagnostics pipeline that already draws markers ([markers.md](architecture/markers.md)) |
+| Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
 | Types | basic type system with `Unknown` semantics |
 | Text generation | template trees, traceability map |
 | Interpreter | evaluation with trace and step budget |
