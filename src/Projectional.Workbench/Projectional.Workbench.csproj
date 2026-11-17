@@ -40,6 +40,7 @@
     <ProjectReference Include="..\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Structures.Intentions\Projectional.Structures.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
+    <ProjectReference Include="..\Projectional.TypeRules\Projectional.TypeRules.csproj" />
   </ItemGroup>
 
   <ItemGroup>

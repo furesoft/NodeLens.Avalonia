@@ -112,7 +112,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 
 | Delivers | Details |
 | --- | --- |
-| Declarative aspects | constraints, types, scopes, generation, intentions, textGen and accessories as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
+| Declarative aspects | **types are done** (`Projectional.TypeRules`, [semantics.md](architecture/semantics.md#the-declared-form)); what is left is constraints, scopes, generation, intentions and textGen as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |

@@ -666,6 +666,16 @@ notation is registered per concept **and** variant
 - **Type rules are behaviour, so they live beside the language** (`SampleTypes` in
   `Projectional.Samples.Checks`), not inside the language package - the same reason intentions and
   checks do.
+- **`Projectional.TypeRules` is the declared form** - the first declared aspect: a rule is a model
+  (`TypeRule.Rule` with a `Fixed`/`Child`/`Switch` body) and `TypeRuleLowering` turns it into the
+  same `ITypeRule` a C# author writes. **Three bodies, not a statement list**: MPS' typesystem is
+  imperative, and copying that would mean shipping an interpreter for a language whose only job is to
+  answer one question per node. A body that cannot be lowered (no body, an unknown type name, a value
+  declared twice, a switch with no `otherwise`) is a `ConceptDefinitionException` at load, not a rule
+  that silently answers `Unknown`. Only the four primitives are nameable - an enumeration would have to
+  be resolved against the language's own registry, which is the declared stage's job. The parity rule
+  applies: `TypeRuleLoweringTests` asserts the declared registry and `SampleTypes` answer the same type
+  for every node of the sample document.
 
 ## How the editor tree is built
 
