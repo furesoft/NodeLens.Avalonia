@@ -56,6 +56,13 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly DocumentSet _documents = new();
     private readonly WorkbenchLanguage _language = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
+    private readonly TextRecentFilesStore _recentStore = new(
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Projectional",
+            "recent.txt"));
+
+    private RecentFiles _recent = RecentFiles.Empty;
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
     private ThemeVariant _themeChoice = ThemeVariant.Default;
@@ -82,6 +89,11 @@ public sealed partial class MainWindow : Window, IDisposable
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
         Documents.SelectionChanged += OnSelectionChanged;
         Opened += (_, _) => FocusActiveDocument();
+
+        // Read once at startup: a list read per opening would be a list the menu and the shell could disagree about,
+        // and a broken file must cost one empty menu rather than an exception on every open.
+        _recent = RecentFiles.From(_recentStore.Read());
+        RebuildRecentMenu();
     }
 
     /// <inheritdoc />
@@ -914,6 +926,18 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        TryOpenPath(path);
+    }
+
+    /// <summary>Opens the model at <paramref name="path"/>, reporting why it could not when it cannot.</summary>
+    /// <remarks>
+    /// The picker and the recent-files menu both end here, so "open a file" has one implementation: a second one would
+    /// be a second place where a missing file, an already-open document and a language mismatch are handled.
+    /// </remarks>
+    private void TryOpenPath(string path)
+    {
+        _error = null;
+
         if (_documents.Find(path) is { } alreadyOpen)
         {
             Select(alreadyOpen);
@@ -926,12 +950,63 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             _error = $"Could not open {Path.GetFileName(path)}: {error}";
 
+            // A file that can no longer be opened is exactly what a recent list must forget, or the menu keeps
+            // offering a click that fails.
+            ForgetRecent(path);
             UpdateStatus();
 
             return;
         }
 
+        RememberRecent(path);
         OpenDocument(model, RulesLanguage.CreateNotations(model.Concepts), filePath: path, emphasis: RulesLanguage.Emphasis, typing: RulesLanguage.TypingRules);
+    }
+
+    /// <summary>Puts <paramref name="path"/> at the top of the recent list and remembers it.</summary>
+    private void RememberRecent(string path)
+    {
+        _recent = _recent.With(path);
+
+        _recentStore.Write(_recent.Paths);
+        RebuildRecentMenu();
+    }
+
+    /// <summary>Drops <paramref name="path"/> from the recent list, for a file that can no longer be opened.</summary>
+    private void ForgetRecent(string path)
+    {
+        if (_recent.Paths.Count == 0)
+        {
+            return;
+        }
+
+        _recent = _recent.Without(path);
+
+        _recentStore.Write(_recent.Paths);
+        RebuildRecentMenu();
+    }
+
+    /// <summary>Rebuilds File ▸ Recent from the list.</summary>
+    /// <remarks>
+    /// Rebuilt rather than bound, because the entries carry a path each and a menu is the cheapest place to keep that:
+    /// an item per path, closing over the path it was made for. An empty list disables the parent entry instead of
+    /// hiding it, so the menu does not change shape depending on what the user did last.
+    /// </remarks>
+    private void RebuildRecentMenu()
+    {
+        RecentFilesItem.Items.Clear();
+        RecentFilesItem.IsEnabled = !_recent.IsEmpty;
+
+        foreach (var path in _recent.Paths)
+        {
+            var item = new MenuItem { Header = Path.GetFileName(path) };
+
+            // The header is the file name, so the full path is what the tooltip is for.
+            ToolTip.SetTip(item, path);
+
+            item.Click += (_, _) => TryOpenPath(path);
+
+            RecentFilesItem.Items.Add(item);
+        }
     }
 
     private async void OnSaveDocument(object? sender, RoutedEventArgs e)
@@ -976,6 +1051,8 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         if (DocumentFile.TrySave(document, path, out var error))
         {
+            // A file that has just been written is a file worth offering again next time.
+            RememberRecent(path);
             UpdateStatus();
 
             return true;

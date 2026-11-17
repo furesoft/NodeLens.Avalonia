@@ -13,6 +13,7 @@
         <MenuItem Header="New document of an _opened language" Click="OnNewLanguageDocument" />
         <MenuItem Header="Open _language..." Click="OnOpenLanguage" />
         <MenuItem Header="_Open..." HotKey="Ctrl+O" Click="OnOpenDocument" />
+        <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />
         <Separator />
         <MenuItem Header="_Save" HotKey="Ctrl+S" Click="OnSaveDocument" />
         <MenuItem Header="Save _as..." HotKey="Ctrl+Shift+S" Click="OnSaveDocumentAs" />
