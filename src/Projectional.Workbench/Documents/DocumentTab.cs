@@ -122,6 +122,14 @@ internal sealed class DocumentTab : IDisposable
         Session.History.CoalescingKey = null;
     }
 
+    /// <summary>What the checks last found in this document, in document order.</summary>
+    /// <remarks>
+    /// Held on the tab rather than recomputed by the panel, so switching tabs shows each document's own findings
+    /// instead of running every check again. It is a snapshot: the model's change event is what replaces it, which is
+    /// the same rule the editor's marker set follows.
+    /// </remarks>
+    internal IReadOnlyList<ProblemEntry> Problems { get; set; } = [];
+
     /// <summary>Turns the tab's session off. The model itself belongs to whoever opened it.</summary>
     public void Dispose()
     {
