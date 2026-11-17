@@ -126,6 +126,26 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     // sharing the list palette, because both are lists drawn on the document.
     private readonly OfferPresenter _offers;
 
+    /// <summary>How often the preview ladder is asked whether a rung has been reached.</summary>
+    /// <remarks>
+    /// Thirty-millisecond steps for rungs that are hundreds of milliseconds apart: fine enough that the description
+    /// and the ghost appear when they were promised, coarse enough that a hover costs nothing worth measuring.
+    /// </remarks>
+    private const int PreviewTickMs = 30;
+
+    // What the offer list shows on a long hover: the ladder, the copy an entry's edit was applied to and the ghost
+    // of that copy. Built with the session, because the copy is a copy of that session's document, and ticked only
+    // while an entry is hovered - a document nobody is pointing at costs no timer.
+    private OfferPreview? _preview;
+    private DispatcherTimer? _previewTimer;
+    private GhostFrame? _previewGhost;
+
+    // The description the ladder's middle rung shows - the sentence an entry carries - wrapped once per width, so
+    // a repaint per tick does not measure it again. Keyed on the sentence and the room it was wrapped for.
+    private (string Heading, string Description, double Room)? _offerTipOf;
+    private IReadOnlyList<string>? _offerTipLines;
+    private Size _offerTipSize;
+
     private CompletionPalette _listPalette = CompletionPalette.Light;
 
     // The rows the gutter numbers, kept between paints because counting them walks the whole document
@@ -342,6 +362,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             _offsetX = 0;
             _offsetY = 0;
             _blink.Reset();
+
+            // A preview is a copy of one document, so it goes with the session that document belonged to.
+            DropPreview();
 
             // A hit points into the layout of the session it was taken from, so a new document must not
             // inherit the old one's tip.
@@ -766,6 +789,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
             session.Markers = value;
             ClearHover();
+
+            // A republished set means the document changed under whatever the pointer was describing, so a preview
+            // that is running describes a state that no longer exists.
+            InvalidatePreview();
             InvalidateVisual();
         }
     }
@@ -1271,6 +1298,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         if (session.Offered is { } offered)
         {
             _offers.Render(context, offered, OfferBounds(session, offered));
+
+            // The middle rung of the preview ladder: the hovered entry's own sentence. It belongs to the list, so it
+            // sits under the box the pointer aimed at rather than under one row of it.
+            PaintOfferTip(context, session);
         }
 
         // Before the finding's tip, so a squiggle's message is on top if the two ever overlap: it is the one
@@ -1375,6 +1406,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             hover.Stop();
             _conceptTipTimer = null;
         }
+
+        // The preview is a copy of the document plus a timer that ticks it; neither should outlive the surface.
+        DropPreview();
 
         // A popup outlives the visual tree it was opened from, so a control that is detached (closed
         // tab, disposed window) has to take its menu with it.
@@ -1626,8 +1660,11 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         if (!_dragging || _dragAnchor is not { } anchor)
         {
-            UpdateHover(e.GetPosition(this));
-            UpdatePointer(session, e.GetPosition(this));
+            var point = e.GetPosition(this);
+
+            UpdateOfferPreview(session, point);
+            UpdateHover(point);
+            UpdatePointer(session, point);
 
             return;
         }
@@ -1653,6 +1690,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
         base.OnPointerExited(e);
 
+        // The pointer is off the surface, so it is off the list too - and a preview of a row nobody is pointing at is
+        // an answer to a question that has been withdrawn.
+        LeavePreview();
         ClearHover();
     }
 
@@ -2072,6 +2112,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             // the focus, so the read has to happen before the edit - and a read is asynchronous.
             _ = PasteAsync(session, action);
         }
+        else if (action is SelectOfferAction)
+        {
+            // An arrow in an open list is the keyboard's version of hovering a row, so the entry the highlight
+            // landed on is the entry the ladder starts climbing.
+            AfterEdit(session.Apply(action));
+            HighlightOffer(session);
+        }
         else
         {
             AfterEdit(session.Apply(action));
@@ -2215,6 +2262,10 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // pointer has not moved, so nothing else would notice that its box now points at the wrong text.
         ClearHover();
 
+        // The scroll offset this method just corrected is part of the question a ghost answers, so the preview is
+        // brought into line after the page has settled rather than before.
+        ShowPreview();
+
         InvalidateVisual();
     }
 
@@ -2339,6 +2390,243 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         AfterEdit(session.Apply(new AcceptOfferAction()));
 
         return true;
+    }
+
+    /// <summary>Moves the preview onto the row under the pointer, and off it when the pointer is between rows.</summary>
+    /// <param name="session">The document whose offer list is open.</param>
+    /// <param name="point">Where the pointer is, in control pixels.</param>
+    /// <remarks>
+    /// <para>
+    /// The first rung of the ladder is the list's own hover state, which is why a pointer crossing a row moves the
+    /// highlight as well: a row that is previewed but not highlighted would describe one entry while looking as if
+    /// it described another.
+    /// </para>
+    /// <para>
+    /// A pointer beside the box is not a decision, so it gets the ladder's grace period rather than an immediate
+    /// cancel - that is what lets the pointer travel to and from the bulb without the preview flickering.
+    /// </para>
+    /// </remarks>
+    private void UpdateOfferPreview(EditorSession session, Point point)
+    {
+        if (session.Offered is not { } list)
+        {
+            return;
+        }
+
+        if (_offers.RowAt(list, OfferBounds(session, list), point) is not { } index)
+        {
+            var between = PreviewFor(session);
+
+            between.LeaveList();
+            ShowPreview();
+
+            return;
+        }
+
+        var delta = index - list.Selected;
+
+        if (delta != 0)
+        {
+            session.Apply(new SelectOfferAction(delta));
+            InvalidateVisual();
+        }
+
+        HoverOffer(session, (session.Offered ?? list)[index]);
+    }
+
+    /// <summary>Starts the ladder on whatever the open list now highlights, for the arrow keys.</summary>
+    /// <param name="session">The document whose offer list is open.</param>
+    private void HighlightOffer(EditorSession session)
+    {
+        if (session.Offered is not { } list)
+        {
+            LeavePreview();
+
+            return;
+        }
+
+        HoverOffer(session, list.SelectedEntry);
+    }
+
+    /// <summary>Points the ladder at <paramref name="entry"/> and makes sure its clock is running.</summary>
+    private void HoverOffer(EditorSession session, Intention entry)
+    {
+        var preview = PreviewFor(session);
+
+        preview.Hover(entry);
+        StartPreviewTicker(preview);
+        ShowPreview();
+    }
+
+    /// <summary>Ends any preview and puts the page back.</summary>
+    private void LeavePreview()
+    {
+        _preview?.Leave();
+
+        StopPreviewTicker();
+        ShowPreview();
+    }
+
+    /// <summary>Brings the ghost on screen into line with what the ladder says.</summary>
+    /// <remarks>
+    /// Called from every path that can end a hover - an edit, a caret move, a closed list, a changed document - so
+    /// the "a preview never outlives its list" rule is one statement rather than one per path.
+    /// </remarks>
+    private void ShowPreview()
+    {
+        if (Session is not { } session || _preview is not { } preview)
+        {
+            return;
+        }
+
+        if (session.Offered is null)
+        {
+            preview.Leave();
+        }
+
+        SetPreviewGhost(preview.Stage == PreviewStage.Preview
+            ? preview.Ghost(ViewportSize, _offsetX, _offsetY, Styler)
+            : null);
+
+        if (!preview.IsRunning)
+        {
+            StopPreviewTicker();
+        }
+    }
+
+    /// <summary>Puts <paramref name="frame"/> on screen, or takes back the one this control put there.</summary>
+    /// <remarks>
+    /// Only the ghost this control set is taken back: a host that assigned its own frame keeps it, because the two
+    /// reasons to draw a ghost - the ladder and a host's own policy - must not overwrite each other's answer.
+    /// </remarks>
+    private void SetPreviewGhost(GhostFrame? frame)
+    {
+        if (ReferenceEquals(frame, _previewGhost))
+        {
+            return;
+        }
+
+        if (frame is not null || ReferenceEquals(Ghost, _previewGhost))
+        {
+            Ghost = frame;
+        }
+
+        _previewGhost = frame;
+    }
+
+    /// <summary>Silences a running preview because the document it describes has changed.</summary>
+    /// <remarks>
+    /// The entry stays hovered and stays quiet until the pointer leaves and returns, which is the ladder's own rule
+    /// (<see cref="PreviewState.Invalidate"/>) rather than a second one written here.
+    /// </remarks>
+    private void InvalidatePreview()
+    {
+        _preview?.Invalidate();
+
+        StopPreviewTicker();
+        SetPreviewGhost(null);
+    }
+
+    /// <summary>Throws the preview away: its copy, its ladder and the ghost this control put on screen.</summary>
+    private void DropPreview()
+    {
+        StopPreviewTicker();
+
+        _previewTimer = null;
+
+        _preview?.Dispose();
+        _preview = null;
+
+        SetPreviewGhost(null);
+    }
+
+    /// <summary>The preview of the offer list, built on first use against the session in force.</summary>
+    private OfferPreview PreviewFor(EditorSession session) => _preview ??= new OfferPreview(session);
+
+    /// <summary>Runs the preview clock while an entry is hovered, and stops it when nothing is.</summary>
+    /// <remarks>
+    /// The host owns the timer and the ladder never asks what time it is - the same arrangement as the caret blink,
+    /// which is why the timing itself needs no window to be tested.
+    /// </remarks>
+    private void StartPreviewTicker(OfferPreview preview)
+    {
+        if (!preview.IsRunning)
+        {
+            StopPreviewTicker();
+
+            return;
+        }
+
+        _previewTimer ??= CreatePreviewTicker();
+
+        if (!_previewTimer.IsEnabled)
+        {
+            _previewTimer.Start();
+        }
+    }
+
+    private DispatcherTimer CreatePreviewTicker()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PreviewTickMs) };
+
+        timer.Tick += OnPreviewTick;
+
+        return timer;
+    }
+
+    private void StopPreviewTicker() => _previewTimer?.Stop();
+
+    private void OnPreviewTick(object? sender, EventArgs e)
+    {
+        if (Session is not { } session || _preview is not { } preview)
+        {
+            StopPreviewTicker();
+
+            return;
+        }
+
+        preview.Tick(TimeSpan.FromMilliseconds(PreviewTickMs));
+        ShowPreview();
+    }
+
+    /// <summary>Paints the hovered offer's description under the list, unless the ladder has moved past it.</summary>
+    /// <param name="context">The surface to paint on.</param>
+    /// <param name="session">The document whose list is open.</param>
+    /// <remarks>
+    /// The description is not a nicety: a label says what an entry is called, and the sentence is what it would do.
+    /// Hovering is the only way to read it because the list is a column of labels and there is no room in a row for
+    /// prose - and the preview that follows is an answer about the result, never about the intent.
+    /// </remarks>
+    private void PaintOfferTip(DrawingContext context, EditorSession session)
+    {
+        if (_preview is not { Stage: PreviewStage.Tooltip, Entry: { } entry }
+            || session.Offered is not { } list)
+        {
+            return;
+        }
+
+        var viewport = new LayoutSize(Math.Max(0, Bounds.Width), Math.Max(0, Bounds.Height));
+        var room = Math.Min(
+            MarkerTipPresenter.MaximumTextWidth,
+            Math.Max(1, viewport.Width - (2 * MarkerTipPresenter.Inset)));
+
+        if (_offerTipOf is not { } wrapped
+            || !string.Equals(wrapped.Heading, entry.Label, StringComparison.Ordinal)
+            || !string.Equals(wrapped.Description, entry.Description, StringComparison.Ordinal)
+            || !wrapped.Room.Equals(room))
+        {
+            var content = new TipContent(entry.Label, entry.Description);
+
+            _offerTipLines = TipLines.Of(content, room, TextMeasure);
+            _offerTipSize = _tip.Measure(_offerTipLines);
+            _offerTipOf = (entry.Label, entry.Description, room);
+        }
+
+        var box = OfferBounds(session, list);
+        var anchor = new LayoutRect(box.X, box.Bottom, box.Width, 0);
+        var placed = MarkerTip.Place(anchor, new LayoutSize(_offerTipSize.Width, _offerTipSize.Height), viewport);
+
+        _tip.Render(context, _offerTipLines!, new Rect(placed.X, placed.Y, placed.Width, placed.Height));
     }
 
     /// <summary>The room the bulb reserves in the margin: one line square plus the gap to the page.</summary>
