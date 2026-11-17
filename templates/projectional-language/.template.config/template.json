@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Projectional",
+  "classifications": [ "Projectional", "Language", "DSL" ],
+  "identity": "Projectional.Language.CSharp",
+  "groupIdentity": "Projectional.Language",
+  "name": "Projectional language",
+  "description": "A projectional language: concepts, notation, a sample model and the tests that keep the notation honest.",
+  "shortName": "projectional-language",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "MyLanguage",
+  "preferNameDirectory": true,
+  "primaryOutputs": [
+    { "path": "MyLanguage.csproj" }
+  ]
+}

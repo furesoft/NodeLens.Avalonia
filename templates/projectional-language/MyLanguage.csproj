@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The tests live in a folder of their own, and the SDK's glob would compile them into this project. -->
+    <Compile Remove="MyLanguage.Tests/**" />
+    <None Remove="MyLanguage.Tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The one reference a language needs: concepts, notation, and the snapshot its tests assert on. -->
+    <PackageReference Include="Projectional.Toolkit" Version="1.0.0" />
+  </ItemGroup>
+
+</Project>
