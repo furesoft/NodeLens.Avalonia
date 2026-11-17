@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Expressions;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
@@ -144,7 +145,7 @@ public sealed class TypeRuleLoweringTests
 
         foreach (var node in Nodes(model))
         {
-            Assert.Equal(SampleTypes.All.TypeOf(node).Name, declared.TypeOf(node).Name);
+            Assert.Equal(ExpressionsLanguage.Types.TypeOf(node).Name, declared.TypeOf(node).Name);
         }
     }
 

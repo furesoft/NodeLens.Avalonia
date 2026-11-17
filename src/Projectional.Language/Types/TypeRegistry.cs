@@ -1,6 +1,6 @@
 using Projectional.Core;
 
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// The type rules a language declares, keyed by concept, with <see cref="UnknownType"/> behind them.

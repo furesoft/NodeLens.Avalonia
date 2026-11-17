@@ -1,4 +1,4 @@
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// A value that may be absent: either the inner type or nothing.

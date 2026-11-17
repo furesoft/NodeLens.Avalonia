@@ -1,15 +1,15 @@
 using Projectional.Core;
 
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// What one type rule sees: the node, and the way to ask what its children are.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The context is small on purpose, like <see cref="ConstraintContext"/>: it can read the node and ask
-/// for a child's type, and nothing else. A rule that could mutate, or reach the editor, would be a second
-/// editing path - and a rule that ran on a model nobody is drawing would stop working.
+/// The context is small on purpose, like a constraint's: it can read the node and ask for a child's type,
+/// and nothing else. A rule that could mutate, or reach the editor, would be a second editing path - and a
+/// rule that ran on a model nobody is drawing would stop working.
 /// </para>
 /// <para>
 /// <see cref="TypeOf(Node)"/> is the local propagation the design allows. It is not inference: it asks

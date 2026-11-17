@@ -1,4 +1,6 @@
 using Projectional.Core;
+using Projectional.Language;
+using Projectional.Expressions;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
 using Projectional.Semantics;
@@ -33,7 +35,7 @@ public sealed class SampleConstraintsTests
     public void TheSampleDocumentIsClean()
     {
         // The shipped sample has a condition, so the app must not greet a user with a finding on it.
-        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: SampleTypes.All).Check(PayrollSample.NewSampleModel()));
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(PayrollSample.NewSampleModel()));
     }
 
     [Fact]
@@ -50,7 +52,7 @@ public sealed class SampleConstraintsTests
         model.NewChild(rule, "condition", "Expressions.IntLiteral").Set("value", "42");
 
         var finding = Assert.Single(
-            new ConstraintEngine(SampleConstraints.All, types: SampleTypes.All).Check(model));
+            new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
 
         Assert.Equal(SampleConstraints.ConditionNotBooleanCode, finding.Code);
         Assert.Contains("int", finding.Message, StringComparison.Ordinal);
@@ -71,7 +73,7 @@ public sealed class SampleConstraintsTests
         model.NewChild(comparison, "left", "Expressions.IntLiteral").Set("value", "1000");
         model.NewChild(comparison, "right", "Expressions.IntLiteral").Set("value", "10");
 
-        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: SampleTypes.All).Check(model));
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
     }
 
     [Fact]
@@ -87,6 +89,6 @@ public sealed class SampleConstraintsTests
         // A name's type is unknown, and one mistake must not become two findings.
         model.NewChild(rule, "condition", "Expressions.Name").Set("name", "amount");
 
-        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: SampleTypes.All).Check(model));
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
     }
 }

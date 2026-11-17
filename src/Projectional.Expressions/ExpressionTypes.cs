@@ -1,17 +1,17 @@
 using Projectional.Core;
-using Projectional.Expressions;
-using Projectional.Semantics;
+using Projectional.Language;
 
-namespace Projectional.Samples.Checks;
+namespace Projectional.Expressions;
 
 /// <summary>
-/// The types the expression language's concepts evaluate to.
+/// What the expression language's concepts evaluate to.
 /// </summary>
 /// <remarks>
 /// <para>
-/// A type rule is behaviour, so it lives beside the language rather than inside it - the same reason
-/// intentions and checks do. The language package stays free of the semantics layer, and a host that
-/// wants types composes this one.
+/// A type is a statement about what a language means, so it is declared here rather than in the layer
+/// that consumes it - the same reason the notation and the typing rules live in the language package. A
+/// host gets <see cref="ExpressionsLanguage.Types"/> by referencing <c>Projectional.Expressions</c>, with
+/// nothing else to compose.
 /// </para>
 /// <para>
 /// The rules are local propagation and nothing more: a literal is its own type, a parenthesised
@@ -20,12 +20,12 @@ namespace Projectional.Samples.Checks;
 /// this language does not have - and saying so is better than guessing a type the model never stated.
 /// </para>
 /// </remarks>
-public static class SampleTypes
+internal static class ExpressionTypes
 {
     private static readonly string[] Comparisons = ["==", "!=", "<", ">", "<=", ">=", "&&", "||"];
 
-    /// <summary>Every type rule the sample language declares.</summary>
-    public static TypeRegistry All { get; } = TypeRegistry.Empty
+    /// <summary>The registry <see cref="ExpressionsLanguage.Types"/> answers with.</summary>
+    internal static TypeRegistry Registry { get; } = TypeRegistry.Empty
         .Add(ExpressionsConceptKeys.IntLiteral, new Literal(PropertyType.Integer))
         .Add(ExpressionsConceptKeys.BoolLiteral, new Literal(PropertyType.Boolean))
         .Add(ExpressionsConceptKeys.StringLiteral, new Literal(PropertyType.String))

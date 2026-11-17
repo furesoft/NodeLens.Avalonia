@@ -57,11 +57,11 @@ makes it a usable test of the integration surface
 | Project | Responsibility | UI reference |
 | --- | --- | --- |
 | `Projectional.Core` | Node/model/project containers, change events, XML persistence, migrations, registries | none |
-| `Projectional.Language` | Concept descriptors, notation descriptors, aspect registration, built-in bootstrap languages | none |
-| `Projectional.Expressions` | Shared expression/name sub-language (literals, operators, parentheses) that a DSL composes instead of re-declaring | none |
+| `Projectional.Language` | Concept descriptors, notation descriptors, aspect registration (typing, emphasis, types), built-in bootstrap languages | none |
+| `Projectional.Expressions` | Shared expression/name sub-language (literals, operators, parentheses) that a DSL composes instead of re-declaring, with its own typing rules and types | none |
 | `Projectional.Projection` | Editor tree construction, measurement, layout boxes, hit testing, caret positions | none |
 | `Projectional.Editing` | Structural edit actions, substitution/transformation menus, completion, undo | none |
-| `Projectional.Semantics` | Constraint evaluation, type checking, scope resolution, generation, interpretation | none |
+| `Projectional.Semantics` | Constraint evaluation, scope resolution, generation, interpretation | none |
 | `Projectional.Avalonia` | `ProjectionalEditorControl`, rendering of layout boxes, input, IME, clipboard, accessibility | Avalonia 12 |
 | `Projectional.Workbench` | Standalone desktop editor: document tabs, browsers, panels. **Consumer** of the public API — no internal access | Avalonia 12 |
 | `Projectional.Samples` | The toy rules language and its sample document: the working example of composing `Expressions` | none |
