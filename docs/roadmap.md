@@ -24,10 +24,9 @@ M3 and M4 have landed their first halves early, M5 has started, M6 and M7 are un
 
 What is next, in order:
 
-1. **The rest of scopes** - the chain, the default provider, scope-driven completion and typing a name are
-   done; what is left is per-language overrides (a language replacing a level) and ambiguity *diagnostics*
-   in the problems panel, so a name that matches two things is reported rather than only refused at the
-   keystroke.
+1. **Ambiguity diagnostics** - the last piece of scopes: a name that matches two things is refused at the
+   keystroke today, but nothing reports it in the problems panel, so a document that already holds an
+   ambiguous reference says nothing about it.
 2. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
    languages that need them.
@@ -55,7 +54,7 @@ The tables below are the **scope** of each milestone, not a status report: what 
 
 | Delivers | Details |
 | --- | --- |
-| Scopes | the chain, the default provider and ambiguity as a value are in [implemented.md](implemented.md); what is left is per-language overrides and ambiguity *diagnostics* |
+| Scopes | the chain, the default provider, per-language overrides and ambiguity as a value are in [implemented.md](implemented.md); what is left is ambiguity *diagnostics* in the problems panel |
 | Completion | scope-driven entries are in [implemented.md](implemented.md); what is left is insert-and-continue and completing a filled slot ([completion.md](architecture/completion.md)) |
 | Substitutions | transformation menus; keyword-triggered insertion is concept triggers ([triggers.md](architecture/triggers.md)) |
 
