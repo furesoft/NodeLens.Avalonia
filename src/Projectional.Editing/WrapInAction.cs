@@ -4,7 +4,8 @@ using Projectional.Projection;
 namespace Projectional.Editing;
 
 /// <summary>
-/// Puts a node inside a newly created wrapper, keeping the node's identity and its subtree.
+/// Puts one node, or a run of sibling nodes, inside a newly created wrapper, keeping their identity and
+/// their subtrees.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -12,19 +13,25 @@ namespace Projectional.Editing;
 /// the repair for an expression whose grouping a reader has to infer, and no combination of the existing
 /// actions can express it. A single-valued slot holds at most one child, so creating the wrapper and then
 /// moving the node into it would need a moment in which both are in the slot; the model performs the
-/// detach-create-attach sequence as one transaction instead (<see cref="Model.Wrap"/>), which is also what
-/// makes the repair one undo step.
+/// detach-create-attach sequence as one transaction instead (<see cref="Model.Wrap(IReadOnlyList{Node}, string, string, IReadOnlyDictionary{string, string})"/>),
+/// which is also what makes the repair one undo step.
+/// </para>
+/// <para>
+/// The run form is the same operation with a selection instead of a caret: several siblings take the place
+/// of one node, the wrapper receives them in the order a reader sees them, and the whole change is still
+/// one undo step. "Wrap these three steps in a loop" is what a user selecting them means, and a menu entry
+/// that wrapped only the one under the caret would be a different edit under the same label.
 /// </para>
 /// <para>
 /// The action is addressed by node id rather than by the caret, because a repair names what it repairs. It
-/// works on a node in a list slot as readily as on the only child of a single-valued one, and it declines
-/// with a reason rather than throwing when the document moved on between the check that built the repair
-/// and the gesture that applied it.
+/// works on nodes in a list slot as readily as on the only child of a single-valued one, and it declines
+/// with a reason rather than throwing when the document moved on between the check that built the entry
+/// and the gesture that applied it - including when the nodes stopped being consecutive siblings.
 /// </para>
 /// </remarks>
 public sealed class WrapInAction : EditAction
 {
-    private readonly NodeId _node;
+    private readonly IReadOnlyList<NodeId> _nodes;
     private readonly string _wrapperConcept;
     private readonly string _wrapperSlot;
     private readonly IReadOnlyDictionary<string, string>? _presets;
@@ -54,28 +61,55 @@ public sealed class WrapInAction : EditAction
         string wrapperConceptKey,
         string wrapperSlot,
         IReadOnlyDictionary<string, string>? presets = null)
+        : this([node], wrapperConceptKey, wrapperSlot, presets)
     {
-        if (node.IsEmpty)
-        {
-            throw new ArgumentException("A wrap needs a node.", nameof(node));
-        }
+    }
 
+    /// <summary>Surrounds a run of sibling nodes with one new node of <paramref name="wrapperConceptKey"/>.</summary>
+    /// <param name="nodes">The nodes to surround, in document order, which must be consecutive siblings.</param>
+    /// <param name="wrapperConceptKey">The concept of the node to create around them.</param>
+    /// <param name="wrapperSlot">The slot of that concept which receives them.</param>
+    /// <param name="presets">Values the wrapper is born with, or <see langword="null"/>.</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="nodes"/> is empty or contains an empty id, or <paramref name="wrapperConceptKey"/> or
+    /// <paramref name="wrapperSlot"/> is empty.
+    /// </exception>
+    public WrapInAction(
+        IReadOnlyList<NodeId> nodes,
+        string wrapperConceptKey,
+        string wrapperSlot,
+        IReadOnlyDictionary<string, string>? presets = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodes);
         ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
         ArgumentException.ThrowIfNullOrEmpty(wrapperSlot);
 
-        _node = node;
+        if (nodes.Count == 0)
+        {
+            throw new ArgumentException("A wrap needs at least one node.", nameof(nodes));
+        }
+
+        foreach (var node in nodes)
+        {
+            if (node.IsEmpty)
+            {
+                throw new ArgumentException("A wrap needs nodes, not empty ids.", nameof(nodes));
+            }
+        }
+
+        _nodes = [.. nodes];
         _wrapperConcept = wrapperConceptKey;
         _wrapperSlot = wrapperSlot;
         _presets = presets;
     }
 
-    /// <summary>The node that is surrounded.</summary>
-    public NodeId Node => _node;
+    /// <summary>The nodes that are surrounded, in document order.</summary>
+    public IReadOnlyList<NodeId> Nodes => _nodes;
 
     /// <summary>The concept of the wrapper that is created.</summary>
     public string WrapperConcept => _wrapperConcept;
 
-    /// <summary>The single-child slot of the wrapper that receives the node.</summary>
+    /// <summary>The slot of the wrapper that receives the nodes.</summary>
     public string WrapperSlot => _wrapperSlot;
 
     /// <summary>The values the wrapper is born with, or <see langword="null"/> when it has none.</summary>
@@ -92,17 +126,25 @@ public sealed class WrapInAction : EditAction
         ArgumentNullException.ThrowIfNull(context);
 
         var selection = context.Selection;
+        List<Node> found = [];
 
-        if (context.Document.Model.Project.FindNode(_node) is not { } node)
+        foreach (var id in _nodes)
         {
-            return EditResult.Rejected(selection, "The node this repair surrounds is no longer in the document.");
+            if (context.Document.Model.Project.FindNode(id) is not { } node)
+            {
+                return EditResult.Rejected(selection, "A node this repair surrounds is no longer in the document.");
+            }
+
+            found.Add(node);
         }
 
-        if (node.Parent is not { } parent || node.ParentSlot is not { } slot)
+        var first = found[0];
+
+        if (first.Parent is not { } parent || first.ParentSlot is not { } slot)
         {
             return EditResult.Rejected(
                 selection,
-                $"Concept '{node.Concept.Key}' is not inside anything, so there is nowhere to put a wrapper.");
+                $"Concept '{first.Concept.Key}' is not inside anything, so there is nowhere to put a wrapper.");
         }
 
         if (!context.Concepts.TryGet(_wrapperConcept, out var wrapper))
@@ -116,15 +158,57 @@ public sealed class WrapInAction : EditAction
         {
             return EditResult.Rejected(
                 selection,
-                $"Concept '{_wrapperConcept}' cannot stand where '{node.Concept.Key}' stands.");
+                $"Concept '{_wrapperConcept}' cannot stand where '{first.Concept.Key}' stands.");
         }
 
-        if (wrapper.FindChild(_wrapperSlot) is not { Cardinality: Cardinality.One } inner
-            || !node.Concept.IsKindOf(inner.ChildConceptKey))
+        if (wrapper.FindChild(_wrapperSlot) is not { } inner)
         {
             return EditResult.Rejected(
                 selection,
-                $"Concept '{_wrapperConcept}' has no slot that could hold a '{node.Concept.Key}'.");
+                $"Concept '{_wrapperConcept}' has no slot that could hold a '{first.Concept.Key}'.");
+        }
+
+        if (inner.Cardinality == Cardinality.One && found.Count > 1)
+        {
+            return EditResult.Rejected(
+                selection,
+                $"Slot '{_wrapperSlot}' of concept '{_wrapperConcept}' holds one child, so it cannot take {found.Count} nodes.");
+        }
+
+        var seen = new HashSet<NodeId>();
+
+        foreach (var node in found)
+        {
+            if (!seen.Add(node.Id))
+            {
+                return EditResult.Rejected(selection, "The same node cannot be wrapped twice by one edit.");
+            }
+
+            if (!ReferenceEquals(node.Parent, parent) || !string.Equals(node.ParentSlot, slot, StringComparison.Ordinal))
+            {
+                return EditResult.Rejected(
+                    selection,
+                    $"Concept '{node.Concept.Key}' is not a sibling of '{first.Concept.Key}', so nothing can surround them together.");
+            }
+
+            if (!node.Concept.IsKindOf(inner.ChildConceptKey))
+            {
+                return EditResult.Rejected(
+                    selection,
+                    $"Concept '{_wrapperConcept}' has no slot that could hold a '{node.Concept.Key}'.");
+            }
+        }
+
+        found.Sort((left, right) => left.IndexInParent.CompareTo(right.IndexInParent));
+
+        for (var index = 1; index < found.Count; index++)
+        {
+            if (found[index].IndexInParent != found[index - 1].IndexInParent + 1)
+            {
+                return EditResult.Rejected(
+                    selection,
+                    "The nodes are no longer next to each other, so a wrapper would leave one of their siblings outside it.");
+            }
         }
 
         if (_presets is not null)
@@ -147,10 +231,13 @@ public sealed class WrapInAction : EditAction
             }
         }
 
-        context.WrapChild(node, _wrapperConcept, _wrapperSlot, _presets);
+        context.WrapChildren(found, _wrapperConcept, _wrapperSlot, _presets);
 
         return EditResult.Applied(selection);
     }
 
-    public override string ToString() => $"wrap {_node} in {_wrapperConcept}";
+    public override string ToString() =>
+        _nodes.Count == 1
+            ? $"wrap {_nodes[0]} in {_wrapperConcept}"
+            : $"wrap {_nodes.Count} nodes in {_wrapperConcept}";
 }

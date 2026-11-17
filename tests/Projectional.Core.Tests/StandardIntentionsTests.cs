@@ -148,6 +148,58 @@ public sealed class StandardIntentionsTests
     }
 
     [Fact]
+    public void WrapSelectionIsOfferedForASelectionOfSeveralNodes()
+    {
+        var (group, items) = GroupEditor.GroupWithItems("first", "second");
+        using var session = GroupSession(group);
+
+        GroupEditor.SelectRun(session, items[0], items[1]);
+
+        var offer = Offer(session, StandardIntentions.WrapSelectionPrefix + GroupLanguage.Group);
+
+        Assert.Equal("Wrap selection in \"Group\"", offer.Label);
+        Assert.Equal(IntentionAvailability.Applies, offer.Availability);
+    }
+
+    [Fact]
+    public void WrapSelectionIsAbsentForOneNode()
+    {
+        var (group, items) = GroupEditor.GroupWithItems("first", "second");
+        using var session = GroupSession(group);
+
+        GroupEditor.SelectRun(session, items[0], items[0]);
+
+        Assert.DoesNotContain(
+            StandardIntentions.WrapSelectionPrefix + GroupLanguage.Group,
+            Ids(session));
+
+        // One node is the per-node entry's business, and it is a different edit: it wraps what the caret is
+        // in, while this one would wrap what the user selected.
+        Assert.Contains(StandardIntentions.WrapPrefix + GroupLanguage.Group, Ids(session));
+    }
+
+    [Fact]
+    public void AcceptingTheWrapSelectionEntrySurroundsTheRunInOneStep()
+    {
+        var (group, items) = GroupEditor.GroupWithItems("first", "second");
+        using var session = GroupSession(group);
+
+        GroupEditor.SelectRun(session, items[0], items[1]);
+
+        var result = session.Apply(Offer(session, StandardIntentions.WrapSelectionPrefix + GroupLanguage.Group));
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+
+        var wrapper = Assert.Single(group.GetChildren("items"));
+
+        Assert.Equal(GroupLanguage.Group, wrapper.Concept.Key);
+        Assert.Equal([items[0], items[1]], wrapper.GetChildren("items"));
+
+        Assert.True(session.Undo());
+        Assert.Equal(items, group.GetChildren("items"));
+    }
+
+    [Fact]
     public void DuplicateIsOfferedOnAChildOfAListAndCopiesItInPlace()
     {
         var (body, steps) = TestEditor.BodyWithSteps("a", "b");
@@ -428,6 +480,16 @@ public sealed class StandardIntentionsTests
     private static EditorSession Session(Node document)
     {
         var session = new EditorSession(document, TestNotations.Registry);
+
+        session.AddIntentions(StandardIntentions.Provider);
+
+        return session;
+    }
+
+    /// <summary>A group document opened with the standard catalogue registered.</summary>
+    private static EditorSession GroupSession(Node document)
+    {
+        var session = GroupEditor.Open(document);
 
         session.AddIntentions(StandardIntentions.Provider);
 

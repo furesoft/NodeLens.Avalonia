@@ -423,16 +423,42 @@ public sealed class EditContext
         IReadOnlyDictionary<string, string>? presets = null)
     {
         ArgumentNullException.ThrowIfNull(node);
+
+        return WrapChildren([node], wrapperConceptKey, wrapperSlot, presets);
+    }
+
+    /// <summary>Puts a run of sibling nodes inside one new node, keeping their identity and their order.</summary>
+    /// <param name="nodes">The nodes to surround, which must be consecutive siblings.</param>
+    /// <param name="wrapperConceptKey">The concept of the node to create around them.</param>
+    /// <param name="wrapperSlot">The slot of that concept which receives them.</param>
+    /// <param name="presets">Values the wrapper is born with, or <see langword="null"/>.</param>
+    /// <returns>The node that was created.</returns>
+    /// <remarks>
+    /// The run form exists for the same reason the one-node form does: a selection of several siblings is
+    /// surrounded by one gesture, so it has to be one edit. Everything about the place - whether the nodes
+    /// are consecutive, whether the wrapper may stand there, whether the slot can hold them all - is asked
+    /// by the model, which is where the invariant lives and where an undo closure can be written for it.
+    /// </remarks>
+    public Node WrapChildren(
+        IReadOnlyList<Node> nodes,
+        string wrapperConceptKey,
+        string wrapperSlot,
+        IReadOnlyDictionary<string, string>? presets = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodes);
         ArgumentException.ThrowIfNullOrEmpty(wrapperConceptKey);
         ArgumentException.ThrowIfNullOrEmpty(wrapperSlot);
 
-        if (!ReferenceEquals(node.Model, _document.Model))
+        foreach (var node in nodes)
         {
-            throw new EditingException(
-                $"Node {node.Id} belongs to another model than the document being edited.");
+            if (!ReferenceEquals(node.Model, _document.Model))
+            {
+                throw new EditingException(
+                    $"Node {node.Id} belongs to another model than the document being edited.");
+            }
         }
 
-        return node.Model.Wrap(node, wrapperConceptKey, wrapperSlot, presets);
+        return _document.Model.Wrap(nodes, wrapperConceptKey, wrapperSlot, presets);
     }
 
     /// <summary>
