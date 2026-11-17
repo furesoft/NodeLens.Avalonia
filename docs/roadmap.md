@@ -38,10 +38,17 @@ What is next, in order:
    M2's gate is one step away: what it still asks for is a DSL defined entirely in *project files* - the declared
    path - and the template is the C# half of that story.
 
-2. **The shell's M2 half**: model browser, problems panel, find/replace, recent projects and the self-contained
-   single-file build. The language picker that used to sit in this list is done - File > *Open language project...*
-   loads a folder of `structure.mps` + `editor.mps` into the shell's own registry, and a document of that language
-   opens like any other.
+2. **The shell's M2 half**: model browser, find/replace, recent projects and the self-contained single-file build.
+   The problems panel is done - diagnostics of the active document in document order, choosing a row puts the
+   caret on the cell the finding is about ([standalone.md](architecture/standalone.md#the-problems-panel)) - and
+   it is the model for the rest: the row-building half is headless and tested, only the list and the scroll need
+   a window. The language picker that used to sit in this list is done too - File > *Open language project...*
+   loads a folder of `structure.mps` + `editor.mps` into the shell's own registry.
+   **Known gap, recorded rather than fixed here:** `standalone.md` and
+   [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
+   `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and none of those types exist yet - the
+   app is `MainWindow` alone. ADR 0015 puts that extraction at M6, so the M2 features are being added to
+   `MainWindow`; whoever does M6 moves them.
 3. **The table's writing affordances** (adding a row, resizing a column). The grid itself is delivered and the
    flattened navigation is correct but not what a user expects in a grid; [projection.md](architecture/projection.md)
    and open question 29 hold the detail.

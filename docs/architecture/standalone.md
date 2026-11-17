@@ -49,7 +49,7 @@ shell.
 | `CommandRegistry` | named commands with `CanExecute` and a shortcut table | M1 |
 | model browser | tree of models and their root elements | M2 |
 | language browser | declared languages in the project, open their definitions | M5 |
-| problems panel | diagnostics of the active document, jump to the marker | M2 |
+| problems panel | diagnostics of the active document, in document order, jumping to the cell the finding is about - **delivered** in `MainWindow` + `Problems/` (M2) | M2 |
 | output panel | generator and interpreter results, traces | M4 |
 | live preview | split a language definition against a model using it | M5 |
 
@@ -267,6 +267,24 @@ when a document opens and again from the model's `Changed` handler.
 Both checks answer with fixes rather than with bare diagnostics, and the window derives the marker set
 from them: a fix carries the finding it repairs, so one list produces both sets and they cannot
 describe different states of the document.
+
+### The problems panel
+
+`Problems/ProblemList.cs` turns that same list into rows, and `MainWindow` shows them above the status bar.
+The panel reads the findings the editor is drawing rather than running the checks again, so a squiggle and a
+row cannot disagree about what was found.
+
+- **The order is the document's, not the severity's.** A list sorted by severity renumbers itself while the
+  user fixes things - fixing one row moves every row after it - so the severity travels with each row
+  (`ProblemEntry.SeverityLabel`) and the position decides the order.
+- **The row carries a `CellAddress`, not a node id.** A finding about a slot is a finding about a place, and
+  the panel's whole job after reporting is to put the caret there: choosing a row is `session.Select(...)`
+  and nothing else, which is why that half is tested headlessly and only the scrolling needs a window.
+- **A finding whose node is gone still gets a row, at the end.** The set is a snapshot taken when the model
+  changed; a panel that hid a stale finding would be claiming the document is clean at the moment it is
+  least known to be.
+- **An empty list hides the panel.** "No problems" is the state of a document most of the time, and it does
+  not deserve a third of the window; the count is in the header for the one glance that needs it.
 
 Three things that follow, and that a host has to do as well:
 

@@ -31,7 +31,12 @@ copy), the framework's own intention catalogue (rename, wrap in X, reset to the 
 `Projectional.Intentions`), and logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
-standalone shell (tabs, menu bar, status bar) is being delivered.
+standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
+
+**The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
+library (`ShellView`, `ShellWindow`, `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`);
+**none of those types exist yet** - ADR 0015 puts that extraction at M6. Read those documents as the target
+shape, not as the tree, and add M2 features to `MainWindow` rather than inventing a `ShellView` on the way.
 
 ## Status and where the truth lives
 
@@ -1418,6 +1423,15 @@ Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
 ## How the standalone app fits
 
+The problems panel is the model for a shell feature: `Problems/ProblemList.Of(model, findings)` turns the
+diagnostics the editor is already drawing into rows, headless and tested, and `MainWindow` only fills a `ListBox`
+and scrolls. Two rules in it are decisions, not formatting: **the order is the document's** (a severity-sorted
+list renumbers itself while the user fixes things) and **a row carries a `CellAddress`** - the finding's slot when
+it named one, else its node - because "jump to it" is `session.Select(Selection.At(row.Place))` and nothing more.
+A finding whose node is gone still gets a row and sorts last; hiding it would claim the document is clean.
+Add the next panel the same way: derive the rows in a non-Avalonia type, assert them, and leave the window as
+wiring.
+
 The repository ships two front ends and **one** public surface:
 
 - `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).
@@ -1485,7 +1499,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1563 tests**; anything below that means tests were deleted.
+it. **Baseline is 1570 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
