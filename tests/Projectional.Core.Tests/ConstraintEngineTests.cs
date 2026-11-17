@@ -106,6 +106,62 @@ public sealed class ConstraintEngineTests
     }
 
     [Fact]
+    public void ARuleDeclaredForEveryNodeRunsForEveryConcept()
+    {
+        // The case a concept key cannot express: a language's concepts need not share a root, so a rule
+        // about "any node with a reference" would have to be repeated for each of them.
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+        model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral);
+        model.NewChild(binary, "right", ExpressionsConceptKeys.StringLiteral);
+
+        var findings = new ConstraintEngine(ConstraintSet.Empty.Everywhere(new AlwaysComplains())).Check(model);
+
+        Assert.Equal(3, findings.Count);
+        Assert.Equal(3, findings.Select(finding => finding.Target).Distinct().Count());
+    }
+
+    [Fact]
+    public void ARuleForEveryNodeRunsBeforeTheConceptsOwn()
+    {
+        var model = RulesLanguage.NewProject().NewModel("rules");
+
+        // Cleared rather than left alone: a property with a default is materialized, so "unset" is
+        // "unnamed" and the rule would have nothing to say.
+        model.NewNode(RulesConceptKeys.Ruleset).Set("name", string.Empty);
+
+        var findings = new ConstraintEngine(
+            ConstraintSet.Empty
+                .Add(RulesConceptKeys.Ruleset, new NeedsAName())
+                .Everywhere(new AlwaysComplains())).Check(model);
+
+        Assert.Equal(["always.", "a ruleset needs a name."], findings.Select(finding => finding.Message));
+    }
+
+    [Fact]
+    public void AComposedSetKeepsTheOrderItWasComposedIn()
+    {
+        var first = ConstraintSet.Empty.Everywhere(new Named("first."));
+        var second = ConstraintSet.Empty.Everywhere(new Named("second.")).Add(RulesConceptKeys.Ruleset, new Named("third."));
+
+        var model = RulesLanguage.NewProject().NewModel("rules");
+        model.NewNode(RulesConceptKeys.Ruleset).Set("name", "Payroll");
+
+        var findings = new ConstraintEngine(first.With(second)).Check(model);
+
+        Assert.Equal(["first.", "second.", "third."], findings.Select(finding => finding.Message));
+    }
+
+    [Fact]
+    public void ComposingAnEmptySetChangesNothing()
+    {
+        var once = ConstraintSet.Empty.Everywhere(new AlwaysComplains());
+
+        Assert.Equal(1, once.With(ConstraintSet.Empty).Count);
+        Assert.Equal(1, once.Count);
+    }
+
+    [Fact]
     public void AConstraintCanPointAtAChildItIsNotAbout()
     {
         var model = RulesLanguage.NewProject().NewModel("rules");
@@ -138,6 +194,12 @@ public sealed class ConstraintEngineTests
     private sealed class AlwaysComplains : IConstraint
     {
         public void Check(ConstraintContext context) => context.Warning("always.");
+    }
+
+    /// <summary>Reports a fixed message, so a test can read the order rules ran in.</summary>
+    private sealed class Named(string message) : IConstraint
+    {
+        public void Check(ConstraintContext context) => context.Warning(message);
     }
 
     /// <summary>A rule whose name is not visible from its own scope.</summary>

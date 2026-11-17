@@ -3,7 +3,8 @@ using Projectional.Core;
 namespace Projectional.Semantics;
 
 /// <summary>
-/// The constraints a language declares, keyed by concept, in the order they were declared.
+/// The constraints a language declares, keyed by concept, in the order they were declared, plus the ones
+/// that apply to every node.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -11,6 +12,13 @@ namespace Projectional.Semantics;
 /// notation, triggers and scope providers follow, so a language has one answer to "which declaration
 /// applies" rather than one per aspect. A concept that extends another therefore inherits its rules,
 /// which is what makes a base concept worth having.
+/// </para>
+/// <para>
+/// A rule about <em>any</em> node is declared with <see cref="Everywhere"/> instead of a concept key, and
+/// runs before the concept's own. That is not a convenience: "this reference no longer identifies one
+/// element" is a fact about references in general, and stating it once is the difference between a rule and
+/// the same rule repeated for every concept that happens to declare a reference slot. Declaring it over a
+/// root concept instead would silently skip every concept that does not inherit from that root.
 /// </para>
 /// <para>
 /// The set is immutable and <see cref="Add"/> answers a new one, so a language can be composed without
@@ -21,14 +29,19 @@ namespace Projectional.Semantics;
 public sealed class ConstraintSet
 {
     private readonly (string ConceptKey, IConstraint Constraint)[] _declared;
+    private readonly IConstraint[] _everywhere;
 
-    private ConstraintSet((string ConceptKey, IConstraint Constraint)[] declared) => _declared = declared;
+    private ConstraintSet((string ConceptKey, IConstraint Constraint)[] declared, IConstraint[] everywhere)
+    {
+        _declared = declared;
+        _everywhere = everywhere;
+    }
 
     /// <summary>A set that declares nothing, so nothing is ever reported.</summary>
-    public static ConstraintSet Empty { get; } = new([]);
+    public static ConstraintSet Empty { get; } = new([], []);
 
-    /// <summary>How many constraints are declared.</summary>
-    public int Count => _declared.Length;
+    /// <summary>How many constraints are declared, the ones for every node included.</summary>
+    public int Count => _declared.Length + _everywhere.Length;
 
     /// <summary>The same set with <paramref name="constraint"/> added for <paramref name="conceptKey"/>.</summary>
     /// <exception cref="ArgumentException">The concept key is empty.</exception>
@@ -38,32 +51,60 @@ public sealed class ConstraintSet
         ArgumentException.ThrowIfNullOrEmpty(conceptKey);
         ArgumentNullException.ThrowIfNull(constraint);
 
-        return new ConstraintSet([.. _declared, (conceptKey, constraint)]);
+        return new ConstraintSet([.. _declared, (conceptKey, constraint)], _everywhere);
+    }
+
+    /// <summary>The same set with <paramref name="constraint"/> added for every node.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="constraint"/> is <see langword="null"/>.</exception>
+    public ConstraintSet Everywhere(IConstraint constraint)
+    {
+        ArgumentNullException.ThrowIfNull(constraint);
+
+        return new ConstraintSet(_declared, [.. _everywhere, constraint]);
     }
 
     /// <summary>
-    /// The constraints that apply to <paramref name="concept"/>: its own, then its super concepts', in
-    /// declaration order.
+    /// This set followed by <paramref name="other"/>: the union, in an order a caller can predict, because
+    /// findings are reported in the order their rules were declared.
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="other"/> is <see langword="null"/>.</exception>
+    public ConstraintSet With(ConstraintSet other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return other.IsEmpty
+            ? this
+            : new ConstraintSet([.. _declared, .. other._declared], [.. _everywhere, .. other._everywhere]);
+    }
+
+    /// <summary>The rules declared for every node, in declaration order.</summary>
+    public IReadOnlyList<IConstraint> EverywhereRules => _everywhere;
+
+    /// <summary>
+    /// The constraints that apply to <paramref name="concept"/>: the ones declared for every node, then its
+    /// own, then its super concepts', in declaration order.
     /// </summary>
     public IReadOnlyList<IConstraint> For(Concept concept)
     {
         ArgumentNullException.ThrowIfNull(concept);
 
-        if (_declared.Length == 0)
+        if (IsEmpty)
         {
             return [];
         }
 
-        List<IConstraint> applicable = [];
-        HashSet<string> seen = [];
+        List<IConstraint> applicable = [.. _everywhere];
 
-        Collect(concept, applicable, seen);
+        if (_declared.Length > 0)
+        {
+            Collect(concept, applicable, []);
+        }
 
         return applicable;
     }
 
-    /// <summary>Whether any concept declares a constraint at all.</summary>
-    public bool IsEmpty => _declared.Length == 0;
+    /// <summary>Whether nothing is declared at all.</summary>
+    public bool IsEmpty => _declared.Length == 0 && _everywhere.Length == 0;
 
     private void Collect(Concept concept, List<IConstraint> applicable, HashSet<string> seen)
     {
@@ -86,5 +127,8 @@ public sealed class ConstraintSet
         }
     }
 
-    public override string ToString() => $"{_declared.Length} constraint(s)";
+    public override string ToString() =>
+        _everywhere.Length == 0
+            ? $"{_declared.Length} constraint(s)"
+            : $"{_declared.Length} constraint(s), {_everywhere.Length} for every node";
 }
