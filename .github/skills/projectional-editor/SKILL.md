@@ -1439,9 +1439,10 @@ and only **property cells** (a keyword is drawn from the notation, so a match in
 keep); matching is **ordinal**, never culture-aware; and the occurrence the last press selected is **skipped**
 (`IsCurrent`), because a second press must move rather than find what the first one did - a test caught that rule
 missing for backward search. `FindNextAction` is a navigation: no undo step, and a query that matches nothing
-leaves the caret alone. **Replace is not part of it** - replacing is an edit, so it goes through
-`TypeTextAction` over the selection a match produces, and a "replace all" is one transaction over `Finder`'s
-matches.
+leaves the caret alone. **Replacing is an edit and therefore an action**, not bar logic: `ReplaceMatchAction`
+rewrites one value's text, `ReplaceAllAction` does every occurrence in one transaction - one cell rewritten once,
+replacements applied **right to left** so offsets stay valid, refused values skipped and counted, and a run that
+wrote nothing rolled back so the history gains no empty step.
 
 The problems panel is the model for a shell feature: `Problems/ProblemList.Of(model, findings)` turns the
 diagnostics the editor is already drawing into rows, headless and tested, and `MainWindow` only fills a `ListBox`
@@ -1519,7 +1520,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1586 tests**; anything below that means tests were deleted.
+it. **Baseline is 1596 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

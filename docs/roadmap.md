@@ -42,10 +42,10 @@ What is next, in order:
    The problems panel is done - diagnostics of the active document in document order, choosing a row puts the
    caret on the cell the finding is about ([standalone.md](architecture/standalone.md#the-problems-panel)) - and
    it is the model for the rest: the row-building half is headless and tested, only the list and the scroll need
-   a window. Find is done too: `Projectional.Editing/Find/` searches the caret places, `FindNextAction` walks the
-   occurrences with wraparound, and the app shows it as a strip (`Ctrl+F`) rather than a dialog
-   ([standalone.md](architecture/standalone.md#find)). **Replace is deliberately not part of it**: replacing is an
-   edit and belongs with the text actions, over the selection a match already produces.
+   a window. Find and replace are done: `Projectional.Editing/Find/` searches the caret places, `FindNextAction`
+   walks the occurrences with wraparound, `ReplaceMatchAction` and `ReplaceAllAction` are edits like any other, and
+   the app shows it as a strip (`Ctrl+F`) rather than a dialog
+   ([standalone.md](architecture/standalone.md#find)).
    The model browser is done as well: a left panel lists every node of the active document, depth first
    ([standalone.md](architecture/standalone.md#the-model-browser)); it walks the model rather than the projection,
    which is what separates it from Find.
