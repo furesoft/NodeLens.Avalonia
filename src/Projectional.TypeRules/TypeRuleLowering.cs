@@ -54,12 +54,56 @@ public static class TypeRuleLowering
 
     private static ITypeRule LowerBody(Node body, string conceptKey) => body.Concept.Key switch
     {
-        TypeRuleConceptKeys.Fixed => new FixedRule(NamedType(Required(body, TypeRuleLanguage.TypeNameSlot), conceptKey)),
+        TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey)),
         TypeRuleConceptKeys.Child => new ChildRule(Required(body, TypeRuleLanguage.SlotSlot)),
         TypeRuleConceptKeys.Switch => LowerSwitch(body, conceptKey),
         _ => throw new ConceptDefinitionException(
             $"The type rule for '{conceptKey}' has a body of '{body.Concept.Key}', which is not a kind of body."),
     };
+
+    /// <summary>
+    /// The type <paramref name="expr"/> writes, or a load-time error.
+    /// </summary>
+    /// <remarks>
+    /// A type expression is static by construction - it has no way to ask about the rule's node - so this is
+    /// a structural walk and nothing more. Which is why a record field's type cannot be "the type of my
+    /// left child": there is no node there to ask.
+    /// </remarks>
+    private static IType LowerType(Node expr, string conceptKey) => expr.Concept.Key switch
+    {
+        TypeRuleConceptKeys.Primitive => NamedType(Required(expr, TypeRuleLanguage.NameSlot), conceptKey),
+        TypeRuleConceptKeys.Record => LowerRecord(expr, conceptKey),
+        TypeRuleConceptKeys.List => new ListType(
+            LowerType(RequiredChild(expr, TypeRuleLanguage.ElementSlot), conceptKey)),
+        TypeRuleConceptKeys.Optional => new OptionalType(
+            LowerType(RequiredChild(expr, TypeRuleLanguage.InnerSlot), conceptKey)),
+        _ => throw new ConceptDefinitionException(
+            $"The type rule for '{conceptKey}' names a type of '{expr.Concept.Key}', which is not a kind of type."),
+    };
+
+    private static RecordType LowerRecord(Node expr, string conceptKey)
+    {
+        List<(string Name, IType Type)> fields = [];
+
+        foreach (var field in expr.GetChildren(TypeRuleLanguage.FieldsSlot))
+        {
+            fields.Add((
+                Required(field, TypeRuleLanguage.NameSlot),
+                LowerType(RequiredChild(field, TypeRuleLanguage.TypeSlot), conceptKey)));
+        }
+
+        try
+        {
+            return new RecordType(fields);
+        }
+        catch (ArgumentException exception)
+        {
+            // A record refuses one field name twice. A language error has to read as one, not as an
+            // argument exception naming a parameter the author never saw.
+            throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' declares a record {exception.Message}", exception);
+        }
+    }
 
     private static SwitchRule LowerSwitch(Node body, string conceptKey)
     {
@@ -116,8 +160,12 @@ public static class TypeRuleLowering
             : throw new ConceptDefinitionException(
                 $"A '{node.Concept.Key}' is missing its '{slot}', so it cannot be lowered.");
 
-    /// <summary>A type named outright.</summary>
-    private sealed class FixedRule(PrimitiveType type) : ITypeRule
+    private static Node RequiredChild(Node node, string slot) =>
+        node.GetChild(slot) ?? throw new ConceptDefinitionException(
+            $"A '{node.Concept.Key}' is missing its '{slot}', so it cannot be lowered.");
+
+    /// <summary>A type written out, which is the same whatever the node holds.</summary>
+    private sealed class FixedRule(IType type) : ITypeRule
     {
         public IType TypeFor(TypeContext context) => type;
     }

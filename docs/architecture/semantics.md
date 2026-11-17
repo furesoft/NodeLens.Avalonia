@@ -231,10 +231,28 @@ have written ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)).
 | --- | --- |
 | `TypeRule.Rules` | the document: one language's rules |
 | `TypeRule.Rule` | `conceptKey` and a body |
-| `TypeRule.Fixed` | a type named outright: `string`, `int`, `bool`, `date` |
+| `TypeRule.Fixed` | a type written out, so it is the same whatever the node holds |
 | `TypeRule.Child` | the type of one of the node's children |
 | `TypeRule.Switch` | a choice between bodies, decided by a property's value, with an `otherwise` |
 | `TypeRule.Case` | one value of a switch and the body it selects |
+| `TypeRule.TypeExpr` | a type written as data, abstract: one of the four kinds below |
+| `TypeRule.Primitive` | `name`: `string`, `int`, `bool`, `date` |
+| `TypeRule.Record` | `fields`: a fixed set of named fields |
+| `TypeRule.Field` | `name` and `type` |
+| `TypeRule.List` | `element` |
+| `TypeRule.Optional` | `inner` |
+
+**A type is a separate family from a body, and that is the load-bearing split.** A body may read the node
+(`type of left`, `switch on operator`); a type may not. Mixing them would allow a record field whose type
+depends on the rule's node - a question with no answer, because a field is part of a type and not of a
+node. `TypeRule.Fixed` therefore holds a `TypeExpr` rather than a name, which is also why `type int` reads
+exactly as it did before.
+
+**The drawing of a type expression is exactly what `IType.Name` prints.** `(amount: int, currency:
+string)`, `[int]`, `int?` - so the rule an author reads and the sentence a finding quotes about it are the
+same text. `ATypeExpressionDrawsExactlyWhatTheTypeIsCalled` in `TypeRuleNotationTests` is that invariant as
+a test. It holds for a *complete* type expression: an empty record draws the shared `<< ... >>`
+empty-list placeholder, because an empty slot has to stay visible and fillable.
 
 **Three bodies, not a statement list.** MPS' typesystem is imperative - `do { typeof(node) :== int; }` -
 and copying that would mean shipping an interpreter for a language whose only job is to answer one
@@ -242,12 +260,13 @@ question per node. A fixed type, a child's type and a switch over a property cov
 actually say, and each lowers to a delegate the C# path could have written by hand.
 
 **A body that cannot be lowered is a load-time error**, not a rule that silently answers `Unknown`: a
-rule with no body, a type name the framework does not have, a switch that declares one value twice, and a
-switch with no `otherwise` all throw `ConceptDefinitionException` when the language is loaded, where the
-author is looking.
+rule with no body, a type name the framework does not have, a fixed body or a field with no type, a record
+that names one field twice, a switch that declares one value twice, and a switch with no `otherwise` all
+throw `ConceptDefinitionException` when the language is loaded, where the author is looking.
 
-**Only the four primitives are nameable.** An enumeration is a type a language declares, and a rule that
-named one would have to be resolved against that language's registry - the declared stage's job, not this
+**Only the primitives are nameable by a `Primitive` node.** An enumeration is a type a language declares,
+and a rule that named one would have to be resolved against that language's registry - the declared
+stage's job, not this
 one's.
 
 **The parity rule applies to types too.** `TypeRuleLoweringTests` writes the sample's type rules as a

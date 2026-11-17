@@ -2,10 +2,16 @@ namespace Projectional.TypeRules;
 
 /// <summary>The keys of the type-rule language: the concepts a type rule is written with.</summary>
 /// <remarks>
-/// One root and five concepts, and the small number is the design. A type rule says what a concept
+/// One root and eleven concepts, and the small number is the design. A type rule says what a concept
 /// evaluates to - a fixed type, the type of one of its children, or a choice between those two decided by
 /// a property - and nothing about how it is computed. That is the declarative subset of MPS' typesystem:
 /// enough to state the rules a DSL actually has, and not a programming language.
+/// <para>
+/// The second half is the type expressions: a type is written as data too, so a rule can say what a
+/// concept evaluates to when it is not one of the four primitives. They are deliberately a separate
+/// family from the bodies - a body may read the node (<c>type of left</c>), a type may not, and mixing
+/// them would allow a record field whose type depends on the node that holds the rule.
+/// </para>
 /// </remarks>
 public static class TypeRuleConceptKeys
 {
@@ -29,4 +35,22 @@ public static class TypeRuleConceptKeys
 
     /// <summary>One value of a switch, and the body it selects.</summary>
     public const string Case = "TypeRule.Case";
+
+    /// <summary>A type written as data, abstract because it is always one of the kinds below.</summary>
+    public const string TypeExpr = "TypeRule.TypeExpr";
+
+    /// <summary>One of the framework's primitives, named.</summary>
+    public const string Primitive = "TypeRule.Primitive";
+
+    /// <summary>A record: a fixed set of named fields.</summary>
+    public const string Record = "TypeRule.Record";
+
+    /// <summary>One field of a record: a name and the type it holds.</summary>
+    public const string Field = "TypeRule.Field";
+
+    /// <summary>A list of one element type.</summary>
+    public const string List = "TypeRule.List";
+
+    /// <summary>A value that may be absent.</summary>
+    public const string Optional = "TypeRule.Optional";
 }

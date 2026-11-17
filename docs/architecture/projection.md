@@ -125,6 +125,11 @@ the tree, in abstract **layout units** rather than pixels.
   written into the separator notation itself (`Punct(",")` beside `Line(Space, Keyword("and"))`).
   There is no trailing gap after the last item. A gap is real cells, not padding applied by
   the layout, so a wide gap is several `SpaceCell`s and every one of them is a caret stop.
+- **Where a list may stand is a type, not a flag.** `CollectionNotationCell` is a block cell and
+  starts its own line; `InlineCollectionNotationCell` stays inside the line it is drawn on, with the
+  same `Separator`/`Spacing`/`EmptyText` and the same runtime `CollectionCell` (which arranges its
+  items inline either way). A notation that asks for the wrong one fails to compile, which is why the
+  two exist rather than one cell with a `Stacked` flag.
 - **A text cell is laid out as lines, and breaks itself at a space when the page does
   not reach.** The text of a property is broken into `TextLine`s by `TextWrapper` before
   it is measured: a `\n` in the value always ends a line, and when a wrap width is known

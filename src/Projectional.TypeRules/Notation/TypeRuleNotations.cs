@@ -53,7 +53,7 @@ public static class TypeRuleNotations
         notations.Add(TypeRuleConceptKeys.Fixed, ed => ed.Line(
             ed.Keyword("type"),
             ed.Space,
-            ed.Property(TypeRuleLanguage.TypeNameSlot)));
+            ed.ChildInline(TypeRuleLanguage.TypeSlot)));
 
         notations.Add(TypeRuleConceptKeys.Child, ed => ed.Line(
             ed.Keyword("type of"),
@@ -78,5 +78,30 @@ public static class TypeRuleNotations
             ed.Keyword("then"),
             ed.Space,
             ed.ChildInline(TypeRuleLanguage.BodySlot)));
+
+        // The type expressions all draw exactly what IType.Name prints for what they lower to, so the
+        // source of a rule and the sentence a finding quotes about it read the same.
+        notations.Add(TypeRuleConceptKeys.Primitive, ed => ed.Line(
+            ed.Property(TypeRuleLanguage.NameSlot)));
+
+        notations.Add(TypeRuleConceptKeys.Record, ed => ed.Line(
+            ed.Keyword("("),
+            ed.InlineCollection(TypeRuleLanguage.FieldsSlot, ed.Punct(","), NoEntries),
+            ed.Keyword(")")));
+
+        notations.Add(TypeRuleConceptKeys.Field, ed => ed.Line(
+            ed.Property(TypeRuleLanguage.NameSlot),
+            ed.Punct(":"),
+            ed.Space,
+            ed.ChildInline(TypeRuleLanguage.TypeSlot)));
+
+        notations.Add(TypeRuleConceptKeys.List, ed => ed.Line(
+            ed.Keyword("["),
+            ed.ChildInline(TypeRuleLanguage.ElementSlot),
+            ed.Keyword("]")));
+
+        notations.Add(TypeRuleConceptKeys.Optional, ed => ed.Line(
+            ed.ChildInline(TypeRuleLanguage.InnerSlot),
+            ed.Keyword("?")));
     }
 }

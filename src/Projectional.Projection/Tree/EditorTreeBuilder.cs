@@ -114,7 +114,9 @@ public sealed class EditorTreeBuilder
                 rootAddress,
                 children.Spacing,
                 children.Stacked),
-            CollectionNotationCell collection => BuildCollection(collection, node, emphasis, rootAddress),
+            CollectionNotationCell collection => BuildCollection(
+                collection.Slot, collection.Separator, collection.EmptyText, collection.Spacing, node, emphasis, rootAddress),
+
             TableNotationCell table => BuildTable(table, node, emphasis, rootAddress),
             _ => throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' uses a block cell of unknown kind '{cell.GetType().Name}'."),
@@ -164,6 +166,9 @@ public sealed class EditorTreeBuilder
         ReferenceNotationCell reference => [BuildReference(reference, node, emphasis)],
         SingleChildNotationCell single =>
             [BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null, spacing: 0)],
+        InlineCollectionNotationCell inlineCollection =>
+            [BuildCollection(
+                inlineCollection.Slot, inlineCollection.Separator, inlineCollection.EmptyText, inlineCollection.Spacing, node, emphasis, rootAddress: null)],
         ConditionalNotationCell conditional => BuildConditional(conditional, node, emphasis),
         _ => throw new ProjectionException(
             $"The notation of '{node.Concept.Key}' uses an inline cell of unknown kind '{cell.GetType().Name}'."),
@@ -312,13 +317,14 @@ public sealed class EditorTreeBuilder
     }
 
     private CollectionCell BuildCollection(
-        CollectionNotationCell notation,
+        string slot,
+        InlineNotationCell? separatorNotation,
+        string emptyText,
+        int spacing,
         Node node,
         TextEmphasis emphasis,
         CellAddress? rootAddress)
     {
-        var slot = notation.Slot;
-
         if (node.Concept.FindChild(slot) is null)
         {
             throw new ProjectionException(
@@ -335,23 +341,23 @@ public sealed class EditorTreeBuilder
 
         var separators = Array.Empty<EditorCell>();
 
-        if (notation.Separator is { } separatorNotation && children.Count > 1)
+        if (separatorNotation is { } separator && children.Count > 1)
         {
             separators = new EditorCell[children.Count - 1];
 
             for (var i = 0; i < separators.Length; i++)
             {
-                separators[i] = BuildOneInline(separatorNotation, node, emphasis);
+                separators[i] = BuildOneInline(separator, node, emphasis);
             }
         }
 
         return new CollectionCell(
             rootAddress ?? CellAddress.OfSlot(node.Id, slot),
             slot,
-            notation.EmptyText,
+            emptyText,
             items,
             separators,
-            notation.Spacing);
+            spacing);
     }
 
     /// <summary>

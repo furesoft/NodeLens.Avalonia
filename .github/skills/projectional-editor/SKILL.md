@@ -688,10 +688,24 @@ notation is registered per concept **and** variant
   imperative, and copying that would mean shipping an interpreter for a language whose only job is to
   answer one question per node. A body that cannot be lowered (no body, an unknown type name, a value
   declared twice, a switch with no `otherwise`) is a `ConceptDefinitionException` at load, not a rule
-  that silently answers `Unknown`. Only the four primitives are nameable - an enumeration would have to
-  be resolved against the language's own registry, which is the declared stage's job. The parity rule
-  applies: `TypeRuleLoweringTests` asserts the declared registry and `ExpressionsLanguage.Types` answer
-  the same type for every node of the sample document.
+  that silently answers `Unknown`. `TypeRule.Primitive` names only the four framework primitives - an
+  enumeration would have to be resolved against the language's own registry, which is the declared
+  stage's job; a structural type is written with `Record`/`List`/`Optional` instead of being named. The
+  parity rule applies: `TypeRuleLoweringTests` asserts the declared registry and
+  `ExpressionsLanguage.Types` answer the same type for every node of the sample document.
+- **A type expression is a family of its own, not a body.** `TypeExpr` (abstract) + `Primitive` /
+  `Record` / `Field` / `List` / `Optional`, and `Fixed` holds one instead of a type name. The split is
+  load-bearing: a body may read the node (`type of left`), a type may not - a record field's type cannot
+  depend on the node that holds the rule, because a field is part of a *type* and there is no node there
+  to ask. Nested arbitrarily; **the drawing of a complete type expression is exactly `IType.Name`**, so
+  the rule an author reads and the sentence a finding quotes are the same text
+  (`ATypeExpressionDrawsExactlyWhatTheTypeIsCalled`). The one exception is an empty record, which draws
+  the shared `<< ... >>` placeholder because an empty slot must stay fillable.
+- **A record needs an inline list, which is why `InlineCollectionNotationCell` exists.** `Collection`
+  and `Children` are *block* cells: they start their own line, so `(amount: int, currency: string)`
+  written inside a `Line` used to be inexpressible - the declared language was weaker than C# for a
+  purely notational reason. Both list cells now build the same runtime `CollectionCell` (which arranges
+  inline either way); the difference is only whether the list may stand inside a line.
 
 ### The framework ships one: ambiguity
 
@@ -1695,7 +1709,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1729 tests**; anything below that means tests were deleted.
+it. **Baseline is 1742 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

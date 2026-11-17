@@ -239,6 +239,10 @@ public sealed class NotationRegistry
                 RequireChildSlotExists(concept, collection.Slot);
                 break;
 
+            case InlineCollectionNotationCell inlineCollection:
+                RequireChildSlotExists(concept, inlineCollection.Slot);
+                break;
+
             case TableNotationCell table:
                 ValidateTable(concept, table);
                 break;
