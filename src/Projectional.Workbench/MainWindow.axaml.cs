@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Projectional.Avalonia;
 using Projectional.Core;
 using Projectional.Editing;
+using Projectional.Expressions;
 using Projectional.Expressions.Intentions;
 using Projectional.Intentions;
 using Projectional.Language;
@@ -371,7 +372,7 @@ public sealed partial class MainWindow : Window, IDisposable
         List<Diagnostic> findings =
         [
             .. fixes.Select(fix => fix.Diagnostic),
-            .. new ConstraintEngine(SampleConstraints.All, types: document.Types ?? SampleTypes.All).Check(document.Model),
+            .. new ConstraintEngine(SampleConstraints.All, types: document.Types ?? ExpressionsLanguage.Types).Check(document.Model),
         ];
 
         editor.Markers = new MarkerSet([.. findings]);

@@ -129,4 +129,71 @@ public sealed class ExpressionsLanguageTests
 
         Assert.Equal("\"Payroll\"", LayoutSnapshot.Render(model, Notations, width: 20));
     }
+
+    [Fact]
+    public void TheLanguageShipsTheTypesItsConceptsEvaluateTo()
+    {
+        // A host that declares a slot over Expression needs "what may stand here" without composing a
+        // second package, so the rules belong to the language - the same reason the notation does.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var types = ExpressionsLanguage.Types;
+
+        Assert.Equal("int", types.TypeOf(New(model, ExpressionsConceptKeys.IntLiteral)).Name);
+        Assert.Equal("bool", types.TypeOf(New(model, ExpressionsConceptKeys.BoolLiteral)).Name);
+        Assert.Equal("string", types.TypeOf(New(model, ExpressionsConceptKeys.StringLiteral)).Name);
+    }
+
+    [Fact]
+    public void AComparisonIsATruthValueAndArithmeticIsAsWideAsItsLeftOperand()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var types = ExpressionsLanguage.Types;
+
+        var comparison = model.NewNode(ExpressionsConceptKeys.Binary);
+        comparison.Set("operator", "<");
+        model.NewChild(comparison, "left", ExpressionsConceptKeys.IntLiteral);
+        model.NewChild(comparison, "right", ExpressionsConceptKeys.IntLiteral);
+
+        var sum = model.NewNode(ExpressionsConceptKeys.Binary);
+        sum.Set("operator", "+");
+        model.NewChild(sum, "left", ExpressionsConceptKeys.StringLiteral);
+        model.NewChild(sum, "right", ExpressionsConceptKeys.IntLiteral);
+
+        Assert.Equal("bool", types.TypeOf(comparison).Name);
+        Assert.Equal("string", types.TypeOf(sum).Name);
+    }
+
+    [Fact]
+    public void AWrappedExpressionIsAsWideAsWhatItWraps()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var parentheses = model.NewNode(ExpressionsConceptKeys.Parenthesized);
+        model.NewChild(parentheses, "inner", ExpressionsConceptKeys.BoolLiteral);
+
+        var conditional = model.NewNode(ExpressionsConceptKeys.If);
+        model.NewChild(conditional, "then", ExpressionsConceptKeys.IntLiteral);
+
+        Assert.Equal("bool", ExpressionsLanguage.Types.TypeOf(parentheses).Name);
+        Assert.Equal("int", ExpressionsLanguage.Types.TypeOf(conditional).Name);
+    }
+
+    [Fact]
+    public void ANameIsUnknownBecauseWhatItMeansIsDeclaredElsewhere()
+    {
+        // The sub-language has no declaration to resolve a name against, so it says so instead of
+        // guessing - and a host that does have one replaces the rule.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var name = model.NewNode(ExpressionsConceptKeys.Name);
+
+        Assert.Same(UnknownType.Instance, ExpressionsLanguage.Types.TypeOf(name));
+    }
+
+    private static Node New(Model model, string conceptKey)
+    {
+        var node = model.NewNode(conceptKey);
+
+        model.AddRoot(node);
+
+        return node;
+    }
 }

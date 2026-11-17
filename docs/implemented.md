@@ -112,10 +112,10 @@ Not done in M3: scopes and scope-driven completion.
 | Diagnostics and the fix contract: a fix produces an edit, never mutates | `Projectional.Semantics/`, `Projectional.Editing/Fixes/` | `DiagnosticFixTests`, `FixSetTests`, `FixAvailabilityTests`, `EditProgramTests` |
 | Constraint engine: a language's rules as an aspect, run over a document or one subtree | `Projectional.Semantics/Constraints/` | `ConstraintEngineTests` |
 | The sample language's own constraint (a rule needs a condition), merged into the app's findings | `SampleConstraints`, `MainWindow.PublishFindings` | `SampleConstraintsTests` |
-| Type model: `IType`, `PrimitiveType`, `UnknownType`, the `TypeFor` aspect and a registry inherited by sub-concepts | `Projectional.Semantics/Types/` | `TypeRegistryTests` |
+| Type model: `IType`, `PrimitiveType`, `UnknownType`, the `TypeFor` aspect and a registry inherited by sub-concepts | `Projectional.Language/Types/` | `TypeRegistryTests` |
 | Structural types: record (compared by name), list, optional (accepts its inner type, nesting not collapsed) | `RecordType`, `ListType`, `OptionalType` | `StructuralTypeTests` |
-| The expression language's types, and a constraint that a rule's condition must be a truth value | `SampleTypes`, `SampleConstraints.ConditionMustBeBoolean` | `SampleConstraintsTests` |
-| The declared type-rule language: a rule as a model, lowered into the same `ITypeRule` | `Projectional.TypeRules/` | `TypeRuleLoweringTests` (incl. parity with `SampleTypes`), `TypeRuleNotationTests` |
+| The expression language's own types, shipped with it, and a constraint that a rule's condition must be a truth value | `ExpressionsLanguage.Types`, `SampleConstraints.ConditionMustBeBoolean` | `ExpressionsLanguageTests`, `SampleConstraintsTests` |
+| The declared type-rule language: a rule as a model, lowered into the same `ITypeRule` | `Projectional.TypeRules/` | `TypeRuleLoweringTests` (incl. parity with `ExpressionsLanguage.Types`), `TypeRuleNotationTests` |
 | A language project's `types.mps` loads into the registry a constraint asks for types, and the app checks each document with its own language's rules | `LanguageProject.Types`, `DocumentTab.Types` | `LanguageProjectTypesTests` |
 | Quick fixes at the caret, the bulb, the offer list | `QuickFixes`, `OfferList` | `QuickFixesTests`, `QuickFixBulbTests`, `EditorSessionFixTests` |
 | Standard check catalogue as a package (`STD001`, `STD003`, `STD010`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `BinaryGroupingCheckTests` |

@@ -1,5 +1,5 @@
 using Projectional.Core;
-using Projectional.Semantics;
+using Projectional.Language;
 
 namespace Projectional.TypeRules;
 

@@ -1,9 +1,16 @@
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// The aspect that says what a node evaluates to, per concept.
 /// </summary>
 /// <remarks>
+/// <para>
+/// It lives in <c>Projectional.Language</c>, beside the notation and the typing rules, because a type is a
+/// statement about what a language means - so the language package that declares concepts must be able to
+/// declare their types without referencing the semantics layer that consumes them. The consumers (the
+/// constraint engine, the declared type-rule language, a host) sit above and read the registry this
+/// assembly hands them.
+/// </para>
 /// <para>
 /// It is an aspect rather than a framework rule because a type is a property of the language: an integer
 /// literal is an <c>int</c>, a comparison is a <c>bool</c>, and a language that has neither still needs an

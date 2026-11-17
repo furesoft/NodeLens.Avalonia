@@ -2,7 +2,6 @@ using Projectional.Core;
 using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Persistence;
-using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.TypeRules;
 

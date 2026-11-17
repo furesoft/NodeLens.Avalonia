@@ -1,6 +1,6 @@
 using Projectional.Core;
 
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// A type a property declaration already names: <c>bool</c>, <c>int</c>, <c>string</c>, a date, or one of

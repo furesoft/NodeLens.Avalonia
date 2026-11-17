@@ -1,4 +1,4 @@
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// What a node evaluates to, as a runtime value.

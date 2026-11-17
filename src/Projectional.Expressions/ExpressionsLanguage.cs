@@ -87,6 +87,16 @@ public static class ExpressionsLanguage
         .Add(ExpressionsConceptKeys.Name, ClaimsName, "name")
         .Add(ExpressionsConceptKeys.Parenthesized, text => text.StartsWith('('));
 
+    /// <summary>What each concept evaluates to, so a host can check what it composes.</summary>
+    /// <remarks>
+    /// Declared beside the concepts and the typing rules rather than in the semantics layer, because a
+    /// type is part of what a language means: composing the language gets its types, and a host with a
+    /// slot declared over <see cref="ExpressionsConceptKeys.Expression"/> needs no second package to ask
+    /// what may stand there. <c>Projectional.TypeRules</c> is the declared form of the same aspect - a
+    /// language that writes its rules as a model produces a registry of exactly this shape.
+    /// </remarks>
+    public static TypeRegistry Types { get; } = ExpressionTypes.Registry;
+
 
 
     private static bool ClaimsName(string text) =>

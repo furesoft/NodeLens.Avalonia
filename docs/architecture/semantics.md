@@ -151,8 +151,13 @@ beyond local propagation; if a language needs more, its concepts provide it.
 
 ### What is implemented
 
-`Projectional.Semantics/Types/` holds the model; the primitive, structural and `Unknown` kinds are done,
-the named/declared kind is not.
+`Projectional.Language/Types/` holds the model; the primitive, structural and `Unknown` kinds are done,
+the named kind is not.
+
+**It lives in `Projectional.Language`, beside the notation and the typing rules, because a type is a
+statement about what a language means.** The layer diagram puts `Semantics` above `Language`, so a
+language package that declares a type rule - the expression language does - could not reference it from
+there. The consumers sit above and read the registry the language hands them.
 
 | Type | Job |
 | --- | --- |
@@ -195,11 +200,14 @@ Four rules worth knowing:
 therefore carries the `TypeRegistry` beside the `IScopeProvider`, and `ConstraintEngine` takes both - a
 rule that needs a type and a rule that needs a scope are the same kind of rule.
 
-`SampleTypes` (in `Projectional.Samples.Checks`) declares the expression language's types: a literal is
-its own type, a parenthesised expression is as wide as what it wraps, a comparison is a `bool`,
-arithmetic is as wide as its left operand, and a name is `Unknown` because what it means depends on a
-declaration this language does not have. Type rules are behaviour, so they live beside the language
-rather than inside it - the same reason intentions and checks do.
+`ExpressionsLanguage.Types` declares the expression language's types: a literal is its own type, a
+parenthesised expression is as wide as what it wraps, a comparison is a `bool`, arithmetic is as wide as
+its left operand, and a name is `Unknown` because what it means depends on a declaration this language
+does not have. They ship **with** the language, not beside it: a host that declares a slot over
+`Expression` asks the language it borrowed what may stand there, and composes nothing extra. That is the
+one thing the type rules share with the notation and the typing rules rather than with intentions and
+checks - those two produce edits, so they must live beside the language; a type rule only answers a
+question.
 
 ### The declared form
 
@@ -231,8 +239,8 @@ named one would have to be resolved against that language's registry - the decla
 one's.
 
 **The parity rule applies to types too.** `TypeRuleLoweringTests` writes the sample's type rules as a
-model and asserts that the declared registry and `SampleTypes` answer the same type for every node of the
-sample document - the same "two authoring paths, one answer" check the language layer has.
+model and asserts that the declared registry and `ExpressionsLanguage.Types` answer the same type for
+every node of the sample document - the same "two authoring paths, one answer" check the language layer has.
 
 ## Generation
 

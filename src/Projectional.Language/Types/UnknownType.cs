@@ -1,4 +1,4 @@
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// The type of something whose type could not be computed.

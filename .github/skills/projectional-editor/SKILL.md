@@ -643,7 +643,7 @@ notation is registered per concept **and** variant
 
 ## How types work
 
-`Projectional.Semantics/Types/` computes what a node evaluates to; the design is
+`Projectional.Language/Types/` computes what a node evaluates to; the design is
 `docs/architecture/semantics.md` §Types.
 
 - **`expected.Accepts(actual)` is the only question**, and the direction matters: a caller that got it
@@ -668,9 +668,13 @@ notation is registered per concept **and** variant
   and constraints use.
 - **`ConstraintContext` carries the `TypeRegistry` beside the `IScopeProvider`**, and `ConstraintEngine`
   takes both - a rule that needs a type and a rule that needs a scope are the same kind of rule.
-- **Type rules are behaviour, so they live beside the language** (`SampleTypes` in
-  `Projectional.Samples.Checks`), not inside the language package - the same reason intentions and
-  checks do.
+- **Type rules live *in* the language package, beside the notation and the typing rules** -
+  `ExpressionsLanguage.Types` is part of the language. That is why the type model sits in
+  `Projectional.Language` and not in `Projectional.Semantics`: the layer diagram puts `Semantics`
+  above `Language`, so a language package could not declare a rule from there. The line is what the
+  aspect *does*: a type rule only answers a question, so it belongs to the language like notation
+  does; intentions and checks produce edits, so they must live beside it (their packages reference
+  `Editing`). Do not move the types back into `Semantics` - it looked tidier and it is wrong.
 - **`Projectional.TypeRules` is the declared form** - the first declared aspect: a rule is a model
   (`TypeRule.Rule` with a `Fixed`/`Child`/`Switch` body) and `TypeRuleLowering` turns it into the
   same `ITypeRule` a C# author writes. **Three bodies, not a statement list**: MPS' typesystem is
@@ -679,8 +683,8 @@ notation is registered per concept **and** variant
   declared twice, a switch with no `otherwise`) is a `ConceptDefinitionException` at load, not a rule
   that silently answers `Unknown`. Only the four primitives are nameable - an enumeration would have to
   be resolved against the language's own registry, which is the declared stage's job. The parity rule
-  applies: `TypeRuleLoweringTests` asserts the declared registry and `SampleTypes` answer the same type
-  for every node of the sample document.
+  applies: `TypeRuleLoweringTests` asserts the declared registry and `ExpressionsLanguage.Types` answer
+  the same type for every node of the sample document.
 
 ## How the editor tree is built
 
@@ -1668,7 +1672,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1714 tests**; anything below that means tests were deleted.
+it. **Baseline is 1718 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

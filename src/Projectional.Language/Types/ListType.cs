@@ -1,4 +1,4 @@
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// A list: any number of values of one element type.

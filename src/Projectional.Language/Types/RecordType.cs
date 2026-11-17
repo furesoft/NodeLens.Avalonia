@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Projectional.Semantics;
+namespace Projectional.Language;
 
 /// <summary>
 /// A record: a fixed set of named fields, each with its own type.

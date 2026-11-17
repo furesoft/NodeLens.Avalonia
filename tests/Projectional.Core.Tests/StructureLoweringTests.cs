@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Structures;
 using Projectional.Structures.Notation;
