@@ -21,27 +21,31 @@ runtime probe forced: `FoldMarks` had assumed a node's cell carries the node's o
 only for the document root, so no arrow ever appeared. Both the defect and its repair are written down in
 [collapsing.md](architecture/collapsing.md).
 
+**The intention list is done** ([context-actions.md](architecture/context-actions.md)): slices A to G, the hover
+preview ([intention-preview.md](architecture/intention-preview.md), V1-V6), three language packages and the
+framework's own catalogue - rename, duplicate, delete, the moves, both insertions, sorting, the two selections,
+wrap, replace and reset, all derived from the shape of the caret's place (`Projectional.Intentions`). The
+workbench registers it for every document, as the host's own so the generic operations sit above a language's,
+and `Expressions.Intentions` retired its duplicate "wrap in parentheses" in the same step. "Negate" stayed: a
+`Unary` born with `operator = "!"` is not what a bare wrap produces, and no declaration says which operator a
+fresh `Unary` should start with - declared intentions (M5) are what would close that gap.
+
 What is next, in order:
 
-1. **The intention list** ([context-actions.md](architecture/context-actions.md)). Slices A to G are done -
-   the model, the list, `EditorSession.Apply(Intention)`, the `Alt+Enter` popup, the "Intentions" submenu, the
-   hover preview ([intention-preview.md](architecture/intention-preview.md), slices V1-V6, complete), two
-   packages of real intentions (wrap in parentheses, negate, accept this rule) and the first
-   entries of the framework's own catalogue (`INT001` rename, `INT002` duplicate, `INT003` delete, `INT004`
-   move up/down, `INT005` move to front/back, `INT030` insert before/after, `INT031` sort by name, `INT008`
-   select node/parent, `INT006`
-   wrap in X, `INT007`
-   replace with X, `INT020` reset
-   to the default, in `Projectional.Intentions`), all reading one `IntentionList` of host commands, language
-   intentions and quick fixes. What is left of that catalogue is what `Enter` and completion already do
-   (`INT010`/`INT011`, a menu decision rather than an action), and the language-side entries from `INT040` on,
-   which arrive with the languages that need them.
-2. **The standard catalogue in the app - done.** `Projectional.Intentions` is a package a host registers, and
-   the workbench registers it for every document, as the host's own so the generic operations sit above a
-   language's. `Expressions.Intentions` retired its "wrap in parentheses" in the same step, because the
-   catalogue derives `Wrap in "Parenthesized"` and one operation must not appear twice. "Negate" stayed: a
-   `Unary` born with `operator = "!"` is not what a bare wrap produces, and no declaration says which operator
-   a fresh `Unary` should start with - declared intentions (M5) are what would close that gap.
+1. **The language template** (`dotnet new projectional-language` plus the `Projectional.Toolkit` surface). M2's
+   gate asks for a small DSL defined entirely in project files, and that is the one piece of it that still needs
+   this repository: everything below the template - the structure and editor languages, the parity harness, the
+   folder loader - is delivered.
+2. **The shell's M2 half**: model browser, problems panel, find/replace, recent projects and the self-contained
+   single-file build. The language picker that used to sit in this list is done - File > *Open language project...*
+   loads a folder of `structure.mps` + `editor.mps` into the shell's own registry, and a document of that language
+   opens like any other.
+3. **The table's writing affordances** (adding a row, resizing a column). The grid itself is delivered and the
+   flattened navigation is correct but not what a user expects in a grid; [projection.md](architecture/projection.md)
+   and open question 29 hold the detail.
+4. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
+   they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
+   languages that need them.
 
 **Slice Q7 - the standard checks as a package** is done: `Projectional.Checks` ships `STD001`, `STD003`,
 `STD010` and `STD040`, and a language includes them by naming them in a `CheckSet`. The safety class the
