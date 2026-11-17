@@ -1423,6 +1423,18 @@ Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
 ## How the standalone app fits
 
+`Projectional.Editing/Find/` is the search: `Finder.Find(session, query)` answers `FindMatch` values in document
+order, `FindNextAction(query, direction)` selects the next one **with wraparound**, and the app's strip
+(`Ctrl+F`, Enter/Shift+Enter/Escape) only counts and scrolls. Three rules are decisions, not details:
+the search walks **caret places** (so a property the notation hides cannot be found - the rule the caret obeys)
+and only **property cells** (a keyword is drawn from the notation, so a match in one is an offer no edit can
+keep); matching is **ordinal**, never culture-aware; and the occurrence the last press selected is **skipped**
+(`IsCurrent`), because a second press must move rather than find what the first one did - a test caught that rule
+missing for backward search. `FindNextAction` is a navigation: no undo step, and a query that matches nothing
+leaves the caret alone. **Replace is not part of it** - replacing is an edit, so it goes through
+`TypeTextAction` over the selection a match produces, and a "replace all" is one transaction over `Finder`'s
+matches.
+
 The problems panel is the model for a shell feature: `Problems/ProblemList.Of(model, findings)` turns the
 diagnostics the editor is already drawing into rows, headless and tested, and `MainWindow` only fills a `ListBox`
 and scrolls. Two rules in it are decisions, not formatting: **the order is the document's** (a severity-sorted
@@ -1499,7 +1511,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1570 tests**; anything below that means tests were deleted.
+it. **Baseline is 1582 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

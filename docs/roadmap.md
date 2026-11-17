@@ -38,11 +38,15 @@ What is next, in order:
    M2's gate is one step away: what it still asks for is a DSL defined entirely in *project files* - the declared
    path - and the template is the C# half of that story.
 
-2. **The shell's M2 half**: model browser, find/replace, recent projects and the self-contained single-file build.
+2. **The shell's M2 half**: model browser, recent projects and the self-contained single-file build.
    The problems panel is done - diagnostics of the active document in document order, choosing a row puts the
    caret on the cell the finding is about ([standalone.md](architecture/standalone.md#the-problems-panel)) - and
    it is the model for the rest: the row-building half is headless and tested, only the list and the scroll need
-   a window. The language picker that used to sit in this list is done too - File > *Open language project...*
+   a window. Find is done too: `Projectional.Editing/Find/` searches the caret places, `FindNextAction` walks the
+   occurrences with wraparound, and the app shows it as a strip (`Ctrl+F`) rather than a dialog
+   ([standalone.md](architecture/standalone.md#find)). **Replace is deliberately not part of it**: replacing is an
+   edit and belongs with the text actions, over the selection a match already produces.
+   The language picker that used to sit in this list is done too - File > *Open language project...*
    loads a folder of `structure.mps` + `editor.mps` into the shell's own registry.
    **Known gap, recorded rather than fixed here:** `standalone.md` and
    [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
