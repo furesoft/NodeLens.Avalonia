@@ -42,8 +42,7 @@ jobs:
 
   byte-stability:
     name: stored form is byte-stable
-    runs-on: ubuntu-latest
-    steps:
+    runs-on: ubuntu-latest    steps:
       - uses: actions/checkout@v4
 
       - name: Set up the SDK the repository pins
@@ -56,3 +55,53 @@ jobs:
       # the contract that broke instead of the whole suite.
       - name: Run the corpus
         run: dotnet test tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj --filter-class "*CorpusTests"
+
+  single-file:
+    name: self-contained single file (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One failing platform must not hide the state of the other.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            exe: Projectional.Workbench.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            exe: Projectional.Workbench
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up the SDK the repository pins
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # The bundle is a publish shape, not a build shape: the normal build stays framework-dependent
+      # and multi-file so the inner loop is fast.
+      - name: Publish one file
+        run: >
+          dotnet publish src/Projectional.Workbench
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained
+          -p:PublishSingleFile=true
+          --output publish
+
+      # "Single file" has to mean one file. A stray .pdb or a native library left beside the bundle
+      # would still work on the machine that built it and fail on a user's, which is the whole point
+      # of this job.
+      - name: Assert the bundle is one file
+        shell: bash
+        run: |
+          count=$(find publish -maxdepth 1 -type f | wc -l)
+          echo "publish/ holds $count file(s):"
+          find publish -maxdepth 1 -type f -printf '  %f\n'
+          test "$count" -eq 1
+
+      # The check runs before Avalonia starts, so it needs no display and proves that the language
+      # packages and the projection layer are inside the bundle rather than beside it.
+      - name: Smoke-run the bundle
+        shell: bash
+        run: ./publish/${{ matrix.exe }} --self-check

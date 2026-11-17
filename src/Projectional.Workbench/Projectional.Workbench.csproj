@@ -4,6 +4,24 @@
     <OutputType>WinExe</OutputType>
   </PropertyGroup>
 
+  <!--
+    The self-contained single file is a publish shape, not a build shape: a normal build stays
+    framework-dependent and multi-file so the inner loop is fast, and only `dotnet publish` with
+    PublishSingleFile bundles everything. IncludeNativeLibrariesForSelfExtract is what makes Avalonia's
+    native dependencies part of the one file instead of a folder of .so/.dll beside it.
+  -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!--
+      "Single file" has to mean one file. A portable PDB per referenced project would otherwise be
+      copied next to the bundle, so the publish turns debug information off and stops the reference
+      copy step from bringing related files along.
+    -->
+    <DebugType>none</DebugType>
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
@@ -27,5 +45,17 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Projectional.Core.Tests" />
   </ItemGroup>
+
+  <!--
+    SkiaSharp and HarfBuzz ship a native .pdb beside their native library, and the native-asset copy
+    step brings it along whatever AllowedReferenceRelatedFileExtensions says. A bundle that leaves two
+    debug files next to it is not a single file, so the publish deletes them.
+  -->
+  <Target Name="RemovePublishPdbs" AfterTargets="Publish" Condition="'$(PublishSingleFile)' == 'true'">
+    <ItemGroup>
+      <PublishPdbs Include="$(PublishDir)**\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(PublishPdbs)" />
+  </Target>
 
 </Project>
