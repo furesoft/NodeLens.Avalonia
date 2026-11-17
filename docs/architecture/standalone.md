@@ -219,9 +219,19 @@ and scrolls.
   everywhere else, and the reason the bar needs no buttons to be usable.
 - **The count is asked on every change**, never remembered: the query and the document both move.
 
-Replace is deliberately not part of this: replacing is an edit, so it belongs with the editing layer's text
-actions (`TypeTextAction` over the selection a match produces) rather than in a box that writes while the user
-types. A "replace all" would be one transaction over the matches `Finder` already answers.
+Replace is part of it, and it is an **edit**, which is why it lives in `Projectional.Editing/Find/` and not
+in the bar: `ReplaceMatchAction` rewrites one value's text and keeps everything else about the node, and
+`ReplaceAllAction` does every occurrence as one transaction - one undo press, not one per occurrence. Two rules
+in them are decisions:
+
+- **Each cell is rewritten once**, with its replacements applied right to left, so offsets counted against the
+  original text stay valid and three occurrences in one cell cost one property write.
+- **A value the property type refuses is skipped and counted, and a run that could not write anything is rolled
+  back.** Aborting a whole run because of one cell would be worse, but an empty run must not leave a step in the
+  history.
+
+The bar's Replace replaces the selection when it is exactly an occurrence and otherwise moves to the next one,
+because a button that stays dead until the user has searched is one they cannot use to start.
 
 ### Representations
 
