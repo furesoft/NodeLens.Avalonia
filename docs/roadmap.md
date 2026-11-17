@@ -31,8 +31,8 @@ What is next, in order:
    both halves (the definition languages, the folder loader, the app's language picker) and the template
    (`dotnet new projectional-language`) is the C# half of the story; what is missing is the step that
    makes the declared path sufficient on its own, with no C# in the loop.
-3. **The table's writing affordances** (adding a row, resizing a column). The grid itself is delivered and the
-   flattened navigation is correct but not what a user expects in a grid; [projection.md](architecture/projection.md)
+3. **The table's writing affordances** (adding a row, resizing a column). The grid exists and the
+   flattened navigation is correct, but neither is what a user expects in a grid; [projection.md](architecture/projection.md)
    and open question 29 hold the detail.
 4. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
@@ -57,51 +57,13 @@ The tables below are the **scope** of each milestone, not a status report: what 
 
 *Goal: models exist, survive a round trip, and every later layer has a foundation.*
 
-| Delivers | Details |
-| --- | --- |
-| Solution skeleton | `Core`, `Language`, `Projection`, `Editing`, `Semantics`, `Avalonia`, `Workbench`, tests |
-| Node/model/project model | slots, identity, invariants, registries |
-| Change events | transactions, inverse changes, coalescing |
-| XML persistence | deterministic writer/reader, project layout, atomic save |
-| Test harness | round-trip corpus, layout snapshot harness, CI |
-
-**Gate:** a model created in code survives save → load → save byte-identically; undo
-and redo restore exact model states; invariant violations fail debug assertions.
-*Effort: 2–3 weeks.*
-
-Invariants are enforced on every mutation rather than by assertion, and the
-stored form is pinned by a round-trip corpus that CI runs on every push. What M0 actually
-implements is recorded in [persistence.md](architecture/persistence.md#what-m0-implements)
-and [testing.md](architecture/testing.md).
+**Complete.** The delivery record is in [implemented.md](implemented.md).
 
 ### M1 — Projection and editing on a built-in language
 
 *Goal: an editable editor with a text-like notation, no language authoring yet.*
 
-| Delivers | Details |
-| --- | --- |
-| Editor tree + layout | cells, measure/arrange, line-based layout |
-| Editing layer | caret, edit actions, key routing, undo/redo |
-| Headless snapshot render | ASCII grid, used by all notation tests |
-| Avalonia control | rendering, caret, selection, wheel scrolling; host scrollbars via `ILogicalScrollable` ([scrolling.md](architecture/scrolling.md)); virtualization is planned |
-| Input | typing, arrows, tab, enter, delete, undo/redo |
-| Node moves | Alt+Up / Alt+Down reorder the node under the caret; identity, caret and undo survive ([node-moves.md](architecture/node-moves.md)) |
-| Clipboard | Ctrl+A/C/X/V: Ctrl+A widens the selection from the value to the node to the document, the other three copy, cut and paste text within one property cell through a host-supplied `ITextClipboard` ([clipboard.md](architecture/clipboard.md)); text only |
-| Completion | Ctrl+Space offers the concepts an empty slot accepts, filtering by typed prefix, with a host-supplied icon per kind ([completion.md](architecture/completion.md)); concepts only |
-| Syntax highlighting | a semantic style per cell, a host-supplied palette, no colour in the model |
-| Text decorations | bold/italic/underline/strikethrough decided by the model, per cell |
-| Notation variants | one concept, more than one notation (block, table), chosen at projection time and never persisted ([ADR 0012](adr/0012-concept-rendered-more-than-one-way.md)) |
-| Folding | a node folds to a one-cell summary when its concept nominates a boolean collapse slot, with an arrow in the gutter; the fold set is view state and never persisted ([collapsing.md](architecture/collapsing.md)) |
-| Built-in language | minimal `Projectional.Expressions` + a toy block language (`Projectional.Samples`) |
-| Standalone shell (thin) | `Projectional.Workbench`: open project, model tabs, edit, save, dirty prompt. Public API only ([standalone.md](architecture/standalone.md)) |
-
-**Gate:** a user can edit a nested model with a text-like look, using only the
-keyboard, without the caret ever getting lost; typing latency and incremental layout
-are within budget on a 1000-line model. Additionally: **the standalone app opens the
-toy language, edits a model and saves it, without referencing an internal assembly** —
-the first end-to-end check of the embedding API.
-*Effort: 6–10 weeks. Highest technical risk — spike custom text layout and hit testing
-first.*
+**Complete.** The delivery record is in [implemented.md](implemented.md).
 
 ### M2 — Declarative languages
 
@@ -109,14 +71,8 @@ first.*
 
 | Delivers | Details |
 | --- | --- |
-| Concept declarations as nodes | structure language (stage B), slice P1 ([declared-structure.md](architecture/declared-structure.md)) |
-| Notation declarations as nodes | editor language (stage B), slice P2 ([declared-editor.md](architecture/declared-editor.md)) |
-| Generic renderer | renders any declared concept; the MPS-shaped definition languages replace it in M5 ([language-authoring.md](architecture/language-authoring.md)) |
-| Parity harness | the same language declared in C# and in the project, compared by registry dump, snapshot and diagnostics - the rule of [ADR 0014](adr/0014-both-authoring-paths-are-permanent.md) made executable, slice C2 ([language-parity.md](architecture/language-parity.md)) |
-| Language template | `dotnet new projectional-language`, plus the `Projectional.Toolkit` surface a package needs |
-| Tables | grid cell, column sizing, cell caret, add-row affordance |
-| Language loading | declared languages from the project directory - a folder of `structure.mps` + `editor.mps` loads as a usable language ([language-projects.md](architecture/language-projects.md)); and the app's picker opens one |
-| Shell grows | model browser, problems panel, find/replace, recent projects, self-contained single-file build |
+| Tables | the add-row affordance and column resizing; the grid, the column sizing and the cell caret are in [implemented.md](implemented.md) |
+| Shell grows | the self-contained single-file build; the model browser, the problems panel, find/replace and recent files are in [implemented.md](implemented.md) |
 
 **Gate:** a small DSL (including a table) is defined entirely in project files and is
 editable with correct structural editing; deleting the language's C#
@@ -132,11 +88,8 @@ twin is still in the repository and still agrees with it, because the parity har
 | Delivers | Details |
 | --- | --- |
 | Scopes | chain, defaults, per-language overrides, ambiguity diagnostics |
-| Reference cells | resolve, create-on-the-fly, unresolved state, chooser popup |
 | Completion | scope-driven entries alongside the concepts M1 already offers, insert-and-continue ([completion.md](architecture/completion.md)) |
-| Substitutions | transformation menus and wrapping; keyword-triggered insertion is concept triggers ([triggers.md](architecture/triggers.md)) |
-| Intentions (light bulb) | actions offered at the caret by the language and by the host, applied as one undo step ([context-actions.md](architecture/context-actions.md)) |
-| Intention preview | a longer hover shows what the highlighted entry would do, by applying it to a discarded copy and projecting that; the live model is never touched ([intention-preview.md](architecture/intention-preview.md)) |
+| Substitutions | transformation menus; keyword-triggered insertion is concept triggers ([triggers.md](architecture/triggers.md)) |
 
 **Gate:** referencing an element in another model works; renaming a target does not
 break models thanks to `resolveInfo`; wrapping a selection in an `if` is one undo step.
@@ -150,8 +103,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 
 | Delivers | Details |
 | --- | --- |
-| Constraints | incremental validation, and diagnostics as wavy severity underlines ([markers.md](architecture/markers.md)) |
-| Quick fixes | a diagnostic carries its own repairs, listed beside the marker set and reached with `Alt+Enter`/`Ctrl+.`, the marker tooltip and the context menu, applied as one undo step ([quick-fixes.md](architecture/quick-fixes.md)); implemented ahead of this milestone, with the intention list joining it in M3 |
+| Constraints | the constraint engine: incremental validation in volume, on top of the diagnostics pipeline that already draws markers ([markers.md](architecture/markers.md)) |
 | Types | basic type system with `Unknown` semantics |
 | Text generation | template trees, traceability map |
 | Interpreter | evaluation with trace and step budget |
@@ -168,8 +120,8 @@ application and in the standalone app, proving the two front ends share the beha
 
 | Delivers | Details |
 | --- | --- |
-| Structure language (stage C) | `Projectional.Structure` drawn in its own notation: concepts, slots, inheritance, enumerations as an editable model ([language-authoring.md](architecture/language-authoring.md)) |
-| Editor language (stage C) | `Projectional.Editor` as cell glyphs, with notation and the table variant as an editable model |
+| Structure language (stage C) | `Projectional.Structures` drawn in its own notation: concepts, slots, inheritance, enumerations as an editable model ([language-authoring.md](architecture/language-authoring.md)) |
+| Editor language (stage C) | `Projectional.Editors` as cell glyphs, with notation and the table variant as an editable model |
 | Language project | one model per aspect beside a `language` root, with dependencies and extended languages; a new kind of aspect is a new language plus an annotation concept, not a framework change |
 | Language export | declared to C#, so a language prototyped in the workbench ships as a package without being retyped, behavioural aspects emitted as explicit stubs |
 | Live preview | edit a language definition, see the effect on a model next to it |
