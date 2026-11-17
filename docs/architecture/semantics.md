@@ -149,6 +149,47 @@ into generation unnoticed.
 Rules are per-concept, not a global unification engine. There is no type inference
 beyond local propagation; if a language needs more, its concepts provide it.
 
+### What is implemented
+
+`Projectional.Semantics/Types/` holds the model; the primitive and `Unknown` kinds are done, the
+named and structural kinds are not.
+
+| Type | Job |
+| --- | --- |
+| `IType` | `Name` and `Accepts(actual)` - assignability, asked in that direction |
+| `PrimitiveType` | wraps a `PropertyType`, so a language declares its primitives where it already declares properties |
+| `UnknownType` | the answer when nothing says; accepts and is accepted |
+| `ITypeRule` | the aspect: `TypeFor(TypeContext)` |
+| `TypeContext` | the node and `TypeOf(node)` / `TypeOfChild(slot)` - the whole of local propagation |
+| `TypeRegistry` | the rules, keyed by concept, inherited by the concepts below it |
+
+Four rules worth knowing:
+
+- **`expected.Accepts(actual)` is the only question.** It reads the way the rule does, and a caller that
+  got the direction wrong would be comparing two types for equality - a different and much weaker
+  question.
+- **`Unknown` accepts and is accepted**, which is what suppresses follow-on errors: one mistake in a
+  condition must not produce a finding on every expression that reads it. It is therefore **not** a
+  wildcard to rely on - a caller that must not proceed on a guess (a generator) asks
+  `type is UnknownType` explicitly. That is the "cannot leak into generation unnoticed" rule: the type
+  does not stop the caller, it makes the caller say what it does about not knowing.
+- **A concept with no rule is `Unknown`**, not an error. Nobody said, so nothing is known, and every
+  consumer is told that rather than handed a guess.
+- **`ITypeRule.TypeFor`, not `TypeOf`**: CA1716 forbids a reserved word as an interface member, the same
+  reason `ICheck.Find` is not called `Of`. The class member `TypeContext.TypeOf(Node)` keeps the natural
+  name, because the rule does not apply to it.
+
+**The first consumer is a constraint**: `SampleConstraints.ConditionMustBeBoolean` asks
+`context.TypeOf(condition)` and reports a condition that is not a truth value. `ConstraintContext`
+therefore carries the `TypeRegistry` beside the `IScopeProvider`, and `ConstraintEngine` takes both - a
+rule that needs a type and a rule that needs a scope are the same kind of rule.
+
+`SampleTypes` (in `Projectional.Samples.Checks`) declares the expression language's types: a literal is
+its own type, a parenthesised expression is as wide as what it wraps, a comparison is a `bool`,
+arithmetic is as wide as its left operand, and a name is `Unknown` because what it means depends on a
+declaration this language does not have. Type rules are behaviour, so they live beside the language
+rather than inside it - the same reason intentions and checks do.
+
 ## Generation
 
 Text generation is a template tree per concept:

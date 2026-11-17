@@ -370,7 +370,7 @@ public sealed partial class MainWindow : Window, IDisposable
         List<Diagnostic> findings =
         [
             .. fixes.Select(fix => fix.Diagnostic),
-            .. new ConstraintEngine(SampleConstraints.All).Check(document.Model),
+            .. new ConstraintEngine(SampleConstraints.All, types: SampleTypes.All).Check(document.Model),
         ];
 
         editor.Markers = new MarkerSet([.. findings]);

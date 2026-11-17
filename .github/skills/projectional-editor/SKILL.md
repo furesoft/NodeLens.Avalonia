@@ -641,6 +641,32 @@ notation is registered per concept **and** variant
   because the panel and the markers must not be two answers to "what is wrong". A constraint finding has
   no fix, so it is a marker and a panel row only.
 
+## How types work
+
+`Projectional.Semantics/Types/` computes what a node evaluates to; the design is
+`docs/architecture/semantics.md` §Types.
+
+- **`expected.Accepts(actual)` is the only question**, and the direction matters: a caller that got it
+  wrong would be comparing two types for equality, which is a different and much weaker question.
+- **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
+  a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
+  rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.
+  That is the "cannot leak into generation unnoticed" rule - the type does not stop the caller, it makes
+  the caller say what it does about not knowing.
+- **A concept with no rule is `Unknown`**, not an error. Nobody said, so nothing is known.
+- **`ITypeRule.TypeFor`, not `TypeOf`**: CA1716 forbids a reserved word as an interface member, the same
+  reason `ICheck.Find` is not called `Of`. The class member `TypeContext.TypeOf(Node)` keeps the natural
+  name because the rule does not apply to it.
+- **`TypeContext.TypeOfChild(slot)` answers `Unknown` for an empty slot**, not an error: a half-written
+  expression is the ordinary state of a document being edited.
+- **A rule is inherited by the concepts below it**, the same lookup notation, triggers, scope providers
+  and constraints use.
+- **`ConstraintContext` carries the `TypeRegistry` beside the `IScopeProvider`**, and `ConstraintEngine`
+  takes both - a rule that needs a type and a rule that needs a scope are the same kind of rule.
+- **Type rules are behaviour, so they live beside the language** (`SampleTypes` in
+  `Projectional.Samples.Checks`), not inside the language package - the same reason intentions and
+  checks do.
+
 ## How the editor tree is built
 
 `Projectional.Projection/Tree/` is the runtime tree: notation cells are *data describing* what
