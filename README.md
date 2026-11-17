@@ -49,15 +49,15 @@ The editor is designed to be embedded as a component in other .NET applications:
 
 | Metric | Details |
 | --- | --- |
-| **Milestones** | **M0, M1 and M2 complete**, **M3 (references and scopes) in progress** |
+| **Milestones** | **M0, M1, M2 and M3 complete**, **M4 about half**, **M5 started** |
 | **Runtime** | `net10.0`, C# 14, Avalonia 12 |
-| **Tests** | 1635 passing (`dotnet test`) |
+| **Tests** | 1888 passing (`dotnet test`) |
 | **CI** | Windows and Linux, plus a Linux-only job that guards the file format |
 
 ### What that means in practice:
-You can declare a language in C# or as a model, project it, open a document, edit it structurally with keyboard and mouse, copy and paste, undo and redo, complete slots, switch a concept's representation, see diagnostics as squiggles and repair them from the intention list, preview an intention by hovering it, find and replace, browse the model, read the problems panel, reopen a recent file, show line numbers, zoom the font, scroll a document larger than the window with real scrollbars, and save to XML and load it back byte-identically.
+You can declare a language in C# or as a model, project it, open a document, edit it structurally with keyboard and mouse, copy and paste, undo and redo, complete slots, switch a concept's representation, see diagnostics as squiggles and repair them from the intention list, preview an intention by hovering it, find and replace, browse the model, read the problems panel, reopen a recent file, show line numbers, zoom the font, scroll a document larger than the window with real scrollbars, run a document and read its trace, generate its text from its own templates, and save to XML and load it back byte-identically.
 
-*Not there yet:* scopes, generators and interpreters. What is finished is recorded in [implemented.md](docs/implemented.md); what is left is in the [roadmap](docs/roadmap.md).
+*Not there yet:* the rest of M4 (the remaining standard checks and the cross-check tests), M5's self-hosting (a language browser, live preview, language creation), and everything from M6 on - the shell as an embeddable library, then installers. What is finished is recorded in [implemented.md](docs/implemented.md); what is left is in the [roadmap](docs/roadmap.md).
 
 ---
 
@@ -222,7 +222,7 @@ Keys held with `Ctrl`, `Alt`, or `Meta` belong to the host application, with two
 
 ### Feature Gallery
 
-One screenshot per feature, each rendered from the shipping control itself rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses, renders the control, and writes the PNGs into `docs/images`:
+One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, and a feature that lives in the shell is rendered from a real `MainWindow`. Both kinds are produced by the same command:
 
 ```powershell
 dotnet run --project tools/Projectional.Screenshots
@@ -312,6 +312,18 @@ A concept can be drawn more than one way. Here the same ruleset is read as a tab
 
 *A table is not a rearrangement of lines: a column names a slot of the row concept rather than a cell, which allows rows of different concepts that declare the same slot to share a grid.*
 
+#### Running a document: `F5`
+
+A document runs through the interpreter its own language declares, so one whose language defines none is refused instead of being run with another language's rules. The output panel puts the answer in its header and the trace underneath—one row per step, a row pointing back at the node that produced it—and the inputs line is read at the moment of the run, never on a keystroke.
+
+![The output panel with the answer and the trace of a run](docs/images/feature-run-output.png)
+
+#### Generating text: `Run` ▸ `Generate text`
+
+A language declares as many generators as it likes, so the submenu is built from the active document rather than written in the shell. The panel shows one row per generated line and the header counts the characters and the regions the traceability map knows, so "where did this line come from" is a gesture rather than a search.
+
+![The output panel showing generated C# text and its region count](docs/images/feature-generate-output.png)
+
 ---
 
 ## Projects Architecture
@@ -357,7 +369,7 @@ dotnet test
 - **SDK Pinned:** `global.json` pins SDK **10.0.403** with `rollForward: latestFeature`. Do not remove it.
 - **Central Package Management:** Properties live in `Directory.Build.props`, package versions in `Directory.Packages.props`.
 - **Testing:** Powered by xunit.v3 on Microsoft.Testing.Platform (`tests\Projectional.Core.Tests\bin\Debug\net10.0\Projectional.Core.Tests.exe`).
-- **Screenshots:** `dotnet run --project tools/Projectional.Screenshots` rewrites every PNG in `docs/images` from the shipping control, so the gallery above cannot drift from what the editor draws.
+- **Screenshots:** `dotnet run --project tools/Projectional.Screenshots` rewrites every PNG in `docs/images` from the shipping code—the editor features from the control, the shell's own features from a real `MainWindow`—so the gallery above cannot drift from what the app draws.
 
 ---
 

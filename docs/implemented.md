@@ -138,11 +138,11 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | The generator engine: indentation from the template, a depth guard, and a traceability map that answers what wrote a character | `Generator`, `GeneratedText`, `GeneratedRegion` | `GeneratorTests` |
 | Two generators for one language, proving a language has as many as it declares | `RulesTextGenerators` (JSON and a C# fragment) | `RulesTextGeneratorsTests` |
 | The declared generator language: many generators per document, a template per concept, lowered into the same runtime generator, loaded from `generator.mps` | `Projectional.TextGen/`, `LanguageProject.Generators` | `TextGenLoweringTests` (incl. parity with the C# twin) |
-| The shell offers a document's generators by name, shows one row per generated line, and saves the text to a file the user picks | `MainWindow.UpdateGenerators`, `DocumentGenerate`, `MainWindow.OnSaveGenerated` | verified in a real window (probe: JSON 116/20, C# 52/13, save enabled) |
+| The shell offers a document's generators by name, shows one row per generated line, and saves the text to a file the user picks | `MainWindow.UpdateGenerators`, `DocumentGenerate`, `MainWindow.OnSaveGenerated` | shown in a real window by `tools/Projectional.Screenshots` (`feature-generate-output.png`: C# 52 character(s), 13 region(s)) |
 | The variables a run is given, read from one line of `name=value` pairs (number, flag, ISO date, else text) | `Projectional.Workbench/Run/RunInputs` | `RunInputsTests` |
 | Running a document: its language's interpreter, the answer or the failure as a headline, and the trace as rows that jump to their node | `DocumentRun`, `RunReport`, `RunRow`, `MainWindow.RunActiveDocument` | `DocumentRunTests` |
 | A document runs only when its language defines an interpreter, derived from its root concept rather than from the command that opened it | `WorkbenchLanguage.InterpreterFor`, `DocumentTab.Evaluation` | `WorkbenchLanguageTests`, `DocumentTabTests` |
-| The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | verified in a real window (probe: 5 steps for `amount=1500`, a failure for `amount=500`) |
+| The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | shown in a real window by `tools/Projectional.Screenshots` (`feature-run-output.png`: 5 steps for `amount=1500`) |
 
 Not done in M4: text generation and the cross-check tests that make generated code and the interpreter agree
 on the corpus.
