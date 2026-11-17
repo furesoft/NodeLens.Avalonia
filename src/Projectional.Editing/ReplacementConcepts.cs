@@ -1,6 +1,6 @@
 using Projectional.Core;
 
-namespace Projectional.Intentions;
+namespace Projectional.Editing;
 
 /// <summary>Which concepts could stand where a node stands, given the place it stands in.</summary>
 /// <remarks>
@@ -25,13 +25,13 @@ namespace Projectional.Intentions;
 /// it never reorders itself between two carets.
 /// </para>
 /// </remarks>
-internal static class ReplacementConcepts
+public static class ReplacementConcepts
 {
     /// <summary>Every concept that could take the place of <paramref name="node"/>, in declaration order.</summary>
     /// <param name="node">The node whose place is in question.</param>
     /// <param name="concepts">The language's registry, which is what knows every concept.</param>
     /// <returns>The candidates, empty when nothing else could stand there.</returns>
-    internal static IReadOnlyList<Concept> Of(Node node, ConceptRegistry concepts)
+    public static IReadOnlyList<Concept> Of(Node node, ConceptRegistry concepts)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(concepts);
