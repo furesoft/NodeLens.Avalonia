@@ -13,6 +13,7 @@ using Projectional.Expressions.Intentions;
 using Projectional.Intentions;
 using Projectional.Language;
 using Projectional.Languages;
+using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
 using Projectional.Samples.Intentions;
@@ -189,6 +190,7 @@ public sealed partial class MainWindow : Window, IDisposable
         Documents.SelectedItem = tab;
 
         ShowProblems();
+        ShowOutline();
         UpdateStatus();
     }
 
@@ -255,6 +257,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         ShowProblems();
+        ShowOutline();
         UpdateStatus();
     }
 
@@ -309,6 +312,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         ShowProblems();
+        ShowOutline();
         UpdateStatus();
     }
 
@@ -326,6 +330,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         ShowProblems();
+        ShowOutline();
         UpdateStatus();
     }
 
@@ -450,6 +455,40 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>The query the bar describes, or <see langword="null"/> while it holds no text.</summary>
     private FindQuery? Query =>
         FindInput.Text is { Length: > 0 } text ? new FindQuery(text, FindCase.IsChecked == true) : null;
+
+    /// <summary>Fills the model browser from the active document.</summary>
+    /// <remarks>
+    /// Rebuilt on every model change, like the findings: the outline describes the document, so a stale one would list
+    /// nodes that were renamed or deleted. The cost is a walk of the active model per change, which is the same order
+    /// as the checks that already run there - a browser that had to be refreshed by a command would be one the user
+    /// forgets to refresh.
+    /// </remarks>
+    private void ShowOutline()
+    {
+        OutlineList.ItemsSource = _documents.Active is { } document ? Outline.Of(document.Model) : [];
+        OutlineList.SelectedItem = null;
+    }
+
+    /// <summary>Puts the caret on the node a browser row stands for.</summary>
+    /// <remarks>
+    /// A row names a node, so the address is the node's own: the caret resolves it to the first place that node draws,
+    /// which is the same place a node selection starts at.
+    /// </remarks>
+    private void OnOutlineChosen(object? sender, SelectionChangedEventArgs e)
+    {
+        if (OutlineList.SelectedItem is not OutlineEntry entry
+            || _documents.Active is not { } document
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.Select(Selection.At(new CellAddress(entry.Id)));
+        editor.Refresh();
+        editor.ScrollToCaret();
+        editor.Focus();
+    }
 
     /// <summary>Fills the problems panel from the active document, and hides it when there is nothing to report.</summary>
     private void ShowProblems()

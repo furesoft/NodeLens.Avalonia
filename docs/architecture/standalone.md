@@ -47,7 +47,7 @@ shell.
 | `DocumentTab` + `DocumentSet` | open documents, active document, per-document session and undo | M1 |
 | `ProjectDriver` | open a project, enumerate models, save, watch files | M1 |
 | `CommandRegistry` | named commands with `CanExecute` and a shortcut table | M1 |
-| model browser | tree of models and their root elements | M2 |
+| model browser | tree of models and their root elements - **delivered** as a left panel listing every node of the active document, clicking a row puts the caret on it (`Outline/`) | M2 |
 | language browser | declared languages in the project, open their definitions | M5 |
 | problems panel | diagnostics of the active document, in document order, jumping to the cell the finding is about - **delivered** in `MainWindow` + `Problems/` (M2) | M2 |
 | output panel | generator and interpreter results, traces | M4 |
@@ -183,6 +183,24 @@ Routing rule: the **focused session** receives editing commands; application com
 (open, save, close) act on the active document. A key that the session handles must not
 also trigger a command, which is why the control reports unhandled keys rather than
 swallowing them.
+
+### The model browser
+
+A left panel lists the active document's structure: every node, depth first, indented by its depth, named by its
+concept and - when it has one - its name ("Rule \"Approved\""). Clicking a row puts the caret on the node.
+`Outline/Outline.cs` builds the rows; the window only fills a list.
+
+- **It walks the model, not the projection** - the exact opposite of the find bar, and for the opposite reason. A
+  browser answers "what is this document made of", so a concept whose notation is missing is still part of it;
+  hiding it would make the browser disagree with the tree it describes. Find answers "where is this text on the
+  page", which only the projection knows.
+- **Depth is counted, not stored.** Depth is a property of a place, and a node can be moved.
+- **A flat list, not a tree widget.** Expansion state would be a feature without a reason: nothing is hidden yet,
+  and indentation is what a reader uses. When a document grows past a screen a tree may earn its keep - as a
+  decision, not as a rewrite.
+- **Rebuilt on every model change**, like the findings. A browser that had to be refreshed by a command is one the
+  user forgets to refresh; the cost is one walk of the active model, the same order as the checks that already run
+  there.
 
 ### Find
 

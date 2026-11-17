@@ -1423,6 +1423,14 @@ Deliberate M1 limits, so nobody "fixes" them into the wrong milestone:
 
 ## How the standalone app fits
 
+`Projectional.Workbench/Outline/` is the model browser: `Outline.Of(model)` lists every node, depth first, and the
+window fills a flat list. It walks the **model**, not the projection - the opposite of `Finder`, and deliberately:
+a browser answers "what is this document made of", so a concept with no notation is still part of it, while find
+answers "where is this text on the page", which only the projection knows. Depth is counted from the root rather
+than stored (a node can be moved), and the list is rebuilt on every model change like the findings. Both shell
+features follow one pattern worth copying: **derive the rows in a non-Avalonia type, test it, leave the window as
+wiring** - the problems panel is `ProblemList`, the browser is `Outline`.
+
 `Projectional.Editing/Find/` is the search: `Finder.Find(session, query)` answers `FindMatch` values in document
 order, `FindNextAction(query, direction)` selects the next one **with wraparound**, and the app's strip
 (`Ctrl+F`, Enter/Shift+Enter/Escape) only counts and scrolls. Three rules are decisions, not details:
@@ -1511,7 +1519,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1582 tests**; anything below that means tests were deleted.
+it. **Baseline is 1586 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
