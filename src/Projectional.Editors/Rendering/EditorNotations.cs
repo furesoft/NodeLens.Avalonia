@@ -145,6 +145,29 @@ public static class EditorNotations
                 ed.Line(ed.Property("slot")),
                 ed.Line(ed.Keyword("separator:"), ed.Space, ed.ChildInline("separator")))),
             ed.Line(ed.Keyword("/]"))));
+
+        notations.Add(EditorConceptKeys.Table, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[/ table"),
+                ed.Space,
+                ed.Keyword("empty:"),
+                ed.Space,
+                ed.Property("emptyText")),
+            ed.Indent(ed.Sequence(
+                ed.Line(ed.Property("slot")),
+                ed.Line(ed.Keyword("columns:")),
+                ed.Indent(ed.Children(EditorLanguage.ColumnSlot, NoEntries)))),
+            ed.Line(ed.Keyword("/]"))));
+
+        notations.Add(EditorConceptKeys.Column, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("column"),
+                ed.Space,
+                ed.Property("slot"),
+                ed.Space,
+                ed.Keyword("as"),
+                ed.Space,
+                ed.ChildInline("header"))));
     }
 
     /// <summary>A registry holding only the editor language.</summary>

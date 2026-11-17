@@ -108,13 +108,39 @@ public static class EditorLowering
                 Required(cell, "slot"),
                 cell.GetChild("separator") is { } separator ? LowerInline(separator, conceptKey) : null,
                 Optional(cell, "emptyText") ?? "<empty>"),
+            EditorConceptKeys.Table => ed.Table(
+                Required(cell, "slot"),
+                Optional(cell, "emptyText") ?? "<empty>",
+                [.. cell.GetChildren(EditorLanguage.ColumnSlot).Select(column => LowerColumn(column, conceptKey))]),
             _ => throw NotACell(cell, conceptKey, "not a block"),
         };
     }
 
-    /// <summary>An inline cell, which is what a line may hold.</summary>
-    private static InlineNotationCell LowerInline(Node cell, string conceptKey)
+    /// <summary>
+    /// One column of a table: the slot of the row concept it shows, and the header drawn above it.
+    /// </summary>
+    /// <remarks>
+    /// The header is lowered as an inline cell, so a header that names a slot is refused by
+    /// <see cref="TableColumn"/> rather than silently answered by whichever row came first.
+    /// </remarks>
+    private static TableColumn LowerColumn(Node column, string conceptKey)
     {
+        var slot = Required(column, "slot");
+
+        if (column.GetChild("header") is not { } header)
+        {
+            throw new ConceptDefinitionException(
+                $"The table of '{conceptKey}' declares column '{slot}' without a header.");
+        }
+
+        return new TableColumn(slot, LowerInline(header, conceptKey))
+        {
+            EmptyText = Optional(column, "emptyText") ?? "<empty>",
+        };
+    }
+
+    /// <summary>An inline cell, which is what a line may hold.</summary>
+    private static InlineNotationCell LowerInline(Node cell, string conceptKey)    {
         var ed = NotationEditor.Create();
 
         return cell.Concept.Key switch

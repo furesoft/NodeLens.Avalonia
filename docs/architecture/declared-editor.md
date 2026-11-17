@@ -38,6 +38,8 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Children` | `slot`, `emptyText`, `spacing` | many children, as blocks |
 | `Editor.Collection` | `slot`, `separator`, `emptyText`, `spacing` | many children between separators |
 | `Editor.Conditional` | `slot`, `value`, `cells` over `Editor.InlineCell` | drawn only while `slot` holds `value` |
+| `Editor.Table` | `slot`, `emptyText`, `columns` over `Editor.Column` | many children as a grid |
+| `Editor.Column` | `slot`, `header` over `Editor.InlineCell`, `emptyText` | one column of a table |
 
 **A block inside a line therefore cannot be written.** The model refuses it with `ModelInvariantException` before
 lowering runs, which is why the lowering has no inline/block check of its own: the rule moved from the compiler into
@@ -102,7 +104,6 @@ singular names (`EditorLanguage`, `EditorLowering`, `EditorConceptKeys`), and th
 
 | Missing | Arrives with |
 | --- | --- |
-| tables as declared cells | P5 |
 | a *block* conditional, hiding a whole line | when a notation needs one |
 | MPS' cell glyphs: borders, folds, an option's checkbox | P5 |
 | a line's inline cells drawn on one row *with* their own brackets | P5, with a horizontal sibling cell |
