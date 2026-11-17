@@ -95,9 +95,41 @@ internal static class CompletionSource
             return References(context, slot.Owner, reference.Slot);
         }
 
-        return slot.Property is { } property
-            ? Values(property)
+        if (slot.Property is { } property && Values(property) is { } values)
+        {
+            return values;
+        }
+
+        // A filled slot offers what could stand in the child's place instead. It is the one list whose
+        // accepting is destructive, so CompletionSlot decides whether the child is worth protecting - a
+        // node with a subtree is never offered.
+        return slot.Replace is { } replace
+            ? Replacements(context, replace)
             : Open(context, slot.Owner, slot.Slot);
+    }
+
+    /// <summary>
+    /// The concepts that could take the place of <paramref name="node"/>, or <see langword="null"/> when
+    /// nothing else could stand there.
+    /// </summary>
+    /// <remarks>
+    /// The candidates come from <see cref="ReplacementConcepts"/>, which the intention catalogue's
+    /// "replace with" entry uses too - one answer to "what can stand here", so a list and a menu cannot
+    /// offer different concepts for one place.
+    /// </remarks>
+    internal static CompletionList? Replacements(EditContext context, Node node)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(node);
+
+        List<CompletionItem> items = [];
+
+        foreach (var concept in ReplacementConcepts.Of(node, context.Concepts))
+        {
+            items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description));
+        }
+
+        return items.Count == 0 ? null : new CompletionList(items);
     }
 
     /// <summary>

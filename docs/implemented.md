@@ -98,6 +98,7 @@ and [testing.md](architecture/testing.md).
 | Typing a name into a reference cell resolves it through the same scope; ambiguous is refused with a reason | `TypeTextAction.ResolveReference` | `ScopeTypingTests` |
 | Per-language scope overrides: a concept declares a provider, inherited by the concepts below it | `ScopeProviderRegistry` | `ScopeProviderRegistryTests` |
 | Ambiguity diagnostics: a reference whose name no longer identifies its target is reported on the reference slot | `AmbiguousReferenceConstraint`, `ScopeConstraints.All` | `AmbiguousReferenceConstraintTests` |
+| Completing a filled slot: the list offers what could replace the child, accepting replaces it in one undo step | `CompletionSlot.Replace`, `CompletionSource.Replacements`, `ReplacementConcepts` | `CompletionActionTests` |
 | Concept triggers: a typed character at the edge of a node creates and wraps | `ConceptTrigger`, `TriggerAnchors` | `ConceptTriggerTests`, `ConceptRegistryTriggerTests`, `TypeTextTriggerTests` |
 | Intention model, per-caret list (MPS' transformation menu), apply path, popup, menu split | `Projectional.Editing/Intentions/` | `IntentionTests`, `IntentionListTests`, `IntentionAvailabilityTests`, `EditorSessionIntentionTests`, `OfferKeysTests` |
 | Intention preview: sandbox copy, diff, marks, hover ladder, ghost frame | `Projectional.Editing/Preview/`, ADR 0017 | `PreviewSandboxTests`, `ModelCopyTests`, `ModelDiffTests`, `PreviewMarksTests`, `PreviewDelayTests`, `PreviewStateTests`, `GhostFrameTests`, `PreviewBadgeTests`, `OfferPreviewTests`, `SamplePreviewTests` |
@@ -150,7 +151,7 @@ Nothing is delivered. M6 (the shell as an embeddable, language-locked component)
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1606 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1757 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 
