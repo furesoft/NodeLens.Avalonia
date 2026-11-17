@@ -17,11 +17,13 @@
     <Project Path="src/Projectional.Samples.Intentions/Projectional.Samples.Intentions.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Structures.Intentions/Projectional.Structures.Intentions.csproj" />
+    <Project Path="src/Projectional.Toolkit/Projectional.Toolkit.csproj" />
     <Project Path="src/Projectional.Structures/Projectional.Structures.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj" />
+    <Project Path="tests/Projectional.Toolkit.Tests/Projectional.Toolkit.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Projectional.Screenshots/Projectional.Screenshots.csproj" />
