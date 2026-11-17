@@ -20,8 +20,8 @@ produces something usable, and no milestone depends on a later one being finishe
 test that proves each row. This section keeps only what is left, and a feature moves out of it into
 that file in the same commit that finishes it.
 
-M0 and M1 are complete. M2 is one step from its gate, M3 and M4 have landed their first halves early,
-M5 has started, M6 and M7 are untouched.
+M2 is one step from its gate, M3 and M4 have landed their first halves early, M5 has started, M6 and
+M7 are untouched.
 
 What is next, in order:
 
@@ -51,19 +51,7 @@ The constraint engine that will produce diagnostics in volume stays where it is,
 ## Milestones
 
 The tables below are the **scope** of each milestone, not a status report: what is finished is in
-[implemented.md](implemented.md).
-
-### M0 — Core model and persistence
-
-*Goal: models exist, survive a round trip, and every later layer has a foundation.*
-
-**Complete.** The delivery record is in [implemented.md](implemented.md).
-
-### M1 — Projection and editing on a built-in language
-
-*Goal: an editable editor with a text-like notation, no language authoring yet.*
-
-**Complete.** The delivery record is in [implemented.md](implemented.md).
+[implemented.md](implemented.md), and a finished milestone is removed from this file.
 
 ### M2 — Declarative languages
 

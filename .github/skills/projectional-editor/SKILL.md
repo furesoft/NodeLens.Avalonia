@@ -40,7 +40,7 @@ shape, not as the tree, and add M2 features to `MainWindow` rather than inventin
 
 ## Status and where the truth lives
 
-- `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates. It holds the **scope** of each milestone and what is left, not a status report.
+- `docs/roadmap.md` - milestones M0-M7 with acceptance gates and effort estimates. It holds the **scope** of each milestone and what is left, not a status report; a finished milestone is removed from it.
 - `docs/implemented.md` - the record of delivery: every finished feature, where it lives and the test that proves it, milestone by milestone.
 - `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone, plus one document per planned feature: `completion.md`, `markers.md`, `node-moves.md`, `scrolling.md`, `import.md`, `csharp.md`.
 - `docs/adr/` - 19 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
