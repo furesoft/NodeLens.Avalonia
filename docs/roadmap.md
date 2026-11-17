@@ -28,11 +28,13 @@ What is next, in order:
    hover preview ([intention-preview.md](architecture/intention-preview.md), slices V1-V6, complete), two
    packages of real intentions (wrap in parentheses, negate, accept this rule) and the first
    entries of the framework's own catalogue (`INT001` rename, `INT002` duplicate, `INT003` delete, `INT004`
-   move up/down, `INT005` move to front/back, `INT030` insert before/after, `INT006` wrap in X, `INT007`
+   move up/down, `INT005` move to front/back, `INT030` insert before/after, `INT031` sort by name, `INT006`
+   wrap in X, `INT007`
    replace with X, `INT020` reset
    to the default, in `Projectional.Intentions`), all reading one `IntentionList` of host commands, language
    intentions and quick fixes. What is left is the rest of that catalogue, entry by entry as a language asks for
-   it - `INT031` (sort) needs an action of its own, because a program of moves cannot express a permutation.
+   it - `INT008` (select parent/node) needs a rung of `SelectAllAction`'s ladder, and the language-side entries
+   (`INT040` onwards) arrive with the languages that need them.
 2. **The standard catalogue in the app.** `Projectional.Intentions` is a package a host registers; the
    workbench registers it once `INT041` (negate) lands, so the two entries `Expressions.Intentions` ships can be
    retired in one step instead of showing two rows for one operation.

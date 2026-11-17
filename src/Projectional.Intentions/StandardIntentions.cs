@@ -55,6 +55,9 @@ public sealed class StandardIntentions : IIntentionProvider
     /// <summary>The stable id of "insert an empty sibling after this one" (`INT030`).</summary>
     public const string InsertAfterId = "standard.insert-after";
 
+    /// <summary>The stable id of "sort this list by name" (`INT031`).</summary>
+    public const string SortByNameId = "standard.sort";
+
     /// <summary>The stable id of the reset entry (`INT020`).</summary>
     public const string ResetId = "standard.reset";
 
@@ -97,6 +100,7 @@ public sealed class StandardIntentions : IIntentionProvider
             Move(context, MoveToBackId, "Move to back", "Puts this node last in its list.", NodeMove.ToBack),
             Insert(context, InsertBeforeId, "Insert before", SiblingPlace.Before),
             Insert(context, InsertAfterId, "Insert after", SiblingPlace.After),
+            Sort(context),
         ];
 
         if (context.Node is { } node)
@@ -269,6 +273,37 @@ public sealed class StandardIntentions : IIntentionProvider
             $"Swaps this node for an empty {name}; what it held is gone.",
             live => live.Node is { } node ? new ReplaceNodeAction(node.Id, key) : null,
             safety: EditSafety.Destructive);
+    }
+
+    /// <summary>The entry that puts the list the node stands in into name order.</summary>
+    /// <remarks>
+    /// The list is the one the node is an element of, not one inside it: "sort by name" is something the user asks
+    /// while looking at the elements. Absent wherever the sort would move nothing - a list already in order, a list of
+    /// one, and a list whose elements declare no name to be sorted by (see <see cref="ChildOrder"/>) - which is the
+    /// catalogue's rule that an entry which would change nothing is not offered.
+    /// </remarks>
+    private static Intention Sort(IntentionContext context)
+    {
+        var target = Sortable(context);
+
+        return new Intention(
+            SortByNameId,
+            "Sort by name",
+            "Reorders this list by name. The order is part of the document, so it is saved and undone like any edit.",
+            live => Sortable(live) is { } now ? new SortChildrenAction(now.Owner, now.Slot) : null,
+            safety: EditSafety.Destructive,
+            availability: target is null ? IntentionAvailability.Absent : IntentionAvailability.Applies);
+    }
+
+    /// <summary>The list the caret's node stands in, when sorting it would move something.</summary>
+    private static (NodeId Owner, string Slot)? Sortable(IntentionContext context)
+    {
+        if (context.Node is not { Parent: { } parent, ParentSlot: { } slot })
+        {
+            return null;
+        }
+
+        return ChildOrder.WouldChange(parent, slot) ? (parent.Id, slot) : null;
     }
 
     /// <summary>The entry that writes a property's declared default over whatever is in it.</summary>

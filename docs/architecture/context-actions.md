@@ -18,9 +18,9 @@ its description and then the result of its edit, because the popup drives the pr
 (accept this rule), and their previews are proven by tests. The framework's own catalogue has started:
 `Projectional.Intentions` ships the structural entries for any language - `INT001` (rename), `INT002`
 (duplicate), `INT003` (delete), `INT004` (move up/down), `INT005` (move to front/back), `INT030` (insert
-before/after), `INT006` (wrap in X), `INT007` (replace with X) and `INT020` (reset to the default). What is
-left is the rest of that catalogue: `INT031` (sort) needs one action, `INT008` (select parent/node) a rung
-of the ladder, and `INT010`/`INT011` (an empty slot) are what `Enter` and completion already do.
+before/after), `INT031` (sort by name), `INT006` (wrap in X), `INT007` (replace with X) and `INT020` (reset to
+the default). What is left is the rest of that catalogue: `INT008` (select parent/node) needs a rung of
+`SelectAllAction`'s ladder, and `INT010`/`INT011` (an empty slot) are what `Enter` and completion already do.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -341,7 +341,7 @@ undo step, and it is the one gesture a user reaches for after pasting a value th
 | Id | The entry | What it does | Class | Needs |
 | --- | --- | --- | --- | --- |
 | `INT030` | `Insert before` / `Insert after` | a new empty sibling at that place | plain | `InsertSiblingAction` - **shipped**, `Enter`'s other half with a node and a side |
-| `INT031` | `Sort by name` | reorders the slot by the elements' name slot | **destructive** (order is data) | a program of moves, and a name slot on the element concept |
+| `INT031` | `Sort by name` | reorders the list the node stands in by the elements' name slot | **destructive** (order is data) | `ChildOrder` (the rule) and `Model.ReorderChildren` (the mutation) - **shipped** |
 
 ### With `Projectional.Expressions`
 
@@ -394,7 +394,7 @@ still open:
 | ~~`WrapInAction`~~ | `INT006`, `INT040` | **landed with the quick-fix catalogue (Q7)**: `Model.Wrap` detaches, creates and re-attaches inside one transaction, so the wrapper can take the place of the node in a single-valued slot |
 | a subtree copy (`Model.InsertCopy(source, parent, slot, index)`) | `INT002` | **landed with `feat/duplicate-intention`**: `CopyTo` keeps ids because a preview addresses them, so a copy that stays in one model needs its own walk with new identities - the two are siblings rather than one routine with a flag |
 | `Model.Replace(node, conceptKey)` | `INT007` | **landed with `feat/replace-intention`**: a deletion and a creation at one place, in one transaction. It cannot be assembled from `DeleteChild` and `AddChild`, because a single-valued slot cannot take the new child before the old one has left, and the two halves would be two undo steps - so undo would restore a document where the node is gone and a stranger stands in its place |
-| `SortAction` | `INT031` | **open**: a stable permutation of one slot, which a program of moves cannot express without colliding |
+| `Model.ReorderChildren(parent, slot, order)` and `ChildOrder` | `INT031` | **landed with `feat/sort-intention`**: a permutation is not a program of relative moves - each move resolves against the tree the previous one left - so the model takes the order, and the rule that decides it (`by name`, ordinal, stable, only when every element has a name) stays in `Projectional.Editing`, where the action and the availability test can share it |
 
 That table is the plan's real content: the catalogue is not nineteen features, it is a handful of
 primitives and fifteen four-line compositions. `EditSafety` - the other thing slice G was going to
@@ -434,6 +434,7 @@ Q1-Q8 in [quick-fixes.md](quick-fixes.md) come first; the branches below follow 
 | G2 ✓ | `feat/duplicate-intention` | `INT002` (duplicate) and the subtree copy it needed: `Model.InsertCopy` puts a new-identity copy of a subtree into a place in its own model, one undo step, and the entry is offered only where a second sibling can exist |
 | G3 ✓ | `feat/structure-intentions` | the structural entries, all configurations of actions that exist or of two small ones: `INT003` (delete, the one destructive entry), `INT004` (move up/down), `INT005` (move to front/back, on `NodeMove.ToFront`/`ToBack`), `INT030` (insert before/after, on `InsertSiblingAction`) - each absent where it would change nothing |
 | G4 ✓ | `feat/replace-intention` | `INT007` (replace with X) and the primitive it needed: `Model.Replace` deletes and creates at one place in one transaction, so the old subtree comes back on undo with its own identities. Offered per concept the slot accepts, found by search (`ReplacementConcepts`) rather than listed, and absent on a root and where only the node's own concept could stand |
+| G5 ✓ | `feat/sort-intention` | `INT031` (sort by name) and the primitive it needed: `Model.ReorderChildren` takes an order, `ChildOrder` decides it, and `SortChildrenAction` is the join. One undo step, the caret follows the node it was in, and the entry is absent wherever the sort would move nothing |
 
 Slices A and B are the ones with the invariants in them and are testable without a window;
 C and D extend affordances that quick fixes have already delivered and verified.

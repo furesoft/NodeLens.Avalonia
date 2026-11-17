@@ -370,6 +370,59 @@ public sealed class StandardIntentionsTests
         }
     }
 
+    [Fact]
+    public void SortIsOfferedOnAListThatIsOutOfOrder()
+    {
+        var (session, ruleset, rules) = Ruleset("gamma", "alpha");
+
+        using (session)
+        {
+            Caret(session, rules[0]);
+
+            Assert.Contains(StandardIntentions.SortByNameId, Ids(session));
+
+            Assert.Equal(
+                EditOutcome.Applied,
+                session.Apply(Offer(session, StandardIntentions.SortByNameId)).Outcome);
+
+            Assert.Equal(["alpha", "gamma"], [.. ruleset.GetChildren(RulesLanguage.RulesSlot)
+                .Select(rule => rule.GetOrNull("name"))]);
+        }
+    }
+
+    [Fact]
+    public void SortIsNotOfferedOnAListThatIsAlreadyInOrder()
+    {
+        var (session, _, rules) = Ruleset("alpha", "beta");
+
+        using (session)
+        {
+            Caret(session, rules[0]);
+
+            Assert.DoesNotContain(StandardIntentions.SortByNameId, Ids(session));
+        }
+    }
+
+    [Fact]
+    public void SortIsNotOfferedOnAListWhoseElementsHaveNoName()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+
+        using var session = Session(body.Parent!);
+        Caret(session, steps[0]);
+
+        Assert.DoesNotContain(StandardIntentions.SortByNameId, Ids(session));
+    }
+
+    [Fact]
+    public void SortIsNotOfferedOnARoot()
+    {
+        // A root is in no list, so there is nothing for it to be an element of.
+        using var session = Session(TestEditor.BareRule());
+
+        Assert.DoesNotContain(StandardIntentions.SortByNameId, Ids(session));
+    }
+
     /// <summary>Opens <paramref name="document"/> with the standard catalogue registered.</summary>
     private static EditorSession Session(Node document)
     {
@@ -390,6 +443,28 @@ public sealed class StandardIntentionsTests
         session.AddIntentions(StandardIntentions.Provider);
 
         return (session, rule, rule.GetChild("condition")!);
+    }
+
+    /// <summary>A ruleset holding one named rule per entry, opened with the standard catalogue registered.</summary>
+    private static (EditorSession Session, Node Ruleset, IReadOnlyList<Node> Rules) Ruleset(params string[] names)
+    {
+        var model = RulesLanguage.NewProject().NewModel("rules");
+        var ruleset = model.NewNode(RulesConceptKeys.Ruleset);
+        model.AddRoot(ruleset);
+
+        List<Node> rules = [];
+
+        foreach (var name in names)
+        {
+            var rule = model.NewChild(ruleset, RulesLanguage.RulesSlot, RulesConceptKeys.Rule);
+            rule.Set("name", name);
+            rules.Add(rule);
+        }
+
+        var session = new EditorSession(ruleset, RulesLanguage.CreateNotations(RulesLanguage.Concepts));
+        session.AddIntentions(StandardIntentions.Provider);
+
+        return (session, ruleset, rules);
     }
 
     /// <summary>Puts the caret on the first cell <paramref name="node"/> owns.</summary>

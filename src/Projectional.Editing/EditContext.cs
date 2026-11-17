@@ -423,6 +423,30 @@ public sealed class EditContext
         return node.Model.Replace(node, conceptKey);
     }
 
+    /// <summary>Puts the children of <paramref name="slot"/> into <paramref name="order"/>.</summary>
+    /// <param name="parent">The node whose children are reordered.</param>
+    /// <param name="slot">A child slot declared with <see cref="Cardinality.Many"/>.</param>
+    /// <param name="order">Every child of that slot, exactly once, in the order they should have afterwards.</param>
+    /// <exception cref="EditingException"><paramref name="parent"/> is not in the session's model.</exception>
+    /// <remarks>
+    /// The order is the caller's decision and the mutation is the model's, which is the division that keeps "sorted by
+    /// name" out of the model: a second caller with a second rule needs no second primitive.
+    /// </remarks>
+    public void ReorderChildren(Node parent, string slot, IReadOnlyList<Node> order)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentNullException.ThrowIfNull(order);
+
+        if (!ReferenceEquals(parent.Model, _document.Model))
+        {
+            throw new EditingException(
+                $"Node {parent.Id} belongs to another model than the document being edited.");
+        }
+
+        parent.Model.ReorderChildren(parent, slot, order);
+    }
+
     private static Node? Find(Node node, NodeId id)
     {
         if (node.Id.Equals(id))

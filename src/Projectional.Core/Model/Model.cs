@@ -395,6 +395,93 @@ public sealed class Model
         return created;
     }
 
+    /// <summary>Puts the children of <paramref name="slot"/> into <paramref name="order"/>.</summary>
+    /// <param name="parent">The node whose children are reordered.</param>
+    /// <param name="slot">A child slot declared with <see cref="Cardinality.Many"/>.</param>
+    /// <param name="order">
+    /// Every child of that slot, exactly once, in the order they should have afterwards.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="parent"/> or <paramref name="order"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
+    /// <exception cref="ModelInvariantException">
+    /// <paramref name="parent"/> belongs to a different model, the slot holds no children or holds one child only, or
+    /// <paramref name="order"/> is not a permutation of that slot's children.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The model reorders; it does not decide the order. Sorting by a value, by a declaration or by anything else is a
+    /// rule of whoever asks, and a model that knew one of them would have to grow a second and a third. What the model
+    /// owns is the part that must not vary: the slot ends up holding the same children, no more and no fewer, and the
+    /// whole rearrangement is one transaction.
+    /// </para>
+    /// <para>
+    /// It is written as "take them all out, put them all back" rather than as the shortest sequence of moves, because
+    /// every entry that produces is a pair the journal already knows how to undo: the removals come out in reverse,
+    /// each putting a node back at the index it left, and the original order falls out of that on its own. A
+    /// minimal permutation would be cheaper to look at and would need its own reasoning about reversibility - and it
+    /// is the reversibility, not the number of entries, that a user sees when they press undo.
+    /// </para>
+    /// <para>
+    /// An order that already holds is accepted and journals nothing, because "sort what is sorted" is not an edit and
+    /// must not become an undo step the user has to press through.
+    /// </para>
+    /// </remarks>
+    public void ReorderChildren(Node parent, string slot, IReadOnlyList<Node> order)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+        ArgumentNullException.ThrowIfNull(order);
+
+        if (!ReferenceEquals(parent.Model, this))
+        {
+            throw new ModelInvariantException(
+                $"Node {parent.Id} belongs to a different model and cannot be reordered by this one.");
+        }
+
+        if (parent.Concept.FindChild(slot) is not { } declared)
+        {
+            throw new ModelInvariantException(
+                $"Concept '{parent.Concept.Key}' declares no child slot named '{slot}'.");
+        }
+
+        if (declared.Cardinality != Cardinality.Many)
+        {
+            throw new ModelInvariantException(
+                $"Slot '{slot}' of concept '{parent.Concept.Key}' holds one child, so it has no order to change.");
+        }
+
+        if (!IsPermutation(parent.GetChildren(slot), order))
+        {
+            throw new ModelInvariantException(
+                $"The given order is not a rearrangement of the children of slot '{slot}' of concept '{parent.Concept.Key}'; it must name each of them exactly once.");
+        }
+
+        if (SameOrder(parent, slot, order))
+        {
+            return;
+        }
+
+        using var transaction = BeginTransaction();
+
+        var children = new List<Node>(parent.GetChildren(slot));
+
+        foreach (var child in children)
+        {
+            child.Detach();
+        }
+
+        for (var index = 0; index < order.Count; index++)
+        {
+            parent.InsertChild(slot, index, order[index]);
+        }
+
+        MarkMutated();
+
+        transaction.Complete();
+    }
+
     /// <summary>Turns an existing node of this model into a root.</summary>
     public void AddRoot(Node node)
     {
@@ -644,6 +731,52 @@ public sealed class Model
                 yield return descendant;
             }
         }
+    }
+
+    /// <summary>Whether <paramref name="order"/> names each child of <paramref name="current"/> exactly once.</summary>
+    private static bool IsPermutation(IReadOnlyList<Node> current, IReadOnlyList<Node> order)
+    {
+        if (current.Count != order.Count)
+        {
+            return false;
+        }
+
+        var remaining = new List<Node>(current);
+
+        foreach (var child in order)
+        {
+            var index = remaining.IndexOf(child);
+
+            if (index < 0)
+            {
+                return false;
+            }
+
+            remaining.RemoveAt(index);
+        }
+
+        return true;
+    }
+
+    /// <summary>Whether the slot already holds its children in <paramref name="order"/>.</summary>
+    private static bool SameOrder(Node parent, string slot, IReadOnlyList<Node> order)
+    {
+        var current = parent.GetChildren(slot);
+
+        if (current.Count != order.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < current.Count; index++)
+        {
+            if (!ReferenceEquals(current[index], order[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 
