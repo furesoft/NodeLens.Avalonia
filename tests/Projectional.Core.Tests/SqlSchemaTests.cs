@@ -62,7 +62,7 @@ public sealed class SqlSchemaTests
                 column type
                 id     int
                 name   text
-                <none>
+                << ... >>
               }
             }
             """,

@@ -34,10 +34,9 @@ internal static class StateMachineNotations
                 ed.Indent(ed.Children(StateMachineLanguage.TransitionsSlot, "<none>", stacked: true)))),
             ed.Line(ed.Punct("}"))));
 
-        // The same machine as a table over its transitions: a reader comparing events and guards sees
-        // columns instead of a sequence of lines. Sources and targets are *not* columns, because a table
-        // column names a property or a single child - a reference has no cell shape the grid can give it
-        // (NotationRegistry.ValidateTable), which is a gap this sample records rather than works around.
+        // The same machine as a table over its transitions: a reader comparing events, guards and the states they
+        // join sees columns instead of a sequence of lines. `source` and `target` are columns because a reference
+        // is one slot with one value - `feat/table-reference-columns` closed the gap this sample first reported.
         notations.Add(SmConceptKeys.Machine, StateMachineLanguage.TableVariant, ed => ed.Sequence(
             ed.Line(ed.Keyword("machine", TextEmphasis.Bold), ed.Space, ed.Property("name")),
             ed.Indent(ed.Sequence(
@@ -46,6 +45,8 @@ internal static class StateMachineNotations
                     StateMachineLanguage.TransitionsSlot,
                     "+ transition",
                     ed.Column("event", ed.Keyword("event")),
+                    ed.Column("source", ed.Keyword("from"), "<none>"),
+                    ed.Column("target", ed.Keyword("to"), "<none>"),
                     ed.Column("guard", ed.Keyword("when")))))));
 
         // `final` only where it is true: a non-final state draws its name and no word at all, rather than an

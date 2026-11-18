@@ -79,12 +79,14 @@ internal sealed class CaptureWindow : Window
         editor.ShowLineNumbers = shot.LineNumbers;
 
         var model = shot.Create();
+        var surface = shot.Surface ?? LanguageSurface.Sample;
+
         using var session = new EditorSession(
             model.Roots[0],
-            Shots.Notations,
+            surface.Notations,
             editor.TextMeasure,
-            RulesLanguage.Emphasis,
-            typing: RulesLanguage.TypingRules);
+            surface.Emphasis,
+            typing: surface.Typing);
 
         editor.Session = session;
         Content = editor;

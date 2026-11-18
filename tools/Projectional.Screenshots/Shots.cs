@@ -5,7 +5,10 @@ using Projectional.Expressions.Intentions;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Samples;
+using Projectional.Samples.FeatureModel;
 using Projectional.Samples.Intentions;
+using Projectional.Samples.SqlSchema;
+using Projectional.Samples.StateMachine;
 using Projectional.Semantics;
 
 namespace Projectional.Screenshots;
@@ -128,7 +131,61 @@ internal static class Shots
             "feature-table-view",
             Documents.ThreeRules,
             Prepare: TableView),
+
+        // The three worked examples, each drawn by its own language - the point of the pictures is that these are
+        // three *different* languages, so they share nothing with the sample's notation registry.
+        new(
+            "language-state-machine",
+            LanguageDocuments.StateMachine,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            Surface: StateMachine),
+
+        new(
+            "language-feature-model",
+            LanguageDocuments.FeatureModel,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            Surface: FeatureModel),
+
+        new(
+            "language-sql-schema",
+            LanguageDocuments.SqlSchema,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            Surface: SqlSchema),
+
+        // The state machine's second notation, which is the sample proving ADR 0012 rather than a feature of the
+        // control: the same document as a table of its transitions.
+        new(
+            "language-state-machine-table",
+            LanguageDocuments.StateMachine,
+            Prepare: StateMachineTable,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            Surface: StateMachine),
     ];
+
+    /// <summary>The state machine's own language, with its two notations.</summary>
+    private static LanguageSurface StateMachine =>
+        LanguageSurface.Plain(StateMachineLanguage.CreateNotations(StateMachineLanguage.Concepts));
+
+    /// <summary>The feature model's own language.</summary>
+    private static LanguageSurface FeatureModel =>
+        LanguageSurface.Plain(FeatureModelLanguage.CreateNotations(FeatureModelLanguage.Concepts));
+
+    /// <summary>The SQL schema's own language.</summary>
+    private static LanguageSurface SqlSchema =>
+        LanguageSurface.Plain(SqlSchemaLanguage.CreateNotations(SqlSchemaLanguage.Concepts));
+
+    /// <summary>Switches the machine to the table of its transitions, which is a view state and not a model change.</summary>
+    private static void StateMachineTable(ProjectionalEditorControl editor, EditorSession session)
+    {
+        session.ChooseVariant(SmConceptKeys.Machine, StateMachineLanguage.TableVariant);
+
+        editor.InvalidateMeasure();
+        editor.InvalidateVisual();
+    }
 
     /// <summary>The rule at <paramref name="index"/> of the document's ruleset.</summary>
     private static Node Rule(EditorSession session, int index) =>

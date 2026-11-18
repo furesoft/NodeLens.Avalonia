@@ -30,6 +30,7 @@ internal enum HoverKind
 /// <param name="Hover">What the pointer rests on, if anything.</param>
 /// <param name="HoverAddress">The cell the concept tooltip is asked about.</param>
 /// <param name="HoverDelayMs">How long the pointer rests before the picture is taken.</param>
+/// <param name="Surface">The language the document is drawn and edited with; the sample language when omitted.</param>
 internal sealed record Shot(
     string FileName,
     Func<Model> Create,
@@ -42,4 +43,5 @@ internal sealed record Shot(
     double ExtraHeight = 0,
     HoverKind Hover = HoverKind.None,
     Func<EditorSession, CellAddress?>? HoverAddress = null,
-    int HoverDelayMs = 0);
+    int HoverDelayMs = 0,
+    LanguageSurface? Surface = null);
