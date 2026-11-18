@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A sample, not a product: it exists to prove that a host needs nothing but the published surface. Every
+    ProjectReference below is a package a host would consume, and there is deliberately no reference to
+    Projectional.Workbench - nothing here can lean on the standalone editor.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -405,30 +405,25 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         List<DiagnosticFix> fixes = [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
 
-        // A constraint reports and never repairs, so its findings reach the squiggles and the panel but
-        // not the quick-fix list. They are merged here rather than in a second pass because the panel and
-        // the markers must read one list - two lists would be two answers to "what is wrong".
-        List<Diagnostic> findings =
-        [
-            .. fixes.Select(fix => fix.Diagnostic),
+        // The join itself lives beside the control, because a host owes its users the same one list. The
+        // session's scope provider, not the default one: a language may have replaced a level of the chain,
+        // and a finding about a name has to be about the scope the editor actually uses. A control with no
+        // session yet passes null, which the engine reads as the default chain. The rules are the document's
+        // own when its language declares any - the sample's when it does not, which keeps every document the
+        // shell has always opened checked exactly as before.
+        var findings = DocumentFindings.Of(
+            document.Model,
+            fixes,
+            document.Constraints ?? SampleConstraints.All,
+            document.Types ?? ExpressionsLanguage.Types,
+            editor.Session?.Scopes);
 
-            // The session's scope provider, not the default one: a language may have replaced a level of
-            // the chain, and a finding about a name has to be about the scope the editor actually uses.
-            // A control with no session yet passes null, which the engine reads as the default chain.
-            // The rules are the document's own when its language declares any - the sample's when it does
-            // not, which keeps every document the shell has always opened checked exactly as before.
-            .. new ConstraintEngine(
-                (document.Constraints ?? SampleConstraints.All).With(ScopeConstraints.All),
-                scopes: editor.Session?.Scopes,
-                types: document.Types ?? ExpressionsLanguage.Types).Check(document.Model),
-        ];
-
-        editor.Markers = new MarkerSet([.. findings]);
-        editor.Fixes = new FixSet([.. fixes]);
+        editor.Markers = findings.Markers;
+        editor.Fixes = findings.Fixes;
 
         // The panel reads the same list the squiggles are drawn from, so the two cannot disagree about
         // what was found - one of them would otherwise have to run the checks again.
-        document.Problems = ProblemList.Of(document.Model, findings);
+        document.Problems = ProblemList.Of(document.Model, findings.Diagnostics);
     }
 
     /// <summary>Opens the find bar and puts the caret in it.</summary>

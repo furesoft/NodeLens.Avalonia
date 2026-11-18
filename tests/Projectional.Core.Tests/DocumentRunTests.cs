@@ -1,3 +1,4 @@
+using Projectional.Avalonia;
 using Projectional.Expressions;
 using Projectional.Samples;
 using Projectional.Workbench;

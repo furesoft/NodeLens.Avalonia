@@ -3,7 +3,7 @@ using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Semantics;
 
-namespace Projectional.Workbench;
+namespace Projectional.Avalonia;
 
 /// <summary>Runs a document and answers the lines the output panel shows.</summary>
 /// <remarks>
@@ -18,7 +18,7 @@ namespace Projectional.Workbench;
 /// the user cannot see.
 /// </para>
 /// </remarks>
-internal static class DocumentRun
+public static class DocumentRun
 {
     /// <summary>Runs <paramref name="document"/> and reports what came out.</summary>
     /// <param name="document">The root the session shows, which is the node the run starts at.</param>
@@ -27,7 +27,7 @@ internal static class DocumentRun
     /// <param name="budget">How many node evaluations the run may spend.</param>
     /// <returns>The answer or the failure, with the trace in both cases.</returns>
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
-    internal static RunReport Of(
+    public static RunReport Of(
         Node document,
         EvaluationRegistry rules,
         string? inputs = null,

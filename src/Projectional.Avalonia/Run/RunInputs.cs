@@ -2,7 +2,7 @@ using System.Globalization;
 
 using Projectional.Language;
 
-namespace Projectional.Workbench;
+namespace Projectional.Avalonia;
 
 /// <summary>The variables a run is given, read from the one line the output panel offers.</summary>
 /// <remarks>
@@ -18,7 +18,7 @@ namespace Projectional.Workbench;
 /// than a rule to work around.
 /// </para>
 /// </remarks>
-internal static class RunInputs
+public static class RunInputs
 {
     /// <summary>Reads <paramref name="text"/> as the run's variables.</summary>
     /// <param name="text">The line the user typed, such as <c>amount=1500, currency=EUR</c>.</param>
@@ -30,7 +30,7 @@ internal static class RunInputs
     /// inputs the user typed would fail for a reason that is not in the document, which is the one failure a user
     /// cannot diagnose from the editor.
     /// </remarks>
-    internal static bool TryParse(string? text, out Dictionary<string, Value> variables, out string? error)
+    public static bool TryParse(string? text, out Dictionary<string, Value> variables, out string? error)
     {
         variables = new Dictionary<string, Value>(StringComparer.Ordinal);
         error = null;

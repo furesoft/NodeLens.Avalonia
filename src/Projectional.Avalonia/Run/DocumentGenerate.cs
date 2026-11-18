@@ -3,21 +3,21 @@ using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Semantics;
 
-namespace Projectional.Workbench;
+namespace Projectional.Avalonia;
 
 /// <summary>Generates a document's text and answers the lines the output panel shows.</summary>
 /// <remarks>
 /// The report is one row per generated line, and each row points at the node that produced the first stretch of it -
 /// which is the traceability map put to use: clicking a line of the generated file moves the caret to what wrote it.
 /// </remarks>
-internal static class DocumentGenerate
+public static class DocumentGenerate
 {
     /// <summary>Generates <paramref name="document"/> with <paramref name="generator"/>.</summary>
     /// <param name="document">The root the session shows.</param>
     /// <param name="generator">The generator to use, chosen by the user.</param>
     /// <returns>The text that was produced, and the report the panel shows.</returns>
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
-    internal static GeneratedText Generate(Node document, TextGenerator generator)
+    public static GeneratedText Generate(Node document, TextGenerator generator)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(generator);
@@ -28,7 +28,7 @@ internal static class DocumentGenerate
     /// <summary>The report for <paramref name="generated"/>, one row per line.</summary>
     /// <param name="generated">What the generator produced.</param>
     /// <param name="generator">The generator that produced it, for the headline.</param>
-    internal static RunReport Report(GeneratedText generated, TextGenerator generator)
+    public static RunReport Report(GeneratedText generated, TextGenerator generator)
     {
         ArgumentNullException.ThrowIfNull(generated);
         ArgumentNullException.ThrowIfNull(generator);
