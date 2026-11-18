@@ -7,8 +7,8 @@ namespace Projectional.Language;
 /// <para>
 /// A column names a slot rather than carrying a cell, because the cell that shows a row's value is
 /// built from the row itself: a property column becomes a property cell, a child column becomes a
-/// child cell. That is what lets the same table draw rows of different concepts as long as they
-/// declare the slot.
+/// child cell, a reference column becomes a reference cell. That is what lets the same table draw rows
+/// of different concepts as long as they declare the slot.
 /// </para>
 /// <para>
 /// The header, by contrast, is a cell of the table's own notation, so it may only be made of
@@ -34,13 +34,15 @@ public sealed class TableColumn
         Header = header;
     }
 
-    /// <summary>The property or single child of the row concept this column shows.</summary>
+    /// <summary>The property, single child or reference of the row concept this column shows.</summary>
     public string Slot { get; }
 
     /// <summary>What is drawn above the column.</summary>
     public InlineNotationCell Header { get; }
 
-    /// <summary>What a child column shows when the row has no child there.</summary>
+    /// <summary>
+    /// What a column shows when the row has nothing there: no child, no property value, or no reference target.
+    /// </summary>
     public string EmptyText { get; init; } = "<empty>";
 
     public override string ToString() => $"{Slot} as {Header}";

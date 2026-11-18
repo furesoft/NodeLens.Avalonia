@@ -306,8 +306,15 @@ public sealed class NotationRegistry
                 continue;
             }
 
+            // A reference is one slot with one value, so a column can show it exactly as a property can.
+            // That is what a foreign key needs: a table of rows whose column names another row.
+            if (rowConcept.FindReference(column.Slot) is not null)
+            {
+                continue;
+            }
+
             throw new NotationException(
-                $"The table of '{concept.Key}' shows column '{column.Slot}', but '{rowConcept.Key}' declares neither a property nor a child of that name.");
+                $"The table of '{concept.Key}' shows column '{column.Slot}', but '{rowConcept.Key}' declares no property, child or reference of that name.");
         }
     }
 
