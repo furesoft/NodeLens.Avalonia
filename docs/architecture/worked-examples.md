@@ -103,6 +103,10 @@ target exists - the same ordering argument model generation makes for its build 
    surface, that is the finding, and it goes to the roadmap as a gap rather than into the sample as a
    workaround.
 
+Points 1 to 4 stop being three copies of the same C# test once a language can be tested as data: the `tests/`
+folder of [language-tests.md](language-tests.md) is where a corpus document and its assertions sit side by
+side, and these three packages are its first customers.
+
 ## Sequencing
 
 One branch and one package at a time, in the order above: the state machine first (it needs nothing that is

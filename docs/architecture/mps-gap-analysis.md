@@ -33,7 +33,7 @@ so: `smodel`-style query languages inside aspects, and the Java type system
 | **Actions** - per-language AST transformations behind copy, paste and replace | Fast Track Step 6 | missing: our clipboard and replace are generic and fixed. It needs a behavioural language, so it arrives with the C# base language or not at all |
 | **Dataflow** - value and control flow per concept, so unreachable code and null risks are reportable | Fast Track Step 6; the survey of what MPS offers names it as not taken | **missing and unscheduled**. The largest aspect this framework has no plan for |
 | **Generator macros and rule selection** - property, node and reference macros, `COPY_SRC`, `LOOP`, template fragments, mapping labels, root mapping versus reduction rules, queries | Shapes, the whole "Generator" chapter | **structurally different**: text generation is nine closed template parts with no macros, and one template per concept. Model-to-model generation is planned ([model-generation.md](model-generation.md)) and carries reduction rules; **mapping labels** - several rules for one concept, chosen by context - are missing even from that plan |
-| **Tests as models** - a `unitTest` language, tests living in the model and run from the IDE | Fast Track, the Garage and Calculator tutorials | missing: every test in this repository is xunit in C# |
+| **Tests as models** - a `unitTest` language, tests living in the model and run from the IDE | Fast Track, the Garage and Calculator tutorials | **planned** ([language-tests.md](language-tests.md)): a `tests/` folder of declarative assertions, a runner in the behaviour band, and one xunit method per language project as the bridge to CI |
 | Property accessors and "allowed values" beyond an enumeration | Fast Track Step 6 | partial: `PropertyType` validates what a slot may hold and a C# constraint can state anything; the *declared* constraint language has four bodies ([semantics.md](semantics.md#language-of-constraints)) |
 | Devkits - a bundle of languages and solutions | MPS' project model | missing; it is a packaging question, and packaging is M6/M7 |
 
@@ -76,9 +76,9 @@ so: `smodel`-style query languages inside aspects, and the Java type system
 | Milestone | What |
 | --- | --- |
 | M5 (self-hosting, language projects) | accessory models; `language.mps` dependencies and imported languages; concept aliases; an explicit can-be-a-root flag |
-| M6 (framework maturity) | find usages with the reference index that a rename needs; mapping labels in model generation; the Actions aspect and Behaviour, both with the C# base language |
+| M6 (framework maturity) | find usages with the reference index that a rename needs; mapping labels in model generation; the Actions aspect and Behaviour, both with the C# base language; tests of a language as data ([language-tests.md](language-tests.md)) |
 | M7 (release hardening, editor polish) | comments; go to definition; block-selection shrink; inspector and hierarchy view; completion filter reset and camel humps; show type; paste history; the missing keys (duplicate, insert before) |
-| unscheduled | data flow; tests as models; property accessors |
+| unscheduled | data flow; property accessors |
 
 ## What still needs a decision
 
@@ -91,8 +91,9 @@ so: `smodel`-style query languages inside aspects, and the Java type system
   payoff for small DSLs.
 - **Whether an accessory model is a folder or a model.** A `library/` folder beside `structure`/`editor`, or a
   normal `.mps` document inside the language project that the project marks as part of the language.
-- **Whether tests-as-models is a language or a host convention.** MPS makes it a language; a host that runs
-  xunit already has an answer, and a second one is only worth it if the tests must be edited projectively.
+- **Whether tests-as-models is worth the vocabulary.** It was; the plan is [language-tests.md](language-tests.md), which
+  keeps the assertions declarative and the runner in a behaviour package. What that plan still needs decided is
+  how a test names the document it is about.
 - **Whether the editor-experience items belong in the framework or the app.** Go to definition, find usages
   and the inspector all read the model, so the framework owes the question and the host owes the panel - the
   same split the intention catalogue already makes.

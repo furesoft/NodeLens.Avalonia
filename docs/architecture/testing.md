@@ -104,3 +104,9 @@ compiler.
 - **Performance.** No allocation or latency budget is asserted anywhere, and ADR 0009 makes
   virtualization a design constraint rather than a measured one.
 - **The public API baseline** required by ADR 0010 is not built yet.
+- **A language testing itself.** Every test here is C# over one fixture, and the aspects a
+  language author can use - checks, snapshot, generator, interpreter - are internal by design
+  ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)), so a DSL in a folder has a
+  round-trip corpus and no assertions. The plan is
+  [language-tests.md](language-tests.md): a `tests/` folder of declarative assertions and a
+  runner in the behaviour band.

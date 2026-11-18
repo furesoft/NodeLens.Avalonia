@@ -41,8 +41,8 @@ What is next, in order:
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
-aliases, data flow, tests as models, comments, go to definition, find usages, an inspector, block-selection
-shrink and a handful of completion fine points. The milestone tables below name the ones that have a home;
+aliases, data flow, comments, go to definition, find usages, an inspector, block-selection shrink and a
+handful of completion fine points. The milestone tables below name the ones that have a home;
 the survey, the deliberate differences and the open decisions are in
 [mps-gap-analysis.md](architecture/mps-gap-analysis.md).
 
@@ -114,6 +114,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Declarative aspects | **types, generation and constraints are done** (`Projectional.TypeRules`, `Projectional.TextGen`, `Projectional.ConstraintRules`, [semantics.md](architecture/semantics.md#the-declared-form)); what is left is scopes and intentions as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
 | Find usages | the reference index a rename needs first: who points at this node, across models, and the gesture that asks ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
+| Tests of a language, as data | a `tests/` folder beside the other aspects, one declarative test per document - the drawing, the findings, the generated text, a run's answer, a round trip and an edit script - with a runner in the behaviour band and one xunit method per language project as the bridge to CI ([language-tests.md](architecture/language-tests.md)) |
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
 | Model-to-model generation | a generator whose output is a model of a target language, which that language's own text generator then prints: the rule vocabulary, the build and link phases, the reverse map that keeps "go to source" working through both stages ([model-generation.md](architecture/model-generation.md)) |
