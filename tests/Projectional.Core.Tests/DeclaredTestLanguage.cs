@@ -51,7 +51,7 @@ internal static class DeclaredTestLanguage
 
         definition.Concept(
             TestLanguage.Body,
-            slots: [definition.Child("steps", TestLanguage.Step, "many"), definition.Child("notes", TestLanguage.Note, "many")]);
+            slots: [definition.Child("steps", TestLanguage.Step, "0..n"), definition.Child("notes", TestLanguage.Note, "0..n")]);
 
         definition.Concept(
             TestLanguage.Step,

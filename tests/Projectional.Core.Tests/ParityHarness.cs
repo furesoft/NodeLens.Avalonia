@@ -57,7 +57,8 @@ internal static class ParityHarness
 
                     case ChildSlot child:
                         text.Append(": ").Append(child.ChildConceptKey)
-                            .Append(' ').Append(child.Cardinality.ToString());
+                            .Append(' ').Append(child.Cardinality.ToString())
+                            .Append(" min=").Append(child.Minimum);
                         break;
 
                     case ReferenceSlot reference:

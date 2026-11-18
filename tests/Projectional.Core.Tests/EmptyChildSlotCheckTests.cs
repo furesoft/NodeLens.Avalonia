@@ -46,10 +46,17 @@ public sealed class EmptyChildSlotCheckTests
     }
 
     [Fact]
-    public void AManyValuedSlotIsNotReported()
+    public void AListThatMayHoldNothingIsNotReported()
     {
-        // An empty ruleset is a document in progress, not a hole: a list may hold nothing.
+        // A list is not a hole: an empty ruleset is a document in progress.
         Assert.Empty(Check.Find(PayrollSample.NewEmptyModel()));
+    }
+
+    [Fact]
+    public void ASingleChildSlotThatMayStayEmptyIsNotReported()
+    {
+        // `0..1` promises nothing, so an empty one is legal - the declaration says so, and the check reads it.
+        Assert.Empty(Check.Find(CardinalityLanguage.NewModel()));
     }
 
     [Fact]

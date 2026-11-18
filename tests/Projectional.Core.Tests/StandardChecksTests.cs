@@ -25,9 +25,10 @@ public sealed class StandardChecksTests
             check => Assert.IsType<PlaceholderNameCheck>(check),
             check => Assert.IsType<SurroundingWhitespaceCheck>(check));
 
-        Assert.IsType<EmptyChildSlotCheck>(Assert.Single(StandardChecks.Structure));
+        Assert.IsType<EmptyChildSlotCheck>(StandardChecks.Structure[0]);
+        Assert.IsType<MinimumChildCountCheck>(StandardChecks.Structure[1]);
         Assert.IsType<BinaryGroupingCheck>(Assert.Single(StandardChecks.Expressions));
-        Assert.Equal(4, StandardChecks.All.Count);
+        Assert.Equal(5, StandardChecks.All.Count);
     }
 
     [Fact]

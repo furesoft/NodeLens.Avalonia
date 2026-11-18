@@ -46,7 +46,7 @@ public sealed class StructureLoweringTests
         definition.Concept(
             "Rules.Rule",
             supers: ["Rules.Element"],
-            slots: [definition.Child("steps", "Rules.Step", "many")]);
+            slots: [definition.Child("steps", "Rules.Step", "0..n")]);
         definition.Concept("Rules.Step", supers: ["Rules.Element"], slots: [definition.Property("text", "string")]);
 
         var registry = StructureLowering.CreateRegistry(definition.Roots);
@@ -65,6 +65,35 @@ public sealed class StructureLoweringTests
         var holder = model.NewNode("Rules.Rule");
 
         Assert.Throws<ModelInvariantException>(() => model.NewChild(holder, "steps", "Rules.Rule"));
+    }
+
+    [Fact]
+    public void TheFourRangesLowerToTheirStorageShapeAndMinimum()
+    {
+        // The four spellings the notation offers are the four combinations of storage shape and lower end; the
+        // upper end is the cardinality's answer, so nothing about it is written down.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Item", slots: [definition.Property("name", "string")]);
+        definition.Concept(
+            "Rules.Holder",
+            slots:
+            [
+                definition.Child("noneOrOne", "Rules.Item", "0..1"),
+                definition.Child("zeroOrMore", "Rules.Item", "0..n"),
+                definition.Child("exactlyOne", "Rules.Item", "1"),
+                definition.Child("oneOrMore", "Rules.Item", "1..n"),
+            ]);
+
+        var holder = StructureLowering.Lower(definition.Roots).Single(concept => concept.Key == "Rules.Holder");
+        var children = holder.Slots.OfType<ChildSlot>().ToArray();
+
+        Assert.Equal(
+            [Cardinality.One, Cardinality.Many, Cardinality.One, Cardinality.Many],
+            children.Select(slot => slot.Cardinality));
+
+        Assert.Equal([0, 0, 1, 1], children.Select(slot => slot.Minimum));
+        Assert.Equal([1, null, 1, null], children.Select(slot => slot.Maximum));
     }
 
     [Fact]
@@ -228,6 +257,32 @@ public sealed class StructureLoweringTests
 
         Assert.StartsWith("concept Rules.Rule", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("abstract", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AChildSlotIsDrawnWithItsRangeInBrackets()
+    {
+        // The one cell MPS offers for a cardinality: the range an author reads, right after the concept it holds.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Step", slots: [definition.Property("text", "string")]);
+
+        var rule = definition.Concept("Rules.Rule", slots: [definition.Child("steps", "Rules.Step", "1..n")]);
+
+        var drawn = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 120);
+
+        Assert.Contains("steps : Rules.Step[1..n]", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheCardinalityCellOffersTheFourRanges()
+    {
+        // What the cell offers on arrival is what the enumeration declares, in declaration order - the list an
+        // author picks from, and the only four things a slot can say.
+        var cardinality = StructureLanguage.Concepts.Get(StructureConceptKeys.ChildDecl).FindProperty("cardinality");
+
+        Assert.NotNull(cardinality);
+        Assert.Equal(["0..1", "0..n", "1", "1..n"], cardinality.Type.Symbols);
     }
 
     [Fact]

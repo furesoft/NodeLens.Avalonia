@@ -103,7 +103,7 @@ public sealed class LanguageProjectConstraintsTests
             slots:
             [
                 definition.Property("name", "string", defaultValue: "unnamed"),
-                definition.Child("detail", "Pipeline.Step", "one"),
+                definition.Child("detail", "Pipeline.Step", "1"),
             ],
             nameSlot: "name");
 

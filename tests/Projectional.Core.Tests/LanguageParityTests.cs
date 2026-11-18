@@ -51,6 +51,21 @@ public sealed class LanguageParityTests
         Assert.Equal(expected, ParityHarness.Findings(checks, declared.Model));
     }
 
+    [Fact]
+    public void TheDumpReportsAMinimumThatDiffers()
+    {
+        // The range is part of the language a reviewer reads: a `1..n` list and a `0..n` list are two different
+        // statements, and a dump that ignored the lower end would pass while the two languages behaved differently.
+        Assert.NotEqual(ParityHarness.Dump(Registry(0)), ParityHarness.Dump(Registry(1)));
+
+        static ConceptRegistry Registry(int minimum) => ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Test.List",
+                [new ChildSlot("items", "Test.List", Cardinality.Many, minimum)]),
+        ]);
+    }
+
     /// <summary>A small document of the language, with one body left empty so a check has something to report.</summary>
     private static Node Sample(Model model)
     {

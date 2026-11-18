@@ -105,7 +105,7 @@ internal sealed class DefinitionBuilder
             AllowOwnSubtree: allowOwnSubtree));
 
     /// <summary>A child slot.</summary>
-    public SlotSpec Child(string name, string childConceptKey, string cardinality = "one") =>
+    public SlotSpec Child(string name, string childConceptKey, string cardinality = "1") =>
         Slot(new SlotSpec(
             StructureConceptKeys.ChildDecl,
             name,
@@ -170,7 +170,7 @@ internal sealed class DefinitionBuilder
 
             case StructureConceptKeys.ChildDecl:
                 node.Set("childConceptKey", slot.ChildConceptKey!);
-                node.Set("cardinality", slot.Cardinality ?? "one");
+                node.Set("cardinality", slot.Cardinality ?? "1");
                 break;
 
             default:
