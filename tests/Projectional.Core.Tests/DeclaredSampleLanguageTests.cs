@@ -52,6 +52,23 @@ public sealed class DeclaredSampleLanguageTests
     }
 
     [Fact]
+    public void BothConceptsAreNamedThroughTheFrameworkInterface()
+    {
+        // Adoption in the declared path: the structure documents say `implements Framework.Named` instead of
+        // nominating a name slot, and the placeholder each of them still declares is what a reference shows.
+        var concepts = Language().Concepts;
+
+        foreach (var key in new[] { "Pipeline.Pipeline", "Pipeline.Stage" })
+        {
+            var concept = concepts.Get(key);
+
+            Assert.True(concept.IsKindOf(FrameworkInterfaces.Named), key);
+            Assert.Equal("name", concept.NameSlot?.Name);
+            Assert.Equal("unnamed", concept.NameSlot?.DefaultValue);
+        }
+    }
+
+    [Fact]
     public void TheDeclaredNotationDrawsTheDocumentAsATable()
     {
         var language = Language();

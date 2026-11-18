@@ -133,8 +133,8 @@ public static class ExpressionsLanguage
             ExpressionsConceptKeys.Name,
             [new PropertySlot("name", PropertyType.String, description: "The name to read, such as amount.")],
             [ExpressionsConceptKeys.Expression],
-            nameSlot: "name",
-            description: "A reference to a name that some scope resolves."),
+            description: "A reference to a name that some scope resolves.",
+            interfaces: [FrameworkInterfaces.Named]),
 
         // The gestures, declared on the concepts they create: an operator typed at an edge of an existing
         // expression, and a parenthesis typed in front of one. Binary's left trigger does not claim "-", because a

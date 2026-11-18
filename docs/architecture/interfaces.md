@@ -1,9 +1,9 @@
 # Interfaces: the framework's structural vocabulary
 
-Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Slices **I1 and I2 are delivered**: the
-concept kind, the member merge, the validation table, `Framework.Named` in every registry, `Node.IsNamed`, and the
-declared path (`implements`, the `interface` header word, the lowering, `implements:` in the notation and
-`interfaces=` in the parity dump). What is left is adoption by the shipped languages (I3) and the records (I4).
+Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Slices **I1, I2 and I3 are delivered**: the
+concept kind, the member merge, the validation table, `Framework.Named` in every registry, `Node.IsNamed`, the
+declared path, and the adoption by the shipped languages. What is left is **I4**: the records - a row per delivery
+in [implemented.md](../implemented.md), questions 94-97 and ADR 0020.
 
 ## The problem
 

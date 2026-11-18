@@ -45,9 +45,9 @@ internal static class DeclaredTestLanguage
                 definition.Reference("inherits", TestLanguage.Rule),
                 definition.Reference("self", TestLanguage.Rule, allowOwnSubtree: true),
             ],
-            nameSlot: "name",
             description: "A named rule with a body and an outcome.",
-            collapseSlot: "enabled");
+            collapseSlot: "enabled",
+            implements: [FrameworkInterfaces.Named]);
 
         definition.Concept(
             TestLanguage.Body,

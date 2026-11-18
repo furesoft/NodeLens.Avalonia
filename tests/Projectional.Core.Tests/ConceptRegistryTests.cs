@@ -413,6 +413,22 @@ public sealed class ConceptRegistryTests
     }
 
     [Fact]
+    public void TheFixtureProvesThatAnImplementersMetadataBeatsTheInterface()
+    {
+        // The interface declares `name` with no default; the fixture's rule declares it with "unnamed" and its
+        // own description. The merge keeps the implementer's - the default is a language's decision, not a role's -
+        // and the slot stays first, which is what keeps the corpus byte-identical.
+        var rule = TestLanguage.Registry.Get(TestLanguage.Rule);
+        var name = Assert.IsType<PropertySlot>(rule.Slots[0]);
+
+        Assert.False(rule.IsInterface);
+        Assert.True(rule.IsKindOf(FrameworkInterfaces.Named));
+        Assert.Equal("name", name.Name);
+        Assert.Equal("unnamed", name.DefaultValue);
+        Assert.Null(TestLanguage.Registry.Get(FrameworkInterfaces.Named).NameSlot?.DefaultValue);
+    }
+
+    [Fact]
     public void EveryRegistryContainsTheFrameworksNamedInterface()
     {
         var named = Create().Get(FrameworkInterfaces.Named);

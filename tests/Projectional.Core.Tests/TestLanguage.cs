@@ -34,11 +34,13 @@ internal static class TestLanguage
                 new ReferenceSlot("inherits", Rule),
                 new ReferenceSlot("self", Rule, allowOwnSubtree: true),
             ],
-            nameSlot: "name",
             description: "A named rule with a body and an outcome.",
             // `enabled` doubles as the collapse slot: it is a boolean, it defaults to true, and the
             // fixture's job is to exercise the mechanism rather than to be a sensible language.
-            collapseSlot: "enabled"),
+            collapseSlot: "enabled",
+            // The designation goes: the interface supplies it, and this concept's own `name` keeps its
+            // default - which is the override the fixture exists to prove.
+            interfaces: [FrameworkInterfaces.Named]),
 
         new ConceptDeclaration(
             Body,

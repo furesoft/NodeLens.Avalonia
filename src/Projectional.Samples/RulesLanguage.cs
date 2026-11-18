@@ -90,8 +90,8 @@ public static class RulesLanguage
                 new PropertySlot("name", PropertyType.String, "unnamed"),
                 new ChildSlot(RulesSlot, RulesConceptKeys.Rule),
             ],
-            nameSlot: "name",
-            description: "A named set of rules, evaluated in the order they are written."),
+            description: "A named set of rules, evaluated in the order they are written.",
+            interfaces: [FrameworkInterfaces.Named]),
 
         new ConceptDeclaration(
             RulesConceptKeys.Rule,
@@ -113,8 +113,8 @@ public static class RulesLanguage
                 // unless it opts out, which is the cheapest way for a language to say "this can be big".
                 new PropertySlot("foldable", PropertyType.Boolean, "true", "Whether the rule draws collapsed by default."),
             ],
-            nameSlot: "name",
             description: "One rule: a name, an optional condition and the outcome it decides.",
-            collapseSlot: "foldable"),
+            collapseSlot: "foldable",
+            interfaces: [FrameworkInterfaces.Named]),
     ];
 }

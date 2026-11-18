@@ -41,6 +41,17 @@ hint while a stage still carries the placeholder its concept declares for a name
 about whitespace around a command. Both are lowered into the same `IConstraint` a language written in
 C# writes, so the language reports its own findings without a line of C# behind either of them.
 
+## What it takes from the framework
+
+Both concepts **implement `Framework.Named`**, so neither nominates a name slot: the interface supplies
+the `name` property and the designation, and the documents keep their own `name` line only to declare
+the `unnamed` placeholder the hint in `constraints/` talks about. A reference declared over
+`Framework.Named` accepts a pipeline or a stage without the language saying anything else.
+
+The `nameSlot` property is *empty* in both documents rather than gone, and that is the model's shape
+rather than a rule: a property can be emptied but not unset, so the writer emits
+`<nameSlot></nameSlot>`. It lowers to "no designation of my own", which is what is meant.
+
 ## Why it is here rather than in the tests
 
 It is what a user opens. The tests copy this folder next to the test assembly and load exactly these
