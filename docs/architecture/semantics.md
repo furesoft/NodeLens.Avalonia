@@ -413,7 +413,9 @@ Requirements that make it a debugger rather than an evaluator:
 
 Because both a generator and an interpreter exist, they cross-check: for the pilot DSL,
 a test asserts that generated code and interpretation produce identical results for the
-same model. That is the cheapest correctness net available for a language framework.
+same model (`SampleCrossCheckTests`: one input, one decision, derived three ways - the
+interpreter, the rule a separately assembled expression evaluator finds, and the reason the
+generated JSON records). That is the cheapest correctness net available for a language framework.
 
 ### What is implemented
 
