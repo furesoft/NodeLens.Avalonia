@@ -30,7 +30,8 @@ completion list, quick fixes (Alt+Enter/Ctrl+., a painted list, a bulb in the ma
 check catalogue as a package (`Projectional.Checks`), the intention model and its per-caret list, the hover
 preview of an offer (its description, then the result of its edit shown in place as a ghost of a discarded
 copy), the framework's own intention catalogue (rename, wrap in X, reset to the default, in
-`Projectional.Intentions`), and logical
+`Projectional.Intentions`), the constraint language (a language's own rules written as models, in
+`Projectional.ConstraintRules`), and logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys) are done. The
 standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
@@ -411,7 +412,8 @@ language definition is a model.
 ### A language project is a folder
 
 `Projectional.Languages` holds `LanguageProject`: a directory with a `structure` folder (required) and optional
-`editor`, `types` and `generator` folders becomes a `ConceptRegistry` + `NotationRegistry` + `TypeRegistry`.
+`editor`, `types`, `generator` and `constraints` folders becomes a `ConceptRegistry` + `NotationRegistry` +
+`TypeRegistry` + generators + `ConstraintSet`.
 **`Open(directory, out error)` answers a usable
 language or a message, never an exception** - opening is a user action, and a user action reports. The notation is
 lowered *against the concepts the structure documents just declared*, so a notation for an undeclared concept is
@@ -422,13 +424,14 @@ node draws as a missing-notation cell, which is the state a language being writt
 declaration order, which decides default fill and completion ranking. A structure document's root *is* a
 `Structure.Concept` or a `Structure.Enumeration`; an editor document's root is one `Editor.Notation`; a types
 document's root is one `TypeRule.Rule` or one `TypeRule.Named`; a generator document's root is one
-`TextGen.Generator`. **There is no container concept** (`Structure.Language`, `Editor.Notations`, `TypeRule.Rules`,
+`TextGen.Generator`; a constraints document's root is one `Constraint.Rule`. **There is no container concept**
+(`Structure.Language`, `Editor.Notations`, `TypeRule.Rules`,
 `TextGen.Generators` were deleted): a container with one child would be a second place to say which definitions
 exist. Do not reintroduce one to "simplify" a fixture - a document with two roots is refused by `LanguageProject.Read`
 and by the rules of MPS' file layout.
 
 **`samples/declared-pipeline` is the M2 gate made concrete**: a DSL that exists only as data - a `structure` folder,
-an `editor` folder and a document - with no C# anywhere. `DeclaredSampleLanguageTests` copies the folder next to the test
+an `editor` folder, a `constraints` folder and a document - with no C# anywhere. `DeclaredSampleLanguageTests` copies the folder next to the test
 assembly (a `<None Include="..\..\samples\...">` item) and loads exactly the files a user opens, so the sample cannot
 drift from what the code accepts without a test failing. It is the place to look when asking "can a language really
 be written without C#", and the place to extend when the declared path grows. The definition files there are the
@@ -662,7 +665,17 @@ notation is registered per concept **and** variant
   that.
 - **The app merges constraint findings with the check catalogue's in one list** (`PublishFindings`),
   because the panel and the markers must not be two answers to "what is wrong". A constraint finding has
-  no fix, so it is a marker and a panel row only.
+  no fix, so it is a marker and a panel row only. Which rules it runs is the document's: `DocumentTab.Constraints`
+  carries the language's own set, and `SampleConstraints.All` stands in where a caller passed none.
+- **A rule can be written down.** `Projectional.ConstraintRules` is the constraint language: a `constraints` folder
+  holds one document per rule, `ConstraintLowering` turns each into the same `IConstraint` a C# language declares,
+  and `LanguageProject.Constraints` is what a host runs. The body vocabulary is closed on purpose (`EmptySlot`,
+  `DefaultValue`, `SurroundingWhitespace`, `EmptyReference`) - a general expression body would be an interpreter for a
+  language whose only job is to say what is wrong, the same line the type rules draw with three bodies. An empty
+  concept key means "every node", drawn as the property cell's `every node` placeholder; a rule naming a concept or
+  slot the language does not have (or declares as another kind), or without a message or a body, is a load error.
+  Parity with the catalogue is a test rather than a claim: `ConstraintLoweringTests` declares the catalogue's rules as
+  models and demands the same findings, at the same places, with the same severities.
 
 ## How types work
 

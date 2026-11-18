@@ -8,6 +8,7 @@ sees" is not a claim to check - there is nothing to delete.
 | --- | --- |
 | `structure/` | the language: one document per concept, with its slots and defaults |
 | `editor/` | how those concepts are drawn - one document per notation, a header line and a table |
+| `constraints/` | the rules the language states about itself - one document per rule |
 | `pipeline.mps` | a document of the language, so the folder is something to open |
 
 One definition per document, the way MPS stores a model: `structure/Pipeline.Pipeline.mps` holds the
@@ -34,6 +35,11 @@ var model = ModelFile.Load(language!.NewProject(), "samples/declared-pipeline/pi
 `command` and a `retries` count. The notation draws the pipeline as a header line followed by a table
 over `stages`, and a stage on its own as one line - so the same concept has a table form and a text
 form, which is what makes the table a *variant* rather than a special document mode.
+
+`constraints/stage-name.mps` and `constraints/stage-command.mps` are rules, not code: the first is a
+hint while a stage still carries the placeholder its concept declares for a name, the second a warning
+about whitespace around a command. Both are lowered into the same `IConstraint` a language written in
+C# writes, so the language reports its own findings without a line of C# behind either of them.
 
 ## Why it is here rather than in the tests
 

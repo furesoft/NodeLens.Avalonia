@@ -540,7 +540,7 @@ language declare its constraints, types and generation instead of coding them
 | --- | --- |
 | `Projectional.Structure` | concepts, slots, superconcepts (stage C) |
 | `Projectional.Editor` | notation cells, styles (stage C) |
-| `Projectional.Constraints` | declarative validation rules (M6) |
+| `Projectional.ConstraintRules` | declarative validation rules — **delivered**: a language project's `constraints` folder |
 | `Projectional.Types` | type rules when they outgrow C# (M6) |
 | `Projectional.Migrations` | migration rules when they outgrow C# (M6) |
 | `Projectional.Generators` | generation rules as templates (M6) |

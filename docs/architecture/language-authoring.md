@@ -231,8 +231,9 @@ What that buys, and why it is not just syntax:
   `Projectional.Accessories`, `Projectional.Migrations`. A new kind of aspect is therefore a new
   language plus a new annotation concept, not a new field in a sealed enum of aspects - which is
   exactly how aspects grow in MPS, and the reason a language author can add one without a
-  framework change. One of the list is delivered: `Projectional.TextGen` is the generator language,
-  and it is a language project's `generator` folder beside the structure, the notation and the types.
+  framework change. Two of the list are delivered: `Projectional.TextGen` is the generator language,
+  a language project's `generator` folder beside the structure and the notation, and
+  `Projectional.ConstraintRules` is the constraint language, its `constraints` folder beside them.
 - **The block is keyed by concept, and the aspect is collected per concept.** Lowering walks the
   aspect model once, gathers the block for each concept key and produces the delegate the C#
   author would have written. Concepts with no block get no delegate, which is the same state as

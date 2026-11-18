@@ -20,7 +20,7 @@ produces something usable, and no milestone depends on a later one being finishe
 test that proves each row. This section keeps only what is left, and a feature moves out of it into
 that file in the same commit that finishes it.
 
-M3 is complete, M4 about half, M5 started, and M6 to M8 are untouched.
+M3 is complete, M4 about half, M5 started, M6 started with one declared aspect, and M7 and M8 are untouched.
 
 What is next, in order:
 
@@ -97,7 +97,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 
 | Delivers | Details |
 | --- | --- |
-| Declarative aspects | **types are done** (`Projectional.TypeRules`, [semantics.md](architecture/semantics.md#the-declared-form)); what is left is constraints, scopes, generation, intentions and textGen as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
+| Declarative aspects | **types, generation and constraints are done** (`Projectional.TypeRules`, `Projectional.TextGen`, `Projectional.ConstraintRules`, [semantics.md](architecture/semantics.md#the-declared-form)); what is left is scopes and intentions as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
