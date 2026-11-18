@@ -21,7 +21,9 @@ public sealed class RulesLanguageTests
     public void TheLanguagesConceptsAreItsOwnPlusTheExpressionsItBorrows()
     {
         Assert.Equal(
-            RulesLanguage.ConceptDeclarations.Count + ExpressionsLanguage.ConceptDeclarations.Count,
+            RulesLanguage.ConceptDeclarations.Count
+                + ExpressionsLanguage.ConceptDeclarations.Count
+                + FrameworkInterfaces.All.Count,
             RulesLanguage.Concepts.Concepts.Count);
 
         foreach (var declaration in RulesLanguage.ConceptDeclarations)

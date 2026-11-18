@@ -32,8 +32,18 @@ public sealed class NodeTests
     }
 
     [Fact]
-    public void APropertyWithoutDefaultIsUnsetUntilItIsWritten()
+    public void IsNamedIsAFactOfTheConcept()
     {
+        // `Test.Tag` is named by `label`, so it is named without owning a "name" property - the designation is
+        // what counts, and a concept implementing Framework.Named has it without declaring anything.
+        var model = TestLanguage.NewModel();
+
+        Assert.True(model.NewNode(TestLanguage.Tag).IsNamed);
+        Assert.False(model.NewNode(TestLanguage.Step).IsNamed);
+    }
+
+    [Fact]
+    public void APropertyWithoutDefaultIsUnsetUntilItIsWritten()    {
         var node = TestLanguage.NewModel().NewNode(TestLanguage.Step);
 
         Assert.Null(node.GetOrNull("text"));

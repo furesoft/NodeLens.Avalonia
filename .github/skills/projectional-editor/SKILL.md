@@ -90,7 +90,7 @@ even if the build stays green.
    instead of being kept - and that exception is documented in
    `docs/architecture/persistence.md`.)
 9. **`net10.0` only**, no multi-targeting (ADR 0003).
-10. **A concept is concrete or abstract, and only concrete concepts can be nodes.**
+10. **A concept is concrete, abstract or an interface, and only concrete concepts can be nodes.**
     `ConceptDeclaration(..., isAbstract: true)` names a *set* that a slot can be declared over;
     `Model.NewNode` rejects it, so no code path can produce a bare base node. The single consumer
     is `ConceptRegistry.DefaultInstantiableFor(key)`, which returns the concept itself when
@@ -99,6 +99,13 @@ even if the build stays green.
     and `InsertNodeAction.FillSlot` uses it to fill an empty slot (returning `EditResult.Unchanged`
     when no concept can exist). An abstract concept may therefore have no notation; every
     concrete one needs its own or an inherited one.
+    An **interface** (`isInterface: true`, which requires `isAbstract`) is the third kind: abstract by
+    definition, never instantiated, contributing its properties and references to the concepts that
+    `implements` it. Conformance is still `IsKindOf` and storage is still one flat slot map, so no layer
+    learned a second relation; `Concept.SuperConcepts` is the ordered union (extensions first, then
+    interfaces), and `Concept.Extensions`/`.Interfaces` give a tool the difference back. `ConceptRegistry.Create`
+    injects `Framework.Named` into every registry, so a language cannot ship without it and a host can rely on
+    that key meaning the same thing in every document (`docs/architecture/interfaces.md`).
     A separate flag, `ConceptDeclaration(..., isOfferedInCompletion: false)`, keeps a concept out
     of the completion **list only**. `DefaultInstantiableFor` must keep ignoring it: a hidden
     concept stays a legal child reachable with Enter, which is exactly how `Expressions` keeps

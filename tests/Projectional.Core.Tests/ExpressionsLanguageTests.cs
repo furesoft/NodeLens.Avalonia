@@ -32,6 +32,12 @@ public sealed class ExpressionsLanguageTests
     {
         foreach (var concept in ExpressionsLanguage.Concepts.Concepts)
         {
+            if (concept.IsInterface)
+            {
+                // The framework's own vocabulary is in every registry and is not an expression.
+                continue;
+            }
+
             if (concept.Key == ExpressionsConceptKeys.Expression)
             {
                 Assert.True(concept.IsAbstract);

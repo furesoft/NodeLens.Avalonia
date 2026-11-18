@@ -20,7 +20,9 @@ public sealed class ConceptDeclaration
         string? description = null,
         string? collapseSlot = null,
         Applicability? applicability = null,
-        IEnumerable<ConceptTrigger>? triggers = null)
+        IEnumerable<ConceptTrigger>? triggers = null,
+        bool isInterface = false,
+        IEnumerable<string>? interfaces = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -67,6 +69,45 @@ public sealed class ConceptDeclaration
             throw new ArgumentException($"'{nameSlot}' is not a valid slot name.", nameof(nameSlot));
         }
 
+        if (isInterface && !isAbstract)
+        {
+            // An interface is abstract by definition, so saying both is the only spelling: a concrete
+            // interface would be a concept nothing can instantiate and nothing can be below.
+            throw new ArgumentException(
+                $"Concept '{key}' is an interface, so it is abstract by definition; pass isAbstract: true or leave isInterface off.",
+                nameof(isInterface));
+        }
+
+        var interfaceList = new List<string>();
+        foreach (var implemented in interfaces ?? [])
+        {
+            if (!NameRules.IsValidConceptKey(implemented))
+            {
+                throw new ArgumentException($"'{implemented}' is not a valid concept key.", nameof(interfaces));
+            }
+
+            if (implemented == key)
+            {
+                throw new ArgumentException(
+                    $"Concept '{key}' cannot implement itself.",
+                    nameof(interfaces));
+            }
+
+            if (superList.Contains(implemented, StringComparer.Ordinal))
+            {
+                // The two lists become one walk, so a key in both would declare one conformance twice -
+                // and which of the two a reader meant is not recoverable here.
+                throw new ArgumentException(
+                    $"Concept '{key}' names '{implemented}' twice, as a super concept and as an interface.",
+                    nameof(interfaces));
+            }
+
+            if (!interfaceList.Contains(implemented, StringComparer.Ordinal))
+            {
+                interfaceList.Add(implemented);
+            }
+        }
+
         if (collapseSlot is not null && !NameRules.IsValidSlotName(collapseSlot))
         {
             throw new ArgumentException($"'{collapseSlot}' is not a valid slot name.", nameof(collapseSlot));
@@ -75,6 +116,8 @@ public sealed class ConceptDeclaration
         Key = key;
         Slots = slotList;
         SuperConcepts = superList;
+        Interfaces = interfaceList;
+        IsInterface = isInterface;
         NameSlot = nameSlot;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
@@ -94,6 +137,27 @@ public sealed class ConceptDeclaration
 
     /// <summary>Direct super concepts, in declaration order.</summary>
     public IReadOnlyList<string> SuperConcepts { get; }
+
+    /// <summary>
+    /// The interfaces this concept implements, in declaration order.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="SuperConcepts"/> because the two say different things about a concept: extending
+    /// one makes this concept a kind of it, while implementing one promises its members. Both are conformance -
+    /// <see cref="ConceptRegistry"/> resolves them into one ordered walk - but a reader of a declaration, and a
+    /// tool that reports what a concept is made of, needs the difference back.
+    /// </remarks>
+    public IReadOnlyList<string> Interfaces { get; }
+
+    /// <summary>
+    /// Whether this concept is an interface: abstract by definition, never instantiated, and the source of
+    /// members its implementers inherit.
+    /// </summary>
+    /// <remarks>
+    /// A kind, not a second relation - <see cref="Concept.IsKindOf"/> answers for an interface exactly as for an
+    /// abstract concept, which is what lets a slot be declared over "anything with a name".
+    /// </remarks>
+    public bool IsInterface { get; }
 
     /// <summary>The slot that supplies the text a reference to this concept displays.</summary>
     public string? NameSlot { get; }

@@ -264,7 +264,11 @@ public sealed class ConceptRegistryTests
             new ConceptDeclaration("Alpha"),
             new ConceptDeclaration("Mid"));
 
-        Assert.Equal(["Zeta", "Alpha", "Mid"], registry.Concepts.Select(concept => concept.Key));
+        // The framework's own interface comes first because Create injects it - see
+        // FrameworkInterfaces, and the declaration order below it is untouched.
+        Assert.Equal(
+            [FrameworkInterfaces.Named, "Zeta", "Alpha", "Mid"],
+            registry.Concepts.Select(concept => concept.Key));
     }
 
     [Fact]
@@ -406,5 +410,99 @@ public sealed class ConceptRegistryTests
         Assert.NotNull(slot);
         Assert.True(registry.Get("Lit").IsKindOf(slot.ChildConceptKey));
         Assert.False(registry.Get("Expr").IsKindOf("Lit"));
+    }
+
+    [Fact]
+    public void EveryRegistryContainsTheFrameworksNamedInterface()
+    {
+        var named = Create().Get(FrameworkInterfaces.Named);
+
+        Assert.True(named.IsInterface);
+        Assert.True(named.IsAbstract);
+        Assert.Equal("name", named.NameSlot?.Name);
+        Assert.Empty(named.SuperConcepts);
+    }
+
+    [Fact]
+    public void DeclaringTheFrameworksOwnInterfaceIsRefused()
+    {
+        var error = Assert.Throws<ConceptDefinitionException>(() => Create(
+            new ConceptDeclaration(FrameworkInterfaces.Named, isAbstract: true, isInterface: true)));
+
+        Assert.Contains("framework", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnImplementerHasTheNameWithoutDeclaringIt()
+    {
+        var registry = Create(new ConceptDeclaration("Rules.Rule", interfaces: [FrameworkInterfaces.Named]));
+
+        var rule = registry.Get("Rules.Rule");
+
+        Assert.Equal("name", rule.NameSlot?.Name);
+        Assert.Equal(PropertyType.String, Assert.IsType<PropertySlot>(rule.FindProperty("name")).Type);
+        Assert.True(rule.IsKindOf(FrameworkInterfaces.Named));
+    }
+
+    [Fact]
+    public void AnImplementersOwnDefaultWinsAndTheSlotKeepsItsPosition()
+    {
+        // The interface carries no default on purpose, so a language that wants a placeholder declares the
+        // slot again - and the merge replaces the metadata without moving the slot, which is what keeps every
+        // saved document of that language byte-identical.
+        var registry = Create(new ConceptDeclaration(
+            "Rules.Rule",
+            [new PropertySlot("name", PropertyType.String, "unnamed")],
+            interfaces: [FrameworkInterfaces.Named]));
+
+        var rule = registry.Get("Rules.Rule");
+        var name = Assert.IsType<PropertySlot>(rule.Slots[0]);
+
+        Assert.Equal("name", name.Name);
+        Assert.Equal("unnamed", name.DefaultValue);
+    }
+
+    [Fact]
+    public void AnOverrideThatChangesTheShapeIsRefused()
+    {
+        var error = Assert.Throws<ConceptDefinitionException>(() => Create(new ConceptDeclaration(
+            "Rules.Rule",
+            [new PropertySlot("name", PropertyType.Integer)],
+            interfaces: [FrameworkInterfaces.Named])));
+
+        Assert.Contains("name", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnInterfaceMayContributeNoChildSlot()
+    {
+        var error = Assert.Throws<ConceptDefinitionException>(() => Create(
+            new ConceptDeclaration("Rules.Target", [new ChildSlot("body", "Rules.Target")], isAbstract: true, isInterface: true)));
+
+        Assert.Contains("child slot", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConceptExtendsAConceptAndImplementsAnInterface()
+    {
+        var error = Assert.Throws<ConceptDefinitionException>(() => Create(
+            new ConceptDeclaration("Rules.Base", isAbstract: true),
+            new ConceptDeclaration("Rules.Rule", superConcepts: [FrameworkInterfaces.Named])));
+
+        Assert.Contains("interface", error.Message, StringComparison.Ordinal);
+
+        error = Assert.Throws<ConceptDefinitionException>(() => Create(
+            new ConceptDeclaration("Rules.Base", isAbstract: true),
+            new ConceptDeclaration("Rules.Rule", interfaces: ["Rules.Base"])));
+
+        Assert.Contains("not an interface", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnInterfaceIsAbstractByDefinition()
+    {
+        var error = Assert.Throws<ArgumentException>(() => new ConceptDeclaration("Rules.Target", isInterface: true));
+
+        Assert.Equal("isInterface", error.ParamName);
     }
 }

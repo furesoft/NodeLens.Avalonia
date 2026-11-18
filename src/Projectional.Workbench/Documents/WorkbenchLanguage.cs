@@ -193,7 +193,11 @@ internal sealed class WorkbenchLanguage
         {
             concepts = ConceptRegistry.Create(
             [
-                .. Concepts.Concepts.Select(Redeclare),
+                // The framework's own interfaces are injected by Create, so re-declaring them would be
+                // refused as a reserved key - and re-declaring is only ever about the languages.
+                .. Concepts.Concepts
+                    .Where(concept => !FrameworkInterfaces.All.Any(framework => framework.Key == concept.Key))
+                    .Select(Redeclare),
                 .. language.Declarations,
             ]);
 
@@ -286,14 +290,19 @@ internal sealed class WorkbenchLanguage
     private static ConceptDeclaration Redeclare(Concept concept) => new(
         concept.Key,
         concept.Slots.Select(Redeclare).ToArray(),
-        concept.SuperConcepts.Select(super => super.Key).ToArray(),
+
+        // Extensions, not SuperConcepts: the latter is the union of what this concept extends and what it
+        // implements, and writing it back into the extension list would name each interface twice.
+        concept.Extensions.Select(super => super.Key).ToArray(),
         concept.NameSlot?.Name,
         concept.IsAbstract,
         concept.IsOfferedInCompletion,
         concept.Description,
         concept.CollapseSlot?.Name,
         concept.Applicability,
-        concept.Triggers);
+        concept.Triggers,
+        concept.IsInterface,
+        concept.Interfaces.Select(implemented => implemented.Key).ToArray());
 
     private static SlotDeclaration Redeclare(SlotDeclaration slot) => slot switch
     {
