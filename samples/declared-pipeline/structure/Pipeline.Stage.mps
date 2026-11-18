@@ -8,8 +8,15 @@
         <isInterface>false</isInterface>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One step of a pipeline.</description>
-        <nameSlot>name</nameSlot>
+        <nameSlot></nameSlot>
       </properties>
+      <children role="implements">
+        <node id="0c0b5318-b509-43f9-a84e-07648ed77492" concept="Structure.SuperType" name="Framework.Named">
+          <properties>
+            <conceptKey>Framework.Named</conceptKey>
+          </properties>
+        </node>
+      </children>
       <children role="properties">
         <node id="b826c941-d464-4e7c-8b64-c47018da11cf" concept="Structure.PropertyDecl" name="name">
           <properties>

@@ -30,10 +30,9 @@ What is next, in order:
    `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
 3. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that
    implement it, so a language stops writing `name` and a designated name slot by hand - and so a slot can be
-   declared over "anything with a name". Slices **I1 and I2 are delivered** (the kind, the merge, the validation,
-   `Framework.Named` in every registry, and the declared path: `implements`, the `interface` header word,
-   `implements:` in the notation, `interfaces=` in the parity dump); what is left is **I3** (adoption by the shipped
-   languages) and **I4** (the records). It is the first slice of M5's structure language
+   declared over "anything with a name". Slices **I1, I2 and I3 are delivered** (the kind, the merge, the validation,
+   `Framework.Named` in every registry, the declared path, and the adoption by `Expressions`, the rules language, the
+   fixture and the pipeline sample); what is left is **I4**, the records
    ([interfaces.md](architecture/interfaces.md)).
 4. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the

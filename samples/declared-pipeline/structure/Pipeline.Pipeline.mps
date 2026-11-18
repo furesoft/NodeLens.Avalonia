@@ -8,8 +8,15 @@
         <isInterface>false</isInterface>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>A named sequence of stages.</description>
-        <nameSlot>name</nameSlot>
+        <nameSlot></nameSlot>
       </properties>
+      <children role="implements">
+        <node id="54c2d2df-ccb4-43c5-8891-01c8bd3269fe" concept="Structure.SuperType" name="Framework.Named">
+          <properties>
+            <conceptKey>Framework.Named</conceptKey>
+          </properties>
+        </node>
+      </children>
       <children role="properties">
         <node id="82f91b42-c371-40b0-bef2-d5cae86e2e9d" concept="Structure.PropertyDecl" name="name">
           <properties>
