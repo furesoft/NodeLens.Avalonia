@@ -61,9 +61,9 @@ public sealed class StateMachineNotationsTests
             """
             machine Release
               initial: Idle
-              event  when
-              start  attempts > 0
-              finish <empty>
+              event  from    to      when
+              start  Idle    Running attempts > 0
+              finish Running Done    <empty>
             """,
             drawn);
     }

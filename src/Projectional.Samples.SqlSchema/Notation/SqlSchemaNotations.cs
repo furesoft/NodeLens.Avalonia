@@ -40,7 +40,10 @@ internal static class SqlSchemaNotations
                     "+ column",
                     ed.Column("name", ed.Keyword("column")),
                     ed.Column("type", ed.Keyword("type"))),
-                ed.Children(SqlSchemaLanguage.KeysSlot, "<none>", stacked: true))),
+
+                // `<< ... >>` is the empty-list placeholder the definition languages use: a table with no keys is
+                // the ordinary case, and the shared glyph says "nothing here" where `<none>` reads like missing data.
+                ed.Children(SqlSchemaLanguage.KeysSlot, "<< ... >>", stacked: true))),
             ed.Line(ed.Punct("}"))));
 
         notations.Add(SqlConceptKeys.Column, ed => ed.Line(ed.Property("name")));

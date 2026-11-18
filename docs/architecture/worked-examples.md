@@ -81,10 +81,10 @@ written by the writer and re-saved byte-identically, and `StateMachineNotationsT
 
 Two findings from building it, both recorded rather than worked around:
 
-- **A table column may name a property or a single child, never a reference.** `NotationRegistry.ValidateTable`
-  refuses it, so the transition table draws `event` and `when` and leaves `source`/`target` to the block form.
-  This is a real gap in the table cell, and it is the same one the SQL schema example will hit on a foreign-key
-  column - see §3.
+- **A table column could name a property or a single child, never a reference.** `NotationRegistry.ValidateTable`
+  refused it, so the transition table first drew only `event` and `when` and left `source`/`target` to the block
+  form. **Closed since**: a column may name a reference, so the table now draws `from` and `to`, and the same
+  capability is what makes the SQL schema's foreign key a column (§3).
 - **A graph over children needs `allowOwnSubtree`.** A transition references its source and target, both states
   of the same machine, so without that flag the reference would point into the referring node's own subtree -
   which invariant 5 refuses. The state machine is the first language to need it.
