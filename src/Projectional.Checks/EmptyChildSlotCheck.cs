@@ -49,7 +49,7 @@ public sealed class EmptyChildSlotCheck : ICheck
         {
             foreach (var declaration in node.Concept.Slots)
             {
-                if (declaration is not ChildSlot { Cardinality: Cardinality.One } slot
+                if (declaration is not ChildSlot { Cardinality: Cardinality.One, Minimum: > 0 } slot
                     || node.GetChildren(slot.Name).Count > 0
                     || model.Concepts.DefaultInstantiableFor(slot.ChildConceptKey) is not { } concept)
                 {

@@ -31,8 +31,12 @@ public static class StandardChecks
         new SurroundingWhitespaceCheck(),
     ];
 
-    /// <summary>The checks about declared structure: <c>STD010</c>.</summary>
-    public static IReadOnlyList<ICheck> Structure { get; } = [new EmptyChildSlotCheck()];
+    /// <summary>The checks about declared structure: <c>STD010</c> and <c>STD011</c>.</summary>
+    public static IReadOnlyList<ICheck> Structure { get; } =
+    [
+        new EmptyChildSlotCheck(),
+        new MinimumChildCountCheck(),
+    ];
 
     /// <summary>The checks that need the expression sub-language: <c>STD040</c>.</summary>
     public static IReadOnlyList<ICheck> Expressions { get; } = [new BinaryGroupingCheck()];
