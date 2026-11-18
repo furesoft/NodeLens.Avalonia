@@ -18,8 +18,22 @@ public sealed class RulesLanguageTests
     private static NotationRegistry Notations => RulesLanguage.CreateNotations(RulesLanguage.Concepts);
 
     [Fact]
-    public void TheLanguagesConceptsAreItsOwnPlusTheExpressionsItBorrows()
+    public void ARuleAndARulesetAreNamedThroughTheFrameworkInterface()
     {
+        // Adoption, and why it costs the language nothing: neither concept nominates a name slot any more,
+        // and each keeps its own placeholder - which is the metadata override the interface leaves open.
+        foreach (var key in new[] { RulesConceptKeys.Ruleset, RulesConceptKeys.Rule })
+        {
+            var concept = RulesLanguage.Concepts.Get(key);
+
+            Assert.True(concept.IsKindOf(FrameworkInterfaces.Named), key);
+            Assert.Equal("name", concept.NameSlot?.Name);
+            Assert.Equal("unnamed", concept.NameSlot?.DefaultValue);
+        }
+    }
+
+    [Fact]
+    public void TheLanguagesConceptsAreItsOwnPlusTheExpressionsItBorrows()    {
         Assert.Equal(
             RulesLanguage.ConceptDeclarations.Count
                 + ExpressionsLanguage.ConceptDeclarations.Count
