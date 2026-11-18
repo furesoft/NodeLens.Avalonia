@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A worked example, not a product: a language package that references the language layer and nothing above it.
+    It borrows no sub-language, which is itself worth demonstrating - the second example proves that a sample does
+    not have to be an Expressions host.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+  </ItemGroup>
+
+</Project>
