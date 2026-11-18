@@ -202,7 +202,8 @@ policy, and neither should be settled before the language format is
 
 If any of these requires digging into internals, the embedding API is wrong.
 
-The standalone app ([standalone.md](standalone.md)) is the executable proof: it does
-exactly these six things, through the public API, with no `InternalsVisibleTo` entry.
-Every milestone therefore ends with a check that is not a review — the app either still
-builds against the published surface, or the surface was extended on purpose.
+The standalone app ([standalone.md](standalone.md)) used to be the only executable proof. It is no longer
+alone: `samples/host-app` does the same six things from outside, referencing only published packages and
+never the app, so the claim is checked from both sides - the app cannot use what a host could not, and the
+host cannot use what the app keeps to itself. Every milestone therefore ends with a check that is not a
+review: both clients still build against the published surface, or the surface was extended on purpose.

@@ -147,11 +147,10 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | shown in a real window by `tools/Projectional.Screenshots` (`feature-run-output.png`: 5 steps for `amount=1500`) |
 | The cross-check: for one input, the decision the interpreter reaches, the reason the generated JSON records, and the rule a separately assembled expression evaluator finds are the same | `Projectional.Samples` (`RulesEvaluation`, `RulesTextGenerators.Json`) | `SampleCrossCheckTests` (three rules, four inputs, so each input stops at a different rule) |
 | The three things a shell does with a document - run it, generate its text, derive its findings - as public entry points beside the control, answering a value instead of filling a panel | `Projectional.Avalonia/Run/` (`DocumentRun`, `DocumentGenerate`, `RunReport`, `RunRow`, `RunInputs`), `Findings/` (`DocumentFindings`, `FindingSet`); the app uses the same three | `DocumentRunTests`, `RunInputsTests`, `DocumentFindingsTests` |
+| A host application that embeds the control: one document, the four gestures (check, run, generate, break a rule), and no reference to the standalone app - so the M4 gate's "inside the embedded control in a small host application" is a fact, and a build that needed an internal package would break | `samples/host-app/` | compiled by `dotnet build` through the solution; started for twelve seconds in a real window with no output on stderr |
 
-Not done in M4: the gate's second front end - a sample host application that embeds the control
-and uses the three entry points above, which is what proves the two front ends share the behaviour;
-stepping (open question 11); and the dependency-set incrementality that lets the constraint engine
-produce diagnostics in volume.
+Not done in M4: stepping (open question 11), and the dependency-set incrementality that lets the constraint
+engine produce diagnostics in volume.
 
 ## M5 - Self-hosting (started)
 

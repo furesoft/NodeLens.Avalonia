@@ -24,6 +24,9 @@
     <Project Path="src/Projectional.TypeRules/Projectional.TypeRules.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/host-app/HostApp.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj" />
     <Project Path="tests/Projectional.Toolkit.Tests/Projectional.Toolkit.Tests.csproj" />

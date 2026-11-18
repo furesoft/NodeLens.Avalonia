@@ -29,16 +29,12 @@ What is next, in order:
    languages that need them.
 2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
    `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **The M4 gate's second front end**: a sample host application that embeds the control and uses the three entry
-   points that now sit beside it (`DocumentRun`, `DocumentGenerate`, `DocumentFindings`), proving the two front
-   ends share the behaviour. Nothing in this repository does that yet, so the claim is untested - and the sample
-   is also what keeps the host-facing surface honest: whatever the app can do and the sample cannot is a gap.
-4. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that
+3. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that
    implement it, so a language stops writing `name` and a designated name slot by hand - and so a slot can be
    declared over "anything with a name". It is the first slice of M5's structure language, because
    `implements` is a word the language has to be able to write
    ([interfaces.md](architecture/interfaces.md)).
-5. **The three worked examples.** One sample language per axis the framework bets on - references and two
+4. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
