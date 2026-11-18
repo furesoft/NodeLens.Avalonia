@@ -24,9 +24,8 @@ M3 is complete, M4 about half, M5 started, M6 started with one declared aspect, 
 
 What is next, in order:
 
-1. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
-   they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
-   languages that need them.
+1. **The rest of the catalogue as menu rows.** `INT010`/`INT011` are delivered in the context menu; what is
+   left are the language-side entries from `INT040` on, which arrive with the languages that need them.
 2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
    `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
 3. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that

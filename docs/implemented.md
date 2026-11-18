@@ -146,6 +146,7 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | A document runs only when its language defines an interpreter, derived from its root concept rather than from the command that opened it | `WorkbenchLanguage.InterpreterFor`, `DocumentTab.Evaluation` | `WorkbenchLanguageTests`, `DocumentTabTests` |
 | The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | shown in a real window by `tools/Projectional.Screenshots` (`feature-run-output.png`: 5 steps for `amount=1500`) |
 | The cross-check: for one input, the decision the interpreter reaches, the reason the generated JSON records, and the rule a separately assembled expression evaluator finds are the same | `Projectional.Samples` (`RulesEvaluation`, `RulesTextGenerators.Json`) | `SampleCrossCheckTests` (three rules, four inputs, so each input stops at a different rule) |
+| `INT010`/`INT011` as menu entries: the row that does what Enter does names the concept it will create and is disabled with a reason where Enter would do nothing, and `Insert...` opens the completion list exactly where `CompletionSlot.At` says a list can be asked for | `EditorMenu.InsertEntry`, `EditorMenu.CanComplete`, `EditorSession.ContextFor` (internal, so the menu asks the same question an action does) | `EditorMenuTests` (`AnEmptySlotNamesTheConceptEnterWouldCreate`, `InsertIsDisabledWhereEnterWouldDoNothing`, `InsertEllipsisIsOfferedOnlyWhereCompletionWouldOpen`) |
 | The three things a shell does with a document - run it, generate its text, derive its findings - as public entry points beside the control, answering a value instead of filling a panel | `Projectional.Avalonia/Run/` (`DocumentRun`, `DocumentGenerate`, `RunReport`, `RunRow`, `RunInputs`), `Findings/` (`DocumentFindings`, `FindingSet`); the app uses the same three | `DocumentRunTests`, `RunInputsTests`, `DocumentFindingsTests` |
 | A host application that embeds the control: one document, the four gestures (check, run, generate, break a rule), and no reference to the standalone app - so the M4 gate's "inside the embedded control in a small host application" is a fact, and a build that needed an internal package would break | `samples/host-app/` | compiled by `dotnet build` through the solution; started for twelve seconds in a real window with no output on stderr |
 
@@ -182,7 +183,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1952 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1954 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 
