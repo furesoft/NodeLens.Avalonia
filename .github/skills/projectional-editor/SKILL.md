@@ -2152,13 +2152,17 @@ because `dotnet new` caches by identity, not by content.
 - Markdown links **and anchors** must both resolve. Anchors break silently when a heading is
   renamed, so validate `#fragment` targets against generated heading slugs, not just file paths.
 - The persistence test is byte equality after a full round trip, not "it deserialized".
-- Whenever a change touches the model, check the six invariants in
+- Whenever a change touches the model, check the seven invariants in
   `docs/architecture/model.md` still hold: unique ID per project, exactly one parent or the
   root, child slot conforms to the concept, no reference into the referencing node's own
-  subtree unless allowed, removing a node clears incoming references, and every property value
-  parses. They are enforced on every mutation (`ModelInvariantException`), not merely asserted
-  in debug builds, so a green test run means the checked ones hold - the structural ones
-  (invariants 1 and 2) still need a thought.
+  subtree unless allowed, removing a node clears incoming references, every property value
+  parses, and a concept only stands where its `Applicability` allows. They are enforced on every
+  mutation (`ModelInvariantException`), not merely asserted in debug builds, so a green test run
+  means the checked ones hold - the structural ones (invariants 1 and 2) still need a thought.
+- **A reference may cross a model boundary but not a project one.** `Node.SetReference` compares
+  `Project`, not `Model`: two documents of one project share the node index, and the scope provider
+  already offers their nodes by name. Do not "restore" a model-level check - it is what made a
+  cross-document foreign key impossible until the SQL schema example found it.
 
 ### Runtime probe: how UI code is verified
 

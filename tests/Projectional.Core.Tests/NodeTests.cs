@@ -287,6 +287,52 @@ public sealed class NodeTests
     }
 
     [Fact]
+    public void AReferenceMayPointAtAnotherModelOfTheSameProject()
+    {
+        // A project holds several documents, and the scope provider already walks up to the project to answer what a
+        // name may mean - so what it offers has to be linkable, or the list would name nodes no reference can hold.
+        var project = TestLanguage.NewProject();
+        var here = project.NewModel("here");
+        var there = project.NewModel("there");
+
+        var rule = here.NewNode(TestLanguage.Rule);
+        var tag = there.NewNode(TestLanguage.Tag);
+
+        rule.SetReference("tag", tag);
+
+        Assert.Same(tag, rule.GetReferenceTarget("tag"));
+    }
+
+    [Fact]
+    public void AReferenceRejectsATargetOfAnotherProject()
+    {
+        var rule = TestLanguage.NewModel().NewNode(TestLanguage.Rule);
+        var stranger = TestLanguage.NewModel().NewNode(TestLanguage.Tag);
+
+        var exception = Assert.Throws<ModelInvariantException>(() => rule.SetReference("tag", stranger));
+
+        Assert.Contains("another project", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DeletingATargetClearsAReferenceFromAnotherModel()
+    {
+        var project = TestLanguage.NewProject();
+        var here = project.NewModel("here");
+        var there = project.NewModel("there");
+
+        var rule = here.NewNode(TestLanguage.Rule);
+        var tag = there.NewNode(TestLanguage.Tag);
+        rule.SetReference("tag", tag);
+
+        // The clearing walks the project, not the model, which is why a cross-model reference cannot go stale when
+        // its target is deleted from the other document.
+        there.DeleteSubtree(tag);
+
+        Assert.Null(rule.GetReference("tag"));
+    }
+
+    [Fact]
     public void ClearingAReferenceReleasesTheTarget()
     {
         var model = TestLanguage.NewModel();

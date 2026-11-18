@@ -223,10 +223,10 @@ public sealed class Node
             return;
         }
 
-        if (!ReferenceEquals(target.Model, Model))
+        if (!ReferenceEquals(target.Model.Project, Model.Project))
         {
             throw new ModelInvariantException(
-                $"Node {target.Id} belongs to a different model and cannot be referenced from node {Id}.");
+                $"Node {target.Id} belongs to another project and cannot be referenced from node {Id}.");
         }
 
         if (!target.Concept.IsKindOf(declaration.TargetConceptKey))
