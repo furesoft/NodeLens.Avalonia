@@ -34,7 +34,7 @@ One DSL per axis, chosen so the three do not overlap:
 | --- | --- | --- |
 | `Projectional.Samples.StateMachine` | references, one concept in two notations, constraints (unreachable state), interpreter trace | **delivered** |
 | `Projectional.Samples.FeatureModel` | constraints (`requires`/`excludes`), a generator to a config file, an interpreter over the selection | **delivered** |
-| `Projectional.Samples.SqlSchema` | cross-model references, the table cell in earnest, a generator to DDL | M3, M4 - and the reference-column gap recorded in §1 |
+| `Projectional.Samples.SqlSchema` | cross-model references, the table cell in earnest, a generator to DDL | **delivered** |
 
 They are examples, not products: none of them may grow a capability the framework does not have, and none
 gets an app-private feature (composition rule 5 in [standalone.md](standalone.md)).
@@ -146,8 +146,34 @@ target exists - the same ordering argument model generation makes for its build 
 separate constraint line under the table, which is how the feature model draws its rules and would have been
 the workaround. `TableReferenceColumnTests` pins the three things that had to be true: the same
 `ReferenceCell` a notation's reference draws, the row's own address, and the column's empty text for an unset
-target. A many-valued reference is still not drawable, which is why a schema's `columns` list of *references*
-would still need the constraint shape - the `columns` of a table are children, so this does not arise.
+target.
+
+**Delivered**, and it found two framework defects, which is the most valuable thing a worked example can do:
+
+- **A cross-model reference was refused.** `Node.SetReference` compared the target's *model*, so a key in
+  `orders.mps` could not name a column in `shop.mps` - while the scope provider already walks up to the
+  project to offer exactly those nodes, invariant 5's clearing already walked `Project.Nodes`, and
+  `model.md` calls a move between models a case `resolveInfo` absorbs. The rule compares the *project* now;
+  a target of another project is still refused. Pinned by
+  `NodeTests.AReferenceMayPointAtAnotherModelOfTheSameProject`,
+  `AReferenceRejectsATargetOfAnotherProject` and `DeletingATargetClearsAReferenceFromAnotherModel`.
+- **A template could not emit a reference at all.** The part set had nine parts and none of them a reference,
+  so no language could generate the name a key points at. `ReferencePart` (and its declared twin
+  `TextGen.Reference`) is the tenth.
+
+What the third sample therefore proves, in the shipped form: two documents of one project, a key that names a
+column of the other, the grid of a table, and a DDL fragment whose keys name their columns. `SqlSchemaTests`
+covers the byte-identical round trip of both files, the notation, the generated text, the cross-document
+resolution and the degradation when one document is loaded alone.
+
+Still open, and recorded rather than worked around:
+
+- **A template cannot lay out a tree and cannot ask whether a slot is filled** - so the DDL's line break in
+  front of a table's keys is emitted even for a table with none, and the golden test pins the resulting
+  trailing indentation on purpose.
+- **A key is a fragment, not an `alter table`**: a template cannot read the name of the node that *holds* the
+  node it expands, so the table's own name is not available inside the key's template.
+- **A many-valued reference cannot be drawn**, which is still the shape a list of links would take.
 
 ## What the three have to prove
 
