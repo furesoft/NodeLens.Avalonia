@@ -3,7 +3,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![Runtime](https://img.shields.io/badge/runtime-.NET%2010.0-purple)
 ![Avalonia](https://img.shields.io/badge/Avalonia-v12-orange)
-![Tests](https://img.shields.io/badge/tests-880%20passing-success)
+![Tests](https://img.shields.io/badge/tests-2033%20passing-success)
 ![Status](https://img.shields.io/badge/status-M0%20complete%20%7C%20M1%20in%20progress-blueviolet)
 
 ![The editor component showing a small rules language, with line numbers, syntax highlighting and validation squiggles](docs/images/editor-light.png)
@@ -220,6 +220,36 @@ Keys held with `Ctrl`, `Alt`, or `Meta` belong to the host application, with two
 | **Themes** | Preset Light and Dark palettes, with custom factory support. |
 | **Representations** | Concepts can have multiple view variants switchable on the fly. |
 
+### Example Languages
+
+Three worked examples ship as their own packages (`src/Projectional.Samples.*`). Each proves an axis the framework bets on, and each is drawn here from its own notation registry—so the picture is that language, not the sample rules language wearing a different document.
+
+```powershell
+dotnet run --project tools/Projectional.Screenshots
+```
+
+#### State machine: references, one concept in two notations
+
+A transition *references* its source and its target—the same state node is reached from many arrows, which is what makes a graph out of a tree—and carries an optional guard written in the shared expression sub-language. The checks package reports the state nothing leads into.
+
+![A state machine drawn as a braced block of states and transitions](docs/images/language-state-machine.png)
+
+The same document in the concept's second notation, chosen at projection time and never persisted ([ADR 0012](docs/adr/0012-concept-rendered-more-than-one-way.md)). `source` and `target` are columns because a reference is one slot with one value:
+
+![The same state machine as a table of its transitions, with from and to columns](docs/images/language-state-machine-table.png)
+
+#### Feature model: constraints that read references
+
+`requires` and `excludes` are nodes of their own over an abstract base, so a rule about two features is something the interpreter can run, the check can read and the generator can ignore. The selection is a property, because a configuration is saved and undone with the document:
+
+![A feature model with selected features and requires/excludes rules](docs/images/language-feature-model.png)
+
+#### SQL schema: cross-model references and the table cell in earnest
+
+Tables are a grid of columns, and a key names a column of *another document* of the same project—two `.mps` files, no import list. This example is what closed the reference-column gap and the cross-model reference rule:
+
+![A SQL schema with tables drawn as grids and foreign keys under them](docs/images/language-sql-schema.png)
+
 ### Feature Gallery
 
 One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, and a feature that lives in the shell is rendered from a real `MainWindow`. Both kinds are produced by the same command:
@@ -377,7 +407,7 @@ dotnet test
 - **SDK Pinned:** `global.json` pins SDK **10.0.403** with `rollForward: latestFeature`. Do not remove it.
 - **Central Package Management:** Properties live in `Directory.Build.props`, package versions in `Directory.Packages.props`.
 - **Testing:** Powered by xunit.v3 on Microsoft.Testing.Platform (`tests\Projectional.Core.Tests\bin\Debug\net10.0\Projectional.Core.Tests.exe`).
-- **Screenshots:** `dotnet run --project tools/Projectional.Screenshots` rewrites every PNG in `docs/images` from the shipping code—the editor features from the control, the shell's own features from a real `MainWindow`—so the gallery above cannot drift from what the app draws.
+- **Screenshots:** `dotnet run --project tools/Projectional.Screenshots` rewrites every PNG in `docs/images` from the shipping code—the editor features and the three example languages from the control, each through its own language, the shell's own features from a real `MainWindow`—so the galleries above cannot drift from what the app draws.
 
 ---
 
