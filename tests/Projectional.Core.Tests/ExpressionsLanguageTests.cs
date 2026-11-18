@@ -28,6 +28,18 @@ public sealed class ExpressionsLanguageTests
     }
 
     [Fact]
+    public void ANameImplementsTheFrameworkInterfaceAndKeepsItsOwnSentence()
+    {
+        // The concept keeps its `name` declaration only to say something better than the role does, and the
+        // designation that used to be written here is gone - the interface carries it.
+        var name = ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Name);
+
+        Assert.True(name.IsKindOf(FrameworkInterfaces.Named));
+        Assert.Equal("name", name.NameSlot?.Name);
+        Assert.Equal("The name to read, such as amount.", name.NameSlot?.Description);
+    }
+
+    [Fact]
     public void EveryDeclaredConceptThatIsNotTheRootExtendsIt()
     {
         foreach (var concept in ExpressionsLanguage.Concepts.Concepts)
