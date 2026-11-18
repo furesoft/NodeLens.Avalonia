@@ -124,7 +124,9 @@ the outcome and the actual-versus-expected text, so a failure reads as a diff. T
   it is what MPS' `TestInfo` does for the project root. A reference to the model root would be stronger, but a
   reference slot needs a concept key and a root concept is the language's own - the common base concept this
   framework deliberately does not have. Take the path now; revisit in slice T4, or once a language can declare
-  a concept that *every* root conforms to (neither the interface plan nor anything else adds one today).
+  a concept that *every* root conforms to (neither the interface plan nor anything else adds one today). A third
+  answer arrives with [smodel.md](smodel.md): a pointer or a query is what MPS uses to name a node in a test,
+  and it would let an assertion name *any* node instead of a whole document.
 - **What a snapshot compares.** Exact text is honest and brittle in one way: a change of measure or width
   rewrites every expectation. Renderer output is the thing being pinned, so exact text is right - but the
   report must show the diff rather than "not equal", or a width change reads as fifty failures.

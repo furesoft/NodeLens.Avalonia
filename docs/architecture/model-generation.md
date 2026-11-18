@@ -305,6 +305,11 @@ code), generating a whole project into a tree of models, incremental generation,
 generated model in a tab, and importing text back. Each is a question with a consumer, and the
 slices above are useful without any of them.
 
+**A rule's condition** is the one exclusion with a plan rather than a question: `ReductionRegistry`
+answers one rule per source concept, so a mapping that applies only to some of a concept's nodes
+cannot be written. The language such a condition is written in is [smodel.md](smodel.md), whose
+operations are exactly the questions a condition asks.
+
 ## Open questions
 
 The choices this plan leaves to a later decision are recorded as questions 85-91 in
