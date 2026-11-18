@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A worked example, not a product: the same shape as Projectional.Samples - a language package that references
+    the shared expression language and the language layer, and nothing above them.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+  </ItemGroup>
+
+</Project>
