@@ -27,12 +27,15 @@ What is next, in order:
 1. **The rest of the catalogue as menu rows.** `INT010`/`INT011` list what `Enter` and completion already do, so
    they cost a menu entry rather than an action, and the language-side entries from `INT040` on arrive with the
    languages that need them.
-2. **The fifteen remaining standard checks.** `Projectional.Checks` ships the first four (`STD001`, `STD003`,
-   `STD010`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **What is left of M4's semantics**: the cross-check tests that make generated code and
-   the interpreter agree on the corpus. The constraint engine, the type model, the declared type-rule language,
-   the interpreter and text generation (with the declared generator language) are in
-   [implemented.md](implemented.md).
+2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
+   `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
+3. **The M4 gate's second front end**: a host application that embeds the control, opens a document, shows its
+   findings, runs it and generates text - nothing in this repository does that, so the claim that the two front
+   ends share the behaviour is untested. A probe proved the semantics are reachable (a project referencing only
+   `Projectional.Avalonia` and `Projectional.Samples` ran a document and generated text), so the gap is not
+   CLR visibility; it is that the wiring a shell needs - `DocumentRun`, `DocumentGenerate`, `RunReport`,
+   `RunRow`, `RunInputs` - sits in the app, so every host would reinvent it. Moving it beside the control and
+   proving it with a sample is the slice.
 4. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
@@ -71,7 +74,6 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
 | Text generation | the template tree, the engine with its traceability map, two generators for the sample language and the declared generator language (a `generator` folder, one generator per document) are in [implemented.md](implemented.md); what is left is the generator for a second consumer (the C# base language, M6), whose target needs the model-producing stage ([model-generation.md](architecture/model-generation.md)) |
 | Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, the pilot's decision-list rules, and the shell's Run command with its output panel are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
-| Cross-check tests | generated code and interpreter agree on the corpus |
 | Worked examples | three sample language packages, one per axis, each with a `…Checks` package, a `Corpus/` that round-trips byte-identically and snapshot tests that pin the notation: a state machine (references, two notations), a feature model (constraints over references, a generator, an interpreter) and a SQL schema (cross-model references, the table cell in earnest) ([worked-examples.md](architecture/worked-examples.md)) |
 
 **Gate:** a user writes a decision table, sees errors immediately, runs it in the

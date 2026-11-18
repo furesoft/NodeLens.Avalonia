@@ -145,9 +145,15 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | Running a document: its language's interpreter, the answer or the failure as a headline, and the trace as rows that jump to their node | `DocumentRun`, `RunReport`, `RunRow`, `MainWindow.RunActiveDocument` | `DocumentRunTests` |
 | A document runs only when its language defines an interpreter, derived from its root concept rather than from the command that opened it | `WorkbenchLanguage.InterpreterFor`, `DocumentTab.Evaluation` | `WorkbenchLanguageTests`, `DocumentTabTests` |
 | The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | shown in a real window by `tools/Projectional.Screenshots` (`feature-run-output.png`: 5 steps for `amount=1500`) |
+| The cross-check: for one input, the decision the interpreter reaches, the reason the generated JSON records, and the rule a separately assembled expression evaluator finds are the same | `Projectional.Samples` (`RulesEvaluation`, `RulesTextGenerators.Json`) | `SampleCrossCheckTests` (three rules, four inputs, so each input stops at a different rule) |
 
-Not done in M4: text generation and the cross-check tests that make generated code and the interpreter agree
-on the corpus.
+Not done in M4: the gate's second front end - a host application that embeds the control, shows a document's
+findings, runs it and generates text - because nothing in this repository proves it, and because the wiring a
+shell needs (`DocumentRun`, `DocumentGenerate`, `RunReport`, `RunRow`, `RunInputs`) lives in the app rather than
+beside the control, where a host would find it; stepping (open question 11); and the dependency-set
+incrementality that lets the constraint engine produce diagnostics in volume. The semantics themselves are
+reachable: a probe project referencing only `Projectional.Avalonia` and `Projectional.Samples` ran a document
+(`Accept (5 step(s))`) and generated its C#.
 
 ## M5 - Self-hosting (started)
 
@@ -179,7 +185,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1942 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1947 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 
