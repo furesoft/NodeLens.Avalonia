@@ -148,7 +148,6 @@ classes keep their names (`StructureLanguage`, `StructureLowering`, `StructureCo
 | a block conditional, which would let a whole option line disappear | when a notation needs it |
 | toggling the flag from the header rather than from a menu | it is an [intention](context-actions.md), by design |
 | triggers, applicability and collapse slots as declared data | after P2, when an aspect model exists to hold them |
-| interfaces and the `implements` slot, with the `interface` header word | with [interfaces.md](interfaces.md), M5 |
 | constraints, types, generators as declared data | M6 |
 | loading a definition from a project folder | P3, with the aspect models it needs |
 

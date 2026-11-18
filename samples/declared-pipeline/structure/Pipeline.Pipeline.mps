@@ -5,6 +5,7 @@
       <properties>
         <key>Pipeline.Pipeline</key>
         <isAbstract>false</isAbstract>
+        <isInterface>false</isInterface>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>A named sequence of stages.</description>
         <nameSlot>name</nameSlot>

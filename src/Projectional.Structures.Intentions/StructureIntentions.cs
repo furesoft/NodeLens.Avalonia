@@ -32,6 +32,12 @@ public sealed class StructureIntentions : IIntentionProvider
     /// <summary>The stable id of "make concrete".</summary>
     public const string MakeConcreteId = "structures.make-concrete";
 
+    /// <summary>The stable id of "make interface".</summary>
+    public const string MakeInterfaceId = "structures.make-interface";
+
+    /// <summary>The stable id of "make concept".</summary>
+    public const string MakeConceptId = "structures.make-concept";
+
     private static readonly Intention Abstract = new(
         MakeAbstractId,
         "Make abstract",
@@ -43,6 +49,18 @@ public sealed class StructureIntentions : IIntentionProvider
         "Make concrete",
         "Makes the concept concrete, so nodes can be created from it again and its notation no longer says \"abstract\".",
         context => Action(context, "false"));
+
+    private static readonly Intention Interface = new(
+        MakeInterfaceId,
+        "Make interface",
+        "Makes the concept an interface: abstract by definition, and the source of the properties its implementers inherit.",
+        context => InterfaceAction(context, isInterface: true));
+
+    private static readonly Intention Concept = new(
+        MakeConceptId,
+        "Make concept",
+        "Makes an interface an ordinary abstract concept again, so the concepts below it stop inheriting its members.",
+        context => InterfaceAction(context, isInterface: false));
 
     /// <summary>The provider a host registers with <c>session.AddIntentions(..., IntentionSource.Language)</c>.</summary>
     public static StructureIntentions Provider { get; } = new();
@@ -57,8 +75,49 @@ public sealed class StructureIntentions : IIntentionProvider
         [
             Abstract.With(AvailabilityOf(context, makingAbstract: true)),
             Concrete.With(AvailabilityOf(context, makingAbstract: false)),
+            Interface.With(InterfaceAvailabilityOf(context, becomingInterface: true)),
+            Concept.With(InterfaceAvailabilityOf(context, becomingInterface: false)),
         ];
     }
+
+    /// <summary>
+    /// Whether the caret's concept can become an interface (or stop being one).
+    /// </summary>
+    /// <remarks>
+    /// A concept becomes an interface and abstract in one step, because the registry refuses an interface that is
+    /// concrete - an entry that produced a definition the language then refuses would be a broken repair. The other
+    /// direction makes it an ordinary concrete concept, which is what a user means by undoing the interface.
+    /// </remarks>
+    private static IntentionAvailability InterfaceAvailabilityOf(IntentionContext context, bool becomingInterface)
+    {
+        if (context.Node is not { } node || node.Concept.Key != StructureConceptKeys.Concept)
+        {
+            return IntentionAvailability.Absent;
+        }
+
+        if (IsInterface(node) == becomingInterface)
+        {
+            return IntentionAvailability.Absent;
+        }
+
+        return becomingInterface && node.GetChildren(StructureLanguage.ChildrenSlot).Count > 0
+            ? IntentionAvailability.Disabled(
+                "An interface contributes properties and references only, so this concept's child slots would have to go first.")
+            : IntentionAvailability.Applies;
+    }
+
+    private static bool IsInterface(Node node) =>
+        bool.TryParse(node.GetOrNull(StructureLanguage.IsInterfaceProperty), out var value) && value;
+
+    private static EditProgram? InterfaceAction(IntentionContext context, bool isInterface) =>
+        context.Node is { } node
+            ? EditProgram.Of(
+                new SetNodePropertyAction(node.Id, StructureLanguage.IsInterfaceProperty, isInterface ? "true" : "false"),
+
+                // An interface is abstract by definition, and an ordinary concept is not: leaving the flag as it
+                // was would make one of the two directions produce a definition the registry refuses.
+                new SetNodePropertyAction(node.Id, StructureLanguage.IsAbstractProperty, isInterface ? "true" : "false"))
+            : null;
 
     /// <summary>
     /// Whether the caret's concept can be made abstract (or concrete) by this intention.
@@ -72,6 +131,14 @@ public sealed class StructureIntentions : IIntentionProvider
     private static IntentionAvailability AvailabilityOf(IntentionContext context, bool makingAbstract)
     {
         if (context.Node is not { } node || node.Concept.Key != StructureConceptKeys.Concept)
+        {
+            return IntentionAvailability.Absent;
+        }
+
+        // An interface is abstract because of what it is, not because of the flag alone, so neither direction is
+        // this entry's business: "make concrete" would produce a definition the registry refuses, and "make
+        // abstract" would say something the interface already means.
+        if (IsInterface(node))
         {
             return IntentionAvailability.Absent;
         }

@@ -40,9 +40,18 @@ public static class StructureNotations
         // `abstract concept Rule` rather than an option, which is how MPS writes it and how the word is read: as
         // part of what the concept is, not as one of its settings. The word exists in the notation always and in
         // the drawing only while the flag is true - a false one draws nothing at all, not an empty cell.
+        //
+        // `interface` replaces `abstract` instead of joining it, and the nested conditional is what says so: a
+        // conditional holds inline cells, and a conditional is an inline cell, so "abstract unless interface" is
+        // two of them. Drawing both would say the same thing twice, because an interface is abstract by
+        // definition.
         notations.Add(StructureConceptKeys.Concept, ed => ed.Sequence(
             ed.Line(
-                ed.Conditional(StructureLanguage.IsAbstractProperty, "true", ed.Keyword("abstract"), ed.Space),
+                ed.Conditional(StructureLanguage.IsInterfaceProperty, "true", ed.Keyword("interface"), ed.Space),
+                ed.Conditional(
+                    StructureLanguage.IsInterfaceProperty,
+                    "false",
+                    ed.Conditional(StructureLanguage.IsAbstractProperty, "true", ed.Keyword("abstract"), ed.Space)),
                 ed.Keyword("concept"),
                 ed.Space,
                 ed.Property(StructureLanguage.KeySlot)),
@@ -53,6 +62,8 @@ public static class StructureNotations
                 ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
                 ed.Line(ed.Keyword("extends:")),
                 ed.Indent(ed.Children(StructureLanguage.SuperTypeSlot, NoEntries)),
+                ed.Line(ed.Keyword("implements:")),
+                ed.Indent(ed.Children(StructureLanguage.ImplementsSlot, NoEntries)),
                 ed.Line(ed.Keyword("properties:")),
                 ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoEntries)),
                 ed.Line(ed.Keyword("children:")),

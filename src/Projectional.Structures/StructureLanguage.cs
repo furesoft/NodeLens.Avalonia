@@ -25,6 +25,9 @@ public static class StructureLanguage
     /// <summary>What a concept declares: the super types it extends.</summary>
     public const string SuperTypeSlot = "supertypes";
 
+    /// <summary>What a concept declares: the interfaces it implements.</summary>
+    public const string ImplementsSlot = "implements";
+
     /// <summary>The slots holding one primitive value.</summary>
     public const string PropertiesSlot = "properties";
 
@@ -44,6 +47,17 @@ public static class StructureLanguage
     /// why the property holds a truth value and not the text.
     /// </remarks>
     public const string IsAbstractProperty = "isAbstract";
+
+    /// <summary>
+    /// Whether a concept is an interface.
+    /// </summary>
+    /// <remarks>
+    /// A second flag rather than a value of <see cref="IsAbstractProperty"/>, because an interface <em>is</em>
+    /// abstract - the two are joined by an implication, not by an enumeration - and because `isAbstract` is already
+    /// a persisted property of every definition document. The lowering refuses a concept that is concrete and an
+    /// interface at once, which is the combination nothing could mean.
+    /// </remarks>
+    public const string IsInterfaceProperty = "isInterface";
 
     /// <summary>The concepts of the structure language itself.</summary>
     /// <remarks>
@@ -68,6 +82,12 @@ public static class StructureLanguage
                     "Whether the concept can only be extended: an abstract concept is never a node.",
                     showDescriptionWhenFilled: true),
                 new PropertySlot(
+                    IsInterfaceProperty,
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether this concept is an interface: abstract by definition, and a source of members.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
                     "isOfferedInCompletion",
                     PropertyType.Boolean,
                     "true",
@@ -89,6 +109,10 @@ public static class StructureLanguage
                     description: "The name of the boolean property that says whether a node may be folded.",
                     showDescriptionWhenFilled: true),
                 new ChildSlot(SuperTypeSlot, StructureConceptKeys.SuperType, Cardinality.Many),
+
+                // Two slots rather than one with a kind flag: the header writes two words, and a kind stored on
+                // the reference would be a third spelling of the same fact.
+                new ChildSlot(ImplementsSlot, StructureConceptKeys.SuperType, Cardinality.Many),
 
                 // Three collections rather than one `slots`: it is how MPS writes a structure model, it makes the
                 // three sections of the notation a fact about the model instead of a grouping the renderer invents,
