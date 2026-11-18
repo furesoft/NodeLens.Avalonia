@@ -23,6 +23,12 @@ the two languages behaved differently.
 finding makes is about *where* it is - so the harness records the target's index in document order. The message is
 not compared at all: two languages may word the same defect differently, and what must match is what was found.
 
+**The constraint language executes the same rule against the catalogue.** `ConstraintLoweringTests` writes the rules
+`Projectional.Checks` implements - `STD001`, `STD003` and `STD010` - as models, lowers them with the shipping code
+and demands the same findings, compared by place for the same reason the harness does it: a rule the catalogue can
+state and a declaration cannot is a parity defect, not a missing row in the table above
+([semantics.md](semantics.md#language-of-constraints)).
+
 ## What the harness needed
 
 `ParityHarness` (test-side) is three text-producing methods. Producing *text* rather than booleans is deliberate:
