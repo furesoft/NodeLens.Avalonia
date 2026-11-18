@@ -89,6 +89,10 @@ concept declares methods that belong to it, the generator emits them into
 when it needs something the model cannot express. That is what makes attributes, `unsafe` or a
 hand-tuned method possible without adding a concept for each.
 
+The part of the behaviour aspect that needs **no** code is planned separately and comes first:
+a node's `Name` and `Describe` as pure functions declared as data ([behaviours.md](behaviours.md)).
+What is left here is the part that genuinely needs a language: a method with statements in it.
+
 The difference from M4's `Evaluate` delegate is worth stating because they look alike:
 `Evaluate` is **one function per concept** that the framework calls during interpretation;
 behaviour methods are **a set of named methods** that the generated source calls. A DSL that
