@@ -283,3 +283,13 @@ node makes impossible to violate.
 6. Every stored property value parses against its declared type.
 7. A node only stands where its concept's `Applicability` allows - a concept may name the places it may
    appear in, and a placement anywhere else is refused ([language.md](language.md#applicability)).
+
+**A reference may cross a model boundary, but not a project one.** Two documents of one project share
+the node index, so a link between them resolves; the scope provider already walks up to the project to
+answer what a name may mean, and a reference that refused those nodes would make the completion list
+offer what the model rejects. The SQL schema example
+([worked-examples.md](worked-examples.md#3-sql-schema---projectionalsamplessqlschema)) is what found
+this: the code compared the *model* of the target and refused every cross-document key, while
+invariant 5's clearing already walked `Project.Nodes` and the section above calls a move between models
+a case `resolveInfo` has to absorb. A target of another project is still refused, because the ids in
+two projects are unrelated.
