@@ -26,7 +26,7 @@ Status values: **Open** (undecided), **Leaning** (recommendation exists, not com
 | 14 | Model-aware 3-way merge: in the editor, in a CLI tool, or both? | Open | CLI first (usable in hooks), UI later. | M6 |
 | 15 | Is AOT/trimming a supported scenario or best-effort? | Open | Best-effort until M7; the reflection-free design keeps the door open. | M7 |
 | 16 | Localisation of the framework UI (menus, diagnostics)? | Leaning | English-only UI, but diagnostic messages are keys that a host can localise. | M5 |
-| 17 | Do languages ship with example models as tests? | Leaning | Yes — a language package without a golden corpus is untestable and will regress. | M6 |
+| 17 | Do languages ship with example models as tests? | Leaning | Yes — a language package without a golden corpus is untestable and will regress. The three worked examples execute that rule for the framework's own demonstrators: each ships a `Corpus/` that round-trips byte-identically ([worked-examples.md](architecture/worked-examples.md)). | M6 |
 | 18 | Bidirectional text and CJK input: required for 1.0? | Open | CJK/IME yes (M7), bidi no. | M7 |
 
 ## Standalone editor

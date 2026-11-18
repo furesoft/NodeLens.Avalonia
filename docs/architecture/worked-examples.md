@@ -1,0 +1,121 @@
+# Worked examples: three languages that prove the axes
+
+Status: **planned** (M4, after what is left of its semantics). Nothing of this exists in the tree yet;
+`Projectional.Samples` is still the only worked example, and this document is the plan of record for the
+three that follow it.
+
+## Why
+
+The framework ships exactly one worked example - the toy rules language in `Projectional.Samples` - and it
+exists to prove that *composing* a language out of a shared sub-language is a handful of declarations. It is
+deliberately not a package, and it exercises one axis: children, one enum property, and a table variant.
+
+That leaves the framework without a demonstrator for the axes it actually bets on: references, constraints,
+a generator, an interpreter, and a concept rendered two ways in anger. Open question 17 already says a
+language package without a golden corpus is untestable and will regress
+([open-questions.md](../open-questions.md)); the same is true of a *sample*, and a sample that lives only in
+code, with no corpus and no test, is documentation that rots.
+
+## What
+
+Three new language packages under `src/`, one per DSL, each proving a different axis, each shipped the way a
+real language ships:
+
+| Artefact | What it is |
+| --- | --- |
+| the language | concepts and notation, following the `Projectional.Samples` shape (a language package references only `Language` or the toolkit) |
+| `…Checks` beside it | `Projectional.Samples.Checks` is the template: a `CheckSet` over `Projectional.Checks`' `ICheck` |
+| `Corpus/` | `.mps` documents that must load and save byte-identically, which is invariant 7 and the same rule the persistence corpus follows ([testing.md](testing.md#the-round-trip-corpus)) |
+| snapshot tests | the notation pinned as text, so a projection change that breaks a sample fails an ordinary test ([testing.md](testing.md#the-snapshot-harness)) |
+
+One DSL per axis, chosen so the three do not overlap:
+
+| Package | Axis it proves | Needs |
+| --- | --- | --- |
+| `Projectional.Samples.StateMachine` | references, one concept in two notations, constraints (unreachable state), interpreter trace | M3 references, M4 checks and interpreter - all delivered |
+| `Projectional.Samples.FeatureModel` | constraints (`requires`/`excludes`), a generator to a config file, an interpreter over the selection | M4 |
+| `Projectional.Samples.SqlSchema` | cross-model references, the table cell in earnest, a generator to DDL | M3, M4 |
+
+They are examples, not products: none of them may grow a capability the framework does not have, and none
+gets an app-private feature (composition rule 5 in [standalone.md](standalone.md)).
+
+### Non-goals
+
+- **No new framework features.** If a sample needs something the framework cannot express, the sample is
+  wrong, not the framework - except where this document names the gap explicitly.
+- **No graphical notation.** A state machine is drawn as text and as a table, not as a diagram; diagrams are
+  out of scope before 1.0.
+- **Not three pilot languages.** The M4 pilot stays rule and decision tables. These are additional
+  demonstrators and must not compete with it for the gate.
+
+## 1. State machine - `Projectional.Samples.StateMachine`
+
+A machine with states and transitions. A transition *references* its source and its target, and carries an
+optional guard written in the shared `Expressions` sub-language.
+
+| Concept | Slots |
+| --- | --- |
+| `Sm.Machine` | `name`, `states`, `transitions`, `initial` (reference to a state) |
+| `Sm.State` | `name`, `isFinal` |
+| `Sm.Transition` | `source` and `target` references, `event`, `guard` (a child of `Expressions.Expression`) |
+
+`Sm.Machine` has **two notations**, chosen at projection time and never persisted
+([ADR 0012](../adr/0012-concept-rendered-more-than-one-way.md)): the block form, and a `Table` over
+`transitions`. `isFinal` is drawn with a `Conditional` cell, so the word `final` appears only when it is true -
+which is the conditional cell earning its place in a real language rather than in a test.
+
+The checks package ships one rule the framework's catalogue cannot state: **an unreachable state** - a state
+no transition starts in and that is not the initial one. The interpreter evaluates a machine against a start
+state and answers the trace, so the output panel demonstrates what the trace rows are for.
+
+## 2. Feature model - `Projectional.Samples.FeatureModel`
+
+A tree of features with `requires` and `excludes` references, a selection, and a generator that writes the
+configuration out.
+
+The axis is **constraints that read references**: a selected feature whose `requires` target is not selected,
+and one whose `excludes` target is. The interpreter evaluates a selection against those rules, which is the
+first consumer of the value model that is not a decision table. The generator emits a flat `key=value`
+configuration, so "a language has as many generators as it declares" gets a second, smaller target beside the
+pilot's JSON and C# fragment.
+
+## 3. SQL schema - `Projectional.Samples.SqlSchema`
+
+Tables with columns, and foreign keys that point at a column in **another model** of the same project.
+
+The axes are the two the pilot never touches in earnest: **references across models** (a project holds
+several models, and the default scope chain walks up to the project level - that is what "cross-model" means
+here, not an import list), and the **table cell** drawing a schema rather than a rule table. The generator
+emits DDL: `create table` per model, then the foreign keys, because a key cannot be written before its
+target exists - the same ordering argument model generation makes for its build and link phase.
+
+## What the three have to prove
+
+1. **The corpus round-trips byte-identically.** Each `Corpus/` document loads and saves back to the same
+   bytes, in the ordinary test run - not in a separate harness ([ADR 0005](../adr/0005-xml-persistence.md)).
+2. **The notation is pinned.** Each DSL has a snapshot test over its corpus document, so a projection change
+   that moves a cell fails a test that names the language (the rule in [testing.md](testing.md)).
+3. **The checks find their finding.** Each checks package reports its own finding on a corpus document that
+   demonstrates it, and stays quiet on the clean one - the shape `StandardChecksTests` uses.
+4. **The generator and the interpreter answer.** The generated text and the run's trace are compared as text
+   against a golden expectation, because that is what a consumer sees.
+5. **Three axes, three packages, no framework change.** If any sample cannot be written with the published
+   surface, that is the finding, and it goes to the roadmap as a gap rather than into the sample as a
+   workaround.
+
+## Sequencing
+
+One branch and one package at a time, in the order above: the state machine first (it needs nothing that is
+not delivered), then the feature model (constraints plus a generator), then the SQL schema (the table cell and
+cross-model references). Each lands as its own commits - language, checks, corpus, tests - and each moves its
+own row into [implemented.md](../implemented.md) when it is finished.
+
+## What is still undecided
+
+- Whether the packages ship as NuGet packages or only as repository sources. `IsPackable` is off for every
+  project today, and packaging a sample is a question packaging answers (M6/M7).
+- Whether the SQL DDL generator is written in C# or declared in a `generator` folder. The second is the
+  better demonstrator - it would be the first sample whose generator is data - but it costs the declared
+  generator language a feature if the DDL needs an ordering the templates cannot state.
+- Whether the state machine's second notation is a `table` variant of the same notation or a second notation
+  registration. ADR 0012 supports both; the sample should choose whichever reads better in the variant menu.
