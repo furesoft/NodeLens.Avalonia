@@ -29,13 +29,10 @@ What is next, in order:
    languages that need them.
 2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
    `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **The M4 gate's second front end**: a host application that embeds the control, opens a document, shows its
-   findings, runs it and generates text - nothing in this repository does that, so the claim that the two front
-   ends share the behaviour is untested. A probe proved the semantics are reachable (a project referencing only
-   `Projectional.Avalonia` and `Projectional.Samples` ran a document and generated text), so the gap is not
-   CLR visibility; it is that the wiring a shell needs - `DocumentRun`, `DocumentGenerate`, `RunReport`,
-   `RunRow`, `RunInputs` - sits in the app, so every host would reinvent it. Moving it beside the control and
-   proving it with a sample is the slice.
+3. **The M4 gate's second front end**: a sample host application that embeds the control and uses the three entry
+   points that now sit beside it (`DocumentRun`, `DocumentGenerate`, `DocumentFindings`), proving the two front
+   ends share the behaviour. Nothing in this repository does that yet, so the claim is untested - and the sample
+   is also what keeps the host-facing surface honest: whatever the app can do and the sample cannot is a gap.
 4. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that
    implement it, so a language stops writing `name` and a designated name slot by hand - and so a slot can be
    declared over "anything with a name". It is the first slice of M5's structure language, because

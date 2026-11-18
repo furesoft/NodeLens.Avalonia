@@ -60,6 +60,26 @@ generator. Hosts that need to *create* model content programmatically should do 
 through a language-provided command, not by mutating nodes — otherwise they anchor on
 internals that change between minor versions.
 
+### Running, generating and checking a document
+
+Three things a shell does that are not the control's job, and that a host would otherwise
+have to reinvent in its own private copy of the same ten lines. They live in
+`Projectional.Avalonia` beside the control, take a `Node` (the root the session shows) and a
+value the language supplies, and answer a value the host shows - no window, no panel:
+
+| Entry point | Answers |
+| --- | --- |
+| `DocumentRun.Of(document, rules, inputs)` | the answer or the failure in one headline, and the trace as rows that name the node each line came from |
+| `DocumentGenerate.Generate(document, generator)` and `.Report(...)` | the text, and the same row shape one line at a time, so a click on a generated line can jump to what wrote it |
+| `DocumentFindings.Of(model, fixes, constraints, types, scopes)` | one `FindingSet` - the findings, the marks the control draws, and the repairs a quick-fix list offers |
+
+`RunInputs.TryParse` is the fourth: the `name=value` line the shell offers, so a host that shows
+a run panel reads the user's line the way this one does instead of inventing a second syntax.
+
+The rule behind them is the one the standalone app already follows: **the app may only use what a
+host can use.** Where a shell concern lived in the app's namespace and a host needed it, the
+concern moved here rather than being copied.
+
 ## Hosting modes
 
 | Mode | Description | Requirements |

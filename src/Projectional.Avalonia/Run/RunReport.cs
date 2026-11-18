@@ -1,4 +1,4 @@
-namespace Projectional.Workbench;
+namespace Projectional.Avalonia;
 
 /// <summary>What one run of a document produced, as rows the output panel shows.</summary>
 /// <param name="Succeeded">Whether the run answered a value.</param>
@@ -9,4 +9,4 @@ namespace Projectional.Workbench;
 /// findings follow. It carries no model and no interpreter: running again is the caller's decision, and a report that
 /// could re-run itself would make the panel a second interpreter.
 /// </remarks>
-internal sealed record RunReport(bool Succeeded, string Headline, IReadOnlyList<RunRow> Rows);
+public sealed record RunReport(bool Succeeded, string Headline, IReadOnlyList<RunRow> Rows);
