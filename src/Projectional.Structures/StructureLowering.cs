@@ -107,6 +107,16 @@ public static class StructureLowering
     private static ConceptDeclaration LowerConcept(Node concept, Dictionary<string, IReadOnlyList<string>> enums)
     {
         var key = Required(concept, StructureLanguage.KeySlot, "concept");
+        var isAbstract = Flag(concept, StructureLanguage.IsAbstractProperty);
+        var isInterface = Flag(concept, StructureLanguage.IsInterfaceProperty);
+
+        if (isInterface && !isAbstract)
+        {
+            // The registry refuses this too, but a definition that says both is a mistake in the document the
+            // author is looking at, so it is reported where it was written.
+            throw new ConceptDefinitionException(
+                $"Concept '{key}' is an interface but not abstract; an interface is abstract by definition.");
+        }
 
         // The key's own rules are `ConceptDeclaration`'s business; a malformed one is turned into the same
         // `ConceptDefinitionException` as everything else here, so a definition that is wrong reads as one error.
@@ -122,10 +132,13 @@ public static class StructureLowering
             concept.GetChildren(StructureLanguage.SuperTypeSlot)
                 .Select(super => Required(super, "conceptKey", $"'{key}'")),
             nameSlot: Optional(concept, "nameSlot"),
-            isAbstract: Flag(concept, StructureLanguage.IsAbstractProperty),
+            isAbstract: isAbstract,
             isOfferedInCompletion: Flag(concept, "isOfferedInCompletion"),
             description: Optional(concept, "description"),
-            collapseSlot: Optional(concept, "collapseSlot"));
+            collapseSlot: Optional(concept, "collapseSlot"),
+            isInterface: isInterface,
+            interfaces: concept.GetChildren(StructureLanguage.ImplementsSlot)
+                .Select(implemented => Required(implemented, "conceptKey", $"'{key}'")));
     }
 
     private static SlotDeclaration LowerSlot(string owner, Node slot, Dictionary<string, IReadOnlyList<string>> enums)

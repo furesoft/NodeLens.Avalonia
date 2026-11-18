@@ -1,8 +1,9 @@
 # Interfaces: the framework's structural vocabulary
 
-Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Slice **I1 is delivered**: the concept kind,
-the member merge, the validation table, `Framework.Named` in every registry and `Node.IsNamed`. The rest of this
-document - the declared path (I2), adoption (I3) and the records (I4) - is not.
+Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Slices **I1 and I2 are delivered**: the
+concept kind, the member merge, the validation table, `Framework.Named` in every registry, `Node.IsNamed`, and the
+declared path (`implements`, the `interface` header word, the lowering, `implements:` in the notation and
+`interfaces=` in the parity dump). What is left is adoption by the shipped languages (I3) and the records (I4).
 
 ## The problem
 

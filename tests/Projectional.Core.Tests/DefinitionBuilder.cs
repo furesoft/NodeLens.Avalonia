@@ -45,12 +45,15 @@ internal sealed class DefinitionBuilder
         bool isAbstract = false,
         string? nameSlot = null,
         string? description = null,
-        string? collapseSlot = null)
+        string? collapseSlot = null,
+        bool isInterface = false,
+        IReadOnlyList<string>? implements = null)
     {
         var concept = Start(StructureConceptKeys.Concept);
 
         concept.Set(StructureLanguage.KeySlot, key);
         concept.Set(StructureLanguage.IsAbstractProperty, isAbstract ? "true" : "false");
+        concept.Set(StructureLanguage.IsInterfaceProperty, isInterface ? "true" : "false");
 
         if (nameSlot is not null)
         {
@@ -71,6 +74,12 @@ internal sealed class DefinitionBuilder
         {
             concept.Model.NewChild(concept, StructureLanguage.SuperTypeSlot, StructureConceptKeys.SuperType)
                 .Set("conceptKey", super);
+        }
+
+        foreach (var implemented in implements ?? [])
+        {
+            concept.Model.NewChild(concept, StructureLanguage.ImplementsSlot, StructureConceptKeys.SuperType)
+                .Set("conceptKey", implemented);
         }
 
         foreach (var slot in slots ?? [])

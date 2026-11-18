@@ -35,12 +35,15 @@ internal static class ParityHarness
         foreach (var concept in registry.Concepts)
         {
             text.Append(concept.Key)
+                .Append(concept.IsInterface ? " interface" : string.Empty)
                 .Append(concept.IsAbstract ? " abstract" : string.Empty)
                 .Append(concept.IsOfferedInCompletion ? string.Empty : " hidden")
                 .Append(" name=").Append(concept.NameSlot?.Name ?? "-")
                 .Append(" collapse=").Append(concept.CollapseSlot?.Name ?? "-")
                 .Append(" description=").Append(concept.Description ?? "-")
                 .Append(" supers=").AppendJoin('>', concept.SuperConcepts.Select(super => super.Key))
+                .Append(" extends=").AppendJoin('>', concept.Extensions.Select(super => super.Key))
+                .Append(" interfaces=").AppendJoin('>', concept.Interfaces.Select(implemented => implemented.Key))
                 .AppendLine();
 
             foreach (var slot in concept.Slots)

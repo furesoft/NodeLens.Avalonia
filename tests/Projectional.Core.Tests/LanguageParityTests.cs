@@ -52,6 +52,35 @@ public sealed class LanguageParityTests
     }
 
     [Fact]
+    public void TheDumpReportsWhatAConceptImplements()
+    {
+        // Two languages that differ only in what they implement would otherwise compare equal, which is the
+        // failure this field exists to prevent.
+        var plain = ParityHarness.Dump(ConceptRegistry.Create(
+            [new ConceptDeclaration("Rules.Rule", [new PropertySlot("name", PropertyType.String)], nameSlot: "name")]));
+
+        var implementing = ParityHarness.Dump(ConceptRegistry.Create(
+            [
+                new ConceptDeclaration(
+                    "Rules.Rule",
+                    [new PropertySlot("name", PropertyType.String)],
+                    nameSlot: "name",
+                    interfaces: [FrameworkInterfaces.Named]),
+            ]));
+
+        // An empty list renders as an empty field, which is the convention the other list fields follow.
+        Assert.Contains(
+            "interfaces=Framework.Named",
+            implementing.Split('\n').Single(line => line.StartsWith("Rules.Rule", StringComparison.Ordinal)),
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Framework.Named",
+            plain.Split('\n').Single(line => line.StartsWith("Rules.Rule", StringComparison.Ordinal)),
+            StringComparison.Ordinal);
+        Assert.NotEqual(plain, implementing);
+    }
+
+    [Fact]
     public void TheDumpReportsAMinimumThatDiffers()
     {
         // The range is part of the language a reviewer reads: a `1..n` list and a `0..n` list are two different

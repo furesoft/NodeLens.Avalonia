@@ -217,6 +217,8 @@ public sealed class StructureLoweringTests
                 "  described as:",
                 "  extends:",
                 "    << ... >>",
+                "  implements:",
+                "    << ... >>",
                 "  properties:",
                 "    name : string",
                 "      default:",
@@ -375,5 +377,71 @@ public sealed class StructureLoweringTests
 
         Assert.True(registry.TryGet("Rules.Rule", out var rule));
         Assert.Equal(["draft", "approved"], Assert.IsType<PropertySlot>(rule!.Slots[1]).Type.Symbols);
+    }
+
+    [Fact]
+    public void AConceptThatImplementsAnInterfaceLowersToIt()
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Target", isAbstract: true, isInterface: true);
+
+        definition.Concept(
+            "Rules.Rule",
+            slots: [definition.Property("name", "string")],
+            nameSlot: "name",
+            implements: ["Rules.Target"]);
+
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
+        var rule = registry.Get("Rules.Rule");
+
+        // Two walks, one relation: the interface is conformance, and it is not an extension.
+        Assert.Equal(["Rules.Target"], rule.Interfaces.Select(implemented => implemented.Key));
+        Assert.Empty(rule.Extensions);
+        Assert.Equal(["Rules.Target"], rule.SuperConcepts.Select(super => super.Key));
+        Assert.True(rule.IsKindOf("Rules.Target"));
+        Assert.True(registry.Get("Rules.Target").IsInterface);
+    }
+
+    [Fact]
+    public void AnInterfaceThatIsNotAbstractIsRefusedWhereItWasWritten()
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Target", isAbstract: false, isInterface: true);
+
+        var error = Assert.Throws<ConceptDefinitionException>(
+            () => StructureLowering.CreateRegistry(definition.Roots));
+
+        Assert.Contains("abstract by definition", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnInterfaceSaysInterfaceInsteadOfAbstract()
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Target", isAbstract: true, isInterface: true);
+        definition.Concept("Rules.Base", isAbstract: true);
+        definition.Concept("Rules.Rule");
+
+        var notations = StructureNotations.Create();
+        var target = definition.Roots[0];
+
+        Assert.StartsWith(
+            "interface concept Rules.Target",
+            LayoutSnapshot.Render(target, notations, width: 120),
+            StringComparison.Ordinal);
+
+        // An interface is abstract by definition, so the other word would say the same thing twice.
+        Assert.DoesNotContain("abstract", LayoutSnapshot.Render(target, notations, width: 120), StringComparison.Ordinal);
+        Assert.StartsWith(
+            "abstract concept Rules.Base",
+            LayoutSnapshot.Render(definition.Roots[1], notations, width: 120),
+            StringComparison.Ordinal);
+        Assert.StartsWith(
+            "concept Rules.Rule",
+            LayoutSnapshot.Render(definition.Roots[2], notations, width: 120),
+            StringComparison.Ordinal);
     }
 }

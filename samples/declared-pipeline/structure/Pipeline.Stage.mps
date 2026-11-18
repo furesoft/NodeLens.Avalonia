@@ -5,6 +5,7 @@
       <properties>
         <key>Pipeline.Stage</key>
         <isAbstract>false</isAbstract>
+        <isInterface>false</isInterface>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One step of a pipeline.</description>
         <nameSlot>name</nameSlot>

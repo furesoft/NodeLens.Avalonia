@@ -23,9 +23,8 @@ public sealed class StructureIntentionsTests
     {
         var (session, _) = Document(isAbstract: false);
 
-        var offer = Assert.Single(IntentionList.For(session));
+        var offer = ById(session, StructureIntentions.MakeAbstractId);
 
-        Assert.Equal(StructureIntentions.MakeAbstractId, offer.Id);
         Assert.Equal("Make abstract", offer.Label);
         Assert.False(string.IsNullOrWhiteSpace(offer.Description));
         Assert.True(offer.Availability.IsApplicable);
@@ -37,11 +36,27 @@ public sealed class StructureIntentionsTests
     {
         var (session, _) = Document(isAbstract: true);
 
-        Assert.Equal(StructureIntentions.MakeConcreteId, Assert.Single(IntentionList.For(session)).Id);
+        // "Make abstract" is absent rather than disabled - an entry that would change nothing is noise, and the
+        // catalogue drops it - so what is left at an abstract concept is the direction that changes something.
+        Assert.Equal(
+            [StructureIntentions.MakeConcreteId, StructureIntentions.MakeInterfaceId],
+            IntentionList.For(session).Select(offer => offer.Id));
     }
 
     [Fact]
-    public void ApplyingItRewritesTheHeaderAndIsOneUndoStep()
+    public void AnInterfaceOffersNeitherDirectionAndOffersToStopBeingOne()
+    {
+        // An interface is abstract because of what it is, so neither "make concrete" (which the registry would
+        // refuse) nor "make abstract" (which it already means) belongs in the list.
+        var (session, _) = Document(isAbstract: true, isInterface: true);
+
+        Assert.Equal(
+            [StructureIntentions.MakeConceptId],
+            IntentionList.For(session).Select(offer => offer.Id));
+    }
+
+    [Fact]
+    public void ADocumentIsRewrittenInOneUndoStep()
     {
         var (session, concept) = Document(isAbstract: false);
 
@@ -49,7 +64,7 @@ public sealed class StructureIntentionsTests
         Assert.Contains("concept Rules.Rule", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
         Assert.DoesNotContain("abstract", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
 
-        var result = session.Apply(Assert.Single(IntentionList.For(session)));
+        var result = session.Apply(ById(session, StructureIntentions.MakeAbstractId));
 
         Assert.Equal(EditOutcome.Applied, result.Outcome);
         Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
@@ -65,11 +80,49 @@ public sealed class StructureIntentionsTests
     }
 
     [Fact]
+    public void MakingAConceptAnInterfaceSetsBothFlagsAndTheHeaderSaysInterface()
+    {
+        var (session, concept) = Document(isAbstract: false);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(ById(session, StructureIntentions.MakeInterfaceId)).Outcome);
+
+        // Both, in one undo step: an interface that is not abstract is the combination the registry refuses.
+        Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
+        Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
+        Assert.Contains("interface concept Rules.Rule", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
+
+        Assert.True(session.Undo());
+        Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
+        Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
+    }
+
+    [Fact]
+    public void AConceptWithAChildSlotCannotBecomeAnInterface()
+    {
+        // The registry refuses an interface with a child slot, so the entry declines instead of producing a
+        // definition the language would then reject.
+        var definition = new DefinitionBuilder();
+        var concept = definition.Concept(
+            "Rules.Rule",
+            slots: [definition.Child("body", "Rules.Body")]);
+
+        using var session = new EditorSession(concept, StructureNotations.Create());
+
+        session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
+        session.Select(Selection.At(new CellAddress(concept.Id)));
+
+        var offer = ById(session, StructureIntentions.MakeInterfaceId);
+
+        Assert.False(offer.Availability.IsApplicable);
+        Assert.Contains("child slot", offer.Availability.Reason!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheOtherDirectionWorksTheSameWay()
     {
         var (session, concept) = Document(isAbstract: true);
 
-        Assert.Equal(EditOutcome.Applied, session.Apply(Assert.Single(IntentionList.For(session))).Outcome);
+        Assert.Equal(EditOutcome.Applied, session.Apply(ById(session, StructureIntentions.MakeConcreteId)).Outcome);
         Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
         Assert.DoesNotContain("abstract", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
     }
@@ -78,20 +131,21 @@ public sealed class StructureIntentionsTests
     public void TheGestureOpensTheListEvenWithOnlyOneIntention()
     {
         // The route the user actually takes: the keystroke asks what can be done here, and the answer is a
-        // list - of one row, this time, because the gesture applies nothing by itself.
-        var (session, concept) = Document(isAbstract: false);
+        // list - of one row, this time, because the gesture applies nothing by itself. An interface is the
+        // fixture that has exactly one: it cannot become abstract or concrete, and "make interface" is absent.
+        var (session, concept) = Document(isAbstract: true, isInterface: true);
 
         Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
 
         var offered = Assert.IsType<OfferList>(session.Offered);
 
-        Assert.Equal(StructureIntentions.MakeAbstractId, Assert.Single(offered.Entries).Id);
-        Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
+        Assert.Equal(StructureIntentions.MakeConceptId, Assert.Single(offered.Entries).Id);
+        Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
 
         // Enter on the highlighted entry is what applies it.
         Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
-        Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsAbstractProperty));
+        Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
     }
 
     [Fact]
@@ -130,10 +184,18 @@ public sealed class StructureIntentionsTests
         Assert.Empty(IntentionList.For(session));
     }
 
-    private static (EditorSession Session, Node Concept) Document(bool isAbstract)
+    /// <summary>The entry with <paramref name="id"/>, which is how a list of several entries is read.</summary>
+    private static Intention ById(EditorSession session, string id) =>
+        IntentionList.For(session).Single(offer => offer.Id == id);
+
+    private static (EditorSession Session, Node Concept) Document(bool isAbstract, bool isInterface = false)
     {
         var definition = new DefinitionBuilder();
-        var concept = definition.Concept("Rules.Rule", slots: [definition.Property("name", "string")], isAbstract: isAbstract);
+        var concept = definition.Concept(
+            "Rules.Rule",
+            slots: [definition.Property("name", "string")],
+            isAbstract: isAbstract,
+            isInterface: isInterface);
 
         var session = new EditorSession(definition.Root, StructureNotations.Create());
 
