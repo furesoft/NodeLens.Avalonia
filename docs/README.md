@@ -15,40 +15,42 @@ records what was actually verified.
    three bootstrap stages.
 4. [Language authoring](architecture/language-authoring.md) — how a language is written down,
    in C# declarations or as structure and editor models in the project.
-5. [Projection](architecture/projection.md) — from model to pixels.
-6. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
-7. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
+5. [Interfaces](architecture/interfaces.md) — the framework's structural vocabulary: a
+   concept kind whose members an implementing concept inherits rather than retypes (planned; M5).
+6. [Projection](architecture/projection.md) — from model to pixels.
+7. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
+8. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
    the first slice is implemented.
-8. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
+9. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
    the first slice is implemented.
-9. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
+10. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
    at the caret (planned; after quick fixes).
-10. [Intention preview](architecture/intention-preview.md) — what an entry would do, shown on
+11. [Intention preview](architecture/intention-preview.md) — what an entry would do, shown on
     a longer hover by projecting a discarded copy.
-11. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+12. [Markers](architecture/markers.md) — wavy severity underlines under what validation
    reports (delivered).
-12. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
+13. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
     reach the user (in progress; the model, the apply step and two real checks are delivered).
-13. [Concept descriptions](architecture/concept-descriptions.md) — the sentence a language
+14. [Concept descriptions](architecture/concept-descriptions.md) — the sentence a language
     writes about a concept, shown on hover and in the completion list (planned).
-14. [Line numbers](architecture/line-numbers.md) — numbering the rows a
+15. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
-15. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
+16. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
     (delivered).
-16. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+17. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard (delivered).
-17. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-18. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-19. [Model generation](architecture/model-generation.md) — reducing a document into a model of
+18. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+19. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+20. [Model generation](architecture/model-generation.md) — reducing a document into a model of
     a target language, which that language's generator then prints (planned; M6).
-20. [Integration](architecture/integration.md) — how host applications embed this.
-21. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+21. [Integration](architecture/integration.md) — how host applications embed this.
+22. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-22. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
+23. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
     composes, locked to one language.
-23. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-24. [Roadmap](roadmap.md) — milestones and acceptance gates.
-25. [Open questions](open-questions.md) — what is deliberately still undecided.
+24. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+25. [Roadmap](roadmap.md) — milestones and acceptance gates.
+26. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.

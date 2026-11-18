@@ -36,7 +36,12 @@ What is next, in order:
    CLR visibility; it is that the wiring a shell needs - `DocumentRun`, `DocumentGenerate`, `RunReport`,
    `RunRow`, `RunInputs` - sits in the app, so every host would reinvent it. Moving it beside the control and
    proving it with a sample is the slice.
-4. **The three worked examples.** One sample language per axis the framework bets on - references and two
+4. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that
+   implement it, so a language stops writing `name` and a designated name slot by hand - and so a slot can be
+   declared over "anything with a name". It is the first slice of M5's structure language, because
+   `implements` is a word the language has to be able to write
+   ([interfaces.md](architecture/interfaces.md)).
+5. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
@@ -88,6 +93,7 @@ application and in the standalone app, proving the two front ends share the beha
 | Delivers | Details |
 | --- | --- |
 | Structure language (stage C) | `Projectional.Structures` drawn in its own notation: concepts, slots, inheritance, enumerations as an editable model ([language-authoring.md](architecture/language-authoring.md)) |
+| Interfaces and `Named` | an interface is a concept kind whose properties and references are provided to implementers; the framework ships `Framework.Named` (the name property and the designation every language used to retype), a slot may be declared over it, and the structure language grows `implements` and the `interface` header word ([interfaces.md](architecture/interfaces.md)) |
 | Editor language (stage C) | `Projectional.Editors` as cell glyphs, with notation and the table variant as an editable model |
 | Language project | one model per aspect beside a `language` root, with dependencies and extended languages; a new kind of aspect is a new language plus an annotation concept, not a framework change |
 | Language export | declared to C#, so a language prototyped in the workbench ships as a package without being retyped, behavioural aspects emitted as explicit stubs |

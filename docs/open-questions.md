@@ -240,6 +240,22 @@ its grammar in strings. What is open is how far one rule may go.
 | 90 | Is a pipeline the unit a host offers, or does the shell pair a model generator with the target's first text generator? | Leaning | The pipeline, declared by name. A menu that guessed which text generator to print with would change its output silently the moment a language added one, which is the opposite of what a generated artefact has to promise. | M6 |
 | 91 | Does a transformation ever reorder or group children - sort a list, hoist declarations? | Open | Not in the first slice: `Children` keeps document order, and a target that needs another order needs a part that says so. Sorting in a rule would be a second ordering rule beside the model's, and the first consumer (a decision table becoming a method) does not need one. | M6 |
 
+## Interfaces
+
+Planned as the first slice of M5 in [interfaces.md](architecture/interfaces.md). The shape is
+chosen - a concept kind whose members the implementer inherits, `Framework.Named` in every
+registry, metadata overridable by the implementer - and these are the parts a second consumer
+should decide rather than a plan.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 92 | Is a concept's kind one enumeration (`concrete`/`abstract`/`interface`) or two booleans with a validated implication? | Leaning | Two booleans. `isAbstract` is already a persisted property of every definition model, and an enumeration would need a new property type plus a re-saved corpus for a distinction the registry validates anyway. Revisit when a fourth kind appears. | M5, I2 |
+| 93 | May an interface declare a child slot? | Open | Not in the first slice. A child slot is shape, and merging one into an unrelated implementer makes that implementer's notation owe a cell it never asked for; a language that needs composition declares the slot on a shared abstract concept instead. Revisit with a language that wants "any node with a body". | M5, I1 |
+| 94 | Does a marker interface with no members mean anything? | Open | It is legal and means exactly what `IsKindOf` means: a slot declared over it accepts the implementers. Do not give it a second meaning such as "not persisted" - a marker is a type, not a behavioural switch. | M6 |
+| 95 | Does `Framework.Named` also promise that names are unique? | Leaning | No. The property and the designation are the interface; uniqueness depends on where a node stands (two rules of one ruleset may not share a name, two rulesets may), which is a constraint's question and not a type's. | M6 |
+| 96 | May a concept narrow an inherited member's shape - a child slot over a more specific concept, a property over an enumeration where the interface said string? | Open | No in the first slice: shape equality is what makes the merge safe and an override readable, and narrowing is covariance in a storage model that has none. A language that needs it declares the narrower slot itself and does not implement the interface. | M6 |
+| 97 | Does the framework ship a second interface (`Collapsible`), replacing the collapse-slot designation? | Open | No. The designation stays, because a concept may want its boolean named `foldable`, and question 55's per-node reason is unchanged; an interface would be a ready-made default, not a replacement. Add one only when two languages ask for the same member. | M6 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:

@@ -136,9 +136,9 @@ The vocabulary, and what each piece lowers to:
 | Written | Lowers to | MPS equivalent |
 | --- | --- | --- |
 | `concept X`, `abstract concept X` | `ConceptDeclaration(key, isAbstract)` | `concept` / `abstract concept` |
-| `interface concept X` | an abstract concept with no slots of its own - a spelling, not a second kind | `interface concept` |
-| `concept X extends Y` | the first entry of `superConcepts` | `extends` |
-| `concept X implements Y`, `Z` | the remaining entries of `superConcepts`, in written order | `implements` |
+| `interface concept X` | `ConceptDeclaration(key, isAbstract: true, isInterface: true)` - a concept kind whose members implementers inherit, not a second conformance relation ([interfaces.md](interfaces.md)) | `interface concept` |
+| `concept X extends Y` | `superConcepts`, in written order | `extends` |
+| `concept X implements Y`, `Z` | `interfaces`, in written order; the same `IsKindOf` conformance, resolved after the extensions | `implements` |
 | `<<property name : string>>` | a property slot plus its `PropertyType` | `<<property>>` |
 | `<<child steps : Step[0..n]>>` | a child slot plus its cardinality | `<<child>>` |
 | `<<reference target : Rule[0..1]>>` | a reference slot plus its cardinality | `<<reference>>` |
@@ -146,7 +146,7 @@ The vocabulary, and what each piece lowers to:
 | `<<nameSlot : name>>`, `<<collapseSlot : visible>>` | a designated slot ([language.md](language.md#the-two-designated-slots)) | none - MPS has no analogue |
 | `<<offeredInCompletion : false>>` | `isOfferedInCompletion` | `<<hideInEditor>>`-style flags |
 
-Three details are deliberate:
+Four details are deliberate:
 
 - **Slot blocks carry the type, not the notation.** A slot is storage; what it looks like is the
   editor model's business. Mixing the two is how MPS beginners produce concepts whose notation
@@ -156,6 +156,10 @@ Three details are deliberate:
   meaning the reader has to learn.
 - **Inheritance is in the header; designated slots are in the body.** The header answers "what is
   this", the body answers "what does it hold and how does the framework treat it".
+- **`implements` promises members, not a drawing.** An interface contributes the properties and references
+  an implementing concept inherits - the framework's `Framework.Named` is the name property and the name-slot
+  designation in one declaration - and it may declare no child slot, so implementing one can never make a
+  concept's notation owe a cell it never asked for ([interfaces.md](interfaces.md)).
 
 One honesty note about the brackets: `Cardinality` today has two values, `One` and `Many`, so
 `[0..1]` and `[1]` currently lower to the same thing - the minimum is written, checked against

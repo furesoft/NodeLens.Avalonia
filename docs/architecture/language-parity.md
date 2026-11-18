@@ -11,7 +11,7 @@ Status: **delivered** as slice C2 of [language-authoring.md](language-authoring.
 
 | Test | Compares | Fails when |
 | --- | --- | --- |
-| Registry dump | `ParityHarness.Dump(ConceptRegistry)` for both | a concept key, slot name, type, cardinality and its minimum, default, description, super concept, abstractness, completion flag, name slot or collapse slot differs - **or the order differs** |
+| Registry dump | `ParityHarness.Dump(ConceptRegistry)` for both | a concept key, slot name, type, cardinality and its minimum, default, description, extended or implemented super concept, abstractness, completion flag, name slot or collapse slot differs - **or the order differs** |
 | Snapshot | `LayoutSnapshot.Render` of one document through both notation registries | a declared notation draws anything differently |
 | Findings | `ParityHarness.Findings(CheckSet, Model)` over two documents built the same way | a check reports a different code, place, role, index or range |
 

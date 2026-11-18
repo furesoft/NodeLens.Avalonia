@@ -38,6 +38,14 @@ consequences follow, and the editor depends on both:
 - An abstract concept may have no notation, because nothing is ever projected through it.
   Every concrete concept needs one, either its own or an inherited one.
 
+A third kind is the **interface** (planned; [interfaces.md](interfaces.md)): a concept that is abstract by
+definition, whose properties and references the concepts implementing it inherit, and which may declare no
+child slot. It exists so that a language can *say* "this is named" once - the framework ships
+`Framework.Named`, the name property and the name-slot designation together - instead of declaring the same
+property and designation in every language that needs one. Conformance does not change: `IsKindOf` answers for
+an interface exactly as it does for an abstract concept, which is what lets a slot be declared over "anything
+with a name" without any layer learning a new relation.
+
 Independently of that, a concept declares whether it is **offered in completion**
 (`ConceptDeclaration(..., isOfferedInCompletion: false)`). The flag answers one question
 only — "should this concept appear in the list a user picks from" — and is *not* a
@@ -102,6 +110,12 @@ The rules are the same for both, and they are checked once at registration rathe
 
 Nominating a slot is model data, so it is language design, not a preference: a document cannot
 change it, and a model saved before the nomination existed loads unchanged.
+
+A nomination remains the general mechanism, and the common case will arrive ready-made: a concept that
+implements `Framework.Named` inherits the `name` property *and* the name-slot designation from the interface
+(planned; [interfaces.md](interfaces.md)). A designation is still what a language writes when its role lives in
+a property of another name - `Structure.Concept` is named by `key`, and `Test.Tag` by `label` - and the two
+compose: an own `nameSlot` overrides the inherited one, exactly as it overrides a super concept's.
 
 ## Notation
 

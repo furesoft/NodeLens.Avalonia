@@ -161,8 +161,8 @@ reachable: a probe project referencing only `Projectional.Avalonia` and `Project
 | --- | --- | --- |
 | A language definition is a model like any other: it opens, edits, saves and undoes in the same editor | `Projectional.Structures`, `Projectional.Editors`, `WorkbenchLanguage` | `StructureLoweringTests`, `EditorLoweringTests`, `WorkbenchLanguageTests` |
 
-Not done in M5: stage C (a DSL defined entirely in project files), language export, live preview,
-bootstrap, the language browser.
+Not done in M5: interfaces and the framework's `Named` ([interfaces.md](architecture/interfaces.md)), stage C
+(a DSL defined entirely in project files), language export, live preview, bootstrap, the language browser.
 
 ## M6 - Declarative aspects (started)
 
