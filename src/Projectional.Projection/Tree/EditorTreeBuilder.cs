@@ -231,10 +231,15 @@ public sealed class EditorTreeBuilder
             emptyText);
     }
 
-    private static ReferenceCell BuildReference(ReferenceNotationCell notation, Node node, TextEmphasis emphasis)
-    {
-        var slot = notation.Slot;
+    private static ReferenceCell BuildReference(ReferenceNotationCell notation, Node node, TextEmphasis emphasis) =>
+        BuildReferenceCell(node, notation.Slot, notation.UnsetText, emphasis | notation.Emphasis);
 
+    /// <summary>
+    /// Projects one reference slot, wherever it is drawn: a notation's <see cref="ReferenceNotationCell"/> or a
+    /// table column. The three states are the whole vocabulary - unset, unresolved, resolved.
+    /// </summary>
+    private static ReferenceCell BuildReferenceCell(Node node, string slot, string unsetText, TextEmphasis emphasis)
+    {
         if (node.Concept.FindReference(slot) is null)
         {
             throw new ProjectionException(
@@ -243,11 +248,10 @@ public sealed class EditorTreeBuilder
 
         var address = CellAddress.OfSlot(node.Id, slot);
         var reference = node.GetReference(slot);
-        var decoration = emphasis | notation.Emphasis;
 
         if (reference is not { } stored)
         {
-            return new ReferenceCell(address, slot, notation.UnsetText, ReferenceState.Unset, emphasis: decoration);
+            return new ReferenceCell(address, slot, unsetText, ReferenceState.Unset, emphasis: emphasis);
         }
 
         if (node.GetReferenceTarget(slot) is not { } target)
@@ -258,7 +262,7 @@ public sealed class EditorTreeBuilder
                 "<unresolved>",
                 ReferenceState.Unresolved,
                 stored.Target,
-                decoration);
+                emphasis);
         }
 
         return new ReferenceCell(
@@ -267,7 +271,7 @@ public sealed class EditorTreeBuilder
             target.Name ?? $"<{target.Concept.Key}>",
             ReferenceState.Resolved,
             target.Id,
-            decoration);
+            emphasis);
     }
 
     /// <summary>
@@ -410,7 +414,7 @@ public sealed class EditorTreeBuilder
         return new TableCell(address, slot, notation.EmptyText, headers, built, CellAddress.OfSlot(node.Id, slot));
     }
 
-    /// <summary>Projects one column of one row, which is a property or a single child of the row.</summary>
+    /// <summary>Projects one column of one row, which is a property, a single child or a reference of the row.</summary>
     private EditorCell BuildColumnCell(TableColumn column, Node row, TextEmphasis emphasis)
     {
         if (row.Concept.FindProperty(column.Slot) is not null)
@@ -430,7 +434,14 @@ public sealed class EditorTreeBuilder
             return BuildChildren(column.Slot, column.EmptyText, row, emphasis, rootAddress: null, spacing: 0);
         }
 
+        // One implementation for both paths: a reference cell answers the same three states wherever it is
+        // drawn, so a table column must not be a second reading of a reference.
+        if (row.Concept.FindReference(column.Slot) is not null)
+        {
+            return BuildReferenceCell(row, column.Slot, column.EmptyText, emphasis);
+        }
+
         throw new ProjectionException(
-            $"The table of '{row.Concept.Key}' shows column '{column.Slot}', but the concept declares neither a property nor a child of that name.");
+            $"The table of '{row.Concept.Key}' shows column '{column.Slot}', but the concept declares no property, child or reference of that name.");
     }
 }

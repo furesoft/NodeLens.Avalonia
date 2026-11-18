@@ -141,6 +141,14 @@ here, not an import list), and the **table cell** drawing a schema rather than a
 emits DDL: `create table` per model, then the foreign keys, because a key cannot be written before its
 target exists - the same ordering argument model generation makes for its build and link phase.
 
+**The one gap it was thought to need is closed.** A table column may now name a reference
+(`feat/table-reference-columns`), so a foreign key is a *column* - `parent_id  person` - rather than a
+separate constraint line under the table, which is how the feature model draws its rules and would have been
+the workaround. `TableReferenceColumnTests` pins the three things that had to be true: the same
+`ReferenceCell` a notation's reference draws, the row's own address, and the column's empty text for an unset
+target. A many-valued reference is still not drawable, which is why a schema's `columns` list of *references*
+would still need the constraint shape - the `columns` of a table are children, so this does not arise.
+
 ## What the three have to prove
 
 1. **The corpus round-trips byte-identically.** Each `Corpus/` document loads and saves back to the same

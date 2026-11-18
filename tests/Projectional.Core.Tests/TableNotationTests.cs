@@ -28,6 +28,9 @@ public sealed class TableNotationTests
                 new PropertySlot("name", PropertyType.String),
                 new ChildSlot("one", Item, Cardinality.One),
                 new ChildSlot("many", Item),
+
+                // A reference the rows may point at each other with, which is the shape a foreign key has.
+                new ReferenceSlot("link", Item),
             ]),
     ]);
 
@@ -78,7 +81,15 @@ public sealed class TableNotationTests
             "items",
             ed.Column("nope", ed.Keyword("nope")))));
 
-        Assert.Contains("neither a property nor a child", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("no property, child or reference", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AColumnOverAReferenceIsAccepted()
+    {
+        // A reference is one slot with one value, so a column shows it exactly as it shows a property - which is
+        // what a foreign key needs.
+        Assert.NotNull(Register(ed => ed.Table("items", ed.Column("link", ed.Keyword("link")))));
     }
 
     [Fact]

@@ -57,6 +57,7 @@ and [testing.md](architecture/testing.md).
 | Concept and property descriptions on hover, and a slot's sentence over its value when the slot opts in | `ConceptTip`, `PropertyTip`, `PropertySlot.ShowDescriptionWhenFilled` | `ConceptTipTests`, `PropertyTipTests` |
 | Notation variants, chosen per concept as view state | `NotationChoice`, ADR 0012 | `NotationChoiceTests`, `NotationVariantsTests`, `NotationAlternativesTests`, `NotationVariantProjectionTests` |
 | Tables as a variant | `TableNotationCell`, `TableCell` | `TableNotationTests`, `TableProjectionTests`, `SampleTableVariantTests` |
+| A table column that names a reference, so a foreign key is a column rather than a separate line: projected by the same `ReferenceCell` builder as a notation's reference cell, with the column's own empty text | `NotationRegistry.ValidateTable`, `EditorTreeBuilder.BuildColumnCell`/`BuildReferenceCell` | `TableReferenceColumnTests` |
 | Folding | `Foldable`, `FoldMarks`, `CollapsedCell` | `FoldableTests`, `FoldMarksTests`, `FoldedMarkerTests`, `CollapsedSessionTests`, `CollapsedNodeSetTests`, `CollapsedCellTests` |
 | Multi-line cells: layout, caret, editing | `Projectional.Projection`, `Projectional.Editing` | `MultiLineTextTests`, `MultiLineCaretTests`, `MultiLineEditingTests` |
 | Line numbers and font size | `ProjectionalEditorControl` | `LineNumbersTests` |
@@ -189,7 +190,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2010 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2014 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

@@ -335,7 +335,7 @@ is what makes it work on a concept that also has a textual form
 | --- | --- | --- |
 | Language | `TableColumn` | one column: the row slot it shows, its header cell, its empty text |
 | Language | `TableNotationCell` | the table: the child slot holding the rows, the ordered columns |
-| Language | `NotationRegistry.ValidateTable` | refuses a column naming no slot, a slot of another concept, or a many-valued slot |
+| Language | `NotationRegistry.ValidateTable` | refuses a column naming no slot, a slot of another concept, a name that is no property, child or reference, or a many-valued slot |
 | Projection | `TableCell` | the shape: row-major flattened content, `Headers`, `Rows`, `ColumnCount`, `IsEmpty` |
 | Projection | `AddRowCell` | the one row an empty table draws: the placeholder in the first column, blanks in the rest |
 | Projection | `EditorTreeBuilder.BuildTable` | one cell per column per row, each row cell addressed exactly as the row's own notation would address it |
@@ -352,8 +352,11 @@ The header cells belong to the *table's* notation, not to the row's, and may onl
 constants and spaces — a header that named a slot would have to be answered by whichever
 row happened to be first. That, the "no column twice", and the "at least one column" rules
 are all refused by the cell constructors, and the column's slot is checked against the row
-concept by `NotationRegistry`, so a broken table fails when the language is built. A table
-without rows still draws its header, followed by the affordance row, so the reader can see
+concept by `NotationRegistry`, so a broken table fails when the language is built. **A column
+shows a property, a single child or a reference** - the three slots that hold exactly one thing
+- so a foreign key can be drawn as a column and is projected by the same `ReferenceCell` a
+notation's reference cell is, with the column's own empty text standing in for an unset one. A
+table without rows still draws its header, followed by the affordance row, so the reader can see
 what the columns are before there is anything in them; `TableCell` refuses a table with no
 columns and every row's column count with a `ProjectionException`, so even a table built by
 hand fails at the first projection instead of painting half a grid.

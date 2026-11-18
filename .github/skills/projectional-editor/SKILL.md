@@ -569,15 +569,20 @@ notation is registered per concept **and** variant
 (`docs/architecture/projection.md` §Tables).
 
 - **A column names a slot of the *row* concept**, it does not carry a cell: a property column
-  becomes a property cell, a single-child column a child cell. That is what lets one table draw
-  rows of different concepts that declare the same slot.
+  becomes a property cell, a single-child column a child cell, a reference column a reference
+  cell. That is what lets one table draw rows of different concepts that declare the same slot,
+  and it is how a foreign key is drawn.
 - **A header is a cell of the table's own notation** and the `TableColumn` constructor refuses
   anything but a constant or a space. A header that named a slot would silently depend on
   whichever row came first.
 - **The row concept comes from the rows slot**, so `NotationRegistry.ValidateTable` checks the
   columns against the child concept of the `Slot` - not against the concept owning the table.
-  A column naming no slot, a name that is neither property nor child, and a many-valued child
-  are all rejected at registration.
+  A column naming no slot, a name that is no property, child or reference, and a many-valued
+  child are all rejected at registration.
+- **A reference column is projected by the same builder call a notation's reference cell is**
+  (`EditorTreeBuilder.BuildReferenceCell`), with the column's `EmptyText` standing in for the
+  notation's `UnsetText` - so unset, unresolved and resolved mean one thing wherever they are
+  drawn. Do not give a table its own reference state machine.
 - **An empty table draws its header and one `AddRowCell` row.** The header is what says what the
   columns are, and the affordance row is the only place the caret can stand to create the first
   row: `CaretPlace.IsEmptySlot` counts it and `InsertNodeAction` fills the slot through the same
