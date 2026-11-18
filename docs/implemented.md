@@ -147,10 +147,13 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | The output panel: F5 or Run, the headline, the inputs line, and a trace row that moves the caret | `MainWindow.axaml` (`OutputPanel`), `MainWindow.ShowOutput` | shown in a real window by `tools/Projectional.Screenshots` (`feature-run-output.png`: 5 steps for `amount=1500`) |
 | The cross-check: for one input, the decision the interpreter reaches, the reason the generated JSON records, and the rule a separately assembled expression evaluator finds are the same | `Projectional.Samples` (`RulesEvaluation`, `RulesTextGenerators.Json`) | `SampleCrossCheckTests` (three rules, four inputs, so each input stops at a different rule) |
 
-Not done in M4: the gate's second front end - a host application that embeds the control, runs a document and
-generates text - because the run and generate wiring lives in the app (`Projectional.Workbench/Run/`,
-`DocumentGenerate`) and is not on the public surface a host references; stepping (open question 11); and the
-dependency-set incrementality that lets the constraint engine produce diagnostics in volume.
+Not done in M4: the gate's second front end - a host application that embeds the control, shows a document's
+findings, runs it and generates text - because nothing in this repository proves it, and because the wiring a
+shell needs (`DocumentRun`, `DocumentGenerate`, `RunReport`, `RunRow`, `RunInputs`) lives in the app rather than
+beside the control, where a host would find it; stepping (open question 11); and the dependency-set
+incrementality that lets the constraint engine produce diagnostics in volume. The semantics themselves are
+reachable: a probe project referencing only `Projectional.Avalonia` and `Projectional.Samples` ran a document
+(`Accept (5 step(s))`) and generated its C#.
 
 ## M5 - Self-hosting (started)
 

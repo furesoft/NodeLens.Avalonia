@@ -29,11 +29,13 @@ What is next, in order:
    languages that need them.
 2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
    `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **The M4 gate's second front end**: a host application that embeds the control, runs a document and generates
-   text, proving the two front ends share the behaviour. It is the next thing to do because it cannot pass today:
-   the run and generate wiring lives in the app (`Projectional.Workbench/Run/`, `DocumentGenerate`) and a host
-   referencing `Projectional.Avalonia` cannot reach it. Widening the surface is the sanctioned answer - the app
-   may only use what a host can use.
+3. **The M4 gate's second front end**: a host application that embeds the control, opens a document, shows its
+   findings, runs it and generates text - nothing in this repository does that, so the claim that the two front
+   ends share the behaviour is untested. A probe proved the semantics are reachable (a project referencing only
+   `Projectional.Avalonia` and `Projectional.Samples` ran a document and generated text), so the gap is not
+   CLR visibility; it is that the wiring a shell needs - `DocumentRun`, `DocumentGenerate`, `RunReport`,
+   `RunRow`, `RunInputs` - sits in the app, so every host would reinvent it. Moving it beside the control and
+   proving it with a sample is the slice.
 4. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
