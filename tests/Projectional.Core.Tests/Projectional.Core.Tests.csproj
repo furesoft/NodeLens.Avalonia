@@ -26,6 +26,8 @@
     <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.StateMachine.Checks\Projectional.Samples.StateMachine.Checks.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Samples.FeatureModel.Checks\Projectional.Samples.FeatureModel.Checks.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
@@ -44,6 +46,7 @@
     -->
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Projectional.Samples.StateMachine\Corpus\**\*.mps" Link="StateMachine\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Projectional.Samples.FeatureModel\Corpus\**\*.mps" Link="FeatureModel\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

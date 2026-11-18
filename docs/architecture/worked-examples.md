@@ -33,7 +33,7 @@ One DSL per axis, chosen so the three do not overlap:
 | Package | Axis it proves | Needs |
 | --- | --- | --- |
 | `Projectional.Samples.StateMachine` | references, one concept in two notations, constraints (unreachable state), interpreter trace | **delivered** |
-| `Projectional.Samples.FeatureModel` | constraints (`requires`/`excludes`), a generator to a config file, an interpreter over the selection | M4 |
+| `Projectional.Samples.FeatureModel` | constraints (`requires`/`excludes`), a generator to a config file, an interpreter over the selection | **delivered** |
 | `Projectional.Samples.SqlSchema` | cross-model references, the table cell in earnest, a generator to DDL | M3, M4 - and the reference-column gap recorded in §1 |
 
 They are examples, not products: none of them may grow a capability the framework does not have, and none
@@ -91,14 +91,45 @@ Two findings from building it, both recorded rather than worked around:
 
 ## 2. Feature model - `Projectional.Samples.FeatureModel`
 
-A tree of features with `requires` and `excludes` references, a selection, and a generator that writes the
-configuration out.
+A list of features with `requires` and `excludes` references, a selection, and a generator that writes the
+configuration out. (The plan said *tree*, and the list is flat for the reason recorded below - a generator
+template cannot lay out nested children.)
 
 The axis is **constraints that read references**: a selected feature whose `requires` target is not selected,
 and one whose `excludes` target is. The interpreter evaluates a selection against those rules, which is the
 first consumer of the value model that is not a decision table. The generator emits a flat `key=value`
 configuration, so "a language has as many generators as it declares" gets a second, smaller target beside the
 pilot's JSON and C# fragment.
+
+**Delivered**, with two decisions taken while building it and one gap recorded:
+
+- **A constraint is a node, not a property of a feature.** `Fm.Requires` and `Fm.Excludes` share an abstract
+  base `Fm.Constraint` that holds `subject` and `other`, because a slot names one concept and the
+  `constraints` list must hold both kinds. The alternative - one concept with an `operator` enumeration - would
+  force every reader of the model to switch on a value that the drawn word already states.
+- **The selection is a property, not a variable.** `Fm.Feature.isSelected` is saved with the document and
+  undone with it; the state machine's `attempts` is a value a reader supplies for one run. A configuration
+  belongs to the document, which is why it is model state and why the notation can draw it.
+- **A many-valued reference cannot be drawn, and a template cannot lay out a tree.** Both are real gaps rather
+  than choices: `NotationEditor` has `Reference(slot)` and no collection of references, so `requires` became two
+  single-valued slots; and every generator template that surrounds a child list with line breaks emits them
+  unconditionally, so a *nested* feature tree would leave a stray break after every leaf. The sample is
+  therefore a flat list of features, and the nesting waits for a template part that can ask whether a slot is
+  filled - a `ConditionalPart` asks about a property, not a slot.
+
+The check it ships is the one the standard catalogue cannot state: **two features under one name**, which breaks
+the constraints, the reader and the generated configuration at once. It is a `CheckSet` entry with a repair
+(`SetNodePropertyAction` renames the later duplicate), so the two samples between them cover both halves of the
+split - the state machine reports without repairing, this one repairs.
+
+Two further gaps worth naming, both met while writing the repair:
+
+- **A fix cannot delete a named node.** `DeleteNodeAction` is caret-addressed, so "delete this constraint" is
+  not expressible as a `DiagnosticFix`; only an action that names a `NodeId` could be. That is why the finding
+  is a duplicate name rather than a meaningless constraint.
+- **A repair is applied through a session that already knows it** (`session.Fixes`), which `FeatureModelChecksTests`
+  demonstrates end to end: the fix runs, the name changes, and the finding is gone.
+
 
 ## 3. SQL schema - `Projectional.Samples.SqlSchema`
 
