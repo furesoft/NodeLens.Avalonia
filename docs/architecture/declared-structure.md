@@ -57,7 +57,7 @@ concepts:
         default:
         described as: What the rule is called.
     children:
-      steps : Rules.Step cardinality: many
+      steps : Rules.Step[0..n]
     references:
       condition : Rules.Condition own subtree: false
 ```
@@ -74,7 +74,7 @@ draws the word, which is a [conditional cell](language.md#notation) - and the re
 | `Structure.SuperType` | `conceptKey` |
 | `Structure.Slot` (abstract) | `name` |
 | `Structure.PropertyDecl` | `typeName`, `defaultValue`, `description` |
-| `Structure.ChildDecl` | `childConceptKey`, `cardinality` (`one`/`many`) |
+| `Structure.ChildDecl` | `childConceptKey`, `cardinality` (`0..1`, `0..n`, `1`, `1..n`) |
 | `Structure.ReferenceDecl` | `targetConceptKey`, `allowOwnSubtree` |
 | `Structure.Enumeration` | `key`, `symbols` |
 | `Structure.EnumSymbol` | `symbol` |
@@ -90,9 +90,12 @@ references. That rank is the concept's declaration order, which decides the defa
 in the completion list, so it is part of the contract rather than an artefact - a definition that creates a
 reference before a property still declares the property first.
 
-Two spellings are data rather than types on purpose: a `cardinality` is the text `one` or `many`, and a
-`typeName` is a name a language author types. Both are checked by the lowering, not by the model - a model that
-refused them would have to know the concept registry, which is exactly the layering this project does not allow.
+**The cardinality and the type name are data rather than types on purpose**: a `cardinality` names one of the four
+ranges the notation offers in one cell (`0..1`, `0..n`, `1`, `1..n`), and a `typeName` is a name a language author
+types. Both are checked by the lowering, not by the model - a model that refused them would have to know the concept
+registry, which is exactly the layering this project does not allow. The range reaches the runtime as
+`ChildSlot.Cardinality` (the storage shape) plus `ChildSlot.Minimum` (the lower end), so a definition writes a
+statement a check can read instead of a flag the model has to interpret.
 
 ## What MPS's look the engine can and cannot do
 

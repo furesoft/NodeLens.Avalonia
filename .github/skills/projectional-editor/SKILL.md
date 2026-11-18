@@ -342,8 +342,12 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   definition language itself.
 - **The language says what a concept *is*, never how it looks.** Presentation is the editor language (P2), in a
   separate model, for the same reason MPS splits structure documents from editor documents.
-- **Two spellings are data**: `cardinality` is the text `one`/`many` and `typeName` is a name an author types, so the
-  *lowering* validates them. A model that refused them would have to know the concept registry.
+- **The cardinality is data, spelled as a range**: a `cardinality` names one of the four MPS offers in one cell -
+  `0..1`, `0..n`, `1`, `1..n` - and `typeName` is a name an author types, so the *lowering* validates them. A model
+  that refused them would have to know the concept registry. The range is stored as `ChildSlot.Cardinality` (the
+  storage shape) plus `ChildSlot.Minimum` (the lower end), and the two checks read it: `STD010` for a single child
+  whose minimum is one, `STD011` for a list whose minimum is at least one. A minimum above one is representable in
+  the model but has no spelling yet - do not invent one until a language asks.
 - **`StructureLowering` checks what a compiler would have checked** (every property names a known type, an
   enumeration has symbols and a unique key, a slot is one of three kinds) and deliberately **not the graph**:
   unknown super concepts, child slots naming nothing and duplicate keys are `ConceptRegistry.Create`'s answers.
@@ -1194,6 +1198,9 @@ Shipped checks and the rules they encode:
 - `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
   `InsertChildAction`, which is the same creation path `InsertNodeAction` uses, so the fix and Enter cannot
   disagree. A slot whose whole set is abstract has no repair and therefore no finding.
+- `STD011` (`MinimumChildCountCheck`, `Hint`) - the list half: a `Cardinality.Many` slot whose declared
+  `Minimum` is at least one and that holds nothing. The same `InsertChildAction`, which is why the two checks
+  cannot drift from Enter either.
 - `STD040` (`BinaryGroupingCheck`, `Warning`) - an operand drawn without the parentheses its grouping
   needs. **The finding names the operand, not its parent**, and the repair wraps that operand: wrapping the
   parent leaves the same finding, and a repair that survives itself is broken. Precedence lives in the

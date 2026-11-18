@@ -338,13 +338,14 @@ is not offered, which is the honest default for a language whose names may be se
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
 | `STD010` | a single-child slot is empty | `Insert "Rule"` | plain - **shipped**; the same concept Enter would create, from `DefaultInstantiableFor` |
-| `STD011` | a list holds fewer children than its declared minimum | `Add the first rule` | plain - needs the minimum of open question 64 |
+| `STD011` | a list holds fewer children than its declared minimum (`1..n`) | `Add "Rule"` | plain - **shipped**; the minimum the slot declares, and the same `InsertChildAction` `STD010` runs |
 | `STD012` | a node holds nothing but its defaults | `Delete the empty rule` | **destructive** |
 
 `STD010` and `STD011` are the two fixes a user meets most often in a fresh document, and both are one
-`InsertChildAction` away from what the keyboard already does - which is the argument for shipping them:
-the fix and the keystroke cannot disagree, because they are the same action (`InsertNodeAction` runs it
-too).
+`InsertChildAction` away from what the keyboard already does - which is why both are shipped: the fix and the
+keystroke cannot disagree, because they are the same action (`InsertNodeAction` runs it too). Which of the two
+speaks is the declaration's answer: a slot written `1` is a hole while it is empty, one written `0..1` is not,
+and a list written `1..n` is reported where `0..n` stays quiet.
 
 ### References: whatever a reference slot knows
 
