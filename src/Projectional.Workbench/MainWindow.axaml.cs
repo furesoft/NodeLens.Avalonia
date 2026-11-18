@@ -181,7 +181,8 @@ public sealed partial class MainWindow : Window, IDisposable
         string? filePath = null,
         ICellEmphasis? emphasis = null,
         ITypingRules? typing = null,
-        TypeRegistry? types = null)
+        TypeRegistry? types = null,
+        ConstraintSet? constraints = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -208,6 +209,7 @@ public sealed partial class MainWindow : Window, IDisposable
             emphasis,
             typing,
             types,
+            constraints,
             WorkbenchLanguage.InterpreterFor(model),
             WorkbenchLanguage.GeneratorsFor(model),
             _clipboard);
@@ -413,8 +415,10 @@ public sealed partial class MainWindow : Window, IDisposable
             // The session's scope provider, not the default one: a language may have replaced a level of
             // the chain, and a finding about a name has to be about the scope the editor actually uses.
             // A control with no session yet passes null, which the engine reads as the default chain.
+            // The rules are the document's own when its language declares any - the sample's when it does
+            // not, which keeps every document the shell has always opened checked exactly as before.
             .. new ConstraintEngine(
-                SampleConstraints.All.With(ScopeConstraints.All),
+                (document.Constraints ?? SampleConstraints.All).With(ScopeConstraints.All),
                 scopes: editor.Session?.Scopes,
                 types: document.Types ?? ExpressionsLanguage.Types).Check(document.Model),
         ];
@@ -1140,7 +1144,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         // Every definition document of the folder opens, because that is where the user edits the language: one
         // concept or enumeration per file, one notation per file, one rule or named type per file.
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder })
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder })
         {
             var path = Path.Combine(directory, folder);
 
@@ -1184,7 +1188,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types);
+        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types, constraints: opened.Constraints);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)

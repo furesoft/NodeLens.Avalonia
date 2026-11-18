@@ -1,9 +1,11 @@
 using Projectional.Core;
+using Projectional.ConstraintRules;
 using Projectional.Editing;
 using Projectional.Editors;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
+using Projectional.Semantics;
 using Projectional.Structures;
 using Xunit;
 
@@ -136,6 +138,43 @@ public sealed class DeclaredSampleLanguageTests
     }
 
     [Fact]
+    public void TheDeclaredRulesAreTheLanguagesOwn()
+    {
+        // A language defined as data reports its own findings: the two documents in `constraints/` are rules, and the
+        // engine runs them exactly as it runs a rule written in C#.
+        var language = Language();
+
+        Assert.True(language.HasConstraints);
+        Assert.Equal(2, language.Constraints.Count);
+
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Declared", "pipeline.mps"));
+        var stage = model.Roots[0].GetChildren("stages")[0];
+
+        // The shipped document says what its rules ask for, so it reports nothing.
+        Assert.Empty(new ConstraintEngine(language.Constraints).Check(model));
+
+        stage.Set("name", "unnamed");
+        stage.Set("command", " dotnet build");
+
+        var findings = new ConstraintEngine(language.Constraints).Check(model);
+
+        Assert.Collection(
+            findings,
+            warning =>
+            {
+                Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+                Assert.Equal("command", warning.Role);
+                Assert.Equal("pipeline.stage.command", warning.Code);
+            },
+            hint =>
+            {
+                Assert.Equal(DiagnosticSeverity.Hint, hint.Severity);
+                Assert.Equal("name", hint.Role);
+                Assert.Equal("pipeline.stage.name", hint.Code);
+            });
+    }
+
+    [Fact]
     public void EveryDefinitionDocumentSavesBackByteIdentically()
     {
         // The layout is a wire format too: each definition file is one root, and re-saving it must not move a byte.
@@ -147,9 +186,11 @@ public sealed class DeclaredSampleLanguageTests
         {
             var structure = Directory.EnumerateFiles(Path.Combine(directory, "structure"), "*.mps").ToList();
             var editor = Directory.EnumerateFiles(Path.Combine(directory, "editor"), "*.mps").ToList();
+            var constraints = Directory.EnumerateFiles(Path.Combine(directory, "constraints"), "*.mps").ToList();
 
             Assert.Equal(2, structure.Count);
             Assert.Equal(2, editor.Count);
+            Assert.Equal(2, constraints.Count);
 
             foreach (var file in structure)
             {
@@ -159,6 +200,11 @@ public sealed class DeclaredSampleLanguageTests
             foreach (var file in editor)
             {
                 AssertRoundTrips(file, new Project(EditorLanguage.Concepts));
+            }
+
+            foreach (var file in constraints)
+            {
+                AssertRoundTrips(file, new Project(ConstraintLanguage.Concepts));
             }
         }
         finally

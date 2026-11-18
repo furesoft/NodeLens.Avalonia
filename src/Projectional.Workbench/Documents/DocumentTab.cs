@@ -60,6 +60,10 @@ internal sealed class DocumentTab : IDisposable
     /// <param name="types">
     /// The language's type rules, or <see langword="null"/> when it declares none.
     /// </param>
+    /// <param name="constraints">
+    /// The rules the language states about itself, or <see langword="null"/> when the caller has none to add - which
+    /// is what the sample language's own rules stand in for.
+    /// </param>
     /// <param name="evaluation">
     /// The language's interpreter - the rules that give its concepts a meaning - or <see langword="null"/> when it
     /// defines none, in which case the document cannot be run at all.
@@ -79,6 +83,7 @@ internal sealed class DocumentTab : IDisposable
         ICellEmphasis? emphasis = null,
         ITypingRules? typing = null,
         TypeRegistry? types = null,
+        ConstraintSet? constraints = null,
         EvaluationRegistry? evaluation = null,
         IReadOnlyList<TextGenerator>? generators = null,
         IEditorClipboard? clipboard = null)
@@ -96,6 +101,7 @@ internal sealed class DocumentTab : IDisposable
         Model = model;
         FilePath = filePath;
         Types = types;
+        Constraints = constraints;
         Evaluation = evaluation;
         Generators = generators ?? [];
         Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
@@ -117,6 +123,16 @@ internal sealed class DocumentTab : IDisposable
     /// language must be checked with that language's rules, not with the sample's.
     /// </remarks>
     internal TypeRegistry? Types { get; }
+
+    /// <summary>
+    /// The rules the language of this document states about itself, or <see langword="null"/> when it declares none.
+    /// </summary>
+    /// <remarks>
+    /// It travels with the tab for the same reason the type rules do: a document of a language opened from a folder
+    /// must be checked with that language's rules, not with the sample's. <see langword="null"/> therefore means "this
+    /// caller added none", which is how the sample language's own rules keep applying where they always did.
+    /// </remarks>
+    internal ConstraintSet? Constraints { get; }
 
     /// <summary>
     /// The interpreter of the language this document belongs to, or <see langword="null"/> when that language

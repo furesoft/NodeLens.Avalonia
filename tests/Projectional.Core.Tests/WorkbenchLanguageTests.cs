@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editing;
 using Projectional.Languages;
@@ -24,7 +25,7 @@ namespace Projectional.Core.Tests;
 public sealed class WorkbenchLanguageTests
 {
     [Fact]
-    public void AShellStartsWithAllThreeLanguages()
+    public void AShellStartsWithEveryDefinitionLanguage()
     {
         var language = new WorkbenchLanguage();
 
@@ -36,6 +37,7 @@ public sealed class WorkbenchLanguageTests
         Assert.True(language.Concepts.TryGet(EditorConceptKeys.Notation, out _));
         Assert.True(language.Concepts.TryGet(TypeRuleConceptKeys.Rule, out _));
         Assert.True(language.Concepts.TryGet(TextGenConceptKeys.Generator, out _));
+        Assert.True(language.Concepts.TryGet(ConstraintConceptKeys.Rule, out _));
         Assert.Empty(language.Opened);
     }
 

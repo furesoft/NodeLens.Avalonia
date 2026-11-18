@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
 using Projectional.Expressions;
@@ -49,6 +50,7 @@ internal sealed class WorkbenchLanguage
             .. EditorLanguage.ConceptDeclarations,
             .. TypeRuleLanguage.ConceptDeclarations,
             .. TextGenLanguage.ConceptDeclarations,
+            .. ConstraintLanguage.ConceptDeclarations,
         ]);
 
         Notations = CreateNotations(Concepts);
@@ -100,6 +102,9 @@ internal sealed class WorkbenchLanguage
 
     /// <summary>A model of the generator language: one empty generator, ready to be written.</summary>
     internal Model NewGeneratorDefinition() => NewDefinition(TextGenConceptKeys.Generator, "generator");
+
+    /// <summary>A model of the constraint language: one empty rule, ready to be written.</summary>
+    internal Model NewConstraintDefinition() => NewDefinition(ConstraintConceptKeys.Rule, "constraint");
 
     /// <summary>A model holding exactly one new root of <paramref name="conceptKey"/>.</summary>
     private Model NewDefinition(string conceptKey, string name)
@@ -259,6 +264,7 @@ internal sealed class WorkbenchLanguage
         EditorNotations.AddTo(notations);
         TypeRuleNotations.AddTo(notations);
         TextGenNotations.AddTo(notations);
+        ConstraintNotations.AddTo(notations);
 
         return notations;
     }

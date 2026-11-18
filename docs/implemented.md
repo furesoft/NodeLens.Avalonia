@@ -157,11 +157,20 @@ on the corpus.
 Not done in M5: stage C (a DSL defined entirely in project files), language export, live preview,
 bootstrap, the language browser.
 
-## M6 and M7
+## M6 - Declarative aspects (started)
 
-Nothing is delivered. M6 (the shell as an embeddable, language-locked component) and M7
-(installers, file association) are untouched; the app is still `MainWindow` alone, and
-`docs/architecture/standalone.md` describes the extraction M6 owns.
+| Feature | Where it lives | Proof |
+| --- | --- | --- |
+| Constraints as a definition language: a language's own rules are models, lowered into the same `IConstraint` a language written in C# declares, loaded from a `constraints` folder | `Projectional.ConstraintRules/`, `LanguageProject.Constraints`, `ConstraintNotations` | `ConstraintLoweringTests` (incl. parity with `Projectional.Checks`), `ConstraintLanguageTests`, `LanguageProjectConstraintsTests`, `DeclaredSampleLanguageTests` |
+
+Not done in M6: the remaining aspects as definition languages (scopes, generation, intentions), refactorings,
+migrations tooling, model-aware diff/merge, model-to-model generation, text import, the projected C# base language,
+the embedded shell, packaging.
+
+## M7
+
+Nothing is delivered. M7 (installers, file association) is untouched; the app is still `MainWindow`
+alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 
 ## Cross-cutting
 
@@ -169,7 +178,7 @@ Nothing is delivered. M6 (the shell as an embeddable, language-locked component)
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1888 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1925 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

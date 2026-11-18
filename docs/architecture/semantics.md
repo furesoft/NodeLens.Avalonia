@@ -120,6 +120,12 @@ collector made explicit:
   with the check catalogue's in `PublishFindings` - one list, because the panel and the markers must not
   be two answers to "what is wrong". It also passes `editor.Session.Scopes` to the engine, so a finding
   about a name is about the scope the editor actually uses rather than the default chain.
+- **A rule can also be written down.** `Projectional.ConstraintRules` is the constraint language: a
+  `constraints` folder of documents lowers into this same set, so a language defined in project files
+  states its own rules ([language-projects.md](language-projects.md)). The app checks each document with
+  the rules of the language it is written in (`MainWindow.PublishFindings` reads `DocumentTab.Constraints`,
+  which comes from `LanguageProject.Constraints`), and the sample language's rules stand in where a caller
+  passes none - so a document of a language without a `constraints` folder behaves exactly as it did.
 
 ### Incrementality
 
@@ -139,8 +145,24 @@ cleverness here until profiling says otherwise.
 
 ### Language of constraints
 
-C# now, declared rules later (M6). The declared form lowers into the same `Validate`
-delegate, so nothing downstream changes. Constraint order within a concept is
+C# and **written rules**, since the constraint language landed ([language-projects.md](language-projects.md)): a
+`constraints` folder holds one document per rule, and `ConstraintLowering` turns each into the same `IConstraint` a
+C# language writes, so nothing downstream changes. A rule names the concept it is about (or names none, which makes
+it a rule about every node), says what is wrong, how much it matters, and asks one of a closed set of questions: is
+this single-child slot empty, is this property still the default its concept declares, has this value whitespace
+around it, does this reference point at nothing.
+
+The set is closed on purpose. A general expression body would mean shipping an interpreter for a language whose only
+job is to say what is wrong - the same line the type rules draw by having three bodies instead of a statement list
+([§The declared form](#the-declared-form)). A rule that cannot be lowered - no message, no body, a slot the concept
+does not declare or declares as another kind - is a `ConceptDefinitionException` at load, where the author is
+looking, because a rule that could never fire is the one failure nobody sees from the outside.
+
+The parity rule of [ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md) applies here too:
+`ConstraintLoweringTests` writes the rules the shipped catalogue implements as models and demands the same findings -
+at the same places, with the same severities - as `Projectional.Checks` produces on one document.
+
+Constraint order within a concept is
 unspecified; constraints must not depend on each other's results.
 
 ## Types

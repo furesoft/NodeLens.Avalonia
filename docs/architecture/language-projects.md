@@ -27,19 +27,21 @@ MyRules/
     Amount.mps                    one named type
   generator/                      how a model becomes text    (Projectional.TextGen)
     Json.mps                      one generator
+  constraints/                    the rules the language states about itself (Projectional.ConstraintRules)
+    Pipeline.Stage.mps            one rule
   pipeline.mps                    a document of the language, not part of the definition
 ```
 
 **One document holds one definition.** A structure document's root *is* a concept or an enumeration, an editor
-document's root is one notation, a types document's root is one rule or one named type, and a generator document's
-root is one generator. That is MPS' shape - one root per file - and it is what makes a language reviewable: a diff of
-one concept is a diff of one file, and a change to the notation of `Pipeline.Stage` cannot touch `Pipeline.Pipeline`
-by accident. There is deliberately no container concept (`Structure.Language`, `Editor.Notations`,
-`TypeRule.Rules`, `TextGen.Generators` are gone), because a container with one child would be a second place to say
-which definitions exist.
+document's root is one notation, a types document's root is one rule or one named type, a generator document's
+root is one generator, and a constraints document's root is one rule. That is MPS' shape - one root per file - and it
+is what makes a language reviewable: a diff of one concept is a diff of one file, and a change to the notation of
+`Pipeline.Stage` cannot touch `Pipeline.Pipeline` by accident. There is deliberately no container concept
+(`Structure.Language`, `Editor.Notations`, `TypeRule.Rules`, `TextGen.Generators` are gone), because a container with
+one child would be a second place to say which definitions exist.
 
 The folder's name is the language's name. The `structure` folder is required and must hold at least one document; the
-other three are optional.
+other four are optional.
 
 ## The file name is the declaration order
 
@@ -65,12 +67,14 @@ What it refuses, and why each one is an error rather than a warning:
 | a notation for a concept that was never declared | caught during lowering, which is the earliest moment both halves exist |
 | a type rule with no body, an unknown type name, a value declared twice, a switch with no `otherwise` | the type-rule lowering's own errors, at load, where the author is looking |
 | two generators with one name, a mapping of a concept the language does not have, a part naming a slot the concept does not have (or naming it as the wrong kind) | the generator lowering's own errors, for the same reason |
+| a rule naming a concept the language does not have, or reading a slot the concept declares as another kind (or not at all), or with no message and no body | the constraint lowering's own errors: a rule that could never fire is the one failure an author cannot see from the outside |
 | two concepts with one key, an unknown super concept | `ConceptRegistry.Create`, which owns the graph |
 
 **A language without a notation loads.** Every node then draws as a missing-notation cell, which is a state a
 language being written passes through; refusing it would make "write the structure first" impossible.
 **A language without type rules loads too**, and every node is `UnknownType` - the honest answer when nobody
-said what a node evaluates to.
+said what a node evaluates to. **A language without constraints loads**, and it reports nothing of its own - the
+same answer, and the framework's own ambiguity rule is the host's to add rather than the project's.
 
 ## The loop it closes
 
@@ -84,8 +88,8 @@ M2's gate in its smallest complete form.
 `WorkbenchLanguage` is **per shell** - an instance, not a static table - and it grows at runtime:
 
 - **File ▸ Open language…** picks a folder, loads it, and takes it into the set. **Every definition document of the
-  folder opens afterwards** - one tab per concept, enumeration, notation, rule and generator - which is where the user
-  edits them.
+  folder opens afterwards** - one tab per concept, enumeration, notation, rule, generator and constraint - which is
+  where the user edits them.
 - **File ▸ New concept**, **File ▸ New enumeration** and **File ▸ New notation** create a document with exactly one
   empty definition of that kind. A definition document is saved into the folder's aspect directory, so a concept
   created in the app is one more file beside the others.
@@ -104,7 +108,6 @@ M2's gate in its smallest complete form.
 | Missing | Why it is not in this slice |
 | --- | --- |
 | `language.mps` (name, version, dependencies, extended languages) | P3 proper: it needs the aspect models it names |
-| constraints as a declared aspect | M6 |
 | exporting a loaded language back to C# | P6 |
 
 Until the app loads a folder, a language project is usable by any host that calls `LanguageProject.Open` - which is
