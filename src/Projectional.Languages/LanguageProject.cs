@@ -1,7 +1,9 @@
 using Projectional.Core;
+using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Persistence;
+using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.TextGen;
 using Projectional.TypeRules;
@@ -40,6 +42,9 @@ public sealed class LanguageProject
     /// <summary>The folder holding the text generators, which a language may leave out until it has any.</summary>
     public const string GeneratorFolder = "generator";
 
+    /// <summary>The folder holding the language's own constraints, which a language may leave out.</summary>
+    public const string ConstraintsFolder = "constraints";
+
     private LanguageProject(
         string name,
         string directory,
@@ -47,7 +52,8 @@ public sealed class LanguageProject
         ConceptRegistry concepts,
         NotationRegistry notations,
         TypeRegistry types,
-        IReadOnlyList<TextGenerator> generators)
+        IReadOnlyList<TextGenerator> generators,
+        ConstraintSet constraints)
     {
         Name = name;
         Directory = directory;
@@ -56,6 +62,7 @@ public sealed class LanguageProject
         Notations = notations;
         Types = types;
         Generators = generators;
+        Constraints = constraints;
     }
 
     /// <summary>The language's name, which is the name of the folder it lives in.</summary>
@@ -85,6 +92,24 @@ public sealed class LanguageProject
 
     /// <summary>Whether the project declared a generator at all.</summary>
     public bool HasGenerators => Generators.Count > 0;
+
+    /// <summary>The rules the language states about itself; empty when it has no <c>constraints</c> folder.</summary>
+    /// <remarks>
+    /// <para>
+    /// The declared half of the constraint aspect: the same <see cref="ConstraintSet"/> a language written in C# hands
+    /// to a <see cref="ConstraintEngine"/>, lowered from rules that are models themselves. A language that declares
+    /// none loads, and reports nothing of its own - which is the honest state of a language being written, and the
+    /// same answer a missing <c>editor</c> or <c>types</c> folder gives.
+    /// </para>
+    /// <para>
+    /// The framework's own rules - the ambiguity constraint, in particular - are the host's to add, not this
+    /// project's: they are facts about the framework, not about this language.
+    /// </para>
+    /// </remarks>
+    public ConstraintSet Constraints { get; }
+
+    /// <summary>Whether the project declared a rule of its own.</summary>
+    public bool HasConstraints => Constraints.Count > 0;
 
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
@@ -148,7 +173,8 @@ public sealed class LanguageProject
                 concepts,
                 LowerNotation(directory, concepts),
                 LowerTypes(directory),
-                LowerGenerators(directory, concepts));
+                LowerGenerators(directory, concepts),
+                LowerConstraints(directory, concepts));
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -245,5 +271,16 @@ public sealed class LanguageProject
     private static IReadOnlyList<TextGenerator> LowerGenerators(string directory, ConceptRegistry concepts) =>
         TextGenLowering.CreateGenerators(
             Read(directory, GeneratorFolder, new Project(TextGenLanguage.Concepts)),
+            concepts);
+
+    /// <summary>Every rule the project declares, or none when it has no <c>constraints</c> folder.</summary>
+    /// <remarks>
+    /// The lowering is given the concepts the structure documents just declared, so a rule that names a concept or a
+    /// slot this language does not have is refused here - the same "earliest moment both halves exist" rule the
+    /// notation and the templates follow.
+    /// </remarks>
+    private static ConstraintSet LowerConstraints(string directory, ConceptRegistry concepts) =>
+        ConstraintLowering.CreateConstraints(
+            Read(directory, ConstraintsFolder, new Project(ConstraintLanguage.Concepts)),
             concepts);
 }
