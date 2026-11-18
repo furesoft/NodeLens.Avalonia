@@ -1,6 +1,8 @@
 using Projectional.Core;
 using Projectional.Language;
+using Projectional.Persistence;
 using Projectional.Samples;
+using Projectional.Samples.StateMachine;
 using Projectional.Semantics;
 using Xunit;
 
@@ -205,7 +207,111 @@ public sealed class GeneratorTests
 
     private static TemplateRegistry Registry() => TemplateRegistry.Empty;
 
+    [Fact]
+    public void AReferenceEmitsTheNameOfItsTarget()
+    {
+        var (model, transition) = Transition();
+        var source = transition.GetReferenceTarget("source")!;
+
+        var result = Generate(
+            Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new ReferencePart("source"))),
+            transition);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(source.GetOrNull("name"), result.Text);
+    }
+
+    [Fact]
+    public void AnUnsetReferenceEmitsTheStandInThePartNames()
+    {
+        var (_, transition) = Transition(linkTarget: false);
+
+        // A language states what "nothing linked" says, because it is a word of that language - SQL writes
+        // nothing where a key is unset.
+        var result = Generate(
+            Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new ReferencePart("target", unsetText: ""))),
+            transition);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("", result.Text);
+    }
+
+    [Fact]
+    public void AReferenceWhoseTargetIsGoneEmitsTheUnresolvedText()
+    {
+        var (_, transition) = Transition();
+        var document = ModelXml.Serialize(transition.Model);
+
+        // Deleting would only clear the reference; a dangling one comes from a document whose target was lost, so
+        // the state is built the way it actually arises. The id is read out of the written document rather than
+        // formatted here, so the test makes no assumption about how a guid is spelled.
+        const string Anchor = "role=\"target\" target=\"";
+        var start = document.IndexOf(Anchor, StringComparison.Ordinal) + Anchor.Length;
+        var end = document.IndexOf('"', start);
+
+        // Spliced, not replaced: the same guid is also the target node's own `id`, and a global replace would
+        // rename the node too - which leaves the reference pointing at it and proves nothing.
+        var loaded = ModelXml.Deserialize(
+            StateMachineLanguage.NewProject(),
+            string.Concat(document[..start], Guid.NewGuid(), document[end..]));
+        var orphan = loaded.Roots[0].GetChildren(StateMachineLanguage.TransitionsSlot)[0];
+
+        // Loading keeps it (the model never drops data), and a generator still has to say something.
+        Assert.Null(orphan.GetReferenceTarget("target"));
+
+        var result = Generate(
+            Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new ReferencePart("target", unresolvedText: "?"))),
+            orphan);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("?", result.Text);
+    }
+
+    [Fact]
+    public void AReferenceEmitsARegionThatNamesItsSlot()
+    {
+        var (_, transition) = Transition();
+        var source = transition.GetReferenceTarget("source")!;
+
+        var text = source.GetOrNull("name")!;
+        var result = Generate(
+            Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new ReferencePart("source"))),
+            transition);
+
+        var region = Assert.Single(result.Regions);
+
+        Assert.Equal(transition.Id, region.Node);
+        Assert.Equal("source", region.Slot);
+        Assert.Equal(text, result.Text.Substring(region.Start, region.Length));
+    }
+
     private static Node Sample() => PayrollSample.NewSampleModel().Roots[0];
+
+    /// <summary>A transition from one idle state to a done state, with both ends linked unless asked otherwise.</summary>
+    private static (Model Model, Node Transition) Transition(bool linkTarget = true)
+    {
+        var model = StateMachineLanguage.NewProject().NewModel("Machine");
+        var machine = model.NewNode(SmConceptKeys.Machine);
+        machine.Set("name", "Machine");
+        model.AddRoot(machine);
+
+        var idle = model.NewChild(machine, StateMachineLanguage.StatesSlot, SmConceptKeys.State);
+        idle.Set("name", "Idle");
+
+        var done = model.NewChild(machine, StateMachineLanguage.StatesSlot, SmConceptKeys.State);
+        done.Set("name", "Done");
+
+        var transition = model.NewChild(machine, StateMachineLanguage.TransitionsSlot, SmConceptKeys.Transition);
+        transition.Set("event", "go");
+        transition.SetReference("source", idle);
+
+        if (linkTarget)
+        {
+            transition.SetReference("target", done);
+        }
+
+        return (model, transition);
+    }
 
     private static GeneratedText Generate(TemplateRegistry templates, Node node) =>
         new Generator().Generate(node, new TextGenerator("test", templates));

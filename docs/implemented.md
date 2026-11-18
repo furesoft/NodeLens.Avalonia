@@ -137,7 +137,8 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | The interpreter: explicit stack, post-order trace, step budget, cancellation, and a failure that names its node | `Interpreter`, `InterpretationResult`, `TraceEntry`, `InterpretationFailure` | `InterpreterTests` |
 | The value model: int, bool, string and date as content-compared records, read through a property's declared type | `Value`, `IntValue`, `BoolValue`, `StringValue`, `DateValue`, `EvaluationContext.PropertyValue` | `ExpressionsEvaluationTests` |
 | The shipped meanings: the expression language, and the pilot's decision list (first matching rule wins; no match is a failure) | `ExpressionsEvaluation`, `RulesEvaluation` | `ExpressionsEvaluationTests`, `RulesEvaluationTests` |
-| Text generation from a template tree per concept: literal, property, child, list, loop, indent, line break, conditional, self | `TextTemplate` and nine `TemplatePart` kinds in `Projectional.Language/Generation/` | `GeneratorTests` |
+| A template part that emits a reference's target name, with the language's own words for an unset and a dangling target - so a generated file can name what a key points at | `ReferencePart`, `TextGen.Reference`, `Generator.ReferenceOf`, `TextGenLowering.ReferenceOf` | `GeneratorTests` (resolved, unset, dangling after a load, and the traceability region), `TextGenLoweringTests` (lowers end to end, refuses a property slot) |
+| Text generation from a template tree per concept: literal, property, reference, child, list, loop, indent, line break, conditional, self | `TextTemplate` and ten `TemplatePart` kinds in `Projectional.Language/Generation/` | `GeneratorTests` |
 | The generator engine: indentation from the template, a depth guard, and a traceability map that answers what wrote a character | `Generator`, `GeneratedText`, `GeneratedRegion` | `GeneratorTests` |
 | Two generators for one language, proving a language has as many as it declares | `RulesTextGenerators` (JSON and a C# fragment) | `RulesTextGeneratorsTests` |
 | The declared generator language: one generator per document, a template per concept, lowered into the same runtime generator, loaded from the `generator` folder | `Projectional.TextGen/`, `LanguageProject.Generators` | `TextGenLoweringTests` (incl. parity with the C# twin) |
@@ -190,7 +191,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2014 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2020 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

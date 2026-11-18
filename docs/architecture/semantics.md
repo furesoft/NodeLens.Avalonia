@@ -357,11 +357,17 @@ JSON and XML reference languages, which exercise it in both directions.
 ### What is implemented
 
 The template is data in `Projectional.Language/Generation/`: `TextTemplate` is an ordered list of `TemplatePart`s -
-`TextPart` (a literal), `PropertyPart` (a slot's value, verbatim), `ChildPart` (the single child's text),
+`TextPart` (a literal), `PropertyPart` (a slot's value, verbatim), `ReferencePart` (a reference's target name, or
+the stand-in its language names), `ChildPart` (the single child's text),
 `ChildrenPart` (every child of a list, joined by a separator *template*), `LoopPart` (a body applied per child),
 `IndentPart` (one level deeper), `LineBreakPart` (a newline plus the current indentation), `ConditionalPart` (a
 property/value choice) and `SelfPart` (the node's own template, which is what a loop body needs). A generator is a
 `TextGenerator` - a name and a `TemplateRegistry` - and a language declares as many as it has targets.
+
+`ReferencePart` is the tenth and arrived late, with the SQL schema example: a DDL script names the column a key
+points at, and without the part no language could emit a reference at all. It reads the model rather than a cell, so
+the three states a reference has (unset, unresolved, resolved) mean in generated text exactly what they mean on
+screen - the same argument `PropertyPart` makes for a value.
 
 The walk is `Generator` in `Projectional.Semantics/Generation/`: it owns the indentation, a depth guard against a
 template that expands itself, and the **traceability map**. Every emitted stretch is recorded as a
