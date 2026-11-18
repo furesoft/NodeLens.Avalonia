@@ -923,7 +923,12 @@ public sealed class EditorSession : IDisposable
     }
 
     /// <summary>The context one action sees, built from the tree and layout as they are now.</summary>
-    private EditContext ContextFor(EditAction action) =>
+    /// <remarks>
+    /// Internal rather than private because the menu asks the same question an action would: "would completion
+    /// open here" is <see cref="CompletionSlot.At"/>'s answer, and a second derivation for the menu is the bug
+    /// that would let an entry open a list that never appears.
+    /// </remarks>
+    internal EditContext ContextFor(EditAction action) =>
         new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing, Scopes)
         {
             Completion = action is CompletionAction ? Completion : null,

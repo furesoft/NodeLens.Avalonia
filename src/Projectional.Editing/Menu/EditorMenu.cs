@@ -38,6 +38,7 @@ public static class EditorMenu
     private const string UndoGesture = "Ctrl+Z";
     private const string RedoGesture = "Ctrl+Y";
     private const string InsertGesture = "Enter";
+    private const string CompletionGesture = "Ctrl+Space";
     private const string DeleteGesture = "Delete";
     private const string SelectAllGesture = "Ctrl+A";
     private const string CopyGesture = "Ctrl+C";
@@ -107,10 +108,13 @@ public static class EditorMenu
             // a gutter, which is what an embedded editor in a table cell or a reader view needs - and it is
             // here rather than first, because Undo and Redo are what a reader expects at the top.
             .. FoldEntries(session),
+            InsertEntry(session),
             EditorMenuItem.Run(
-                "Insert",
-                () => session.Apply(new InsertNodeAction()),
-                InsertGesture),
+                "Insert...",
+                () => session.Apply(new OpenCompletionAction()),
+                CompletionGesture,
+                CanComplete(session),
+                "Pick what goes here from what the language allows, the list Ctrl+Space opens."),
             EditorMenuItem.Run(
                 "Delete",
                 () => session.Apply(KeyRouter.For(session, EditorKey.Delete)),
@@ -217,6 +221,77 @@ public static class EditorMenu
         && Foldable.Of(node)
             ? node
             : null;
+
+    /// <summary>
+    /// The entry that does what Enter does, named after what it will create when that is knowable.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// `Insert "Step"` rather than `Insert`: the concept a slot is declared over is usually a set, and which
+    /// member of it Enter picks is the language's answer (<see cref="ConceptRegistry.DefaultInstantiableFor"/>),
+    /// so a bare "Insert" would make the user press it to find out. The label is derived from the same call the
+    /// action makes, so the two cannot disagree.
+    /// </para>
+    /// <para>
+    /// It is disabled rather than hidden where Enter would do nothing - the caret is in no slot and its node has
+    /// no list to grow - because a row that vanishes and reappears as the caret moves is harder to find than one
+    /// that says why it cannot run. Where the caret is inside a node that fills a list, it keeps its own name:
+    /// there Enter adds a sibling of the same concept, which has no "set" to pick from.
+    /// </para>
+    /// </remarks>
+    private static EditorMenuItem InsertEntry(EditorSession session)
+    {
+        var context = session.ContextFor(new InsertNodeAction());
+        var place = CaretPlaces.PlaceAt(CaretPlaces.Of(session.Tree), session.Selection.Caret);
+
+        if (place?.Cell is ChildCell { IsEmpty: true } child)
+        {
+            return EmptySlotEntry(context, child.Slot, session);
+        }
+
+        if (place?.Cell is CollectionCell { IsEmpty: true } collection)
+        {
+            return EmptySlotEntry(context, collection.Slot, session);
+        }
+
+        if (place?.Cell is AddRowCell row)
+        {
+            return EmptySlotEntry(context, row.Slot, session);
+        }
+
+        var grows = session.Selection.Caret.Address is { Owner: var owner }
+            && context.NodeOf(owner) is { ParentSlot: { } slot } node
+            && node.Parent?.Concept.FindChild(slot) is { Cardinality: Cardinality.Many };
+
+        return EditorMenuItem.Run(
+            "Insert",
+            () => session.Apply(new InsertNodeAction()),
+            InsertGesture,
+            grows,
+            grows ? null : "Enter adds a sibling only inside a list.");
+    }
+
+    /// <summary>The entry for an empty slot: named after the concept Enter would create there.</summary>
+    private static EditorMenuItem EmptySlotEntry(EditContext context, string slot, EditorSession session)
+    {
+        var concept = context.NodeOf(session.Selection.Caret.Address.Owner) is { Concept: var owner }
+            ? context.Concepts.DefaultInstantiableFor(owner.FindChild(slot)?.ChildConceptKey ?? string.Empty)
+            : null;
+
+        return EditorMenuItem.Run(
+            concept is null ? "Insert" : $"Insert \"{CompletionItem.LabelOf(concept.Key)}\"",
+            () => session.Apply(new InsertNodeAction()),
+            InsertGesture,
+            concept is not null,
+            concept is null ? "No concept of the language can stand in this slot." : null);
+    }
+
+    /// <summary>
+    /// Whether completion would open at this caret, asked of the one thing that decides it - the entry would
+    /// otherwise offer a list that never appears.
+    /// </summary>
+    private static bool CanComplete(EditorSession session) =>
+        CompletionSlot.At(session.ContextFor(new OpenCompletionAction())) is not null;
 
     private static bool CanDelete(EditorSession session)
     {

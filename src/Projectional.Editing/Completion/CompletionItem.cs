@@ -92,7 +92,13 @@ public sealed class CompletionItem
     public static CompletionItem ForReference(string name, string? description = null) =>
         new(name, CompletionKind.Reference, description);
 
-    private static string LabelOf(string conceptKey)
+    /// <summary>The last segment of a concept key, which is what a list and a menu entry call a concept.</summary>
+    /// <remarks>
+    /// Internal rather than private because the context menu names the concept Enter would create with the same
+    /// shortening the completion list uses - two spellings of one concept in one application would be a second
+    /// vocabulary nobody decided on.
+    /// </remarks>
+    internal static string LabelOf(string conceptKey)
     {
         var dot = conceptKey.LastIndexOf('.');
 

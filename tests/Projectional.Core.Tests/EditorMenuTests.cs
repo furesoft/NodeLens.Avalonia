@@ -30,7 +30,7 @@ public sealed class EditorMenuTests
         // The fixture nominates a collapse slot, so a node of it offers Fold. A language that does not opt
         // into folding has no such entry, which is what keeps this list language-dependent by design.
         Assert.Equal(
-            ["Undo", "Redo", "", "Fold", "", "Insert", "Delete", "", "Select All", "Copy", "Cut", "Paste"],
+            ["Undo", "Redo", "", "Fold", "", "Insert", "Insert...", "Delete", "", "Select All", "Copy", "Cut", "Paste"],
             EditorMenu.For(session).Select(entry => entry.Label));
     }
 
@@ -291,14 +291,16 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
-    public void InsertIsAlwaysOfferedAndPickingItFillsTheEmptySlot()
+    public void AnEmptySlotNamesTheConceptEnterWouldCreate()
     {
         var (rule, body) = TestEditor.RuleWithBody();
         using var session = TestEditor.Open(rule);
 
         session.Select(Selection.At(CellAddress.OfSlot(body.Id, "steps")));
 
-        var insert = Entry(session, "Insert");
+        // `Test.Step`, and the slot is declared over it - so the entry says what it will make rather than
+        // leaving the user to press it and find out.
+        var insert = Entry(session, "Insert \"Step\"");
 
         Assert.True(insert.IsEnabled);
 
@@ -307,6 +309,36 @@ public sealed class EditorMenuTests
         var created = Assert.Single(body.GetChildren("steps"));
 
         Assert.Equal(CellAddress.OfSlot(created.Id, "index"), session.Selection.Caret.Address);
+    }
+
+    [Fact]
+    public void InsertIsDisabledWhereEnterWouldDoNothing()
+    {
+        var step = TestEditor.BareStep("ab");
+        using var session = TestEditor.Open(step);
+
+        session.Select(Selection.At(CaretPosition.At(CellAddress.OfSlot(step.Id, "text"), 2)));
+
+        var insert = Entry(session, "Insert");
+
+        Assert.False(insert.IsEnabled);
+        Assert.Equal("Enter adds a sibling only inside a list.", insert.Description);
+    }
+
+    [Fact]
+    public void InsertEllipsisIsOfferedOnlyWhereCompletionWouldOpen()
+    {
+        var rule = TestEditor.BareRule();
+        using var session = TestEditor.Open(rule);
+
+        // A value: the list can always be asked for, even where it may come back empty.
+        session.Select(Selection.At(CellAddress.OfSlot(rule.Id, "name")));
+        Assert.True(Entry(session, "Insert...").IsEnabled);
+
+        // A keyword of a root: there is no node here to replace and no slot to fill, so the entry would open
+        // nothing at all.
+        session.Select(Selection.At(new CellAddress(rule.Id)));
+        Assert.False(Entry(session, "Insert...").IsEnabled);
     }
 
     [Fact]

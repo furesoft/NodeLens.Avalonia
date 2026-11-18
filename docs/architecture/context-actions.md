@@ -22,10 +22,10 @@ proven by tests. Beside them ships the framework's own catalogue:
 before/after), `INT031` (sort by name), `INT008` (select node/parent), `INT006` (wrap in X), `INT007`
 (replace with X) and `INT020` (reset to
 the default) - and the workbench registers it for every document, so the app has both the generic operations and
-whatever the open document's language adds. What is left of the caret-shape catalogue is the pair that needs no
-entry at all:
-`INT010`/`INT011` (an empty slot) are what `Enter` and completion already do, so listing them is a menu
-decision rather than an action to build.
+whatever the open document's language adds. `INT010`/`INT011` (an empty slot) are delivered too, but **in the
+context menu rather than in the offer list**, because what they say about the caret is a menu decision while both
+actions already existed: `Enter` fills the slot, `Ctrl+Space` opens the list. See "The caret stands on an empty
+slot" below for why the menu and not the bulb.
 
 The name is MPS': an **intention** is an action offered *because of where the caret is*,
 chosen from a menu, applied as one edit. "Light bulb" is Visual Studio's name for the same
@@ -357,6 +357,29 @@ ask `SelectionRanges.OfNode`, so a menu entry and a keystroke cannot disagree ab
 
 These two are what Enter and `Ctrl+Space` already do; listing them is what makes the pair discoverable
 from a menu, and it costs nothing because the actions exist.
+
+**Delivered in `EditorMenu`, not in the intention catalogue**, and the reason is not convenience. Both
+entries must ask a question only the editing layer can answer - which concept Enter would create in this
+slot, and whether completion would open at this caret - and the answer already exists exactly once, in
+`ConceptRegistry.DefaultInstantiableFor` and `CompletionSlot.At`. An intention would have had to reach either
+of them from `Projectional.Intentions`, which sees no internals of `Editing`; re-deriving them would have
+been a second answer that could disagree with the action it describes. The menu *is* in that layer, so it
+calls them.
+
+The two consequences are visible and deliberate:
+
+- **The label names the concept** (`Insert "Step"`) where the caret is in an empty slot, and the row is
+  **disabled with a reason** where Enter would do nothing, rather than vanishing and reappearing under the
+  pointer. The reason is a hint, not a permission: a disabled row already cannot run.
+- **`Insert...` is enabled exactly where `CompletionSlot.At` answers**, which is the same question the
+  keystroke asks. On a value that answer is yes even when the list comes back empty - a property can always
+  be overwritten - so the row is honest about being able to ask, not about there being an answer.
+
+**The duplicate with `STD010` is why these are not offers.** `STD010` fills the same slot because a check
+found the hole, and it labels itself `Insert "Step"` too; the rule in the resolution order is one id per
+operation, which works for two entries in one list. A menu row and an offer are not in one list - the repair
+is inside the "Quick fixes" submenu - so nothing is shown twice in the same place, and the intention list
+keeps its single-id rule intact.
 
 ### The caret stands in a value
 
