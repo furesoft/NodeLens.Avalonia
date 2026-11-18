@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.ConstraintRules;
 using Projectional.Editing;
 using Projectional.Editors;
 using Projectional.Languages;
@@ -185,9 +186,11 @@ public sealed class DeclaredSampleLanguageTests
         {
             var structure = Directory.EnumerateFiles(Path.Combine(directory, "structure"), "*.mps").ToList();
             var editor = Directory.EnumerateFiles(Path.Combine(directory, "editor"), "*.mps").ToList();
+            var constraints = Directory.EnumerateFiles(Path.Combine(directory, "constraints"), "*.mps").ToList();
 
             Assert.Equal(2, structure.Count);
             Assert.Equal(2, editor.Count);
+            Assert.Equal(2, constraints.Count);
 
             foreach (var file in structure)
             {
@@ -197,6 +200,11 @@ public sealed class DeclaredSampleLanguageTests
             foreach (var file in editor)
             {
                 AssertRoundTrips(file, new Project(EditorLanguage.Concepts));
+            }
+
+            foreach (var file in constraints)
+            {
+                AssertRoundTrips(file, new Project(ConstraintLanguage.Concepts));
             }
         }
         finally
