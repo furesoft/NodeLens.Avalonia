@@ -17,40 +17,50 @@ records what was actually verified.
    in C# declarations or as structure and editor models in the project.
 5. [Interfaces](architecture/interfaces.md) — the framework's structural vocabulary: a
    concept kind whose members an implementing concept inherits rather than retypes (planned; M5).
-6. [Projection](architecture/projection.md) — from model to pixels.
-7. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
-8. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
-   the first slice is implemented.
-9. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
-   the first slice is implemented.
-10. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
-   at the caret (planned; after quick fixes).
-11. [Intention preview](architecture/intention-preview.md) — what an entry would do, shown on
+6. [Concept behaviours](architecture/behaviours.md) — what a node is called and how it describes
+   itself, as pure functions a concept declares instead of a name slot it retypes (planned; M6).
+7. [The smodel language](architecture/smodel.md) — queries over the tree in MPS' own operation
+   words, as a pure-read language whose changes stay with the edit actions (planned; M6).
+8. [Projection](architecture/projection.md) — from model to pixels.
+9. [Editing](architecture/editing.md) — caret identity, edit actions, and the session.
+10. [Node moves](architecture/node-moves.md) — reordering a node without losing its identity;
+    the first slice is implemented.
+11. [Completion](architecture/completion.md) — offering the concepts an empty slot accepts;
+    the first slice is implemented.
+12. [Context actions](architecture/context-actions.md) — the light bulb: intentions offered
+    at the caret (planned; after quick fixes).
+13. [Intention preview](architecture/intention-preview.md) — what an entry would do, shown on
     a longer hover by projecting a discarded copy.
-12. [Markers](architecture/markers.md) — wavy severity underlines under what validation
-   reports (delivered).
-13. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
+14. [Markers](architecture/markers.md) — wavy severity underlines under what validation
+    reports (delivered).
+15. [Quick fixes](architecture/quick-fixes.md) — the repairs a finding carries, and how they
     reach the user (in progress; the model, the apply step and two real checks are delivered).
-14. [Concept descriptions](architecture/concept-descriptions.md) — the sentence a language
+16. [Concept descriptions](architecture/concept-descriptions.md) — the sentence a language
     writes about a concept, shown on hover and in the completion list (planned).
-15. [Line numbers](architecture/line-numbers.md) — numbering the rows a
+17. [Line numbers](architecture/line-numbers.md) — numbering the rows a
     projection produced, and painting them in a gutter (delivered).
-16. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
+18. [Font size](architecture/font-size.md) — zooming a document by replacing its measure
     (delivered).
-17. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
+19. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard (delivered).
-18. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-19. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
-20. [Model generation](architecture/model-generation.md) — reducing a document into a model of
+20. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
+21. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+22. [Model generation](architecture/model-generation.md) — reducing a document into a model of
     a target language, which that language's generator then prints (planned; M6).
-21. [Integration](architecture/integration.md) — how host applications embed this.
-22. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
+23. [Worked examples](architecture/worked-examples.md) — three sample languages, one per axis
+    the framework bets on, each with its checks, its corpus and its snapshots (planned; M4).
+24. [Integration](architecture/integration.md) — how host applications embed this.
+25. [Standalone editor](architecture/standalone.md) — the app that ships alongside,
     and why it has no privileged access.
-23. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
+26. [Embedded shell](architecture/embedded-shell.md) — the shell as a component a host
     composes, locked to one language.
-24. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
-25. [Roadmap](roadmap.md) — milestones and acceptance gates.
-26. [Open questions](open-questions.md) — what is deliberately still undecided.
+27. [Testing](architecture/testing.md) — the corpus, the snapshot harness, and CI.
+28. [Tests of a language](architecture/language-tests.md) — a language's own assertions as data:
+    the drawing, the findings, the generated text, a run's answer (planned; M6).
+29. [Gaps against MPS](architecture/mps-gap-analysis.md) — what MPS has that this framework does
+    not, and which of it is deliberate.
+30. [Roadmap](roadmap.md) — milestones and acceptance gates.
+31. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
