@@ -32,7 +32,9 @@ What is next, in order:
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
-   ([worked-examples.md](architecture/worked-examples.md)).
+   ([worked-examples.md](architecture/worked-examples.md)). The state machine is delivered; the feature model
+   and the SQL schema are left. The SQL schema needs one gap closed first: **a table column cannot name a
+   reference** (`NotationRegistry.ValidateTable`), which is what a foreign-key column would want.
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
