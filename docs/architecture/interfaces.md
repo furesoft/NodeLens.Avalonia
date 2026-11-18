@@ -1,9 +1,8 @@
 # Interfaces: the framework's structural vocabulary
 
-Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Slices **I1, I2 and I3 are delivered**: the
-concept kind, the member merge, the validation table, `Framework.Named` in every registry, `Node.IsNamed`, the
-declared path, and the adoption by the shipped languages. What is left is **I4**: the records - a row per delivery
-in [implemented.md](../implemented.md), questions 94-97 and ADR 0020.
+Status: **delivered**, slices I1 to I4. The concept kind, the member merge, the validation table, `Framework.Named` in
+every registry, `Node.IsNamed`, the declared path, the adoption by the shipped languages, and the records:
+[ADR 0020](../adr/0020-framework-vocabulary-is-injected.md) with questions 92-96 settled.
 
 ## The problem
 

@@ -449,6 +449,21 @@ public sealed class ConceptRegistryTests
     }
 
     [Fact]
+    public void AnInterfaceWithNoMembersIsAType()
+    {
+        // A marker interface: no slots, no implementers, and no complaint - it means exactly what IsKindOf
+        // means, which is the answer open question 94 settled. Giving it a second meaning ("not persisted")
+        // would make a type into a behavioural switch.
+        var registry = Create(new ConceptDeclaration("Rules.Marker", isAbstract: true, isInterface: true));
+
+        var marker = registry.Get("Rules.Marker");
+
+        Assert.True(marker.IsInterface);
+        Assert.Empty(marker.Slots);
+        Assert.True(marker.IsKindOf("Rules.Marker"));
+    }
+
+    [Fact]
     public void AnImplementerHasTheNameWithoutDeclaringIt()
     {
         var registry = Create(new ConceptDeclaration("Rules.Rule", interfaces: [FrameworkInterfaces.Named]));

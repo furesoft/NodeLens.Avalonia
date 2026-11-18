@@ -28,13 +28,7 @@ What is next, in order:
    left are the language-side entries from `INT040` on, which arrive with the languages that need them.
 2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
    `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
-3. **Interfaces and the framework's `Named`.** A concept kind whose members are inherited by the concepts that
-   implement it, so a language stops writing `name` and a designated name slot by hand - and so a slot can be
-   declared over "anything with a name". Slices **I1, I2 and I3 are delivered** (the kind, the merge, the validation,
-   `Framework.Named` in every registry, the declared path, and the adoption by `Expressions`, the rules language, the
-   fixture and the pipeline sample); what is left is **I4**, the records
-   ([interfaces.md](architecture/interfaces.md)).
-4. **The three worked examples.** One sample language per axis the framework bets on - references and two
+3. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
@@ -86,7 +80,6 @@ application and in the standalone app, proving the two front ends share the beha
 | Delivers | Details |
 | --- | --- |
 | Structure language (stage C) | `Projectional.Structures` drawn in its own notation: concepts, slots, inheritance, enumerations as an editable model ([language-authoring.md](architecture/language-authoring.md)) |
-| Interfaces and `Named` | an interface is a concept kind whose properties and references are provided to implementers; the framework ships `Framework.Named` (the name property and the designation every language used to retype), a slot may be declared over it, and the structure language grows `implements` and the `interface` header word ([interfaces.md](architecture/interfaces.md)) |
 | Editor language (stage C) | `Projectional.Editors` as cell glyphs, with notation and the table variant as an editable model |
 | Language project | one model per aspect beside a `language` root, with dependencies and extended languages; a new kind of aspect is a new language plus an annotation concept, not a framework change |
 | Language export | declared to C#, so a language prototyped in the workbench ships as a package without being retyped, behavioural aspects emitted as explicit stubs |
