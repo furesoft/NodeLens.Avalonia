@@ -39,6 +39,13 @@ What is next, in order:
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
    ([worked-examples.md](architecture/worked-examples.md)).
 
+**Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
+editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
+aliases, data flow, tests as models, comments, go to definition, find usages, an inspector, block-selection
+shrink and a handful of completion fine points. The milestone tables below name the ones that have a home;
+the survey, the deliberate differences and the open decisions are in
+[mps-gap-analysis.md](architecture/mps-gap-analysis.md).
+
 **Known gap, recorded rather than fixed here:** `standalone.md` and
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
 `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and none of those types exist yet - the
@@ -85,6 +92,7 @@ application and in the standalone app, proving the two front ends share the beha
 | Live preview | edit a language definition, see the effect on a model next to it |
 | Bootstrap | versioned bootstrap XML, migrated with user data; the C# declarations stay as the oracle and the fail-safe |
 | Workbench shell | the standalone app grows into the workbench: language browser, live preview, output panel, language project creation |
+| Language-definition parity | accessory models (the library nodes a language ships, such as a colour palette), a concept's alias (the word completion offers and typing creates), and an explicit "may be a root" flag ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 
 By the end of this milestone the definition languages are written in themselves: the same
 project folder, the same `<<property>>` blocks, the same cell glyphs, loaded from the bootstrap
@@ -105,6 +113,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | --- | --- |
 | Declarative aspects | **types, generation and constraints are done** (`Projectional.TypeRules`, `Projectional.TextGen`, `Projectional.ConstraintRules`, [semantics.md](architecture/semantics.md#the-declared-form)); what is left is scopes and intentions as definition languages, each lowering to the aspect delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
+| Find usages | the reference index a rename needs first: who points at this node, across models, and the gesture that asks ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
 | Model-to-model generation | a generator whose output is a model of a target language, which that language's own text generator then prints: the rule vocabulary, the build and link phases, the reverse map that keeps "go to source" working through both stages ([model-generation.md](architecture/model-generation.md)) |
@@ -160,6 +169,7 @@ the gate (compiled output and the interpreter must agree on the corpus):
 | Accessibility | automation peer, keyboard-only navigation review, contrast |
 | IME | `TextInputMethodClient`, composition handling, CJK testing |
 | Docs and samples | tutorial DSL, embedding guide, language-author guide |
+| Editor experience | comments, go to definition, block-selection shrink, inspector and hierarchy view, completion filter reset and camel humps, show type, paste history, and the keys the intentions already have ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 | Packaging | NuGet, CI matrix, public API baseline, AOT/trimming validation |
 | App distribution | self-contained installers per OS, file association for `.prj`, winget/Homebrew manifests |
 
