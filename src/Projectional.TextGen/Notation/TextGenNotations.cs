@@ -66,6 +66,15 @@ public static class TextGenNotations
             ed.Keyword("$"),
             ed.Property(TextGenLanguage.ConceptKeySlot)));
 
+        // `<slot>` says "what this points at", which is the one thing a reference part emits. The two stand-in
+        // texts are deliberately not drawn: a conditional cell can say "when this value holds", not "when it
+        // differs from the default", and an always-visible `<slot> or <unset>` would bury the part's meaning.
+        // They are still editable through the property tip.
+        notations.Add(TextGenConceptKeys.Reference, ed => ed.Line(
+            ed.Keyword("<"),
+            ed.Property(TextGenLanguage.ConceptKeySlot),
+            ed.Keyword(">")));
+
         notations.Add(TextGenConceptKeys.Child, ed => ed.Line(
             ed.Keyword("("),
             ed.Property(TextGenLanguage.ConceptKeySlot),

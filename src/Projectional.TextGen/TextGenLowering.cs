@@ -105,6 +105,11 @@ public static class TextGenLowering
         TextGenConceptKeys.Property => new PropertyPart(
             PropertyOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A property part names the property."))),
 
+        TextGenConceptKeys.Reference => new ReferencePart(
+            ReferenceOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A reference part names the reference.")),
+            part.GetOrNull(TextGenLanguage.UnsetTextSlot) ?? "<none>",
+            part.GetOrNull(TextGenLanguage.UnresolvedTextSlot) ?? "<unresolved>"),
+
         TextGenConceptKeys.Child => new ChildPart(
             ChildSlotOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A child part names the slot."))),
 
@@ -142,6 +147,11 @@ public static class TextGenLowering
         target.FindProperty(slot) is not null
             ? slot
             : throw new ConceptDefinitionException($"'{slot}' is not a property of {target.Key}, so '{part.Concept.Key}' cannot emit it.");
+
+    private static string ReferenceOf(Node part, Concept target, string slot) =>
+        target.FindReference(slot) is not null
+            ? slot
+            : throw new ConceptDefinitionException($"'{slot}' is not a reference of {target.Key}, so '{part.Concept.Key}' cannot emit it.");
 
     private static string ChildSlotOf(Node part, Concept target, string slot) =>
         target.FindChild(slot) is { } child

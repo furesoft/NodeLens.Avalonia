@@ -152,6 +152,10 @@ public sealed class Generator
                     Emit(node, property.Slot, PropertyOf(node, property.Slot));
                     break;
 
+                case ReferencePart reference:
+                    Emit(node, reference.Slot, ReferenceOf(node, reference));
+                    break;
+
                 case ChildPart child:
                     EmitNode(SingleChildOf(node, child.Slot), generator);
                     break;
@@ -241,6 +245,29 @@ public sealed class Generator
         node.Concept.FindProperty(slot) is not null
             ? node.GetOrNull(slot) ?? string.Empty
             : throw Fail(node, $"'{slot}' is not a property of {node.Concept.Key}.");
+
+    /// <summary>What <paramref name="part"/>'s reference says: its target's name, or its stand-in text.</summary>
+    /// <remarks>
+    /// Read from the model, never from a projection: generation runs on a document nobody is drawing, which is the
+    /// reason the three states are answered here rather than taken from a cell. A target with no name is emitted as
+    /// its concept in angle brackets, exactly as a reference cell draws it.
+    /// </remarks>
+    private string ReferenceOf(Node node, ReferencePart part)
+    {
+        if (node.Concept.FindReference(part.Slot) is null)
+        {
+            throw Fail(node, $"'{part.Slot}' is not a reference of {node.Concept.Key}.");
+        }
+
+        if (node.GetReference(part.Slot) is null)
+        {
+            return part.UnsetText;
+        }
+
+        return node.GetReferenceTarget(part.Slot) is { } target
+            ? target.Name ?? $"<{target.Concept.Key}>"
+            : part.UnresolvedText;
+    }
 
     private Node SingleChildOf(Node node, string slot)
     {

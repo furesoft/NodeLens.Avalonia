@@ -3,7 +3,7 @@ namespace Projectional.TextGen;
 /// <summary>The keys of the generator language: the concepts a generator is written with.</summary>
 /// <remarks>
 /// <para>
-/// Fourteen concepts, and the shape is MPS': one document holds any number of <em>generators</em>, each generator maps
+/// Fifteen concepts, and the shape is MPS': one document holds any number of <em>generators</em>, each generator maps
 /// concepts to templates, and a template is a list of parts. A language therefore declares as many generators as it
 /// has targets - the same rule table as JSON, as C#, as a second C# version - which is why the document's root is a
 /// list of them and not a single generator.
@@ -36,6 +36,9 @@ public static class TextGenConceptKeys
 
     /// <summary>A property's value, emitted as stored.</summary>
     public const string Property = "TextGen.Property";
+
+    /// <summary>A reference's target name, emitted as the projection would draw it.</summary>
+    public const string Reference = "TextGen.Reference";
 
     /// <summary>The generated text of the single child in a slot.</summary>
     public const string Child = "TextGen.Child";

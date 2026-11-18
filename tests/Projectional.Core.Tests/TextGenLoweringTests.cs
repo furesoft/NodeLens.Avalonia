@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.Samples;
+using Projectional.Samples.StateMachine;
 using Projectional.Semantics;
 using Projectional.TextGen;
 using Xunit;
@@ -203,4 +204,75 @@ public sealed class TextGenLoweringTests
 
     private static Node Otherwise(Model model, Node part) =>
         model.NewChild(part, TextGenLanguage.OtherwiseSlot, TextGenConceptKeys.Template);
+
+    /// <summary>
+    /// A reference part, lowered against a language that has one - the pilot's rules language has none, and a part
+    /// can only be declared over a slot the language actually owns.
+    /// </summary>
+    [Fact]
+    public void AReferencePartLowersToTheNameOfItsTarget()
+    {
+        var (_, transition) = Transition();
+
+        var generator = LowerAgainst(
+            StateMachineLanguage.Concepts,
+            SmConceptKeys.Transition,
+            part => part.Set(TextGenLanguage.ConceptKeySlot, "source")).Single();
+
+        var generated = new Generator().Generate(transition, generator);
+
+        Assert.True(generated.Succeeded, generated.Failure?.Message);
+        Assert.Equal("Idle", generated.Text);
+    }
+
+    [Fact]
+    public void AReferencePartThatNamesAPropertyIsRefusedWhenTheGeneratorLoads()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => LowerAgainst(
+            StateMachineLanguage.Concepts,
+            SmConceptKeys.Transition,
+            part => part.Set(TextGenLanguage.ConceptKeySlot, "event")));
+
+        // Naming the concept and the slot: the author has to be able to find the mistake in the file.
+        Assert.Contains("'event' is not a reference of Sm.Transition", exception.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Lowers one generator whose only mapping is <paramref name="conceptKey"/>, with one part in it.</summary>
+    private static IReadOnlyList<TextGenerator> LowerAgainst(
+        ConceptRegistry concepts,
+        string conceptKey,
+        Action<Node> configure)
+    {
+        var model = new Project(TextGenLanguage.Concepts).NewModel("generator");
+        var generator = model.NewNode(TextGenConceptKeys.Generator);
+        generator.Set(TextGenLanguage.NameSlot, "Test");
+        model.AddRoot(generator);
+
+        var template = Mapping(model, generator, conceptKey);
+        configure(Part(model, template, TextGenConceptKeys.Reference));
+
+        return TextGenLowering.CreateGenerators(model.Roots, concepts);
+    }
+
+    /// <summary>A machine with one transition from `Idle` to `Done`, and that transition.</summary>
+    private static (Model Model, Node Transition) Transition()
+    {
+        var model = StateMachineLanguage.NewProject().NewModel("Machine");
+        var machine = model.NewNode(SmConceptKeys.Machine);
+        machine.Set("name", "Machine");
+        model.AddRoot(machine);
+
+        var idle = model.NewChild(machine, StateMachineLanguage.StatesSlot, SmConceptKeys.State);
+        idle.Set("name", "Idle");
+
+        var done = model.NewChild(machine, StateMachineLanguage.StatesSlot, SmConceptKeys.State);
+        done.Set("name", "Done");
+
+        var transition = model.NewChild(machine, StateMachineLanguage.TransitionsSlot, SmConceptKeys.Transition);
+        transition.Set("event", "go");
+        transition.SetReference("source", idle);
+        transition.SetReference("target", done);
+
+        return (model, transition);
+    }
 }

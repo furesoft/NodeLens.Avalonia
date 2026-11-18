@@ -1047,10 +1047,16 @@ A language turns a model into text through a template per concept. The template 
 the walk is `Generator` in `Projectional.Semantics/Generation/`. `docs/architecture/semantics.md` §Generation is the
 design of record.
 
-- **Nine parts, and the set is closed.** `TextPart`, `PropertyPart`, `ChildPart`, `ChildrenPart`, `LoopPart`,
-  `IndentPart`, `LineBreakPart`, `ConditionalPart`, `SelfPart`. There is deliberately no "compute", no variable and no
-  counter: a part emits, reads a slot, expands a child or chooses, and anything else is a generator this framework does
-  not have. `SelfPart` exists for one reason - inside a `LoopPart` body "this node" is the child being visited.
+- **Ten parts, and the set is closed.** `TextPart`, `PropertyPart`, `ReferencePart`, `ChildPart`, `ChildrenPart`,
+  `LoopPart`, `IndentPart`, `LineBreakPart`, `ConditionalPart`, `SelfPart`. There is deliberately no "compute", no
+  variable and no counter: a part emits, reads a slot, expands a child or chooses, and anything else is a generator
+  this framework does not have. `SelfPart` exists for one reason - inside a `LoopPart` body "this node" is the child
+  being visited.
+- **`ReferencePart` reads the model's three reference states, not a cell's.** A target's name, the `unsetText` the
+  language names, the `unresolvedText` for a dangling target - so a generated file and the editor cannot disagree
+  about what a reference says. It arrived with the SQL schema example, whose DDL is unreadable without the name of the
+  column a key points at; before it, no language could generate a reference at all. A target that declares no name is
+  emitted as `<Concept.Key>`, exactly as a reference cell draws it.
 - **`TextTemplate.Of(...)` takes `params ReadOnlySpan<TemplatePart>`**, so a C# generator passes its parts without
   allocating an array.
 - **A concept with no template is a failure; an empty template means "emits nothing".** Never collapse the two: the

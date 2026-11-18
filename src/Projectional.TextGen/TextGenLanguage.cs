@@ -52,6 +52,12 @@ public static class TextGenLanguage
     /// <summary>The value a conditional matches.</summary>
     public const string ValueSlot = "value";
 
+    /// <summary>What a reference part emits when nothing is linked.</summary>
+    public const string UnsetTextSlot = "unsetText";
+
+    /// <summary>What a reference part emits when the target no longer exists.</summary>
+    public const string UnresolvedTextSlot = "unresolvedText";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// A generator is a document of its own, so a language's generator aspect is a folder with one generator per
@@ -102,6 +108,27 @@ public static class TextGenLanguage
             [TextGenConceptKeys.Part],
             nameSlot: ConceptKeySlot,
             description: "A property's value, emitted as it is stored."),
+
+        new ConceptDeclaration(
+            TextGenConceptKeys.Reference,
+            [
+                new PropertySlot(ConceptKeySlot, PropertyType.String, description: "The reference to emit."),
+                new PropertySlot(
+                    UnsetTextSlot,
+                    PropertyType.String,
+                    "<none>",
+                    "What is emitted when nothing is linked.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    UnresolvedTextSlot,
+                    PropertyType.String,
+                    "<unresolved>",
+                    "What is emitted when the target no longer exists.",
+                    showDescriptionWhenFilled: true),
+            ],
+            [TextGenConceptKeys.Part],
+            nameSlot: ConceptKeySlot,
+            description: "A reference's target name, emitted as the projection would draw it."),
 
         new ConceptDeclaration(
             TextGenConceptKeys.Child,
