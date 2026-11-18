@@ -141,10 +141,7 @@ public static class StructureLowering
                 Optional(slot, "description"),
                 Flag(slot, "showDescriptionWhenFilled")),
 
-            StructureConceptKeys.ChildDecl => new ChildSlot(
-                name,
-                Required(slot, "childConceptKey", $"slot '{name}'"),
-                Optional(slot, "cardinality") == "many" ? Cardinality.Many : Cardinality.One),
+            StructureConceptKeys.ChildDecl => LowerChildSlot(name, slot),
 
             StructureConceptKeys.ReferenceDecl => new ReferenceSlot(
                 name,
@@ -154,6 +151,30 @@ public static class StructureLowering
             _ => throw new ConceptDefinitionException(
                 $"Concept '{owner}' has a slot '{name}' of kind '{slot.Concept.Key}', which is not a slot kind."),
         };
+    }
+
+    /// <summary>The child slot a declaration stands for, with the range its cardinality spells.</summary>
+    /// <remarks>
+    /// The four spellings are the ones the notation offers in one cell - <c>0..1</c>, <c>0..n</c>, <c>1</c>,
+    /// <c>1..n</c> - and the range is what the model stores: the storage shape in <see cref="Cardinality"/> and the
+    /// lower end in <see cref="ChildSlot.Minimum"/>. A slot that says nothing is <c>1</c>, which is what every
+    /// child slot meant before the range was written down.
+    /// </remarks>
+    private static ChildSlot LowerChildSlot(string name, Node slot)
+    {
+        var cardinality = Optional(slot, "cardinality") ?? "1";
+
+        var (kind, minimum) = cardinality switch
+        {
+            "0..1" => (Cardinality.One, 0),
+            "0..n" => (Cardinality.Many, 0),
+            "1" => (Cardinality.One, 1),
+            "1..n" => (Cardinality.Many, 1),
+            _ => throw new ConceptDefinitionException(
+                $"Slot '{name}' declares the cardinality '{cardinality}', which is not one of 0..1, 0..n, 1 or 1..n."),
+        };
+
+        return new ChildSlot(name, Required(slot, "childConceptKey", $"slot '{name}'"), kind, minimum);
     }
 
     /// <summary>The type a declared property names: one of the four built-ins, or a declared enumeration.</summary>

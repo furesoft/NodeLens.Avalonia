@@ -167,9 +167,9 @@ public static class StructureLanguage
                     showDescriptionWhenFilled: true),
                 new PropertySlot(
                     "cardinality",
-                    PropertyType.Enum(["one", "many"]),
-                    "one",
-                    "Whether the slot holds one child or a list of them.",
+                    PropertyType.Enum(["0..1", "0..n", "1", "1..n"]),
+                    "1",
+                    "How many children the slot holds: none or one, zero or more, exactly one, or one or more.",
                     showDescriptionWhenFilled: true),
             ],
             [StructureConceptKeys.Slot],

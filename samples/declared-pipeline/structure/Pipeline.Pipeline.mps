@@ -24,7 +24,7 @@
           <properties>
             <name>stages</name>
             <childConceptKey>Pipeline.Stage</childConceptKey>
-            <cardinality>many</cardinality>
+            <cardinality>1..n</cardinality>
           </properties>
         </node>
       </children>

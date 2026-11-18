@@ -80,10 +80,9 @@ public static class StructureNotations
             ed.Punct(":"),
             ed.Space,
             ed.Property("childConceptKey"),
-            ed.Space,
-            ed.Keyword("cardinality:"),
-            ed.Space,
-            ed.Property("cardinality")));
+            ed.Punct("["),
+            ed.Property("cardinality"),
+            ed.Punct("]")));
 
         notations.Add(StructureConceptKeys.ReferenceDecl, ed => ed.Line(
             ed.Property("name"),

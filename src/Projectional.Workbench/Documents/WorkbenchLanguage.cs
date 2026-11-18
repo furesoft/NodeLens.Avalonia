@@ -298,7 +298,7 @@ internal sealed class WorkbenchLanguage
     private static SlotDeclaration Redeclare(SlotDeclaration slot) => slot switch
     {
         PropertySlot property => new PropertySlot(property.Name, property.Type, property.DefaultValue, property.Description),
-        ChildSlot child => new ChildSlot(child.Name, child.ChildConceptKey, child.Cardinality),
+        ChildSlot child => new ChildSlot(child.Name, child.ChildConceptKey, child.Cardinality, child.Minimum),
         ReferenceSlot reference => new ReferenceSlot(reference.Name, reference.TargetConceptKey, reference.AllowOwnSubtree),
         _ => throw new InvalidOperationException($"'{slot.GetType().Name}' is not a slot kind this shell can re-declare."),
     };
