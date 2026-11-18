@@ -153,6 +153,7 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | Interfaces, slice I1: a concept kind whose properties and references its implementers inherit, conformance still `IsKindOf`, one flat slot map, metadata overridable by the implementer without moving the slot, and `Framework.Named` injected into every registry | `ConceptDeclaration(..., isInterface, interfaces)`, `Concept.IsInterface`/`.Extensions`/`.Interfaces`, `ConceptRegistry.ValidateInterface`/`HasSameShape`, `FrameworkInterfaces`, `Node.IsNamed` | `ConceptRegistryTests` (nine rules), `NodeTests.IsNamedIsAFactOfTheConcept`; `CorpusTests` and `EveryDefinitionDocumentSavesBackByteIdentically` prove the injection moves no saved byte |
 | The three things a shell does with a document - run it, generate its text, derive its findings - as public entry points beside the control, answering a value instead of filling a panel | `Projectional.Avalonia/Run/` (`DocumentRun`, `DocumentGenerate`, `RunReport`, `RunRow`, `RunInputs`), `Findings/` (`DocumentFindings`, `FindingSet`); the app uses the same three | `DocumentRunTests`, `RunInputsTests`, `DocumentFindingsTests` |
 | A host application that embeds the control: one document, the four gestures (check, run, generate, break a rule), and no reference to the standalone app - so the M4 gate's "inside the embedded control in a small host application" is a fact, and a build that needed an internal package would break | `samples/host-app/` | compiled by `dotnet build` through the solution; started for twelve seconds in a real window with no output on stderr |
+| The first worked example, `Projectional.Samples.StateMachine`: three concepts whose transitions *reference* their states, one concept drawn two ways (a braced block and a table over `transitions`), `final` from a `Conditional` cell, an interpreter that walks the machine and fails where it stops, and the unreachable-state constraint beside it | `Projectional.Samples.StateMachine/` (`StateMachineLanguage`, `Notation/StateMachineNotations`, `StateMachineEvaluation`), `Projectional.Samples.StateMachine.Checks/` (`StateMachineConstraints`), `Corpus/release.mps` | `StateMachineNotationsTests` (block, table, and a non-final state drawing no word), `StateMachineConstraintsTests`, `StateMachineEvaluationTests`, `StateMachineCorpusTests` (byte-identical re-save, clean under its own rule, both notations pinned) |
 
 Not done in M4: stepping (open question 11), and the dependency-set incrementality that lets the constraint
 engine produce diagnostics in volume.
@@ -187,7 +188,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1975 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 1991 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

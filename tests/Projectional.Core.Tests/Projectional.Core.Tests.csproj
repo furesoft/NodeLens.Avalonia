@@ -24,6 +24,8 @@
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Samples.StateMachine.Checks\Projectional.Samples.StateMachine.Checks.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
@@ -41,6 +43,7 @@
       fixture. The test copies it so it can load the same folder the app does.
     -->
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Projectional.Samples.StateMachine\Corpus\**\*.mps" Link="StateMachine\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

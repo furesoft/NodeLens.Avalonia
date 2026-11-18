@@ -32,9 +32,9 @@ One DSL per axis, chosen so the three do not overlap:
 
 | Package | Axis it proves | Needs |
 | --- | --- | --- |
-| `Projectional.Samples.StateMachine` | references, one concept in two notations, constraints (unreachable state), interpreter trace | M3 references, M4 checks and interpreter - all delivered |
+| `Projectional.Samples.StateMachine` | references, one concept in two notations, constraints (unreachable state), interpreter trace | **delivered** |
 | `Projectional.Samples.FeatureModel` | constraints (`requires`/`excludes`), a generator to a config file, an interpreter over the selection | M4 |
-| `Projectional.Samples.SqlSchema` | cross-model references, the table cell in earnest, a generator to DDL | M3, M4 |
+| `Projectional.Samples.SqlSchema` | cross-model references, the table cell in earnest, a generator to DDL | M3, M4 - and the reference-column gap recorded in §1 |
 
 They are examples, not products: none of them may grow a capability the framework does not have, and none
 gets an app-private feature (composition rule 5 in [standalone.md](standalone.md)).
@@ -65,8 +65,29 @@ optional guard written in the shared `Expressions` sub-language.
 which is the conditional cell earning its place in a real language rather than in a test.
 
 The checks package ships one rule the framework's catalogue cannot state: **an unreachable state** - a state
-no transition starts in and that is not the initial one. The interpreter evaluates a machine against a start
-state and answers the trace, so the output panel demonstrates what the trace rows are for.
+that is not the initial one and that no transition leads *into*. The direction is the whole rule: asking what
+*leaves* a state would report every final state on every machine, and the first draft of the constraint did
+exactly that.
+
+The interpreter evaluates a machine against a start state and answers the trace, so the output panel
+demonstrates what the trace rows are for: `Transition` is a predicate (does its guard hold), `Machine` is the
+walk from `initial` that takes the first transition whose source matches, and a machine that settles in a
+non-final state or exceeds `MaxSteps` is a failure that says where it stopped.
+
+**Delivered.** `src/Projectional.Samples.StateMachine` (language, notations, evaluation),
+`src/Projectional.Samples.StateMachine.Checks` (the unreachable-state constraint), `Corpus/release.mps`
+written by the writer and re-saved byte-identically, and `StateMachineNotationsTests`,
+`StateMachineConstraintsTests`, `StateMachineEvaluationTests`, `StateMachineCorpusTests`.
+
+Two findings from building it, both recorded rather than worked around:
+
+- **A table column may name a property or a single child, never a reference.** `NotationRegistry.ValidateTable`
+  refuses it, so the transition table draws `event` and `when` and leaves `source`/`target` to the block form.
+  This is a real gap in the table cell, and it is the same one the SQL schema example will hit on a foreign-key
+  column - see §3.
+- **A graph over children needs `allowOwnSubtree`.** A transition references its source and target, both states
+  of the same machine, so without that flag the reference would point into the referring node's own subtree -
+  which invariant 5 refuses. The state machine is the first language to need it.
 
 ## 2. Feature model - `Projectional.Samples.FeatureModel`
 
@@ -109,10 +130,10 @@ side, and these three packages are its first customers.
 
 ## Sequencing
 
-One branch and one package at a time, in the order above: the state machine first (it needs nothing that is
-not delivered), then the feature model (constraints plus a generator), then the SQL schema (the table cell and
-cross-model references). Each lands as its own commits - language, checks, corpus, tests - and each moves its
-own row into [implemented.md](../implemented.md) when it is finished.
+One branch and one package at a time, in the order above: the state machine first (it needed nothing that was
+not delivered and is now done), then the feature model (constraints plus a generator), then the SQL schema
+(the table cell and cross-model references). Each lands as its own commits - language, checks, corpus, tests -
+and each moves its own row into [implemented.md](../implemented.md) when it is finished.
 
 ## What is still undecided
 
