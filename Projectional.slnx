@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Projectional.Avalonia/Projectional.Avalonia.csproj" />
     <Project Path="src/Projectional.Checks/Projectional.Checks.csproj" />
+    <Project Path="src/Projectional.ConstraintRules/Projectional.ConstraintRules.csproj" />
     <Project Path="src/Projectional.Core/Projectional.Core.csproj" />
     <Project Path="src/Projectional.Editing/Projectional.Editing.csproj" />
     <Project Path="src/Projectional.Intentions/Projectional.Intentions.csproj" />
