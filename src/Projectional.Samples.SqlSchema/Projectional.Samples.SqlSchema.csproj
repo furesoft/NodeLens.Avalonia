@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A worked example, not a product: a language package that references the language layer and nothing above it.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+  </ItemGroup>
+
+</Project>
