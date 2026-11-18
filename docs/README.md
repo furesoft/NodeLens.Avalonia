@@ -104,3 +104,5 @@ directory stays authoritative whenever the two disagree.
 | [0016](adr/0016-quick-fixes-are-edits-a-host-supplies.md) | Quick fixes are edits a host supplies, applied by the session |
 | [0017](adr/0017-preview-is-a-discarded-edit.md) | A preview is a projection of a discarded edit |
 | [0018](adr/0018-concept-description-is-language-data.md) | A concept description is language data, not model data |
+| [0019](adr/0019-toolkit-is-the-language-surface.md) | The toolkit is the surface a language is written against |
+| [0020](adr/0020-framework-vocabulary-is-injected.md) | The framework's vocabulary is injected into every registry |
