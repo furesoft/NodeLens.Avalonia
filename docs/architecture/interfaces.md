@@ -1,7 +1,8 @@
 # Interfaces: the framework's structural vocabulary
 
-Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Nothing described here exists in the
-tree: today a concept *nominates* a name slot and nothing can be declared over "anything with a name".
+Status: **planned** (M5, first slice in [roadmap.md](../roadmap.md)). Slice **I1 is delivered**: the concept kind,
+the member merge, the validation table, `Framework.Named` in every registry and `Node.IsNamed`. The rest of this
+document - the declared path (I2), adoption (I3) and the records (I4) - is not.
 
 ## The problem
 

@@ -20,6 +20,13 @@ public sealed class ConceptRegistry
 
     /// <summary>Resolves and validates a set of declarations.</summary>
     /// <exception cref="ConceptDefinitionException">The declarations do not form a usable language.</exception>
+    /// <remarks>
+    /// The framework's own vocabulary (<see cref="FrameworkInterfaces.All"/>) is added to the set before it is
+    /// resolved, so every registry contains it - a language package's, a project folder's, a test's. That is why a
+    /// registry is not literally the list it was given: a language cannot ship without
+    /// <see cref="FrameworkInterfaces.Named"/>, and a host can rely on that key meaning the same thing in every
+    /// document it opens. Declaring the key yourself is refused rather than silently ignored.
+    /// </remarks>
     public static ConceptRegistry Create(IEnumerable<ConceptDeclaration> declarations)
     {
         ArgumentNullException.ThrowIfNull(declarations);
@@ -31,12 +38,28 @@ public sealed class ConceptRegistry
         {
             ArgumentNullException.ThrowIfNull(declaration);
 
+            if (FrameworkInterfaces.All.Any(framework => framework.Key == declaration.Key))
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{declaration.Key}' is the framework's own interface, so a language may implement it but not declare it.");
+            }
+
             if (!declared.TryAdd(declaration.Key, declaration))
             {
                 throw new ConceptDefinitionException($"Concept '{declaration.Key}' is declared more than once.");
             }
 
             order.Add(declaration.Key);
+        }
+
+        // First, so that a language's own order is untouched below them and a reader of Concepts meets the
+        // vocabulary before the languages that use it. They are abstract and not offered in completion, so
+        // nothing a user creates moves because of the position.
+        order.InsertRange(0, FrameworkInterfaces.All.Select(declaration => declaration.Key));
+
+        foreach (var framework in FrameworkInterfaces.All)
+        {
+            declared.Add(framework.Key, framework);
         }
 
         var resolved = new Dictionary<string, Concept>(StringComparer.Ordinal);
@@ -65,7 +88,13 @@ public sealed class ConceptRegistry
                 supers[i] = Resolve(declaration.SuperConcepts[i]);
             }
 
-            var concept = Build(declaration, supers);
+            var interfaces = new Concept[declaration.Interfaces.Count];
+            for (var i = 0; i < interfaces.Length; i++)
+            {
+                interfaces[i] = Resolve(declaration.Interfaces[i]);
+            }
+
+            var concept = Build(declaration, [.. supers, .. interfaces], supers, interfaces);
             inProgress.Remove(key);
             resolved.Add(key, concept);
             return concept;
@@ -302,21 +331,35 @@ public sealed class ConceptRegistry
         return null;
     }
 
-    private static Concept Build(ConceptDeclaration declaration, Concept[] supers)
+    private static Concept Build(
+        ConceptDeclaration declaration,
+        Concept[] supers,
+        Concept[] extensions,
+        Concept[] interfaces)
     {
+        ValidateInterface(declaration, extensions, interfaces);
+
         var slots = new List<SlotDeclaration>();
         var byName = new Dictionary<string, SlotDeclaration>(StringComparer.Ordinal);
 
-        void Merge(SlotDeclaration slot)
+        void Merge(SlotDeclaration slot, bool isOwn)
         {
             if (byName.TryGetValue(slot.Name, out var existing))
             {
-                // The same declaration reached through two super concepts is a diamond, not a
-                // conflict. Anything that differs would make the flat slot map ambiguous.
-                if (!existing.Equals(slot))
+                if (!HasSameShape(existing, slot))
                 {
                     throw new ConceptDefinitionException(
-                        $"Concept '{declaration.Key}' inherits two different declarations for slot '{slot.Name}'.");
+                        $"Concept '{declaration.Key}' inherits two incompatible declarations for slot '{slot.Name}': {existing} and {slot}.");
+                }
+
+                // The more derived declaration wins and keeps the first-seen position: the concept's own beats
+                // every super's, and between two supers the first in declaration order wins. Metadata only -
+                // a default value or a description is a language's decision, while a shape is the contract.
+                // Never move the slot, because slot order is part of the saved bytes (ADR 0005).
+                if (isOwn)
+                {
+                    slots[slots.IndexOf(existing)] = slot;
+                    byName[slot.Name] = slot;
                 }
 
                 return;
@@ -330,13 +373,13 @@ public sealed class ConceptRegistry
         {
             foreach (var slot in super.Slots)
             {
-                Merge(slot);
+                Merge(slot, isOwn: false);
             }
         }
 
         foreach (var slot in declaration.Slots)
         {
-            Merge(slot);
+            Merge(slot, isOwn: true);
         }
 
         PropertySlot? nameSlot = null;
@@ -403,6 +446,81 @@ public sealed class ConceptRegistry
             declaration.Description,
             collapseSlot,
             declaration.Applicability,
-            declaration.Triggers);
+            declaration.Triggers,
+            declaration.IsInterface,
+            extensions,
+            interfaces);
+    }
+
+    /// <summary>
+    /// Whether two declarations of one slot agree on what the slot <em>is</em>, which is the part an inheritance
+    /// cannot renegotiate.
+    /// </summary>
+    /// <remarks>
+    /// Shape is the slot kind and everything that decides what may stand in it: a property's type, a reference's
+    /// target and subtree permission, a child slot's concept, cardinality and minimum. Metadata is what a more
+    /// derived declaration may override without changing the contract - a default value, a description, whether a
+    /// filled value shows it - because a role cannot choose a placeholder that suits every language.
+    /// </remarks>
+    private static bool HasSameShape(SlotDeclaration left, SlotDeclaration right) => (left, right) switch
+    {
+        (PropertySlot a, PropertySlot b) => a.Type.Equals(b.Type),
+        (ReferenceSlot a, ReferenceSlot b) => a.TargetConceptKey == b.TargetConceptKey
+            && a.AllowOwnSubtree == b.AllowOwnSubtree,
+        (ChildSlot a, ChildSlot b) => a.ChildConceptKey == b.ChildConceptKey
+            && a.Cardinality == b.Cardinality
+            && a.Minimum == b.Minimum,
+        _ => false,
+    };
+
+    /// <summary>
+    /// Refuses an interface that would make the flat slot map or the aspect walk say something it cannot mean.
+    /// </summary>
+    /// <remarks>
+    /// These are the rules a single declaration cannot check, because each one needs the graph: what a super is,
+    /// and whether the thing declaring a member is a concept that could ever be a node.
+    /// </remarks>
+    private static void ValidateInterface(ConceptDeclaration declaration, Concept[] extensions, Concept[] interfaces)
+    {
+        if (declaration.IsInterface)
+        {
+            // A child slot would make every implementer's notation owe a cell it never asked for, and a
+            // registered concept without a notation is the one state a user cannot work around.
+            if (declaration.Slots.Any(slot => slot is ChildSlot))
+            {
+                throw new ConceptDefinitionException(
+                    $"Interface '{declaration.Key}' declares a child slot, but an interface contributes properties and references only.");
+            }
+
+            if (declaration.Triggers.Count > 0)
+            {
+                throw new ConceptDefinitionException(
+                    $"Interface '{declaration.Key}' declares a trigger, but no node is ever an interface, so no gesture could edge one.");
+            }
+
+            if (!declaration.Applicability.Equals(Applicability.Anywhere))
+            {
+                throw new ConceptDefinitionException(
+                    $"Interface '{declaration.Key}' names a place, but an interface is never a node, so it stands nowhere.");
+            }
+        }
+
+        foreach (var extension in extensions)
+        {
+            if (extension.IsInterface)
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{declaration.Key}' extends '{extension.Key}', which is an interface - implement it instead, which is the same conformance with a name that says why.");
+            }
+        }
+
+        foreach (var implemented in interfaces)
+        {
+            if (!implemented.IsInterface)
+            {
+                throw new ConceptDefinitionException(
+                    $"Concept '{declaration.Key}' implements '{implemented.Key}', which is not an interface - declare it as a super concept instead.");
+            }
+        }
     }
 }

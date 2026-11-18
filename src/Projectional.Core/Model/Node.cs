@@ -70,6 +70,13 @@ public sealed class Node
     /// <summary>The text a reference to this node displays, if its concept declares a name slot.</summary>
     public string? Name => Concept.NameSlot is { } slot ? GetOrNull(slot.Name) : null;
 
+    /// <summary>Whether this node has a name at all, which is what makes it something a reference can point at.</summary>
+    /// <remarks>
+    /// A fact of the concept rather than a habit of the language: a concept that implements
+    /// <see cref="FrameworkInterfaces.Named"/> has one without declaring it, and so does every concept below it.
+    /// </remarks>
+    public bool IsNamed => Concept.NameSlot is not null;
+
     /// <summary>Nodes of the child slot <paramref name="name"/>, in document order.</summary>
     /// <exception cref="KeyNotFoundException">The concept declares no such slot.</exception>
     public IReadOnlyList<Node> GetChildren(string name)

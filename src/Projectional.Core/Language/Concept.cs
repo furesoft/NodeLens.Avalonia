@@ -21,7 +21,10 @@ public sealed class Concept
         string? description = null,
         PropertySlot? collapseSlot = null,
         Applicability? applicability = null,
-        IReadOnlyList<ConceptTrigger>? triggers = null)
+        IReadOnlyList<ConceptTrigger>? triggers = null,
+        bool isInterface = false,
+        IReadOnlyList<Concept>? extensions = null,
+        IReadOnlyList<Concept>? interfaces = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -33,6 +36,9 @@ public sealed class Concept
         CollapseSlot = collapseSlot;
         Applicability = applicability ?? Applicability.Anywhere;
         Triggers = triggers ?? [];
+        IsInterface = isInterface;
+        Extensions = extensions ?? superConcepts;
+        Interfaces = interfaces ?? [];
         _slotsByName = new Dictionary<string, SlotDeclaration>(slots.Count, StringComparer.Ordinal);
 
         foreach (var slot in slots)
@@ -49,8 +55,34 @@ public sealed class Concept
 
     public string Key { get; }
 
-    /// <summary>Direct super concepts, in declaration order.</summary>
+    /// <summary>
+    /// Every concept this one conforms to, in one ordered walk: the extensions first, then the interfaces, each in
+    /// declaration order.
+    /// </summary>
+    /// <remarks>
+    /// The union rather than two walks, because this is what <see cref="IsKindOf"/>, the slot merge and every
+    /// aspect lookup traverse - a second list those walks did not see would be a second conformance relation by
+    /// accident. <see cref="Extensions"/> and <see cref="Interfaces"/> are how a tool gets the difference back.
+    /// </remarks>
     public IReadOnlyList<Concept> SuperConcepts { get; }
+
+    /// <summary>The super concepts this one extends, in declaration order.</summary>
+    public IReadOnlyList<Concept> Extensions { get; }
+
+    /// <summary>The interfaces this one implements, in declaration order.</summary>
+    public IReadOnlyList<Concept> Interfaces { get; }
+
+    /// <summary>
+    /// Whether this concept is an interface: abstract by definition, never instantiated, and the source of the
+    /// properties and references its implementers inherit.
+    /// </summary>
+    /// <remarks>
+    /// A kind, not a second relation. A slot declared over an interface accepts every implementer and every
+    /// descendant of one, exactly as a slot declared over an abstract concept does, and a node is never an
+    /// instance of one - which is why no notation is required and no place may be named
+    /// (docs/architecture/interfaces.md).
+    /// </remarks>
+    public bool IsInterface { get; }
 
     /// <summary>
     /// The flat slot set: inherited slots first, then own ones, each in declaration order.
