@@ -183,7 +183,8 @@ public sealed partial class MainWindow : Window, IDisposable
         ICellEmphasis? emphasis = null,
         ITypingRules? typing = null,
         TypeRegistry? types = null,
-        ConstraintSet? constraints = null)
+        ConstraintSet? constraints = null,
+        IScopeProvider? scopes = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -211,6 +212,7 @@ public sealed partial class MainWindow : Window, IDisposable
             typing,
             types,
             constraints,
+            scopes,
             WorkbenchLanguage.InterpreterFor(model),
             WorkbenchLanguage.GeneratorsFor(model),
             _clipboard);
@@ -1227,7 +1229,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         // Every definition document of the folder opens, because that is where the user edits the language: one
         // concept or enumeration per file, one notation per file, one rule or named type per file.
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder })
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder })
         {
             var path = Path.Combine(directory, folder);
 
@@ -1271,7 +1273,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types, constraints: opened.Constraints);
+        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types, constraints: opened.Constraints, scopes: opened.Scopes);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)

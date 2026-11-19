@@ -184,8 +184,9 @@ Not done in M5: live preview, bootstrap and the language browser.
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
 | Constraints as a definition language: a language's own rules are models, lowered into the same `IConstraint` a language written in C# declares, loaded from a `constraints` folder | `Projectional.ConstraintRules/`, `LanguageProject.Constraints`, `ConstraintNotations` | `ConstraintLoweringTests` (incl. parity with `Projectional.Checks`), `ConstraintLanguageTests`, `LanguageProjectConstraintsTests`, `DeclaredSampleLanguageTests` |
+| Scopes as a definition language: a `scopes` folder names, per concept, which reference slot sees which place (`local`, `ancestors`, `model`, `project`, `everywhere`) and optionally which concept, lowered into the same `NamedScopeProvider` a C# language installs. Unnamed slots keep the default chain, two rules for one slot are refused rather than merged, and the shell hands an opened language's providers to its documents | `Projectional.ScopeRules/` (`ScopeLanguage`, `ScopeLowering`, `ScopePlaces`, `Notation/ScopeNotations`), `Projectional.Semantics/Scopes/` (`ScopePlace`, `ScopeBinding`, `NamedScopeProvider`, `ScopeWalk`), `LanguageProject.Scopes`, `DocumentTab.Scopes` | `ScopeLoweringTests` (a rule becomes a provider, two references of one concept share one, and the refusals for an unknown concept, a non-reference slot, an unknown target and a duplicate rule), `NamedScopeProviderTests` ("everywhere, no target" equals the default chain entry for entry, a target narrows to one concept, an unnamed slot falls back), `DefaultScopeProviderTests` (unchanged, on the shared walk), `LanguageProjectScopesTests` (a `scopes` folder loads into the language's providers, resolves from a real model, and refuses a rule naming a property at load) |
 
-Not done in M6: the remaining aspects as definition languages (scopes, generation, intentions), refactorings,
+Not done in M6: the remaining aspect as a definition language (intentions), refactorings,
 migrations tooling, model-aware diff/merge, model-to-model generation, text import, the projected C# base language,
 the embedded shell, packaging.
 

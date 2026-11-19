@@ -65,6 +65,9 @@ internal sealed class DocumentTab : IDisposable
     /// The rules the language states about itself, or <see langword="null"/> when the caller has none to add - which
     /// is what the sample language's own rules stand in for.
     /// </param>
+    /// <param name="scopes">
+    /// The scope providers the language declares, or <see langword="null"/> for the default chain.
+    /// </param>
     /// <param name="evaluation">
     /// The language's interpreter - the rules that give its concepts a meaning - or <see langword="null"/> when it
     /// defines none, in which case the document cannot be run at all.
@@ -85,6 +88,7 @@ internal sealed class DocumentTab : IDisposable
         ITypingRules? typing = null,
         TypeRegistry? types = null,
         ConstraintSet? constraints = null,
+        IScopeProvider? scopes = null,
         EvaluationRegistry? evaluation = null,
         IReadOnlyList<TextGenerator>? generators = null,
         IEditorClipboard? clipboard = null)
@@ -106,6 +110,10 @@ internal sealed class DocumentTab : IDisposable
         Evaluation = evaluation;
         Generators = generators ?? [];
         Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
+
+        // A language that declares scopes replaces the chain for the references it names; every other slot still
+        // falls through to the default, which is what makes installing it harmless.
+        Session.Scopes = scopes ?? DefaultScopeProvider.Instance;
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.
