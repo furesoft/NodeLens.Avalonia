@@ -9,6 +9,7 @@
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One step of a pipeline.</description>
         <nameSlot></nameSlot>
+        <nameRule>camel</nameRule>
       </properties>
       <children role="implements">
         <node id="0c0b5318-b509-43f9-a84e-07648ed77492" concept="Structure.SuperType" name="Framework.Named">

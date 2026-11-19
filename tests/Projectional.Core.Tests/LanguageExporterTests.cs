@@ -68,6 +68,7 @@ public sealed class LanguageExporterTests
                             new ChildSlot("stages", "Pipeline.Stage", Cardinality.Many, minimum: 1),
                         ],
                         interfaces: ["Framework.Named"],
+                        nameRule: NameRule.Pascal,
                         description: "A named sequence of stages."
                     ),
                     new ConceptDeclaration(
@@ -78,6 +79,7 @@ public sealed class LanguageExporterTests
                             new PropertySlot("retries", PropertyType.Integer, "0"),
                         ],
                         interfaces: ["Framework.Named"],
+                        nameRule: NameRule.Camel,
                         description: "One step of a pipeline."
                     ),
                 ];

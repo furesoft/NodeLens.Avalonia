@@ -9,6 +9,7 @@
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>A named sequence of stages.</description>
         <nameSlot></nameSlot>
+        <nameRule>pascal</nameRule>
       </properties>
       <children role="implements">
         <node id="54c2d2df-ccb4-43c5-8891-01c8bd3269fe" concept="Structure.SuperType" name="Framework.Named">
