@@ -108,7 +108,7 @@ public sealed class DuplicateNameCheck : ICheck
                         continue;
                     }
 
-                    fixes.Add(FixFor(node, child, name, FirstFree(name, taken)));
+                    fixes.Add(FixFor(node, child, name, FirstFree(name, child.Concept.NameRule, taken)));
                 }
             }
         }
@@ -172,13 +172,20 @@ public sealed class DuplicateNameCheck : ICheck
     /// <remarks>
     /// Numbering starts at two, because the name itself is taken by the sibling that keeps it and
     /// <c>Check1</c> beside <c>Check</c> reads like a typo rather than like a second node. The chosen name
-    /// joins the set, which is what makes the second duplicate of one name move on.
+    /// joins the set, which is what makes the second duplicate of one name move on. <paramref name="rule"/>
+    /// respells the candidate, so a rename in a language that declares a spelling rule offers a name that
+    /// language accepts - the repair may not leave <c>STD004</c>'s finding behind.
     /// </remarks>
-    private static string FirstFree(string name, HashSet<string> taken)
+    private static string FirstFree(string name, NameRule? rule, HashSet<string> taken)
     {
         for (var suffix = 2; ; suffix++)
         {
             var candidate = string.Concat(name, suffix.ToString(CultureInfo.InvariantCulture));
+
+            if (rule is not null)
+            {
+                candidate = rule.Propose(candidate);
+            }
 
             if (taken.Add(candidate))
             {

@@ -120,9 +120,10 @@ compose: an own `nameSlot` overrides the inherited one, exactly as it overrides 
 ### A third designation: what a name may look like
 
 `nameRule` is the same kind of nomination, and it is the first one that is not a slot: it is a
-`NameRule` - `AnyText` or `Identifier` - and it says what the *spelling* of a name may be
-(`STD004` reports a name that breaks it). It is inherited exactly like the two slots, but it stays
-**nullable** on the concept, and that is the decision worth understanding:
+`NameRule` - `AnyText`, `Identifier`, or one of the case conventions (`Pascal`, `Camel`, `Snake`,
+`ScreamingSnake`, `Kebab`, `ScreamingKebab`, `Train`, `Dot`, `PascalDot`) - and it says what the
+*spelling* of a name may be (`STD004` reports a name that breaks it). It is inherited exactly like the
+two slots, but it stays **nullable** on the concept, and that is the decision worth understanding:
 
 - `Concept.NameRule` is `null` when nothing in the concept's chain declared a rule. "Nobody declared"
   and "somebody declared `any`" are different facts, and only the second one survives inheritance. A
@@ -132,9 +133,21 @@ compose: an own `nameSlot` overrides the inherited one, exactly as it overrides 
   concept that wants "any text" below a base that asked for identifiers says so explicitly, and its
   subtypes inherit *that*.
 
+The values are a closed family and the case rules share one algorithm: cut the name into the words it
+already carries (at separators, at a hump after a lower-case letter, and at the capital that ends an
+acronym) and join them the way the convention says. `Identifier` is the convention-free one - "one
+ASCII identifier, cased however the language likes" - while `Pascal` says *and* how it is cased.
+`Propose` is the same algorithm, which is what makes a rule both the test and the repair: a name the
+rule accepts is the name `Propose` answers, and the answer always passes `IsValid`.
+
 The rule carries no check of its own: `NameRule.IsValid` is a predicate, `NameRule.Propose` is the
-repair, and the catalogue's `STD004` is the only thing that reads them. A concept with a name rule and
-no name slot is legal, because declaring the rule before the slot is a legitimate order of work.
+repair, and the catalogue's `STD004` is the only thing that reads them. Three states another check
+already names are deliberately left to it, so one state produces one finding: an empty name and a name
+still equal to the concept's placeholder are `STD001`'s business, and whitespace around a name is
+`STD003`'s - a name is judged once the space is gone. `STD001` and `STD002` pass their proposals through
+the concept's rule, so the name they write is one the language accepts - a fix that left `STD004` behind
+would be broken. A concept with a name rule and no name slot is legal, because declaring the rule before
+the slot is a legitimate order of work.
 
 ## Notation
 

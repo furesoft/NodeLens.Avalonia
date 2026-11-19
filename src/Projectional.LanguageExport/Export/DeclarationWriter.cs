@@ -141,6 +141,15 @@ internal static class DeclarationWriter
     {
         "any" => "AnyText",
         "identifier" => "Identifier",
+        "pascal" => "Pascal",
+        "camel" => "Camel",
+        "snake" => "Snake",
+        "screaming-snake" => "ScreamingSnake",
+        "kebab" => "Kebab",
+        "screaming-kebab" => "ScreamingKebab",
+        "train" => "Train",
+        "dot" => "Dot",
+        "pascal-dot" => "PascalDot",
         _ => throw new InvalidOperationException($"'{rule.Text}' is not a name rule."),
     };
 

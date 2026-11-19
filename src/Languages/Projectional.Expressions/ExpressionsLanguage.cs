@@ -134,7 +134,12 @@ public static class ExpressionsLanguage
             [new PropertySlot("name", PropertyType.String, description: "The name to read, such as amount.")],
             [ExpressionsConceptKeys.Expression],
             description: "A reference to a name that some scope resolves.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+
+            // A name is a variable, and variables are written in camel case everywhere this vocabulary is
+            // borrowed from: `amount`, `attempts`. The rule is a warning with a one-click repair, never a
+            // refusal at the keystroke, so a name typed as `Amount` still exists until it is fixed.
+            nameRule: NameRule.Camel),
 
         // The gestures, declared on the concepts they create: an operator typed at an edge of an existing
         // expression, and a parenthesis typed in front of one. Binary's left trigger does not claim "-", because a

@@ -261,6 +261,46 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
+    public void ACaseRuleSurvivesTheExport()
+    {
+        // The member names the writer emits are hand-written, so a rule added to NameRule without a member here
+        // would compile the writer and fail the generated source - which is what this test asks of two of them.
+        IReadOnlyList<ConceptDeclaration> declarations =
+        [
+            new ConceptDeclaration(
+                "Rules.Column",
+                [new PropertySlot("name", PropertyType.String)],
+                nameSlot: "name",
+                nameRule: NameRule.ScreamingSnake),
+            new ConceptDeclaration(
+                "Rules.Table",
+                [new PropertySlot("name", PropertyType.String)],
+                nameSlot: "name",
+                nameRule: NameRule.PascalDot),
+        ];
+
+        var result = LanguageExporter.Export(
+            "CaseRules",
+            declarations,
+            [],
+            "Sample.CaseRules",
+            output: ExportOutput.Assembly);
+
+        Assert.Contains("nameRule: NameRule.ScreamingSnake", result.Files[0].Text, StringComparison.Ordinal);
+        Assert.Contains("nameRule: NameRule.PascalDot", result.Files[0].Text, StringComparison.Ordinal);
+
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+        var type = assembly.GetType("Sample.CaseRules.CaseRulesLanguage", throwOnError: true);
+        var exported = (IReadOnlyList<ConceptDeclaration>)type!
+            .GetProperty("ConceptDeclarations", BindingFlags.Public | BindingFlags.Static)!
+            .GetValue(null)!;
+
+        Assert.Equal(
+            ParityHarness.Dump(ConceptRegistry.Create(declarations)),
+            ParityHarness.Dump(ConceptRegistry.Create(exported)));
+    }
+
+    [Fact]
     public void TheCompiledAssemblyNeedsNothingTheToolkitDoesNotBring()
     {
         // ADR 0019: a language package references the toolkit and nothing else. An exported language that needed

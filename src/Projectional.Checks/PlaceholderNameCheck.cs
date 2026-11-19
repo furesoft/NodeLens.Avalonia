@@ -23,7 +23,9 @@ namespace Projectional.Checks;
 /// Each repair names the node after its concept with the first free suffix, and the proposals are computed
 /// as a group: two unnamed rules are offered <c>Rule1</c> and <c>Rule2</c>, not <c>Rule1</c> twice. The
 /// numbering starts at one because <c>Rule</c> on its own reads like the concept rather than like a node of
-/// it.
+/// it. A concept that declares a spelling rule (<see cref="Concept.NameRule"/>) has its proposal respelled by
+/// that rule, so the name this fix writes is one the language accepts - a repair that left
+/// <c>STD004</c>'s finding behind would be broken.
 /// </para>
 /// </remarks>
 public sealed class PlaceholderNameCheck : ICheck
@@ -45,7 +47,7 @@ public sealed class PlaceholderNameCheck : ICheck
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        List<(NodeId Id, string Slot, string Placeholder, string Concept)> unnamed = [];
+        List<(NodeId Id, string Slot, string Placeholder, string Concept, NameRule? Rule)> unnamed = [];
         HashSet<string> used = new(StringComparer.Ordinal);
 
         foreach (var node in NodeWalk.Of(model))
@@ -67,14 +69,14 @@ public sealed class PlaceholderNameCheck : ICheck
                 continue;
             }
 
-            unnamed.Add((node.Id, nameSlot.Name, placeholder, node.Concept.Key));
+            unnamed.Add((node.Id, nameSlot.Name, placeholder, node.Concept.Key, node.Concept.NameRule));
         }
 
         List<DiagnosticFix> fixes = [];
 
-        foreach (var (id, slot, placeholder, concept) in unnamed)
+        foreach (var (id, slot, placeholder, concept, rule) in unnamed)
         {
-            var proposal = FirstFree(ConceptWords.Word(concept), used);
+            var proposal = FirstFree(ConceptWords.Word(concept), rule, used);
             var target = CellAddress.OfSlot(id, slot);
 
             fixes.Add(new DiagnosticFix(
@@ -99,13 +101,20 @@ public sealed class PlaceholderNameCheck : ICheck
     /// <summary><paramref name="word"/> with the first number that is not in <paramref name="used"/>.</summary>
     /// <remarks>
     /// The chosen name joins the set, so a second unnamed node of the same concept moves on rather than
-    /// proposing the name the first one is already offered.
+    /// proposing the name the first one is already offered. <paramref name="rule"/> respells the candidate,
+    /// which is why the set holds the proposal and not the plain <c>Rule1</c> - a name the language would
+    /// report is not a name this fix may write.
     /// </remarks>
-    private static string FirstFree(string word, HashSet<string> used)
+    private static string FirstFree(string word, NameRule? rule, HashSet<string> used)
     {
         for (var suffix = 1; ; suffix++)
         {
             var candidate = string.Concat(word, suffix.ToString(CultureInfo.InvariantCulture));
+
+            if (rule is not null)
+            {
+                candidate = rule.Propose(candidate);
+            }
 
             if (used.Add(candidate))
             {

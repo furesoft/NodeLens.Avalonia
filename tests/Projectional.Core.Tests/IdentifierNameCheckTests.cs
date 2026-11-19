@@ -19,6 +19,8 @@ public sealed class IdentifierNameCheckTests
 {
     private const string IdentifierKey = "Test.Identifier";
     private const string ProseKey = "Test.Prose";
+    private const string SnakesKey = "Test.Snakes";
+    private const string PlaceholderKey = "Test.Placeholder";
 
     private static IdentifierNameCheck Check => new();
 
@@ -36,6 +38,38 @@ public sealed class IdentifierNameCheckTests
         Assert.Equal(node.Id, finding.Target);
         Assert.Equal("Use \"my_rule\"", fix.Label);
         Assert.Equal(EditSafety.Plain, fix.Safety);
+    }
+
+    [Fact]
+    public void ANameInTheWrongConventionIsReportedWithTheRuleItBreaks()
+    {
+        // The finding quotes the convention, because "not an identifier" would be wrong about `myRule` when the
+        // language asked for snake_case.
+        var (model, _) = Document("myRule", SnakesKey);
+
+        var fix = Assert.Single(Check.Find(model));
+
+        Assert.Contains("snake_case", fix.Diagnostic.Message, StringComparison.Ordinal);
+        Assert.Equal("Use \"my_rule\"", fix.Label);
+    }
+
+    [Fact]
+    public void ANameThatIsItsConceptPlaceholderIsNotReported()
+    {
+        // `unnamed` is not PascalCase, but nobody typed it: STD001 is the finding for an unnamed node, and a
+        // spelling warning about a name that is about to be replaced would be noise.
+        var (model, _) = Document("unnamed", PlaceholderKey);
+
+        Assert.Empty(Check.Find(model));
+    }
+
+    [Fact]
+    public void ANameWithWhitespaceAroundItIsLeftToTheWhitespaceCheck()
+    {
+        // `STD003` repairs the space; the spelling of what is left is the next finding, not a second one now.
+        var (model, _) = Document("my rule ");
+
+        Assert.Empty(Check.Find(model));
     }
 
     [Fact]
@@ -99,6 +133,16 @@ public sealed class IdentifierNameCheckTests
                 ProseKey,
                 [new PropertySlot("name", PropertyType.String)],
                 nameSlot: "name"),
+            new ConceptDeclaration(
+                SnakesKey,
+                [new PropertySlot("name", PropertyType.String)],
+                nameSlot: "name",
+                nameRule: NameRule.Snake),
+            new ConceptDeclaration(
+                PlaceholderKey,
+                [new PropertySlot("name", PropertyType.String, "unnamed")],
+                nameSlot: "name",
+                nameRule: NameRule.Pascal),
         ]);
 
         var model = new Project(registry).NewModel("document");

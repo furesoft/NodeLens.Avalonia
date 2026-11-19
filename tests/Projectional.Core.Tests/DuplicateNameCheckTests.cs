@@ -130,6 +130,36 @@ public sealed class DuplicateNameCheckTests
     }
 
     [Fact]
+    public void TheProposalIsRespelledByTheConceptsNameRule()
+    {
+        // A rename may not write a name the language would report. The shared name is already no snake_case, so
+        // the offer is `order_item2` - from the same NameRule.Propose the spelling check offers.
+        var registry = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Test.Item",
+                [new PropertySlot("name", PropertyType.String)],
+                nameSlot: "name",
+                nameRule: NameRule.Snake),
+            new ConceptDeclaration("Test.List", [new ChildSlot("items", "Test.Item", Cardinality.Many)]),
+        ]);
+
+        var model = new Project(registry).NewModel("document");
+        var list = model.NewNode("Test.List");
+        model.AddRoot(list);
+
+        foreach (var _ in new[] { 1, 2 })
+        {
+            model.NewChild(list, "items", "Test.Item").Set("name", "orderItem");
+        }
+
+        var fix = Assert.Single(Check.Find(model));
+
+        Assert.Equal("Rename to \"order_item2\"", fix.Label);
+        Assert.True(NameRule.Snake.IsValid("order_item2"));
+    }
+
+    [Fact]
     public void AModelThatIsNullIsRejected()
     {
         Assert.Throws<ArgumentNullException>(() => Check.Find(null!));
