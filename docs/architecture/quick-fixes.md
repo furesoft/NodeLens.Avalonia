@@ -339,13 +339,22 @@ is not offered, which is the honest default for a language whose names may be se
 | --- | --- | --- | --- |
 | `STD010` | a single-child slot is empty | `Insert "Rule"` | plain - **shipped**; the same concept Enter would create, from `DefaultInstantiableFor` |
 | `STD011` | a list holds fewer children than its declared minimum (`1..n`) | `Add "Rule"` | plain - **shipped**; the minimum the slot declares, and the same `InsertChildAction` `STD010` runs |
-| `STD012` | a node holds nothing but its defaults | `Delete the empty rule` | **destructive** |
+| `STD012` | a node holds nothing but its defaults | `Delete the empty rule` | **destructive** - **shipped**; a list entry only, and only where the concept declares a slot to fill |
 
 `STD010` and `STD011` are the two fixes a user meets most often in a fresh document, and both are one
 `InsertChildAction` away from what the keyboard already does - which is why both are shipped: the fix and the
 keystroke cannot disagree, because they are the same action (`InsertNodeAction` runs it too). Which of the two
 speaks is the declaration's answer: a slot written `1` is a hole while it is empty, one written `0..1` is not,
 and a list written `1..n` is reported where `0..n` stays quiet.
+
+`STD012` is the one finding here whose repair *removes* something, and three exclusions keep it from being
+noise. It speaks about a **list entry** only, because emptying a single-child slot is `STD010`'s finding and
+not a deletion; about a node that **declares a slot to fill**, because a leaf whose whole content is one value
+(`IntLiteral`, `Name`, `Sm.State`) *is* that value and the model cannot tell a value the user typed from one it
+holds by default; and only while **nothing is set anywhere** - one property off its default, one child, one
+reference is content. A language whose empty container is meaningful therefore leaves the check out rather than
+switching it off: an empty JSON object and an empty XML element are values a file may hold, and deleting one
+would change what the file says.
 
 ### References: whatever a reference slot knows
 
@@ -443,6 +452,7 @@ being worth its demonstration.
 | Id | Where | What it needed |
 | --- | --- | --- |
 | `STD002` | `DuplicateNameCheck` | a project-wide scan for referrers, because the repair may not leave a reference dangling |
+| `STD012` | `EmptyNodeCheck` | a delete addressed by node id - `DeleteNodeAction(NodeId)`, the gap the feature-model sample recorded while writing its first repair |
 
 `STD002` is the first standard check the samples had already written by hand: `RULES001` in
 `Projectional.Samples.Checks`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the

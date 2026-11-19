@@ -132,8 +132,9 @@ language has a statement body yet - the operation is generic, so the `if` arrive
 | Inline collection notation: a separated list that stays inside its line, so a record's fields can be written on one | `InlineCollectionNotationCell`, `NotationEditor.InlineCollection` | `InlineCollectionNotationTests` |
 | A language project's `types` folder loads into the registry a constraint asks for types, one rule or named type per document, and the app checks each document with its own language's rules | `LanguageProject.Types`, `DocumentTab.Types` | `LanguageProjectTypesTests` |
 | Quick fixes at the caret, the bulb, the offer list | `QuickFixes`, `OfferList` | `QuickFixesTests`, `QuickFixBulbTests`, `EditorSessionFixTests` |
-| Standard check catalogue as a package (`STD001`, `STD002`, `STD003`, `STD010`, `STD011`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `DuplicateNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `MinimumChildCountCheckTests`, `BinaryGroupingCheckTests` |
+| Standard check catalogue as a package (`STD001`, `STD002`, `STD003`, `STD010`, `STD011`, `STD012`, `STD040`) | `Projectional.Checks/` | `StandardChecksTests`, `CheckSetTests`, `PlaceholderNameCheckTests`, `DuplicateNameCheckTests`, `SurroundingWhitespaceCheckTests`, `EmptyChildSlotCheckTests`, `MinimumChildCountCheckTests`, `EmptyNodeCheckTests`, `BinaryGroupingCheckTests` |
 | `STD002`, two children of one slot under one name: the later one is offered a rename, computed as a group so three duplicates propose `Check2` and `Check3`; the check stays silent about a node anything in the project references | `DuplicateNameCheck` | `DuplicateNameCheckTests` |
+| `STD012`, a list entry that holds nothing but its defaults: a hint offering the deletion, on a list entry only, only where the concept declares a slot to fill, and only while nothing is set anywhere | `EmptyNodeCheck` | `EmptyNodeCheckTests` |
 | The app's own checks (default names, duplicate rule names) | `Projectional.Workbench/Checks/` | `DefaultNamesTests`, `DuplicateRuleNamesTests` |
 | Interpretation: the `Evaluate` aspect per concept, inherited like the type rules | `IEvaluationRule`, `EvaluationRegistry`, `EvaluationContext` | `EvaluationRegistryTests` |
 | The interpreter: explicit stack, post-order trace, step budget, cancellation, and a failure that names its node | `Interpreter`, `InterpretationResult`, `TraceEntry`, `InterpretationFailure` | `InterpreterTests` |
@@ -216,7 +217,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2054 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2269 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

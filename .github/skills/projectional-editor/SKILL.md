@@ -1354,6 +1354,11 @@ Shipped checks and the rules they encode:
 - `STD011` (`MinimumChildCountCheck`, `Hint`) - the list half: a `Cardinality.Many` slot whose declared
   `Minimum` is at least one and that holds nothing. The same `InsertChildAction`, which is why the two checks
   cannot drift from Enter either.
+- `STD012` (`EmptyNodeCheck`, `Hint`, destructive repair) - a list entry that holds nothing but its defaults;
+  the repair is `DeleteNodeAction(NodeId)`, which exists because this check needed a delete that names its
+  node. Three exclusions make it usable: **a list entry only** (emptying a single-child slot is `STD010`'s
+  finding), **a concept that declares a slot to fill** (a leaf is its value, and a default cannot be told from
+  a typed value), and **nothing set anywhere**.
 - `STD040` (`BinaryGroupingCheck`, `Warning`) - an operand drawn without the parentheses its grouping
   needs. **The finding names the operand, not its parent**, and the repair wraps that operand: wrapping the
   parent leaves the same finding, and a repair that survives itself is broken. Precedence lives in the
@@ -2086,7 +2091,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2054 tests**; anything below that means tests were deleted.
+it. **Baseline is 2269 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
