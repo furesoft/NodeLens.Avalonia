@@ -47,7 +47,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | --- | --- | --- |
 | **Comments** | `Ctrl+/` | **missing entirely** - there is no comment concept in the model and no gesture in the editor. The most noticeable loss in daily use |
 | Go to definition | `Ctrl+B`, `Ctrl+click` on a reference | missing. The intention catalogue keeps "show the target" as the host's job ([context-actions.md](context-actions.md)), and the app does not run it |
-| Find usages | `Alt+F7` | missing, and it is what a rename refactoring needs first: an index of who points at a node, across models |
+| Find usages | `Alt+F7` | **shipped**: `ReferenceIndex` answers who points at a node across the models of a project, and the shell lists the rows in a panel beside the document; the rename refactoring that needs it is still to come |
 | Block selection expand and shrink | `Ctrl+Up` / `Ctrl+Down` | partial: `Ctrl+A` climbs a three-rung ladder (value, node, document) and cannot shrink |
 | Node Explorer and Inspector | `Alt+X`, `Alt+2` | partial: the app has an outline (a flat, read-only list) and no inspector for cell or property details - which is what makes the editor and generator definitions convenient in MPS |
 | Inheritance / structure view | `Ctrl+H` | missing |
@@ -82,7 +82,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | Milestone | What |
 | --- | --- |
 | M5 (self-hosting, language projects) | accessory models; `language.mps` dependencies and imported languages; concept aliases; an explicit can-be-a-root flag |
-| M6 (framework maturity) | find usages with the reference index that a rename needs; mapping labels in model generation; the smodel query language ([smodel.md](smodel.md)); concept behaviours - a node's `Name` and `Describe` as declared pure functions ([behaviours.md](behaviours.md)); the Actions aspect and behaviour *methods* with real bodies, both with the C# base language; tests of a language as data ([language-tests.md](language-tests.md)) |
+| M6 (framework maturity) | mapping labels in model generation; the smodel query language ([smodel.md](smodel.md)); concept behaviours - a node's `Name` and `Describe` as declared pure functions ([behaviours.md](behaviours.md)); the Actions aspect and behaviour *methods* with real bodies, both with the C# base language; tests of a language as data ([language-tests.md](language-tests.md)) |
 | M7 (release hardening, editor polish) | comments; go to definition; block-selection shrink; inspector and hierarchy view; completion filter reset and camel humps; show type; paste history; the missing keys (duplicate, insert before) |
 | unscheduled | data flow; property accessors |
 
@@ -100,6 +100,6 @@ query language of its own - a document you open, not a fragment you embed - is p
 - **Whether tests-as-models is worth the vocabulary.** It was; the plan is [language-tests.md](language-tests.md), which
   keeps the assertions declarative and the runner in a behaviour package. What that plan still needs decided is
   how a test names the document it is about.
-- **Whether the editor-experience items belong in the framework or the app.** Go to definition, find usages
-  and the inspector all read the model, so the framework owes the question and the host owes the panel - the
-  same split the intention catalogue already makes.
+- **Where an editor-experience feature lives.** Find usages settled the shape: the question is the framework's
+  (`ReferenceIndex`, `FindUsages`) and the panel is the host's, the same split the intention catalogue makes. Go to
+  definition and the inspector are expected to follow it.

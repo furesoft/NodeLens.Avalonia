@@ -38,6 +38,7 @@
       </MenuItem>
       <MenuItem Header="_View">
         <MenuItem Header="_Find..." HotKey="Ctrl+F" Click="OnFindText" />
+        <MenuItem Header="Find _usages (Alt+F7)" Click="OnFindUsages" />
         <Separator />
         <MenuItem x:Name="Representations" Header="_Representation" />
         <MenuItem Header="Reset column _widths" Click="OnResetColumnWidths" />
@@ -198,6 +199,36 @@
           BorderThickness="0"
           MaxHeight="160"
           SelectionChanged="OnProblemChosen" />
+      </DockPanel>
+    </Border>
+
+    <!--
+      The usages panel answers one question - who points at the node the caret named - and stays up while that node
+      exists. An empty list is shown, unlike the problems panel, because "nothing points here" is the answer that was
+      asked for rather than a state to hide. A usage in another model of the project says which model, and choosing a
+      row opens that document's tab before it moves the caret.
+    -->
+    <Border x:Name="UsagesPanel" DockPanel.Dock="Bottom" IsVisible="False" BorderThickness="0,1,0,0">
+      <DockPanel>
+        <TextBlock
+          x:Name="UsagesHeader"
+          DockPanel.Dock="Top"
+          Margin="8,6,8,2"
+          FontSize="12"
+          FontWeight="SemiBold"
+          Text="Usages" />
+        <ListBox
+          x:Name="Usages"
+          BorderThickness="0"
+          MaxHeight="160"
+          SelectionChanged="OnUsageChosen">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="MinHeight" Value="18" />
+              <Setter Property="Padding" Value="4,1" />
+            </Style>
+          </ListBox.Styles>
+        </ListBox>
       </DockPanel>
     </Border>
 

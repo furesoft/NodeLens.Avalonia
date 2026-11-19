@@ -81,6 +81,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _showLineNumbers;
     private double _fontSize = DefaultFontSize;
     private string? _error;
+    private NodeId? _usageTarget;
     private bool _closeConfirmed;
     private bool _disposed;
 
@@ -244,6 +245,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        SyncUsages();
         UpdateStatus();
     }
 
@@ -312,6 +314,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        SyncUsages();
         UpdateStatus();
     }
 
@@ -368,6 +371,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        SyncUsages();
         UpdateStatus();
     }
 
@@ -392,6 +396,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        SyncUsages();
         UpdateStatus();
     }
 
@@ -656,6 +661,133 @@ public sealed partial class MainWindow : Window, IDisposable
         document.Session.Select(Selection.At(entry.Place));
         editor.ScrollToCaret();
         editor.Focus();
+    }
+
+    /// <summary>Finds what points at the node the caret names, or at the reference it stands on.</summary>
+    private void OnFindUsages(object? sender, RoutedEventArgs e) => ShowActiveUsages();
+
+    private void ShowActiveUsages()
+    {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        var report = FindUsages.ReportOf(document.Session);
+
+        if (report.Target is null)
+        {
+            _error = "Nothing to find usages of: the caret is not on a node or a resolved reference.";
+            HideUsages();
+            UpdateStatus();
+
+            return;
+        }
+
+        _error = null;
+        ShowUsages(report);
+        UpdateStatus();
+    }
+
+    /// <summary>Fills the usages panel from a report and opens it.</summary>
+    private void ShowUsages(UsageReport report)
+    {
+        if (report.Target is not { } target)
+        {
+            HideUsages();
+
+            return;
+        }
+
+        _usageTarget = target.Id;
+
+        var rows = UsageList.Of(report);
+
+        Usages.ItemsSource = rows;
+        Usages.SelectedItem = null;
+        UsagesPanel.IsVisible = true;
+        UsagesHeader.Text = $"Usages of {UsageList.LabelOf(target)} ({rows.Count})";
+    }
+
+    /// <summary>Closes the panel and forgets which node it was answering about.</summary>
+    private void HideUsages()
+    {
+        _usageTarget = null;
+        Usages.ItemsSource = null;
+        Usages.SelectedItem = null;
+        UsagesPanel.IsVisible = false;
+    }
+
+    /// <summary>Re-asks the open question, or closes the panel when it can no longer be answered.</summary>
+    /// <remarks>
+    /// The node id is what keeps the question the one the user asked: re-deriving from the caret would silently turn
+    /// a keystroke somewhere else into a new search. The panel closes when its target is gone or belongs to a
+    /// document that is no longer in front, because a list of usages of a node the user can no longer see is a list
+    /// they cannot act on.
+    /// </remarks>
+    private void SyncUsages()
+    {
+        if (!UsagesPanel.IsVisible)
+        {
+            return;
+        }
+
+        if (_usageTarget is not { } id
+            || _documents.Active is not { } document
+            || document.Model.Project.FindNode(id) is not { } target)
+        {
+            HideUsages();
+
+            return;
+        }
+
+        ShowUsages(FindUsages.Of(target));
+    }
+
+    /// <summary>Puts the caret on a chosen usage, opening the document that holds it first.</summary>
+    /// <remarks>
+    /// A reference the notation hides has no cell, so the row falls back to the owner's node: the nearest place a
+    /// reader can be sent to, rather than a press that does nothing.
+    /// </remarks>
+    private void OnUsageChosen(object? sender, SelectionChangedEventArgs e)
+    {
+        if (Usages.SelectedItem is not UsageEntry entry)
+        {
+            return;
+        }
+
+        if (_documents.Find(entry.Model) is not { } document)
+        {
+            _error = "That usage is in a document that is not open.";
+            UpdateStatus();
+
+            return;
+        }
+
+        _error = null;
+        Select(document);
+
+        if (document.Model.Project.FindNode(entry.Place.Owner) is not { } owner)
+        {
+            _error = "That usage's owner is no longer in the document.";
+            UpdateStatus();
+
+            return;
+        }
+
+        var place = document.Session.Tree.Find(entry.Place) is not null
+            ? entry.Place
+            : new CellAddress(owner.Id);
+
+        document.Session.Select(Selection.At(place));
+
+        if (_tabs.TryGetValue(document, out var tab) && EditorOf(tab) is { } editor)
+        {
+            editor.ScrollToCaret();
+            editor.Focus();
+        }
+
+        UpdateStatus();
     }
 
     /// <summary>Runs the document in front and shows what came out.</summary>
@@ -1633,6 +1765,16 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             e.Handled = true;
             RunActiveDocument();
+
+            return;
+        }
+
+        // Alt+F7 is the find-usages gesture. It belongs to the window for the same reason F5 does: the answer is a
+        // panel the shell owns, not a list the editor control can paint over the document.
+        if (e.Key == Key.F7 && e.KeyModifiers == KeyModifiers.Alt)
+        {
+            e.Handled = true;
+            ShowActiveUsages();
 
             return;
         }

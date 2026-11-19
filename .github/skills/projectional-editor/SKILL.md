@@ -34,7 +34,9 @@ copy), the framework's own intention catalogue (rename, wrap in X, reset to the 
 `Projectional.ConstraintRules`), logical
 scrolling (bars via
 `ILogicalScrollable`, wheel, page keys), and text import (the `ITextImporter` contract in
-`Projectional.Language/Import/` with `Projectional.Json` as its first reference language) are done. The
+`Projectional.Language/Import/` with `Projectional.Json` as its first reference language) are done, as is
+find usages (a reverse reference index in `Projectional.Core`, the caret query in `Projectional.Editing` and the
+app's usages panel). The
 standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
 
 **The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
@@ -708,6 +710,32 @@ notation is registered per concept **and** variant
   the name is incomplete, so a half-typed name costs no undo step. **`Select` clears `PendingText`**, so
   a test that spells a name over several keystrokes must select once and then apply the keystrokes -
   selecting before each one wipes the run and the name never completes.
+
+## How find usages works
+
+`ReferenceIndex` (`Projectional.Core/References/`) is the reverse of a reference: `UsagesOf(node)` answers every
+slot that points at it, across every model of the project, as `ReferenceUsage(Owner, Slot, Target)` in document
+order - models in project order, nodes depth first, reference slots in declaration order. It is public because it
+is a model fact: a rename must rewrite every usage before it changes a name. Its invariants are the name index's:
+
+- **Per project, not per model**, because a reference may cross a model boundary but never a project one.
+- **Invalidated by `Model.Version`, never by a change handler** - subscribing would switch change journalling on
+  for every model - and held in a weak table, so a closed project takes its index with it.
+- **An unset reference slot is not a usage.** A dangling reference is indexed under the id it stores; no live node
+  answers that id, so a question about a node never returns it.
+
+`FindUsages` (`Projectional.Editing/Find/`) is the caret half: **a caret on a `ReferenceCell` asks about its
+target, anything else about the node whose cell address the caret carries** (an empty child slot therefore asks
+about its parent, as the intention list does). `UsageReport.HasTarget` separates "the caret names no node" (an
+unset or unresolved reference) from "nothing points here" (a clean node) - a panel must say different things. A
+usage's place is computed as `CellAddress.OfSlot(owner, slot)`, so it is right in any document; a hidden reference
+is still reported, and a caller tests `EditorTree.Find(place)` before selecting.
+
+The shell's panel is wiring: `UsageList.Of(report)` derives the rows (`Owner label - slot`, prefixed with the
+model name when the usage is in another model), `MainWindow` fills a list, keeps `_usageTarget` so an edit
+re-asks about the same node rather than the moved caret, closes the panel when the target is gone, and falls
+back to the owner node when a row's reference has no cell. `Alt+F7` is the window's, tunnelled like F5, because
+the answer is a panel and not a list the control paints.
 
 ## How constraints work
 
@@ -2196,7 +2224,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2417 tests**; anything below that means tests were deleted.
+it. **Baseline is 2441 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
