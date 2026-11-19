@@ -216,6 +216,7 @@ public sealed class StructureLoweringTests
                 "  offered in completion: true",
                 "  named by:",
                 "  collapsed by:",
+                "  named by rule:",
                 "  described as:",
                 "  properties:",
                 "    <<property name : string",
@@ -301,6 +302,7 @@ public sealed class StructureLoweringTests
                 "  offered in completion: true",
                 "  named by:",
                 "  collapsed by:",
+                "  named by rule:",
                 "  described as:",
                 "  properties:",
                 "    <<property>>",
@@ -449,6 +451,50 @@ public sealed class StructureLoweringTests
 
         Assert.NotNull(cardinality);
         Assert.Equal(["0..1", "0..n", "1", "1..n"], cardinality.Type.Symbols);
+    }
+
+    [Fact]
+    public void TheNameRuleCellOffersTheTwoRules()
+    {
+        // The declared words are the whole vocabulary, and the order is the order they are offered in.
+        var nameRule = StructureLanguage.Concepts.Get(StructureConceptKeys.Concept).FindProperty("nameRule");
+
+        Assert.NotNull(nameRule);
+        Assert.Equal(["any", "identifier"], nameRule.Type.Symbols);
+    }
+
+    [Fact]
+    public void ADeclaredNameRuleReachesTheConceptAndItsSubtypes()
+    {
+        // "identifier" is written into the definition's own cell and lowered into the registry's resolved
+        // concept, where a subtype inherits it without declaring anything.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept(
+            "Rules.Element",
+            slots: [definition.Property("name", "string")],
+            nameSlot: "name",
+            nameRule: "identifier");
+        definition.Concept("Rules.Rule", supers: ["Rules.Element"]);
+
+        var concepts = StructureLowering.CreateRegistry(definition.Roots);
+
+        Assert.Same(NameRule.Identifier, concepts.Get("Rules.Element").NameRule);
+        Assert.Same(NameRule.Identifier, concepts.Get("Rules.Rule").NameRule);
+    }
+
+    [Fact]
+    public void AnEmptyNameRuleCellMeansInherit()
+    {
+        // Empty is "nothing declared", not "any": a concept below a base that asks for identifiers keeps the
+        // rule, which is what makes the cell's emptiness mean the same thing as the name slot's.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Rule", slots: [definition.Property("name", "string")], nameSlot: "name");
+
+        var concepts = StructureLowering.CreateRegistry(definition.Roots);
+
+        Assert.Null(concepts.Get("Rules.Rule").NameRule);
     }
 
     [Fact]

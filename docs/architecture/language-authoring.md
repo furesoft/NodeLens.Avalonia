@@ -116,6 +116,7 @@ concept RuleSet implements Framework.Named {
   offered in completion: true
   named by: name
   collapsed by:
+  named by rule:
   described as:
   properties:
     <<property name : string
@@ -131,6 +132,7 @@ abstract concept Condition {
   offered in completion: true
   named by:
   collapsed by:
+  named by rule:
   described as:
   properties:
     <<property negated : boolean
