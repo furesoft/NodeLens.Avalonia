@@ -95,6 +95,46 @@ public sealed class DeclaredWorkflowSampleTests
     }
 
     [Fact]
+    public void TheInsertEntryIsOfferedOnTheEmptySlotAndFillsIt()
+    {
+        var language = Language();
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Workflow", "draft.mps"));
+        var workflow = model.Roots[0];
+
+        using var session = new EditorSession(workflow, language.Notations);
+
+        session.AddIntentions(language.Intentions, IntentionSource.Language);
+
+        // `first` is empty in this document, so the only place the entry means something is that cell.
+        var place = CaretPlaces.Of(session.Tree).First(each => each.IsEmptySlot);
+
+        session.Select(Selection.At(CaretPosition.At(place, 0)));
+
+        var offer = Assert.Single(IntentionList.For(session), each => each.Label == "Add the first step");
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+        Assert.Equal("Workflow.Step", Assert.Single(workflow.GetChildren("first")).Concept.Key);
+    }
+
+    [Fact]
+    public void TheInsertEntryIsAbsentWhereTheSlotIsFilled()
+    {
+        var language = Language();
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Workflow", "release.mps"));
+        var workflow = model.Roots[0];
+
+        using var session = new EditorSession(workflow, language.Notations);
+
+        session.AddIntentions(language.Intentions, IntentionSource.Language);
+
+        var place = CaretPlaces.Of(session.Tree).First(each => each.Address.Owner == workflow.Id);
+
+        session.Select(Selection.At(CaretPosition.At(place, 0)));
+
+        Assert.DoesNotContain(IntentionList.For(session), each => each.Label == "Add the first step");
+    }
+
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Workflow");
