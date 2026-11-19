@@ -119,7 +119,7 @@ Three decisions make that readable, and all three are P4:
   collections wrapped in a [while-filled cell](language.md#notation), so an empty one draws nothing at all rather
   than a placeholder nobody wants to read. The price is stated in the same place as the feature: an empty list has
   no caret stop, so `Inherit from…` and `Implement interface…` (`Projectional.Structures.Intentions`) are the way
-  to write the first entry, and both step aside once the list is on screen.
+  to write the first entry - and to append a second, because Enter does not extend a list inside a line.
 - **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`, `<<child steps :
   Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>`. A property carries three option lines under
   it, so without a visible end the reader cannot tell where one declaration stops and the next begins. The word

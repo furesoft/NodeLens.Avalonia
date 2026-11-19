@@ -175,8 +175,7 @@ cell, the gap inside, inline only - and adds the one consequence the conditional
   changes somewhere else; this cell hides a slot the user has to fill, so a language that uses it owes a
   second way in - an intention that creates the first child, the same answer `abstract` has because its word
   has no cell either. The structure language ships `Inherit from…` and `Implement interface…` for exactly
-  that (P4), and both are absent again once the list is on screen, because the list is then its own
-  affordance.
+  that (P4); they also append beside the last entry, because Enter does not extend an inline list.
 
 ```csharp
 notation.Add("Sample.Ruleset", ed => ed.Sequence(

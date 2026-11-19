@@ -383,10 +383,11 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   and is conditioned on `extends`, so it never dangles.
 - **`WhenFilledNotationCell` (`ed.WhenFilled`) is the cell that hides an empty slot**, and hiding one is a pair:
   the empty slot has no caret stop, so the language owes an intention that creates the first child.
-  `Projectional.Structures.Intentions` pays with `Inherit from…`/`Implement interface…` (`InsertChildAction`,
-  which also lands the caret on the new key and is absent again once the list is on screen). Do not add the cell
-  without the entry - an unreachable slot is worse than a placeholder. Its declared twin is `Editor.WhileFilled`
-  (ADR 0014: anything C# can say, a model must be able to say).
+  `Projectional.Structures.Intentions` pays with `Inherit from…`/`Implement interface…`: `InsertChildAction` for
+  an empty list, `InsertSiblingAction` for one that already has entries - Enter does not extend an inline list -
+  and both land the caret on the new key. Do not add the cell without the entry: an unreachable slot is worse
+  than a placeholder. Its declared twin is `Editor.WhileFilled` (ADR 0014: anything C# can say, a model must be
+  able to say).
 - **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`,
   `<<child steps : Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>` - and every collection in
   that notation **stacks**, because a definition is read one declaration per line. Layout draws a collection inline

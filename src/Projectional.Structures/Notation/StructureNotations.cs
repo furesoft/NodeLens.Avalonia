@@ -14,10 +14,11 @@ namespace Projectional.Structures.Notation;
 /// rather than a grouping the renderer invents.
 /// </para>
 /// <para>
-/// The two lists in the header are inline collections with a placeholder, so an empty one reads
-/// <c>extends &lt;&lt;&gt;&gt;</c> rather than disappearing. That is the whole reason the inheritance is a collection
-/// and not a line that fades out: a cell that hid an empty slot would also remove the place a user writes the first
-/// super concept into.
+/// The two lists in the header are inline collections inside a <see cref="WhenFilledNotationCell"/>, so an empty one
+/// is not drawn at all: <c>concept Rule extends Condition {</c> says what is true of this concept, and a concept
+/// that extends nothing does not mention extends. The price is paid in the same file - an empty slot has no caret
+/// stop, so the first entry is written with <c>StructureIntentions.InheritFrom</c>/<c>ImplementInterface</c> instead
+/// of with the caret.
 /// </para>
 /// <para>
 /// An empty section names the kind it will create - <c>&lt;&lt;property&gt;&gt;</c>, <c>&lt;&lt;child&gt;&gt;</c>,

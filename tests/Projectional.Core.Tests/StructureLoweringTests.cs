@@ -399,6 +399,34 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
+    public void TheInheritanceEntryAddsASecondEntryToAFilledList()
+    {
+        // The entry stays available once the list is on screen, and that is not decoration: Enter does not extend
+        // an inline collection - InsertNodeAction fills a slot that is empty or adds a sibling to a block child, and
+        // a super concept's key is neither. Without the entry a second super concept could not be written at all.
+        var definition = new DefinitionBuilder();
+
+        var concept = definition.Concept("Rules.Rule", supers: ["Rules.Element"]);
+
+        using var session = new EditorSession(concept, StructureNotations.Create());
+
+        session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
+        session.Select(Selection.At(new CellAddress(concept.Id)));
+
+        var offer = IntentionList.For(session).Single(entry => entry.Id == StructureIntentions.InheritFromId);
+
+        Assert.True(offer.Availability.IsApplicable);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+
+        Assert.Equal(2, concept.GetChildren(StructureLanguage.SuperTypeSlot).Count);
+
+        // The first one is untouched, the new one is second, and the caret is on its key.
+        var added = concept.GetChildren(StructureLanguage.SuperTypeSlot)[1];
+
+        Assert.Equal(CellAddress.OfSlot(added.Id, "conceptKey"), session.Selection.Anchor.Address);
+    }
+
+    [Fact]
     public void AnEnumerationsSymbolsStandOnePerLine()
     {
         // The symbols are a `Many` slot like any other: the order is the order they are offered in, and reading

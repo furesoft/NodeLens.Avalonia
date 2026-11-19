@@ -138,24 +138,18 @@ public sealed class StructureIntentionsTests
     }
 
     [Fact]
-    public void TheGestureOpensTheListEvenWithOnlyOneIntention()
+    public void TheGestureOpensTheListAndAppliesNothing()
     {
-        // The route the user actually takes: the keystroke asks what can be done here, and the answer is a
-        // list - of one row, this time, because the gesture applies nothing by itself. An interface whose two
-        // headers lists are already written is the fixture that has exactly one: it cannot become abstract or
-        // concrete, "make interface" is absent, and both entries for a first inheritance are gone as soon as the
-        // list is on screen.
-        var (session, concept) = Document(
-            isAbstract: true,
-            isInterface: true,
-            supers: ["Rules.Element"],
-            implements: ["Framework.Named"]);
+        // The route the user actually takes: the keystroke asks what can be done here, and the answer is a list -
+        // the gesture never applies an entry by itself. (A one-entry list is pinned by OfferKeysTests; what is
+        // structure-specific is which entries an interface offers.)
+        var (session, concept) = Document(isAbstract: true, isInterface: true);
 
         Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
 
         var offered = Assert.IsType<OfferList>(session.Offered);
 
-        Assert.Equal(StructureIntentions.MakeConceptId, Assert.Single(offered.Entries).Id);
+        Assert.Equal(StructureIntentions.MakeConceptId, offered.Entries[0].Id);
         Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
 
         // Enter on the highlighted entry is what applies it.
@@ -165,11 +159,9 @@ public sealed class StructureIntentionsTests
     }
 
     [Fact]
-    public void TheTwoInheritanceEntriesAddTheFirstEntryAndThenStepAside()
+    public void TheTwoInheritanceEntriesFillTheirOwnSlotAndLeaveTheOtherAlone()
     {
-        // Both entries exist for the state in which the header draws nothing. Once the list is on screen it is its
-        // own affordance - the caret stands in it and Enter adds the next entry - so the entry is absent instead of
-        // being a second way to do what the caret already does.
+        // One entry per list, and each decides its own: filling `implements` says nothing about `extends`.
         var (session, concept) = Document(isAbstract: false);
 
         Assert.Equal(EditOutcome.Applied, session.Apply(ById(session, StructureIntentions.ImplementInterfaceId)).Outcome);
@@ -182,12 +174,11 @@ public sealed class StructureIntentionsTests
             LayoutSnapshot.Render(session.Layout, width: 120),
             StringComparison.Ordinal);
 
-        // "Implement interface" has done its job, and the other one still has not: the two slots are decided
-        // separately because they can be filled separately. The caret is on the new key, so the concept has to be
-        // asked again from its own header - which is what the user does on the way back to the menu.
+        // Both entries stay on offer: an inline list has no Enter of its own, so the entry is how a second entry is
+        // written, not only the first.
         session.Select(Selection.At(new CellAddress(concept.Id)));
 
-        Assert.DoesNotContain(
+        Assert.Contains(
             IntentionList.For(session),
             offer => offer.Id == StructureIntentions.ImplementInterfaceId);
 
@@ -236,20 +227,14 @@ public sealed class StructureIntentionsTests
     private static Intention ById(EditorSession session, string id) =>
         IntentionList.For(session).Single(offer => offer.Id == id);
 
-    private static (EditorSession Session, Node Concept) Document(
-        bool isAbstract,
-        bool isInterface = false,
-        IReadOnlyList<string>? supers = null,
-        IReadOnlyList<string>? implements = null)
+    private static (EditorSession Session, Node Concept) Document(bool isAbstract, bool isInterface = false)
     {
         var definition = new DefinitionBuilder();
         var concept = definition.Concept(
             "Rules.Rule",
             slots: [definition.Property("name", "string")],
-            supers: supers,
             isAbstract: isAbstract,
-            isInterface: isInterface,
-            implements: implements);
+            isInterface: isInterface);
 
         var session = new EditorSession(definition.Root, StructureNotations.Create());
 
