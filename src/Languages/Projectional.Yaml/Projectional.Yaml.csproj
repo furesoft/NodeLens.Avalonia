@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    One project per language (ADR 0021). `YamlDotNet` is the tokenizer, taken as a dependency of this language only
+    (open question 98): it answers every token with a mark in the source, which is what `ImportDiagnostic` promises and
+    what makes the spelling of a scalar keepable. The tree is this language's own - the tokenizer resolves indentation
+    into block tokens, and assembling those into concepts is the mapping this reference language exists to prove.
+  -->
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+  </ItemGroup>
+
+</Project>

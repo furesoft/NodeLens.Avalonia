@@ -29,6 +29,7 @@
       YAML by naming that language, and a host that wants neither pays for neither.
     -->
     <PackageVersion Include="Tomlyn" Version="2.11.1" />
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
   <ItemGroup Label="Export">
