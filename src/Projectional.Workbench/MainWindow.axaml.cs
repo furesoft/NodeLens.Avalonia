@@ -184,7 +184,8 @@ public sealed partial class MainWindow : Window, IDisposable
         ITypingRules? typing = null,
         TypeRegistry? types = null,
         ConstraintSet? constraints = null,
-        IScopeProvider? scopes = null)
+        IScopeProvider? scopes = null,
+        IIntentionProvider? intentions = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -213,6 +214,7 @@ public sealed partial class MainWindow : Window, IDisposable
             types,
             constraints,
             scopes,
+            intentions,
             WorkbenchLanguage.InterpreterFor(model),
             WorkbenchLanguage.GeneratorsFor(model),
             _clipboard);
@@ -1273,7 +1275,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types, constraints: opened.Constraints, scopes: opened.Scopes);
+        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types, constraints: opened.Constraints, scopes: opened.Scopes, intentions: opened.Intentions);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)
