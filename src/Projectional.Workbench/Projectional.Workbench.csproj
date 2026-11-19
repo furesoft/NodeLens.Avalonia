@@ -38,8 +38,6 @@
     <ProjectReference Include="..\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\Projectional.Json\Projectional.Json.csproj" />
     <ProjectReference Include="..\Projectional.Xml\Projectional.Xml.csproj" />
-    <ProjectReference Include="..\Projectional.Xml.Checks\Projectional.Xml.Checks.csproj" />
-    <ProjectReference Include="..\Projectional.Xml.Intentions\Projectional.Xml.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Intentions\Projectional.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\Projectional.Samples\Projectional.Samples.csproj" />
