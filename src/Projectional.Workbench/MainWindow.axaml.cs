@@ -429,7 +429,8 @@ public sealed partial class MainWindow : Window, IDisposable
             fixes,
             document.Constraints ?? SampleConstraints.All,
             document.Types ?? ExpressionsLanguage.Types,
-            editor.Session?.Scopes);
+            editor.Session?.Scopes,
+            GenerationCoverage.Of(document.Model, document.Generators));
 
         editor.Markers = findings.Markers;
         editor.Fixes = findings.Fixes;

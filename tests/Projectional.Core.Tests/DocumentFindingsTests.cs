@@ -80,8 +80,46 @@ public sealed class DocumentFindingsTests
     }
 
     [Fact]
+    public void ACallersReportIsMarkedAndListedAlthoughItHasNoRepair()
+    {
+        // A generator that cannot print a concept is the case reports exist for: there is nothing an edit action could
+        // do about it, so it can be neither a check nor a constraint, but the user has to see it before pressing
+        // Generate rather than after a run stopped halfway through the file.
+        var model = RuleWithoutCondition();
+        var report = Report(model, "cannot be printed");
+
+        var findings = DocumentFindings.Of(model, reports: [report]);
+
+        Assert.Equal([report], findings.Diagnostics);
+        Assert.Equal([report], findings.Markers.Diagnostics.ToArray());
+        Assert.Equal(0, findings.Fixes.Count);
+    }
+
+    [Fact]
+    public void ReportsComeAfterWhatTheLanguageFound()
+    {
+        // Order is the sources' order and not the document's, the same rule the repairs and the constraints already
+        // follow: a surface that lists them sorts by place itself, because only it knows how to jump there.
+        var model = RuleWithoutCondition();
+        var constraint = Assert.Single(DocumentFindings.Of(model, constraints: SampleConstraints.All).Diagnostics);
+
+        var findings = DocumentFindings.Of(
+            model,
+            constraints: SampleConstraints.All,
+            reports: [Report(model, "cannot be printed")]);
+
+        Assert.Equal(
+            [constraint.Code, "GEN001"],
+            findings.Diagnostics.Select(finding => finding.Code));
+    }
+
+    [Fact]
     public void ADocumentIsRequired() =>
         Assert.Throws<ArgumentNullException>(() => DocumentFindings.Of(null!));
+
+    /// <summary>A finding at the model's only root that carries no repair, the way a generator's report does.</summary>
+    private static Diagnostic Report(Model model, string message) =>
+        new(DiagnosticSeverity.Warning, model.Roots[0].Id, message, code: "GEN001");
 
     /// <summary>A root carrying <paramref name="label"/>, which is the name slot of `Test.Tag`.</summary>
     private static Node NamedTag(Model model, string label)
