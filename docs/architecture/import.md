@@ -166,275 +166,39 @@ targets the same file format then reuses that language instead of re-deriving it
 
 ### `Projectional.Json`
 
-| Concept | Slots | Notes |
-| --- | --- | --- |
-| `Json.Value` | - | abstract; every slot typed over a value uses it |
-| `Json.Member` | - | abstract; one entry of an object |
-| `Json.Object` | `members`: many `Json.Member` | member order is model order |
-| `Json.Property` | `name`: string, `value`: single `Json.Value` | duplicate names are kept and reported |
-| `Json.Comment` | `text`: string | a note JSON cannot express; generation leaves it out |
-| `Json.Array` | `items`: many `Json.Value` | |
-| `Json.String` | `text`: string | the unescaped value |
-| `Json.Number` | `text`: string | **the literal text**, not a double |
-| `Json.Bool` | `value`: enum `true`, `false` | an enum property, so completion offers the two values |
-| `Json.Null` | - | a concept, not an absent value |
+The smallest complete format: an object, an array and four value kinds, holding the spelling the file
+wrote rather than the parsed value.
 
-Two decisions worth stating:
-
-- **A number keeps its source text.** `1.0`, `1`, `1e3` and `0.1000000000000000055511151231257827`
-  are four different files. A `double` property would silently rewrite all of them on the next
-  generation, and JSON consumers do care (a `1.0` is a float to some, an integer to others).
-- **`true`/`false` is an enum property**, so the delivered enum completion (see
-  [completion.md](completion.md#values)) offers exactly those two symbols in the cell, and the
-  notation can render them as keywords.
-- **A comment is a model-only note.** JSON has no syntax for one, so `Json.Comment` is an entry of an
-  object that the generator deliberately leaves out - the empty template, not a missing one, because
-  a silence somebody decided is not a hole (see
-  [semantics.md](semantics.md#what-is-implemented) and `TextGen.Ignore`). It is kept in the model
-  because a note is what makes a generated document reviewable, and an editor that dropped it would
-  delete the author's explanation of their own model. An import never produces one: a JSONC file is
-  still refused rather than half-understood, because a round trip would silently lose its comments.
-  One cosmetic consequence is recorded rather than solved: the two spaces inside the braces are chosen
-  by whether the members slot holds a child, so an object whose only entry is a note prints `{  }` -
-  valid JSON, and the price of not having a second answer to "is this object empty".
-
-Notation: the file's own line, because the layout engine does not wrap and a projection that re-broke the lines would
-show a shape the file does not have - an object as `{ name: value, ... }`, an array as `[ 1, 2 ]`, with `Punct(",")`
-and a plain space as the separator. The gap inside a bracket is a `WhenFilled` cell, which is how an object with a member
-gets its spaces while an object with none still shows the cell the first member is typed into. So the drawing matches the
-generated text everywhere except an empty object or array, which draws `{ }` / `[ ]` and prints `{}` / `[]` - the
-brackets are unconditional, only their inner space is conditional. No new cells.
+[import/json.md](import/json.md)
 
 ### `Projectional.Xml`
 
-| Concept | Slots | Notes |
-| --- | --- | --- |
-| `Xml.Node` | - | abstract: the children of an element |
-| `Xml.Element` | `name`: string, `attributes`: many `Xml.Attribute`, `children`: many `Xml.Node` | |
-| `Xml.Attribute` | `name`: string, `value`: string | order preserved |
-| `Xml.Text` | `text`: string | the **canonical escaped spelling**, whitespace-only runs included |
-| `Xml.Comment` | `text`: string | |
-| `Xml.Raw` | `text`: string | tier 2: processing instructions, CDATA, DOCTYPE |
+Attributes, mixed content, whitespace as data, prefixes kept as text, and CDATA and processing
+instructions kept as raw text.
 
-- **Namespaces are text.** `p:name` is the name; there is no namespace resolution, no prefix
-  table, no `xmlns` handling beyond "it is an attribute like any other". Resolving them is a
-  schema feature, not an editor feature.
-- **Escaping happens on the way in, not on the way out.** The parser hands back a decoded value,
-  and the importer writes the canonical spelling into the model (`&amp;` `&lt;` `&gt;` `&quot;`, and
-  `&#x9;`/`&#xA;`/`&#xD;` in an attribute, where a literal one would be normalised to a space). So a
-  template emits a slot verbatim, exactly as the JSON language emits a string, and the framework's
-  template vocabulary needs no XML-specific part. The price is the same one JSON pays: the editor shows
-  the spelling, so a `&` is typed as `&amp;`. A file that wrote `&#38;` comes back as `&amp;` - one
-  canonical spelling for one character, which is what a byte-exact corpus can compare against.
-- **An element with no content is written `<a></a>`.** A model holds one shape for it, so it cannot
-  also remember which of the two spellings the file used, and a reference language must not have two
-  spellings for one tree. A file written `<a/>` comes back in the long form, which every XML consumer
-  reads as the same document.
-- **A document is its top-level nodes.** XML allows comments and processing instructions outside the
-  root element and they are content, so the importer answers several roots in document order rather
-  than inventing a container. Only the XML declaration is not modelled: it describes the bytes a host
-  read, not the tree, and the host that writes the generated text states it again.
-- **The notation hides an empty collection.** In JSON an empty slot can be drawn as a blank; in XML it
-  cannot, because whitespace inside an element *is* content - a placeholder would make an empty element
-  indistinguishable from one holding a space, and that distinction is the language's whole job. The
-  price is that the first attribute and the first child have no caret stop, which is exactly the pair
-  the notation owes an intention for (see below).
-
-- **Whitespace is content.** `XDocument.Load` with `LoadOptions.PreserveWhitespace`, and
-  `Xml.Text` stores the run verbatim. XML consumers that care about `xml:space` would otherwise
-  see their file rewritten by the editor.
-- **External entities are refused.** The reader is configured with `DtdProcessing.Prohibit`
-  and `XmlResolver = null`, and a document that needs either is rejected with
-  `xml.external-entity-refused`. An editor that dereferences a `SYSTEM` identifier on import is
-  an XXE vulnerability in every host that embeds it. This is not a limitation to lift later.
-- **Attribute order is preserved**, because `XDocument` preserves it and because some tools
-  diff attributes positionally.
+[import/xml.md](import/xml.md)
 
 ### `Projectional.Toml`
 
-TOML is the format a .NET project writes its settings in, and it is the least JSON-like of the
-four: a document is an ordered sequence of key/value pairs and headers, and **the order is the
-structure** - `[a]` opens a table and every following pair belongs to it until the next header.
+Tables and arrays of tables, four kinds of string, four kinds of date and time, and a document
+whose order *is* its structure.
 
-| Concept | Slots | Notes |
-| --- | --- | --- |
-| `Toml.Document` | `entries`: many `Toml.Entry` | model order is document order |
-| `Toml.Entry` | - | abstract: one top-level line group |
-| `Toml.KeyValue` | `key`: string, `value`: single `Toml.Value` | a pair in the root table |
-| `Toml.Table` | `key`: string, `entries`: many `Toml.Entry` | `[a.b]`, followed by its pairs |
-| `Toml.ArrayOfTables` | `key`: string, `entries`: many `Toml.Entry` | `[[a]]`, one element |
-| `Toml.InlineTable` | `members`: many `Toml.KeyValue` | `{ a = 1 }`, a value rather than a header |
-| `Toml.String` | `kind`: enum, `text`: string | the **unescaped** value |
-| `Toml.Integer` | `text`: string | the literal, so `0x2A` and `42` stay different files |
-| `Toml.Float` | `text`: string | the literal, `inf` and `nan` included |
-| `Toml.Bool` | `value`: enum `true`, `false` | an enum property, as `Json.Bool` is |
-| `Toml.DateTime` | `kind`: enum, `text`: string | offset date-time, local date-time, local date, local time |
-| `Toml.Array` | `items`: many `Toml.Value` | may span lines; the model keeps the order |
-| `Toml.Comment` | `text`: string | `# ...` |
-
-Decisions worth stating, because each one is what stops the editor from rewriting a user's file:
-
-- **`Toml.String` keeps the kind of string it is.** Basic, multi-line basic, literal and
-  multi-line literal are four spellings of one value, and `'C:\temp'` rewritten as `"C:\\temp"` is
-  a diff a reviewer has to explain. The kind is a slot and the text is what sat **between the
-  delimiters**, so the four spellings are one concept and a template emits the text verbatim - the
-  same decision JSON and XML make, and the reason no escaping step exists anywhere in the layer.
-  A string whose text can no longer sit between its delimiters is `TOML004`, whose repair re-spells
-  it as a basic string.
-- **A number and a date keep their source text**, for the reason `Json.Number` does, and stronger:
-  TOML's four date/time kinds are different *types*, and a single `DateValue` property would lose
-  the kind, the offset and the sub-second precision.
-- **A table remembers whether it is a header or inline.** `[a]` and `a = { }` are not the same
-  document even when the trees are equal - a table defined by headers cannot be moved into an
-  inline one without changing what an order-sensitive reader sees, and `[[a]]` is a third spelling.
-- **A dotted key stays the text it was written as**, exactly as an XML namespace prefix does:
-  `a.b = 1` keeps `a.b` as the key, and is *not* resolved into nesting. Resolving it would rewrite
-  the file on the first save.
-- **A duplicate key is refused, not kept.** This is the one place the reference languages disagree on
-  purpose: JSON's duplicate member is legal-but-discouraged and the model keeps both (generation
-  must reproduce the file), TOML makes it a syntax error, so the reader rejects the document with
-  `toml.duplicate-key` and nothing is imported. A language does not get to be more permissive than
-  the format it mirrors.
-- **A comment is a node.** TOML files are hand-edited settings, and dropping the comments of a file
-  the user imported would be data loss (invariant 8). One limitation is recorded rather than
-  solved: a comment that trailed a value on the same line becomes its own entry above it, because
-  the model has no "same line" notion - the corpus is the generator's own output, so a round trip
-  never sees it. A comment that stood **inside an array** has nowhere to live in this model at all,
-  so it becomes an entry of the table the pair belongs to and the import reports
-  `toml.comment-moved`; the text is kept and only its line moves.
-
-Notation: the document as a stack of entries, a key/value pair as `key = value` in one line, a table
-as `[key]` followed by its entries indented under it, `[[key]]` for an array of tables, and an inline
-table as `{ ... }` in the line where it stands - the ordinary block vocabulary, because TOML's
-structure *is* its layout.
+[import/toml.md](import/toml.md)
 
 ### `Projectional.Hocon`
 
-HOCON is JSON's brace-light cousin and the config format of the .NET actor and streaming world.
-It is the hardest of the five to be honest about, because a HOCON file is *evaluated*: keys merge,
-substitutions resolve, includes pull in other files.
+A JSON superset whose braces and commas are optional, with unquoted keys, value concatenation and
+constructs that are evaluated rather than read.
 
-| Concept | Slots | Notes |
-| --- | --- | --- |
-| `Hocon.Document` | `members`: many `Hocon.Member` | the file: the object every file is, written without braces |
-| `Hocon.Member` | - | abstract: one entry of a document or an object |
-| `Hocon.Value` | - | abstract: anything a property can hold |
-| `Hocon.Object` | `members`: many `Hocon.Member` | every nested object, between braces |
-| `Hocon.Property` | `key`: string, `operator`: enum, `value`: single `Hocon.Value` | `key = value`, `key: value`, `key value`, `key += value` |
-| `Hocon.Array` | `items`: many `Hocon.Value` | commas optional in the source, model order kept |
-| `Hocon.String` | `quoted`: enum, `text`: string | quoted, triple-quoted or unquoted |
-| `Hocon.Number` | `text`: string | the literal |
-| `Hocon.Bool` | `value`: enum `true`, `false` | |
-| `Hocon.Null` | - | a concept, as in JSON |
-| `Hocon.Concat` | `parts`: many `Hocon.Value` | `hello ${name}` - juxtaposition is concatenation |
-| `Hocon.Substitution` | `path`: string, `optional`: enum | `${a.b}` and `${?a.b}`, kept as written |
-| `Hocon.Include` | `target`: string | `include "x.conf"`, kept as written |
-| `Hocon.Comment` | `marker`: enum `#`, `//`, `text`: string | the marker is a slot, because the file used one of two |
-
-Two unions and a document rather than one object, and both follow from the format: a note and an include stand where a
-property stands but are not values, so `Hocon.Member` names that set - and a file is one brace-less object, which a
-document concept says without letting a nested object be written without braces.
-
-- **A key keeps the text it was written with.** Dotted paths, quoting and unquoted keys are three
-  spellings of one path, and resolving them into nesting would rewrite the file - the TOML decision
-  and the XML decision, for the third time, which is what makes it a rule rather than a choice. The
-  quotes of a quoted key stay in the slot for the same reason: `<a>` in XML is not the only name
-  whose spelling matters.
-- **Repeated keys are kept, in order.** HOCON's merge semantics fold them into one object at
-  resolution time; the text has two, and the model is the text's owner, not the resolver's. This is
-  the opposite of the TOML decision and follows from the formats, not from a preference.
-- **Sound-spelling is a slot, not a guess.** `Hocon.Property.operator` keeps `=`, `:` or the
-  whitespace separator, and `+=` is a fourth value rather than a resolved append; `Hocon.String.quoted`
-  keeps `foo` unquoted, `"foo"` quoted and `"""foo"""` triple-quoted apart.
-- **Nothing is evaluated, and nothing is read.** A substitution stays a substitution, an `include`
-  stays an `include`, and the framework **never follows an include**: import takes one string from
-  the host (`Import(Model, string)`), and a file read would be both a purity break and the same
-  class of vulnerability XML's refused external entities exist to prevent. That is not a limitation
-  to lift - a host that wants the resolved configuration evaluates it and imports *that*.
-- **Concatenation is its own concept** because HOCON makes juxtaposition meaningful
-  (`greeting = hello ${name}`), and flattening it into one string would lose the substitution
-  inside it. `Hocon.Concat` is the honest shape; an unquoted multi-word string is a `Concat` of
-  unquoted strings, which is what HOCON says it is.
-
-Notation: an object as an `Indent` block of `key = value` lines under a `{` and `}`, the operator a
-property's own cell (so `=`, `:` and `+=` are visible as written), a substitution and an include as
-the one line they are - which is what makes a HOCON document readable in the editor as the thing a
-user typed rather than as a resolved tree. The drawing of an object that starts inside a line hangs,
-because the layout indents a vertical notation from the cell it begins at; the file a template writes
-is indented from the line start, and that is the template's business.
-
-
+[import/hocon.md](import/hocon.md)
 
 ### `Projectional.Yaml`
 
-YAML is the format whose **layout is part of its syntax**, and that is what makes it the hardest of the five to mirror
-honestly: indentation decides where a mapping ends, so the reader has to know block structure rather than see it emerge
-from a tree. `YamlDotNet`'s `Scanner` answers that - it resolves indentation into block tokens - and this importer owns
-the mapping only, taken with `skipComments: false` so a note is visible at all.
+The one format whose layout *is* its syntax: block and flow collections as separate concepts, a
+scalar that keeps the whole spelling, and raw text for what the language does not model.
 
-| Concept | Slots | Notes |
-| --- | --- | --- |
-| `Yaml.Document` | `entries`: many `Yaml.Entry` | the file: its notes, its markers and its node, in order |
-| `Yaml.Node` | - | abstract: anything that is a YAML node |
-| `Yaml.Entry` | - | abstract: one line of the document or one item of a block sequence |
-| `Yaml.Member` | - | abstract: one line of a block mapping |
-| `Yaml.FlowValue` | - | abstract: what may stand inside a flow collection |
-| `Yaml.Scalar` | `text`: string | the **whole spelling**: quotes, escapes, an anchor, a tag, a block body |
-| `Yaml.Alias` | `name`: string | `*base`, kept as text and never resolved |
-| `Yaml.Comment` | `text`: string | what the note says, without the hash |
-| `Yaml.Raw` | `text`: string | a directive, a marker, a complex key - or an anchored collection |
-| `Yaml.Mapping` | `members`: many `Yaml.Member` | one `key: value` per line |
-| `Yaml.Sequence` | `items`: many `Yaml.Entry` | one `- value` per line |
-| `Yaml.SequenceItem` | `value`: single `Yaml.Node` | the dash and the node it introduces |
-| `Yaml.Pair` | `key`: single `Yaml.Node`, `value`: single `Yaml.Node`, `layout`: enum | one line of a block mapping |
-| `Yaml.FlowMapping` | `members`: many `Yaml.FlowPair` | `{ a: 1 }` |
-| `Yaml.FlowSequence` | `items`: many `Yaml.FlowValue` | `[ 1, 2 ]` |
-| `Yaml.FlowPair` | `key`, `value`: single `Yaml.FlowValue` | one member between braces |
+[import/yaml.md](import/yaml.md)
 
-Decisions worth stating, because each one is what stops the editor from rewriting a user's file:
-
-- **Block and flow are separate concepts, not one concept with a style.** Notation is chosen per *concept* and a
-  variant is view state, so a `style` slot could not have given one node two drawings. Splitting them costs a concept
-  each and buys the guarantee: `Yaml.FlowMapping.members` is typed over `Yaml.FlowPair` and its keys and values over
-  `Yaml.FlowValue`, which no block collection conforms to - so a block collection inside a flow collection, which YAML
-  forbids, is **unrepresentable** rather than merely discouraged.
-- **A scalar keeps the whole spelling.** One step further than JSON, XML, TOML and HOCON take it, because YAML has more
-  ways to write one value than any of them: `plain`, `'single'`, `"double"`, `|` and `>`, each with anchors and tags in
-  front. The slot holds everything, `Notation`/`Generator` emit it verbatim, and no escaping part exists. A cell whose
-  text stops being one scalar is `YAML002`, whose repair quotes it as a double-quoted scalar.
-- **A pair remembers where its value stands.** A block collection cannot be written on its key's line, and a template
-  cannot ask what kind of node its child is, so `Yaml.Pair.layout` records `inline` or `nested` - the file's own
-  placement, the shape TOML uses for "a table remembers whether it is a header or inline". Replacing a scalar value with
-  a sequence is what breaks it, and `YAML001` offers the placement the child now needs.
-- **Anchored and tagged collections are raw text.** A template cannot put a prefix in front of a child whose spelling it
-  does not know, so `&base` (or `!!map`) in front of a block or flow collection keeps the **whole node** as
-  `Yaml.Raw` with `yaml.kept-as-raw` - tier 2 of the design: the file survives, and the construct is not pretended to
-  be modelled. In front of a *scalar* the prefix is one run of text with it, so it stays inside the scalar's spelling
-  and nothing is reported.
-- **A note is a node, and where it stands is a fact of the file.** A note above a mapping is an entry of the document, a
-  note between two pairs is a member of the mapping, and a note that stands between a key's colon and the collection it
-  introduces is **held until that collection starts**, so it stays inside the nested list instead of moving out to the
-  list that asked for the value. A note inside a *flow* collection has nowhere to live, so it is hoisted to the
-  surrounding block list with `yaml.comment-moved`; a note written beside a value is kept, moved to its own line, and
-  reported with the same code - the text is never dropped (invariant 8), only its line moves.
-- **The line break that ends a line belongs to the file's line structure, not to a spelling.** A block scalar and a kept
-  raw span both run to the end of their line, so the importer strips exactly that one break: the model's separators write
-  it back, and a spelling that kept it would print the next member one line too low.
-- **A complex key is one raw line.** `? [a, b]` has no implicit spelling in a block mapping and no template could express
-  one, so the key and its value are stepped over and kept verbatim - built by skipping, never by creating a pair and
-  deleting it again, because that would be a second undo step and a second way to build a pair.
-- **Line breaks are normalized to LF before the tokens are read**, because a block scalar's body is a slice of the text:
-  a carriage return inside it would travel into the model and out into a file the corpus no longer matches.
-- **YAML's shape question is broader than HOCON's, so it is asked after it.** Both formats answer yes to `a: value`, and
-  YAML also answers yes to `a: { b = 1 }`, which HOCON writes with equals signs inside an object. The file name breaks
-  the tie for a named file; `ReferenceLanguages.All` puts YAML before HOCON for the unnamed fallback, because YAML's
-  claim is the broader one and importing a colon document as HOCON can refuse a file YAML would have read.
-
-Notation: the document and both block collections as stacks of one line per entry, a sequence item as `-` beside its
-value, a pair as `key:` beside its value (inline, because the drawing is not the file), and a flow collection in braces
-or brackets with commas between its members. A block collection drawn *inside* a pair's line hangs from the cell it
-begins at - `server: port: 8080` then its later lines indented from that column - which is the documented consequence of
-asking layout for a vertical notation inside an inline child, the same one HOCON's object shows.
 All five packages reference `Projectional.Language` only, exactly like `Expressions`. JSON and XML use the platform's
 reader; **TOML takes `Tomlyn` and YAML takes `YamlDotNet`**, each as a package dependency of its own language and never
 of the toolkit (open question 98). **HOCON's lexer is hand-written**, and that is the same rule rather than an exception:
@@ -516,180 +280,11 @@ grammar.
 
 ## Import as a declaration (planned)
 
-Every other aspect of a language can be *declared* - its concepts, its notation, its types, its generator, its
-constraints, its scopes, its intentions - and one cannot: **how to read its own files**. `ITextImporter` is a C#
-interface a package implements, so a language written as a model (a `LanguageProject` folder) is a one-way street: it
-prints its documents and cannot read them back. That asymmetry is what this section plans away.
+A language written as a model should read its own files and not only print them. The plan is
+`Projectional.ImportRules`: an `import` folder beside `generator` and `constraints`, two layers - tokens
+and rules - and a closed vocabulary that mirrors the template's verbs.
 
-### Why it has to be a language and not a hook
-
-The same argument every declared aspect makes ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)): a
-declared importer must produce the same model as its hand-written twin on the corpus, compared as text through the
-generator, because "both authoring paths are permanent" is only true if the second one can do the whole job. A hook -
-"a language may point at a .NET type that parses" - would leave the declared path weaker at exactly the seam that makes
-a language usable, which is the line the type rules, the generator and the constraints all refused to cross.
-
-**Where it lives:** `Projectional.ImportRules`, beside `Projectional.TypeRules`, `Projectional.TextGen`,
-`Projectional.ConstraintRules`, `Projectional.ScopeRules` and `Projectional.IntentionRules` - a new aspect is a new
-language plus its lowering. A language folder gains an `import` folder next to `structure`, `editor`, `types`,
-`generator`, `constraints`, `scopes` and `intentions`, one document per importer (one root per document, as everywhere
-else), and `LanguageProject.Importers` hands the lowered `ITextImporter`s to a host. The C# path keeps `ITextImporter`
-exactly as it is: the declared form lowers *into* it, so nothing above import learns a second contract.
-
-### The rules are the declaration
-
-Two layers, and the split is the design rather than an implementation detail:
-
-| Layer | Answers | Vocabulary (closed) |
-| --- | --- | --- |
-| Tokens | what counts as a token, and where it started | `Import.Literal` (an anchor), `Import.Word` / `Import.Number` / `Import.Quoted` / `Import.Fixed` (the lexical classes a config format needs, one concept each), `Import.Skipped` (whitespace, comments: text that produces no node) |
-| Rules | which concept a run of tokens becomes | `Import.Node` (concept + parts), `Import.Sequence`, `Import.Alternative`, `Import.Repeat` (with separator and minimum), `Import.Capture` (a run into a property, spelled as stored), `Import.Nest` (a child slot taking another rule), `Import.Bind` / `Import.Matches` (a run remembered, then required to repeat), `Import.Raw` (a run the model does not map, kept verbatim), `Import.Fail` (the message a rule gives instead of "expected") |
-
-- **No delegate, no expression, no "compute".** A rule either matches, captures, nests, repeats or chooses - the same
-  small set of verbs a template has, for the same reason: a rule that could calculate is a programming language hiding
-  in a model, and it would need an interpreter this framework does not have.
-- **Every token carries its offset and length**, because `ImportDiagnostic` promises a line and a column and a parser
-  that only answers a tree cannot keep that promise - the same requirement that decides which third-party TOML or
-  HOCON reader may be used ([open question 98](../open-questions.md#text-import)).
-- **Ambiguity is a load error, not a runtime surprise.** `Alternative` branches must start with distinct anchors where
-  the author used anchors at all, and a repeat whose separator cannot be told from its item is refused - the earliest
-  moment both halves exist, which is the rule `NotationRegistry` and `TextGenLowering` already follow.
-- **Tier 2 has a place in the vocabulary.** `Import.Raw` is what lets a declared importer be honest about a construct
-  the model does not model: the run survives as a raw node and regenerates to the same text, exactly as `Xml.Raw` does
-  today.
-- **Four words came from the proof cases, not from imagination.** Each is the smallest verb that makes a format the
-  framework already ships declarable, and the case that demands it is written down here so the vocabulary cannot grow
-  into a grammar by accident:
-
-| Word | Is | Because |
-| --- | --- | --- |
-| `Import.Bind` + `Import.Matches` | a run remembered under a name, then required to be the same run again | XML's `<a>...</a>`: the closing tag must equal the opening one, and nothing else in the vocabulary compares two runs |
-| `Import.Fixed` | a run between two marks in which nothing is escaped | CDATA. `Import.Quoted` resolves the escapes it declares, so a section that must not is a different class rather than a flag |
-| `Import.Fail` | the message a rule gives when it is the one that should have matched | "a trailing comma is not allowed" is what the file's author needs; "expected `}`" is what the parser happened to think. It carries a code and a message and never branches |
-| `Import.Importer.target` | the generator this importer reads back | the inverse of a template is the inverse of *one* template set, and a language has as many generators as it declares ([One importer per target](#one-importer-per-target)) |
-
-### The shape of the declaration
-
-The vocabulary above says what an importer *means*; this is what its author writes. Projectional means there is no text
-syntax to type, so every line below is a drawing the notation layer can already build from `Line`, `Sequence`, `Indent`,
-`Collection`, `Conditional` and `WhenFilled`. **No new cell kind is introduced** - a shape that needed one would make
-the declared path need C# after all, which is the line
-[ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md) draws for every aspect. Whether the drawings themselves
-are the C# builder or an `editor` document is the usual order of work: the builder first, the declared notation once a
-second language wants to describe one.
-
-One document holds one importer and the importer *is* the document root, because there is no container concept anywhere
-else either: a container with one child is a second place to say which definitions exist. Inside it there is one rule
-per concept, the way a generator holds one mapping per concept - the concept key identifies the rule, which is what
-gives the inverse an owner.
-
-```text
-importer Ini                                        // Import.Importer
-  target   Ini                                      // the generator whose templates this importer inverts
-  suffixes .ini .cfg                                // a fallback only: the file's content decides first
-  default  inverse                                  // Import.Inverse - "read what the generator writes"
-
-  token Word    plus . -                            // Import.Word: letters, digits, underscore, then these
-  token Number  no leading zero, fraction, exponent // Import.Number: which spellings are legal
-  token Text    quoted  open "  close "  escape \   // Import.Quoted: resolves the escapes it declares
-  token Block   fixed   open <![CDATA[ close ]]>    // Import.Fixed: a run in which nothing is escaped
-  skip  Comment from ; to end of line               // Import.Skipped: consumed between parts, no node
-
-  rule  Ini.Pair                                    // Import.Node: the concept, then its body
-    capture key   from Word
-    literal "="
-    capture value from Text
-```
-
-Five things about that shape are decisions rather than formatting:
-
-- **One concept per token class, so no concept carries a parameter it does not use.** `open`/`close` on a `Word` would
-  be a state the lowering had to reject; four concepts make it unrepresentable, the same reason `Structure.Concept`
-  holds `properties`, `children` and `references` as three slots instead of one.
-- **`skip` is not a rule part.** It is consumed greedily between any two parts, because a file's layout is not a
-  construct - and a format whose whitespace *is* content (`Xml.Element`'s text today) reads it in a rule instead
-  ([question 107](../open-questions.md#text-import)).
-- **A literal may stand inline** (`literal "="`) because it is an anchor, while a named token exists where a class is
-  reused. That is what keeps a short rule short without adding a second way to write a keyword.
-- **Escaping lives in the token** ([question 102](../open-questions.md#text-import)): a capture writes what the token
-  resolved, so the template vocabulary stays free of an escaping part and cannot disagree with the importer.
-- **Consecutive parts are a sequence.** `Import.Sequence` exists only to group, for a branch of an alternative.
-
-The parts, and the one thing each says:
-
-| Part | Drawn as | Means |
-| --- | --- | --- |
-| Literal | `literal "="` | this anchor must be here |
-| Capture | `capture key from Word` | the run becomes the property `key`, spelled as the token resolved it |
-| Nest | `nest value from Ini.Value` | the child in slot `value` is read by that concept's rule, and the slot decides which concepts may stand there |
-| Repeat | `repeat pairs from Ini.Pair separated by "," minimum 0` | a list of that rule; the separator is a literal or a token, and `minimum` is what the file must hold |
-| Alternative | `alternative { literal "{"; ... \| literal "["; ... }` | one branch, chosen by its anchor |
-| Bind | `bind open from Word` | remember this run under a name, fill no slot |
-| Matches | `matches open` | the next run must be the same run again (XML's closing tag) |
-| Raw | `raw until "</"` | tier 2: keep the run verbatim, generate it back |
-| Fail | `otherwise fail "INI0140" "a trailing comma is not allowed"` | this rule's own message when it is the one that should have matched |
-
-**Every refusal is a load error**, and `ImportLowering` shares the discipline `ConceptRegistry.Create` and
-`TextGenLowering` already follow: a concept the language does not have, a slot named as the wrong kind, a property
-filled twice, a `target` nobody declares, two `Alternative` branches that start alike, a repeat whose separator cannot
-be told from its item, a `matches` whose `bind` is not earlier in the same rule, a `skip` that can match nothing (an
-endless loop written as a model), and a `raw` whose terminator no token can produce. None of them is a surprise at
-import time, because none of them is knowable only at import time.
-
-### The default is the inverse of the template
-
-This is the part that makes the feature tractable rather than a second grammar language, and it is the recommendation
-recorded as an open question rather than assumed:
-
-- **A language already says how it is written twice** - the notation says how it is drawn, the generator says how it is
-  printed - and a separate grammar would be a *third* statement of the same syntax, free to drift from both.
-- **The generator's parts invert one for one**: `TextPart` → an anchor, `PropertyPart` → a capture, `ChildPart` → a
-  nest, `ChildrenPart` → a repeat with the separator template as the separator, `WhenFilledPart` → an optional branch,
-  `ConditionalPart` → an alternative chosen by a property, `LoopPart` → a repeat of the body.
-- **So the first reading of a document is "the same text the generator would write"**, derived from its templates, with
-  a declared rule only where the file spells something the generator cannot produce: a comment, `<a/>` next to
-  `<a></a>`, a number in a spelling the generator would not choose.
-- **The places where the inverse does not exist are exactly the declared exceptions**, and naming them is part of the
-  design rather than a gap: escaping (the reference languages settle spelling on the way *in*), insignificant
-  whitespace (a file's layout is not a construct), and precedence (no part asks how an operand binds, which is why the
-  C# generator parenthesises). A declared importer says what it does about each of them, or refuses the file.
-- **"The generator" here always means the one the importer names**, because a language may declare several and their
-  inverses are different readings of the same model ([One importer per target](#one-importer-per-target)).
-- **Resolution is per slot, not per document.** The slot a rule fills declares which concepts may stand there, and each
-  candidate's template begins with an anchor, so the dispatch table is built once at load and the parser has no state
-  but the model and the slot it is filling. Two candidates with one anchor in one slot is a load error, the same check
-  the `Alternative` branches get - which is why the inverse can be a table rather than a search with backtracking.
-
-### One importer per target
-
-A language has as many generators as it declares - `RulesTextGenerators` ships a JSON one and a C# one - and the inverse
-of one template set is not the inverse of another, so no single document can read a language back into two spellings at
-once. **The importer names the generator it inverts**, and a language that prints two formats ships two `import`
-documents.
-
-- **`target` is a name, not a concept**, the same kind of name `TextGen.Generator` has, resolved against the language's
-  generator set at load. A name nobody declared is a load error rather than an importer that reads nothing.
-- **The shell asks in the other order**, which is what keeps this from becoming a compatibility table: detection is the
-  file's *content* first and the importer's `suffixes` only as a fallback
-  (`ReferenceLanguages.Detect` already works that way), so an importer that declares no suffix is reachable exactly by
-  what it can read.
-- **Two importers of one language may accept different files**, and that is the point rather than a defect: each answers
-  for one printed form. A test that demanded identical acceptance from both would be asking the framework to have one
-  reading of two spellings.
-
-### What must not happen
-
-- **No second source of truth.** An importer still runs once and throws the string away; the model is what the editor,
-  the checks and the generator see ([ADR 0002](../adr/0002-model-as-source-of-truth.md)).
-- **No parser in the editing path.** No re-parse per keystroke, no error recovery into a live document: tier 1 refuses
-  the whole text and tier 2 keeps a run as raw, which are the two outcomes the contract already has.
-- **No round trip as a promise for free.** A declared importer that reads a construct differently from the way the
-  generator writes it breaks `generate(import(text))`, and the corpus test is where that is caught - not a note in a
-  manual.
-- **No pattern language.** No regular expression, no character ranges, no lookahead beyond `Import.Matches`, no
-  backtracking across alternatives, no left recursion, no semantic action: token classes are parameterised data and the
-  rules are the verbs above. A format the vocabulary cannot describe is a gap in the vocabulary
-  ([question 101](../open-questions.md#text-import)), not a reason to embed an engine.
+[import/declared-importer.md](import/declared-importer.md)
 
 ## Slices
 
@@ -763,7 +358,7 @@ documents.
   tables, arrays of tables, dotted keys, the value kinds), HOCON (properties, objects, notes) and YAML (a document with a
   marker and a note, nested collections and flow collections, the scalar spellings, notes at two levels).
 - **I9 - the declared importer, as a language.** `Projectional.ImportRules`: the two-layer vocabulary of
-  [The shape of the declaration](#the-shape-of-the-declaration) - six token concepts (`Literal`, `Word`, `Number`,
+  [The shape of the declaration](import/declared-importer.md#the-shape-of-the-declaration) - six token concepts (`Literal`, `Word`, `Number`,
   `Quoted`, `Fixed`, `Skipped`) and ten rule words (`Node`, `Sequence`, `Alternative`, `Repeat`, `Capture`, `Nest`,
   `Bind`, `Matches`, `Raw`, `Fail`) - with their notation, and `ImportLowering` into `ITextImporter` with every load-time
   refusal (a concept the language has not, a slot named as the wrong kind, a property filled twice, an undeclared

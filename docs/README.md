@@ -44,7 +44,9 @@ records what was actually verified.
 19. [Clipboard](architecture/clipboard.md) — copy, cut and paste through a host-supplied
     text clipboard (delivered).
 20. [Persistence](architecture/persistence.md) — XML, project layout, migrations.
-21. [Semantics](architecture/semantics.md) — constraints, types, scopes, generation.
+21. [Semantics](architecture/semantics.md) — the pass order and the diagnostics, then one file per
+    aspect under [architecture/semantics/](architecture/semantics/): constraints, types, generation
+    and interpretation.
 22. [Model generation](architecture/model-generation.md) — reducing a document into a model of
     a target language, which that language's generator then prints (planned; M6).
 23. [Worked examples](architecture/worked-examples.md) — three sample languages, one per axis
@@ -63,6 +65,9 @@ records what was actually verified.
     GitVersion and published from a tag.
 31. [Roadmap](roadmap.md) — milestones and acceptance gates.
 31. [Open questions](open-questions.md) — what is deliberately still undecided.
+32. [Text import](architecture/import.md) — the intake contract and, under
+    [architecture/import/](architecture/import/), one file per reference language (JSON, XML, TOML,
+    HOCON, YAML) plus the planned declared importer (planned; M6).
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
@@ -72,8 +77,10 @@ decisions get a new number and supersede the old one.
 The repository ships a project skill at
 [.github/skills/projectional-editor/SKILL.md](../.github/skills/projectional-editor/SKILL.md)
 that condenses the invariants, the branch and commit workflow, the build commands and the
-Windows tooling pitfalls. It is the entry point for an agent picking up work here. This
-directory stays authoritative whenever the two disagree.
+Windows tooling pitfalls. It is the entry point for an agent picking up work here, and it is
+deliberately an index: the knowledge of one layer sits in its own file beside it
+(guide-core-model.md, guide-language.md, …) so a session reads only the layer it touches.
+This directory stays authoritative whenever the two disagree.
 
 ## Conventions
 

@@ -27,7 +27,7 @@ not compared at all: two languages may word the same defect differently, and wha
 `Projectional.Checks` implements - `STD001`, `STD003` and `STD010` - as models, lowers them with the shipping code
 and demands the same findings, compared by place for the same reason the harness does it: a rule the catalogue can
 state and a declaration cannot is a parity defect, not a missing row in the table above
-([semantics.md](semantics.md#language-of-constraints)).
+([semantics.md](semantics/constraints.md#language-of-constraints)).
 
 ## What the harness needed
 
