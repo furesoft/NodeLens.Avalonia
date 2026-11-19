@@ -91,6 +91,25 @@ The `resolveInfo` fallback absorbs the two cases that otherwise destroy models:
 renamed targets after a broken refactor, and moves between models by other tools.
 It is a recovery path, never the primary lookup.
 
+### Who points at a node
+
+`ReferenceIndex.For(project).UsagesOf(node)` answers the reverse question: every place the node is
+pointed at, as `ReferenceUsage(Owner, Slot, Target)` values in **document order** - models in project
+order, nodes depth first, and the reference slots of one node in declaration order. The index is
+public because "who else refers to this" is a fact of the model rather than of the editor: a rename
+must rewrite every usage before it may change a name, and a host's usages panel lists the same answer.
+
+- **It is per project, not per model.** A reference may cross a model boundary but never a project
+  one, so a per-model index would have to fall back to a walk for exactly the case a rename cares
+  about most.
+- **It is invalidated by `Model.Version`, never by a change handler.** Subscribing to `Model.Changed`
+  would switch change journalling on for every model in the project (`IsRecording`); comparing the
+  versions costs one read each and sees a new reference, a retargeted one, a cleared one and a
+  deletion alike. The per-project table is weak, so a closed project takes its index with it.
+- **An unset slot is not a usage.** A dangling reference is indexed under the id it names - the index
+  is faithful about what the model stores - but no live node answers that id, so a question about a
+  node never returns it.
+
 ## Model, project
 
 | Level | Contains | Persisted as |
