@@ -26,8 +26,8 @@ What is next, in order:
 
 1. **The rest of the catalogue as menu rows.** `INT010`/`INT011` are delivered in the context menu; what is
    left are the language-side entries from `INT040` on, which arrive with the languages that need them.
-2. **The fourteen remaining standard checks.** `Projectional.Checks` ships five (`STD001`, `STD003`, `STD010`,
-   `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
+2. **The thirteen remaining standard checks.** `Projectional.Checks` ships six (`STD001`, `STD002`, `STD003`,
+   `STD010`, `STD011`, `STD040`); the rest of the catalogue lands as a language asks for it rather than in one pass.
 3. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and

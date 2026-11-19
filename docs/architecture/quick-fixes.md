@@ -325,7 +325,7 @@ the framework can provide; a language includes the ones it wants and inherits th
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
 | `STD001` | the name still equals the concept's declared default | `Name it "Rule1"` | plain - **shipped** in `Projectional.Checks`; the workbench's `SHELL001` was the first hand-written copy of it |
-| `STD002` | two children of one slot share a name | `Rename to "Check2"` | plain only while nothing references the name - see the rule below |
+| `STD002` | two children of one slot share a name | `Rename to "Check2"` | plain only while nothing references the name - **shipped**; the check stays silent about a node something points at, see the rule below |
 | `STD003` | the name has leading or trailing whitespace | `Trim to "Rule"` | plain - **shipped** |
 | `STD004` | the name breaks the identifier rule the concept declares | `Use "myRule"` | plain |
 
@@ -438,6 +438,24 @@ from shipping the package. The two findings are the same check written twice - o
 by hand to prove the public surface is enough - so the app can move over whenever the host's copy stops
 being worth its demonstration.
 
+### Added since
+
+| Id | Where | What it needed |
+| --- | --- | --- |
+| `STD002` | `DuplicateNameCheck` | a project-wide scan for referrers, because the repair may not leave a reference dangling |
+
+`STD002` is the first standard check the samples had already written by hand: `RULES001` in
+`Projectional.Samples.Checks`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the
+later duplicate. **A language takes one or the other and never both** - composing `StandardChecks.Names`
+beside its own duplicate-name rule reports one node twice with two identical repairs, the hazard
+`SHELL001` beside `STD001` already records. None of the three has been retired: each carries a message and
+a severity its language chose (a duplicate column is an error, a duplicate rule a warning), so moving onto
+the standard row is a decision per language rather than a cleanup.
+
+`STD002` also narrows the group to one slot of one node. The three hand-written versions scan a whole model
+- the feature model reports a duplicate anywhere in the document, because a configuration file is keyed by
+name across the tree - and that wider rule stays their own until a language asks the catalogue for it.
+
 ### Two rules the catalogue forces
 
 **A repair that destroys something may never run from a single gesture.** Q4 ran a lone plain repair
@@ -453,8 +471,9 @@ question 73.
 **A standard rename may not break another model.** `STD002` is safe only while nothing references the
 name it changes: in a language where a rule's name is what other models point at, renaming it silently
 leaves dangling references that the fix never saw. So the standard version of the check looks for
-referrers and stays silent when there are any, and updating them is the M6 rename refactoring, which is
-allowed to know how to find them (open question 74).
+referrers - over the whole project, because a reference crosses a model boundary - and stays silent when
+there are any; updating them is the M6 rename refactoring, which is allowed to know how to find them (open
+question 74).
 
 ### Which four to ship first
 

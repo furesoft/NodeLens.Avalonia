@@ -24,10 +24,11 @@ namespace Projectional.Checks;
 /// </remarks>
 public static class StandardChecks
 {
-    /// <summary>The checks about a concept's name slot: <c>STD001</c> and <c>STD003</c>.</summary>
+    /// <summary>The checks about a concept's name slot: <c>STD001</c>, <c>STD002</c> and <c>STD003</c>.</summary>
     public static IReadOnlyList<ICheck> Names { get; } =
     [
         new PlaceholderNameCheck(),
+        new DuplicateNameCheck(),
         new SurroundingWhitespaceCheck(),
     ];
 

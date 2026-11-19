@@ -1337,6 +1337,13 @@ Shipped checks and the rules they encode:
 - `STD001` (`PlaceholderNameCheck`, `Hint`) - name still equals the concept's declared default; the repair
   names it `<Concept>1` with the first free suffix, computed as a group so two unnamed rules get `Rule1`
   and `Rule2`. A concept with no default is not reported.
+- `STD002` (`DuplicateNameCheck`, `Warning`) - two children of one slot under one name. The group is one
+  slot of one node (roots are not a group), the **later** child is the one reported and offered a rename
+  from suffix 2, and a child whose name is still its concept's placeholder is skipped - that is `STD001`'s
+  finding. **A node anything in the project references is not reported at all**: the rename would dangle a
+  reference the repair never saw, so the ambiguity is left to the constraint that reports it at the
+  reference. The referrer scan is over `Project.Nodes`, not the model, because a reference may cross a
+  model boundary.
 - `STD003` (`SurroundingWhitespaceCheck`, `Warning`) - surrounding whitespace; `Trim to "..."`. A name
   that is only whitespace is skipped, because trimming it would produce the empty name.
 - `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
