@@ -67,8 +67,23 @@ public sealed class ReferenceLanguagesTests
     }
 
     [Fact]
-    public void TheTwoShippedFormatsAreJsonAndXml()
+    public void TheThreeShippedFormatsAreJsonXmlAndToml()
     {
-        Assert.Equal(["JSON", "XML"], ReferenceLanguages.All.Select(language => language.Name));
+        Assert.Equal(["JSON", "XML", "TOML"], ReferenceLanguages.All.Select(language => language.Name));
+    }
+
+    [Fact]
+    public void ATomlFileIsClaimedByItsEqualsSign()
+    {
+        // A pair answers for TOML on its own, and the extension decides when the text starts like more than one format.
+        Assert.Same(ReferenceLanguages.Toml, ReferenceLanguages.Detect("settings.toml", "port = 8080"));
+        Assert.Same(ReferenceLanguages.Toml, ReferenceLanguages.Detect("settings.toml", "[server]"));
+
+        // A header looks like the start of a JSON array to a shape question, so without a name the first claimant wins -
+        // the refusal that follows is the importer's answer, not a wrong document.
+        Assert.Same(ReferenceLanguages.Json, ReferenceLanguages.Detect(fileName: null, "[server]"));
+
+        Assert.False(ReferenceLanguages.Toml.Importer.CanImport("port: 8080"));
+        Assert.True(ReferenceLanguages.Toml.Importer.CanImport("  port = 8080"));
     }
 }

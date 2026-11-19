@@ -1244,7 +1244,7 @@ entries.
   version belongs to the C# base language's generator (`docs/architecture/csharp.md`).
 - **Strings are emitted verbatim, and there is deliberately no "as JSON" part.** A template that put a value inside
   quotes does not escape it. Spelling a format belongs to the language that owns the format, in its own generator, so
-  converting a model into JSON, XML, TOML or HOCON means producing a model of *that* language and letting its generator
+  converting a model into JSON, XML, TOML, HOCON or YAML means producing a model of *that* language and letting its generator
   print it - never a per-value escaping part, which would be a second answer to "how is this value written" in every
   language that prints, and would escape before the target is even chosen. Design:
   `docs/architecture/import.md` §Converting a model into one of these languages.
@@ -1289,7 +1289,7 @@ record, and `Projectional.Json` is the first reference language behind the contr
 - **Each reference language ships its own intentions and checks** (explicit user requirement, not a nicety), and since
   [ADR 0021](../../../docs/adr/0021-one-project-per-language.md) they are **folders inside the language project**:
   `Projectional.Json/Checks/` (namespace `Projectional.Json.Checks`), `Projectional.Json/Intentions/`,
-  `Projectional.Xml/Checks/`, `Projectional.Xml/Intentions/`. TOML and HOCON get the same two folders when they land -
+  `Projectional.Xml/Checks/`, `Projectional.Xml/Intentions/`. TOML has the same two folders, and HOCON and YAML get them when they land -
   **never one shared "syntax languages" package**, which would have to ask which language it is looking at.
 - **XML's two intentions are mandatory, not a convenience.** Its notation hides both collections while they are empty -
   an empty XML slot cannot be drawn as a blank, because whitespace inside an element *is* content and a placeholder would

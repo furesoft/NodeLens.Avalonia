@@ -8,6 +8,7 @@ using Projectional.Samples.FeatureModel.Checks;
 using Projectional.Samples.SqlSchema.Checks;
 using Projectional.Samples.StateMachine.Checks;
 using Projectional.Structures.Intentions;
+using Projectional.Toml.Checks;
 using Projectional.Xml.Checks;
 
 using Xunit;
@@ -80,6 +81,7 @@ public sealed class LayerDependencyTests
         // The half of ADR 0021 a binary can promise: the checks and intentions of a language are types *in*
         // that language's assembly, not a package beside it. Each pair is one language.
         Assert.Equal("Projectional.Json", typeof(JsonChecks).Assembly.GetName().Name);
+        Assert.Equal("Projectional.Toml", typeof(TomlChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Xml", typeof(XmlChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Expressions", typeof(ExpressionsIntentions).Assembly.GetName().Name);
         Assert.Equal("Projectional.Samples", typeof(SampleConstraints).Assembly.GetName().Name);
@@ -93,6 +95,7 @@ public sealed class LayerDependencyTests
     private static readonly string[] LanguageAssemblies =
     [
         "Projectional.Json.dll",
+        "Projectional.Toml.dll",
         "Projectional.Xml.dll",
         "Projectional.Expressions.dll",
         "Projectional.Samples.dll",

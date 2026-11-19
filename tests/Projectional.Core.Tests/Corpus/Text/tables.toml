@@ -1,0 +1,10 @@
+title = "root"
+[server]
+  host = "localhost"
+  port = 8080
+[server.tls]
+  enabled = true
+[[cluster]]
+  node = 1
+[[cluster]]
+  node = 2

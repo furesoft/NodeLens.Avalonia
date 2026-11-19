@@ -1,0 +1,8 @@
+# settings for the build
+name = "demo"
+version = '1.0'
+count = 42
+big = 0x2A
+ratio = 1.5
+enabled = true
+released = 1979-05-27T07:32:00Z

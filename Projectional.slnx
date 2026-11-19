@@ -23,6 +23,7 @@
     <Project Path="src/Languages/Projectional.ScopeRules/Projectional.ScopeRules.csproj" />
     <Project Path="src/Languages/Projectional.Structures/Projectional.Structures.csproj" />
     <Project Path="src/Languages/Projectional.TextGen/Projectional.TextGen.csproj" />
+    <Project Path="src/Languages/Projectional.Toml/Projectional.Toml.csproj" />
     <Project Path="src/Languages/Projectional.TypeRules/Projectional.TypeRules.csproj" />
     <Project Path="src/Languages/Projectional.Xml/Projectional.Xml.csproj" />
   </Folder>
