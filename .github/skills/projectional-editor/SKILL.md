@@ -1219,7 +1219,12 @@ record, and `Projectional.Json` is the first reference language behind the contr
   a closed vocabulary that mirrors the template's verbs, `Import.Raw` for tier 2, and a load-time `ImportLowering` into
   the same `ITextImporter`. The recommended default is the *inverse of the generator's templates* (literal -> anchor,
   property -> capture, child -> nest, children -> repeat, when-filled -> optional, conditional -> alternative), with a
-  declared rule only where the inverse does not exist. Open questions 100-103 hold the decisions.
+  declared rule only where the inverse does not exist - resolved **per slot** from each candidate's first anchor, so the
+  parser has no state but the model. Six token concepts (`Literal`, `Word`, `Number`, `Quoted`, `Fixed`, `Skipped`),
+  ten rule words including `Bind`/`Matches` (XML's closing tag) and `Fail` (a rule's own message), and
+  `Import.Importer.target`: **an importer inverts one named generator**, because a language may print two formats and
+  their inverses are different readings - so a faithful language's importer is `default inverse` plus its exceptions.
+  Open questions 100-108 hold the decisions.
 - **A reference language may hold a note the format cannot express.** `Json.Comment` is a `Json.Member` beside
   `Json.Property`, drawn as `// why` and mapped to `TextTemplate.Empty`, so generation omits it - and the "an entry that
   emits nothing takes no separator" rule is what keeps a note between two members from producing a stray comma. It is
