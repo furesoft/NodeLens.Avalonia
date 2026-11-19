@@ -30,8 +30,6 @@
     <Project Path="src/Projectional.Xml/Projectional.Xml.csproj" />
     <Project Path="src/Projectional.Xml.Checks/Projectional.Xml.Checks.csproj" />
     <Project Path="src/Projectional.Xml.Intentions/Projectional.Xml.Intentions.csproj" />
-    <Project Path="src/Projectional.Json.Checks/Projectional.Json.Checks.csproj" />
-    <Project Path="src/Projectional.Json.Intentions/Projectional.Json.Intentions.csproj" />
     <Project Path="src/Projectional.Toolkit/Projectional.Toolkit.csproj" />
     <Project Path="src/Projectional.Structures/Projectional.Structures.csproj" />
     <Project Path="src/Projectional.TypeRules/Projectional.TypeRules.csproj" />
