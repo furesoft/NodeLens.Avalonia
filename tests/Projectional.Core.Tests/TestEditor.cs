@@ -67,6 +67,21 @@ internal static class TestEditor
         })]);
     }
 
+    /// <summary>A bare rule whose <c>tag</c> reference points at a tag root of the same model.</summary>
+    /// <remarks>
+    /// The tag is a root of its own rather than a child, because a reference points at a node owned elsewhere - the
+    /// shape every reference has, and the one a usage has to be found in.
+    /// </remarks>
+    public static (Node Rule, Node Tag) RuleUsingTag()
+    {
+        var rule = BareRule();
+        var tag = rule.Model.NewNode(TestLanguage.Tag);
+        rule.Model.AddRoot(tag);
+        rule.SetReference("tag", tag);
+
+        return (rule, tag);
+    }
+
     /// <summary>A bare step, optionally already holding <paramref name="text"/>.</summary>
     public static Node BareStep(string? text = null)
     {

@@ -45,7 +45,7 @@ What is next, in order:
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
-aliases, data flow, comments, go to definition, find usages, an inspector, block-selection shrink and a
+aliases, data flow, comments, go to definition, an inspector, block-selection shrink and a
 handful of completion fine points. The milestone tables below name the ones that have a home;
 the survey, the deliberate differences and the open decisions are in
 [mps-gap-analysis.md](architecture/mps-gap-analysis.md).
@@ -116,7 +116,6 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | --- | --- |
 | Declarative aspects | **types, generation, constraints, scopes and intentions are done** (`Projectional.TypeRules`, `Projectional.TextGen`, `Projectional.ConstraintRules`, `Projectional.ScopeRules`, `Projectional.IntentionRules`, [semantics.md](architecture/semantics.md#the-declared-form)); a declared intention has the two bodies a language ships so far - wrap with presets, set a property. What is left is the one aspect a declared language still cannot state: **import as a declaration**, so a language written as a model can read its own files and not only print them ([import.md](architecture/import.md#import-as-a-declaration-planned)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
-| Find usages | the reference index a rename needs first: who points at this node, across models, and the gesture that asks ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 | Concept behaviours | a node's name (and a one-sentence description) as a **declared pure function** per concept, so a composite name, a name that is a value and a name that is a sentence stop being the three things a `nameSlot` cannot express - one answer for the nine places that ask, and the declared twin of a C# lambda ([behaviours.md](architecture/behaviours.md)) |
 | SModel queries | a language over the tree with MPS' own operation words - `parent`, `children<link>`, `ancestors<concept = X, +>`, `descendants<...>`, `isInstanceOf`, casts, `concept/Name/`, `node-ptr/.../` - as a **pure-read** language: its modification half stays with the edit actions, so a query cannot mutate and the framework keeps one mutation story ([smodel.md](architecture/smodel.md)) |
 | Tests of a language, as data | a `tests/` folder beside the other aspects, one declarative test per document - the drawing, the findings, the generated text, a run's answer, a round trip and an edit script - with a runner in the behaviour band and one xunit method per language project as the bridge to CI ([language-tests.md](architecture/language-tests.md)) |

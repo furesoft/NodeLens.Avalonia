@@ -329,7 +329,7 @@ rediscover:
 
 What is *not* taken from MPS: `smodel`-style query languages inside aspects (our aspect blocks
 are declarative rules, and anything beyond them is C#), the Java type system, and aspect
-languages for features this project does not have (data flow, find usages, checking rules).
+languages for features this project does not have (data flow, checking rules).
 
 ## The code path a host ships
 

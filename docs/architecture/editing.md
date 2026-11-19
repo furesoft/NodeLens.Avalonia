@@ -553,6 +553,26 @@ was meant. Cut, Copy and Paste still fall back to caret behaviour, because a str
 needs a clipboard format that can hold a subtree — that is M3, and
 [clipboard.md](clipboard.md) records why.
 
+## Find usages
+
+`FindUsages` (`Projectional.Editing/Find/`) answers who points at a node. The question is the
+model's, so the search is `ReferenceIndex`; this layer contributes the two things a projection knows -
+which node the caret names, and where each usage is drawn (`UsageMatch.Place`, the reference slot's
+cell address).
+
+- **A caret on a reference asks about its target; a caret anywhere else asks about the node whose cell
+  it is in.** That is the reading MPS' gesture has: standing on a use asks about the declaration,
+  standing on the declaration asks who uses it. An empty child slot answers with its parent, the same
+  answer the intention list gives.
+- **"No target" and "nothing points here" are different answers.** `UsageReport.HasTarget` keeps them
+  apart: a caret on an unset or unresolved reference names no node, while a node with an empty `Usages`
+  list is clean.
+- **A usage the notation hides is still reported.** A hidden reference is exactly what a rename must
+  not miss; only the jump is a page question, which is why a caller tests `EditorTree.Find(place)`
+  before selecting.
+- **The report is a snapshot.** An edit retargets or removes a reference, so the next question is asked
+  again; `FindUsages.Of(node)` re-asks about the same node, which is what an open panel needs.
+
 ## The clipboard
 
 Copy, Cut, Paste and Select All are ordinary `EditAction`s, which is what keeps them testable

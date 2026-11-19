@@ -261,6 +261,21 @@ in them are decisions:
 The bar's Replace replaces the selection when it is exactly an occurrence and otherwise moves to the next one,
 because a button that stays dead until the user has searched is one they cannot use to start.
 
+### Find usages
+
+**View ▸ Find usages** (`Alt+F7`) answers "who points at this node" and lists the rows in a panel above the
+problems panel. `FindUsages.ReportOf(session)` is the whole question; `UsageList` turns the answer into rows and
+the window only fills a list, moves the caret and says why the panel closed.
+
+- **The gesture is the window's**, like F5: the answer is a shell panel, not something the control can paint over
+  the document. A host embedding the control calls the same `FindUsages` entry point and owes its own list.
+- **The panel stays up only while its target exists.** An edit re-asks about the *same node* (the id is kept, not
+  the caret), a deleted target closes it, and switching to a document of another project closes it too.
+- **An empty list is shown.** Unlike the problems panel, "nothing points here" is the answer the user asked for.
+- **A usage in another model says which model**, because a project is several documents; choosing the row opens
+  that document's tab when it is open, and says so when it is not. A reference the notation hides has no cell, so
+  the row falls back to the owner node rather than doing nothing.
+
 ### Representations
 
 The one command the shell has that is a projection and not a document operation lives in
