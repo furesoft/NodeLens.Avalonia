@@ -30,8 +30,9 @@ public sealed class StandardChecksTests
         Assert.IsType<EmptyChildSlotCheck>(StandardChecks.Structure[0]);
         Assert.IsType<MinimumChildCountCheck>(StandardChecks.Structure[1]);
         Assert.IsType<EmptyNodeCheck>(StandardChecks.Structure[2]);
+        Assert.IsType<UnresolvedReferenceCheck>(Assert.Single(StandardChecks.References));
         Assert.IsType<BinaryGroupingCheck>(Assert.Single(StandardChecks.Expressions));
-        Assert.Equal(8, StandardChecks.All.Count);
+        Assert.Equal(9, StandardChecks.All.Count);
     }
 
     [Fact]

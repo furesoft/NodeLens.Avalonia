@@ -64,8 +64,14 @@ public sealed class SqlSchemaChecksTests
     [Fact]
     public void TheSetIsTheStandardCataloguePlusThisCheck()
     {
-        Assert.Equal(StandardChecks.All.Count + 1, SqlSchemaChecks.All.Count);
+        // The reference group is deliberately absent: this language's keys cross documents on purpose, and a
+        // document opened alone would make every one of them look dangling.
+        Assert.Equal(
+            StandardChecks.Names.Count + StandardChecks.Structure.Count + StandardChecks.Expressions.Count + 1,
+            SqlSchemaChecks.All.Count);
+
         Assert.IsType<ColumnNamesCheck>(SqlSchemaChecks.All.Checks[^1]);
+        Assert.DoesNotContain(SqlSchemaChecks.All.Checks, check => check is UnresolvedReferenceCheck);
     }
 
     private static Node Table(out Model model, string name)

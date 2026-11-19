@@ -41,9 +41,18 @@ public static class StandardChecks
         new EmptyNodeCheck(),
     ];
 
+    /// <summary>The checks about references: <c>STD020</c> and <c>STD021</c>.</summary>
+    /// <remarks>
+    /// Both codes come from one check, because which of the two holds is a fact about the same broken pointer - a
+    /// reference with a close candidate is repaired by pointing it there, and one without is repaired by clearing it.
+    /// A language whose references cross documents on purpose leaves this group out, since an unopened document's
+    /// targets are unresolved by design: `Projectional.Samples.SqlSchema` does exactly that.
+    /// </remarks>
+    public static IReadOnlyList<ICheck> References { get; } = [new UnresolvedReferenceCheck()];
+
     /// <summary>The checks that need the expression sub-language: <c>STD040</c>.</summary>
     public static IReadOnlyList<ICheck> Expressions { get; } = [new BinaryGroupingCheck()];
 
     /// <summary>Every check the framework ships, as one set a language can extend.</summary>
-    public static CheckSet All { get; } = new([.. Names, .. Structure, .. Expressions]);
+    public static CheckSet All { get; } = new([.. Names, .. Structure, .. References, .. Expressions]);
 }

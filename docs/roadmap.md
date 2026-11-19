@@ -26,9 +26,13 @@ What is next, in order:
 
 1. **The rest of the catalogue as menu rows.** `INT010`/`INT011` are delivered in the context menu; what is
    left are the language-side entries from `INT040` on, which arrive with the languages that need them.
-2. **The twelve remaining standard checks.** `Projectional.Checks` ships seven (`STD001`, `STD002`, `STD003`,
-   `STD010`, `STD011`, `STD012`, `STD040`); the rest of the catalogue lands as a language asks for it rather than
-   in one pass.
+2. **The rest of the standard-check catalogue is blocked, not pending.** `Projectional.Checks` ships ten
+   (`STD001`, `STD002`, `STD003`, `STD004`, `STD010`, `STD011`, `STD012`, `STD020`, `STD021`, `STD040`). The
+   entries that are left cannot be written from a document this model can hold, and
+   [quick-fixes.md](architecture/quick-fixes.md#how-a-language-includes-them) records why: `STD030`–`STD032` and
+   `STD042` describe a value the parser and the reader refuse; `STD041` needs an unwrap seam the model does not
+   have; `STD050`/`STD051` wait for the opaque node `persistence.md` promises but the reader does not build; and
+   `STD022` is a policy a language writes itself, because a cross-document reference is a feature here.
 3. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
    table cell in earnest (SQL schema) - each one project with its checks in `Checks/`, a `Corpus/` and

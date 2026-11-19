@@ -234,8 +234,17 @@ public sealed class EditContext
     /// <param name="target">The node to point at.</param>
     /// <returns>Whether the reference was set.</returns>
     /// <remarks>
+    /// <para>
+    /// The owner has to be part of the document being edited, because the edit is an edit of *this* document.
+    /// The target does not: a reference may cross a model boundary but not a project one, which is the model's own
+    /// rule (<see cref="Node.SetReference(string, Node?)"/>) - and the scope provider offers a project's other
+    /// documents by name on purpose, so refusing one here would have made the list offer something the edit
+    /// rejects. This is the same rule the SQL schema sample found, kept in one place rather than two.
+    /// </para>
+    /// <para>
     /// The target's name travels with the link as its <c>resolveInfo</c>, so a reference whose target is
     /// later removed still says what it meant - the same fallback a loaded document uses.
+    /// </para>
     /// </remarks>
     public bool SetReference(Node node, string slot, Node target)
     {
@@ -244,7 +253,7 @@ public sealed class EditContext
         ArgumentNullException.ThrowIfNull(target);
 
         if (!ReferenceEquals(node.Model, _document.Model)
-            || !ReferenceEquals(target.Model, _document.Model)
+            || !ReferenceEquals(target.Model.Project, _document.Model.Project)
             || node.Concept.FindReference(slot) is not { } reference
             || !target.Concept.IsKindOf(reference.TargetConceptKey))
         {
@@ -252,6 +261,31 @@ public sealed class EditContext
         }
 
         node.SetReference(slot, target.Id, target.Concept.NameSlot is { } nameSlot ? target.GetOrNull(nameSlot.Name) : null);
+
+        return true;
+    }
+
+    /// <summary>Clears the reference in <paramref name="slot"/> of <paramref name="node"/>.</summary>
+    /// <param name="node">The node that owns the reference.</param>
+    /// <param name="slot">The reference slot, which must belong to the node's concept.</param>
+    /// <returns>Whether the reference was cleared.</returns>
+    /// <remarks>
+    /// A reference nobody has set and one that was cleared are the same state, so this answers
+    /// <see langword="true"/> for both: the caller asked for "no target here", and that is what the node holds.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
+    public bool ClearReference(Node node, string slot)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+
+        if (!ReferenceEquals(node.Model, _document.Model) || node.Concept.FindReference(slot) is null)
+        {
+            return false;
+        }
+
+        node.SetReference(slot, target: null);
 
         return true;
     }
