@@ -68,8 +68,12 @@ public static class IntentionLowering
 
             var action = Single(rule, IntentionLanguage.ActionSlot);
 
+            var safety = action.Concept.Key == IntentionConceptKeys.Delete
+                ? EditSafety.Destructive
+                : EditSafety.Plain;
+
             entries.Add(new DeclaredIntention(
-                new Intention(id, label, description, Create(action, label, subject, concepts)),
+                new Intention(id, label, description, Create(action, label, subject, concepts), safety: safety),
                 conceptKey));
         }
 
@@ -86,6 +90,8 @@ public static class IntentionLowering
             IntentionConceptKeys.Wrap => Wrap(action, subject, concepts),
             IntentionConceptKeys.Set => Set(action, subject),
             IntentionConceptKeys.InsertSibling => InsertSibling(action),
+            IntentionConceptKeys.Delete => Delete(),
+            IntentionConceptKeys.Move => Move(action),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an intention body; an intention wraps or sets."),
         };
@@ -140,6 +146,24 @@ public static class IntentionLowering
         return context => context.Node is { } node
             ? new WrapInAction(node.Id, wrapperKey, childSlot, presets)
             : null;
+    }
+
+    private static Func<IntentionContext, EditAction?> Delete() =>
+        context => context.Node is null ? null : new DeleteNodeAction();
+
+    private static Func<IntentionContext, EditAction?> Move(Node action)
+    {
+        var move = Optional(action, IntentionLanguage.MoveSlot) switch
+        {
+            null or IntentionMoves.Up => NodeMove.Up,
+            IntentionMoves.Down => NodeMove.Down,
+            IntentionMoves.ToFront => NodeMove.ToFront,
+            IntentionMoves.ToBack => NodeMove.ToBack,
+            var other => throw new ConceptDefinitionException(
+                $"'{other}' is not a direction; a move sends the node {IntentionMoves.Up}, {IntentionMoves.Down}, {IntentionMoves.ToFront} or {IntentionMoves.ToBack}."),
+        };
+
+        return context => context.Node is null ? null : new MoveNodeAction(move);
     }
 
     private static Func<IntentionContext, EditAction?> InsertSibling(Node action)

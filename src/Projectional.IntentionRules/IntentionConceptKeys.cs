@@ -24,6 +24,12 @@ public static class IntentionConceptKeys
     /// <summary>Inserts a sibling of the node the caret is on.</summary>
     public const string InsertSibling = "Intent.InsertSibling";
 
+    /// <summary>Deletes the node the caret is on.</summary>
+    public const string Delete = "Intent.Delete";
+
+    /// <summary>Moves the node among its siblings.</summary>
+    public const string Move = "Intent.Move";
+
     /// <summary>Writes a property value on the node the caret is on.</summary>
     public const string Set = "Intent.Set";
 }
