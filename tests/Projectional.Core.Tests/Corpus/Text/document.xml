@@ -1,0 +1,5 @@
+<project name="demo">
+  <item id="1">first</item>
+  <item id="2">a &amp; b</item>
+  <!-- kept as written -->
+</project>

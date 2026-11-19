@@ -1,0 +1,3 @@
+<p:root xmlns:p="urn:x" p:a="1">
+  <p:child></p:child>
+</p:root>
