@@ -85,6 +85,36 @@ internal static class TextWrapper
     internal static double MinimumWidth(TextEmphasis emphasis, ITextMeasure measure) =>
         measure.Measure(" ", emphasis);
 
+    /// <summary>
+    /// The width of <paramref name="text"/> when it provably stays on one line, or <see langword="null"/>
+    /// when it has to be wrapped.
+    /// </summary>
+    /// <remarks>
+    /// The answer <see cref="Lines"/> would give for that case, without the line list: a text with no break
+    /// of its own that fits the limit is one line, so its width is its own width and its height is the
+    /// measure's. Most cells of a document are that case, and building a <see cref="LaidOutText"/> for each
+    /// of them is one object and one list per cell that nothing reads.
+    /// </remarks>
+    internal static double? SingleLineWidth(
+        string text,
+        TextEmphasis emphasis,
+        ITextMeasure measure,
+        double? limit)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(measure);
+
+        if (text.Contains('\n'))
+        {
+            return null;
+        }
+
+        var contentEnd = ContentEndOf(text, 0, text.Length);
+        var width = Math.Max(Measure(text, emphasis, measure, 0, contentEnd), MinimumWidth(emphasis, measure));
+
+        return limit is { } allowed && width > allowed ? null : width;
+    }
+
     private static int ContentEndOf(string text, int start, int segmentEnd) =>
         segmentEnd > start && text[segmentEnd - 1] == '\r' ? segmentEnd - 1 : segmentEnd;
 
@@ -195,5 +225,7 @@ internal static class TextWrapper
     }
 
     private static double Measure(string text, TextEmphasis emphasis, ITextMeasure measure, int start, int end) =>
-        end <= start ? 0 : measure.Measure(text[start..end], emphasis);
+        end <= start
+            ? 0
+            : measure.Measure(start == 0 && end == text.Length ? text : text[start..end], emphasis);
 }

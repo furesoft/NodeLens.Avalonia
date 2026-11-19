@@ -20,30 +20,34 @@ namespace Projectional.Projection;
 /// </remarks>
 public sealed class CellLayout
 {
-    private readonly Dictionary<EditorCell, LayoutRect> _bounds;
     private readonly Dictionary<EditorCell, LaidOutText> _text;
+    private readonly ITextMeasure _measure;
+
+    // Built on the first question that needs it and never invalidated. Painting does not need it - a painter
+    // walks Cells and has each cell's bounds in hand - but the caret, hit test and markers do, and building it
+    // eagerly cost one insertion per cell on every layout.
+    private Dictionary<EditorCell, LayoutRect>? _bounds;
 
     internal CellLayout(
         EditorTree tree,
         LayoutSize size,
         IReadOnlyList<PlacedCell> cells,
-        IReadOnlyDictionary<EditorCell, LaidOutText> text)
+        Dictionary<EditorCell, LaidOutText> text,
+        ITextMeasure measure)
     {
         ArgumentNullException.ThrowIfNull(tree);
         ArgumentNullException.ThrowIfNull(cells);
         ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(measure);
 
         Tree = tree;
         Size = size;
         Cells = cells;
-        _text = new Dictionary<EditorCell, LaidOutText>(text);
+        _measure = measure;
 
-        _bounds = new Dictionary<EditorCell, LayoutRect>(cells.Count);
-
-        foreach (var placed in cells)
-        {
-            _bounds[placed.Cell] = placed.Bounds;
-        }
+        // Kept, not copied: the layouter builds it for this layout and then forgets it, and a copy of a
+        // per-cell map is one full pass over the document for nothing.
+        _text = text;
     }
 
     /// <summary>The tree that was laid out.</summary>
@@ -56,9 +60,16 @@ public sealed class CellLayout
     public IReadOnlyList<PlacedCell> Cells { get; }
 
     /// <summary>Where a specific cell was placed, or <see langword="null"/> if it is not in this layout.</summary>
+    /// <remarks>
+    /// The lookup map is built on the first call, because a painter never asks for it: it walks
+    /// <see cref="Cells"/> and already has the bounds of each cell it draws.
+    /// </remarks>
     public LayoutRect? BoundsOf(EditorCell cell)
     {
         ArgumentNullException.ThrowIfNull(cell);
+
+        _bounds ??= BoundsByCell();
+
         return _bounds.TryGetValue(cell, out var bounds) ? bounds : null;
     }
 
@@ -88,13 +99,28 @@ public sealed class CellLayout
     /// layout drew no text for it.
     /// </summary>
     /// <remarks>
-    /// Only the cells that draw a text of their own are in here: a cell that is empty on purpose - a slot
-    /// waiting for a node - draws its marker on a single line without measuring it as text.
+    /// <para>
+    /// The map holds only what cannot be derived later - the text cells that **wrapped**. A text that stayed
+    /// on one line is the text plus its width, which the measure answers, and a cell that draws no text of
+    /// its own - a slot waiting for a node, which draws its marker on a single line - has no lines at all
+    /// and answers <see langword="null"/>.
+    /// </para>
+    /// <para>
+    /// That is what keeps a per-cell map from describing every cell of the document when only the ones that
+    /// wrapped carry information, and it is not a re-measure: a wrapped paragraph, the case that would cost
+    /// one, is stored.
+    /// </para>
     /// </remarks>
     public LaidOutText? LinesOf(EditorCell cell)
     {
         ArgumentNullException.ThrowIfNull(cell);
-        return _text.TryGetValue(cell, out var lines) ? lines : null;
+
+        if (_text.TryGetValue(cell, out var lines))
+        {
+            return lines;
+        }
+
+        return cell is TextCell text ? LaidOutText.OneLine(text.Text, text.Emphasis, _measure) : null;
     }
 
     /// <summary>How the text of <paramref name="cell"/> is broken into lines, measured if need be.</summary>
@@ -125,4 +151,16 @@ public sealed class CellLayout
     }
 
     public override string ToString() => $"{Tree} laid out at {Size}";
+
+    private Dictionary<EditorCell, LayoutRect> BoundsByCell()
+    {
+        var bounds = new Dictionary<EditorCell, LayoutRect>(Cells.Count);
+
+        foreach (var placed in Cells)
+        {
+            bounds[placed.Cell] = placed.Bounds;
+        }
+
+        return bounds;
+    }
 }

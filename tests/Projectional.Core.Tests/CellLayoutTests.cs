@@ -22,6 +22,34 @@ public sealed class CellLayoutTests
     private static readonly CellLayouter Layouter = new(MonospaceTextMeasure.Instance);
 
     [Fact]
+    public void ATextThatStayedOnOneLineIsAnsweredWithoutBeingStored()
+    {
+        var rule = TestLanguage.NewModel().NewNode(TestLanguage.Rule);
+
+        var layout = Layouter.Layout(Builder.Build(rule));
+        var texts = layout.Cells.Where(placed => placed.Cell is TextCell).ToArray();
+
+        Assert.NotEmpty(texts);
+
+        foreach (var placed in texts)
+        {
+            var lines = layout.LinesOf(placed.Cell);
+
+            Assert.NotNull(lines);
+            Assert.True(lines.IsSingleLine);
+            Assert.Equal(placed.Bounds.Height, lines.Height);
+
+            // A property that shows a placeholder instead of its empty value is drawn as wide as the
+            // stand-in, so its bounds are wider than the value they describe - and that is the one case
+            // where the two numbers may differ.
+            if (placed.Cell is not PropertyCell { Text.Length: 0, EmptyText.Length: > 0 })
+            {
+                Assert.Equal(placed.Bounds.Width, lines.Width);
+            }
+        }
+    }
+
+    [Fact]
     public void TheRootIsPlacedAtTheOriginAndTheSizeCoversIt()
     {
         var rule = TestLanguage.NewModel().NewNode(TestLanguage.Rule);

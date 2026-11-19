@@ -59,7 +59,7 @@ public sealed class CellLayouter
         var text = new Dictionary<EditorCell, LaidOutText>();
         var size = Arrange(tree.Root, x: 0, y: 0, placed, text);
 
-        return new CellLayout(tree, size, placed, text);
+        return new CellLayout(tree, size, placed, text, _measure);
     }
 
     private LayoutSize Arrange(EditorCell cell, double x, double y, List<PlacedCell> placed, Dictionary<EditorCell, LaidOutText> text)
@@ -277,15 +277,24 @@ public sealed class CellLayouter
     {
         // An empty text still occupies one space: a value nobody has typed yet has to be a place the
         // caret can stand on, and a zero-width cell is not. The wrapper keeps that floor for the width.
+        if (TextWrapper.SingleLineWidth(cell.Text, cell.Emphasis, _measure, LimitAt(x)) is { } width)
+        {
+            // One line is the text plus the measure's height, and CellLayout answers it from the measure, so
+            // nothing is remembered for it. A property showing a placeholder instead of its value is drawn
+            // where the (empty) value would go, so the box has to be as wide as the stand-in: it is one token
+            // and never wrapped, and the lines that are not stored still describe the value, which is what
+            // the caret keeps standing in.
+            return cell is PropertyCell { Text.Length: 0, EmptyText.Length: > 0 } empty
+                ? new LayoutSize(_measure.Measure(empty.EmptyText, empty.Emphasis), _measure.LineHeight)
+                : new LayoutSize(width, _measure.LineHeight);
+        }
+
         var lines = LaidOutText.Wrap(cell.Text, cell.Emphasis, _measure, LimitAt(x));
         text[cell] = lines;
 
-        // A property that shows a placeholder instead of its value is drawn where the (empty) value would go,
-        // so the box has to be as wide as the stand-in. It is one token and never wrapped: the lines above
-        // still describe the value, which is what the caret keeps standing in.
-        if (cell is PropertyCell { Text.Length: 0, EmptyText.Length: > 0 } empty)
+        if (cell is PropertyCell { Text.Length: 0, EmptyText.Length: > 0 } placeholder)
         {
-            return new LayoutSize(_measure.Measure(empty.EmptyText, empty.Emphasis), lines.Height);
+            return new LayoutSize(_measure.Measure(placeholder.EmptyText, placeholder.Emphasis), lines.Height);
         }
 
         return new LayoutSize(lines.Width, lines.Height);
