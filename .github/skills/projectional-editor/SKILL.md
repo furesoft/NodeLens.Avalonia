@@ -47,7 +47,7 @@ shape, not as the tree, and add M2 features to `MainWindow` rather than inventin
 - `docs/roadmap.md` - milestones M0-M8 with acceptance gates and effort estimates (M8 is after 1.0). It holds the **scope** of each milestone and what is left, not a status report; a finished milestone is removed from it.
 - `docs/implemented.md` - the record of delivery: every finished feature, where it lives and the test that proves it, milestone by milestone.
 - `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone, plus one document per planned feature: `completion.md`, `markers.md`, `node-moves.md`, `scrolling.md`, `import.md`, `csharp.md`, `llm-language-description.md`.
-- `docs/adr/` - 21 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
+- `docs/adr/` - 22 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
 - `docs/open-questions.md` - open items, each with a recommendation and a decide-by milestone.
 
 A milestone is done when its acceptance gate passes, not when the code compiles.
@@ -2110,7 +2110,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2269 tests**; anything below that means tests were deleted.
+it. **Baseline is 2305 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
