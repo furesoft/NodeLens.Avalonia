@@ -4,7 +4,7 @@ namespace Projectional.Structures.Notation;
 
 /// <summary>
 /// How a language definition is drawn, in the shape MPS writes a structure model: a header, a block of options, and
-/// one section per kind of slot.
+/// one section per kind of slot, with every declaration on a line of its own.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,6 +16,18 @@ namespace Projectional.Structures.Notation;
 /// <para>
 /// Empty sections show <c>&lt;&lt; ... &gt;&gt;</c>, MPS' placeholder, rather than a bare heading: a section nobody
 /// has filled is a state to see, and a heading with nothing under it reads as a mistake.
+/// </para>
+/// <para>
+/// A slot declaration carries its own kind and closes where it ends - <c>&lt;&lt;property name : string ...
+/// &gt;&gt;</c>, <c>&lt;&lt;child steps : Rules.Step[1..n]&gt;&gt;</c>, <c>&lt;&lt;reference condition :
+/// Rules.Condition ... &gt;&gt;</c>. The marker is what makes a list of declarations readable: a property has three
+/// option lines under it, and without a visible end the reader cannot tell where one declaration stops and the next
+/// begins. It is also the word MPS uses for the same three things.
+/// </para>
+/// <para>
+/// Every collection here stacks, because a definition is read one declaration per line. The layout draws a
+/// collection inline by default (that is what a notation asks for with a separator), so the stacking is a decision
+/// this file makes rather than something the renderer would have guessed.
 /// </para>
 /// <para>
 /// <c>abstract</c> is a word in the header rather than an option, which is MPS' spelling and the better reading of
@@ -61,15 +73,15 @@ public static class StructureNotations
                 ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
                 ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
                 ed.Line(ed.Keyword("extends:")),
-                ed.Indent(ed.Children(StructureLanguage.SuperTypeSlot, NoEntries)),
+                ed.Indent(ed.Children(StructureLanguage.SuperTypeSlot, NoEntries, stacked: true)),
                 ed.Line(ed.Keyword("implements:")),
-                ed.Indent(ed.Children(StructureLanguage.ImplementsSlot, NoEntries)),
+                ed.Indent(ed.Children(StructureLanguage.ImplementsSlot, NoEntries, stacked: true)),
                 ed.Line(ed.Keyword("properties:")),
-                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoEntries)),
+                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoEntries, stacked: true)),
                 ed.Line(ed.Keyword("children:")),
-                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoEntries)),
+                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoEntries, stacked: true)),
                 ed.Line(ed.Keyword("references:")),
-                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoEntries))))));
+                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoEntries, stacked: true))))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
@@ -79,13 +91,28 @@ public static class StructureNotations
             ed.Property("name")));
 
         notations.Add(StructureConceptKeys.PropertyDecl, ed => ed.Sequence(
-            ed.Line(ed.Property("name"), ed.Space, ed.Punct(":"), ed.Space, ed.Property("typeName")),
+            ed.Line(
+                ed.Punct("<<"),
+                ed.Keyword("property"),
+                ed.Space,
+                ed.Property("name"),
+                ed.Space,
+                ed.Punct(":"),
+                ed.Space,
+                ed.Property("typeName")),
             ed.Indent(ed.Sequence(
                 ed.Line(ed.Keyword("default:"), ed.Space, ed.Property("defaultValue")),
                 ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
-                ed.Line(ed.Keyword("described when filled:"), ed.Space, ed.Property("showDescriptionWhenFilled"))))));
+                ed.Line(
+                    ed.Keyword("described when filled:"),
+                    ed.Space,
+                    ed.Property("showDescriptionWhenFilled"),
+                    ed.Punct(">>"))))));
 
         notations.Add(StructureConceptKeys.ChildDecl, ed => ed.Line(
+            ed.Punct("<<"),
+            ed.Keyword("child"),
+            ed.Space,
             ed.Property("name"),
             ed.Space,
             ed.Punct(":"),
@@ -93,22 +120,29 @@ public static class StructureNotations
             ed.Property("childConceptKey"),
             ed.Punct("["),
             ed.Property("cardinality"),
-            ed.Punct("]")));
+            ed.Punct("]"),
+            ed.Punct(">>")));
 
-        notations.Add(StructureConceptKeys.ReferenceDecl, ed => ed.Line(
-            ed.Property("name"),
-            ed.Space,
-            ed.Punct(":"),
-            ed.Space,
-            ed.Property("targetConceptKey"),
-            ed.Space,
-            ed.Keyword("own subtree:"),
-            ed.Space,
-            ed.Property("allowOwnSubtree")));
+        notations.Add(StructureConceptKeys.ReferenceDecl, ed => ed.Sequence(
+            ed.Line(
+                ed.Punct("<<"),
+                ed.Keyword("reference"),
+                ed.Space,
+                ed.Property("name"),
+                ed.Space,
+                ed.Punct(":"),
+                ed.Space,
+                ed.Property("targetConceptKey")),
+            ed.Indent(ed.Sequence(
+                ed.Line(
+                    ed.Keyword("own subtree:"),
+                    ed.Space,
+                    ed.Property("allowOwnSubtree"),
+                    ed.Punct(">>"))))));
 
         notations.Add(StructureConceptKeys.Enumeration, ed => ed.Sequence(
             ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),
-            ed.Indent(ed.Children("symbols", NoEntries))));
+            ed.Indent(ed.Children("symbols", NoEntries, stacked: true))));
 
         notations.Add(StructureConceptKeys.EnumSymbol, ed => ed.Line(ed.Property("symbol")));
     }

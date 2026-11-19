@@ -220,10 +220,10 @@ public sealed class StructureLoweringTests
                 "  implements:",
                 "    << ... >>",
                 "  properties:",
-                "    name : string",
+                "    <<property name : string",
                 "      default:",
                 "      described as:",
-                "      described when filled: false",
+                "      described when filled: false>>",
                 "  children:",
                 "    << ... >>",
                 "  references:",
@@ -265,6 +265,8 @@ public sealed class StructureLoweringTests
     public void AChildSlotIsDrawnWithItsRangeInBrackets()
     {
         // The one cell MPS offers for a cardinality: the range an author reads, right after the concept it holds.
+        // The declaration also says its own kind and closes where it ends, so a section with several slots needs
+        // no heading to be read correctly.
         var definition = new DefinitionBuilder();
 
         definition.Concept("Rules.Step", slots: [definition.Property("text", "string")]);
@@ -273,7 +275,57 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 120);
 
-        Assert.Contains("steps : Rules.Step[1..n]", drawn, StringComparison.Ordinal);
+        Assert.Contains("<<child steps : Rules.Step[1..n]>>", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EveryDeclarationOfASectionStartsANewLine()
+    {
+        // A collection lays out inline unless the notation asks it to stack, so before P4 two properties of one
+        // concept were drawn side by side and a second super concept shared the first one's line. A definition is
+        // read one declaration per line, which is the shape a reviewer expects of a structure model.
+        var definition = new DefinitionBuilder();
+
+        var rule = definition.Concept(
+            "Rules.Rule",
+            slots:
+            [
+                definition.Property("name", "string"),
+                definition.Property("outcome", "Rules.Outcome"),
+                definition.Child("steps", "Rules.Step"),
+                definition.Child("body", "Rules.Body"),
+                definition.Reference("condition", "Rules.Condition"),
+                definition.Reference("other", "Rules.Condition"),
+            ],
+            supers: ["Rules.Element", "Framework.Base"],
+            implements: ["Framework.Named"]);
+
+        var lines = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 160).Split('\n');
+
+        Assert.Contains("    Rules.Element", lines);
+        Assert.Contains("    Framework.Base", lines);
+        Assert.Contains("    Framework.Named", lines);
+        Assert.Contains("    <<property name : string", lines);
+        Assert.Contains("    <<property outcome : Rules.Outcome", lines);
+        Assert.Contains("    <<child steps : Rules.Step[1]>>", lines);
+        Assert.Contains("    <<child body : Rules.Body[1]>>", lines);
+        Assert.Contains("    <<reference condition : Rules.Condition", lines);
+        Assert.Contains("    <<reference other : Rules.Condition", lines);
+        Assert.Contains("      own subtree: false>>", lines);
+    }
+
+    [Fact]
+    public void AnEnumerationsSymbolsStandOnePerLine()
+    {
+        // The symbols are a `Many` slot like any other: the order is the order they are offered in, and reading
+        // them off one line would hide a symbol added in the middle.
+        var definition = new DefinitionBuilder();
+
+        var outcome = definition.Enumeration("Rules.Outcome", "accept", "review");
+
+        Assert.Equal(
+            string.Join('\n', "enum Rules.Outcome", "  accept", "  review"),
+            LayoutSnapshot.Render(outcome, StructureNotations.Create(), width: 120));
     }
 
     [Fact]
