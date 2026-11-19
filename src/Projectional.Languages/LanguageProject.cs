@@ -1,5 +1,7 @@
 using Projectional.Core;
 using Projectional.ConstraintRules;
+using Projectional.Editing;
+using Projectional.IntentionRules;
 using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Persistence;
@@ -49,6 +51,9 @@ public sealed class LanguageProject
     /// <summary>The folder holding the language's own scope rules, which a language may leave out.</summary>
     public const string ScopesFolder = "scopes";
 
+    /// <summary>The folder holding the language's own intentions, which a language may leave out.</summary>
+    public const string IntentionsFolder = "intentions";
+
     private LanguageProject(
         string name,
         string directory,
@@ -58,7 +63,9 @@ public sealed class LanguageProject
         TypeRegistry types,
         IReadOnlyList<TextGenerator> generators,
         ConstraintSet constraints,
-        ScopeProviderRegistry scopes)
+        ScopeProviderRegistry scopes,
+        IIntentionProvider intentions,
+        bool hasIntentions)
     {
         Name = name;
         Directory = directory;
@@ -69,6 +76,8 @@ public sealed class LanguageProject
         Generators = generators;
         Constraints = constraints;
         Scopes = scopes;
+        Intentions = intentions;
+        HasIntentions = hasIntentions;
     }
 
     /// <summary>The language's name, which is the name of the folder it lives in.</summary>
@@ -128,6 +137,16 @@ public sealed class LanguageProject
 
     /// <summary>Whether the project declared a scope rule of its own.</summary>
     public bool HasScopes => Scopes.Count > 0;
+
+    /// <summary>The intentions the language declares, lowerable into an entry list.</summary>
+    /// <remarks>
+    /// The declared half of the intention aspect: the same provider a hand-written package registers with the session.
+    /// A language that declares none still loads, and its documents simply have no language entries.
+    /// </remarks>
+    public IIntentionProvider Intentions { get; }
+
+    /// <summary>Whether the project declared an intention of its own.</summary>
+    public bool HasIntentions { get; }
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -180,6 +199,8 @@ public sealed class LanguageProject
             var definitions = Read(directory, StructureFolder, new Project(StructureLanguage.Concepts));
             var declarations = StructureLowering.Lower(definitions);
             var concepts = ConceptRegistry.Create(declarations);
+            var scopes = LowerScopeProviders(directory, concepts);
+            var intentions = LowerIntentions(directory, concepts);
 
             error = null;
 
@@ -192,7 +213,9 @@ public sealed class LanguageProject
                 LowerTypes(directory),
                 LowerGenerators(directory, concepts),
                 LowerConstraints(directory, concepts),
-                LowerScopes(directory, concepts));
+                scopes.Registry,
+                intentions.Provider,
+                intentions.HasAny);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -308,8 +331,17 @@ public sealed class LanguageProject
     /// reference slot this language does not have is refused here - the same "earliest moment both halves exist"
     /// rule the notation, the templates and the constraints follow.
     /// </remarks>
-    private static ScopeProviderRegistry LowerScopes(string directory, ConceptRegistry concepts) =>
-        ScopeLowering.CreateProviders(
-            Read(directory, ScopesFolder, new Project(ScopeLanguage.Concepts)),
-            concepts);
+    private static (ScopeProviderRegistry Registry, bool HasAny) LowerScopeProviders(string directory, ConceptRegistry concepts)
+    {
+        var documents = Read(directory, ScopesFolder, new Project(ScopeLanguage.Concepts));
+
+        return (ScopeLowering.CreateProviders(documents, concepts), documents.Count > 0);
+    }
+
+    private static (IIntentionProvider Provider, bool HasAny) LowerIntentions(string directory, ConceptRegistry concepts)
+    {
+        var documents = Read(directory, IntentionsFolder, new Project(IntentionLanguage.Concepts));
+
+        return (IntentionLowering.CreateProvider(documents, concepts), documents.Count > 0);
+    }
 }

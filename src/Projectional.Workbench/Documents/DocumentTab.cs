@@ -89,6 +89,7 @@ internal sealed class DocumentTab : IDisposable
         TypeRegistry? types = null,
         ConstraintSet? constraints = null,
         IScopeProvider? scopes = null,
+        IIntentionProvider? intentions = null,
         EvaluationRegistry? evaluation = null,
         IReadOnlyList<TextGenerator>? generators = null,
         IEditorClipboard? clipboard = null)
@@ -114,6 +115,13 @@ internal sealed class DocumentTab : IDisposable
         // A language that declares scopes replaces the chain for the references it names; every other slot still
         // falls through to the default, which is what makes installing it harmless.
         Session.Scopes = scopes ?? DefaultScopeProvider.Instance;
+
+        // A declared entry is offered at every caret the language's rules match, so the provider is registered once
+        // here rather than looked up per list.
+        if (intentions is not null)
+        {
+            Session.AddIntentions(intentions, IntentionSource.Language);
+        }
 
         // A document that has just been opened or created is by definition what the file holds. The
         // history has not recorded anything yet, so this is the state it starts in.

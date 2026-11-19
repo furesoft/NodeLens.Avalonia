@@ -31,6 +31,8 @@ MyRules/
     Pipeline.Stage.mps            one rule
   scopes/                         where each reference's names come from (Projectional.ScopeRules)
     Pipeline.Stage.retries.mps    one scope rule
+  intentions/                     what a language offers at a caret (Projectional.IntentionRules)
+    Pipeline.Stage.mps            one intention
   pipeline.mps                    a document of the language, not part of the definition
 ```
 

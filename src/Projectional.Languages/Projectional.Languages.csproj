@@ -2,7 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Projectional.ConstraintRules\Projectional.ConstraintRules.csproj" />
+    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\Projectional.Editors\Projectional.Editors.csproj" />
+    <ProjectReference Include="..\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
     <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\Projectional.TypeRules\Projectional.TypeRules.csproj" />
