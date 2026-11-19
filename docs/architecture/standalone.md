@@ -277,6 +277,17 @@ the window only fills a list, moves the caret and says why the panel closed.
   that document's tab when it is open, and says so when it is not. A reference the notation hides has no cell, so
   the row falls back to the owner node rather than doing nothing.
 
+### Rename
+
+**Edit ▸ Rename...** (`Shift+F6`) opens a bar prefilled with the name of the node the caret names - the same reading
+Find usages uses, so a caret on a reference renames the declaration it points at. Enter applies it, Escape and Cancel
+close the bar, and a refusal leaves the bar open with the reason in the status bar so the value can be corrected.
+
+The edit is `RenameNodeAction` (`Projectional.Editing/`): the name and every reference fallback in the document are
+one undo step. A node of another model is refused, because this document's history is what would have to undo it.
+`INT001` in the context menu stays the caret jump into the name slot; the project-wide rename is the shell command,
+because an intention cannot ask for a value.
+
 ### Representations
 
 The one command the shell has that is a projection and not a document operation lives in

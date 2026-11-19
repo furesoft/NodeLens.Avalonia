@@ -82,6 +82,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private double _fontSize = DefaultFontSize;
     private string? _error;
     private NodeId? _usageTarget;
+    private NodeId? _renameTarget;
     private bool _closeConfirmed;
     private bool _disposed;
 
@@ -246,6 +247,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowOutput();
         ShowOutline();
         SyncUsages();
+        SyncRename();
         UpdateStatus();
     }
 
@@ -315,6 +317,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowOutput();
         ShowOutline();
         SyncUsages();
+        SyncRename();
         UpdateStatus();
     }
 
@@ -372,6 +375,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowOutput();
         ShowOutline();
         SyncUsages();
+        SyncRename();
         UpdateStatus();
     }
 
@@ -397,6 +401,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowOutput();
         ShowOutline();
         SyncUsages();
+        SyncRename();
         UpdateStatus();
     }
 
@@ -596,6 +601,145 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>The query the bar describes, or <see langword="null"/> while it holds no text.</summary>
     private FindQuery? Query =>
         FindInput.Text is { Length: > 0 } text ? new FindQuery(text, FindCase.IsChecked == true) : null;
+
+    /// <summary>Opens the rename bar for the node the caret names.</summary>
+    /// <remarks>
+    /// The target is the same node find usages asks about: a caret on a reference names what it points at, a caret
+    /// anywhere else names the node whose cell it is in. A node of another model is refused because this document's
+    /// undo history is what would have to take the rename back.
+    /// </remarks>
+    private void OnRename(object? sender, RoutedEventArgs e) => OpenRenameBar();
+
+    private void OpenRenameBar()
+    {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        var target = FindUsages.TargetOf(document.Session);
+
+        if (target is null)
+        {
+            _error = "Nothing to rename: the caret is not on a node or a resolved reference.";
+            UpdateStatus();
+
+            return;
+        }
+
+        if (!ReferenceEquals(target.Model, document.Model))
+        {
+            _error = "That node belongs to another document; open it to rename it.";
+            UpdateStatus();
+
+            return;
+        }
+
+        if (target.Concept.NameSlot is not { } nameSlot)
+        {
+            _error = $"'{target.Concept.Key}' declares no name slot, so it cannot be renamed.";
+            UpdateStatus();
+
+            return;
+        }
+
+        _error = null;
+        _renameTarget = target.Id;
+        RenameBar.IsVisible = true;
+        RenameInput.Text = target.GetOrNull(nameSlot.Name) ?? string.Empty;
+        RenameInput.Focus();
+        RenameInput.SelectAll();
+        UpdateStatus();
+    }
+
+    /// <summary>Enter renames, Escape cancels.</summary>
+    private void OnRenameKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter:
+                ApplyRename();
+                break;
+
+            case Key.Escape:
+                CloseRename();
+                break;
+
+            default:
+                return;
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnRenameApply(object? sender, RoutedEventArgs e) => ApplyRename();
+
+    private void OnRenameCancel(object? sender, RoutedEventArgs e) => CloseRename();
+
+    /// <summary>Applies the typed name as one edit and closes the bar.</summary>
+    /// <remarks>
+    /// A refused rename leaves the bar open with the reason in the status bar: the value came from the user, and
+    /// correcting it is one keystroke away. Everything the action touches - the name and every fallback of this
+    /// model - is one undo step.
+    /// </remarks>
+    private void ApplyRename()
+    {
+        if (_documents.Active is not { } document || _renameTarget is not { } id)
+        {
+            return;
+        }
+
+        var result = document.Session.Apply(new RenameNodeAction(id, RenameInput.Text ?? string.Empty));
+
+        if (result.Outcome == EditOutcome.Rejected)
+        {
+            _error = result.Reason;
+            UpdateStatus();
+
+            return;
+        }
+
+        _error = null;
+        CloseRename();
+
+        if (_tabs.TryGetValue(document, out var tab) && EditorOf(tab) is { } editor)
+        {
+            editor.Refresh();
+            editor.ScrollToCaret();
+        }
+
+        UpdateStatus();
+    }
+
+    /// <summary>Closes the bar and gives the keyboard back to the document.</summary>
+    private void CloseRename()
+    {
+        HideRename();
+        FocusActiveDocument();
+    }
+
+    /// <summary>Closes the bar without moving the focus, as a tab switch needs.</summary>
+    private void HideRename()
+    {
+        _renameTarget = null;
+        RenameBar.IsVisible = false;
+    }
+
+    /// <summary>Closes a bar whose target left the document or the document in front.</summary>
+    private void SyncRename()
+    {
+        if (!RenameBar.IsVisible)
+        {
+            return;
+        }
+
+        if (_renameTarget is not { } id
+            || _documents.Active is not { } document
+            || document.Model.Project.FindNode(id) is null)
+        {
+            HideRename();
+        }
+    }
 
     /// <summary>Fills the model browser from the active document.</summary>
     /// <remarks>
@@ -1768,6 +1912,16 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             e.Handled = true;
             RunActiveDocument();
+
+            return;
+        }
+
+        // Shift+F6 is the rename gesture, MPS' own. It opens the bar because the new name is the user's to type -
+        // the intention that jumps into the name cell stays what it was.
+        if (e.Key == Key.F6 && e.KeyModifiers == KeyModifiers.Shift)
+        {
+            e.Handled = true;
+            OpenRenameBar();
 
             return;
         }

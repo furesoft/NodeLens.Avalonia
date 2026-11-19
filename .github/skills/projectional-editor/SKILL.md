@@ -36,7 +36,8 @@ scrolling (bars via
 `ILogicalScrollable`, wheel, page keys), and text import (the `ITextImporter` contract in
 `Projectional.Language/Import/` with `Projectional.Json` as its first reference language) are done, as is
 find usages (a reverse reference index in `Projectional.Core`, the caret query in `Projectional.Editing` and the
-app's usages panel). The
+app's usages panel), and the rename refactoring that index was built for (`RenameNodeAction`: the name plus every
+reference fallback in one undo step, with **Edit ▸ Rename...** in the shell). The
 standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
 
 **The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
@@ -737,6 +738,14 @@ re-asks about the same node rather than the moved caret, closes the panel when t
 back to the owner node when a row's reference has no cell. A Close button in the header is the deliberate way to
 give the page its height back. `Alt+F7` is the window's, tunnelled like F5, because the answer is a panel and not
 a list the control paints.
+
+`RenameNodeAction` is the consumer that index was built for. A reference resolves by id, so a rename only has to
+refresh the *fallback* text: it sets the name and rewrites `resolveInfo` through `EditContext.SetReference` (still
+the only writer) in one transaction, so one undo press takes both back. **It is model-scoped**: a fallback in
+another model belongs to that model's history, so it is left alone, and a node in another model is refused rather
+than renamed outside the history that would undo it. Renaming to the same name is `Unchanged` and refreshes
+nothing. The shell's **Edit ▸ Rename...** (`Shift+F6`) opens a prefilled bar and applies the action; `INT001` stays
+the caret jump into the name slot, because an intention cannot ask for a value.
 
 ## How constraints work
 
@@ -2225,7 +2234,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2441 tests**; anything below that means tests were deleted.
+it. **Baseline is 2450 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

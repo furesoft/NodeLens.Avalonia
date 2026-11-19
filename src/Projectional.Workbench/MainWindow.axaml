@@ -26,6 +26,14 @@
         <Separator />
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
+      <MenuItem Header="_Edit">
+        <!--
+          The project-wide rename lives here rather than in the intention list: an intention produces an edit action
+          from the caret and cannot ask a question, and the new name has to come from somewhere. The caret's own
+          Rename entry (INT001) stays what it always was - a jump into the name slot, so typing edits the name.
+        -->
+        <MenuItem x:Name="RenameDocumentItem" Header="_Rename... (Shift+F6)" Click="OnRename" />
+      </MenuItem>
       <MenuItem Header="_Run">
         <!--
           The gesture is written into the header rather than declared as a HotKey: the shell's own tunnelling
@@ -125,6 +133,39 @@
           </StackPanel>
         </Grid>
       </StackPanel>
+    </Border>
+
+    <!--
+      The rename bar is a strip like the find bar: the name comes from the user, and a modal dialog would take the
+      document away for a question that is one line long. It closes on Enter, Escape or Cancel, and applying it is
+      one edit - one undo step, with the references' fallback text refreshed beside the name.
+    -->
+    <Border x:Name="RenameBar" DockPanel.Dock="Top" IsVisible="False" BorderThickness="0,0,0,1">
+      <Grid Margin="8,6" ColumnDefinitions="Auto,240,Auto,Auto">
+        <TextBlock
+          Grid.Column="0"
+          Text="Rename"
+          FontSize="12"
+          VerticalAlignment="Center"
+          Margin="0,0,8,0" />
+        <TextBox
+          x:Name="RenameInput"
+          Grid.Column="1"
+          FontSize="12"
+          KeyDown="OnRenameKeyDown" />
+        <Button
+          Grid.Column="2"
+          Content="Rename"
+          FontSize="12"
+          Margin="8,0,0,0"
+          Click="OnRenameApply" />
+        <Button
+          Grid.Column="3"
+          Content="Cancel"
+          FontSize="12"
+          Margin="4,0,0,0"
+          Click="OnRenameCancel" />
+      </Grid>
     </Border>
 
     <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Padding="8,4">

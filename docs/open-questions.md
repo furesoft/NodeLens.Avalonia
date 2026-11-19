@@ -22,7 +22,7 @@ Status values: **Open** (undecided), **Leaning** (recommendation exists, not com
 | 10 | How is generation triggered: manual, on save, on change? | Leaning | Manual plus on-demand; never on every keystroke. Generation on change is a performance trap. | M4 |
 | 11 | Does the interpreter support stepping with a caret in the model, or only a trace? | Leaning | Trace first (M4), stepping as a debugger UI later. Stepping needs its own UI vocabulary. | M4 |
 | 12 | Are generated artifacts written to disk by the framework? | Leaning | No. The framework returns text; the host decides where it goes. Keeps the component free of build-system opinions. | M4 |
-| 13 | How are project-wide renames implemented — dedicated refactoring or scripted edit actions? | Leaning | Edit-action programs, so they are undoable and testable like anything else. | M6 |
+| 13 | How are project-wide renames implemented — dedicated refactoring or scripted edit actions? | Decided by design | Edit-action programs: `RenameNodeAction` sets the name and refreshes the fallback text of every reference in the model in one transaction. It is model-scoped because undo is per model, so a fallback in another model is left to that model's history ([editing.md](architecture/editing.md)). | M6 |
 | 14 | Model-aware 3-way merge: in the editor, in a CLI tool, or both? | Open | CLI first (usable in hooks), UI later. | M6 |
 | 15 | Is AOT/trimming a supported scenario or best-effort? | Open | Best-effort until M7; the reflection-free design keeps the door open. | M7 |
 | 16 | Localisation of the framework UI (menus, diagnostics)? | Leaning | English-only UI, but diagnostic messages are keys that a host can localise. | M5 |

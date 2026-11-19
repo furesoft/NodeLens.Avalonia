@@ -47,7 +47,8 @@ query language of its own - a document you open, not a fragment you embed - is p
 | --- | --- | --- |
 | **Comments** | `Ctrl+/` | **missing entirely** - there is no comment concept in the model and no gesture in the editor. The most noticeable loss in daily use |
 | Go to definition | `Ctrl+B`, `Ctrl+click` on a reference | missing. The intention catalogue keeps "show the target" as the host's job ([context-actions.md](context-actions.md)), and the app does not run it |
-| Find usages | `Alt+F7` | **shipped**: `ReferenceIndex` answers who points at a node across the models of a project, and the shell lists the rows in a panel beside the document; the rename refactoring that needs it is still to come |
+| Find usages | `Alt+F7` | **shipped**: `ReferenceIndex` answers who points at a node across the models of a project, and the shell lists the rows in a panel beside the document |
+| Rename (project-wide) | `Shift+F6` | **shipped**: **Edit ▸ Rename...** writes the name and refreshes the fallback text of every reference in the document as one undo step; a reference in another model keeps its fallback, because undo is per model |
 | Block selection expand and shrink | `Ctrl+Up` / `Ctrl+Down` | partial: `Ctrl+A` climbs a three-rung ladder (value, node, document) and cannot shrink |
 | Node Explorer and Inspector | `Alt+X`, `Alt+2` | partial: the app has an outline (a flat, read-only list) and no inspector for cell or property details - which is what makes the editor and generator definitions convenient in MPS |
 | Inheritance / structure view | `Ctrl+H` | missing |
