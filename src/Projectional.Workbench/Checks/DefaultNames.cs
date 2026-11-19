@@ -29,6 +29,12 @@ namespace Projectional.Workbench;
 /// is also the demonstration the standalone document promises - a host with no internals and no editing
 /// knowledge beyond the public action type can supply a diagnostic <em>and</em> its cure.
 /// </para>
+/// <para>
+/// The proposal is respelled by the concept's own <see cref="Concept.NameRule"/> when it declares one, exactly
+/// as the catalogue's <c>STD001</c> does. A host check runs for documents whose language the shell does not
+/// know, so without this it would offer a name that language's own <c>STD004</c> immediately reports - a
+/// repair into a finding.
+/// </para>
 /// </remarks>
 internal static class DefaultNames
 {
@@ -46,7 +52,7 @@ internal static class DefaultNames
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        List<(NodeId Id, string Slot, string Placeholder, string Word, string Concept)> unnamed = [];
+        List<(NodeId Id, string Slot, string Placeholder, string Word, string Concept, NameRule? Rule)> unnamed = [];
         HashSet<string> used = new(StringComparer.Ordinal);
 
         foreach (var root in model.Roots)
@@ -72,15 +78,21 @@ internal static class DefaultNames
                     continue;
                 }
 
-                unnamed.Add((node.Id, nameSlot.Name, placeholder, Word(node.Concept.Key), Describe(node.Concept.Key)));
+                unnamed.Add((
+                    node.Id,
+                    nameSlot.Name,
+                    placeholder,
+                    Word(node.Concept.Key),
+                    Describe(node.Concept.Key),
+                    node.Concept.NameRule));
             }
         }
 
         List<DiagnosticFix> fixes = [];
 
-        foreach (var (id, slot, placeholder, word, concept) in unnamed)
+        foreach (var (id, slot, placeholder, word, concept, rule) in unnamed)
         {
-            var proposal = FirstFree(word, used);
+            var proposal = FirstFree(word, rule, used);
 
             fixes.Add(new DiagnosticFix(
                 new Diagnostic(
@@ -107,13 +119,20 @@ internal static class DefaultNames
     /// <remarks>
     /// The number starts at one, because <c>Rule</c> on its own reads like a concept rather than like a node
     /// of one. The chosen name joins the used set, so two unnamed rules are offered <c>Rule1</c> and
-    /// <c>Rule2</c> rather than both being offered <c>Rule1</c>.
+    /// <c>Rule2</c> rather than both being offered <c>Rule1</c>. <paramref name="rule"/> respells the
+    /// candidate, so a language that says how its names are written gets a repair that satisfies it - a host
+    /// check that wrote a name the language's own <c>STD004</c> would report would be repairing into a finding.
     /// </remarks>
-    private static string FirstFree(string word, HashSet<string> used)
+    private static string FirstFree(string word, NameRule? rule, HashSet<string> used)
     {
         for (var suffix = 1; ; suffix++)
         {
             var candidate = string.Concat(word, suffix.ToString(CultureInfo.InvariantCulture));
+
+            if (rule is not null)
+            {
+                candidate = rule.Propose(candidate);
+            }
 
             if (used.Add(candidate))
             {
