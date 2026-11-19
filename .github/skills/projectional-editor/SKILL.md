@@ -1182,6 +1182,23 @@ record, and `Projectional.Json` is the first reference language behind the contr
 - **A bracket's inner space is a `WhenFilled` cell in the notation and a `WhenFilledPart` in the generator; the brackets
   themselves are unconditional.** So an empty object prints `{}` while it draws `{ }` - an empty slot must stay visible
   to the caret, and a drawing is not the file.
+- **Each reference language ships its own intentions and checks** (explicit user requirement, not a nicety):
+  `Projectional.Json.Intentions`, `Projectional.Xml.Intentions`, `Projectional.Json.Checks` and
+  `Projectional.Xml.Checks` sit beside the language packages, exactly as `Projectional.Expressions.Intentions` and
+  `Projectional.Samples.Checks` do, because a language package must not reference `Editing`. TOML and HOCON get the same
+  four packages when they land - **never one shared "syntax languages" package**, which would have to ask which language
+  it is looking at.
+- **XML's two intentions are mandatory, not a convenience.** Its notation hides both collections while they are empty -
+  an empty XML slot cannot be drawn as a blank, because whitespace inside an element *is* content and a placeholder would
+  make `<a></a>` and `<a> </a>` indistinguishable - so "add attribute" and "add child element" are the only way into
+  them. Hiding a slot is a pair; this is the other half, and a reference language would otherwise be uneditable.
+- **The checks are the format's own rules, each with its repair**: `JSON001` a name or string that is no longer legal
+  JSON (escape it), `JSON002` a number cell whose text stopped being a number (restore the declared default), `JSON003`
+  one member name used twice (rename to the first free suffix), `XML001` text or an attribute value that is not the
+  canonical spelling (escape it), `XML002` a comment containing `--` (separate the dashes). Both answer a `CheckSet`, so
+  a host composes them with `StandardChecks.All`.
+- **`XmlEscaping` is public on purpose**: the checks package must spell a repaired value exactly as the importer did, and
+  a second escaper in a behaviour package would be a second answer to "how is this written".
 
 ## How interpretation works
 
