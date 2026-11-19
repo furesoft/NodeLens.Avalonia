@@ -1,3 +1,4 @@
+using Projectional.Checks;
 using Projectional.Core;
 using Projectional.ConstraintRules;
 using Projectional.Editing;
@@ -66,6 +67,33 @@ public sealed class DeclaredSampleLanguageTests
             Assert.True(concept.IsKindOf(FrameworkInterfaces.Named), key);
             Assert.Equal("name", concept.NameSlot?.Name);
             Assert.Equal("unnamed", concept.NameSlot?.DefaultValue);
+        }
+    }
+
+    [Fact]
+    public void TheStructureDocumentsSayHowTheNamesAreWritten()
+    {
+        // The `named by rule:` cell as data: the language a user opens from a folder asks for PascalCase
+        // pipelines and camelCase stages - a convention no C# was written for, which is the point of the cell.
+        var concepts = Language().Concepts;
+
+        Assert.Same(NameRule.Pascal, concepts.Get("Pipeline.Pipeline").NameRule);
+        Assert.Same(NameRule.Camel, concepts.Get("Pipeline.Stage").NameRule);
+    }
+
+    [Fact]
+    public void BothSampleDocumentsAreCleanUnderTheStandardCatalogue()
+    {
+        // The documents the sample ships with are what a user opens first, so the conventions their language
+        // declares have to be the ones they are written in - `Release` and `Nightly`, `build`, `test`, `smoke`.
+        var language = Language();
+        var directory = Path.Combine(AppContext.BaseDirectory, "Declared");
+
+        foreach (var name in (string[])["pipeline.mps", "nightly.mps"])
+        {
+            var model = ModelFile.Load(language.NewProject(), Path.Combine(directory, name));
+
+            Assert.Empty(StandardChecks.All.Find(model));
         }
     }
 

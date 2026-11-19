@@ -454,7 +454,9 @@ with `STD001`, and that is deliberate for now: including `StandardChecks.Names` 
 same node twice, with two identical repairs, and replacing a delivered host check is a separate decision
 from shipping the package. The two findings are the same check written twice - one by the framework, one
 by hand to prove the public surface is enough - so the app can move over whenever the host's copy stops
-being worth its demonstration.
+being worth its demonstration. What the host's copy does share is the *rule*: a proposal is respelled by
+the concept's `NameRule` exactly as `STD001`'s is, because a host check runs for documents whose language
+the shell does not know and a repair into that language's own `STD004` finding would be worse than none.
 
 ### Added since
 

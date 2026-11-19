@@ -149,6 +149,29 @@ public sealed class DefaultNamesTests
     }
 
     [Fact]
+    public void TheProposalRespectsTheConceptsNameRule()
+    {
+        // The host check is the last place that offers a name for an unnamed node, and it may not write one
+        // the language reports: a snake_case concept is offered `order_item1`, not `OrderItem1`.
+        var registry = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Test.OrderItem",
+                [new PropertySlot("name", PropertyType.String, "unnamed")],
+                nameSlot: "name",
+                nameRule: NameRule.Snake),
+        ]);
+
+        var model = new Project(registry).NewModel("document");
+        model.AddRoot(model.NewNode("Test.OrderItem"));
+
+        var fix = Assert.Single(DefaultNames.Of(model));
+
+        Assert.Equal("Name it \"order_item1\"", fix.Label);
+        Assert.True(NameRule.Snake.IsValid("order_item1"));
+    }
+
+    [Fact]
     public void ANullModelIsRefused()
     {
         Assert.Throws<ArgumentNullException>(() => DefaultNames.Of(null!));
