@@ -72,6 +72,10 @@ internal sealed class DocumentTab : IDisposable
     /// The language's interpreter - the rules that give its concepts a meaning - or <see langword="null"/> when it
     /// defines none, in which case the document cannot be run at all.
     /// </param>
+    /// <param name="checks">
+    /// The checks the language of this document brings, or <see langword="null"/> when the caller has none of its own -
+    /// which is what keeps the shell's own two checks applying to every document it has always opened.
+    /// </param>
     /// <param name="clipboard">
     /// What copy, cut and paste read and write, or <see langword="null"/> for a private in-memory clipboard.
     /// A shell passes one adapter to every tab, because a copy in one document has to be pasteable in another -
@@ -92,6 +96,7 @@ internal sealed class DocumentTab : IDisposable
         IIntentionProvider? intentions = null,
         EvaluationRegistry? evaluation = null,
         IReadOnlyList<TextGenerator>? generators = null,
+        Projectional.Checks.CheckSet? checks = null,
         IEditorClipboard? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -110,6 +115,7 @@ internal sealed class DocumentTab : IDisposable
         Constraints = constraints;
         Evaluation = evaluation;
         Generators = generators ?? [];
+        Checks = checks;
         Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
 
         // A language that declares scopes replaces the chain for the references it names; every other slot still
@@ -176,6 +182,16 @@ internal sealed class DocumentTab : IDisposable
     /// is a fact about its language.
     /// </remarks>
     internal IReadOnlyList<TextGenerator> Generators { get; }
+
+    /// <summary>
+    /// The checks this document's language brings, or <see langword="null"/> when it brings none of its own.
+    /// </summary>
+    /// <remarks>
+    /// It travels with the tab for the same reason the constraints and the type rules do: a JSON document must be
+    /// checked with JSON's rules, not with the shell's checks for rule names. <see langword="null"/> therefore means
+    /// "this caller supplied none", which is how the app's own two checks keep applying where they always did.
+    /// </remarks>
+    internal Projectional.Checks.CheckSet? Checks { get; }
 
     /// <summary>The session that edits it.</summary>
     internal EditorSession Session { get; }
