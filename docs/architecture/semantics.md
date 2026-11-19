@@ -403,11 +403,16 @@ The parity rule of ADR 0014 is executed by `TextGenLoweringTests`, which asserts
 the text of its hand-written twin.
 
 Not implemented: the model-producing second stage, planned in
-[model-generation.md](model-generation.md); the **format seam** - `FormattedPart` and the four `ITextFormat`
-spellings a template names instead of writing quotes and escapes itself - planned in
-[import.md](import.md#writing-into-a-format-without-spelling-it), because until it lands a value is emitted verbatim
-and a template that puts a string inside quotes does not escape it; and precedence-aware parenthesising, which is the
-C# base language's job ([csharp.md](csharp.md)).
+[model-generation.md](model-generation.md); and precedence-aware parenthesising, which is the C# base language's job
+([csharp.md](csharp.md)).
+
+**A value is emitted verbatim, and that is a boundary rather than a gap.** A template that puts a string inside quotes
+does not escape it, and the framework deliberately offers no "as JSON" part: spelling a format is the business of the
+language that owns that format, in its own generator, and converting a model into JSON, XML, TOML or HOCON means
+producing a **model of that language** and letting *its* generator print it
+([import.md](import.md#converting-a-model-into-one-of-these-languages)). A per-value escaping part would be a second
+answer to "how is this value written" - one in the language that owns the format and one in every language that prints
+it - and it would escape at the wrong moment anyway, because the source template runs before the target is chosen.
 
 ## Interpretation
 
