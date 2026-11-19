@@ -206,6 +206,48 @@ public sealed class TextGenLoweringTests
             PayrollSample.NewSampleModel().Concepts);
 
     /// <summary>Names the one generator a fresh generator document holds.</summary>
+    [Fact]
+    public void AnIgnoreMappingIsTheWayToSayAConceptEmitsNothing()
+    {
+        // The counterpart of a template: an author has to be able to leave a concept out on purpose, and an empty box
+        // reads as unfinished work. The concept still has a template - the empty one - so a document holding it
+        // generates instead of stopping.
+        var rules = PayrollSample.NewSampleModel();
+        var model = TextGenLanguage.NewModel();
+        var generator = Generator(model, "Quiet");
+        var mapping = model.NewChild(generator, TextGenLanguage.MappingsSlot, TextGenConceptKeys.Mapping);
+
+        mapping.Set(TextGenLanguage.ConceptKeySlot, RulesConceptKeys.Rule);
+        model.NewChild(mapping, TextGenLanguage.TemplateSlot, TextGenConceptKeys.Ignore);
+
+        var declared = TextGenLowering.CreateGenerators(model.Roots, rules.Concepts).Single();
+        var template = declared.Templates.TemplateFor(rules.Concepts.Get(RulesConceptKeys.Rule));
+
+        Assert.NotNull(template);
+        Assert.True(template.IsEmpty);
+
+        var rule = rules.Roots[0].GetChildren(RulesLanguage.RulesSlot)[0];
+
+        Assert.Equal(string.Empty, new Generator().Generate(rule, declared).Text);
+    }
+
+    [Fact]
+    public void AnIgnoreMappingNamesAConceptTheLanguageHas()
+    {
+        var rules = PayrollSample.NewSampleModel();
+        var model = TextGenLanguage.NewModel();
+        var generator = Generator(model, "Quiet");
+        var mapping = model.NewChild(generator, TextGenLanguage.MappingsSlot, TextGenConceptKeys.Mapping);
+
+        mapping.Set(TextGenLanguage.ConceptKeySlot, "Rules.Nothing");
+        model.NewChild(mapping, TextGenLanguage.TemplateSlot, TextGenConceptKeys.Ignore);
+
+        var error = Assert.Throws<ConceptDefinitionException>(
+            () => TextGenLowering.CreateGenerators(model.Roots, rules.Concepts));
+
+        Assert.Contains("Rules.Nothing", error.Message, StringComparison.Ordinal);
+    }
+
     private static Node Generator(Model model, string name)
     {
         var generator = model.Roots[0];

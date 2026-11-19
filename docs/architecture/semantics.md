@@ -386,6 +386,21 @@ let a click on a generated line move the caret to the node that wrote it.
 
 - **A concept with no template is a failure; an empty template means "emits nothing".** The first is "nobody said what
   to emit", the second is a decision, and collapsing them would leave a silent hole in the output.
+- **An entry that emits nothing takes no separator with it.** `ChildrenPart` and `LoopPart` write each entry into a
+  buffer first, because whether it produced anything is only known afterwards and a separator already written cannot be
+  taken back. Without that, "this concept is ignored" would mean two different things depending on where the node
+  stands: nothing at all at a single-child slot, and a stray comma in a list - a syntax error dressed up as a feature.
+  A region written into a buffer learns where the buffer ended up, so "go to source" still points at the right
+  character.
+- **The decision to emit nothing is declarable.** `TextGen.Ignore` is a mapping body beside `TextGen.Template` (both
+  conform to the abstract `TextGen.Body` the mapping's `template` slot is declared over), and it lowers to the empty
+  template. A separate concept rather than an empty template node because an empty box reads as unfinished work: an
+  author has to be able to say it on purpose.
+- **A missing template is also a finding, not only a stopped run.** `GenerationCoverage.Of(model, generator)` lists what
+  the chosen generator cannot print - one finding per concept, at its first node in document order, because the defect
+  belongs to the language and not to each occurrence. That is what lets an editor mark the document instead of
+  surprising its author with a failure when they press Generate. It carries no repair, so it is a diagnostic and not a
+  fix: writing a template is an author's decision, and no edit action can guess it.
 - **Indentation comes from the template, never from counting the child's text.** A separator is a template as well, so
   a list on separate lines is `ChildrenPart(slot, Template(LineBreakPart))` inside an `IndentPart` - no "indent" flag,
   and a nested block cannot be indented by whatever its child happened to produce.
@@ -399,6 +414,9 @@ mapping per concept, and a template is a list of parts, all of it drawn in MPS' 
 model into the same `TextGenerator` a C# author writes, and checks what a compiler would have checked - unique names,
 a concept the language has, a slot of that concept named as the kind it is - at load. `LanguageProject` loads
 a `generator` folder beside `structure`, `editor` and `types`, so a language in a folder declares its generators too.
+A mapping's body is either a `template` or `ignore` - the second is the declared spelling of "this concept emits
+nothing", so a language whose target cannot express one of its concepts writes the decision down instead of leaving an
+empty box that reads as unfinished work.
 The parity rule of ADR 0014 is executed by `TextGenLoweringTests`, which asserts a declared generator produces exactly
 the text of its hand-written twin.
 

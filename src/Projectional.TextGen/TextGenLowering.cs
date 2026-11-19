@@ -86,11 +86,19 @@ public static class TextGenLowering
         return templates;
     }
 
-    private static TextTemplate CreateTemplate(Node template, Concept target)
+    private static TextTemplate CreateTemplate(Node body, Concept target)
     {
+        // "ignore" is the mapping that says the concept leaves no text behind. It is a separate concept rather than an
+        // empty template because an author has to be able to say it on purpose: an empty box looks like unfinished
+        // work, and a reader of the generator should see the decision.
+        if (string.Equals(body.Concept.Key, TextGenConceptKeys.Ignore, StringComparison.Ordinal))
+        {
+            return TextTemplate.Empty;
+        }
+
         List<TemplatePart> parts = [];
 
-        foreach (var part in template.GetChildren(TextGenLanguage.PartsSlot))
+        foreach (var part in body.GetChildren(TextGenLanguage.PartsSlot))
         {
             parts.Add(CreatePart(part, target));
         }

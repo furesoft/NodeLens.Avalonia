@@ -1,0 +1,65 @@
+using Projectional.Core;
+using Projectional.Json;
+using Projectional.Language;
+using Projectional.Semantics;
+using Xunit;
+
+namespace Projectional.Core.Tests;
+
+/// <summary>What a generator cannot print, as findings a host can show before anyone presses Generate.</summary>
+/// <remarks>
+/// A generation run stops at the first concept nobody mapped, which is the right behaviour and a poor way to find out.
+/// This is the same information as a list, so the editor can mark the document instead of surprising its author.
+/// </remarks>
+public sealed class GenerationCoverageTests
+{
+    [Fact]
+    public void AConceptWithoutATemplateIsReportedAtItsFirstNode()
+    {
+        var model = TestLanguage.NewModel();
+        var rule = model.NewNode(TestLanguage.Rule);
+        var body = model.NewChild(rule, "body", TestLanguage.Body);
+        var first = model.NewChild(body, "notes", TestLanguage.Note);
+        model.NewChild(body, "notes", TestLanguage.Note);
+
+        var templates = TemplateRegistry.Empty
+            .Add(TestLanguage.Rule, TextTemplate.Empty)
+            .Add(TestLanguage.Body, TextTemplate.Empty);
+
+        var finding = Assert.Single(GenerationCoverage.Of(model, new TextGenerator("test", templates)));
+
+        // One finding per concept, not per node: the defect belongs to the language, and five hundred repetitions would
+        // bury every other finding in the panel. The node is what makes it a place the user can be taken to.
+        Assert.Equal(GenerationCoverage.MissingTemplateCode, finding.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, finding.Severity);
+        Assert.Equal(first.Id, finding.Target);
+        Assert.Contains(TestLanguage.Note, finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACoveredDocumentReportsNothing()
+    {
+        var model = TextProject();
+        var root = model.NewNode(JsonConceptKeys.Null);
+
+        var templates = TemplateRegistry.Empty.Add(root.Concept.Key, TextTemplate.Empty);
+
+        Assert.Empty(GenerationCoverage.Of(model, new TextGenerator("test", templates)));
+    }
+
+    [Fact]
+    public void ATemplateIsInheritedTheWayARunInheritsIt()
+    {
+        // The report must agree with the run, so it asks the same question: the concept's own template or the nearest
+        // super concept's. A second lookup here would be a second answer to "can this be printed".
+        var model = TextProject();
+        model.NewNode(JsonConceptKeys.Array);
+
+        var inherited = TemplateRegistry.Empty.Add(JsonConceptKeys.Value, TextTemplate.Empty);
+
+        Assert.Empty(GenerationCoverage.Of(model, new TextGenerator("test", inherited)));
+        Assert.Single(GenerationCoverage.Of(model, new TextGenerator("test", TemplateRegistry.Empty)));
+    }
+
+    private static Model TextProject() => JsonLanguage.NewProject().NewModel("json");
+}

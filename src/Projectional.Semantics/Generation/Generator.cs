@@ -39,8 +39,8 @@ public sealed class Generator
     /// </remarks>
     public const int MaxDepth = 200;
 
-    private readonly StringBuilder _text = new();
-    private readonly List<GeneratedRegion> _regions = [];
+    private StringBuilder _text = new();
+    private List<GeneratedRegion> _regions = [];
 
     private GenerationFailure? _failure;
     private int _depth;
@@ -212,36 +212,84 @@ public sealed class Generator
         }
     }
 
-    private void EmitChildren(Node node, string slot, TextTemplate separator, TextGenerator generator)
+    /// <summary>Expands a list, leaving out the entries that produce no text at all.</summary>
+    /// <param name="owner">The node the list slot belongs to.</param>
+    /// <param name="slot">The many-valued child slot to expand.</param>
+    /// <param name="separator">What to emit between two entries, and only there.</param>
+    /// <param name="generator">The generator being run.</param>
+    /// <param name="emit">How one entry is written: as its own template, or as a loop body applied to it.</param>
+    /// <remarks>
+    /// <para>
+    /// Each entry is written into a buffer of its own first, because whether it produced anything is only known
+    /// afterwards - and a separator that was already written cannot be taken back. This is what makes "this concept is
+    /// ignored" mean the same thing inside a list as outside one: without it, an ignored member would leave its comma
+    /// behind and the output would be a syntax error rather than the file the author meant.
+    /// </para>
+    /// <para>
+    /// The buffer is also why the traceability regions are shifted: a region's start is an offset into the generated
+    /// text, so a stretch written into a buffer has to learn where the buffer will sit before it can claim a place.
+    /// </para>
+    /// </remarks>
+    private void EmitEntries(
+        Node owner,
+        string slot,
+        TextTemplate separator,
+        TextGenerator generator,
+        Action<Node> emit)
     {
-        var children = ChildrenOf(node, slot);
+        var entries = ChildrenOf(owner, slot);
+        var written = 0;
 
-        for (var index = 0; index < children.Count; index++)
+        foreach (var entry in entries)
         {
-            if (index > 0)
+            var text = new StringBuilder();
+            var regions = new List<GeneratedRegion>();
+            var (outerText, outerRegions) = (_text, _regions);
+
+            _text = text;
+            _regions = regions;
+
+            try
             {
-                EmitTemplate(separator, node, generator);
+                emit(entry);
+            }
+            finally
+            {
+                (_text, _regions) = (outerText, outerRegions);
             }
 
-            EmitNode(children[index], generator);
+            if (text.Length == 0)
+            {
+                continue;
+            }
+
+            if (written++ > 0)
+            {
+                EmitTemplate(separator, owner, generator);
+            }
+
+            var start = _text.Length;
+            _text.Append(text);
+
+            foreach (var region in regions)
+            {
+                _regions.Add(region with { Start = region.Start + start });
+            }
         }
     }
+
+    /// <summary>Expands <paramref name="slot"/> as one entry per child, separated by <paramref name="separator"/>.</summary>
+    private void EmitChildren(Node node, string slot, TextTemplate separator, TextGenerator generator) =>
+        EmitEntries(node, slot, separator, generator, child => EmitNode(child, generator));
+
 
     /// <summary>Expands a loop body per child, with the body applied to the child rather than to the list's owner.</summary>
-    private void EmitLoop(Node node, LoopPart loop, TextGenerator generator)
-    {
-        var children = ChildrenOf(node, loop.Slot);
-
-        for (var index = 0; index < children.Count; index++)
-        {
-            if (index > 0)
-            {
-                EmitTemplate(loop.Separator, node, generator);
-            }
-
-            EmitTemplate(loop.Body, children[index], generator);
-        }
-    }
+    /// <remarks>
+    /// The same omission as <see cref="EmitChildren"/>: a child the body cannot say anything about is not in the output,
+    /// so it takes no separator with it.
+    /// </remarks>
+    private void EmitLoop(Node node, LoopPart loop, TextGenerator generator) =>
+        EmitEntries(node, loop.Slot, loop.Separator, generator, child => EmitTemplate(loop.Body, child, generator));
 
     /// <summary>The value of <paramref name="slot"/>, or empty when the node holds none.</summary>
     /// <remarks>
