@@ -1643,7 +1643,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         {
             session.Select(Selection.At(position));
 
-            if (e.ClickCount > 1)
+            if ((e.KeyModifiers & KeyModifiers.Control) != 0)
+            {
+                // Ctrl+click is the pointer's spelling of Ctrl+B, and it deliberately starts no drag: the press is a
+                // navigation, not the anchor of a selection.
+                _ = session.Apply(new GoToDefinitionAction());
+            }
+            else if (e.ClickCount > 1)
             {
                 // A second click means the word under the pointer, a third the whole value. Either way the
                 // gesture deliberately does not start a drag: the first pointer move would collapse the

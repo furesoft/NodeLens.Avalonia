@@ -288,6 +288,13 @@ one undo step. A node of another model is refused, because this document's histo
 `INT001` in the context menu stays the caret jump into the name slot; the project-wide rename is the shell command,
 because an intention cannot ask for a value.
 
+### Go to definition
+
+`Ctrl+B` and `Ctrl+click` on a reference move the caret to the declaration it names, with the name selected; the
+context menu offers the same entry, disabled where the declaration is not drawn in the document. The action is
+`GoToDefinitionAction` (`Projectional.Editing/`), so a host gets the same navigation from its own gesture - and a
+target in another document is a rejection the host may answer by opening that document.
+
 ### Representations
 
 The one command the shell has that is a projection and not a document operation lives in

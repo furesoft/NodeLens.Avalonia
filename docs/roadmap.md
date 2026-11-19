@@ -45,7 +45,7 @@ What is next, in order:
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
-aliases, data flow, comments, go to definition, an inspector, block-selection shrink and a
+aliases, data flow, comments, an inspector, block-selection shrink and a
 handful of completion fine points. The milestone tables below name the ones that have a home;
 the survey, the deliberate differences and the open decisions are in
 [mps-gap-analysis.md](architecture/mps-gap-analysis.md).
@@ -177,7 +177,7 @@ the gate (compiled output and the interpreter must agree on the corpus):
 | Accessibility | automation peer, keyboard-only navigation review, contrast |
 | IME | `TextInputMethodClient`, composition handling, CJK testing |
 | Docs and samples | tutorial DSL, embedding guide, language-author guide |
-| Editor experience | comments, go to definition, block-selection shrink, inspector and hierarchy view, completion filter reset and camel humps, show type, paste history, and the keys the intentions already have ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
+| Editor experience | comments, block-selection shrink, inspector and hierarchy view, completion filter reset and camel humps, show type, paste history, and the keys the intentions already have ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 | Packaging | **NuGet, the CI matrix and the tag-driven publish are delivered** ([packaging.md](architecture/packaging.md), [ADR 0022](adr/0022-every-project-is-a-package.md)); what is left is a public API baseline (so a breaking change fails a build) and AOT/trimming validation |
 | App distribution | self-contained installers per OS, file association for `.prj`, winget/Homebrew manifests |
 

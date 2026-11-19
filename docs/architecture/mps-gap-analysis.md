@@ -46,7 +46,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | MPS feature | Gesture | Ours |
 | --- | --- | --- |
 | **Comments** | `Ctrl+/` | **missing entirely** - there is no comment concept in the model and no gesture in the editor. The most noticeable loss in daily use |
-| Go to definition | `Ctrl+B`, `Ctrl+click` on a reference | missing. The intention catalogue keeps "show the target" as the host's job ([context-actions.md](context-actions.md)), and the app does not run it |
+| Go to definition | `Ctrl+B`, `Ctrl+click` on a reference | **shipped**: `GoToDefinitionAction` moves the caret to the declaration a reference names, with its name selected, when that declaration is drawn in the document; a target in another document is a rejection, and opening it stays the host's job |
 | Find usages | `Alt+F7` | **shipped**: `ReferenceIndex` answers who points at a node across the models of a project, and the shell lists the rows in a panel beside the document |
 | Rename (project-wide) | `Shift+F6` | **shipped**: **Edit ▸ Rename...** writes the name and refreshes the fallback text of every reference in the document as one undo step; a reference in another model keeps its fallback, because undo is per model |
 | Block selection expand and shrink | `Ctrl+Up` / `Ctrl+Down` | partial: `Ctrl+A` climbs a three-rung ladder (value, node, document) and cannot shrink |
@@ -84,7 +84,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | --- | --- |
 | M5 (self-hosting, language projects) | accessory models; `language.mps` dependencies and imported languages; concept aliases; an explicit can-be-a-root flag |
 | M6 (framework maturity) | mapping labels in model generation; the smodel query language ([smodel.md](smodel.md)); concept behaviours - a node's `Name` and `Describe` as declared pure functions ([behaviours.md](behaviours.md)); the Actions aspect and behaviour *methods* with real bodies, both with the C# base language; tests of a language as data ([language-tests.md](language-tests.md)) |
-| M7 (release hardening, editor polish) | comments; go to definition; block-selection shrink; inspector and hierarchy view; completion filter reset and camel humps; show type; paste history; the missing keys (duplicate, insert before) |
+| M7 (release hardening, editor polish) | comments; block-selection shrink; inspector and hierarchy view; completion filter reset and camel humps; show type; paste history; the missing keys (duplicate, insert before) |
 | unscheduled | data flow; property accessors |
 
 ## What still needs a decision
