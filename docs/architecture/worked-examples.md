@@ -74,8 +74,8 @@ demonstrates what the trace rows are for: `Transition` is a predicate (does its 
 walk from `initial` that takes the first transition whose source matches, and a machine that settles in a
 non-final state or exceeds `MaxSteps` is a failure that says where it stopped.
 
-**Delivered.** `src/Samples/Projectional.Samples.StateMachine` (language, notations, evaluation),
-`src/Samples/Projectional.Samples.StateMachine/Checks` (the unreachable-state constraint), `Corpus/release.mps`
+**Delivered.** `src/Languages/Samples/Projectional.Samples.StateMachine` (language, notations, evaluation),
+`src/Languages/Samples/Projectional.Samples.StateMachine/Checks` (the unreachable-state constraint), `Corpus/release.mps`
 written by the writer and re-saved byte-identically, and `StateMachineNotationsTests`,
 `StateMachineConstraintsTests`, `StateMachineEvaluationTests`, `StateMachineCorpusTests`.
 

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A worked example, not a product - and since ADR 0021 one project: the schema language and the column-name
+    check (`Checks/`) are one assembly.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+  </ItemGroup>
+
+</Project>

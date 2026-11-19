@@ -12,14 +12,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
-    <ProjectReference Include="..\..\src\Samples\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples\Projectional.Samples.csproj" />
     <!--
       The three worked examples are languages of their own, and a picture of one has to be drawn by that language's
       own notation registry - so the tool references them rather than pretending they look like the sample.
     -->
-    <ProjectReference Include="..\..\src\Samples\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
-    <ProjectReference Include="..\..\src\Samples\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
-    <ProjectReference Include="..\..\src\Samples\Projectional.Samples.SqlSchema\Projectional.Samples.SqlSchema.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples.SqlSchema\Projectional.Samples.SqlSchema.csproj" />
     <!--
       The shell's own features - a run's output panel, a document's generators - are states of the window, so the
       tool hosts the shipping MainWindow for them. Nothing is reimplemented here: the picture is the app.

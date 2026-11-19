@@ -39,7 +39,7 @@
     <ProjectReference Include="..\..\src\Languages\Projectional.Xml\Projectional.Xml.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Intentions\Projectional.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
-    <ProjectReference Include="..\..\src\Samples\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples\Projectional.Samples.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
   </ItemGroup>

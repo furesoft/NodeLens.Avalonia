@@ -42,6 +42,11 @@ src/Languages/Projectional.Json/
   ...            namespace Projectional.Json
 ```
 
+Every language lives under `src/Languages/`, and the sample languages are nested one level deeper in
+`src/Languages/Samples/` - a folder rather than a second `Samples/` beside the repository's own `samples/`,
+which holds the host application. `src/` itself keeps the framework and the host, so the folder list answers
+"is this a product, a language, or an example" at a glance.
+
 Three rules follow:
 
 1. **The namespaces do not move.** `Projectional.Json.Checks` stays the namespace of the JSON checks and
