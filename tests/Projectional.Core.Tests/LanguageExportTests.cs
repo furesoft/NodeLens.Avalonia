@@ -83,6 +83,33 @@ public sealed class LanguageExportTests
     }
 
     [Fact]
+    public void TheDeclaredSampleNotationsBecomeBuilderCalls()
+    {
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var source = new SourceWriter();
+
+        NotationWriter.Write(source, language.Notations.Notations);
+
+        Assert.Equal(
+            """
+            notations.Add("Pipeline.Pipeline", ed => ed.Sequence(
+                ed.Line(ed.Keyword("pipeline"), ed.Space, ed.Property("name")),
+                ed.Indent(
+                    ed.Table("stages", "+ stage", ed.Column("name", ed.Keyword("stage")), ed.Column("command", ed.Keyword("run")), ed.Column("retries", ed.Keyword("retries")))
+                )
+            ));
+            notations.Add("Pipeline.Stage", ed => ed.Line(ed.Property("name"), ed.Space, ed.Property("command"), ed.Space, ed.Property("retries")));
+
+            """,
+            source.ToString(),
+            ignoreLineEndingDifferences: true);
+    }
+
+    [Fact]
     public void TheDeclaredSampleOpensAndItsConceptsAreExported()
     {
         // The language a user opens is the export's first customer, so it is the fixture: the folder the app reads
