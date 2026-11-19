@@ -22,7 +22,8 @@ public sealed class ConceptDeclaration
         Applicability? applicability = null,
         IEnumerable<ConceptTrigger>? triggers = null,
         bool isInterface = false,
-        IEnumerable<string>? interfaces = null)
+        IEnumerable<string>? interfaces = null,
+        NameRule? nameRule = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -119,6 +120,7 @@ public sealed class ConceptDeclaration
         Interfaces = interfaceList;
         IsInterface = isInterface;
         NameSlot = nameSlot;
+        NameRule = nameRule;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         CollapseSlot = collapseSlot;
@@ -161,6 +163,18 @@ public sealed class ConceptDeclaration
 
     /// <summary>The slot that supplies the text a reference to this concept displays.</summary>
     public string? NameSlot { get; }
+
+    /// <summary>
+    /// What a name of this concept has to look like, or <see langword="null"/> to inherit what the super concept
+    /// says - the same designation <see cref="NameSlot"/> is.
+    /// </summary>
+    /// <remarks>
+    /// <see langword="null"/> is not "any text": it is "nothing declared here", and the registry resolves it up the
+    /// super concepts and only then falls back to <see cref="Core.NameRule.AnyText"/>. The declared form of this
+    /// declaration is an empty slot for the same reason, so a language that says <c>identifier</c> on a base
+    /// concept does not silently lose it below itself.
+    /// </remarks>
+    public NameRule? NameRule { get; }
 
     /// <summary>
     /// Whether this concept exists only to be extended. An abstract concept can declare slots and be

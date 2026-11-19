@@ -24,12 +24,14 @@ public sealed class Concept
         IReadOnlyList<ConceptTrigger>? triggers = null,
         bool isInterface = false,
         IReadOnlyList<Concept>? extensions = null,
-        IReadOnlyList<Concept>? interfaces = null)
+        IReadOnlyList<Concept>? interfaces = null,
+        NameRule? nameRule = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
         Slots = slots;
         NameSlot = nameSlot;
+        NameRule = nameRule;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         Description = description;
@@ -92,6 +94,20 @@ public sealed class Concept
 
     /// <summary>The string property that references to this concept display, if declared.</summary>
     public PropertySlot? NameSlot { get; }
+
+    /// <summary>
+    /// What a name of this concept has to look like, or <see langword="null"/> when no concept in its chain declared
+    /// a rule.
+    /// </summary>
+    /// <remarks>
+    /// Inherited the way <see cref="NameSlot"/> and <see cref="CollapseSlot"/> are: the concept's own declaration
+    /// wins, then the first declaring super in declaration order. The value here is already resolved, so a caller
+    /// never walks the super concepts itself - but it stays nullable, because "nobody declared a rule" and "somebody
+    /// declared <see cref="Core.NameRule.AnyText"/>" are different facts: only the second one survives inheritance,
+    /// and only the second one makes a subtype's own rule disappear. A consumer that wants "what to enforce" reads
+    /// <c>NameRule ?? NameRule.AnyText</c>.
+    /// </remarks>
+    public NameRule? NameRule { get; }
 
     /// <summary>
     /// Whether this concept only exists to be extended, so that no node is ever an instance of it.
