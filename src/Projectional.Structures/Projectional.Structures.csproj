@@ -1,7 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    One project per language (ADR 0021): the structure language - the C# twin of a declared language - and the
+    intentions that belong to it (`Intentions/`, namespace `Projectional.Structures.Intentions`) are this
+    assembly.
+  -->
   <ItemGroup>
+    <ProjectReference Include="..\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
   </ItemGroup>
 
   <ItemGroup>

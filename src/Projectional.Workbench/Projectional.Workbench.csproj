@@ -40,9 +40,6 @@
     <ProjectReference Include="..\Projectional.Intentions\Projectional.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\Projectional.Samples\Projectional.Samples.csproj" />
-    <ProjectReference Include="..\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
-    <ProjectReference Include="..\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
-    <ProjectReference Include="..\Projectional.Structures.Intentions\Projectional.Structures.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\Projectional.TypeRules\Projectional.TypeRules.csproj" />
   </ItemGroup>
