@@ -10,6 +10,12 @@ namespace Projectional.Semantics;
 /// "everywhere" mean something other than "say nothing", which is exactly the difference a language could not see.
 /// </para>
 /// <para>
+/// The levels are built from <see cref="NameIndex"/> rather than by enumerating children, because the nearest level
+/// is "my siblings" and a flat document has one parent for everything - so a walk here is a walk over the whole
+/// document, once per reference. Which nodes belong to a level is still this file's decision; only the question "who
+/// carries this name" moved into the index.
+/// </para>
+/// <para>
 /// Only named nodes contribute. A node whose concept declares no name slot, or whose name is empty, is not something
 /// a name could mean, and offering it would put an entry in a completion list that cannot be typed. The node being
 /// resolved is excluded everywhere, because a reference that could point at the thing holding it is a cycle the
@@ -31,120 +37,52 @@ internal static class ScopeWalk
     {
         ArgumentNullException.ThrowIfNull(node);
 
+        var index = NameIndex.For(node.Model.Project);
         var levels = new List<IScope>();
 
         if (place is ScopePlace.Local or ScopePlace.Everywhere)
         {
-            levels.Add(Local(node, conceptKey));
+            levels.Add(Local(node, index, conceptKey));
         }
 
         if (place is ScopePlace.Ancestors or ScopePlace.Everywhere)
         {
-            levels.AddRange(Ancestors(node, conceptKey));
+            levels.AddRange(Ancestors(node, index, conceptKey));
         }
 
         if (place is ScopePlace.Model or ScopePlace.Everywhere)
         {
-            levels.Add(Roots(node, conceptKey));
+            levels.Add(new RootsScope(index, [node.Model], node.Id, conceptKey));
         }
 
         if (place is ScopePlace.Project or ScopePlace.Everywhere)
         {
-            levels.Add(ProjectRoots(node, conceptKey));
+            levels.Add(ProjectRoots(node, index, conceptKey));
         }
 
         return levels;
     }
 
     /// <summary>The node's own children and its siblings, which is what "next to the reference" means.</summary>
-    private static Scope Local(Node node, string? conceptKey)
-    {
-        var entries = new List<ScopeEntry>();
+    private static ChildrenScope Local(Node node, NameIndex index, string? conceptKey) =>
+        new ChildrenScope(
+            index,
+            node.Parent is { } parent ? [node, parent] : [node],
+            node.Id,
+            conceptKey);
 
-        AddChildren(node, entries, node, conceptKey);
-
-        if (node.Parent is { } parent)
-        {
-            AddChildren(parent, entries, node, conceptKey);
-        }
-
-        return Scope.Of(entries);
-    }
-
-    private static IEnumerable<Scope> Ancestors(Node node, string? conceptKey)
+    private static IEnumerable<IScope> Ancestors(Node node, NameIndex index, string? conceptKey)
     {
         for (var ancestor = node.Parent; ancestor is not null; ancestor = ancestor.Parent)
         {
-            var entries = new List<ScopeEntry>();
-
-            AddChildren(ancestor, entries, node, conceptKey);
-
-            yield return Scope.Of(entries);
+            yield return new ChildrenScope(index, [ancestor], node.Id, conceptKey);
         }
     }
 
-    private static Scope Roots(Node node, string? conceptKey)
-    {
-        var entries = new List<ScopeEntry>();
-
-        foreach (var root in node.Model.Roots)
-        {
-            Add(root, entries, node, conceptKey);
-        }
-
-        return Scope.Of(entries);
-    }
-
-    private static Scope ProjectRoots(Node node, string? conceptKey)
-    {
-        var entries = new List<ScopeEntry>();
-
-        foreach (var model in node.Model.Project.Models)
-        {
-            if (ReferenceEquals(model, node.Model))
-            {
-                continue;
-            }
-
-            foreach (var root in model.Roots)
-            {
-                Add(root, entries, node, conceptKey);
-            }
-        }
-
-        return Scope.Of(entries);
-    }
-
-    private static void AddChildren(Node node, List<ScopeEntry> entries, Node subject, string? conceptKey)
-    {
-        foreach (var child in node.ChildrenInDocumentOrder())
-        {
-            Add(child, entries, subject, conceptKey);
-        }
-    }
-
-    private static void Add(Node node, List<ScopeEntry> entries, Node subject, string? conceptKey)
-    {
-        if (node.Id == subject.Id)
-        {
-            return;
-        }
-
-        if (conceptKey is not null && !node.Concept.IsKindOf(conceptKey))
-        {
-            return;
-        }
-
-        if (node.Concept.NameSlot is not { } nameSlot)
-        {
-            return;
-        }
-
-        if (node.GetOrNull(nameSlot.Name) is not { Length: > 0 } name)
-        {
-            return;
-        }
-
-        entries.Add(new ScopeEntry(name, node.Id, node.Concept.Key));
-    }
+    private static RootsScope ProjectRoots(Node node, NameIndex index, string? conceptKey) =>
+        new RootsScope(
+            index,
+            [.. node.Model.Project.Models.Where(model => !ReferenceEquals(model, node.Model))],
+            node.Id,
+            conceptKey);
 }

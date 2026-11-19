@@ -111,7 +111,7 @@ collector made explicit:
   cheaper than the whole document, but it does not yet know that a *referencing* node's rule may have
   changed too. What the seam is worth is measured rather than assumed - see
   [What a full recheck costs](#what-a-full-recheck-costs): one node of a 7 501-node feature model costs
-  0.9 ms against 2 232.8 ms for the whole document.
+  0.001 ms against 2.3 ms for the whole document.
 - **The consumers are two.** `SampleConstraints` in `Projectional.Samples.Checks` is a language's own
   sentence (a rule needs a condition). `ScopeConstraints` in `Projectional.Semantics/Scopes/` is the
   framework's: `AmbiguousReferenceConstraint` reports a reference whose name no longer identifies the
@@ -170,10 +170,10 @@ nodes:
 
 | features | nodes | layout | constraints | checks | both | one constraint |
 | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 151 | 0.2 | 1.8 | 0.2 | 2.0 | 0.035 |
-| 500 | 751 | 0.8 | 17.6 | 0.9 | 15.7 | 0.050 |
-| 2 000 | 3 001 | 4.4 | 312.3 | 4.1 | 320.9 | 0.317 |
-| 5 000 | 7 501 | 10.0 | 2 232.8 | 21.9 | 2 399.6 | 0.926 |
+| 100 | 151 | 0.2 | 0.1 | 0.2 | 0.3 | 0.002 |
+| 500 | 751 | 0.8 | 0.5 | 1.0 | 1.5 | 0.002 |
+| 2 000 | 3 001 | 3.1 | 2.1 | 4.5 | 6.9 | 0.002 |
+| 5 000 | 7 501 | 14.8 | 2.3 | 20.4 | 24.2 | 0.001 |
 
 All times in milliseconds. Three consequences, and they decide the order of the work:
 
@@ -182,22 +182,23 @@ All times in milliseconds. Three consequences, and they decide the order of the 
   floor a keystroke costs today - and no incrementality of *constraints* can go below it.
   Incremental layout is a separate problem from incremental validation, and the bigger one
   for a document without references.
-- **Checking a document without references is linear** (6.5 ms at 40 001 nodes), so the
+- **Checking a document without references is linear** (5.7 ms at 40 001 nodes), so the
   design's premise holds there: a full recheck is affordable and the dependency sets would
   buy almost nothing.
-- **Checking a document with references is quadratic.** 2 232.8 ms at 7 501 nodes is
-  `AmbiguousReferenceConstraint` asking `ScopeOf` for every reference, and
-  `DefaultScopeProvider` walking the document to answer each one - roughly 0.45 ms per
-  reference, growing with the document. That is 2 400 times what rechecking the one node
-  costs (0.9 ms), so the seam pays for itself; what does not pay is finding the *right*
-  nodes, because a rename makes every reference in the document a candidate for a finding.
-  This is the same fact that forbids "recheck the changed subtree" from being simply
-  correct, now with a number attached.
+- **Checking a document with references used to be quadratic, and is linear now.** The first
+  run of this table reported 2 232.8 ms for 7 501 nodes: `AmbiguousReferenceConstraint` asks the
+  scope for every reference, and `DefaultScopeProvider` collected the named nodes of each level to
+  answer - where the nearest level is "my siblings", i.e. the whole document in a flat model. The
+  per-project name index ([language.md](language.md#what-a-scope-costs)) answers that question
+  without walking, and the same document now costs 2.3 ms. The seam was never the problem: one
+  node alone cost 0.9 ms before and 0.001 ms after.
 
-So the first thing to fix is not the dependency sets: it is the O(document) scope lookup
-(open question 110). The measurement is repeatable - `dotnet run -c Release --project
-tools/Projectional.Benchmarks` - and a change to `ScopeConstraints` that made the table
-worse would be visible the same day.
+So what is left is not the dependency sets. A full recheck now costs 5.7 ms (rules) and 2.3 ms
+(features) against a layout rebuild of 285 ms and 14.8 ms on the same keystroke, so incremental
+*validation* would optimise the smaller of two costs; incremental layout is the one worth doing
+first (open question 111). The measurement is repeatable - `dotnet run -c Release --project
+tools/Projectional.Benchmarks` - and a change to `ScopeConstraints` or to the index that made the
+table worse would be visible the same day.
 
 ### Language of constraints
 

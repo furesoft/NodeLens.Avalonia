@@ -98,6 +98,7 @@ and [testing.md](architecture/testing.md).
 | Reference cells with three states (unset, unresolved, resolved) | `ReferenceCell`, `ReferenceState` | `NodeReferenceTests`, the `references.mps` corpus document |
 | Scope model: a chain of levels, first match wins, ambiguity as a value | `Projectional.Semantics/Scopes/` | `ScopeTests`, `ScopeChainTests` |
 | The default chain: local, ancestors, model, project; only named nodes, never the node itself | `DefaultScopeProvider` | `DefaultScopeProviderTests` |
+| A scope answers a name from a project-wide index rather than by walking the level, so a reference costs a lookup and not the document | `NameIndex`, `ChildrenScope`, `RootsScope`, `ScopeWalk` | `DefaultScopeProviderTests` (a rename, an insertion, a deletion and a new model after the first lookup), `ScopeChainTests.AChainAsksALevelForItsEntriesOnlyWhenTheListIsWanted`; the cost is in [semantics.md](architecture/semantics.md#what-a-full-recheck-costs) |
 | Scope-driven completion: a reference offers the scope's entries and accepting re-resolves the name | `CompletionSource.References`, `CompletionKind.Reference` | `ScopeCompletionTests` |
 | Typing a name into a reference cell resolves it through the same scope; ambiguous is refused with a reason | `TypeTextAction.ResolveReference` | `ScopeTypingTests` |
 | Per-language scope overrides: a concept declares a provider, inherited by the concepts below it | `ScopeProviderRegistry` | `ScopeProviderRegistryTests` |

@@ -20,15 +20,16 @@ namespace Projectional.Semantics;
 public sealed class ScopeChain : IScope
 {
     private readonly IScope[] _levels;
-    private readonly ScopeEntry[] _entries;
 
-    private ScopeChain(IScope[] levels)
-    {
-        _levels = levels;
-        _entries = [.. levels.SelectMany(level => level.Entries)];
-    }
+    private ScopeChain(IScope[] levels) => _levels = levels;
 
     /// <summary>A chain of <paramref name="levels"/>, nearest first.</summary>
+    /// <remarks>
+    /// A level that answers eagerly and holds nothing is dropped, because it is known to contribute nothing and a
+    /// chain of one level is that level. A level that answers from an index stays even when it happens to be empty:
+    /// asking it costs a lookup, while reading its entries is the one thing a chain must not do while it is being
+    /// built - that is the whole reason the level is lazy.
+    /// </remarks>
     public static IScope Of(params ReadOnlySpan<IScope> levels)
     {
         var kept = new List<IScope>(levels.Length);
@@ -37,10 +38,12 @@ public sealed class ScopeChain : IScope
         {
             ArgumentNullException.ThrowIfNull(level, nameof(levels));
 
-            if (level.Entries.Count > 0)
+            if (level is Scope { Entries.Count: 0 })
             {
-                kept.Add(level);
+                continue;
             }
+
+            kept.Add(level);
         }
 
         return kept.Count switch
@@ -55,7 +58,11 @@ public sealed class ScopeChain : IScope
     public IReadOnlyList<IScope> Levels => _levels;
 
     /// <inheritdoc />
-    public IReadOnlyList<ScopeEntry> Entries => _entries;
+    /// <remarks>
+    /// Concatenated on first access. A caller that only resolves a name never asks for it, and asking every level
+    /// for its entries at construction is what made a scope cost the document it described.
+    /// </remarks>
+    public IReadOnlyList<ScopeEntry> Entries => field ??= [.. _levels.SelectMany(level => level.Entries)];
 
     /// <inheritdoc />
     public ScopeResolution Resolve(string name)
@@ -75,5 +82,5 @@ public sealed class ScopeChain : IScope
         return ScopeResolution.Missing;
     }
 
-    public override string ToString() => $"{_levels.Length} level(s), {_entries.Length} entr(y/ies)";
+    public override string ToString() => $"{_levels.Length} level(s)";
 }
