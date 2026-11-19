@@ -413,6 +413,129 @@ public sealed class Model
         return created;
     }
 
+    /// <summary>Puts the only child of <paramref name="slot"/> where <paramref name="node"/> stands, and deletes the node.</summary>
+    /// <param name="node">The node that gives up its place; it is deleted once its child has it.</param>
+    /// <param name="slot">A child slot of its concept that holds exactly one child.</param>
+    /// <returns>The child, which keeps its identity, its subtree and now stands where the node stood.</returns>
+    /// <remarks>
+    /// <para>
+    /// The other direction of <see cref="Wrap(Node, string, string, IReadOnlyDictionary{string, string}?)"/>: a
+    /// wrapper whose only content is one child can be removed without losing anything, and the child takes the
+    /// place it was wrapping. Both operations run in one transaction, and both keep the id of the node that
+    /// stays - so every reference into its subtree and every caret address that names one of its cells still
+    /// resolves afterwards.
+    /// </para>
+    /// <para>
+    /// A single-valued slot cannot hold the node and its child at the same time, so the child leaves first, the
+    /// node leaves second and the child arrives third; undo replays that in reverse, and each step is one the
+    /// journal already knows how to take back. The node's own properties go with it, because they are what made
+    /// it a wrapper in the first place (<c>operator = "!"</c> on a negation).
+    /// </para>
+    /// <para>
+    /// <b>An unwrap may not drop structure.</b> If the node holds another child slot with children in it, or a
+    /// reference, the operation is refused rather than silently deleting that content: what is lost has to be
+    /// what the caller asked to lose. The check that needs this repair unwraps a unary, whose other content is
+    /// exactly its operator.
+    /// </para>
+    /// <para>
+    /// A model root cannot be unwrapped: it stands in no slot, so there is nothing for its child to take. That is
+    /// the mirror image of a root never being wrappable.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
+    /// <exception cref="ModelInvariantException">
+    /// <paramref name="node"/> belongs to a different model, has no place, the concept declares no child slot of
+    /// that name, the slot does not hold exactly one child, that child does not conform to the place the node
+    /// stands in or may not stand there, or the node holds other content an unwrap would delete.
+    /// </exception>
+    public Node Unwrap(Node node, string slot)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+
+        if (!ReferenceEquals(node.Model, this))
+        {
+            throw new ModelInvariantException(
+                $"Node {node.Id} belongs to a different model and cannot be unwrapped by this one's concepts.");
+        }
+
+        if (node.Parent is not { } parent || node.ParentSlot is not { } place)
+        {
+            throw new ModelInvariantException(
+                $"Node {node.Id} has no place, so nothing can take its place.");
+        }
+
+        if (node.Concept.FindChild(slot) is null)
+        {
+            throw new ModelInvariantException(
+                $"Concept '{node.Concept.Key}' declares no child slot named '{slot}'.");
+        }
+
+        var children = node.GetChildren(slot);
+
+        if (children.Count != 1)
+        {
+            throw new ModelInvariantException(
+                $"Slot '{slot}' of node {node.Id} holds {children.Count} children, so exactly one could take the node's place.");
+        }
+
+        var child = children[0];
+
+        if (parent.Concept.FindChild(place) is not { } destination
+            || !child.Concept.IsKindOf(destination.ChildConceptKey))
+        {
+            throw new ModelInvariantException(
+                $"Concept '{child.Concept.Key}' does not conform to slot '{place}' of concept '{parent.Concept.Key}', so it cannot take node {node.Id}'s place.");
+        }
+
+        RequireNothingElseLoses(node, slot);
+
+        // The model's own answer to "may this concept stand here", asked before anything moves.
+        RequireApplicable(child, parent, place);
+
+        var index = node.IndexInParent;
+
+        using var transaction = BeginTransaction();
+
+        child.Detach();
+        DeleteSubtree(node);
+        parent.InsertChild(place, Math.Min(index, parent.GetChildren(place).Count), child);
+
+        MarkMutated();
+
+        transaction.Complete();
+
+        return child;
+    }
+
+    /// <summary>Refuses an unwrap that would take structure with it.</summary>
+    /// <param name="node">The node about to be deleted by the unwrap.</param>
+    /// <param name="slot">The one slot whose content survives the unwrap.</param>
+    /// <exception cref="ModelInvariantException">The node holds another child list or a reference.</exception>
+    /// <remarks>
+    /// Properties are not checked: a wrapper's values are the wrapper (<c>operator = "!"</c>), and keeping them
+    /// would mean inventing a place for them on a node that may not declare them. A child list or a reference is
+    /// different - it is a subtree or a link, and losing one silently would make "unwrap" a delete in disguise.
+    /// </remarks>
+    private static void RequireNothingElseLoses(Node node, string slot)
+    {
+        foreach (var declaration in node.Concept.Slots)
+        {
+            switch (declaration)
+            {
+                case ChildSlot other
+                    when !string.Equals(other.Name, slot, StringComparison.Ordinal)
+                        && node.GetChildren(other.Name).Count > 0:
+                    throw new ModelInvariantException(
+                        $"Node {node.Id} also holds children in '{other.Name}', which an unwrap would delete; empty that slot first or delete the node.");
+                case ReferenceSlot reference when node.GetReference(reference.Name) is not null:
+                    throw new ModelInvariantException(
+                        $"Node {node.Id} also points at something in '{reference.Name}', which an unwrap would delete; clear it first or delete the node.");
+            }
+        }
+    }
+
     /// <summary>Puts a node of <paramref name="conceptKey"/> where <paramref name="node"/> stands.</summary>
     /// <param name="node">The node whose place is taken; it is deleted with its whole subtree.</param>
     /// <param name="conceptKey">The concept of the node that takes its place.</param>
