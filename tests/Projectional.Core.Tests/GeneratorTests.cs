@@ -99,6 +99,79 @@ public sealed class GeneratorTests
     }
 
     [Fact]
+    public void AFilledCheckPicksTheTemplateTheSlotFillednessSelects()
+    {
+        var model = PayrollSample.NewSampleModel();
+        var ruleset = model.Roots[0];
+
+        var templates = Registry().Add(RulesConceptKeys.Ruleset, TextTemplate.Of(new WhenFilledPart(
+            RulesLanguage.RulesSlot,
+            Literal("has rules"),
+            Literal("has none"))));
+
+        Assert.Equal("has rules", Generate(templates, ruleset).Text);
+
+        var empty = PayrollSample.NewEmptyModel();
+
+        Assert.Equal("has none", Generate(templates, empty.Roots[0]).Text);
+    }
+
+    [Fact]
+    public void AFilledCheckAsksAReferenceWhetherItWasEverLinked()
+    {
+        // A linked and a dangling reference are both filled: only an unwritten slot is empty, which is exactly the
+        // line a reference cell draws between "unset" and the other two states.
+        var (_, linked) = Transition();
+        var (_, unlinked) = Transition(linkTarget: false);
+
+        var templates = Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new WhenFilledPart(
+            "target",
+            Literal("->"),
+            Literal("-"))));
+
+        Assert.Equal("->", Generate(templates, linked).Text);
+        Assert.Equal("-", Generate(templates, unlinked).Text);
+    }
+
+    [Fact]
+    public void AFilledCheckLaysOutATree()
+    {
+        // The reason the part exists: a template could not ask whether a node had children, so it could emit a step's
+        // detail unconditionally but never nest one level per link. Recursion through the child's own template, with
+        // the indent carried by the line break, is the whole of a tree layout.
+        var model = TestLanguage.NewModel();
+        var rule = model.NewNode(TestLanguage.Rule);
+        rule.Set("name", "Rule");
+        model.AddRoot(rule);
+
+        var body = model.NewChild(rule, "body", TestLanguage.Body);
+        var step = model.NewChild(body, "steps", TestLanguage.Step);
+        step.Set("text", "one");
+
+        var nested = model.NewChild(step, "detail", TestLanguage.Step);
+        nested.Set("text", "two");
+
+        model.NewChild(nested, "detail", TestLanguage.Step).Set("text", "three");
+
+        var templates = Registry().Add(TestLanguage.Step, TextTemplate.Of(
+            new PropertyPart("text"),
+            new WhenFilledPart("detail", TextTemplate.Of(
+                new IndentPart(TextTemplate.Of(LineBreakPart.Instance, new ChildPart("detail")))))));
+
+        Assert.Equal("one\n  two\n    three", Generate(templates, step).Text);
+    }
+
+    [Fact]
+    public void AFilledCheckOnASlotTheConceptHasNotFails()
+    {
+        var result = Generate(Registry().Add(RulesConceptKeys.Ruleset, TextTemplate.Of(
+            new WhenFilledPart("nothing", Literal("x")))), Sample());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("not a slot", result.Failure!.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ALoopAppliesItsBodyToEachChild()
     {
         var templates = Registry()

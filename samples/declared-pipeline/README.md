@@ -9,7 +9,9 @@ sees" is not a claim to check - there is nothing to delete.
 | `structure/` | the language: one document per concept, with its slots and defaults |
 | `editor/` | how those concepts are drawn - one document per notation, a header line and a table |
 | `constraints/` | the rules the language states about itself - one document per rule |
+| `generator/` | the language's one text generator, `ShellScript`, as a model of the generator language |
 | `pipeline.mps` | a document of the language, so the folder is something to open |
+| `nightly.mps` | a second document, with a stage that has no command |
 
 One definition per document, the way MPS stores a model: `structure/Pipeline.Pipeline.mps` holds the
 pipeline concept, `structure/Pipeline.Stage.mps` the stage concept, and the same two keys name the
@@ -40,6 +42,13 @@ form, which is what makes the table a *variant* rather than a special document m
 hint while a stage still carries the placeholder its concept declares for a name, the second a warning
 about whitespace around a command. Both are lowered into the same `IConstraint` a language written in
 C# writes, so the language reports its own findings without a line of C# behind either of them.
+
+`generator/shell-script.mps` is the language's one text generator, `ShellScript`, and it is a model of
+the generator language like everything else here. It writes a pipeline as a shell script - a comment line
+with the pipeline's name, then one line per stage - and its second mapping is what shows the part a
+template could not say before: `when command is filled` emits the command and otherwise a comment, so
+`nightly.mps`, whose `smoke` stage has none, generates `# smoke has no command` rather than an empty
+line. Run it in the app with **Generate â–¸ ShellScript**.
 
 ## What it takes from the framework
 

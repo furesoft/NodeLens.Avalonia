@@ -39,6 +39,55 @@ public sealed class TextGenLoweringTests
     }
 
     [Fact]
+    public void ADeclaredFilledCheckEmitsWhatItsCSharpTwinEmits()
+    {
+        // The second conditional, declared: a slot the document fills and one it leaves empty must choose the same
+        // branch as the hand-written part, or the declared path would be the weaker one (ADR 0014).
+        var rules = PayrollSample.NewSampleModel();
+        var model = TextGenLanguage.NewModel();
+        var template = Mapping(model, Generator(model, "Filled"), RulesConceptKeys.Ruleset);
+
+        var check = Part(model, template, TextGenConceptKeys.WhenFilled);
+
+        check.Set(TextGenLanguage.ConceptKeySlot, RulesLanguage.RulesSlot);
+        Text(model, Body(model, check), "has rules");
+        Text(model, Otherwise(model, check), "has none");
+
+        var declared = TextGenLowering.CreateGenerators(model.Roots, rules.Concepts).Single();
+        var twin = new TextGenerator("Filled", TemplateRegistry.Empty.Add(
+            RulesConceptKeys.Ruleset,
+            TextTemplate.Of(new WhenFilledPart(
+                RulesLanguage.RulesSlot,
+                TextTemplate.Of(new TextPart("has rules")),
+                TextTemplate.Of(new TextPart("has none"))))));
+
+        var lowered = Assert.IsType<WhenFilledPart>(
+            Assert.Single(declared.Templates.TemplateFor(rules.Concepts.Get(RulesConceptKeys.Ruleset))!.Parts));
+
+        Assert.Equal(RulesLanguage.RulesSlot, lowered.Slot);
+        Assert.Equal(
+            new Generator().Generate(rules.Roots[0], twin).Text,
+            new Generator().Generate(rules.Roots[0], declared).Text);
+        Assert.Equal("has rules", new Generator().Generate(rules.Roots[0], declared).Text);
+    }
+
+    [Fact]
+    public void AFilledCheckOnASlotTheConceptHasNotIsRefused()
+    {
+        var model = TextGenLanguage.NewModel();
+        var check = Part(
+            model,
+            Mapping(model, Generator(model, "Json"), RulesConceptKeys.Ruleset),
+            TextGenConceptKeys.WhenFilled);
+
+        check.Set(TextGenLanguage.ConceptKeySlot, "nothing");
+
+        var error = Assert.Throws<ConceptDefinitionException>(() => Lower(model));
+
+        Assert.Contains("'nothing' is not a slot", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ALanguageCanDeclareSeveralGenerators()
     {
         // One generator per document: a language's generator aspect is a folder, and the names are what a host

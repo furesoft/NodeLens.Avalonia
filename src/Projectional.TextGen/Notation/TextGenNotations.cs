@@ -121,6 +121,18 @@ public static class TextGenNotations
                 ed.Line(ed.Keyword("otherwise:")),
                 ed.Indent(ed.Line(ed.ChildInline(TextGenLanguage.OtherwiseSlot)))))));
 
+        notations.Add(TextGenConceptKeys.WhenFilled, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("when"),
+                ed.Space,
+                ed.Property(TextGenLanguage.ConceptKeySlot),
+                ed.Space,
+                ed.Keyword("is filled:")),
+            ed.Indent(ed.Sequence(
+                ed.Line(ed.ChildInline(TextGenLanguage.BodySlot)),
+                ed.Line(ed.Keyword("otherwise:")),
+                ed.Indent(ed.Line(ed.ChildInline(TextGenLanguage.OtherwiseSlot)))))));
+
         notations.Add(TextGenConceptKeys.Self, ed => ed.Line(ed.Keyword("self")));
     }
 }

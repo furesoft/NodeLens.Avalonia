@@ -35,8 +35,8 @@ What is next, in order:
    ([worked-examples.md](architecture/worked-examples.md)). **All three are delivered.** Between them they
    found and closed four gaps - a table column naming a reference, a reference crossing a model boundary, a
    template part for a reference, and the four a sample may not work around - and left two recorded: a
-   **many-valued reference cannot be drawn**, and a **template cannot ask whether a slot is filled** (so it
-   cannot lay out a tree, nor read the name of a node's parent).
+   **many-valued reference cannot be drawn**, and a **template cannot read the name of a node's parent** (so a
+   template that lists children cannot say which node they belong to).
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
