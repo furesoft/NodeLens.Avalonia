@@ -9,8 +9,9 @@ reference in it), this one is the data demonstrator for the two aspects that arr
 | `structure/` | `Workflow.Workflow` (a name and a first step) and `Workflow.Step` (a name, a command, the step to repeat on failure, and the next step) |
 | `editor/` | one line each: `workflow <name> -> <step>` and `<name> : <command> <onFailure> then <next>` |
 | `scopes/` | `Workflow.Step.onFailure` sees the steps above it - the chain a step is nested in |
-| `intentions/` | what a step offers at the caret: `Delete this step` (destructive) and `Mark as a test`, which writes the command |
+| `intentions/` | what a step offers at the caret: `Delete this step` (destructive) and `Mark as a test`, which writes the command; and what an empty workflow offers: `Add the first step`, which fills the empty slot |
 | `release.mps` | a document: `build` then `test` |
+| `draft.mps` | a workflow with no first step, which is where the insert entry is offered |
 
 The two concepts form a chain rather than a list, which is why the notation needs no collection cell: a step holds
 the next step as its single child. That also makes `ancestors` the honest scope for `onFailure` - what a step may
