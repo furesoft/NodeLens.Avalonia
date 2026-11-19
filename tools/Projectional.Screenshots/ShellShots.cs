@@ -1,6 +1,11 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 
+using Projectional.Avalonia;
+using Projectional.Editing;
+using Projectional.Projection;
+using Projectional.Samples.StateMachine;
 using Projectional.Workbench;
 
 namespace Projectional.Screenshots;
@@ -22,6 +27,7 @@ internal static class ShellShots
     [
         new("feature-run-output", ShowRunOutput, Width: 700, Height: 300),
         new("feature-generate-output", ShowGeneratedText, Width: 700, Height: 250),
+        new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 520),
     ];
 
     /// <summary>Runs the sample ruleset against <c>amount=1500</c>, which accepts and leaves a trace.</summary>
@@ -43,6 +49,58 @@ internal static class ShellShots
             ?? throw new InvalidOperationException("The sample document declares no \"C Sharp\" generator.");
 
         entry.Command?.Execute(null);
+
+        await Task.Delay(250);
+    }
+
+    /// <summary>
+    /// Opens a state machine, asks who points at its initial state, and then goes to that declaration.
+    /// </summary>
+    /// <remarks>
+    /// The document is the worked example rather than the shell's own ruleset, because a ruleset has no reference to
+    /// show: the usages panel is only worth a picture when it has rows, and Ctrl+B only means something on a use.
+    /// Both gestures are the real ones - Alt+F7 on the window, Ctrl+B on the editor - so the image is the state a user
+    /// reaches, not one arranged by hand.
+    /// </remarks>
+    private static async Task ShowFindUsagesAndDefinition(MainWindow window)
+    {
+        window.OpenDocument(
+            LanguageDocuments.StateMachine(),
+            StateMachineLanguage.CreateNotations(StateMachineLanguage.Concepts),
+            typing: StateMachineLanguage.TypingRules);
+
+        await Task.Delay(250);
+
+        var tab = (TabItem)window.FindControl<TabControl>("Documents")!.SelectedItem!;
+        var editor = (ProjectionalEditorControl)((ScrollViewer)tab.Content!).Content!;
+        var session = editor.Session!;
+
+        var reference = session.Tree.Cells()
+            .OfType<ReferenceCell>()
+            .First(cell => cell.Slot == "source" && cell.State == ReferenceState.Resolved);
+
+        session.Select(Selection.At(reference.Address));
+        editor.InvalidateVisual();
+
+        // The shell's gesture: the panel lists every reference to the node the caret names.
+        window.RaiseEvent(new KeyEventArgs
+        {
+            RoutedEvent = InputElement.KeyDownEvent,
+            Key = Key.F7,
+            KeyModifiers = KeyModifiers.Alt,
+            Source = window,
+        });
+
+        await Task.Delay(250);
+
+        // The editor's gesture: the caret moves to the declaration the panel is about, with its name selected.
+        editor.RaiseEvent(new KeyEventArgs
+        {
+            RoutedEvent = InputElement.KeyDownEvent,
+            Key = Key.B,
+            KeyModifiers = KeyModifiers.Control,
+            Source = editor,
+        });
 
         await Task.Delay(250);
     }

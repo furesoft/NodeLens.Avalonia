@@ -178,7 +178,14 @@ public sealed partial class MainWindow : Window, IDisposable
         OpenDocument(model, _language.Notations, emphasis: WorkbenchLanguage.Emphasis, typing: WorkbenchLanguage.Typing);
     }
 
-    private void OpenDocument(
+    /// <summary>Opens <paramref name="model"/> in a new tab, or brings its tab forward when it is already open.</summary>
+    /// <remarks>
+    /// Internal rather than private because the screenshot tool drives the shell through this seam: a picture of a
+    /// shell feature needs a document the shell's own sample does not hold, and a file picker cannot be driven from a
+    /// test harness. It is not public because the shell is a library only once M6 extracts it (ADR 0015); until then,
+    /// the app is the only place a caller of this method may live.
+    /// </remarks>
+    internal void OpenDocument(
         Model model,
         NotationRegistry notations,
         string? filePath = null,

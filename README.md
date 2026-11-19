@@ -279,6 +279,12 @@ The bulb in the margin says something can be done at this line. The gesture alwa
 
 ![Offer list with a repair and a language intention](docs/images/feature-offers.png)
 
+#### Find usages: `Alt` + `F7`, and go to definition: `Ctrl` + `B`
+
+`Find usages` answers the reverse of a reference: who points at the node the caret names, across every model of one project, in document order. The panel lists one row per usage and choosing a row puts the caret on the reference it names—opening that document first when it is already open in a tab. `Ctrl`+`B`—or `Ctrl`+click on a use—goes the other way: the caret moves to the declaration, with its name selected. The declaration has to be drawn in the open document; a target that is not on the page is refused with a reason rather than guessed.
+
+![The usages panel listing the three references to a state, with the caret on its declaration](docs/images/feature-find-usages.png)
+
 #### Selection ladder: `Ctrl` + `A`
 
 One press selects the value at the caret, the next the whole node with its children, the last the document. `Delete` acts on whatever rung is selected; text actions fall back to caret behaviour when the range spans cells.
