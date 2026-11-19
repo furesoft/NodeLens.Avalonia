@@ -1210,6 +1210,13 @@ record, and `Projectional.Json` is the first reference language behind the contr
   a host composes them with `StandardChecks.All`.
 - **`XmlEscaping` is public on purpose**: the checks package must spell a repaired value exactly as the importer did, and
   a second escaper in a behaviour package would be a second answer to "how is this written".
+- **Planned, not built: a declared importer.** Today `ITextImporter` is C#-only, so a language written as a model can
+  print its files and not read them. The plan (`docs/architecture/import.md` section *Import as a declaration*) is
+  `Projectional.ImportRules` - an `import` folder beside `generator`/`constraints`/..., two layers (tokens, then rules),
+  a closed vocabulary that mirrors the template's verbs, `Import.Raw` for tier 2, and a load-time `ImportLowering` into
+  the same `ITextImporter`. The recommended default is the *inverse of the generator's templates* (literal -> anchor,
+  property -> capture, child -> nest, children -> repeat, when-filled -> optional, conditional -> alternative), with a
+  declared rule only where the inverse does not exist. Open questions 100-103 hold the decisions.
 - **A reference language may hold a note the format cannot express.** `Json.Comment` is a `Json.Member` beside
   `Json.Property`, drawn as `// why` and mapped to `TextTemplate.Empty`, so generation omits it - and the "an entry that
   emits nothing takes no separator" rule is what keeps a note between two members from producing a stray comma. It is

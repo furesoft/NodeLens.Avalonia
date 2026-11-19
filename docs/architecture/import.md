@@ -414,6 +414,78 @@ for wrapping an expression in parentheses, because `Projectional.Intentions` der
 it keeps is the `Unary` that is born with `!`. The syntax languages above follow the same line, at the scale of their
 grammar.
 
+## Import as a declaration (planned)
+
+Every other aspect of a language can be *declared* - its concepts, its notation, its types, its generator, its
+constraints, its scopes, its intentions - and one cannot: **how to read its own files**. `ITextImporter` is a C#
+interface a package implements, so a language written as a model (a `LanguageProject` folder) is a one-way street: it
+prints its documents and cannot read them back. That asymmetry is what this section plans away.
+
+### Why it has to be a language and not a hook
+
+The same argument every declared aspect makes ([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)): a
+declared importer must produce the same model as its hand-written twin on the corpus, compared as text through the
+generator, because "both authoring paths are permanent" is only true if the second one can do the whole job. A hook -
+"a language may point at a .NET type that parses" - would leave the declared path weaker at exactly the seam that makes
+a language usable, which is the line the type rules, the generator and the constraints all refused to cross.
+
+**Where it lives:** `Projectional.ImportRules`, beside `Projectional.TypeRules`, `Projectional.TextGen`,
+`Projectional.ConstraintRules`, `Projectional.ScopeRules` and `Projectional.IntentionRules` - a new aspect is a new
+language plus its lowering. A language folder gains an `import` folder next to `structure`, `editor`, `types`,
+`generator`, `constraints`, `scopes` and `intentions`, one document per importer (one root per document, as everywhere
+else), and `LanguageProject.Importers` hands the lowered `ITextImporter`s to a host. The C# path keeps `ITextImporter`
+exactly as it is: the declared form lowers *into* it, so nothing above import learns a second contract.
+
+### The rules are the declaration
+
+Two layers, and the split is the design rather than an implementation detail:
+
+| Layer | Answers | Vocabulary (closed) |
+| --- | --- | --- |
+| Tokens | what counts as a token, and where it started | `Import.Literal` (an anchor), `Import.Name` / `Import.Number` / `Import.Quoted` (the lexical classes a config format needs), `Import.Skipped` (whitespace, comments: text that produces no node) |
+| Rules | which concept a run of tokens becomes | `Import.Node` (concept + parts), `Import.Sequence`, `Import.Alternative`, `Import.Repeat` (with separator and minimum), `Import.Capture` (a run into a property, spelled as stored), `Import.Nest` (a child slot taking another rule), `Import.Raw` (a run the model does not map, kept verbatim) |
+
+- **No delegate, no expression, no "compute".** A rule either matches, captures, nests, repeats or chooses - the same
+  small set of verbs a template has, for the same reason: a rule that could calculate is a programming language hiding
+  in a model, and it would need an interpreter this framework does not have.
+- **Every token carries its offset and length**, because `ImportDiagnostic` promises a line and a column and a parser
+  that only answers a tree cannot keep that promise - the same requirement that decides which third-party TOML or
+  HOCON reader may be used ([open question 98](../open-questions.md#text-import)).
+- **Ambiguity is a load error, not a runtime surprise.** `Alternative` branches must start with distinct anchors where
+  the author used anchors at all, and a repeat whose separator cannot be told from its item is refused - the earliest
+  moment both halves exist, which is the rule `NotationRegistry` and `TextGenLowering` already follow.
+- **Tier 2 has a place in the vocabulary.** `Import.Raw` is what lets a declared importer be honest about a construct
+  the model does not model: the run survives as a raw node and regenerates to the same text, exactly as `Xml.Raw` does
+  today.
+
+### The default is the inverse of the template
+
+This is the part that makes the feature tractable rather than a second grammar language, and it is the recommendation
+recorded as an open question rather than assumed:
+
+- **A language already says how it is written twice** - the notation says how it is drawn, the generator says how it is
+  printed - and a separate grammar would be a *third* statement of the same syntax, free to drift from both.
+- **The generator's parts invert one for one**: `TextPart` → an anchor, `PropertyPart` → a capture, `ChildPart` → a
+  nest, `ChildrenPart` → a repeat with the separator template as the separator, `WhenFilledPart` → an optional branch,
+  `ConditionalPart` → an alternative chosen by a property, `LoopPart` → a repeat of the body.
+- **So the first reading of a document is "the same text the generator would write"**, derived from its templates, with
+  a declared rule only where the file spells something the generator cannot produce: a comment, `<a/>` next to
+  `<a></a>`, a number in a spelling the generator would not choose.
+- **The places where the inverse does not exist are exactly the declared exceptions**, and naming them is part of the
+  design rather than a gap: escaping (the reference languages settle spelling on the way *in*), insignificant
+  whitespace (a file's layout is not a construct), and precedence (no part asks how an operand binds, which is why the
+  C# generator parenthesises). A declared importer says what it does about each of them, or refuses the file.
+
+### What must not happen
+
+- **No second source of truth.** An importer still runs once and throws the string away; the model is what the editor,
+  the checks and the generator see ([ADR 0002](../adr/0002-model-as-source-of-truth.md)).
+- **No parser in the editing path.** No re-parse per keystroke, no error recovery into a live document: tier 1 refuses
+  the whole text and tier 2 keeps a run as raw, which are the two outcomes the contract already has.
+- **No round trip as a promise for free.** A declared importer that reads a construct differently from the way the
+  generator writes it breaks `generate(import(text))`, and the corpus test is where that is caught - not a note in a
+  manual.
+
 ## Slices
 
 - **I0 - the contract.** *Delivered.* `ITextImporter`, `ImportResult`, `ImportDiagnostic`, `ImportSeverity`
@@ -455,10 +527,21 @@ grammar.
   introduced: a model with several roots still shows its first one (one session per model), so an XML file whose first
   top-level node is a comment opens on that comment - the whole document is in the model, and saving and generating use
   all of it.
-- **I8 - docs and samples.** A sample corpus of `.json`, `.xml`, `.toml` and `.hocon` files under
-  `tests/Projectional.Core.Tests/Corpus/Text/`, with the same rule as the `.mps` corpus:
-  **never regenerate a corpus file to make a test pass** - a byte that moves is either a
-  language bug or a deliberate change with a note in the commit.
+- **I8 - the corpus.** The reference languages' corpus grows with the formats:
+  `tests/Projectional.Core.Tests/Corpus/Text/` holds one file per format shape, and every file is what the generator
+  prints - a byte that moves is a language bug or a deliberate change with a note in the commit, never a number edited
+  until the test went green. Covered so far: JSON (nested objects, an array of values, a number in four spellings) and
+  XML (attributes in order, mixed content, CDATA, a processing instruction, a namespace prefix); TOML and HOCON join it
+  with their languages.
+- **I9 - the declared importer, as a language.** `Projectional.ImportRules`: the two-layer vocabulary of
+  [Import as a declaration](#import-as-a-declaration-planned) (tokens, then rules), the concepts and their notation,
+  and `ImportLowering` into `ITextImporter` with the load-time refusals (a concept the language has not, a slot named
+  as the wrong kind, an alternative whose branches start alike).
+- **I10 - the inverse of the template.** The lowering that reads a document the way the generator writes it: parts
+  invert one for one, and the escape hatch is a declared rule where the inverse does not exist. Proven by the parity
+  rule - a declared importer whose twin is C# produces the same text through the generator, over the corpus.
+- **I11 - the first declared language that needs it.** `samples/declared-pipeline` gets an `import` folder, so the
+  M2-gate language becomes readable as well as printable - the moment a language really exists without C#.
 
 ## Testing
 
