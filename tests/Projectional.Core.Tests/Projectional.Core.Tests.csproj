@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Intentions\Projectional.Intentions.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Json\Projectional.Json.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
     <ProjectReference Include="..\..\src\Projectional.LanguageExport\Projectional.LanguageExport.csproj" />
@@ -44,6 +45,12 @@
 
   <ItemGroup>
     <None Update="Corpus\**\*.mps" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      The text corpus is what the reference languages generate, so a round trip can be compared byte for byte.
+      Never regenerate one of these files to make a test pass - a byte that moves is a language bug or a
+      deliberate change with a note in the commit (docs/architecture/import.md).
+    -->
+    <None Update="Corpus\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <!--
       The declared sample language lives at the repository root because it is what a user opens, not a
       fixture. The test copies it so it can load the same folder the app does.

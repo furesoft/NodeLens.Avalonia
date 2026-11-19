@@ -6,8 +6,8 @@ enters a model, and it does so **once**, from a string the host supplies, after 
 string is thrown away. Nothing writes text back into the model, so the invariant is intact:
 there is still no text buffer and no parser in the editing path.
 
-Status: slice **I0 (the contract)** is delivered; the four reference languages, importing into a
-non-empty model, the raw-text tier and the shell's File ▸ Import are not. Generation is the
+Status: slices **I0 (the contract), I1 (JSON) and I5 (appending to a non-empty model)** are delivered;
+XML, TOML and HOCON, the raw-text tier and the shell's File ▸ Import are not. Generation is the
 opposite direction and is planned in [semantics.md](semantics.md#generation).
 
 ## Two directions, and only one of them is a parser
@@ -48,6 +48,7 @@ Projectional.Language/Import/
     ITextImporter.cs        // Format, CanImport, Import
     ImportResult.cs         // the roots that were added, plus diagnostics
     ImportDiagnostic.cs     // line, column, length, code
+    ImportSeverity.cs       // refused, or kept as raw text
 ```
 
 A language package implements it and exposes an instance next to its concept declarations, the
@@ -182,8 +183,12 @@ Two decisions worth stating:
   [completion.md](completion.md#values)) offers exactly those two symbols in the cell, and the
   notation can render them as keywords.
 
-Notation: an object as an `Indent` block of `name: value` lines with `Punct(",")` separators, an
-array as a `Line` with `Punct(", ")` - the ordinary notation vocabulary, no new cells.
+Notation: the file's own line, because the layout engine does not wrap and a projection that re-broke the lines would
+show a shape the file does not have - an object as `{ name: value, ... }`, an array as `[ 1, 2 ]`, with `Punct(",")`
+and a plain space as the separator. The gap inside a bracket is a `WhenFilled` cell, which is how an object with a member
+gets its spaces while an object with none still shows the cell the first member is typed into. So the drawing matches the
+generated text everywhere except an empty object or array, which draws `{ }` / `[ ]` and prints `{}` / `[]` - the
+brackets are unconditional, only their inner space is conditional. No new cells.
 
 ### `Projectional.Xml`
 
@@ -353,9 +358,12 @@ already written: `mapping.mps`, the build and link phases and the reverse map in
   exists only to prove the contract - pinning: success commits one undo step and one change event, a
   refusal and a mid-way throw both leave the model byte-identical, and the result says which of the
   two outcomes it is.
-- **I1 - JSON.** `Projectional.Json`: concepts, notation, importer, generator. Tests: a golden
-  text corpus (each file imported and regenerated must equal the input byte for byte), the
-  number-literal cases, duplicate members, and a truncated file that must import nothing.
+- **I1 - JSON.** *Delivered.* `Projectional.Json`: eight concepts, notation, `JsonImporter` and the
+  generator. Tests: `JsonCorpusTests` (each corpus file imported and regenerated equals the input byte for
+  byte), `JsonImporterTests` (the number literals, the kept escapes, duplicate members by value, the exact
+  line and column of a bad character, a comment and a second top-level value refused, a truncated file that
+  imports nothing), `JsonTextGeneratorsTests` and `JsonNotationTests` (the spelling of the file, and the one
+  place where the drawing and the file differ).
 - **I2 - XML.** `Projectional.Xml`: same shape, plus whitespace-only text, attributes in order,
   comments, a CDATA section landing in `Xml.Raw`, and the refused DTD case.
 - **I3 - TOML.** `Projectional.Toml`: same shape, plus a document whose order is its structure
@@ -365,9 +373,9 @@ already written: `mapping.mps`, the build and link phases and the reverse map in
   unquoted and triple-quoted strings, a `Concat` with a substitution inside it, two repeated keys
   that stay two, an `include` that is kept and **never followed** (asserted by making the target
   a file that does not exist and demanding no diagnostic and no read).
-- **I5 - appending to a non-empty model.** Import into a model that already has a root; assert
-  the existing root is untouched, the new one is last, and one `Ctrl+Z` removes only the
-  import.
+- **I5 - appending to a non-empty model.** *Delivered.* `JsonImporterTests.AnImportAppendsToANonEmptyModel`:
+  the existing root is untouched and stays first, the imported one is last, and one `Ctrl+Z` removes only
+  the import.
 - **I6 - the raw-text tier.** A construct the language does not map survives as `Xml.Raw` /
   a JSON-preserving node and regenerates to the same text.
 - **I7 - the shell.** File > Import in the workbench: pick a file, create a document from it,
