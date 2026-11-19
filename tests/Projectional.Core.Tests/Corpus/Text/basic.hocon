@@ -1,0 +1,10 @@
+# server settings
+name = "demo"
+port = 8080
+enabled = true
+nothing = null
+path = /var/log/app
+greeting = hello ${user}
+home = ${?JAVA_HOME}
+count += 1
+include "other.conf"

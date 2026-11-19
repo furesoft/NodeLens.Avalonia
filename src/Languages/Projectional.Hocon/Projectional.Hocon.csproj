@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    One project per language (ADR 0021): the concepts, the notation, the importer, the generator, the checks and the
+    intentions of HOCON are one assembly, with `Checks/` and `Intentions/` as folders. Unlike `Projectional.Toml` it
+    takes no package dependency: no HOCON reader for .NET answers with a source position, and a position is what
+    `ImportDiagnostic` promises, so the lexer here is this language's own (open question 98).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+  </ItemGroup>
+
+</Project>
