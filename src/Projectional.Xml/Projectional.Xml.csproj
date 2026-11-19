@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+  </ItemGroup>
+
+</Project>

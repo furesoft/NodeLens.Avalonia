@@ -41,6 +41,7 @@
     <ProjectReference Include="..\..\src\Projectional.TypeRules\Projectional.TypeRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
     <ProjectReference Include="..\..\src\Projectional.TextGen\Projectional.TextGen.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Xml\Projectional.Xml.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,6 +52,7 @@
       deliberate change with a note in the commit (docs/architecture/import.md).
     -->
     <None Update="Corpus\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Corpus\**\*.xml" CopyToOutputDirectory="PreserveNewest" />
     <!--
       The declared sample language lives at the repository root because it is what a user opens, not a
       fixture. The test copies it so it can load the same folder the app does.

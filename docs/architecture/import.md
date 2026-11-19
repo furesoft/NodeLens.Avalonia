@@ -6,9 +6,10 @@ enters a model, and it does so **once**, from a string the host supplies, after 
 string is thrown away. Nothing writes text back into the model, so the invariant is intact:
 there is still no text buffer and no parser in the editing path.
 
-Status: slices **I0 (the contract), I1 (JSON) and I5 (appending to a non-empty model)** are delivered;
-XML, TOML and HOCON, the raw-text tier and the shell's File ▸ Import are not. Generation is the
-opposite direction and is planned in [semantics.md](semantics.md#generation).
+Status: slices **I0 (the contract), I1 (JSON), I2 (XML) and I5 (appending to a non-empty model)** are
+delivered, with the intentions and checks of the two shipped languages beside them; TOML and HOCON, the
+raw-text tier and the shell's File ▸ Import are not. Generation is the opposite direction and is
+planned in [semantics.md](semantics.md#generation).
 
 ## Two directions, and only one of them is a parser
 
@@ -197,13 +198,34 @@ brackets are unconditional, only their inner space is conditional. No new cells.
 | `Xml.Node` | - | abstract: the children of an element |
 | `Xml.Element` | `name`: string, `attributes`: many `Xml.Attribute`, `children`: many `Xml.Node` | |
 | `Xml.Attribute` | `name`: string, `value`: string | order preserved |
-| `Xml.Text` | `text`: string | **verbatim**, including whitespace-only text |
+| `Xml.Text` | `text`: string | the **canonical escaped spelling**, whitespace-only runs included |
 | `Xml.Comment` | `text`: string | |
 | `Xml.Raw` | `text`: string | tier 2: processing instructions, CDATA, DOCTYPE |
 
 - **Namespaces are text.** `p:name` is the name; there is no namespace resolution, no prefix
   table, no `xmlns` handling beyond "it is an attribute like any other". Resolving them is a
   schema feature, not an editor feature.
+- **Escaping happens on the way in, not on the way out.** The parser hands back a decoded value,
+  and the importer writes the canonical spelling into the model (`&amp;` `&lt;` `&gt;` `&quot;`, and
+  `&#x9;`/`&#xA;`/`&#xD;` in an attribute, where a literal one would be normalised to a space). So a
+  template emits a slot verbatim, exactly as the JSON language emits a string, and the framework's
+  template vocabulary needs no XML-specific part. The price is the same one JSON pays: the editor shows
+  the spelling, so a `&` is typed as `&amp;`. A file that wrote `&#38;` comes back as `&amp;` - one
+  canonical spelling for one character, which is what a byte-exact corpus can compare against.
+- **An element with no content is written `<a></a>`.** A model holds one shape for it, so it cannot
+  also remember which of the two spellings the file used, and a reference language must not have two
+  spellings for one tree. A file written `<a/>` comes back in the long form, which every XML consumer
+  reads as the same document.
+- **A document is its top-level nodes.** XML allows comments and processing instructions outside the
+  root element and they are content, so the importer answers several roots in document order rather
+  than inventing a container. Only the XML declaration is not modelled: it describes the bytes a host
+  read, not the tree, and the host that writes the generated text states it again.
+- **The notation hides an empty collection.** In JSON an empty slot can be drawn as a blank; in XML it
+  cannot, because whitespace inside an element *is* content - a placeholder would make an empty element
+  indistinguishable from one holding a space, and that distinction is the language's whole job. The
+  price is that the first attribute and the first child have no caret stop, which is exactly the pair
+  the notation owes an intention for (see below).
+
 - **Whitespace is content.** `XDocument.Load` with `LoadOptions.PreserveWhitespace`, and
   `Xml.Text` stores the run verbatim. XML consumers that care about `xml:space` would otherwise
   see their file rewritten by the editor.
@@ -351,6 +373,35 @@ language pays, for the same reason ([csharp.md](csharp.md)), and the plan for th
 already written: `mapping.mps`, the build and link phases and the reverse map in
 [model-generation.md](model-generation.md).
 
+### Every reference language ships its own intentions and checks
+
+A reference language is a language like any other, so it brings behaviour of its own and not only a notation:
+`Projectional.Json.Intentions`, `Projectional.Xml.Intentions`, `Projectional.Json.Checks` and
+`Projectional.Xml.Checks` sit beside their language packages, the way `Projectional.Expressions.Intentions` and
+`Projectional.Samples.Checks` do. A language package cannot reference `Projectional.Editing`, so the intentions and
+diagnostics of a language live in a package next to it, and a host wires them for the documents of that language.
+
+The split against the standard intentions is the usual one: the framework's catalogue derives what the *place* implies
+(rename, delete, move, wrap, replace, fill from the declarations), and a language adds what a declaration cannot say.
+For a notation of a real file format that means the operations of that format:
+
+| Language | Intentions | Checks, each with its repair |
+| --- | --- | --- |
+| JSON | add a member to an object, add an item to an array | a string or name no longer spelled as JSON requires (escape it), a number slot that no longer holds a number (restore the declared default), one member name used twice (rename the later one) |
+| XML | add an attribute, add a child element - the two slots the notation cannot draw empty | text or an attribute value no longer well-formed (escape it), a name that is not a legal XML name |
+| TOML | a table or an array of tables where one is needed, a key insertion | a duplicate key (the format rejects one), a date/time whose text no longer parses |
+| HOCON | add a property, add an element to an array | an unquoted value that is not a legal token |
+
+TOML and HOCON are not implemented yet, so their rows are the requirement rather than a report: each of the four is a
+language, so each ships the packages a language has. A format whose rules were only enforced by a shared catalogue would
+be a second opinion about what that format allows - and the rule itself would have to ask which language it is looking
+at, which is exactly what this design refuses to build.
+
+What a language keeps is what a *declaration* cannot express. `Projectional.Expressions` has no intention package entry
+for wrapping an expression in parentheses, because `Projectional.Intentions` derives that row from the declarations; what
+it keeps is the `Unary` that is born with `!`. The syntax languages above follow the same line, at the scale of their
+grammar.
+
 ## Slices
 
 - **I0 - the contract.** *Delivered.* `ITextImporter`, `ImportResult`, `ImportDiagnostic`, `ImportSeverity`
@@ -364,8 +415,12 @@ already written: `mapping.mps`, the build and link phases and the reverse map in
   line and column of a bad character, a comment and a second top-level value refused, a truncated file that
   imports nothing), `JsonTextGeneratorsTests` and `JsonNotationTests` (the spelling of the file, and the one
   place where the drawing and the file differ).
-- **I2 - XML.** `Projectional.Xml`: same shape, plus whitespace-only text, attributes in order,
-  comments, a CDATA section landing in `Xml.Raw`, and the refused DTD case.
+- **I2 - XML.** *Delivered.* `Projectional.Xml`: six concepts, a notation that draws the markup of the file,
+  `XmlImporter` (the platform's reader, a prohibited DTD, preserved whitespace, prefixes kept as text) and a generator
+  that escapes nothing because the importer already did. Tests: `XmlImporterTests`, `XmlNotationTests`,
+  `XmlTextGeneratorsTests` and `XmlCorpusTests` - whitespace-only nodes, attribute order, CDATA and processing
+  instructions as `Xml.Raw`, prefixes and namespace declarations, a refused DOCTYPE with no file read, an error's line,
+  and the byte-exact round trip.
 - **I3 - TOML.** `Projectional.Toml`: same shape, plus a document whose order is its structure
   (`[a]` then `[[b]]` then back to the root), the four string kinds, the four date/time kinds, a
   dotted key that stays text, and a duplicate key that imports nothing.
