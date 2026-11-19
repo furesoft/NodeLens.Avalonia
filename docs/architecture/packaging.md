@@ -79,7 +79,7 @@ Nothing types a version by hand. `<Version>0.1.0</Version>` in `Directory.Build.
 checkout with no git history to read (a source drop, a CI checkout without tags), and it is the only version
 literal in the repository.
 
-Two things about the configuration are load-bearing and easy to get wrong:
+Three things about the configuration are load-bearing and easy to get wrong:
 
 - **`tag-prefix` is deliberately absent.** GitVersion's default already accepts the `v` convention. Setting
   `tag-prefix: v` explicitly breaks version 6.8.2 when `next-version` is present: it tries to parse the
@@ -88,6 +88,10 @@ Two things about the configuration are load-bearing and easy to get wrong:
 - **A custom `branches:` key needs a `regex` in v6.** A bare `fix:` key throws a `ConfigurationException`
   rather than falling back to the default. The file currently declares no branches at all, which is why the
   defaults apply.
+- **A cached `obj/gitversion.json` outlives a tag change.** The target treats that file as its output and skips
+  re-running when it looks up to date, so a build made while a tag existed keeps claiming that tag's version
+  after the tag is gone. If a version looks wrong, delete the `obj` folders (or just the `gitversion.json`
+  files) and build again before believing it.
 
 **CI needs `fetch-depth: 0` wherever it builds.** A shallow clone has neither the tags nor the commit count
 GitVersion reads, so a shallow checkout produces a wrong version rather than an error. Every job in
