@@ -737,11 +737,10 @@ notation is registered per concept **and** variant
   not yet know that a *referencing* node's rule may have changed too. Do not claim incrementality beyond
   that. **The numbers are measured, not assumed** (`tools/Projectional.Benchmarks`, recorded in
   `docs/architecture/semantics.md` §What a full recheck costs): a document without references checks
-  linearly (5.7 ms at 40 001 nodes) and is dominated by the layout rebuild the same keystroke pays
-  (285 ms); a document *made of* references used to be quadratic (2 232.8 ms at 7 501 nodes) because every
-  reference asked the scope and the scope walked the document, and costs 2.3 ms since the name index. So
-  the dependency sets are still last, and incremental *layout* is what is worth attacking first - do not
-  start with the dependency sets.
+  linearly (6.6 ms at 40 001 nodes) and is dominated by the rebuild the same keystroke pays (123 ms, of
+  which the layout is a third); a document *made of* references used to be quadratic (2 232.8 ms at 7 501
+  nodes) because every reference asked the scope and the scope walked the document, and costs 3.3 ms since
+  the name index. So the dependency sets are still last - do not start with them.
 - **The app merges constraint findings with the check catalogue's in one list** (`PublishFindings`),
   because the panel and the markers must not be two answers to "what is wrong". A constraint finding has
   no fix, so it is a marker and a panel row only. Which rules it runs is the document's: `DocumentTab.Constraints`
@@ -950,6 +949,17 @@ second tree.
 - **Width-independent on purpose.** `Layout(tree)` takes no width because no built cell
   rearranges with width. Viewport-only layout, width classes, line-height caching and
   device-pixel snapping are deferred, not forgotten.
+- **The layout remembers what a cell cannot be asked for again, and nothing else.** Three rules, each
+  worth hundreds of bytes per cell on a real document (286 ms and 134 MB per layout became 35 ms and
+  43 MB on 280 011 cells; measured numbers in `docs/architecture/semantics.md`):
+  `LinesOf(cell)` holds only the texts that **wrapped**, because one line is the text plus its width -
+  a single-line text is answered from the measure, and `CellLayouter` asks
+  `TextWrapper.SingleLineWidth` before it builds a `LaidOutText` at all. The text map is **kept, never
+  copied** - a `CellLayout` is the only holder of the layouter's map, and a copy is a full pass over
+  the document for nothing. The bounds map is **built on the first `BoundsOf(EditorCell)`**, because a
+  painter walks `Cells` and never asks. Do not "tidy" any of the three back into building eagerly:
+  each one is O(cells) work per keystroke, and the test that pins the reconstruction is
+  `CellLayoutTests.ATextThatStayedOnOneLineIsAnsweredWithoutBeingStored`.
 - `TextCell` is the shared base of every cell whose content is one string, so layout asks one
   type for `Text` instead of switching over five kinds. Add new text cells under it.
 
@@ -2186,7 +2196,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2416 tests**; anything below that means tests were deleted.
+it. **Baseline is 2417 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
