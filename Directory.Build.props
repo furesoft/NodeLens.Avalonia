@@ -15,9 +15,47 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
 
+    <!--
+      The fallback when there is no git history to read (a source drop, a CI checkout without tags).
+      Everywhere else GitVersion derives Version, AssemblyVersion and FileVersion from the commits and the
+      `v*` tags, so no version is typed by hand (GitVersion.yml).
+    -->
     <Version>0.1.0</Version>
-    <IsPackable>false</IsPackable>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
+
+  <!--
+    Every project is a package unless it says otherwise (ADR 0022). The products and the languages are what
+    a host consumes; tests, tools, the host sample and the language template opt out where they are declared,
+    because a package is a thing to depend on and those are not.
+  -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Authors>furesoft</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/furesoft/NodeLens.Avalonia</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/furesoft/NodeLens.Avalonia.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>projectional;editor;language;dsl;mps</PackageTags>
+    <Description>A projectional editor for .NET: the model is the program, and its notation is computed from the model.</Description>
+    <!-- A package without one warns on `pack`; the repository's front page is the honest thing to ship. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- A `.snupkg` lets a debugger step into the package; it costs one file beside the `.nupkg`. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <!--
+    GitVersion reads the repository rather than a property: a `v1.2.3` tag is version 1.2.3, and work after
+    the last tag is the next patch with a branch label. It is referenced everywhere so a package built on a
+    developer's machine carries the same version as the one CI publishes.
+  -->
+  <ItemGroup>
+    <PackageReference Include="GitVersion.MsBuild" PrivateAssets="all" />
+  </ItemGroup>
 
 </Project>

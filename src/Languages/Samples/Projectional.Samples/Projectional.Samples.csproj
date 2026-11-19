@@ -3,12 +3,9 @@
   <!--
     One project per language (ADR 0021): the sample rules language and the behaviour that belongs to it - its
     constraints and duplicate-name check (`Checks/`) and its intentions (`Intentions/`). Both namespaces keep
-    their names, so a host that names `Projectional.Samples.Checks.SampleConstraints` is unaffected.
+    their names, so a host that names `Projectional.Samples.Checks.SampleConstraints` is unaffected. It ships as
+    a package like every other language (ADR 0022).
   -->
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />

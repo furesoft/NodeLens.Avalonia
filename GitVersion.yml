@@ -1,0 +1,11 @@
+# GitVersion derives the version of every package from the repository: the commit a `v1.2.3` tag points at is
+# version 1.2.3, and every other commit is a prerelease of the next patch, labelled by the branch. Only a tag
+# is published (ADR 0022), so a local or main build never claims a release version it has no tag for.
+#
+# `tag-prefix` is deliberately **not** set: GitVersion's default already accepts the `v` convention, and
+# setting it explicitly breaks this version (6.8.2) when `next-version` is present - it tries to parse the
+# prefixed string as a strict SemVer and reports "Failed to parse ... into a Semantic Version".
+mode: ContinuousDelivery
+
+# The floor this repository starts from. A tag moves it up; nothing moves it down.
+next-version: 0.1.0
