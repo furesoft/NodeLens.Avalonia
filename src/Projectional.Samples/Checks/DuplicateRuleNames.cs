@@ -15,11 +15,10 @@ namespace Projectional.Samples.Checks;
 /// one. No scope resolution, no type inference, no constraint engine - the part that needs those is M4.
 /// </para>
 /// <para>
-/// It ships in its own assembly rather than inside <c>Projectional.Samples</c> on purpose. A check produces
-/// diagnostics and repairs, so it needs the semantics and the editing layer; a language package that
-/// drags the editor in could no longer be used headlessly, and "the language works without the editor" is
-/// a promise this project makes. The pattern to copy is therefore: the language package declares itself,
-/// and a checks package beside it declares what is wrong with a model of it.
+/// It lives in <c>Checks/</c> of <c>Projectional.Samples</c> rather than beside it, which is the shape
+/// [ADR 0021](../../../docs/adr/0021-one-project-per-language.md) settled on: a check produces diagnostics and repairs,
+/// so it names the editing layer, and the behaviour of a language belongs in the language's own project. The namespace
+/// stayed <c>Projectional.Samples.Checks</c>, so a host that names it is unaffected.
 /// </para>
 /// <para>
 /// Every finding it makes carries its cure - a rename to the first free suffix, one property write - so it

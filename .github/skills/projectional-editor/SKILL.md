@@ -47,7 +47,7 @@ shape, not as the tree, and add M2 features to `MainWindow` rather than inventin
 - `docs/roadmap.md` - milestones M0-M8 with acceptance gates and effort estimates (M8 is after 1.0). It holds the **scope** of each milestone and what is left, not a status report; a finished milestone is removed from it.
 - `docs/implemented.md` - the record of delivery: every finished feature, where it lives and the test that proves it, milestone by milestone.
 - `docs/architecture/` - model, language, projection, editing, persistence, semantics, integration, standalone, plus one document per planned feature: `completion.md`, `markers.md`, `node-moves.md`, `scrolling.md`, `import.md`, `csharp.md`, `llm-language-description.md`.
-- `docs/adr/` - 19 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
+- `docs/adr/` - 21 accepted decisions. **Frozen.** To change one, write a new ADR that supersedes it.
 - `docs/open-questions.md` - open items, each with a recommendation and a decide-by milestone.
 
 A milestone is done when its acceptance gate passes, not when the code compiles.
@@ -133,6 +133,11 @@ even if the build stays green.
 - **Group by concern, not by kind.** Files live in a folder named after the concept they
   belong to (`Identity/`, `Language/`, `Model/`, ...), and the folder is the only grouping
   mechanism - the namespace stays flat, so consumers need no extra `using` directives.
+- **One project per language** ([ADR 0021](../../../docs/adr/0021-one-project-per-language.md)): a language's
+  concepts, notation, importer, generator, types, constraints, scopes, checks and intentions are one assembly, with
+  `Checks/` and `Intentions/` as folders. Their namespaces keep the names they had when they were separate
+  packages (`Projectional.Json.Checks`), so a consumer's `using` never has to change - do not "tidy" a namespace to
+  match a folder here.
 - Test files mirror this: one `<TypeUnderTest>Tests.cs` per type.
 
 ## How `Projectional.Core` records change
@@ -1198,12 +1203,11 @@ record, and `Projectional.Json` is the first reference language behind the contr
 - **A bracket's inner space is a `WhenFilled` cell in the notation and a `WhenFilledPart` in the generator; the brackets
   themselves are unconditional.** So an empty object prints `{}` while it draws `{ }` - an empty slot must stay visible
   to the caret, and a drawing is not the file.
-- **Each reference language ships its own intentions and checks** (explicit user requirement, not a nicety):
-  `Projectional.Json.Intentions`, `Projectional.Xml.Intentions`, `Projectional.Json.Checks` and
-  `Projectional.Xml.Checks` sit beside the language packages, exactly as `Projectional.Expressions.Intentions` and
-  `Projectional.Samples.Checks` do, because a language package must not reference `Editing`. TOML and HOCON get the same
-  four packages when they land - **never one shared "syntax languages" package**, which would have to ask which language
-  it is looking at.
+- **Each reference language ships its own intentions and checks** (explicit user requirement, not a nicety), and since
+  [ADR 0021](../../../docs/adr/0021-one-project-per-language.md) they are **folders inside the language project**:
+  `Projectional.Json/Checks/` (namespace `Projectional.Json.Checks`), `Projectional.Json/Intentions/`,
+  `Projectional.Xml/Checks/`, `Projectional.Xml/Intentions/`. TOML and HOCON get the same two folders when they land -
+  **never one shared "syntax languages" package**, which would have to ask which language it is looking at.
 - **XML's two intentions are mandatory, not a convenience.** Its notation hides both collections while they are empty -
   an empty XML slot cannot be drawn as a blank, because whitespace inside an element *is* content and a placeholder would
   make `<a></a>` and `<a> </a>` indistinguishable - so "add attribute" and "add child element" are the only way into
@@ -1330,9 +1334,12 @@ transaction and rolls back completely if a step is rejected.
 `Projectional.Checks` is the standard catalogue a language includes by naming it: `ICheck.Find(Model)`
 (the member is `Find` because CA1716 forbids `Of` on an interface member), `CheckSet` (ordered, immutable,
 `With` to extend), and `StandardChecks` (`Names`, `Structure`, `Expressions`, `All`). A language publishes
-one `CheckSet`; the host runs it and derives `MarkerSet`/`FixSet` from the fixes. Because a check produces
-diagnostics *and* edits, a checks package is a **behaviour** package: it references `Editing`, `Semantics`
-and (for the expression group) `Expressions`, which is exactly why it cannot live inside a language package.
+one `CheckSet`; the host runs it and derives `MarkerSet`/`FixSet` from the fixes. A check produces
+diagnostics *and* edits, so it names `Editing`, `Semantics` and (for the expression group) `Expressions` -
+which is a reference a language package now makes too: since
+[ADR 0021](../../../docs/adr/0021-one-project-per-language.md) a language's checks live in a `Checks/` folder
+of the language project, and the project references the behaviour band. `Projectional.Checks` itself stays a
+separate package because it is *the catalogue*, shared by every language.
 
 Shipped checks and the rules they encode:
 
@@ -1402,10 +1409,11 @@ path a keystroke takes.
   clears the coalescing key (one undo step), runs an `EditProgram` in one transaction that rolls back whole,
   and closes any open quick-fix list. Do not move the "build the action at apply time" rule to list time.
 
-Intentions are *behaviour*, so they cannot live in a language package (which must stay dependency-free of
-the editor). The shipped shape is a package beside the language, exactly like `Projectional.Samples.Checks`:
-`Projectional.Expressions.Intentions` (negate), `Projectional.Samples.Intentions`
-(accept this rule) and `Projectional.Structures.Intentions` (make abstract / make concrete).
+Intentions are *behaviour*: they produce edits, so they name `Editing`. Since
+[ADR 0021](../../../docs/adr/0021-one-project-per-language.md) they live in an `Intentions/` folder of the
+language they belong to, with their namespace unchanged: `Projectional.Expressions/Intentions/`
+(negate), `Projectional.Samples/Intentions/` (accept this rule) and
+`Projectional.Structures/Intentions/` (make abstract / make concrete).
 `docs/architecture/context-actions.md` carries the plan; the preview and slices A-G are delivered, the last
 of them being the range form of `INT006` (`Wrap selection in "X"`).
 
@@ -2024,8 +2032,10 @@ The repository ships two front ends and **one** public surface:
 
 - `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).
 - `Projectional.Workbench` is the standalone desktop editor. It references `Projectional.Avalonia` **and** the language
-  and behaviour packages it composes (Samples, Structures, Editors, the reference languages and their
-  `…Checks`/`…Intentions` packages), because a shell is where those declarations meet. Its own types are `internal` and
+  packages it composes (Samples, Structures, Editors, the reference languages and the three worked examples), each of
+  which carries its own checks and intentions since
+  [ADR 0021](../../../docs/adr/0021-one-project-per-language.md) - so the list is one entry per language rather than
+  two or three. Its own types are `internal` and
   the project grants `InternalsVisibleTo` **to the test project**, so the shell's logic is testable headlessly without
   widening its public surface. What stays forbidden is the app *reaching past* the control into a layer it does not sit
   above by needing a reference for a type no public member mentions ([ADR

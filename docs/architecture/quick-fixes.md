@@ -294,14 +294,15 @@ compares sibling names, the second compares a name against the concept's declare
 model-only edits, both are one property write, and both are undoable by the mechanism that already
 exists.
 
-**The check did not go inside the language package, and that is a correction to this plan.** A fix
-produces an `EditAction` and a diagnostic, so a check needs `Projectional.Editing` and
-`Projectional.Semantics` - but `Projectional.Samples` references only `Language` and `Expressions`
-precisely so that a language can be used headlessly. Putting the check there would have made every
-consumer of the sample drag in the editor. The shape that ships is therefore **a checks package beside
-the language**: `Projectional.Samples` declares the language, `Projectional.Samples.Checks` declares what
-is wrong with a model of it. That is also the recommendation for a real DSL, and it is open question 59
-answered.
+A check produces diagnostics *and* edits, so it needs `Editing` and `Semantics` - layers `Projectional.Samples`
+did not reference at the time, because a language package was supposed to stay dependency-free of the editor.
+The rule that followed was "a language ships a second package beside it", and it is what
+`Projectional.Samples.Checks` was. [ADR 0021](../adr/0021-one-project-per-language.md) replaced that with one
+project per language: the checks are `Projectional.Samples/Checks/` in the language's own assembly, the
+namespace is unchanged, and the language project references the behaviour band it uses. What survives from
+the rule is the part that was always the point - the *catalogue* stays a shared package
+(`Projectional.Checks`), because it belongs to every language and to none, and open question 59 is answered
+that way.
 
 One thing fell out of doing it that way: the check answers with `IReadOnlyList<DiagnosticFix>` rather
 than with diagnostics, because every finding it makes has a cure and a fix carries its own diagnostic.

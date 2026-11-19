@@ -106,9 +106,9 @@ Two sources, because they answer different questions:
        [Wrap.With(context.Node is { } node && node.Concept.IsKindOf(Binary) ? Applies : Absent)];
    ```
 
-   A language package that declares intentions references `Projectional.Editing`, so it is a
-   *behaviour* package beside the language - the same split `Projectional.Samples.Checks` made,
-   and for the same reason.
+   A language that declares intentions references `Projectional.Editing`, and since
+   [ADR 0021](../adr/0021-one-project-per-language.md) its intentions live in an `Intentions/` folder of the
+   language's own project - `Projectional.Samples/Intentions/` is the shape, and the namespace is unchanged.
 
 2. **The host** adds actions that are not the language's business — "deploy", "generate
    now", "open the referenced model". These are registered on the session

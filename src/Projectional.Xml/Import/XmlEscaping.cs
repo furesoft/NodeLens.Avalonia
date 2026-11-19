@@ -19,8 +19,9 @@ namespace Projectional.Xml;
 /// normalises the literal ones to a space and the value would change on the way back in.
 /// </para>
 /// <para>
-/// Public because it is the language's own answer to "how is this written", and the checks package beside the language
-/// has to give the same answer when it repairs a cell the user broke. A second escaper would be a second spelling.
+/// Public because it is the language's own answer to "how is this written", and the check in this project's
+/// <c>Checks/</c> has to give the same answer when it repairs a cell the user broke. A second escaper would be a
+/// second spelling.
 /// </para>
 /// </remarks>
 public static class XmlEscaping

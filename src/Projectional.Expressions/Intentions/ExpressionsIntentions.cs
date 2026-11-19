@@ -8,9 +8,9 @@ namespace Projectional.Expressions.Intentions;
 /// <remarks>
 /// <para>
 /// "Negate" is what an expression language can offer at almost any expression, and it does not need to know what the
-/// host is for. It lives in a package beside the language rather than inside it, for the reason
-/// <c>Projectional.Samples.Checks</c> gives: an intention produces an <see cref="EditAction"/>, so it needs the
-/// editing layer, and a language package that dragged the editor in could no longer be used headlessly.
+/// host is for. It lives in this language's own project, in `Intentions/` (namespace unchanged), because an intention
+/// produces an <see cref="EditAction"/> and so names the editing layer - behaviour that belongs to the language it
+/// edits, which is the shape [ADR 0021](../../../docs/adr/0021-one-project-per-language.md) settled on.
 /// </para>
 /// <para>
 /// It is the entry the framework's own catalogue cannot replace. "Wrap in parentheses" used to live here too and is

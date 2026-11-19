@@ -226,7 +226,7 @@ public static class LanguageExporter
         using (source.Indent())
         {
             source.Line(
-                $"throw new NotSupportedException(\"The {what} declared in '{folder}' have no export spelling yet; write them in a behaviour package beside this language.\");");
+                $"throw new NotSupportedException(\"The {what} declared in '{folder}' have no export spelling yet; write them in this project's `Checks/` or `Intentions/` folder.\");");
         }
     }
 
@@ -305,7 +305,8 @@ public static class LanguageExporter
                 lines.Add(string.Empty);
                 lines.Add($"{string.Join(" and ", stubbed)} throw `NotSupportedException` rather than answer an");
                 lines.Add("empty registry, so nothing reads a half-exported aspect by accident. Write what they");
-                lines.Add("would answer in a package beside this language.");
+                lines.Add("would answer in a folder of this project - `Checks/` or `Intentions/`, the shape");
+                lines.Add("a language package uses: one project per language, with its behaviour inside it.");
             }
 
             var unstubbable = omitted.Where(folder => folder is "constraints" or "scopes" or "intentions").ToList();
@@ -315,7 +316,7 @@ public static class LanguageExporter
                 lines.Add(string.Empty);
                 lines.Add("These cannot be stubbed: they live in the assembly the toolkit deliberately does");
                 lines.Add("not carry - constraints and scopes in `Projectional.Semantics`, intentions in");
-                lines.Add("`Projectional.Editing` - so write them in a behaviour package beside the language.");
+                lines.Add("`Projectional.Editing` - so write them in this project's `Checks/` or `Intentions/` folder.");
             }
         }
 

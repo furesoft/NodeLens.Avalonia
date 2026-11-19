@@ -106,3 +106,4 @@ directory stays authoritative whenever the two disagree.
 | [0018](adr/0018-concept-description-is-language-data.md) | A concept description is language data, not model data |
 | [0019](adr/0019-toolkit-is-the-language-surface.md) | The toolkit is the surface a language is written against |
 | [0020](adr/0020-framework-vocabulary-is-injected.md) | The framework's vocabulary is injected into every registry |
+| [0021](adr/0021-one-project-per-language.md) | One project per language: checks and intentions are folders in the language |

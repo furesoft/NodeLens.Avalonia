@@ -24,7 +24,7 @@ real language ships:
 | Artefact | What it is |
 | --- | --- |
 | the language | concepts and notation, following the `Projectional.Samples` shape (a language package references only `Language` or the toolkit) |
-| `…Checks` beside it | `Projectional.Samples.Checks` is the template: a `CheckSet` over `Projectional.Checks`' `ICheck` |
+| `Checks/` in the same project | `Projectional.Samples/Checks/` is the template: a `CheckSet` over `Projectional.Checks`' `ICheck` ([ADR 0021](../adr/0021-one-project-per-language.md)) |
 | `Corpus/` | `.mps` documents that must load and save byte-identically, which is invariant 7 and the same rule the persistence corpus follows ([testing.md](testing.md#the-round-trip-corpus)) |
 | snapshot tests | the notation pinned as text, so a projection change that breaks a sample fails an ordinary test ([testing.md](testing.md#the-snapshot-harness)) |
 
