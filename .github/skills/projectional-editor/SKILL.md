@@ -1335,7 +1335,7 @@ transaction and rolls back completely if a step is rejected.
 
 `Projectional.Checks` is the standard catalogue a language includes by naming it: `ICheck.Find(Model)`
 (the member is `Find` because CA1716 forbids `Of` on an interface member), `CheckSet` (ordered, immutable,
-`With` to extend), and `StandardChecks` (`Names`, `Structure`, `Expressions`, `All`). A language publishes
+`With` to extend), and `StandardChecks` (`Names`, `Structure`, `References`, `Expressions`, `All`). A language publishes
 one `CheckSet`; the host runs it and derives `MarkerSet`/`FixSet` from the fixes. A check produces
 diagnostics *and* edits, so it names `Editing`, `Semantics` and (for the expression group) `Expressions` -
 which is a reference a language package now makes too: since
@@ -1390,6 +1390,26 @@ Shipped checks and the rules they encode:
   node. Three exclusions make it usable: **a list entry only** (emptying a single-child slot is `STD010`'s
   finding), **a concept that declares a slot to fill** (a leaf is its value, and a default cannot be told from
   a typed value), and **nothing set anywhere**.
+- `STD020`/`STD021` (`UnresolvedReferenceCheck`, `Warning`) - a reference whose target is gone. **One check answers
+  both ids**: a close candidate makes it `STD020` with one repair per candidate (`Point to "X"`), nothing close
+  makes it `STD021` with the destructive `Clear the reference` - two checks would report one reference twice.
+  Candidates are `IScopeProvider.ScopeOf(node, slot).Entries` filtered by the slot's concept and ranked by
+  closeness to the kept `resolveInfo` (equal, equal ignoring case, one a prefix, at most two characters apart,
+  scope order breaking ties); anything further is left to completion. Every "point" repair carries the target's
+  node id in its fix id, because `FixSet` keys on the finding *and* the id - one finding with several repairs is
+  the first real case of that shape. The provider is a **constructor argument** (default
+  `DefaultScopeProvider.Instance`), because a language that replaces a scope level must hand its provider to the
+  check as well as to a session. The repairs are `SetReferenceAction(owner, slot, target)` and
+  `EditContext.ClearReference`; `EditContext.SetReference` compares the **project** now, not the model, or a
+  candidate the scope offered from another document would be silently refused. **`SqlSchemaChecks` leaves the
+  group out**: its keys cross documents on purpose, and a document opened alone has no targets.
+- `STD022`, `STD030`-`STD032`, `STD041`, `STD042`, `STD050`/`STD051` are **not shipped, and are not waiting to
+  be written**. Do not add a check for a state the model cannot hold: the parser refuses a value its
+  `PropertyType` does not accept on every write and the reader turns one into `ModelFormatException`, so
+  `STD030`-`STD032` and `STD042` are unreachable; `STD041` needs an unwrap seam (`Model.Wrap` goes the other way,
+  `Model.Replace` builds a new node, a single-valued slot cannot hold node and child); `STD050`/`STD051` need the
+  opaque node `persistence.md` promises and the reader does not build; `STD022` is a policy a language writes
+  itself, because a reference across models is a feature here. `docs/architecture/quick-fixes.md` records each.
 - `STD040` (`BinaryGroupingCheck`, `Warning`) - an operand drawn without the parentheses its grouping
   needs. **The finding names the operand, not its parent**, and the repair wraps that operand: wrapping the
   parent leaves the same finding, and a repair that survives itself is broken. Precedence lives in the
@@ -2125,7 +2145,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2365 tests**; anything below that means tests were deleted.
+it. **Baseline is 2388 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

@@ -369,32 +369,69 @@ would change what the file says.
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
-| `STD020` | a reference does not resolve, but kept a `resolveInfo` | `Point to "X"`, one per candidate from the scope | plain - but only after the user picks |
-| `STD021` | a reference does not resolve and no candidate is close | `Clear the reference` | **destructive** |
-| `STD022` | a reference points outside the model | `Remove the reference` | **destructive** |
+| `STD020` | a reference does not resolve, but kept a `resolveInfo` | `Point to "X"`, one per candidate from the scope | plain - **shipped**; one repair per close candidate, so the user picks |
+| `STD021` | a reference does not resolve and no candidate is close | `Clear the reference` | **destructive** - **shipped**; the only honest offer when no name is close |
+| `STD022` | a reference points outside the model | `Remove the reference` | **destructive** - *not shipped*; see below |
 
-`STD020` is the one that pays for the scope chain being a language aspect already: the candidates are
-`IScope.CandidatesOf`, ranked by how close each name is to the `resolveInfo`. It is also the fix that
-most clearly needs several offers rather than one, which is what `Offered` exists for.
+`UnresolvedReferenceCheck` answers both ids, because which of the two holds is a fact about the same broken
+pointer: a dangling reference with a close candidate is repaired by pointing it there (`STD020`), one without
+is repaired by clearing it (`STD021`). Two checks would report one reference twice.
 
-### Values: whatever the property type knows
+It is the one that pays for the scope chain being a language aspect already: the candidates are
+`IScopeProvider.ScopeOf(node, slot).Entries`, filtered to what the slot's concept accepts and ranked by how
+close each name is to the `resolveInfo` - equal, equal ignoring case, one a prefix of the other, at most two
+characters apart, in that order, with the scope's own order breaking ties. Anything further away is left to
+the completion list the user can open themselves, because a repair the check cannot justify is worse than none.
+
+**One finding, several repairs.** `FixSet` keys on the finding *and* the fix id, so every "point it there"
+repair carries the target's node id in its id (`std.unresolved-reference.point.<node id>`). Three close names
+are three rows for one finding, not one row that has to be reworded - the shape the catalogue predicted, and
+the first place it was needed.
+
+The check is parameterised by the *scope provider*, not by the language: `new UnresolvedReferenceCheck(scopes)`
+takes an `IScopeProvider` and defaults to `DefaultScopeProvider.Instance`. A language that replaces one level of
+the chain must hand its provider here as well, exactly as it hands it to a session - `StandardChecks.References`
+is the provider-less default.
+
+**`STD022` is deliberately not in the catalogue.** A reference across a model boundary is not a defect here: the
+model allows one (compare `Project`, never `Model`), the default scope offers a project's other documents by name,
+and `Projectional.Samples.SqlSchema` exists to prove it - a key in `orders.mps` naming a column in `shop.mps`. A
+check in `StandardChecks.All` would report that sample's own design, so a language that wants "no foreign
+references" writes that rule itself. It also needed the edit layer to stop refusing what the model allows:
+`EditContext.SetReference` compared the *model* of both ends, which was the check the model had already dropped -
+a completion pick from another document was silently refused. It compares the project now, and the owner still
+has to be part of the document being edited.
+
+A language whose references cross documents on purpose leaves `StandardChecks.References` out for the other half
+of the same reason: a document opened alone has no targets, so every cross-document key reads as dangling.
+`SqlSchemaChecks` composes the groups explicitly and says why.
+
+### Values and operators: states this model cannot hold
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
-| `STD030` | the text is not a value of the property's type | `Use the default` | plain |
-| `STD031` | a number written with spaces or a comma as the decimal mark | `Use "1000"` | plain |
-| `STD032` | a date in another format | `Use "2026-11-16"` | plain |
+| `STD030` | the text is not a value of the property's type | `Use the default` | *not shipped* |
+| `STD031` | a number written with spaces or a comma as the decimal mark | `Use "1000"` | *not shipped* |
+| `STD032` | a date in another format | `Use "2026-11-16"` | *not shipped* |
+| `STD042` | an operator that is not one of the declared symbols | `Use ">="` | *not shipped* |
 
-These three are the closest thing to a formatter the framework should own: they are deterministic,
-local, and they cannot change what the model means.
+These four describe a state the model refuses to hold. Every write parses the value against its declared
+`PropertyType` (invariant 6), and the reader turns a value the type refuses into a `ModelFormatException`
+rather than keeping it - so a text that is no `int` cannot be stored, and none of these findings can be *made*.
+`STD031` and `STD032` are subsumed by the same fact from the other side: `int` parses `NumberStyles.Integer` and
+`date` only `yyyy-MM-dd`, so an accepted value is already the canonical spelling. An operator is a
+`PropertyType.Enum`, so a symbol outside the declaration cannot be written either.
+
+They become implementable the moment the loader keeps what it could not parse (`persistence.md` calls it "kept as
+string, marked with an error"); until then a check for them would be code no document can reach, and a test that
+cannot fail. The honest place for the rule is the reader.
 
 ### Expressions: shipped with `Projectional.Expressions`
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
 | `STD040` | an operand grouped by precedence rather than by the drawing | `Wrap in parentheses` | plain - **shipped**, in the expression group |
-| `STD041` | a negation of a negation | `Remove both` | plain |
-| `STD042` | an operator that is not one of the declared symbols | `Use ">="` | plain |
+| `STD041` | a negation of a negation | `Remove both` | *not shipped*; needs a model seam, see below |
 
 A language that composes the expression sub-language gets these for free, which is the same argument
 that makes the sub-language itself worth shipping. `STD040` is the one check here that needs an operator
@@ -402,16 +439,26 @@ table, and it keeps it: `ExpressionOperators` says precedence is not part of the
 analyser owns it. The finding names the *operand* whose grouping is not drawn, and the repair wraps that
 operand - wrapping its parent would again mean the same finding survives its own repair.
 
+**`STD041` is blocked on a primitive, not on a check.** "Remove both" hoists the inner operand into the outer
+unary's *place*, and no seam moves a child into its parent's position: `Model.Wrap` goes the other way,
+`Model.Replace` needs a concept key and builds a new node, and a single-valued slot cannot hold the node and its
+child at once. The repair needs an unwrap (`Model.Unwrap(node, slot)` or an equivalent action with its own undo
+closure), which is a model feature with a design decision of its own - the same reason `Model.Wrap` was added
+with `STD040` rather than guessed at.
+
 ### Loading: whatever the reader had to preserve
 
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
-| `STD050` | a node whose concept the language does not know, preserved by the loader | `Delete the Foo node` | **destructive** |
-| `STD051` | a property the concept does not declare, preserved by the loader | `Remove the property` | **destructive** |
+| `STD050` | a node whose concept the language does not know, preserved by the loader | `Delete the Foo node` | **destructive** - *not shipped* |
+| `STD051` | a property the concept does not declare, preserved by the loader | `Remove the property` | **destructive** - *not shipped* |
 
-These exist because loading never drops data: an unknown concept and an unknown property survive a load
-and become diagnostics, so the only way to get rid of them is a repair. Deleting them is the whole fix -
-anything cleverer would guess what the author of the other model meant.
+These exist because loading must not drop data: `persistence.md` promises an unknown concept becomes an opaque
+node with its raw data and an unknown property is kept as a string, so the only way to be rid of one is a repair.
+**The reader does not do that yet** - it throws `ModelFormatException` for an unknown concept, an unknown
+property, a slot that is not declared, and a value the type refuses. Until the opaque-node representation exists,
+`STD050`/`STD051` describe a state no document can be in, and shipping them would be two checks with no input.
+The gap belongs to the loader, not to the catalogue.
 
 ### How a language includes them
 
@@ -464,6 +511,7 @@ the shell does not know and a repair into that language's own `STD004` finding w
 | --- | --- | --- |
 | `STD002` | `DuplicateNameCheck` | a project-wide scan for referrers, because the repair may not leave a reference dangling |
 | `STD012` | `EmptyNodeCheck` | a delete addressed by node id - `DeleteNodeAction(NodeId)`, the gap the feature-model sample recorded while writing its first repair |
+| `STD020`, `STD021` | `UnresolvedReferenceCheck` | a reference write addressed by owner and slot - `SetReferenceAction` and `EditContext.ClearReference` - because a repair for a dangling reference is about the model, not about where the caret is; and the removal of the model-level target check in `EditContext.SetReference`, which refused a candidate the scope had offered from another document of the project |
 
 `STD002` is the first standard check the samples had already written by hand: `RULES001` in
 `Projectional.Samples/Checks/`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the
@@ -476,6 +524,12 @@ the standard row is a decision per language rather than a cleanup.
 `STD002` also narrows the group to one slot of one node. The three hand-written versions scan a whole model
 - the feature model reports a duplicate anywhere in the document, because a configuration file is keyed by
 name across the tree - and that wider rule stays their own until a language asks the catalogue for it.
+
+`STD020` is the first standard check whose finding offers **several** repairs, and it needed nothing new from
+`FixSet`: the set already keys on the finding *and* the id, so the target's node id in the fix id was enough.
+It is also the first one that reads an aspect rather than a declaration - which is why it takes the scope
+provider as a constructor argument instead of assuming the default, and why a language that replaces a level
+of the scope chain must hand its provider to the check the way it hands it to a session.
 
 ### Two rules the catalogue forces
 
