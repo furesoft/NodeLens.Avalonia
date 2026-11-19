@@ -45,6 +45,7 @@ and [testing.md](architecture/testing.md).
 | Headless snapshot renderer (notation tested as text, not pixels) | `Projectional.Projection/Snapshot/` | `LayoutSnapshotTests`, `SnapshotGridTests` |
 | Edit-action layer: caret navigation, selection, key routing | `Projectional.Editing/` | `CaretNavigationTests`, `KeyRouterTests`, `EditorKeyMapTests`, `EditActionTests`, `HitTestTests` |
 | Insert, delete, duplicate, wrap, set property, set node property | `Projectional.Editing/` | `InsertChildActionTests`, `InsertSiblingActionTests`, `DeleteNodeActionTests`, `DuplicateNodeActionTests`, `WrapInActionTests`, `SetPropertyActionTests`, `SetNodePropertyActionTests` |
+| A delete addressed by node id, so a fix can remove the node it names instead of the one under the caret; the root is refused with a reason and the landing rule is the gesture's | `DeleteNodeAction(NodeId)` | `DeleteNodeActionTests` |
 | Node moves (Alt+Up/Down) | `NodeMove`, `MoveNodeAction` | `NodeMoveTests` |
 | Text clipboard: select all, copy, cut, paste through `IEditorClipboard` | `Projectional.Editing/Clipboard/` | `SelectAllActionTests`, `CopyActionTests`, `CutActionTests`, `PasteActionTests`, `InMemoryClipboardTests` |
 | Selection units: word and value (double click) | `SelectWordAction`, `SelectValueAction` | `SelectWordActionTests`, `SelectValueActionTests`, `SelectionRectsTests` |

@@ -1062,9 +1062,11 @@ dependency, so every action is testable headlessly.
   document root) and removes them in one `Model.BeginTransaction()`, because `EditorSession.Apply`
   opens none and each `DeleteChild` journals its own step. A partly covered node removes
   nothing. `DeleteNodeAction.Landing` is `internal static` and shared, so both deletes land the
-  caret in the same place. Cut and Copy do act on a cross-cell selection: they copy the covered nodes as a
-  fragment (`CopySelectionAction`/`CutSelectionAction`) instead of text, which is what the structural
-  clipboard is for.
+  caret in the same place. `DeleteNodeAction(NodeId)` is the same removal addressed by node id, which is
+  what a repair needs - the caret may be anywhere when a fix runs - and it refuses the document root with
+  a reason where the gesture is simply `Unchanged`. Cut and Copy do act on a cross-cell selection: they
+  copy the covered nodes as a fragment (`CopySelectionAction`/`CutSelectionAction`) instead of text, which
+  is what the structural clipboard is for.
 - **`Model.DeleteSubtree` unlinks the top node only.** Descendants stay attached to each other
   and are merely unregistered from the project index, which is exactly what lets one
   `SubtreeSnapshot` undo restore the whole thing. So `body.GetChildren("steps")` still answers

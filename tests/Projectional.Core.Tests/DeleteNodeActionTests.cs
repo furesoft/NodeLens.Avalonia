@@ -182,6 +182,90 @@ public sealed class DeleteNodeActionTests
     }
 
     [Fact]
+    public void ANamedNodeIsDeletedWhereverTheCaretIs()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
+        using var session = TestEditor.Open(body);
+
+        // The caret stays where the user left it: a repair names the node it repairs, it does not ask the
+        // session to move there first.
+        session.Select(Selection.At(new CellAddress(steps[0].Id)));
+
+        var result = session.Apply(new DeleteNodeAction(steps[1].Id));
+
+        Assert.Equal(EditOutcome.Applied, result.Outcome);
+        Assert.Equal(new[] { steps[0] }, body.GetChildren("steps"));
+    }
+
+    [Fact]
+    public void ANamedNodeLandsTheCaretWhereThatNodeWas()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second", "third");
+        using var session = TestEditor.Open(body);
+
+        session.Select(Selection.At(new CellAddress(steps[2].Id)));
+
+        var result = session.Apply(new DeleteNodeAction(steps[1].Id));
+
+        // The same landing rule the gesture uses - the sibling before the deleted node - asked of the node
+        // the caller named rather than of the node under the caret.
+        Assert.Equal(CellAddress.OfElement(body.Id, "steps", 0), result.Selection.Caret.Address);
+        Assert.Equal(steps[0].Id, session.Selection.Caret.Address.Owner);
+    }
+
+    [Fact]
+    public void ANamedNodeCannotBeTheDocumentItself()
+    {
+        var step = TestEditor.BareStep("abc");
+        using var session = TestEditor.Open(step);
+
+        var result = session.Apply(new DeleteNodeAction(step.Id));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Contains("document itself", result.Reason, StringComparison.Ordinal);
+        Assert.Equal(new[] { step }, step.Model.Roots);
+    }
+
+    [Fact]
+    public void ANamedNodeThatIsGoneIsRefusedWithAReason()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
+        using var session = TestEditor.Open(body);
+
+        body.RemoveChild("steps", steps[1]);
+
+        var result = session.Apply(new DeleteNodeAction(steps[1].Id));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Equal("The node this entry deletes is no longer in the document.", result.Reason);
+    }
+
+    [Fact]
+    public void ANamedDeleteStillNeedsANode()
+    {
+        Assert.Throws<ArgumentException>(() => new DeleteNodeAction(NodeId.Empty));
+    }
+
+    [Fact]
+    public void ANamedDeleteIsOneUndoableStepThatRestoresTheSubtree()
+    {
+        var (body, steps) = TestEditor.BodyWithSteps("first", "second");
+        using var session = TestEditor.Open(body);
+
+        var detail = body.Model.NewChild(steps[1], "detail", TestLanguage.Step);
+        session.Refresh();
+        var before = session.History.UndoDepth;
+
+        session.Apply(new DeleteNodeAction(steps[1].Id));
+
+        Assert.Equal(before + 1, session.History.UndoDepth);
+
+        Assert.True(session.Undo());
+        Assert.Equal(new[] { steps[0], steps[1] }, body.GetChildren("steps"));
+        Assert.Same(detail, steps[1].GetChild("detail"));
+    }
+
+    [Fact]
     public void DeleteNodeActionRejectsANullContext()
     {
         Assert.Throws<ArgumentNullException>(() => new DeleteNodeAction().Apply(null!));

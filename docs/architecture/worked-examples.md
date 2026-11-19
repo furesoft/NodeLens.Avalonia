@@ -117,16 +117,17 @@ pilot's JSON and C# fragment.
   therefore a flat list of features, and the nesting waits for a template part that can ask whether a slot is
   filled - a `ConditionalPart` asks about a property, not a slot.
 
-The check it ships is the one the standard catalogue cannot state: **two features under one name**, which breaks
-the constraints, the reader and the generated configuration at once. It is a `CheckSet` entry with a repair
+The check it ships is a duplicate name, **two features under one name**, which breaks the constraints, the
+reader and the generated configuration at once. It is a `CheckSet` entry with a repair
 (`SetNodePropertyAction` renames the later duplicate), so the two samples between them cover both halves of the
 split - the state machine reports without repairing, this one repairs.
 
-Two further gaps worth naming, both met while writing the repair:
+Two further findings, both met while writing the repair:
 
-- **A fix cannot delete a named node.** `DeleteNodeAction` is caret-addressed, so "delete this constraint" is
-  not expressible as a `DiagnosticFix`; only an action that names a `NodeId` could be. That is why the finding
-  is a duplicate name rather than a meaningless constraint.
+- **A fix could not delete a named node, and now can.** `DeleteNodeAction` was caret-addressed only, so
+  "delete this constraint" was not expressible as a `DiagnosticFix`; `DeleteNodeAction(NodeId)` is the
+  named form, added with `STD012` (a node that holds nothing but its defaults). The feature model keeps its
+  duplicate-name rule all the same: a name collision says more than "this constraint means nothing".
 - **A repair is applied through a session that already knows it** (`session.Fixes`), which `FeatureModelChecksTests`
   demonstrates end to end: the fix runs, the name changes, and the finding is gone.
 
