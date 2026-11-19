@@ -113,7 +113,29 @@ public sealed class LanguageExporterTests
         Assert.Contains("| `constraints/` |", readme, StringComparison.Ordinal);
         Assert.DoesNotContain("| `types/` |", readme, StringComparison.Ordinal);
         Assert.DoesNotContain("`Types`", readme, StringComparison.Ordinal);
-        Assert.Contains("A rule cannot be stubbed the same way", readme, StringComparison.Ordinal);
+        Assert.Contains("These cannot be stubbed", readme, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AScopeRuleAnIntentionAndAConstraintAreAllNamedAsOmitted()
+    {
+        // The export writes declarations and notation; everything that is behaviour is named rather than dropped,
+        // and none of the three can be a stub - the toolkit does not carry the assemblies they live in.
+        var readme = LanguageExporter.Export(
+            "Board",
+            [new ConceptDeclaration("Board.Card")],
+            [],
+            hasConstraints: true,
+            hasScopes: true,
+            hasIntentions: true).Files[1].Text;
+
+        Assert.Contains("| `constraints/` |", readme, StringComparison.Ordinal);
+        Assert.Contains("| `scopes/` |", readme, StringComparison.Ordinal);
+        Assert.Contains("| `intentions/` |", readme, StringComparison.Ordinal);
+
+        // No stub is emitted for any of them, so the README does not claim one.
+        Assert.DoesNotContain("`Types`", readme, StringComparison.Ordinal);
+        Assert.Contains("These cannot be stubbed", readme, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -46,6 +46,8 @@ public static class LanguageExporter
             language.HasTypes,
             language.HasGenerators,
             language.HasConstraints,
+            language.HasScopes,
+            language.HasIntentions,
             output);
     }
 
@@ -57,6 +59,8 @@ public static class LanguageExporter
     /// <param name="hasTypes">Whether the language declares type rules this export cannot write.</param>
     /// <param name="hasGenerators">Whether it declares text generators this export cannot write.</param>
     /// <param name="hasConstraints">Whether it declares constraints this export cannot write.</param>
+    /// <param name="hasScopes">Whether it declares scope rules this export cannot write.</param>
+    /// <param name="hasIntentions">Whether it declares intentions this export cannot write.</param>
     /// <param name="output">Whether to compile the generated source into an assembly as well.</param>
     /// <exception cref="ExportCompilationException">The generated source does not compile.</exception>
     public static ExportResult Export(
@@ -67,6 +71,8 @@ public static class LanguageExporter
         bool hasTypes = false,
         bool hasGenerators = false,
         bool hasConstraints = false,
+        bool hasScopes = false,
+        bool hasIntentions = false,
         ExportOutput output = ExportOutput.Source)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -74,7 +80,7 @@ public static class LanguageExporter
         ArgumentNullException.ThrowIfNull(notations);
 
         var className = ClassName(name);
-        var omitted = Omissions(hasTypes, hasGenerators, hasConstraints);
+        var omitted = Omissions(hasTypes, hasGenerators, hasConstraints, hasScopes, hasIntentions);
         var source = Source(name, className, namespaceName, declarations, notations, omitted);
 
         return new ExportResult(
@@ -85,7 +91,7 @@ public static class LanguageExporter
             output == ExportOutput.Assembly ? AssemblyCompiler.Compile(className, source) : null);
     }
 
-    private static List<string> Omissions(bool hasTypes, bool hasGenerators, bool hasConstraints)
+    private static List<string> Omissions(bool hasTypes, bool hasGenerators, bool hasConstraints, bool hasScopes, bool hasIntentions)
     {
         var omitted = new List<string>();
 
@@ -102,6 +108,16 @@ public static class LanguageExporter
         if (hasConstraints)
         {
             omitted.Add("constraints");
+        }
+
+        if (hasScopes)
+        {
+            omitted.Add("scopes");
+        }
+
+        if (hasIntentions)
+        {
+            omitted.Add("intentions");
         }
 
         return omitted;
@@ -280,7 +296,7 @@ public static class LanguageExporter
             }
 
             var stubbed = omitted
-                .Where(folder => folder is not "constraints")
+                .Where(folder => folder is not ("constraints" or "scopes" or "intentions"))
                 .Select(folder => folder == "types" ? "`Types`" : "`Generators`")
                 .ToList();
 
@@ -292,12 +308,14 @@ public static class LanguageExporter
                 lines.Add("would answer in a package beside this language.");
             }
 
-            if (omitted.Contains("constraints"))
+            var unstubbable = omitted.Where(folder => folder is "constraints" or "scopes" or "intentions").ToList();
+
+            if (unstubbable.Count > 0)
             {
                 lines.Add(string.Empty);
-                lines.Add("A rule cannot be stubbed the same way: a `ConstraintSet` lives in");
-                lines.Add("`Projectional.Semantics`, which the toolkit deliberately does not aggregate, so a");
-                lines.Add("language that declares one needs a behaviour package beside it.");
+                lines.Add("These cannot be stubbed: they live in the assembly the toolkit deliberately does");
+                lines.Add("not carry - constraints and scopes in `Projectional.Semantics`, intentions in");
+                lines.Add("`Projectional.Editing` - so write them in a behaviour package beside the language.");
             }
         }
 
@@ -308,6 +326,8 @@ public static class LanguageExporter
     {
         "types" => "a type rule answers one question per node - behaviour, not data",
         "generator" => "a template is behaviour, not data",
+        "scopes" => "a scope rule says where names come from - behaviour beside the editor",
+        "intentions" => "an intention produces an edit - behaviour beside the editor",
         _ => "a rule reports and never repairs, so it belongs beside the editor",
     };
 
