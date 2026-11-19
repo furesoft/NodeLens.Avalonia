@@ -19,9 +19,10 @@ namespace Projectional.Structures.Intentions;
 /// nothing, so the list shows one line and never two.
 /// </para>
 /// <para>
-/// The package sits beside the language rather than inside it for the reason
-/// <c>Projectional.Expressions.Intentions</c> gives: an intention produces an <see cref="EditAction"/>, so it needs
-/// the editing layer, and a language package that dragged the editor in could no longer be used headlessly.
+/// The intentions sit in this project's `Intentions/` folder (namespace unchanged) for the reason
+/// <c>Projectional.Expressions.Intentions</c> gives: an intention produces an <see cref="EditAction"/>, so it
+/// names the editing layer, and that behaviour belongs with the language it edits
+/// ([ADR 0021](../../../docs/adr/0021-one-project-per-language.md)).
 /// </para>
 /// </remarks>
 public sealed class StructureIntentions : IIntentionProvider

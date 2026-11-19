@@ -248,7 +248,8 @@ its left operand, and a name is `Unknown` because what it means depends on a dec
 does not have. They ship **with** the language, not beside it: a host that declares a slot over
 `Expression` asks the language it borrowed what may stand there, and composes nothing extra. That is the
 one thing the type rules share with the notation and the typing rules rather than with intentions and
-checks - those two produce edits, so they must live beside the language; a type rule only answers a
+checks - those two produce edits, so they live in the language's own project beside its concepts (in
+`Checks/` and `Intentions/`, [ADR 0021](../adr/0021-one-project-per-language.md)); a type rule only answers a
 question.
 
 ### The declared form

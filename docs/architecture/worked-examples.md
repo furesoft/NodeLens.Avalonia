@@ -75,7 +75,7 @@ walk from `initial` that takes the first transition whose source matches, and a 
 non-final state or exceeds `MaxSteps` is a failure that says where it stopped.
 
 **Delivered.** `src/Projectional.Samples.StateMachine` (language, notations, evaluation),
-`src/Projectional.Samples.StateMachine.Checks` (the unreachable-state constraint), `Corpus/release.mps`
+`src/Projectional.Samples.StateMachine/Checks` (the unreachable-state constraint), `Corpus/release.mps`
 written by the writer and re-saved byte-identically, and `StateMachineNotationsTests`,
 `StateMachineConstraintsTests`, `StateMachineEvaluationTests`, `StateMachineCorpusTests`.
 

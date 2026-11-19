@@ -31,7 +31,7 @@ What is next, in order:
    in one pass.
 3. **The three worked examples.** One sample language per axis the framework bets on - references and two
    notations (state machine), constraints and a generator (feature model), cross-model references and the
-   table cell in earnest (SQL schema) - each shipped as a package with a `…Checks` beside it, a `Corpus/` and
+   table cell in earnest (SQL schema) - each one project with its checks in `Checks/`, a `Corpus/` and
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
    ([worked-examples.md](architecture/worked-examples.md)). **All three are delivered.** Between them they
    found and closed four gaps - a table column naming a reference, a reference crossing a model boundary, a
@@ -71,7 +71,7 @@ Pilot: **rule / decision tables** (business rules with conditions, outcomes, tab
 | Constraints | the engine, the aspect and the first consumer are in [implemented.md](implemented.md); what is left is the dependency-set incrementality ([semantics.md](architecture/semantics.md#incrementality)) |
 | Text generation | the template tree, the engine with its traceability map, two generators for the sample language and the declared generator language (a `generator` folder, one generator per document) are in [implemented.md](implemented.md); what is left is the generator for a second consumer (the C# base language, M6), whose target needs the model-producing stage ([model-generation.md](architecture/model-generation.md)) |
 | Interpreter | the `Evaluate` aspect, the value model, the runtime with trace, step budget and cancellation, the pilot's decision-list rules, and the shell's Run command with its output panel are in [implemented.md](implemented.md); what is left is stepping (open question 11) |
-| Worked examples | three sample language packages, one per axis, each with a `…Checks` package, a `Corpus/` that round-trips byte-identically and snapshot tests that pin the notation: a state machine (references, two notations), a feature model (constraints over references, a generator, an interpreter) and a SQL schema (cross-model references, the table cell in earnest) ([worked-examples.md](architecture/worked-examples.md)) |
+| Worked examples | three sample language projects, one per axis, each with its check in `Checks/`, a `Corpus/` that round-trips byte-identically and snapshot tests that pin the notation: a state machine (references, two notations), a feature model (constraints over references, a generator, an interpreter) and a SQL schema (cross-model references, the table cell in earnest) ([worked-examples.md](architecture/worked-examples.md)) |
 
 **Gate:** a user writes a decision table, sees errors immediately, runs it in the
 preview and generates C# from it — both inside the embedded control in a small host

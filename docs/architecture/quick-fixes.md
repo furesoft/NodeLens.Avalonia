@@ -286,7 +286,7 @@ access.
 
 | Check | Where | Diagnostic | Fix |
 | --- | --- | --- | --- |
-| two rules of one ruleset with the same name | `Projectional.Samples.Checks` | `RULES001` on the later rule, targeting its name | rename to the first free suffix (`Check2`, `Check3`, ...) - one property write |
+| two rules of one ruleset with the same name | `Projectional.Samples/Checks/` | `RULES001` on the later rule, targeting its name | rename to the first free suffix (`Check2`, `Check3`, ...) - one property write |
 | a name still carrying its concept's placeholder | `Projectional.Workbench/Checks/DefaultNames.cs` | `SHELL001`, unchanged | name it after its concept (`Rule1`) - one property write |
 
 Neither needs scope resolution, type inference or a constraint engine: the first walks one child slot and
@@ -456,7 +456,7 @@ being worth its demonstration.
 | `STD012` | `EmptyNodeCheck` | a delete addressed by node id - `DeleteNodeAction(NodeId)`, the gap the feature-model sample recorded while writing its first repair |
 
 `STD002` is the first standard check the samples had already written by hand: `RULES001` in
-`Projectional.Samples.Checks`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the
+`Projectional.Samples/Checks/`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the
 later duplicate. **A language takes one or the other and never both** - composing `StandardChecks.Names`
 beside its own duplicate-name rule reports one node twice with two identical repairs, the hazard
 `SHELL001` beside `STD001` already records. None of the three has been retired: each carries a message and

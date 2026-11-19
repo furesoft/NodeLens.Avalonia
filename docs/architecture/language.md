@@ -423,8 +423,10 @@ Two of these are implemented, and both took a shape of their own: a constraint i
 **Where an aspect lives is decided by what it needs.** One that only answers a question
 about a node belongs to the language, so the language package declaring the concepts can
 declare it too - that is why typing rules, emphasis and types are in `Projectional.Language`.
-One that produces *edits* has to reference `Editing`, so it lives beside the language in a
-package of its own: `Projectional.Expressions.Intentions`, `Projectional.Samples.Checks`.
+One that produces *edits* has to reference `Editing`, so it lives in the language's own
+project, in an `Intentions/` folder (`Projectional.Expressions/Intentions/`,
+`Projectional.Samples/Checks/`) with its namespace unchanged ([ADR
+0021](../adr/0021-one-project-per-language.md)).
 `ExpressionsLanguage.Types` is the worked example of the first rule, and the reason the
 type model is not in `Projectional.Semantics`.
 
