@@ -401,6 +401,14 @@ let a click on a generated line move the caret to the node that wrote it.
   belongs to the language and not to each occurrence. That is what lets an editor mark the document instead of
   surprising its author with a failure when they press Generate. It carries no repair, so it is a diagnostic and not a
   fix: writing a template is an author's decision, and no edit action can guess it.
+- **A language with several generators is asked once per generator.** `GenerationCoverage.Of(model, generators)` is the
+  overload a shell uses, because a document can be complete for one target and not for another - and the message names
+  the generator that stops, so a user reading a mark knows which menu entry to avoid. A language that declares no
+  generator reports nothing: "cannot be printed" is not a defect of a document there is no target for.
+- **The shell shows it, through the same list as everything else.** `DocumentFindings.Of(..., reports:)` is the join:
+  reports are the caller's findings that carry no repair, appended after the constraint findings, so `PublishFindings`
+  hands the coverage of *every* generator the document offers to the markers and the problems panel. One list stays one
+  list - a shell that drew coverage in a second place would be a second answer to "what should I look at".
 - **Indentation comes from the template, never from counting the child's text.** A separator is a template as well, so
   a list on separate lines is `ChildrenPart(slot, Template(LineBreakPart))` inside an `IndentPart` - no "indent" flag,
   and a nested block cannot be indented by whatever its child happened to produce.

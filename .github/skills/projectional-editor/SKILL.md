@@ -1112,6 +1112,9 @@ design of record.
 - **`GenerationCoverage.Of(model, generator)` is the editor's hint**: one diagnostic per concept the chosen generator
   cannot print, at its first node in document order, carrying no repair (writing a template is the author's decision).
   The run still stops with a `GenerationFailure` - a report is what lets a user find out before pressing Generate.
+  **The shell shows it**: the `Of(model, IEnumerable<TextGenerator>)` overload is asked once per generator the document
+  offers, and the findings go into `DocumentFindings.Of(..., reports:)` - so coverage reaches the squiggles and the
+  problems panel like any other finding, as a marker and a row and never as a repair.
 - **Indentation is the template's, never counted from the text.** `LineBreakPart` writes the newline *and* the current
   indentation; `IndentPart` raises the level for the lines inside it. A separator is a `TextTemplate` too, which is why
   a list on separate lines is `ChildrenPart(slot, Template(LineBreakPart))` inside an `IndentPart` - an "indent" flag

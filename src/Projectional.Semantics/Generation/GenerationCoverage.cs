@@ -64,4 +64,28 @@ public static class GenerationCoverage
 
         return findings;
     }
+
+    /// <summary>What none of <paramref name="generators"/> can print in <paramref name="model"/>.</summary>
+    /// <param name="model">The document to inspect.</param>
+    /// <param name="generators">The generators the language offers; empty answers nothing.</param>
+    /// <remarks>
+    /// One finding per concept <em>per generator</em>, because each generator is a separate target and a language can
+    /// be complete for one and not the other. A document whose language declares no generator therefore reports
+    /// nothing, which is right: there is nothing to print it with, and "cannot generate" is not a defect of the
+    /// document.
+    /// </remarks>
+    public static IReadOnlyList<Diagnostic> Of(Model model, IEnumerable<TextGenerator> generators)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(generators);
+
+        List<Diagnostic> findings = [];
+
+        foreach (var generator in generators)
+        {
+            findings.AddRange(Of(model, generator));
+        }
+
+        return findings;
+    }
 }
