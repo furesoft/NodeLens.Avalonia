@@ -104,6 +104,11 @@ internal static class DeclarationWriter
             lines.Add($"collapseSlot: {SourceWriter.Literal(declaration.CollapseSlot)},");
         }
 
+        if (declaration.NameRule is not null)
+        {
+            lines.Add($"nameRule: NameRule.{NameRuleMember(declaration.NameRule)},");
+        }
+
         if (declaration.Description is not null)
         {
             lines.Add($"description: {SourceWriter.Literal(declaration.Description)},");
@@ -126,6 +131,18 @@ internal static class DeclarationWriter
 
         return lines;
     }
+
+    /// <summary>The static member of <see cref="NameRule"/> a declaration's rule is written as.</summary>
+    /// <remarks>
+    /// The generated file names the singletons rather than calling <c>NameRule.Parse</c>, so the text a language
+    /// author reads is the same text the language itself declares with.
+    /// </remarks>
+    private static string NameRuleMember(NameRule rule) => rule.Text switch
+    {
+        "any" => "AnyText",
+        "identifier" => "Identifier",
+        _ => throw new InvalidOperationException($"'{rule.Text}' is not a name rule."),
+    };
 
     private static string SlotText(SlotDeclaration slot) => slot switch
     {

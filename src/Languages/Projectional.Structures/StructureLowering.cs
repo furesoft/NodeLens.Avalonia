@@ -136,6 +136,9 @@ public static class StructureLowering
             isOfferedInCompletion: Flag(concept, "isOfferedInCompletion"),
             description: Optional(concept, "description"),
             collapseSlot: Optional(concept, "collapseSlot"),
+            // An empty cell means "inherit", not "any": the declaration stays null and the registry walks the
+            // supers. A word the enumeration does not offer cannot reach here, because the model refuses it.
+            nameRule: Optional(concept, "nameRule") is { } rule ? NameRule.Parse(rule) : null,
             isInterface: isInterface,
             interfaces: concept.GetChildren(StructureLanguage.ImplementsSlot)
                 .Select(implemented => Required(implemented, "conceptKey", $"'{key}'")));

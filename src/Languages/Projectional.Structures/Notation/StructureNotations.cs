@@ -113,6 +113,7 @@ public static class StructureNotations
                 ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
                 ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
                 ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
+                ed.Line(ed.Keyword("named by rule:"), ed.Space, ed.Property("nameRule")),
                 ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
                 ed.Line(ed.Keyword("properties:")),
                 ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoProperties, stacked: true)),

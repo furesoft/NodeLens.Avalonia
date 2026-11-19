@@ -47,7 +47,8 @@ internal sealed class DefinitionBuilder
         string? description = null,
         string? collapseSlot = null,
         bool isInterface = false,
-        IReadOnlyList<string>? implements = null)
+        IReadOnlyList<string>? implements = null,
+        string? nameRule = null)
     {
         var concept = Start(StructureConceptKeys.Concept);
 
@@ -68,6 +69,11 @@ internal sealed class DefinitionBuilder
         if (collapseSlot is not null)
         {
             concept.Set("collapseSlot", collapseSlot);
+        }
+
+        if (nameRule is not null)
+        {
+            concept.Set("nameRule", nameRule);
         }
 
         foreach (var super in supers ?? [])

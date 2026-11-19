@@ -40,6 +40,7 @@ internal static class ParityHarness
                 .Append(concept.IsOfferedInCompletion ? string.Empty : " hidden")
                 .Append(" name=").Append(concept.NameSlot?.Name ?? "-")
                 .Append(" collapse=").Append(concept.CollapseSlot?.Name ?? "-")
+                .Append(" nameRule=").Append(concept.NameRule?.Text ?? "-")
                 .Append(" description=").Append(concept.Description ?? "-")
                 .Append(" supers=").AppendJoin('>', concept.SuperConcepts.Select(super => super.Key))
                 .Append(" extends=").AppendJoin('>', concept.Extensions.Select(super => super.Key))

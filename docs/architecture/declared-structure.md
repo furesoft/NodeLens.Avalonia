@@ -38,6 +38,7 @@ concept Rules.Element {
   offered in completion: true
   named by:
   collapsed by:
+  named by rule:
   described as:
   properties:
     <<property name : string
@@ -56,6 +57,7 @@ abstract concept Rules.Rule extends Rules.Element, implements Framework.Named {
   offered in completion: true
   named by: name
   collapsed by:
+  named by rule:
   described as: One rule of a ruleset.
   properties:
     <<property name : string
@@ -78,7 +80,7 @@ draws the word, which is a [conditional cell](language.md#notation) - and the re
 | Concept | Holds |
 | --- | --- |
 | `Structure.Language` | the definition: `enumerations`, `concepts` |
-| `Structure.Concept` | `key`, `isAbstract`, `isOfferedInCompletion`, `description`, `nameSlot`, `collapseSlot`, `supertypes`, `properties`, `children`, `references` |
+| `Structure.Concept` | `key`, `isAbstract`, `isOfferedInCompletion`, `description`, `nameSlot`, `collapseSlot`, `nameRule`, `supertypes`, `properties`, `children`, `references` |
 | `Structure.SuperType` | `conceptKey` |
 | `Structure.Slot` (abstract) | `name` |
 | `Structure.PropertyDecl` | `typeName`, `defaultValue`, `description` |

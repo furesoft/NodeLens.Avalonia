@@ -108,6 +108,11 @@ public static class StructureLanguage
                     PropertyType.String,
                     description: "The name of the boolean property that says whether a node may be folded.",
                     showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "nameRule",
+                    PropertyType.Enum(["any", "identifier"]),
+                    description: "What a name of this concept may look like: any text, or an identifier. Empty means inherit.",
+                    showDescriptionWhenFilled: true),
                 new ChildSlot(SuperTypeSlot, StructureConceptKeys.SuperType, Cardinality.Many),
 
                 // Two slots rather than one with a kind flag: the header writes two words, and a kind stored on

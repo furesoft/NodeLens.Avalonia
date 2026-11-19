@@ -436,6 +436,13 @@ public sealed class ConceptRegistry
             collapseSlot = collapseProperty;
         }
 
+        // The same walk as the name slot, and for the same reason: a concept named by an identifier stays that way
+        // below itself, and a language re-declares the rule only to override it. Unlike the name slot this stays
+        // nullable, because "nobody declared a rule" is a fact a subtype must be able to see past - a default here
+        // would let the framework's own Named interface answer "any" for every concept that implements it.
+        var nameRule = declaration.NameRule
+            ?? supers.Select(super => super.NameRule).FirstOrDefault(rule => rule is not null);
+
         return new Concept(
             declaration.Key,
             supers,
@@ -449,7 +456,8 @@ public sealed class ConceptRegistry
             declaration.Triggers,
             declaration.IsInterface,
             extensions,
-            interfaces);
+            interfaces,
+            nameRule);
     }
 
     /// <summary>
