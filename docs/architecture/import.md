@@ -388,7 +388,7 @@ For a notation of a real file format that means the operations of that format:
 | Language | Intentions | Checks, each with its repair |
 | --- | --- | --- |
 | JSON | add a member to an object, add an item to an array | a string or name no longer spelled as JSON requires (escape it), a number slot that no longer holds a number (restore the declared default), one member name used twice (rename the later one) |
-| XML | add an attribute, add a child element - the two slots the notation cannot draw empty | text or an attribute value no longer well-formed (escape it), a name that is not a legal XML name |
+| XML | add an attribute, add a child element - the two slots the notation cannot draw empty | text or an attribute value no longer well-formed (escape it), a comment containing `--` (separate the dashes) |
 | TOML | a table or an array of tables where one is needed, a key insertion | a duplicate key (the format rejects one), a date/time whose text no longer parses |
 | HOCON | add a property, add an element to an array | an unquoted value that is not a legal token |
 
