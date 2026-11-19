@@ -37,5 +37,7 @@ dotnet test
 - Every concept needs a notation. A missing one renders as a missing-notation cell rather than throwing.
 - Add a golden corpus: save a document, commit the `.mps` file, and assert that loading and saving it again produces
   the same bytes. That test is the wire format's contract.
-- A language that needs behaviour - a check, an intention, a typing rule - ships a second package beside this one
-  rather than growing a reference to the editing layer.
+- A language that needs behaviour - a check, an intention, a typing rule - adds a `Checks/` or `Intentions/` folder
+  and references the behaviour band it uses, which is how the shipped languages are shaped (one project per language,
+  ADR 0021). What the template promises is narrower on purpose: the *declaration* of a language needs the toolkit and
+  nothing else, and this project keeps it that way so a notation test stays a fast, headless test.

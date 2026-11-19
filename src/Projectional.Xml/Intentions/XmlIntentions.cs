@@ -13,9 +13,10 @@ namespace Projectional.Xml.Intentions;
 /// entries the first attribute and the first child of an element would have no gesture at all.
 /// </para>
 /// <para>
-/// A package beside the language rather than inside it, for the reason <c>Projectional.Expressions.Intentions</c> gives:
-/// an intention produces an <see cref="EditAction"/>, so it needs the editing layer, and a language package that dragged
-/// the editor in could no longer be used headlessly.
+/// They live in this language's own project (`Intentions/`, namespace unchanged), for the reason
+/// <c>Projectional.Expressions.Intentions</c> gives: an intention produces an <see cref="EditAction"/> and therefore
+/// names the editing layer, and that behaviour belongs with the language it edits
+/// ([ADR 0021](../../../docs/adr/0021-one-project-per-language.md)).
 /// </para>
 /// <para>
 /// Each entry appends: an <see cref="InsertChildAction"/> while the slot holds nothing (the only form that works on an

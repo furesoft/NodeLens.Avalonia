@@ -1,7 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    One project per language: the concepts, the notation, the importer, the generator, the checks and the
+    intentions of JSON are one assembly (ADR 0021), and `Checks/` and `Intentions/` are folders inside it.
+    Their namespaces are unchanged (`Projectional.Json.Checks`, `Projectional.Json.Intentions`), so a host
+    that names one of those types does not have to know where the code lives.
+  -->
   <ItemGroup>
+    <ProjectReference Include="..\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\Projectional.Semantics\Projectional.Semantics.csproj" />
   </ItemGroup>
 
 </Project>

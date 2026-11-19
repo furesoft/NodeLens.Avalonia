@@ -19,7 +19,6 @@
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Samples.Checks\Projectional.Samples.Checks.csproj" />
   </ItemGroup>
 
 </Project>

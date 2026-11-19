@@ -23,9 +23,9 @@ One window, one document of the shipped sample language (`Payroll`), and four bu
 
 - **A host needs nothing but published packages.** The `ProjectReference`s are `Projectional.Avalonia`
   (the control and the three entry points), `Projectional.Expressions` and `Projectional.Samples` (the
-  language), and `Projectional.Samples.Checks` (its rules). There is **no** reference to
-  `Projectional.Workbench`, so nothing here can lean on the standalone editor - a build that needed one
-  would not compile.
+  language and, since one project per language, its rules too - `Checks/` lives in that assembly). There is
+  **no** reference to `Projectional.Workbench`, so nothing here can lean on the standalone editor - a build
+  that needed one would not compile.
 - **Composing a language is three lines.** `RulesLanguage.Concepts`,
   `RulesLanguage.CreateNotations(...)` and `RulesLanguage.TypingRules`, handed to
   `ProjectionalEditorControl.OpenSession`. Everything else in this folder is window layout.

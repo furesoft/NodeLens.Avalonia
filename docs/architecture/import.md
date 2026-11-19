@@ -7,7 +7,7 @@ string is thrown away. Nothing writes text back into the model, so the invariant
 there is still no text buffer and no parser in the editing path.
 
 Status: slices **I0 (the contract), I1 (JSON), I2 (XML), I5 (appending to a non-empty model) and I7 (File ▸
-Import)** are delivered, with the intentions and checks of the two shipped languages beside them; TOML and HOCON,
+Import)** are delivered, with the intentions and checks of the two shipped languages in the same project as them; TOML and HOCON,
 the raw-text tier and the sample corpus are not. Generation is the opposite direction and is
 planned in [semantics.md](semantics.md#generation).
 
@@ -388,10 +388,12 @@ already written: `mapping.mps`, the build and link phases and the reverse map in
 ### Every reference language ships its own intentions and checks
 
 A reference language is a language like any other, so it brings behaviour of its own and not only a notation:
-`Projectional.Json.Intentions`, `Projectional.Xml.Intentions`, `Projectional.Json.Checks` and
-`Projectional.Xml.Checks` sit beside their language packages, the way `Projectional.Expressions.Intentions` and
-`Projectional.Samples.Checks` do. A language package cannot reference `Projectional.Editing`, so the intentions and
-diagnostics of a language live in a package next to it, and a host wires them for the documents of that language.
+the intentions and checks of the two shipped formats live in `Projectional.Json/Intentions/`,
+`Projectional.Json/Checks/`, `Projectional.Xml/Intentions/` and `Projectional.Xml/Checks/` - folders in the
+language's own project ([ADR 0021](../adr/0021-one-project-per-language.md)), with the namespaces they had when
+they were separate. The framework's own catalogue (`Projectional.Checks`) stays a package of its own, because it is
+shared by every language and belongs to none. TOML and HOCON get the same two folders when they land, and never a
+shared "reference languages" package - that would have to ask which language it is looking at.
 
 The split against the standard intentions is the usual one: the framework's catalogue derives what the *place* implies
 (rename, delete, move, wrap, replace, fill from the declarations), and a language adds what a declaration cannot say.

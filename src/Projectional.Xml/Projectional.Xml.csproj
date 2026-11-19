@@ -1,7 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    One project per language (ADR 0021): the markup language, its importer, its generator, its checks and its
+    intentions are this assembly, with `Checks/` and `Intentions/` as folders. The two namespaces keep their
+    names, so a host that names `Projectional.Xml.Checks.XmlChecks` is unaffected.
+  -->
   <ItemGroup>
+    <ProjectReference Include="..\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\Projectional.Semantics\Projectional.Semantics.csproj" />
   </ItemGroup>
 
 </Project>

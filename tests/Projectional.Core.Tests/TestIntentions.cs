@@ -13,10 +13,10 @@ namespace Projectional.Core.Tests;
 /// whole and let <see cref="IntentionList"/> filter it.
 /// </para>
 /// <para>
-/// It lives beside the test language rather than inside it for the reason
-/// <c>Projectional.Samples.Checks</c> lives beside the sample: an intention produces an
-/// <see cref="EditAction"/>, so it needs the editing layer, and a language package that dragged the editor in
-/// could no longer be used headlessly.
+/// It lives in a folder of the test fixture's project rather than in a package of its own - the shape
+/// [ADR 0021](../../docs/adr/0021-one-project-per-language.md) settled on: an intention produces an
+/// <see cref="EditAction"/>, so it names the editing layer, and that behaviour belongs with the language it
+/// edits.
 /// </para>
 /// </remarks>
 internal sealed class TestIntentions : IIntentionProvider

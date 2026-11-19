@@ -14,8 +14,9 @@ namespace Projectional.Json.Intentions;
 /// words of the format instead.
 /// </para>
 /// <para>
-/// A package beside the language rather than inside it, because an intention produces an <see cref="EditAction"/> and a
-/// language package must stay usable headlessly (<c>Projectional.Expressions.Intentions</c> makes the same argument).
+/// The intentions of JSON live in this language's own project (`Intentions/`, namespace unchanged): an intention
+/// produces an <see cref="EditAction"/>, so it names the editing layer, and the behaviour of a language belongs with
+/// the language ([ADR 0021](../../../docs/adr/0021-one-project-per-language.md)).
 /// </para>
 /// <para>
 /// Each entry appends: <see cref="InsertChildAction"/> while the slot holds nothing, <see cref="InsertSiblingAction"/>

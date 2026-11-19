@@ -100,7 +100,7 @@ public sealed class LanguageExporterTests
 
                 /// <summary>The declared text generators, which this export cannot write yet.</summary>
                 public static IReadOnlyList<TextGenerator> Generators =>
-                    throw new NotSupportedException("The text generators declared in 'generator' have no export spelling yet; write them in a behaviour package beside this language.");
+                    throw new NotSupportedException("The text generators declared in 'generator' have no export spelling yet; write them in this project's `Checks/` or `Intentions/` folder.");
             }
 
             """,

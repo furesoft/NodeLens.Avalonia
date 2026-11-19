@@ -58,26 +58,33 @@ makes it a usable test of the integration surface
 | --- | --- | --- |
 | `Projectional.Core` | Node/model/project containers, change events, XML persistence, migrations, registries | none |
 | `Projectional.Language` | Concept descriptors, notation descriptors, aspect registration (typing, emphasis, types), built-in bootstrap languages | none |
-| `Projectional.Expressions` | Shared expression/name sub-language (literals, operators, parentheses) that a DSL composes instead of re-declaring, with its own typing rules and types | none |
+| `Projectional.Expressions` | Shared expression/name sub-language (literals, operators, parentheses) that a DSL composes instead of re-declaring, with its own typing rules, types and its intention (`Intentions/`) | none |
 | `Projectional.Projection` | Editor tree construction, measurement, layout boxes, hit testing, caret positions | none |
 | `Projectional.Editing` | Structural edit actions, substitution/transformation menus, completion, undo | none |
 | `Projectional.Semantics` | Constraint evaluation, scope resolution, generation, interpretation | none |
 | `Projectional.Avalonia` | `ProjectionalEditorControl`, rendering of layout boxes, input, IME, clipboard, accessibility | Avalonia 12 |
 | `Projectional.Workbench` | Standalone desktop editor: document tabs, browsers, panels. **Consumer** of the public API — no internal access | Avalonia 12 |
-| `Projectional.Samples` | The toy rules language and its sample document: the working example of composing `Expressions` | none |
-| `Projectional.Samples.Checks` | What is wrong with a model of the sample language: the working example of a check beside its language | none |
-| `Projectional.Samples.Intentions` | What can be done at a caret in the sample language - "accept this rule" - and the working example of an intention package | none |
-| `Projectional.Expressions.Intentions` | The one intention the expression vocabulary ships with: negate (the grouping entry retired in favour of the catalogue's `Wrap in "Parenthesized"`) | none |
+| `Projectional.Samples` | The toy rules language and its sample document, plus the behaviour that belongs to it: its constraints and duplicate-name check (`Checks/`) and its intention (`Intentions/`) | none |
 | `Projectional.Checks` | The standard catalogue a language includes by naming it: name, structure, value and expression checks, each with its repair | none |
 | `Projectional.Toolkit` | The surface a language package is written against: one reference that brings `Core`, `Language`, `Projection` and `Persistence`, plus `LanguageSnapshot` - the drawing a notation test asserts on ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)) | none |
 | `Projectional.LanguageExport` | A declared language becomes the C# a package is made of: its declaration and notation calls, a README naming what the export cannot write, and - on request - the compiled assembly ([language-authoring.md](language-authoring.md#export-declared-to-c)) | none |
 | `tests/*` | Unit and snapshot tests | none |
 
+**One project per language** ([ADR 0021](../adr/0021-one-project-per-language.md)): `Projectional.Json`,
+`Projectional.Xml`, `Projectional.Structures` and the three worked examples
+(`Projectional.Samples.FeatureModel`, `.StateMachine`, `.SqlSchema`) sit beside `Projectional.Samples`,
+and each of them carries its own checks and intentions in `Checks/` and `Intentions/` folders. The
+namespaces keep their old names (`Projectional.Json.Checks` and so on), so where a type lives is a
+question about the project, not about the API.
+
 Three assemblies expose the *editor* API: `Projectional.Core`, `Projectional.Avalonia` and - since
 [ADR 0019](../adr/0019-toolkit-is-the-language-surface.md) - `Projectional.Toolkit`, which is what a
 language package references instead of reaching into four assemblies. `Language`, `Projection` and
 `Persistence` are public as a consequence of being aggregated there; `Editing` and `Semantics` stay
-internal, which is what keeps a language headless. Libraries a *host* calls for one capability -
+internal, which is what keeps a language *authored against the toolkit* headless. A shipped language
+package carries its own checks and intentions, so it references them - that is the arrow ADR 0021 adds,
+and the tower a host inherits is the same one it had when those packages were separate. Libraries a
+*host* calls for one capability -
 `Projectional.Languages` (opening a language folder) and `Projectional.LanguageExport` (turning one
 into a package) - are public for the same reason the control is: they are the surface of that
 capability rather than an internal another layer happens to name. Everything else is `internal`

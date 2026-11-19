@@ -362,7 +362,7 @@ What M2 delivers so a language author needs nothing else:
 
 | Piece | Content |
 | --- | --- |
-| `Projectional.Toolkit` package | one reference instead of five internals; aggregates `Core`, `Language`, `Projection` and `Persistence` and exposes `LanguageSnapshot` ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)). `Editing` and `Semantics` are deliberately **not** aggregated: they are what keeps a language headless, and a language that needs behaviour ships a second package beside it |
+| `Projectional.Toolkit` package | one reference instead of five internals; aggregates `Core`, `Language`, `Projection` and `Persistence` and exposes `LanguageSnapshot` ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)). `Editing` and `Semantics` are deliberately **not** aggregated: they are what keeps a language *authored against the toolkit* headless. A shipped language package may carry its own behaviour in `Checks/` and `Intentions/` folders and reference them ([ADR 0021](../adr/0021-one-project-per-language.md)) - the toolkit is the authoring surface, not the packaging rule |
 | `dotnet new projectional-language` | `templates/projectional-language`: concepts, their notation, a sample model and two tests (the drawing, and the round trip), so a language starts testable. The round trip replaces the committed golden corpus the plan asked for: a generated project cannot carry a corpus file that was never written, and the test that asserts byte equality is the contract either way |
 | Composition, not inheritance | `[.. ExpressionsLanguage.ConceptDeclarations, .. own]` - a language borrows, it does not descend |
 | Golden corpus | one `.mps` document per language as the byte-stability test ([persistence.md](persistence.md)) |

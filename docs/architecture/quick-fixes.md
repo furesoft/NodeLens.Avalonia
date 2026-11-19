@@ -286,7 +286,7 @@ access.
 
 | Check | Where | Diagnostic | Fix |
 | --- | --- | --- | --- |
-| two rules of one ruleset with the same name | `Projectional.Samples.Checks` | `RULES001` on the later rule, targeting its name | rename to the first free suffix (`Check2`, `Check3`, ...) - one property write |
+| two rules of one ruleset with the same name | `Projectional.Samples/Checks/` | `RULES001` on the later rule, targeting its name | rename to the first free suffix (`Check2`, `Check3`, ...) - one property write |
 | a name still carrying its concept's placeholder | `Projectional.Workbench/Checks/DefaultNames.cs` | `SHELL001`, unchanged | name it after its concept (`Rule1`) - one property write |
 
 Neither needs scope resolution, type inference or a constraint engine: the first walks one child slot and
@@ -294,14 +294,15 @@ compares sibling names, the second compares a name against the concept's declare
 model-only edits, both are one property write, and both are undoable by the mechanism that already
 exists.
 
-**The check did not go inside the language package, and that is a correction to this plan.** A fix
-produces an `EditAction` and a diagnostic, so a check needs `Projectional.Editing` and
-`Projectional.Semantics` - but `Projectional.Samples` references only `Language` and `Expressions`
-precisely so that a language can be used headlessly. Putting the check there would have made every
-consumer of the sample drag in the editor. The shape that ships is therefore **a checks package beside
-the language**: `Projectional.Samples` declares the language, `Projectional.Samples.Checks` declares what
-is wrong with a model of it. That is also the recommendation for a real DSL, and it is open question 59
-answered.
+A check produces diagnostics *and* edits, so it needs `Editing` and `Semantics` - layers `Projectional.Samples`
+did not reference at the time, because a language package was supposed to stay dependency-free of the editor.
+The rule that followed was "a language ships a second package beside it", and it is what
+`Projectional.Samples.Checks` was. [ADR 0021](../adr/0021-one-project-per-language.md) replaced that with one
+project per language: the checks are `Projectional.Samples/Checks/` in the language's own assembly, the
+namespace is unchanged, and the language project references the behaviour band it uses. What survives from
+the rule is the part that was always the point - the *catalogue* stays a shared package
+(`Projectional.Checks`), because it belongs to every language and to none, and open question 59 is answered
+that way.
 
 One thing fell out of doing it that way: the check answers with `IReadOnlyList<DiagnosticFix>` rather
 than with diagnostics, because every finding it makes has a cure and a fix carries its own diagnostic.
@@ -455,7 +456,7 @@ being worth its demonstration.
 | `STD012` | `EmptyNodeCheck` | a delete addressed by node id - `DeleteNodeAction(NodeId)`, the gap the feature-model sample recorded while writing its first repair |
 
 `STD002` is the first standard check the samples had already written by hand: `RULES001` in
-`Projectional.Samples.Checks`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the
+`Projectional.Samples/Checks/`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the
 later duplicate. **A language takes one or the other and never both** - composing `StandardChecks.Names`
 beside its own duplicate-name rule reports one node twice with two identical repairs, the hazard
 `SHELL001` beside `STD001` already records. None of the three has been retired: each carries a message and

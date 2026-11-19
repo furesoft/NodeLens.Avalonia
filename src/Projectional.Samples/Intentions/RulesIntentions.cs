@@ -14,8 +14,9 @@ namespace Projectional.Samples.Intentions;
 /// copied into the package.
 /// </para>
 /// <para>
-/// It lives beside the language rather than inside it for the reason <c>Projectional.Samples.Checks</c>
-/// gives: it produces an <see cref="EditAction"/>, so it needs the editing layer.
+/// It lives in this language's own project, in `Intentions/` (namespace unchanged): it produces an
+/// <see cref="EditAction"/>, so it names the editing layer, and that behaviour belongs with the language it
+/// edits ([ADR 0021](../../../docs/adr/0021-one-project-per-language.md)).
 /// </para>
 /// </remarks>
 public sealed class RulesIntentions : IIntentionProvider
