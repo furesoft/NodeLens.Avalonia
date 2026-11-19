@@ -46,6 +46,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Projectional.Core.Tests" />
+    <!--
+      The screenshot tool hosts the shipping window and opens the worked-example document a picture needs through the
+      same seam a tab is opened with. It is a repository harness like the tests - not a consumer proving the public
+      surface - so it gets the same access and no more.
+    -->
+    <InternalsVisibleTo Include="Projectional.Screenshots" />
   </ItemGroup>
 
   <!--
