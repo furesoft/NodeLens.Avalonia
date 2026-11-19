@@ -99,6 +99,30 @@ public sealed class PlaceholderNameCheckTests
     }
 
     [Fact]
+    public void AProposalIsRespelledByTheConceptsNameRule()
+    {
+        // The repair may not write a name the language would report: `Item1` is no snake_case, so the offer is
+        // `item1`. The proposal is computed by the same NameRule.Propose the spelling check offers, which is what
+        // makes one repair enough.
+        var registry = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Test.Item",
+                [new PropertySlot("name", PropertyType.String, "unnamed")],
+                nameSlot: "name",
+                nameRule: NameRule.Snake),
+        ]);
+
+        var model = new Project(registry).NewModel("document");
+        model.AddRoot(model.NewNode("Test.Item"));
+
+        var fix = Assert.Single(Check.Find(model));
+
+        Assert.Equal("Name it \"item1\"", fix.Label);
+        Assert.True(NameRule.Snake.IsValid("item1"));
+    }
+
+    [Fact]
     public void AModelThatIsNullIsRejected()
     {
         Assert.Throws<ArgumentNullException>(() => Check.Find(null!));
