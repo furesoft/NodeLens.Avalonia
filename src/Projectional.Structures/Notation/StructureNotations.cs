@@ -46,7 +46,11 @@ namespace Projectional.Structures.Notation;
 /// </remarks>
 public static class StructureNotations
 {
-    /// <summary>The empty state of one of the header's two lists, where the word before it already says which.</summary>
+    /// <summary>
+    /// The empty state of one of the header's two lists. Unreachable by construction - a list is only drawn while it
+    /// is filled - and kept because a cell that can be empty has to say something, so the impossible state reads as
+    /// the list it is rather than as a blank.
+    /// </summary>
     private const string NoInheritance = "<<>>";
 
     private const string NoProperties = "<<property>>";
@@ -71,6 +75,14 @@ public static class StructureNotations
         // conditional holds inline cells, and a conditional is an inline cell, so "abstract unless interface" is
         // two of them. Drawing both would say the same thing twice, because an interface is abstract by
         // definition.
+        // The two lists are drawn only while they hold something, which is what makes a header read as a sentence
+        // about this concept: `concept Rule extends Condition {` says what it extends, and a concept that extends
+        // nothing does not mention extends at all. The price is that the first entry has nowhere to be typed -
+        // `StructureIntentions.InheritFrom`/`ImplementInterface` are the way in, exactly as "make abstract" is for
+        // the word that has no cell either.
+        //
+        // The comma between the two lists sits inside the second one and is conditioned on the first: `extends A
+        // implements B` has none, and a comma that stayed behind while its list vanished would dangle.
         notations.Add(StructureConceptKeys.Concept, ed => ed.Sequence(
             ed.Line(
                 ed.Conditional(StructureLanguage.IsInterfaceProperty, "true", ed.Keyword("interface"), ed.Space),
@@ -81,15 +93,19 @@ public static class StructureNotations
                 ed.Keyword("concept"),
                 ed.Space,
                 ed.Property(StructureLanguage.KeySlot),
-                ed.Space,
-                ed.Keyword("extends"),
-                ed.Space,
-                ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance),
-                ed.Punct(","),
-                ed.Space,
-                ed.Keyword("implements"),
-                ed.Space,
-                ed.InlineCollection(StructureLanguage.ImplementsSlot, ed.Punct(","), NoInheritance),
+                ed.WhenFilled(
+                    StructureLanguage.SuperTypeSlot,
+                    ed.Space,
+                    ed.Keyword("extends"),
+                    ed.Space,
+                    ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance)),
+                ed.WhenFilled(
+                    StructureLanguage.ImplementsSlot,
+                    ed.WhenFilled(StructureLanguage.SuperTypeSlot, ed.Punct(",")),
+                    ed.Space,
+                    ed.Keyword("implements"),
+                    ed.Space,
+                    ed.InlineCollection(StructureLanguage.ImplementsSlot, ed.Punct(","), NoInheritance)),
                 ed.Space,
                 ed.Punct("{")),
             ed.Indent(ed.Sequence(

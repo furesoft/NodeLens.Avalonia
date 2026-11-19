@@ -34,7 +34,7 @@ enum Rules.Outcome
 ```
 
 ```text
-concept Rules.Element extends <<>>, implements <<>> {
+concept Rules.Element {
   offered in completion: true
   named by:
   collapsed by:
@@ -114,11 +114,12 @@ header, what it allows in the options, and what it holds in three named sections
 
 Three decisions make that readable, and all three are P4:
 
-- **The header carries the inheritance** - `concept Rules.Rule extends Rules.Element, implements Framework.Named
-  {`. Both lists are inline collections, and each keeps a placeholder while it is empty: `extends <<>>, implements
-  <<>>`. That is what a cell which hid an empty slot could not do, and why the inheritance is a collection with a
-  placeholder rather than a line that disappears - the place the first super concept is written into stays visible
-  and fillable.
+- **The header carries the inheritance, and only what is true** - `concept Rules.Rule extends Rules.Element,
+  implements Framework.Named {`, and `concept Rules.Rule {` when there is neither. Both lists are inline
+  collections wrapped in a [while-filled cell](language.md#notation), so an empty one draws nothing at all rather
+  than a placeholder nobody wants to read. The price is stated in the same place as the feature: an empty list has
+  no caret stop, so `Inherit from…` and `Implement interface…` (`Projectional.Structures.Intentions`) are the way
+  to write the first entry, and both step aside once the list is on screen.
 - **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`, `<<child steps :
   Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>`. A property carries three option lines under
   it, so without a visible end the reader cannot tell where one declaration stops and the next begins. The word
@@ -126,9 +127,11 @@ Three decisions make that readable, and all three are P4:
 - **Every collection stacks, and an empty one names its kind.** Layout draws a collection inline unless the
   notation asks it to ([projection.md](projection.md) §Layout), so two properties of one concept used to be drawn
   side by side and an enumeration's symbols shared a line. A definition is read one declaration per line. The empty
-  state is `<<property>>`, `<<child>>`, `<<reference>>` and `<<symbol>>` rather than one shared placeholder, because
-  the section heading groups declarations and the placeholder has to say which kind stands in the slot it will
-  create - a placeholder that said nothing would offer Enter a slot it could not name.
+  state of a *slot* section is `<<property>>`, `<<child>>`, `<<reference>>` and `<<symbol>>` rather than one shared
+  placeholder, because the section heading groups declarations and the placeholder has to say which kind stands in
+  the slot it will create - a placeholder that said nothing would offer Enter a slot it could not name. The two
+  header lists are the exception that proves it: their words are `extends` and `implements`, so they need no
+  placeholder and are simply not drawn.
 
 What that look needs is a cell that can disappear, and the notation layer has one: a
 [conditional cell](language.md#notation) draws its inline cells only while a property holds a value. `abstract` is

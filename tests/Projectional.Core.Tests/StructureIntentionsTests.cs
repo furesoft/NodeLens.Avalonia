@@ -37,9 +37,15 @@ public sealed class StructureIntentionsTests
         var (session, _) = Document(isAbstract: true);
 
         // "Make abstract" is absent rather than disabled - an entry that would change nothing is noise, and the
-        // catalogue drops it - so what is left at an abstract concept is the direction that changes something.
+        // catalogue drops it - so what is left at an abstract concept is the direction that changes something,
+        // followed by the two entries that can still add a first inheritance, because this fixture has neither.
         Assert.Equal(
-            [StructureIntentions.MakeConcreteId, StructureIntentions.MakeInterfaceId],
+            [
+                StructureIntentions.MakeConcreteId,
+                StructureIntentions.MakeInterfaceId,
+                StructureIntentions.InheritFromId,
+                StructureIntentions.ImplementInterfaceId,
+            ],
             IntentionList.For(session).Select(offer => offer.Id));
     }
 
@@ -51,7 +57,11 @@ public sealed class StructureIntentionsTests
         var (session, _) = Document(isAbstract: true, isInterface: true);
 
         Assert.Equal(
-            [StructureIntentions.MakeConceptId],
+            [
+                StructureIntentions.MakeConceptId,
+                StructureIntentions.InheritFromId,
+                StructureIntentions.ImplementInterfaceId,
+            ],
             IntentionList.For(session).Select(offer => offer.Id));
     }
 
@@ -131,9 +141,15 @@ public sealed class StructureIntentionsTests
     public void TheGestureOpensTheListEvenWithOnlyOneIntention()
     {
         // The route the user actually takes: the keystroke asks what can be done here, and the answer is a
-        // list - of one row, this time, because the gesture applies nothing by itself. An interface is the
-        // fixture that has exactly one: it cannot become abstract or concrete, and "make interface" is absent.
-        var (session, concept) = Document(isAbstract: true, isInterface: true);
+        // list - of one row, this time, because the gesture applies nothing by itself. An interface whose two
+        // headers lists are already written is the fixture that has exactly one: it cannot become abstract or
+        // concrete, "make interface" is absent, and both entries for a first inheritance are gone as soon as the
+        // list is on screen.
+        var (session, concept) = Document(
+            isAbstract: true,
+            isInterface: true,
+            supers: ["Rules.Element"],
+            implements: ["Framework.Named"]);
 
         Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
 
@@ -146,6 +162,38 @@ public sealed class StructureIntentionsTests
         Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
         Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
+    }
+
+    [Fact]
+    public void TheTwoInheritanceEntriesAddTheFirstEntryAndThenStepAside()
+    {
+        // Both entries exist for the state in which the header draws nothing. Once the list is on screen it is its
+        // own affordance - the caret stands in it and Enter adds the next entry - so the entry is absent instead of
+        // being a second way to do what the caret already does.
+        var (session, concept) = Document(isAbstract: false);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(ById(session, StructureIntentions.ImplementInterfaceId)).Outcome);
+
+        var implemented = Assert.Single(concept.GetChildren(StructureLanguage.ImplementsSlot));
+
+        Assert.Equal(CellAddress.OfSlot(implemented.Id, "conceptKey"), session.Selection.Anchor.Address);
+        Assert.Contains(
+            "implements",
+            LayoutSnapshot.Render(session.Layout, width: 120),
+            StringComparison.Ordinal);
+
+        // "Implement interface" has done its job, and the other one still has not: the two slots are decided
+        // separately because they can be filled separately. The caret is on the new key, so the concept has to be
+        // asked again from its own header - which is what the user does on the way back to the menu.
+        session.Select(Selection.At(new CellAddress(concept.Id)));
+
+        Assert.DoesNotContain(
+            IntentionList.For(session),
+            offer => offer.Id == StructureIntentions.ImplementInterfaceId);
+
+        Assert.Contains(
+            IntentionList.For(session),
+            offer => offer.Id == StructureIntentions.InheritFromId);
     }
 
     [Fact]
@@ -188,14 +236,20 @@ public sealed class StructureIntentionsTests
     private static Intention ById(EditorSession session, string id) =>
         IntentionList.For(session).Single(offer => offer.Id == id);
 
-    private static (EditorSession Session, Node Concept) Document(bool isAbstract, bool isInterface = false)
+    private static (EditorSession Session, Node Concept) Document(
+        bool isAbstract,
+        bool isInterface = false,
+        IReadOnlyList<string>? supers = null,
+        IReadOnlyList<string>? implements = null)
     {
         var definition = new DefinitionBuilder();
         var concept = definition.Concept(
             "Rules.Rule",
             slots: [definition.Property("name", "string")],
+            supers: supers,
             isAbstract: isAbstract,
-            isInterface: isInterface);
+            isInterface: isInterface,
+            implements: implements);
 
         var session = new EditorSession(definition.Root, StructureNotations.Create());
 

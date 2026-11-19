@@ -3,6 +3,7 @@ using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Structures;
+using Projectional.Structures.Intentions;
 using Projectional.Structures.Notation;
 using Xunit;
 
@@ -211,7 +212,7 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "concept Rules.Rule extends <<>>, implements <<>> {",
+                "concept Rules.Rule {",
                 "  offered in completion: true",
                 "  named by:",
                 "  collapsed by:",
@@ -280,8 +281,8 @@ public sealed class StructureLoweringTests
     public void TheHeaderCarriesTheInheritanceAndTheBodyIsABlock()
     {
         // MPS' reading of a concept: what it extends and implements in the header, what it allows and holds inside
-        // braces. Each list keeps a placeholder while it is empty, so the place the first super concept is written
-        // into never disappears - the reason a hidden-when-empty cell was not an option.
+        // braces. A list that holds nothing is not drawn at all, so the header says only what is true of this
+        // concept - which is why the language ships the two intentions that create a first entry.
         var definition = new DefinitionBuilder();
 
         var empty = definition.Concept("Rules.Element");
@@ -296,7 +297,7 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "concept Rules.Element extends <<>>, implements <<>> {",
+                "concept Rules.Element {",
                 "  offered in completion: true",
                 "  named by:",
                 "  collapsed by:",
@@ -348,30 +349,53 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
-    public void TheEmptyInheritancePlaceholderIsWhereTheFirstSuperConceptIsWritten()
+    public void AnEmptyInheritanceIsNotDrawnAndLeavesNoCell()
     {
-        // The header form rests on this: an empty list keeps its placeholder, and that placeholder is the only
-        // place a super concept can be created. So it has to be an empty slot the caret can stand in and Enter can
-        // fill - not an empty string, and not a cell that only looks like one.
+        // The price of the header shape: a list that is empty is not drawn, so nothing addresses the slot - not an
+        // empty cell, not a placeholder. That is why the language owes a second way in, and it is what these two
+        // tests pin.
         var definition = new DefinitionBuilder();
+        var concept = definition.Concept("Rules.Rule");
 
+        var notations = StructureNotations.Create();
+
+        var drawn = LayoutSnapshot.Render(concept, notations, width: 120);
+
+        Assert.StartsWith("concept Rules.Rule {", drawn, StringComparison.Ordinal);
+        Assert.DoesNotContain("extends", drawn, StringComparison.Ordinal);
+        Assert.DoesNotContain("implements", drawn, StringComparison.Ordinal);
+
+        Assert.DoesNotContain(
+            CaretPlaces.Of(new EditorTreeBuilder(notations).Build(concept)),
+            place => place.Address.Equals(CellAddress.OfSlot(concept.Id, StructureLanguage.SuperTypeSlot)));
+    }
+
+    [Fact]
+    public void TheIntentionIsTheWayInToTheFirstSuperConcept()
+    {
+        // "Inherit from…" is what makes the hidden list reachable: it creates the entry and leaves the caret on the
+        // new key, so the name is typed straight away instead of being searched for.
+        var definition = new DefinitionBuilder();
         var concept = definition.Concept("Rules.Rule");
 
         using var session = new EditorSession(concept, StructureNotations.Create());
 
-        var address = CellAddress.OfSlot(concept.Id, StructureLanguage.SuperTypeSlot);
+        session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
+        session.Select(Selection.At(new CellAddress(concept.Id)));
 
-        var place = CaretNavigation.PlaceAt(session.Tree, CaretPosition.At(address, 0));
+        var offer = IntentionList.For(session).Single(entry => entry.Id == StructureIntentions.InheritFromId);
 
-        Assert.NotNull(place);
-        Assert.True(place.Value.IsEmptySlot);
+        Assert.True(offer.Availability.IsApplicable);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
 
-        session.Select(Selection.At(CaretPosition.At(address, 0)));
-        session.Apply(KeyRouter.For(session, EditorKey.Enter));
+        var superType = Assert.Single(concept.GetChildren(StructureLanguage.SuperTypeSlot));
 
-        Assert.Equal(
-            StructureConceptKeys.SuperType,
-            Assert.Single(concept.GetChildren(StructureLanguage.SuperTypeSlot)).Concept.Key);
+        Assert.Equal(StructureConceptKeys.SuperType, superType.Concept.Key);
+        Assert.Equal(CellAddress.OfSlot(superType.Id, "conceptKey"), session.Selection.Anchor.Address);
+
+        // From now on the list is on screen, which is what makes the entry absent rather than a second way to do
+        // what the caret in the list already does.
+        Assert.Contains("extends", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
     }
 
     [Fact]

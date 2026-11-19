@@ -112,7 +112,7 @@ language because it is the same three ideas: a header that says what the concept
 extends, angle bracket blocks that say what it *holds*, and nothing else.
 
 ```text
-concept RuleSet extends <<>>, implements Framework.Named {
+concept RuleSet implements Framework.Named {
   offered in completion: true
   named by: name
   collapsed by:
@@ -127,7 +127,7 @@ concept RuleSet extends <<>>, implements Framework.Named {
   references:
     <<reference>>
 
-abstract concept Condition extends <<>>, implements <<>> {
+abstract concept Condition {
   offered in completion: true
   named by:
   collapsed by:
@@ -178,9 +178,10 @@ Four details are deliberate:
   optional, `[0..n]` and `[1..n]` for lists. A default of "you did not say" would be a fourth
   meaning the reader has to learn.
 - **Inheritance is in the header; designated slots are in the body.** The header answers "what is
-  this" - and an empty list keeps a placeholder (`extends <<>>`) rather than disappearing, so the
-  place the first super concept is written into is always there to put the caret in. The body
-  answers "what does it hold and how does the framework treat it".
+  this" - and a list that holds nothing is not drawn, so the header says only what is true of the
+  concept. Because that leaves the empty list without a cell, the two ways in are intentions:
+  `Inherit from…` and `Implement interface…` create the first entry and put the caret on its key. The
+  body answers "what does it hold and how does the framework treat it".
 - **`implements` promises members, not a drawing.** An interface contributes the properties and references
   an implementing concept inherits - the framework's `Framework.Named` is the name property and the name-slot
   designation in one declaration - and it may declare no child slot, so implementing one can never make a
@@ -386,7 +387,7 @@ shippable at the end of each, and so that the parity test exists before the seco
 | C3 ✓ | `feat/declared-dsl-gate` | M2 | **the M2 gate**: `samples/declared-pipeline` is a DSL that exists only as data - a `structure` folder, an `editor` folder and a document - and `DeclaredSampleLanguageTests` loads the folder, draws the document as a table, edits it structurally, saves it and reloads it byte-identically, and hands the folder to the shell's own `WorkbenchLanguage`. There is no C# twin to delete, which is the strongest form of the gate's "deleting the language's C# code changes nothing" |
 | P2b ✓ | `feat/mps-shaped-notation` | M2 | both definition languages drawn in MPS' shape - a header, a block of options, one section per kind of slot, `<< ... >>` for an empty section, `[/ ... /]` and `[>` for the cell model. **Ahead of P4/P5 in the one part that is only notation**; what P5 still adds are the cell *glyphs* |
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)); a descriptor document waits for a language that can extend another |
-| P4 ✓ | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation, delivered: the header carries the inheritance (`concept X extends A, implements B {`, each list with a `<<>>` placeholder while empty), the body is a brace block with one section per kind of slot, every declaration says its own kind and closes where it ends (`<<property … >>`, `<<child … >>`, `<<reference … >>`), every collection stacks so a definition is one declaration per line, an empty section names the kind it will create, and the four cardinality ranges reach `ChildSlot.Minimum` (open question 64) - see [declared-structure.md](declared-structure.md) |
+| P4 ✓ | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation, delivered: the header carries the inheritance and draws a list only while it is filled (`concept X extends A, implements B {`, `concept X {` when it has neither), the body is a brace block with one section per kind of slot, every declaration says its own kind and closes where it ends (`<<property … >>`, `<<child … >>`, `<<reference … >>`), every collection stacks so a definition is one declaration per line, an empty section names the kind it will create, and the four cardinality ranges reach `ChildSlot.Minimum` (open question 64) - see [declared-structure.md](declared-structure.md). The hiding needed a cell the notation layer did not have (`WhenFilledNotationCell`, `Editor.WhileFilled`) and the way back in (`Inherit from…`, `Implement interface…`) |
 | P5 | `feat/editor-notation` | M5 | `Projectional.Editor` with its own notation - the cell glyphs - and the table variant |
 | P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
 | P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structures` and `Projectional.Editors`, with the C# declarations as the fail-safe |

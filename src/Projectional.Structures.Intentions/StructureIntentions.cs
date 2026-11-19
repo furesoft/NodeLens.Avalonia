@@ -35,6 +35,12 @@ public sealed class StructureIntentions : IIntentionProvider
     /// <summary>The stable id of "make interface".</summary>
     public const string MakeInterfaceId = "structures.make-interface";
 
+    /// <summary>The stable id of "inherit from".</summary>
+    public const string InheritFromId = "structures.inherit-from";
+
+    /// <summary>The stable id of "implement interface".</summary>
+    public const string ImplementInterfaceId = "structures.implement-interface";
+
     /// <summary>The stable id of "make concept".</summary>
     public const string MakeConceptId = "structures.make-concept";
 
@@ -62,6 +68,18 @@ public sealed class StructureIntentions : IIntentionProvider
         "Makes an interface an ordinary abstract concept again, so the concepts below it stop inheriting its members.",
         context => InterfaceAction(context, isInterface: false));
 
+    private static readonly Intention Inherit = new(
+        InheritFromId,
+        "Inherit from…",
+        "Adds the first super concept. The caret lands on its key, ready to be typed.",
+        context => Fill(context, StructureLanguage.SuperTypeSlot));
+
+    private static readonly Intention Implement = new(
+        ImplementInterfaceId,
+        "Implement interface…",
+        "Adds the first interface this concept implements. The caret lands on its key, ready to be typed.",
+        context => Fill(context, StructureLanguage.ImplementsSlot));
+
     /// <summary>The provider a host registers with <c>session.AddIntentions(..., IntentionSource.Language)</c>.</summary>
     public static StructureIntentions Provider { get; } = new();
 
@@ -77,8 +95,32 @@ public sealed class StructureIntentions : IIntentionProvider
             Concrete.With(AvailabilityOf(context, makingAbstract: false)),
             Interface.With(InterfaceAvailabilityOf(context, becomingInterface: true)),
             Concept.With(InterfaceAvailabilityOf(context, becomingInterface: false)),
+            Inherit.With(FillAvailabilityOf(context, StructureLanguage.SuperTypeSlot)),
+            Implement.With(FillAvailabilityOf(context, StructureLanguage.ImplementsSlot)),
         ];
     }
+
+    /// <summary>
+    /// Whether the caret's concept still needs the first entry of <paramref name="slot"/>.
+    /// </summary>
+    /// <remarks>
+    /// Both entries exist for the state in which the header draws nothing: the notation hides the list while it is
+    /// empty, so without a second way in the first super concept could never be written at all. Once the list is
+    /// on screen it is its own affordance - the caret stands in it and Enter adds the next entry - so the entry is
+    /// <see cref="IntentionAvailability.Absent"/> rather than a second way to do what the caret already does.
+    /// </remarks>
+    private static IntentionAvailability FillAvailabilityOf(IntentionContext context, string slot)
+    {
+        if (context.Node is not { } node || node.Concept.Key != StructureConceptKeys.Concept)
+        {
+            return IntentionAvailability.Absent;
+        }
+
+        return node.GetChildren(slot).Count > 0 ? IntentionAvailability.Absent : IntentionAvailability.Applies;
+    }
+
+    private static InsertChildAction? Fill(IntentionContext context, string slot) =>
+        context.Node is { } node ? new InsertChildAction(node.Id, slot) : null;
 
     /// <summary>
     /// Whether the caret's concept can become an interface (or stop being one).
