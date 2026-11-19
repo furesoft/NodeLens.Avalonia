@@ -378,7 +378,10 @@ and retyped languages drift.
 answers an `ExportResult`: `Files` is the generated `<Name>Language.cs` and its `README.md` as text,
 and `Assembly` is the compiled package - present only when the caller asks for
 `ExportOutput.Assembly`, because a language author reviewing a diff wants the source and a build
-wants the binary, and neither should have to do the other's work.
+wants the binary, and neither should have to do the other's work. **File ▸ Export language to C#…**
+is the shell's caller: it exports an opened language with the namespace `LanguageExporter.NamespaceFor`
+derives from the folder name - a folder picker cannot ask for one - and writes the files and the
+assembly into the folder the user chooses.
 
 What export guarantees, and what it refuses to hide:
 

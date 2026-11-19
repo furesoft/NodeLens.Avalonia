@@ -55,7 +55,8 @@ rather than a rule: a property can be emptied but not unset, so the writer emits
 ## Ship it as C#
 
 The folder is a prototype; `Projectional.LanguageExport` turns it into the code a package is made
-of:
+of. In the app that is **File ▸ Export language to C#…**: pick the language, then a folder, and the
+generated source, its README and the compiled assembly are written there. From code:
 
 ```csharp
 var language = LanguageProject.Open("samples/declared-pipeline", out _);

@@ -73,7 +73,7 @@ public static class LanguageExporter
         ArgumentNullException.ThrowIfNull(declarations);
         ArgumentNullException.ThrowIfNull(notations);
 
-        var className = ClassNameOf(name);
+        var className = ClassName(name);
         var omitted = Omissions(hasTypes, hasGenerators, hasConstraints);
         var source = Source(name, className, namespaceName, declarations, notations, omitted);
 
@@ -311,10 +311,28 @@ public static class LanguageExporter
         _ => "a rule reports and never repairs, so it belongs beside the editor",
     };
 
-    /// <summary>The class name for <paramref name="name"/>: one Pascal-cased word per run of letters and digits.</summary>
-    private static string ClassNameOf(string name)
+    /// <summary>The namespace an exported language declares by default: its own name as one Pascal-cased word.</summary>
+    /// <param name="name">The language's name, which is the name of its folder.</param>
+    /// <remarks>
+    /// A host has no way to ask a user for a namespace in a folder picker, and a generated class in the global
+    /// namespace is awkward to reference from a package. The language's own name is the only identity an export has,
+    /// so it is also the namespace: <c>declared-pipeline</c> becomes <c>DeclaredPipeline</c>.
+    /// </remarks>
+    public static string NamespaceFor(string name)
     {
-        var builder = new StringBuilder(name.Length + "Language".Length);
+        ArgumentNullException.ThrowIfNull(name);
+
+        return PascalCase(name);
+    }
+
+    /// <summary>The type name for a language: the same identifier, suffixed so it reads as a language.</summary>
+    private static string ClassName(string name) => PascalCase(name) + "Language";
+
+    /// <summary>An identifier for <paramref name="name"/>: one word per run of letters and digits, capitalised.</summary>
+    private static string PascalCase(string name)
+    {
+        var builder = new StringBuilder(name.Length + 1);
+
         var capitalise = true;
 
         foreach (var character in name)
@@ -322,6 +340,7 @@ public static class LanguageExporter
             if (!char.IsLetterOrDigit(character))
             {
                 capitalise = true;
+
                 continue;
             }
 
@@ -339,6 +358,6 @@ public static class LanguageExporter
             builder.Insert(0, '_');
         }
 
-        return builder.Append("Language").ToString();
+        return builder.ToString();
     }
 }

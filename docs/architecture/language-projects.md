@@ -108,7 +108,10 @@ M2's gate in its smallest complete form.
 | Missing | Why it is not in this slice |
 | --- | --- |
 | `language.mps` (name, version, dependencies, extended languages) | P3 proper: it needs the aspect models it names |
-| exporting a loaded language back to C# | delivered: `Projectional.LanguageExport`, see [language-authoring.md](language-authoring.md#export-declared-to-c). A shell entry that writes the files is the workbench's, not the library's |
+
+Exporting a loaded language back to C# is delivered - see
+[language-authoring.md](language-authoring.md#export-declared-to-c) - and so is the shell entry that writes it
+(**File ▸ Export language to C#…**).
 
 Until the app loads a folder, a language project is usable by any host that calls `LanguageProject.Open` - which is
 the point of it living in a library and not in the app.
