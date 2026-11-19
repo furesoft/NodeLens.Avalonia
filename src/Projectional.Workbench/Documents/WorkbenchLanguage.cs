@@ -3,6 +3,8 @@ using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
 using Projectional.Expressions;
+using Projectional.IntentionRules;
+using Projectional.IntentionRules.Notation;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Samples;
@@ -54,6 +56,7 @@ internal sealed class WorkbenchLanguage
             .. TextGenLanguage.ConceptDeclarations,
             .. ConstraintLanguage.ConceptDeclarations,
             .. ScopeLanguage.ConceptDeclarations,
+            .. IntentionLanguage.ConceptDeclarations,
         ]);
 
         Notations = CreateNotations(Concepts);
@@ -273,6 +276,7 @@ internal sealed class WorkbenchLanguage
         TextGenNotations.AddTo(notations);
         ConstraintNotations.AddTo(notations);
         ScopeNotations.AddTo(notations);
+        IntentionNotations.AddTo(notations);
 
         return notations;
     }
