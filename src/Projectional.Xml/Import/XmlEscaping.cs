@@ -18,16 +18,20 @@ namespace Projectional.Xml;
 /// A tab, a newline or a carriage return in an attribute value must be a character reference, because the parser
 /// normalises the literal ones to a space and the value would change on the way back in.
 /// </para>
+/// <para>
+/// Public because it is the language's own answer to "how is this written", and the checks package beside the language
+/// has to give the same answer when it repairs a cell the user broke. A second escaper would be a second spelling.
+/// </para>
 /// </remarks>
-internal static class XmlEscaping
+public static class XmlEscaping
 {
     /// <summary>The canonical spelling of character data.</summary>
     /// <param name="value">The decoded value the parser handed back.</param>
-    internal static string Text(string value) => Spell(value, inAttribute: false);
+    public static string Text(string value) => Spell(value, inAttribute: false);
 
     /// <summary>The canonical spelling of an attribute value.</summary>
     /// <param name="value">The decoded value the parser handed back.</param>
-    internal static string Attribute(string value) => Spell(value, inAttribute: true);
+    public static string Attribute(string value) => Spell(value, inAttribute: true);
 
     private static string Spell(string value, bool inAttribute)
     {

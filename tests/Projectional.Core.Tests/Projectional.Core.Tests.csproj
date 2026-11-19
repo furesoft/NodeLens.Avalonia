@@ -42,6 +42,10 @@
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
     <ProjectReference Include="..\..\src\Projectional.TextGen\Projectional.TextGen.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Xml\Projectional.Xml.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Xml.Checks\Projectional.Xml.Checks.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Xml.Intentions\Projectional.Xml.Intentions.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Json.Checks\Projectional.Json.Checks.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Json.Intentions\Projectional.Json.Intentions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
