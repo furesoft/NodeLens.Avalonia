@@ -70,4 +70,23 @@ public sealed class ScopeChainTests
         Assert.Same(only, ScopeChain.Of(Scope.Empty, only, Scope.Empty));
         Assert.Same(Scope.Empty, ScopeChain.Of(Scope.Empty, Scope.Empty));
     }
+
+    [Fact]
+    public void AChainAsksALevelForItsEntriesOnlyWhenTheListIsWanted()
+    {
+        var near = new CountingScope(new ScopeEntry("x", Near, "Rules.Rule"));
+        var far = new CountingScope(new ScopeEntry("y", Far, "Rules.Rule"));
+
+        var chain = ScopeChain.Of(near, far);
+
+        // Building the chain and resolving a name are the two things that happen on every reference, so neither
+        // may cost a level its entry list - that list is the document a level stands for.
+        Assert.Equal(0, near.Reads);
+        Assert.Equal(ScopeResolutionKind.Found, chain.Resolve("x").Kind);
+        Assert.Equal(0, near.Reads);
+
+        Assert.Equal(["x", "y"], chain.Entries.Select(entry => entry.Name));
+        Assert.Equal(1, near.Reads);
+        Assert.Equal(1, far.Reads);
+    }
 }

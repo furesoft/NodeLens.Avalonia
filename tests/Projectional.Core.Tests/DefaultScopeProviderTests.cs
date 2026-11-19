@@ -97,6 +97,63 @@ public sealed class DefaultScopeProviderTests
             entry => entry.Node == rule.Id);
     }
 
+    [Fact]
+    public void ARenamedNodeIsFoundUnderItsNewName()
+    {
+        var (_, first, second) = Ruleset("Approved", "Rejected");
+
+        // The first lookup is what builds the index, so the assertion afterwards is about a stale one.
+        Assert.Equal(second.Id, DefaultScopeProvider.Instance.ScopeOf(first, "inherits").Resolve("Rejected").Entry.Node);
+
+        second.Set("name", "Declined");
+
+        var scope = DefaultScopeProvider.Instance.ScopeOf(first, "inherits");
+
+        Assert.Equal(ScopeResolutionKind.Missing, scope.Resolve("Rejected").Kind);
+        Assert.Equal(second.Id, scope.Resolve("Declined").Entry.Node);
+    }
+
+    [Fact]
+    public void ANodeAddedAfterTheFirstLookupIsVisible()
+    {
+        var (ruleset, first, _) = Ruleset("Approved", "Rejected");
+
+        Assert.Equal(ScopeResolutionKind.Missing, DefaultScopeProvider.Instance.ScopeOf(first, "inherits").Resolve("Later").Kind);
+
+        var later = ruleset.Model.NewChild(ruleset, RulesLanguage.RulesSlot, RulesConceptKeys.Rule);
+        later.Set("name", "Later");
+
+        Assert.Equal(later.Id, DefaultScopeProvider.Instance.ScopeOf(first, "inherits").Resolve("Later").Entry.Node);
+    }
+
+    [Fact]
+    public void ADeletedNodeIsNoLongerVisible()
+    {
+        var (ruleset, first, second) = Ruleset("Approved", "Rejected");
+
+        Assert.Equal(second.Id, DefaultScopeProvider.Instance.ScopeOf(first, "inherits").Resolve("Rejected").Entry.Node);
+
+        ruleset.RemoveChild(RulesLanguage.RulesSlot, second);
+
+        Assert.Equal(ScopeResolutionKind.Missing, DefaultScopeProvider.Instance.ScopeOf(first, "inherits").Resolve("Rejected").Kind);
+    }
+
+    [Fact]
+    public void AModelAddedAfterTheFirstLookupIsVisibleAtTheProjectLevel()
+    {
+        var project = RulesLanguage.NewProject();
+        var first = project.NewModel("first");
+        var here = first.NewNode(RulesConceptKeys.Ruleset);
+        here.Set("name", "Here");
+
+        Assert.Equal(ScopeResolutionKind.Missing, DefaultScopeProvider.Instance.ScopeOf(here, "inherits").Resolve("There").Kind);
+
+        var there = project.NewModel("second").NewNode(RulesConceptKeys.Ruleset);
+        there.Set("name", "There");
+
+        Assert.Equal(there.Id, DefaultScopeProvider.Instance.ScopeOf(here, "inherits").Resolve("There").Entry.Node);
+    }
+
     private static (Node Ruleset, Node First, Node Second) Ruleset(string firstName, string secondName)
     {
         var model = RulesLanguage.NewProject().NewModel("rules");
