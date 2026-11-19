@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    One project per language: the concepts, the notation, the importer, the generator, the checks and the
+    intentions of TOML are one assembly (ADR 0021), and `Checks/` and `Intentions/` are folders inside it.
+    Their namespaces are unchanged (`Projectional.Toml.Checks`, `Projectional.Toml.Intentions`), so a host
+    that names one of those types does not have to know where the code lives.
+
+    `Tomlyn` is the reader: .NET has no TOML reader in the box, and a hand-written one is the liability the
+    JSON decision already refused (open question 98). It is a dependency of this language package only, never
+    of the toolkit, so a host opts into it by naming this language.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+  </ItemGroup>
+
+</Project>
