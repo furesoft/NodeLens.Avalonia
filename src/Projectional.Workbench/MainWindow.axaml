@@ -210,13 +210,23 @@
     -->
     <Border x:Name="UsagesPanel" DockPanel.Dock="Bottom" IsVisible="False" BorderThickness="0,1,0,0">
       <DockPanel>
-        <TextBlock
-          x:Name="UsagesHeader"
-          DockPanel.Dock="Top"
-          Margin="8,6,8,2"
-          FontSize="12"
-          FontWeight="SemiBold"
-          Text="Usages" />
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="8,6,8,2">
+          <TextBlock
+            x:Name="UsagesHeader"
+            Grid.Column="0"
+            FontSize="12"
+            FontWeight="SemiBold"
+            Text="Usages" />
+          <!-- The panel is opened by a gesture, so it needs a way back to a taller document that is not
+               another gesture: the problems panel hides itself when the document is clean, a usages list does not. -->
+          <Button
+            Grid.Column="1"
+            MinHeight="18"
+            Padding="8,0"
+            FontSize="11"
+            Content="Close"
+            Click="OnCloseUsages" />
+        </Grid>
         <ListBox
           x:Name="Usages"
           BorderThickness="0"

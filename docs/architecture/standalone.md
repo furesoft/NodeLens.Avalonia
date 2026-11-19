@@ -270,7 +270,8 @@ the window only fills a list, moves the caret and says why the panel closed.
 - **The gesture is the window's**, like F5: the answer is a shell panel, not something the control can paint over
   the document. A host embedding the control calls the same `FindUsages` entry point and owes its own list.
 - **The panel stays up only while its target exists.** An edit re-asks about the *same node* (the id is kept, not
-  the caret), a deleted target closes it, and switching to a document of another project closes it too.
+  the caret), a deleted target closes it, and switching to a document of another project closes it too. A Close
+  button in the header is the deliberate way to give the page its height back.
 - **An empty list is shown.** Unlike the problems panel, "nothing points here" is the answer the user asked for.
 - **A usage in another model says which model**, because a project is several documents; choosing the row opens
   that document's tab when it is open, and says so when it is not. A reference the notation hides has no cell, so

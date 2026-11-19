@@ -734,8 +734,9 @@ is still reported, and a caller tests `EditorTree.Find(place)` before selecting.
 The shell's panel is wiring: `UsageList.Of(report)` derives the rows (`Owner label - slot`, prefixed with the
 model name when the usage is in another model), `MainWindow` fills a list, keeps `_usageTarget` so an edit
 re-asks about the same node rather than the moved caret, closes the panel when the target is gone, and falls
-back to the owner node when a row's reference has no cell. `Alt+F7` is the window's, tunnelled like F5, because
-the answer is a panel and not a list the control paints.
+back to the owner node when a row's reference has no cell. A Close button in the header is the deliberate way to
+give the page its height back. `Alt+F7` is the window's, tunnelled like F5, because the answer is a panel and not
+a list the control paints.
 
 ## How constraints work
 
