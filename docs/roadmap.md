@@ -118,7 +118,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
 | Model-to-model generation | a generator whose output is a model of a target language, which that language's own text generator then prints: the rule vocabulary, the build and link phases, the reverse map that keeps "go to source" working through both stages ([model-generation.md](architecture/model-generation.md)) |
-| Text import | JSON, XML, TOML and HOCON reference languages behind an `ITextImporter`, plus the format seam (`ITextFormat`) that lets a template write a value into one of them without spelling it ([import.md](architecture/import.md)) |
+| Text import | JSON, XML, TOML and HOCON as four reference **languages** behind an `ITextImporter`, each with its own concepts, notation and generator - so converting a model into one of them is model-to-model generation into that language's model, and the format's spelling lives in exactly one place ([import.md](architecture/import.md)) |
 | Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
 | Embedded shell | the shell as a control a host composes: locked to one language, its storage and dialogs supplied by the host, its capabilities declared once and enforced by the command registry ([embedded-shell.md](architecture/embedded-shell.md)) |
 | Plugin packaging | one NuGet per language, versioned |
@@ -135,12 +135,11 @@ therefore not the text buffer [ADR 0002](adr/0002-model-as-source-of-truth.md) f
 writes text back. Four reference languages ship with it - JSON and XML, which everyone already
 has, and TOML and HOCON, which is what a .NET project's settings and a config-heavy host actually
 use - because a language that imports and generates a format everyone already has is the cheapest
-possible proof that the mapping layer is sound, and because those four models are also what a
-user's model is **converted into**: the reference language owns quoting, escaping, table nesting
-and comment syntax, so a generator aimed at one of them does not re-implement it. Details,
-including why a construct the language does not model is kept as raw text rather than dropped, and
-the `ITextFormat` seam a one-stage generator writes through:
-[import.md](architecture/import.md).
+possible proof that the mapping layer is sound. Each of the four is a **language**, not a printing
+mode: that is what makes converting a user's model into one of them a matter of producing a model
+of *that* language, whose own generator spells quoting, escaping, table nesting and comment syntax.
+Details, including why a construct the language does not model is kept as raw text rather than
+dropped: [import.md](architecture/import.md).
 
 #### Model-to-model generation
 
