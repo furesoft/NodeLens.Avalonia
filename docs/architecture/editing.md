@@ -573,6 +573,26 @@ cell address).
 - **The report is a snapshot.** An edit retargets or removes a reference, so the next question is asked
   again; `FindUsages.Of(node)` re-asks about the same node, which is what an open panel needs.
 
+## Rename
+
+`RenameNodeAction` (`Projectional.Editing/RenameNodeAction.cs`) renames a node and refreshes the fallback text
+(`resolveInfo`) of every reference to it, in one transaction. It is what the find-usages index was built for, and
+the answer to open question 13: an edit-action program, not a second kind of command.
+
+- **A rename cannot break resolution.** A reference stores a target id, so every usage keeps pointing at the node
+  and every cell that draws it shows the new name after the rebuild. What goes stale is the fallback text, and that
+  is the only thing the action rewrites.
+- **There is no second writer.** The fallback is rewritten through `EditContext.SetReference`, the same seam a
+  repair uses; a reference that keeps its target but refreshes its fallback is still a reference write, and undo
+  restores the name and every fallback in one step.
+- **It is model-scoped.** The node has to be in the document being edited, and a usage in another model is left
+  alone: that model has its own history, so undoing here could not take the rewrite back. The id keeps the
+  reference resolving; only its fallback waits for the reference to be written again.
+- **Renaming to the name it already has is `Unchanged`.** It journals nothing and refreshes nothing - an undo step
+  that changes no name would claim a change the user did not make.
+- **A concept without a name slot is a rejection with a reason**, not an exception: a command that outlived the
+  concept it was built for is an ordinary case.
+
 ## The clipboard
 
 Copy, Cut, Paste and Select All are ordinary `EditAction`s, which is what keeps them testable
