@@ -24,6 +24,8 @@ namespace Projectional.Avalonia;
 /// Ctrl+Space, which is the completion gesture in every editor that has one. Ctrl+A, Ctrl+C, Ctrl+X and
 /// Ctrl+V, the four text gestures a user reaches for without looking and every platform spells the same
 /// way - a clipboard that only worked through a context menu would be a clipboard nobody finds.
+/// Ctrl+B, because going to a definition is a question only the projection can answer - no host can
+/// navigate a model it cannot see - and every IDE spells that gesture the same way.
 /// Ctrl+Home and Ctrl+End, because a click elsewhere in the window means "the start or end of this
 /// document" in the host too, so taking them costs nothing. Alt has its own exceptions, Alt+Up and
 /// Alt+Down, because reordering a node is an edit of the model and no host can offer it for the editor;
@@ -66,7 +68,7 @@ public static class EditorKeyMap
                 };
         }
 
-        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.C or Key.V or Key.X or Key.OemPeriod))
+        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.B or Key.C or Key.V or Key.X or Key.OemPeriod))
         {
             return null;
         }
@@ -89,6 +91,7 @@ public static class EditorKeyMap
             Key.Delete => EditorKey.Delete,
             Key.Space when control => EditorKey.ControlSpace,
             Key.A when control => EditorKey.SelectAll,
+            Key.B when control => EditorKey.GoToDefinition,
             Key.C when control => EditorKey.Copy,
             Key.X when control => EditorKey.Cut,
             Key.V when control => EditorKey.Paste,

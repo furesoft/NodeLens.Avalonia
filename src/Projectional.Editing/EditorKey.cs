@@ -90,6 +90,9 @@ public enum EditorKey
     /// <summary>Ctrl+V, which inserts the clipboard text at the caret, replacing any selection.</summary>
     Paste,
 
+    /// <summary>Ctrl+B, which goes to the declaration the reference at the caret points at.</summary>
+    GoToDefinition,
+
     /// <summary>Alt+Enter and Ctrl+., which offer the repairs for the line the caret is on.</summary>
     /// <remarks>
     /// One value for two gestures, because it is one meaning with two spellings: Alt+Enter is MPS' and

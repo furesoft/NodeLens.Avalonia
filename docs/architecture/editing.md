@@ -593,6 +593,24 @@ the answer to open question 13: an edit-action program, not a second kind of com
 - **A concept without a name slot is a rejection with a reason**, not an exception: a command that outlived the
   concept it was built for is an ordinary case.
 
+## Go to definition
+
+`GoToDefinitionAction` (`Projectional.Editing/`) moves the caret to the declaration a reference names - Ctrl+B,
+Ctrl+click, and the context menu's **Go to Definition** entry. `GoToDefinition.TargetOf(session)` is the question;
+`GoToDefinition.CanNavigate(session)` is the menu's availability.
+
+- **Only a reference names something to go to.** A caret anywhere else, an unset reference and an unresolved one all
+  answer `Unchanged`: there is no definition to go to, and pressing the key somewhere else is not an error.
+- **The declaration has to be drawn in this document.** A session projects one root, so a reference may point at a
+  sibling root, at another model, or at a concept whose notation was never written; all three have no cell to land
+  on, and the action is `Rejected` with a reason rather than moving the caret somewhere unrelated. The menu entry
+  is disabled in exactly those cases.
+- **The name is selected, not merely visited.** The landing cell is the name slot when the notation draws it, and
+  `SelectSlotAction` selects its text; a node without a name cell gets a bare caret at its first cell.
+- **It is a navigation, not an edit**: no transaction, no undo step, and the model is untouched. Opening the document
+  of a target in another model stays the host's job, because it owns tabs and focus
+  ([context-actions.md](context-actions.md) records the split as `INT050`).
+
 ## The clipboard
 
 Copy, Cut, Paste and Select All are ordinary `EditAction`s, which is what keeps them testable

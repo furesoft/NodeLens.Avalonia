@@ -57,6 +57,7 @@ public static class KeyRouter
         EditorKey.Copy => new CopyAction(),
         EditorKey.Cut => new CutAction(),
         EditorKey.Paste => new PasteAction(),
+        EditorKey.GoToDefinition => new GoToDefinitionAction(),
         EditorKey.QuickFix => new OfferAction(),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown editor key."),
     };

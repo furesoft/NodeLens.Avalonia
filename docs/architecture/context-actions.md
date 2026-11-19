@@ -446,7 +446,7 @@ exists, because "the value the user can see" is the narrower claim and the caret
 
 | Id | The entry | Why it is not an action |
 | --- | --- | --- |
-| `INT050` | `Show the target` | navigating to another model is the host's job: it owns tabs, windows and focus. The framework resolves the reference and offers the entry, the host runs its own command from the same id - the boundary the intention contract already draws |
+| `INT050` | `Show the target` | navigating to another model is the host's job: it owns tabs, windows and focus. The framework resolves the reference and offers the entry, the host runs its own command from the same id - the boundary the intention contract already draws. **The in-document half is delivered** as `GoToDefinitionAction` (Ctrl+B, Ctrl+click and the context menu's `Go to Definition`): it moves the caret to the declaration when that declaration is drawn in this document, and refuses with a reason otherwise; opening the other document remains the host's |
 | `INT051` | `Generate` / `Run` | same: the host runs its pipeline, the language supplies the generator |
 
 ### What is free, and what is not

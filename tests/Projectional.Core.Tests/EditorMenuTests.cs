@@ -30,7 +30,7 @@ public sealed class EditorMenuTests
         // The fixture nominates a collapse slot, so a node of it offers Fold. A language that does not opt
         // into folding has no such entry, which is what keeps this list language-dependent by design.
         Assert.Equal(
-            ["Undo", "Redo", "", "Fold", "", "Insert", "Insert...", "Delete", "", "Select All", "Copy", "Cut", "Paste"],
+            ["Undo", "Redo", "", "Fold", "", "Insert", "Insert...", "Delete", "", "Select All", "Copy", "Cut", "Paste", "Go to Definition"],
             EditorMenu.For(session).Select(entry => entry.Label));
     }
 

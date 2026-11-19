@@ -48,6 +48,9 @@ public static class EditorMenu
     /// <summary>The gesture the quick-fix submenu prints, spelled the way the key map spells it.</summary>
     private const string QuickFixGesture = "Alt+Enter";
 
+    /// <summary>The gesture the go-to-definition entry prints, spelled the way the key map spells it.</summary>
+    private const string GoToDefinitionGesture = "Ctrl+B";
+
     /// <summary>The entries the context menu shows for <paramref name="session"/>.</summary>
     /// <param name="session">The session whose caret and history the menu describes.</param>
     /// <exception cref="ArgumentNullException"><paramref name="session"/> is <see langword="null"/>.</exception>
@@ -125,6 +128,12 @@ public static class EditorMenu
             EditorMenuItem.Run("Copy", () => session.Apply(KeyRouter.For(session, EditorKey.Copy)), CopyGesture, CanCopy(session)),
             EditorMenuItem.Run("Cut", () => session.Apply(KeyRouter.For(session, EditorKey.Cut)), CutGesture, CanCopy(session)),
             EditorMenuItem.Run("Paste", () => session.Apply(KeyRouter.For(session, EditorKey.Paste)), PasteGesture, CanPaste(session)),
+            EditorMenuItem.Run(
+                "Go to Definition",
+                () => session.Apply(new GoToDefinitionAction()),
+                GoToDefinitionGesture,
+                GoToDefinition.CanNavigate(session),
+                "Move the caret to the declaration the reference here points at."),
         ]);
 
         var representations = Representations(session);
