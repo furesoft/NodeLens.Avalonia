@@ -451,7 +451,10 @@ grammar.
   that language's notation, generators, intentions and checks. A refused file opens no tab at all and reports the
   importer's line and column. Nothing is linked to the file it came from: the document starts clean because nothing was
   edited, and a save writes a `.mps` document or the generated text. `ReferenceLanguages`/`ReferenceImport` hold the
-  decision and are tested headlessly; `MainWindow` only wires the dialog.
+  decision and are tested headlessly; `MainWindow` only wires the dialog. One limit is inherited rather than
+  introduced: a model with several roots still shows its first one (one session per model), so an XML file whose first
+  top-level node is a comment opens on that comment - the whole document is in the model, and saving and generating use
+  all of it.
 - **I8 - docs and samples.** A sample corpus of `.json`, `.xml`, `.toml` and `.hocon` files under
   `tests/Projectional.Core.Tests/Corpus/Text/`, with the same rule as the `.mps` corpus:
   **never regenerate a corpus file to make a test pass** - a byte that moves is either a
