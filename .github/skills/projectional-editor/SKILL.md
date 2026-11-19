@@ -1962,7 +1962,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2036 tests**; anything below that means tests were deleted.
+it. **Baseline is 2037 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

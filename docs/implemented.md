@@ -168,7 +168,7 @@ engine produce diagnostics in volume.
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
 | A language definition is a model like any other: it opens, edits, saves and undoes in the same editor | `Projectional.Structures`, `Projectional.Editors`, `WorkbenchLanguage` | `StructureLoweringTests`, `EditorLoweringTests`, `WorkbenchLanguageTests` |
-| The structure language's own notation, complete: a header that carries the inheritance (`concept X extends A, implements B {`, each list with a `<<>>` placeholder while empty), a body in braces with one section per kind of slot, every declaration naming its kind and closing where it ends (`<<property … >>`, `<<child … [range]>>`, `<<reference … >>`), every collection stacked so a definition is one declaration per line, and an empty section naming the kind it will create (`<<property>>`, `<<child>>`, `<<reference>>`) | `Projectional.Structures/Notation/StructureNotations.cs` | `StructureLoweringTests.ADefinitionIsDrawnLikeAnyOtherModel`, `TheHeaderCarriesTheInheritanceAndTheBodyIsABlock`, `AChildSlotIsDrawnWithItsRangeInBrackets`, `EveryDeclarationOfASectionStartsANewLine`, `AnEnumerationsSymbolsStandOnePerLine` |
+| The structure language's own notation, complete: a header that carries the inheritance (`concept X extends A, implements B {`, each list with a `<<>>` placeholder while empty), a body in braces with one section per kind of slot, every declaration naming its kind and closing where it ends (`<<property … >>`, `<<child … [range]>>`, `<<reference … >>`), every collection stacked so a definition is one declaration per line, and an empty section naming the kind it will create (`<<property>>`, `<<child>>`, `<<reference>>`) | `Projectional.Structures/Notation/StructureNotations.cs` | `StructureLoweringTests.ADefinitionIsDrawnLikeAnyOtherModel`, `TheHeaderCarriesTheInheritanceAndTheBodyIsABlock`, `AChildSlotIsDrawnWithItsRangeInBrackets`, `EveryDeclarationOfASectionStartsANewLine`, `AnEnumerationsSymbolsStandOnePerLine`, `TheEmptyInheritancePlaceholderIsWhereTheFirstSuperConceptIsWritten` |
 
 Not done in M5: stage C (a DSL defined entirely in project files), language export, live preview, bootstrap and the
 language browser, and the editor language's own notation (P5).
@@ -194,7 +194,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | --- | --- | --- |
 | 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2036 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2037 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 

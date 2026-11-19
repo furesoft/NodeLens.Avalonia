@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Structures;
@@ -344,6 +345,33 @@ public sealed class StructureLoweringTests
         Assert.Contains("    <<reference condition : Rules.Condition", lines);
         Assert.Contains("    <<reference other : Rules.Condition", lines);
         Assert.Contains("      own subtree: false>>", lines);
+    }
+
+    [Fact]
+    public void TheEmptyInheritancePlaceholderIsWhereTheFirstSuperConceptIsWritten()
+    {
+        // The header form rests on this: an empty list keeps its placeholder, and that placeholder is the only
+        // place a super concept can be created. So it has to be an empty slot the caret can stand in and Enter can
+        // fill - not an empty string, and not a cell that only looks like one.
+        var definition = new DefinitionBuilder();
+
+        var concept = definition.Concept("Rules.Rule");
+
+        using var session = new EditorSession(concept, StructureNotations.Create());
+
+        var address = CellAddress.OfSlot(concept.Id, StructureLanguage.SuperTypeSlot);
+
+        var place = CaretNavigation.PlaceAt(session.Tree, CaretPosition.At(address, 0));
+
+        Assert.NotNull(place);
+        Assert.True(place.Value.IsEmptySlot);
+
+        session.Select(Selection.At(CaretPosition.At(address, 0)));
+        session.Apply(KeyRouter.For(session, EditorKey.Enter));
+
+        Assert.Equal(
+            StructureConceptKeys.SuperType,
+            Assert.Single(concept.GetChildren(StructureLanguage.SuperTypeSlot)).Concept.Key);
     }
 
     [Fact]
