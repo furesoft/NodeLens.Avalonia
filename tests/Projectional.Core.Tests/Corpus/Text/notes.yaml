@@ -1,0 +1,6 @@
+# first
+# second
+server:
+  # inner
+  port: 8080
+  # last

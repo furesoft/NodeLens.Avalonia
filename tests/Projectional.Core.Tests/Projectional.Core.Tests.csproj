@@ -37,6 +37,7 @@
     <ProjectReference Include="..\..\src\Languages\Projectional.TextGen\Projectional.TextGen.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Toml\Projectional.Toml.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Xml\Projectional.Xml.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Yaml\Projectional.Yaml.csproj" />
   </ItemGroup>
 
   <ItemGroup>
