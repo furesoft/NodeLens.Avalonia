@@ -3,9 +3,12 @@
 The first half of "a language is data": concepts, slots, inheritance and enumerations written as *nodes*, and one
 lowering step that turns them into the `ConceptDeclaration`s every other layer already understands.
 
-Status: **delivered** as slice P1 of [language-authoring.md](language-authoring.md), and the surface now reads the
-way MPS writes a structure document - one section per kind of slot. What is still provisional is the *file* layout
-(`language.mps` as one model per aspect, dependencies), which is P3/P4.
+Status: **delivered** as slices P1 and P4 of [language-authoring.md](language-authoring.md): the surface reads the
+way MPS writes a structure document - a header, a block of options, one section per kind of slot, and every
+declaration marked with its own kind and drawn on a line of its own. What is still provisional is the *file* layout
+(`language.mps` as one model per aspect, dependencies): the loader reads the folder
+([language-projects.md](language-projects.md)), and a descriptor document has no consumer until a language can
+extend another one.
 
 ## Why this and not a config file
 
@@ -25,41 +28,46 @@ Presentation is the editor language (P2), which is a separate model for the same
 a structure document from an editor document - a definition that mixes the two cannot be reviewed.
 
 ```text
-enumerations:
-  enum Rules.Outcome
-    accept
-    review
-concepts:
-  concept Rules.Element
-    offered in completion: true
-    named by:
-    collapsed by:
-    described as:
-    extends:
-      << ... >>
-    properties:
-      name : string
-        default:
-        described as:
-    children:
-      << ... >>
-    references:
-      << ... >>
-  abstract concept Rules.Rule
-    offered in completion: true
-    named by: name
-    collapsed by:
-    described as: One rule of a ruleset.
-    extends:
-      << ... >>
-    properties:
-      name : string
-        default:
-        described as: What the rule is called.
-    children:
-      steps : Rules.Step[0..n]
-    references:
-      condition : Rules.Condition own subtree: false
+enum Rules.Outcome
+  accept
+  review
+```
+
+```text
+concept Rules.Element extends <<>>, implements <<>> {
+  offered in completion: true
+  named by:
+  collapsed by:
+  described as:
+  properties:
+    <<property name : string
+      default:
+      described as:
+      described when filled: false>>
+  children:
+    <<child>>
+  references:
+    <<reference>>
+}
+```
+
+```text
+abstract concept Rules.Rule extends Rules.Element, implements Framework.Named {
+  offered in completion: true
+  named by: name
+  collapsed by:
+  described as: One rule of a ruleset.
+  properties:
+    <<property name : string
+      default:
+      described as: What the rule is called.
+      described when filled: false>>
+  children:
+    <<child steps : Rules.Step[0..n]>>
+  references:
+    <<reference condition : Rules.Condition
+      own subtree: false>>
+}
 ```
 
 `abstract` is a word of the header and not an option, which is MPS' spelling and the better reading of the same
@@ -99,14 +107,32 @@ statement a check can read instead of a flag the model has to interpret.
 
 ## What MPS's look the engine can and cannot do
 
-`StructureNotations` draws the definition in MPS's shape - a header, a block of options, and one section per kind of
-slot, with `<< ... >>` for a section nobody has filled. Copying the shape is worth it for the reason MPS has it: a
-reviewer reads what a concept *is* in the header, what it allows in the options, and what it holds in three named
-sections.
+`StructureNotations` draws the definition in MPS's shape: a header that says what the concept *is* and what it
+extends and implements, then a body in braces with a block of options and one section per kind of slot. Copying the
+shape is worth it for the reason MPS has it: a reviewer reads the inheritance and the kind of the concept in the
+header, what it allows in the options, and what it holds in three named sections.
+
+Three decisions make that readable, and all three are P4:
+
+- **The header carries the inheritance** - `concept Rules.Rule extends Rules.Element, implements Framework.Named
+  {`. Both lists are inline collections, and each keeps a placeholder while it is empty: `extends <<>>, implements
+  <<>>`. That is what a cell which hid an empty slot could not do, and why the inheritance is a collection with a
+  placeholder rather than a line that disappears - the place the first super concept is written into stays visible
+  and fillable.
+- **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`, `<<child steps :
+  Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>`. A property carries three option lines under
+  it, so without a visible end the reader cannot tell where one declaration stops and the next begins. The word
+  inside the marker is MPS' word for the same three things.
+- **Every collection stacks, and an empty one names its kind.** Layout draws a collection inline unless the
+  notation asks it to ([projection.md](projection.md) §Layout), so two properties of one concept used to be drawn
+  side by side and an enumeration's symbols shared a line. A definition is read one declaration per line. The empty
+  state is `<<property>>`, `<<child>>`, `<<reference>>` and `<<symbol>>` rather than one shared placeholder, because
+  the section heading groups declarations and the placeholder has to say which kind stands in the slot it will
+  create - a placeholder that said nothing would offer Enter a slot it could not name.
 
 What that look needs is a cell that can disappear, and the notation layer has one: a
 [conditional cell](language.md#notation) draws its inline cells only while a property holds a value. `abstract` is
-the case it was added for.
+the case it was added for - a concrete concept draws `concept ...`, an abstract one `abstract concept ...`.
 
 The remaining gap is not the notation's:
 
@@ -144,7 +170,7 @@ classes keep their names (`StructureLanguage`, `StructureLowering`, `StructureCo
 | Missing | Arrives with |
 | --- | --- |
 | notation as data (one editor document per notation) | P2 |
-| `language.mps` as one model per aspect, with dependencies | P3, P4 |
+| `language.mps` as one model per aspect, with dependencies | when a language can extend another, which is what a dependency list is for |
 | a block conditional, which would let a whole option line disappear | when a notation needs it |
 | toggling the flag from the header rather than from a menu | it is an [intention](context-actions.md), by design |
 | triggers, applicability and collapse slots as declared data | after P2, when an aspect model exists to hold them |

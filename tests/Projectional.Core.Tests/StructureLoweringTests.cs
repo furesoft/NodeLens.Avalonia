@@ -210,24 +210,21 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "concept Rules.Rule",
+                "concept Rules.Rule extends <<>>, implements <<>> {",
                 "  offered in completion: true",
                 "  named by:",
                 "  collapsed by:",
                 "  described as:",
-                "  extends:",
-                "    << ... >>",
-                "  implements:",
-                "    << ... >>",
                 "  properties:",
                 "    <<property name : string",
                 "      default:",
                 "      described as:",
                 "      described when filled: false>>",
                 "  children:",
-                "    << ... >>",
+                "    <<child>>",
                 "  references:",
-                "    << ... >>"),
+                "    <<reference>>",
+                "}"),
             LayoutSnapshot.Render(rule, notations, width: 120));
     }
 
@@ -279,11 +276,51 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
+    public void TheHeaderCarriesTheInheritanceAndTheBodyIsABlock()
+    {
+        // MPS' reading of a concept: what it extends and implements in the header, what it allows and holds inside
+        // braces. Each list keeps a placeholder while it is empty, so the place the first super concept is written
+        // into never disappears - the reason a hidden-when-empty cell was not an option.
+        var definition = new DefinitionBuilder();
+
+        var empty = definition.Concept("Rules.Element");
+
+        var comparison = definition.Concept(
+            "Rules.Comparison",
+            supers: ["Rules.Element", "Framework.Base"],
+            implements: ["Framework.Named"]);
+
+        var notations = StructureNotations.Create();
+
+        Assert.Equal(
+            string.Join(
+                '\n',
+                "concept Rules.Element extends <<>>, implements <<>> {",
+                "  offered in completion: true",
+                "  named by:",
+                "  collapsed by:",
+                "  described as:",
+                "  properties:",
+                "    <<property>>",
+                "  children:",
+                "    <<child>>",
+                "  references:",
+                "    <<reference>>",
+                "}"),
+            LayoutSnapshot.Render(empty, notations, width: 120));
+
+        Assert.StartsWith(
+            "concept Rules.Comparison extends Rules.Element, Framework.Base, implements Framework.Named {",
+            LayoutSnapshot.Render(comparison, notations, width: 120),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EveryDeclarationOfASectionStartsANewLine()
     {
         // A collection lays out inline unless the notation asks it to stack, so before P4 two properties of one
-        // concept were drawn side by side and a second super concept shared the first one's line. A definition is
-        // read one declaration per line, which is the shape a reviewer expects of a structure model.
+        // concept were drawn side by side and an enumeration's symbols shared a line. A definition is read one
+        // declaration per line, which is the shape a reviewer expects of a structure model.
         var definition = new DefinitionBuilder();
 
         var rule = definition.Concept(
@@ -296,15 +333,10 @@ public sealed class StructureLoweringTests
                 definition.Child("body", "Rules.Body"),
                 definition.Reference("condition", "Rules.Condition"),
                 definition.Reference("other", "Rules.Condition"),
-            ],
-            supers: ["Rules.Element", "Framework.Base"],
-            implements: ["Framework.Named"]);
+            ]);
 
         var lines = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 160).Split('\n');
 
-        Assert.Contains("    Rules.Element", lines);
-        Assert.Contains("    Framework.Base", lines);
-        Assert.Contains("    Framework.Named", lines);
         Assert.Contains("    <<property name : string", lines);
         Assert.Contains("    <<property outcome : Rules.Outcome", lines);
         Assert.Contains("    <<child steps : Rules.Step[1]>>", lines);

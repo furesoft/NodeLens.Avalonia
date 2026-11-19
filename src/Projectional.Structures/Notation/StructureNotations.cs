@@ -3,19 +3,27 @@ using Projectional.Language;
 namespace Projectional.Structures.Notation;
 
 /// <summary>
-/// How a language definition is drawn, in the shape MPS writes a structure model: a header, a block of options, and
-/// one section per kind of slot, with every declaration on a line of its own.
+/// How a language definition is drawn, in the shape MPS writes a structure model: a header that says what the
+/// concept is and what it inherits, and a body in braces with a block of options and one section per kind of slot.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The shape is worth copying because it is the shape the problem has. A reader sees what the concept <em>is</em> in
-/// the header, what it allows in the options, and what it holds in three named sections - which is why a definition
-/// can be reviewed without its presentation, and why the sections are collections in the model rather than a
-/// grouping the renderer invents.
+/// The shape is worth copying because it is the shape the problem has. A reader sees what the concept <em>is</em> and
+/// what it extends in the header, what it allows in the options, and what it holds in three named sections - which
+/// is why a definition can be reviewed without its presentation, and why the sections are collections in the model
+/// rather than a grouping the renderer invents.
 /// </para>
 /// <para>
-/// Empty sections show <c>&lt;&lt; ... &gt;&gt;</c>, MPS' placeholder, rather than a bare heading: a section nobody
-/// has filled is a state to see, and a heading with nothing under it reads as a mistake.
+/// The two lists in the header are inline collections with a placeholder, so an empty one reads
+/// <c>extends &lt;&lt;&gt;&gt;</c> rather than disappearing. That is the whole reason the inheritance is a collection
+/// and not a line that fades out: a cell that hid an empty slot would also remove the place a user writes the first
+/// super concept into.
+/// </para>
+/// <para>
+/// An empty section names the kind it will create - <c>&lt;&lt;property&gt;&gt;</c>, <c>&lt;&lt;child&gt;&gt;</c>,
+/// <c>&lt;&lt;reference&gt;&gt;</c>, and <c>&lt;&lt;symbol&gt;&gt;</c> for an enumeration. A section nobody has
+/// filled is a state to see, and a heading with nothing under it reads as a mistake; one shared placeholder for all
+/// three would say nothing about which slot Enter is about to fill.
 /// </para>
 /// <para>
 /// A slot declaration carries its own kind and closes where it ends - <c>&lt;&lt;property name : string ...
@@ -38,7 +46,13 @@ namespace Projectional.Structures.Notation;
 /// </remarks>
 public static class StructureNotations
 {
-    private const string NoEntries = "<< ... >>";
+    /// <summary>The empty state of one of the header's two lists, where the word before it already says which.</summary>
+    private const string NoInheritance = "<<>>";
+
+    private const string NoProperties = "<<property>>";
+    private const string NoChildren = "<<child>>";
+    private const string NoReferences = "<<reference>>";
+    private const string NoSymbols = "<<symbol>>";
 
     /// <summary>Registers the notation of every concept of the structure language.</summary>
     /// <param name="notations">The registry to add to.</param>
@@ -66,22 +80,30 @@ public static class StructureNotations
                     ed.Conditional(StructureLanguage.IsAbstractProperty, "true", ed.Keyword("abstract"), ed.Space)),
                 ed.Keyword("concept"),
                 ed.Space,
-                ed.Property(StructureLanguage.KeySlot)),
+                ed.Property(StructureLanguage.KeySlot),
+                ed.Space,
+                ed.Keyword("extends"),
+                ed.Space,
+                ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance),
+                ed.Punct(","),
+                ed.Space,
+                ed.Keyword("implements"),
+                ed.Space,
+                ed.InlineCollection(StructureLanguage.ImplementsSlot, ed.Punct(","), NoInheritance),
+                ed.Space,
+                ed.Punct("{")),
             ed.Indent(ed.Sequence(
                 ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
                 ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
                 ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
                 ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
-                ed.Line(ed.Keyword("extends:")),
-                ed.Indent(ed.Children(StructureLanguage.SuperTypeSlot, NoEntries, stacked: true)),
-                ed.Line(ed.Keyword("implements:")),
-                ed.Indent(ed.Children(StructureLanguage.ImplementsSlot, NoEntries, stacked: true)),
                 ed.Line(ed.Keyword("properties:")),
-                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoEntries, stacked: true)),
+                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoProperties, stacked: true)),
                 ed.Line(ed.Keyword("children:")),
-                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoEntries, stacked: true)),
+                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoChildren, stacked: true)),
                 ed.Line(ed.Keyword("references:")),
-                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoEntries, stacked: true))))));
+                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoReferences, stacked: true)))),
+            ed.Line(ed.Punct("}"))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
@@ -142,7 +164,7 @@ public static class StructureNotations
 
         notations.Add(StructureConceptKeys.Enumeration, ed => ed.Sequence(
             ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),
-            ed.Indent(ed.Children("symbols", NoEntries, stacked: true))));
+            ed.Indent(ed.Children("symbols", NoSymbols, stacked: true))));
 
         notations.Add(StructureConceptKeys.EnumSymbol, ed => ed.Line(ed.Property("symbol")));
     }
