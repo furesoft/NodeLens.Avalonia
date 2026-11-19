@@ -1231,7 +1231,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         // Every definition document of the folder opens, because that is where the user edits the language: one
         // concept or enumeration per file, one notation per file, one rule or named type per file.
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder })
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.IntentionsFolder })
         {
             var path = Path.Combine(directory, folder);
 

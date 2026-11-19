@@ -31,6 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Projectional.Avalonia\Projectional.Avalonia.csproj" />
     <ProjectReference Include="..\Projectional.Editors\Projectional.Editors.csproj" />
+    <ProjectReference Include="..\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
     <ProjectReference Include="..\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\Projectional.LanguageExport\Projectional.LanguageExport.csproj" />
     <ProjectReference Include="..\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
