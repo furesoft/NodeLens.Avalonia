@@ -222,7 +222,7 @@ Keys held with `Ctrl`, `Alt`, or `Meta` belong to the host application, with two
 
 ### Example Languages
 
-Three worked examples ship as their own packages (`src/Projectional.Samples.*`). Each proves an axis the framework bets on, and each is drawn here from its own notation registry—so the picture is that language, not the sample rules language wearing a different document.
+Three worked examples ship as their own packages (`src/Samples/Projectional.Samples.*`). Each proves an axis the framework bets on, and each is drawn here from its own notation registry - so the picture is that language, not the sample rules language wearing a different document.
 
 ```powershell
 dotnet run --project tools/Projectional.Screenshots

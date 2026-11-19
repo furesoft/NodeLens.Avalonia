@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Projectional.Core\Projectional.Core.csproj" />
-    <ProjectReference Include="..\Projectional.Language\Projectional.Language.csproj" />
-    <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
-    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
   </ItemGroup>
 
 </Project>

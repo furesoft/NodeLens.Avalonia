@@ -36,7 +36,7 @@ The cost was paid in a currency the framework cares about as much:
 checks and intentions are one assembly, grouped by folder:
 
 ```
-src/Projectional.Json/
+src/Languages/Projectional.Json/
   Checks/        namespace Projectional.Json.Checks
   Intentions/    namespace Projectional.Json.Intentions
   ...            namespace Projectional.Json

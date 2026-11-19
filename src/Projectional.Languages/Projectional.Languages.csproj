@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Projectional.ConstraintRules\Projectional.ConstraintRules.csproj" />
-    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
-    <ProjectReference Include="..\Projectional.Editors\Projectional.Editors.csproj" />
-    <ProjectReference Include="..\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
-    <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
-    <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
-    <ProjectReference Include="..\Projectional.TypeRules\Projectional.TypeRules.csproj" />
-    <ProjectReference Include="..\Projectional.ScopeRules\Projectional.ScopeRules.csproj" />
-    <ProjectReference Include="..\Projectional.TextGen\Projectional.TextGen.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.ConstraintRules\Projectional.ConstraintRules.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Editors\Projectional.Editors.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.ScopeRules\Projectional.ScopeRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.TextGen\Projectional.TextGen.csproj" />
   </ItemGroup>
 
   <ItemGroup>

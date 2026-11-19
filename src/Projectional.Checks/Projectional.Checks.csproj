@@ -5,11 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Projectional.Core\Projectional.Core.csproj" />
-    <ProjectReference Include="..\Projectional.Editing\Projectional.Editing.csproj" />
-    <ProjectReference Include="..\Projectional.Expressions\Projectional.Expressions.csproj" />
-    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
-    <ProjectReference Include="..\Projectional.Semantics\Projectional.Semantics.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
   </ItemGroup>
 
 </Project>

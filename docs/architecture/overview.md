@@ -70,12 +70,15 @@ makes it a usable test of the integration surface
 | `Projectional.LanguageExport` | A declared language becomes the C# a package is made of: its declaration and notation calls, a README naming what the export cannot write, and - on request - the compiled assembly ([language-authoring.md](language-authoring.md#export-declared-to-c)) | none |
 | `tests/*` | Unit and snapshot tests | none |
 
-**One project per language** ([ADR 0021](../adr/0021-one-project-per-language.md)): `Projectional.Json`,
-`Projectional.Xml`, `Projectional.Structures` and the three worked examples
-(`Projectional.Samples.FeatureModel`, `.StateMachine`, `.SqlSchema`) sit beside `Projectional.Samples`,
-and each of them carries its own checks and intentions in `Checks/` and `Intentions/` folders. The
-namespaces keep their old names (`Projectional.Json.Checks` and so on), so where a type lives is a
-question about the project, not about the API.
+**One project per language** ([ADR 0021](../adr/0021-one-project-per-language.md)), grouped by folder:
+`src/Languages/` holds the language packages (`Projectional.Expressions`, `.Json`, `.Xml`, `.Structures`,
+`.Editors`, `.TypeRules`, `.TextGen`, `.ConstraintRules`, `.ScopeRules`, `.IntentionRules`) and
+`src/Samples/` the sample languages (`Projectional.Samples`, `.StateMachine`, `.FeatureModel`, `.SqlSchema`).
+Each carries its own checks and intentions in `Checks/` and `Intentions/` folders. The namespaces keep their
+old names (`Projectional.Json.Checks` and so on), so where a project sits is a question about the repository,
+not about the API. What stays in `src/` itself is the framework and the host: `Core`, `Language`, `Projection`,
+`Semantics`, `Editing`, `Checks`, `Intentions`, `Toolkit`, `Avalonia`, `Workbench`, plus the two libraries a
+host calls - `Languages` (opening a language folder) and `LanguageExport`.
 
 Three assemblies expose the *editor* API: `Projectional.Core`, `Projectional.Avalonia` and - since
 [ADR 0019](../adr/0019-toolkit-is-the-language-surface.md) - `Projectional.Toolkit`, which is what a

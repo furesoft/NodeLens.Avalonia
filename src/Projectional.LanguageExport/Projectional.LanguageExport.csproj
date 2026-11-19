@@ -5,7 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Projectional.Languages\Projectional.Languages.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Languages\Projectional.Languages.csproj" />
   </ItemGroup>
 
   <ItemGroup>

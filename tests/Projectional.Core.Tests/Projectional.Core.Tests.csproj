@@ -12,29 +12,29 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.ConstraintRules\Projectional.ConstraintRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.ConstraintRules\Projectional.ConstraintRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Core\Projectional.Core.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Editors\Projectional.Editors.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Expressions\Projectional.Expressions.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Editors\Projectional.Editors.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Intentions\Projectional.Intentions.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Json\Projectional.Json.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Json\Projectional.Json.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
     <ProjectReference Include="..\..\src\Projectional.LanguageExport\Projectional.LanguageExport.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Samples.SqlSchema\Projectional.Samples.SqlSchema.csproj" />
+    <ProjectReference Include="..\..\src\Samples\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Samples\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
+    <ProjectReference Include="..\..\src\Samples\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
+    <ProjectReference Include="..\..\src\Samples\Projectional.Samples.SqlSchema\Projectional.Samples.SqlSchema.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Structures\Projectional.Structures.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.TypeRules\Projectional.TypeRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.TextGen\Projectional.TextGen.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Xml\Projectional.Xml.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.TextGen\Projectional.TextGen.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Xml\Projectional.Xml.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -52,9 +52,9 @@
     -->
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-workflow\**\*.mps" Link="Workflow\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\src\Projectional.Samples.StateMachine\Corpus\**\*.mps" Link="StateMachine\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\src\Projectional.Samples.FeatureModel\Corpus\**\*.mps" Link="FeatureModel\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\src\Projectional.Samples.SqlSchema\Corpus\**\*.mps" Link="SqlSchema\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Samples\Projectional.Samples.StateMachine\Corpus\**\*.mps" Link="StateMachine\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Samples\Projectional.Samples.FeatureModel\Corpus\**\*.mps" Link="FeatureModel\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Samples\Projectional.Samples.SqlSchema\Corpus\**\*.mps" Link="SqlSchema\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -135,9 +135,10 @@ even if the build stays green.
   mechanism - the namespace stays flat, so consumers need no extra `using` directives.
 - **One project per language** ([ADR 0021](../../../docs/adr/0021-one-project-per-language.md)): a language's
   concepts, notation, importer, generator, types, constraints, scopes, checks and intentions are one assembly, with
-  `Checks/` and `Intentions/` as folders. Their namespaces keep the names they had when they were separate
-  packages (`Projectional.Json.Checks`), so a consumer's `using` never has to change - do not "tidy" a namespace to
-  match a folder here.
+  `Checks/` and `Intentions/` as folders. Language packages live under `src/Languages/` and the sample languages
+  under `src/Samples/`; `src/` itself keeps only the framework and the host. Their namespaces keep the names they
+  had when they were separate packages (`Projectional.Json.Checks`), so a consumer's `using` never has to change -
+  do not "tidy" a namespace to match a folder here.
 - Test files mirror this: one `<TypeUnderTest>Tests.cs` per type.
 
 ## How `Projectional.Core` records change
