@@ -1370,9 +1370,15 @@ Shipped checks and the rules they encode:
   one still equal to the concept's placeholder are `STD001`'s, whitespace around a name is `STD003`'s, and
   `STD001`/`STD002` respell their proposals with the concept's own rule so a repair cannot leave `STD004`
   behind. The declared form is the structure language's `named by rule:` cell, which enumerates
-  `NameRule.All`, where an empty cell means inherit. The shipped languages use it: rules/states/features
-  are PascalCase, an expression name camelCase, schema/table/column names snake_case, a declared type
-  PascalCase and a record field camelCase.
+  `NameRule.All`, where an empty cell means inherit - and `samples/declared-pipeline` declares `pascal` for a
+  pipeline and `camel` for a stage, so the cell is proven from a folder and not only from a test. The shipped
+  languages use it: rules/states/features are PascalCase, an expression name camelCase, schema/table/column
+  names snake_case, a declared type PascalCase and a record field camelCase. The workbench's own `SHELL001`
+  (`DefaultNames`) is the last hand-written copy of the placeholder rule and respells its proposal the same
+  way, because it runs for documents whose language the shell does not know.
+  **Do not put a rule on the definition languages themselves** (`Structure.Concept.key` as `pascal-dot`, a
+  slot name as `camel`): that is a policy over every language a user writes in that folder, and open question
+  109 keeps it out until a language-creation flow can offer it as a changeable default.
 - `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
   `InsertChildAction`, which is the same creation path `InsertNodeAction` uses, so the fix and Enter cannot
   disagree. A slot whose whole set is abstract has no repair and therefore no finding.
@@ -2119,7 +2125,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2362 tests**; anything below that means tests were deleted.
+it. **Baseline is 2365 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
