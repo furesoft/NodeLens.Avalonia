@@ -718,6 +718,9 @@ public sealed partial class MainWindow : Window, IDisposable
         UsagesPanel.IsVisible = false;
     }
 
+    /// <summary>Closes the usages panel without touching the model or the caret.</summary>
+    private void OnCloseUsages(object? sender, RoutedEventArgs e) => HideUsages();
+
     /// <summary>Re-asks the open question, or closes the panel when it can no longer be answered.</summary>
     /// <remarks>
     /// The node id is what keeps the question the one the user asked: re-deriving from the caret would silently turn
