@@ -431,7 +431,7 @@ cannot fail. The honest place for the rule is the reader.
 | Id | The finding | The repair | Class |
 | --- | --- | --- | --- |
 | `STD040` | an operand grouped by precedence rather than by the drawing | `Wrap in parentheses` | plain - **shipped**, in the expression group |
-| `STD041` | a negation of a negation | `Remove both` | *not shipped*; needs a model seam, see below |
+| `STD041` | a negation of a negation | `Remove both` | plain - **shipped**; two unwraps in one program, see below |
 
 A language that composes the expression sub-language gets these for free, which is the same argument
 that makes the sub-language itself worth shipping. `STD040` is the one check here that needs an operator
@@ -439,12 +439,23 @@ table, and it keeps it: `ExpressionOperators` says precedence is not part of the
 analyser owns it. The finding names the *operand* whose grouping is not drawn, and the repair wraps that
 operand - wrapping its parent would again mean the same finding survives its own repair.
 
-**`STD041` is blocked on a primitive, not on a check.** "Remove both" hoists the inner operand into the outer
-unary's *place*, and no seam moves a child into its parent's position: `Model.Wrap` goes the other way,
-`Model.Replace` needs a concept key and builds a new node, and a single-valued slot cannot hold the node and its
-child at once. The repair needs an unwrap (`Model.Unwrap(node, slot)` or an equivalent action with its own undo
-closure), which is a model feature with a design decision of its own - the same reason `Model.Wrap` was added
-with `STD040` rather than guessed at.
+**`STD041` needed a primitive, and got one.** "Remove both" hoists the inner operand into the outer unary's
+*place*, and nothing moved a child into its parent's position: `Model.Wrap` goes the other way and `Model.Replace`
+needs a concept key and builds a new node. The primitive is `Model.Unwrap(node, slot)` - the only child of that
+slot takes the node's place, the node is deleted, all three steps in one transaction - with `UnwrapAction` as its
+edit. Two decisions inside it are what make it safe:
+
+- **It may not drop structure.** A node that holds another child list or a reference is refused: what is lost
+  has to be what the caller asked to lose, and properties are the exception because they *are* the wrapper
+  (`operator = "!"`). Without that rule "unwrap" would be a delete in disguise.
+- **A model root cannot be unwrapped**, and the check therefore does not report a pair at the top of a document:
+  the document a session draws *is* a root, so deleting it would take away the node the editor is built from -
+  the same reason "replace" and "wrap" refuse one. A finding whose repair cannot run is withheld, not offered
+  without a cure.
+
+The repair is one `EditProgram` of two unwraps (hoist the inner negation, then hoist its operand), so the pair is
+one undo step. The two operators have to be the **same** one: `!-x` is not `x`, and the check reads that from the
+two operator cells rather than from a symbol table of involutions it would have to keep.
 
 ### Loading: whatever the reader had to preserve
 
@@ -512,6 +523,7 @@ the shell does not know and a repair into that language's own `STD004` finding w
 | `STD002` | `DuplicateNameCheck` | a project-wide scan for referrers, because the repair may not leave a reference dangling |
 | `STD012` | `EmptyNodeCheck` | a delete addressed by node id - `DeleteNodeAction(NodeId)`, the gap the feature-model sample recorded while writing its first repair |
 | `STD020`, `STD021` | `UnresolvedReferenceCheck` | a reference write addressed by owner and slot - `SetReferenceAction` and `EditContext.ClearReference` - because a repair for a dangling reference is about the model, not about where the caret is; and the removal of the model-level target check in `EditContext.SetReference`, which refused a candidate the scope had offered from another document of the project |
+| `STD041` | `DoubleNegationCheck` | `Model.Unwrap(node, slot)` and `UnwrapAction`: the only child of a slot takes its parent's place, the parent is deleted, both in one transaction - the inverse of `Model.Wrap`, which no seam provided |
 
 `STD002` is the first standard check the samples had already written by hand: `RULES001` in
 `Projectional.Samples/Checks/`, `FM001` in the feature model and `SQL001` in the SQL schema all rename the

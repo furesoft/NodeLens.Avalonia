@@ -1403,13 +1403,21 @@ Shipped checks and the rules they encode:
   `EditContext.ClearReference`; `EditContext.SetReference` compares the **project** now, not the model, or a
   candidate the scope offered from another document would be silently refused. **`SqlSchemaChecks` leaves the
   group out**: its keys cross documents on purpose, and a document opened alone has no targets.
-- `STD022`, `STD030`-`STD032`, `STD041`, `STD042`, `STD050`/`STD051` are **not shipped, and are not waiting to
+- `STD041` (`DoubleNegationCheck`, `Warning`) - a negation whose operand is negated again by the **same** operator
+  (`!!x`, `--x`); `!-x` is not one, so the check compares the two operator cells rather than keeping a table of
+  involutions. The repair is one `EditProgram` of two `UnwrapAction`s (hoist the inner negation, then hoist its
+  operand), so the operand itself ends up where the pair stood, in one undo step. **A pair at the top of a document
+  is not reported**: unwrapping a model root would delete the node the session draws, so the finding is withheld
+  rather than offered without a cure. Its primitive is `Model.Unwrap(node, slot)` - the only child of that slot
+  takes the node's place and the node is deleted, all in one transaction - and it **refuses to drop structure**: a
+  node holding another child list or a reference is refused, because an unwrap that deletes a subtree nobody asked
+  about is a delete in disguise (properties are the exception, since they *are* the wrapper).
+- `STD022`, `STD030`-`STD032`, `STD042`, `STD050`/`STD051` are **not shipped, and are not waiting to
   be written**. Do not add a check for a state the model cannot hold: the parser refuses a value its
   `PropertyType` does not accept on every write and the reader turns one into `ModelFormatException`, so
-  `STD030`-`STD032` and `STD042` are unreachable; `STD041` needs an unwrap seam (`Model.Wrap` goes the other way,
-  `Model.Replace` builds a new node, a single-valued slot cannot hold node and child); `STD050`/`STD051` need the
-  opaque node `persistence.md` promises and the reader does not build; `STD022` is a policy a language writes
-  itself, because a reference across models is a feature here. `docs/architecture/quick-fixes.md` records each.
+  `STD030`-`STD032` and `STD042` are unreachable; `STD050`/`STD051` need the opaque node `persistence.md`
+  promises and the reader does not build; `STD022` is a policy a language writes itself, because a reference
+  across models is a feature here. `docs/architecture/quick-fixes.md` records each.
 - `STD040` (`BinaryGroupingCheck`, `Warning`) - an operand drawn without the parentheses its grouping
   needs. **The finding names the operand, not its parent**, and the repair wraps that operand: wrapping the
   parent leaves the same finding, and a repair that survives itself is broken. Precedence lives in the
@@ -1420,6 +1428,16 @@ creates and re-attaches inside one transaction (a single-valued slot cannot hold
 at once), so identity and undo survive; `WrapInAction` is that as an edit and `InsertChildAction` is the
 address-based half of Enter (`InsertNodeAction.FillSlot` delegates to it). Both decline with a reason
 rather than throwing when the document moved on.
+
+`Model.Unwrap(node, slot)` arrived with `STD041` as the inverse: the only child of that slot takes the node's
+place, the node is deleted, and the three steps (child leaves, node leaves, child arrives) are one transaction -
+undo replays them in reverse, which is why each has to be a placement the journal already knows how to take back.
+It refuses a model root (the document a session draws *is* a root), a slot that does not hold exactly one child,
+a child that may not stand where the node stood, and a node that still holds another child list or a reference -
+an unwrap that deletes structure nobody asked about would be a delete in disguise. Properties are the exception,
+because they are what made the node a wrapper. `UnwrapAction` addresses the node, not a cell, and turns the
+model's refusal into a rejection with the model's own sentence: the model stays the one authority on a legal
+placement rather than being restated in the edit layer.
 
 ## How intentions work
 
@@ -2145,7 +2163,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2388 tests**; anything below that means tests were deleted.
+it. **Baseline is 2411 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

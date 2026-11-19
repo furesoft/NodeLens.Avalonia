@@ -40,6 +40,15 @@ and no fewer, and the whole rearrangement is one transaction - while "sorted by 
 whoever asks, which is why `ChildOrder` lives in the editing layer. An order that already holds
 journals nothing.
 
+An **unwrap** is the inverse of the wrap: `Unwrap(node, slot)` lets the only child of that slot take the
+node's *place* and deletes the node, in one transaction. The child keeps its identity, so every reference
+into its subtree and every address that names one of its cells survives; the node's properties go with it,
+because they are what made it a wrapper (`operator = "!"` on a negation). It refuses a model root, a slot
+that does not hold exactly one child, a child that may not stand where the node stood, and a node that
+still holds another child list or a reference - losing structure nobody asked about would make "unwrap" a
+delete in disguise. The three placements it performs are each a step the journal already takes back, which
+is why one undo restores the wrapper with the child inside it.
+
 Deliberate restrictions:
 
 - **No free-form dictionaries.** Every slot is declared by the concept, so typos and
