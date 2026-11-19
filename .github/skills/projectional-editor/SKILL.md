@@ -2263,7 +2263,9 @@ because `dotnet new` caches by identity, not by content.
   commits and the `v*` tags; `<Version>0.1.0</Version>` in `Directory.Build.props` is only the no-git
   fallback. Do not set `tag-prefix` in `GitVersion.yml` - with `next-version` present it makes GitVersion 6.8.2
   fail with "Failed to parse ... into a Semantic Version". Every CI job that builds needs `fetch-depth: 0`, or
-  GitVersion reads a shallow history and computes a wrong version.
+  GitVersion reads a shallow history and computes a wrong version. A cached `obj/gitversion.json` outlives a
+  tag change, so a version that looks wrong after a tag was added or removed usually means "delete the `obj`
+  folders and build again".
 - **Only a `v*` tag publishes.** A merge builds and packs but never pushes; `publish-nuget` is guarded by
   `startsWith(github.ref, 'refs/tags/v')` and needs the `NUGET_API_KEY` secret in the `nuget` environment.
 
