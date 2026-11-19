@@ -13,6 +13,7 @@
         <MenuItem Header="New _notation" Click="OnNewNotation" />
         <MenuItem Header="New document of an _opened language" Click="OnNewLanguageDocument" />
         <MenuItem Header="Open _language..." Click="OnOpenLanguage" />
+        <MenuItem x:Name="ExportLanguageItem" Header="E_xport language to C#..." IsEnabled="False" />
         <MenuItem Header="_Open..." HotKey="Ctrl+O" Click="OnOpenDocument" />
         <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />
         <Separator />

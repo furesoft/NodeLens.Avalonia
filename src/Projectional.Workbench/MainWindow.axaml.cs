@@ -13,6 +13,7 @@ using Projectional.Expressions;
 using Projectional.Expressions.Intentions;
 using Projectional.Intentions;
 using Projectional.Language;
+using Projectional.LanguageExport;
 using Projectional.Languages;
 using Projectional.Projection;
 using Projectional.Samples;
@@ -887,6 +888,7 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateRepresentations();
         UpdateRunCommand();
         UpdateGenerators();
+        UpdateExportCommand();
     }
 
     /// <summary>Says whether the document in front can be run, and why not when it cannot.</summary>
@@ -924,6 +926,92 @@ public sealed partial class MainWindow : Window, IDisposable
             .ToList();
 
         SaveGeneratedItem.IsEnabled = _documents.Active?.Generated is not null;
+    }
+
+    /// <summary>Offers one export command per language that came from a folder.</summary>
+    /// <remarks>
+    /// Only languages opened from a folder can be exported: the built-in ones are already code, so exporting them
+    /// would generate what the repository already compiles. Which language a document belongs to cannot be read off
+    /// the document - a document may borrow concepts - so the menu names the languages instead of guessing one.
+    /// </remarks>
+    private void UpdateExportCommand()
+    {
+        var opened = _language.Opened;
+
+        ExportLanguageItem.IsEnabled = opened.Count > 0;
+        ExportLanguageItem.ItemsSource = opened
+            .Select(language => new MenuItem { Header = language.Name, Command = new ExportLanguageCommand(this, language) })
+            .ToList();
+
+        ToolTip.SetTip(
+            ExportLanguageItem,
+            opened.Count > 0
+                ? "Writes the generated C# and the compiled assembly of a language opened from a folder."
+                : "No language has been opened from a folder.");
+    }
+
+    /// <summary>A menu entry that exports one opened language.</summary>
+    private sealed class ExportLanguageCommand : System.Windows.Input.ICommand
+    {
+        private readonly MainWindow _window;
+        private readonly LanguageProject _language;
+
+        internal ExportLanguageCommand(MainWindow window, LanguageProject language)
+        {
+            _window = window;
+            _language = language;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _window.ExportLanguage(_language);
+    }
+
+    /// <summary>Writes one opened language as the C# a package is made of, compiling it on the way.</summary>
+    /// <remarks>
+    /// The shell compiles rather than offering the source alone, because this command's whole purpose is shipping a
+    /// language that was prototyped in the editor; a caller that wanted only the source has the library. A compilation
+    /// failure is a message rather than a crash - it means the export cannot spell something this language declares,
+    /// which is exactly what the user has to read.
+    /// </remarks>
+    private async void ExportLanguage(LanguageProject language)
+    {
+        _error = null;
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = $"Choose where to write {language.Name}",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } directory)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = LanguageExporter.Export(
+                language,
+                LanguageExporter.NamespaceFor(language.Name),
+                ExportOutput.Assembly);
+
+            var written = LanguageExportWriter.Write(result, directory);
+
+            _error = $"{language.Name} exported: {written.Count} files written to {directory}.";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ExportCompilationException)
+        {
+            _error = $"Could not export {language.Name}: {exception.Message}";
+        }
+
+        UpdateStatus();
     }
 
     /// <summary>A menu entry that generates one document with one generator.</summary>

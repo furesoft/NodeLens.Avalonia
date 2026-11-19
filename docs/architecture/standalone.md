@@ -121,6 +121,13 @@ written with - `Projectional.Structures` and `Projectional.Editors`.
   ([language-projects.md](language-projects.md)), and **New document of an opened language** creates a document of
   its first rootable concept. A refused language leaves the shell untouched, and the menu only offers languages that
   actually joined - the shell must never create a document it would then be unable to load.
+- **File ▸ Export language to C#…** writes an opened language as the package it would ship as: the generated
+  `…Language.cs`, its README and the assembly they compile to, into the folder the user picks
+  ([language-authoring.md](language-authoring.md#export-declared-to-c)). The submenu offers the opened languages by
+  name, because which language a document belongs to cannot be read off the document - a document may borrow
+  concepts. `LanguageExportWriter` does the writing and is tested headlessly; the window only picks the folder and
+  reports the result, including a compilation failure, which means the export cannot spell something the language
+  declares.
 - **The references this adds are language packages**, which is the one category rule 8 above allows: `Structures`
   and `Editors` sit on `Language` exactly like `Samples`, and the app already references three sample packages. No
   reference to `Core`, `Projection`, `Editing`, `Semantics` or `Persistence` was added for this.
