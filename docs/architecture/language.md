@@ -494,6 +494,9 @@ language gets when it says nothing.
 | `ScopeResolution` | `Found` / `Ambiguous` / `Missing`, with the candidates on an ambiguity |
 | `IScopeProvider` | the aspect: `ScopeOf(node, referenceSlot)` |
 | `ScopeConstraints` | the framework's own rules about scopes, for a host to compose |
+| `NameIndex` | every named node of the project by name, so a level need not walk to answer |
+| `ChildrenScope` | a level whose entries are the named children of given nodes, answered from the index |
+| `RootsScope` | the same for the named roots of given models - the model level and the project level |
 
 Four rules are worth knowing because each is a decision rather than a detail:
 
@@ -508,6 +511,36 @@ Four rules are worth knowing because each is a decision rather than a detail:
 - **The default chain is local, ancestors, model, project** - in that order, nearest first. The
   "imported models" step is not implemented: a project has no import list yet, so the project level
   stands in for it.
+
+### What a scope costs
+
+A level is asked two questions, and they used to cost the same: the level was enumerated once, then
+`Resolve` filtered that list. For the nearest level, which is "my own children and my siblings", a flat
+document is one parent for everything - so resolving a single name walked the whole document, and a
+document whose nodes are mostly references checked quadratically. Measured at 7 501 nodes: 2 232.8 ms
+before, 2.25 ms after ([semantics.md](semantics.md#what-a-full-recheck-costs)).
+
+Three decisions make it linear, and none of them is an optimisation detail:
+
+- **The index is per project, not per document** (`NameIndex`). The outermost level *is* the project, so
+  an index that answered for one model would have to fall back to a walk for exactly the cross-model case
+  that produced the cost.
+- **Invalidation is `Model.Version`, never a change handler.** Subscribing to `Model.Changed` would switch
+  change journalling on for every model of the project - `IsRecording` is true as soon as somebody
+  subscribes - so a batch consumer that never wanted an undo history would start allocating rollback
+  closures for it. Comparing the versions of the project's models costs one read each and covers a rename,
+  a move, a deletion and a new node alike, because every one of them passes through `MarkMutated`.
+- **A level answers lazily** (`ChildrenScope`, `RootsScope`). `Resolve` is one index lookup plus a
+  membership test per candidate; `Entries` is materialised the first time somebody asks for the list.
+  The membership test is the level's own rule and both questions ask it of the same set, so `Entries` and
+  `Resolve` cannot disagree - the "two consumers, one implementation" rule applied to the cost.
+
+`ScopeChain` follows from that: it no longer reads the entries of the levels it is given, because reading
+them is the cost the laziness exists to avoid. It still drops a level that answers eagerly and holds
+nothing (`Scope`, which is known to contribute nothing), so a chain of one real level is that level.
+
+**Do not "simplify" `Resolve` back into a filter over `Entries`.** It is the same answer by a cheaper
+route, and `ScopeChainTests.AChainAsksALevelForItsEntriesOnlyWhenTheListIsWanted` pins the difference.
 
 `EditorSession.Scopes` is the aspect, defaulting to `DefaultScopeProvider.Instance`. It is a property
 rather than a constructor argument because a language package cannot reference the editing layer, so

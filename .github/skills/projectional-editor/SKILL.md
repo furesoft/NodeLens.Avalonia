@@ -669,6 +669,23 @@ notation is registered per concept **and** variant
   resolved is excluded everywhere**: a reference that could point at the thing holding it is a cycle
   the model already refuses. The "imported models" step of the design is not implemented - a project
   has no import list yet, so the project level stands in for it.
+- **A level answers `Resolve` from `NameIndex`, never by enumerating itself.** The nearest level is "my
+  own children and my siblings", which in a flat document is every node, so filtering the level made one
+  reference cost the document (2 232.8 ms for 7 501 nodes; 2.3 ms with the index). `ChildrenScope` and
+  `RootsScope` therefore test membership per index candidate, and `Entries` - the completion list - is
+  materialised only when someone asks for it. **The index is per project, not per document**: the
+  outermost level *is* the project, so a per-model index would fall back to a walk for exactly the
+  cross-model case that was expensive.
+- **The index is invalidated by `Model.Version`, never by a change handler.** Subscribing to
+  `Model.Changed` sets `IsRecording` for every model of the project, so a consumer that wanted no undo
+  history would start allocating rollback closures for it; comparing the versions of the project's models
+  costs one read each and sees a rename, a move, a deletion and a new node alike. Do not "tidy" this into
+  a cache inside `DefaultScopeProvider` - it is a stateless singleton shared by every session and project,
+  so a cache there has nowhere to belong and no way to expire.
+- **`ScopeChain` must not read a level's entries while it is being built.** It concatenates them lazily
+  and drops only a level that answers eagerly and holds nothing (`Scope`), because that one is known to
+  contribute nothing. `ScopeChainTests.AChainAsksALevelForItsEntriesOnlyWhenTheListIsWanted` is the test
+  that keeps it that way; a "simplification" back to `entries.Count > 0` would silently restore the cost.
 - **`EditorSession.Scopes` is the aspect**, defaulting to `DefaultScopeProvider.Instance`. It is a
   property rather than a constructor argument because a language package cannot reference the editing
   layer, so the host installs a replacement.
@@ -720,11 +737,11 @@ notation is registered per concept **and** variant
   not yet know that a *referencing* node's rule may have changed too. Do not claim incrementality beyond
   that. **The numbers are measured, not assumed** (`tools/Projectional.Benchmarks`, recorded in
   `docs/architecture/semantics.md` §What a full recheck costs): a document without references checks
-  linearly (6.5 ms at 40 001 nodes) and is dominated by the layout rebuild the same keystroke pays
-  (285 ms), while a document *made of* references checks quadratically (2 232.8 ms at 7 501 nodes) because
-  every reference asks the scope and `DefaultScopeProvider` walks the document to answer. That is why
-  open questions 110/111 put a name index and incremental layout before dependency sets - do not start
-  with the dependency sets.
+  linearly (5.7 ms at 40 001 nodes) and is dominated by the layout rebuild the same keystroke pays
+  (285 ms); a document *made of* references used to be quadratic (2 232.8 ms at 7 501 nodes) because every
+  reference asked the scope and the scope walked the document, and costs 2.3 ms since the name index. So
+  the dependency sets are still last, and incremental *layout* is what is worth attacking first - do not
+  start with the dependency sets.
 - **The app merges constraint findings with the check catalogue's in one list** (`PublishFindings`),
   because the panel and the markers must not be two answers to "what is wrong". A constraint finding has
   no fix, so it is a marker and a panel row only. Which rules it runs is the document's: `DocumentTab.Constraints`
