@@ -38,6 +38,7 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Children` | `slot`, `emptyText`, `spacing` | many children, as blocks |
 | `Editor.Collection` | `slot`, `separator`, `emptyText`, `spacing` | many children between separators |
 | `Editor.Conditional` | `slot`, `value`, `cells` over `Editor.InlineCell` | drawn only while `slot` holds `value` |
+| `Editor.WhileFilled` | `slot`, `cells` over `Editor.InlineCell` | drawn only while the child slot `slot` holds a child |
 | `Editor.Table` | `slot`, `emptyText`, `columns` over `Editor.Column` | many children as a grid |
 | `Editor.Column` | `slot`, `header` over `Editor.InlineCell`, `emptyText` | one column of a table |
 
@@ -49,6 +50,12 @@ the declarations, and there is exactly one place it lives.
 the C# cell carries - a property, the value to compare it with, and the inline cells to draw - and it lowers to the
 same `ConditionalNotationCell`, so a notation that says `abstract concept Rule` can be written as a model or by
 hand. Its own notation reads `[> if {slot} = "value"` with the cells indented below it.
+
+`Editor.WhileFilled` is its sibling for a slot instead of a value, and it lowers to the same
+`WhenFilledNotationCell` the hand-written notation uses: `[> while {slot} is filled`, cells indented below. It
+exists for the same reason - a notation that can be written in C# and not as a model would make the two authoring
+paths different languages (ADR 0014) - and it is what lets the structure language's header be declared rather than
+built when P7 defines the definition languages in themselves.
 
 ## The shape: MPS' brackets
 

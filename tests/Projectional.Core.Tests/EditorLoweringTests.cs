@@ -179,6 +179,78 @@ public sealed class EditorLoweringTests
     }
 
     [Fact]
+    public void ADeclaredWhileFilledDrawsItsCellsOnlyWhileTheSlotHoldsAChild()
+    {
+        // The twin of the conditional, one level over: a slot instead of a property. It has to exist as a cell
+        // concept for the same reason - a notation that can be written in C# and not as data would make the two
+        // authoring paths different languages (ADR 0014).
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Rules.Rule",
+                [
+                    new ChildSlot("body", "Rules.Rule", Cardinality.Many),
+                ]),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+        var line = notation.Line(root, EditorConceptKeys.WhileFilled, EditorConceptKeys.Keyword);
+        var cells = line.GetChildren(EditorLanguage.CellSlot);
+
+        cells[0].Set("slot", "body");
+        cells[1].Set("text", "rule");
+
+        // The space belongs to the cell, like the conditional's does: outside it, the blank would stay behind in
+        // every drawing of a concept that has no body.
+        notation.Cell(cells[0], EditorConceptKeys.Keyword, ("text", "has"));
+        notation.Cell(cells[0], EditorConceptKeys.Space);
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("Rules.Rule");
+
+        Assert.Equal("rule", LayoutSnapshot.Render(rule, notations, width: 40));
+
+        model.NewChild(rule, "body", "Rules.Rule");
+
+        Assert.Equal("has rule", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
+    public void ADeclaredWhileFilledIsValidatedByTheRegistry()
+    {
+        // Same division as the conditional: a slot the concept does not declare is the notation layer's refusal,
+        // because the declared cell lowers to the same cell the hand-written notation uses.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Rules.Rule",
+                [
+                    new PropertySlot("enabled", PropertyType.Boolean, "true"),
+                    new ChildSlot("body", "Rules.Rule", Cardinality.Many),
+                ]),
+        ]);
+
+        Assert.Throws<NotationException>(() => WhileFilled(concepts, "enabled"));
+        Assert.Throws<NotationException>(() => WhileFilled(concepts, "nope"));
+    }
+
+    /// <summary>A one-line notation whose only cell is a "while filled" cell over <paramref name="slot"/>.</summary>
+    private static NotationRegistry WhileFilled(ConceptRegistry concepts, string slot)
+    {
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+        var cell = notation.Line(root, EditorConceptKeys.WhileFilled).GetChildren(EditorLanguage.CellSlot)[0];
+
+        cell.Set("slot", slot);
+
+        return EditorLowering.CreateRegistry(notation.Roots, concepts);
+    }
+
+    [Fact]
     public void AVariantTravelsWithTheNotation()
     {
         var concepts = ConceptRegistry.Create([new ConceptDeclaration("Rules.Rule")]);

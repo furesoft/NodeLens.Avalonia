@@ -2,7 +2,7 @@ namespace Projectional.Editors;
 
 /// <summary>The keys of the editor language: the concepts a notation is written with.</summary>
 /// <remarks>
-/// Fifteen concepts, and the split between them is the one rule the C# builder expresses with its type hierarchy:
+/// Nineteen concepts, and the split between them is the one rule the C# builder expresses with its type hierarchy:
 /// a <see cref="Line"/> runs horizontally and holds only inline cells, while a <see cref="Sequence"/> and an
 /// <see cref="Indent"/> stack and hold only blocks. A declared notation therefore cannot express what
 /// <c>ed.Line(ed.Indent(...))</c> cannot compile - the rule moved from the compiler into the slot declarations.
@@ -59,6 +59,9 @@ public static class EditorConceptKeys
 
     /// <summary>Inline cells drawn only while a property of the node holds a value.</summary>
     public const string Conditional = "Editor.Conditional";
+
+    /// <summary>Inline cells drawn only while a child slot of the node holds a child.</summary>
+    public const string WhileFilled = "Editor.WhileFilled";
 
     /// <summary>Many children drawn as a grid: one row per child, one cell per column.</summary>
     public const string Table = "Editor.Table";

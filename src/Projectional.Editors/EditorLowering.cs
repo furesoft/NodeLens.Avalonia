@@ -164,6 +164,9 @@ public static class EditorLowering
                 Required(cell, "slot"),
                 Optional(cell, "value") ?? string.Empty,
                 [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerInline(child, conceptKey))]),
+            EditorConceptKeys.WhileFilled => ed.WhenFilled(
+                Required(cell, "slot"),
+                [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerInline(child, conceptKey))]),
             _ => throw NotACell(cell, conceptKey, "not inline"),
         };
     }

@@ -134,6 +134,17 @@ public static class EditorNotations
                 ed.Punct("\"")),
             ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
 
+        // The sibling of the conditional: the same question, asked of a slot instead of a property. It reads as the
+        // condition an author has to satisfy, because the cells below it only exist while the slot is filled.
+        notations.Add(EditorConceptKeys.WhileFilled, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[> while"),
+                ed.Space,
+                ed.Property("slot"),
+                ed.Space,
+                ed.Keyword("is filled")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
+
         notations.Add(EditorConceptKeys.Collection, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("[/ collection"),
