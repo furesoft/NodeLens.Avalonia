@@ -7,6 +7,8 @@
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <!-- A sample/tool, not a product: nothing depends on it, so it is not a package. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,14 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    A worked example, not a product - and since ADR 0021 one project: the state-machine language, its check and
-    its constraint (`Checks/`) live in this assembly, and it borrows the shared expression language for its
-    guards.
+    A worked example - and since ADR 0021 one project: the state-machine language, its check and its constraint
+    (`Checks/`) live in this assembly, and it borrows the shared expression language for its guards. It ships as
+    a package like every other language (ADR 0022).
   -->
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\..\..\..\src\Projectional.Core\Projectional.Core.csproj" />

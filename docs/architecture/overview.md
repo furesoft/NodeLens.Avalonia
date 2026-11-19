@@ -82,6 +82,14 @@ and the host: `Core`, `Language`, `Projection`, `Semantics`, `Editing`, `Checks`
 `Avalonia`, `Workbench`, plus the two libraries a host calls - `Languages` (opening a language folder) and
 `LanguageExport`.
 
+**Every project under `src/` is a NuGet package** ([ADR 0022](../adr/0022-every-project-is-a-package.md),
+[packaging.md](packaging.md)): 27 packages today, being the thirteen framework assemblies above, the ten
+languages and the four sample languages. `IsPackable` is `true` by default and the shared metadata lives in
+`Directory.Build.props`; `tests/`, `tools/Projectional.Screenshots`, `samples/host-app` and the language
+template opt out, because a package is a thing to depend on and those are not. The version is derived from the
+repository by GitVersion (`GitVersion.yml`), and only a `v*` tag publishes - so an embedder's first step is a
+`PackageReference` rather than a folder to add to its solution.
+
 Three assemblies expose the *editor* API: `Projectional.Core`, `Projectional.Avalonia` and - since
 [ADR 0019](../adr/0019-toolkit-is-the-language-surface.md) - `Projectional.Toolkit`, which is what a
 language package references instead of reaching into four assemblies. `Language`, `Projection` and

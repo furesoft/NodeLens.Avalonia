@@ -188,6 +188,7 @@ Not done in M5: live preview, bootstrap and the language browser.
 
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
+| Packaging: every project under `src/` is a NuGet package - the repository default is `IsPackable=true` with the shared metadata in `Directory.Build.props`, and the four things that are not products (tests, the screenshot tool, the host sample, the language template) opt out where they are declared. The version comes from the repository through GitVersion rather than a typed literal, and only a `v*` tag publishes | `Directory.Build.props`, `Directory.Packages.props`, `GitVersion.yml`, `.github/workflows/ci.yml` (`pack`, `publish-nuget`), [packaging.md](architecture/packaging.md), [ADR 0022](adr/0022-every-project-is-a-package.md) | `dotnet pack Projectional.slnx` produces 27 packages with no warnings and a correct nuspec (licence, README, repository and commit, dependencies at the same version); the CI `pack` job asserts that count and the `publish-nuget` job is tag-gated. A push cannot be verified without credentials, so the flow is proven locally and the secret is documented |
 | Text import, slice I7: **File ▸ Import…** in the workbench - the picker offers the reference formats, the file's content decides which language claims it (the extension only when the text starts like neither), the text is imported into a fresh model named after the file, and the tab opens with that language's notation, generators, intentions and checks. A refused file opens no tab and reports the importer's line and column; an accepted one starts clean and is not linked to the file it came from | `Projectional.Workbench/Documents/` (`ReferenceLanguage`, `ReferenceLanguages`, `ReferenceImport`, `ImportOutcome`), `DocumentTab.Checks`, `MainWindow.PublishFindings`/`OnImportDocument`, `MainWindow.axaml` | `ReferenceLanguagesTests` (content before file name, the file name when the text says nothing, no format at all, every concrete concept has a notation, every language brings generators/intentions/checks), `ReferenceImportTests` (JSON and XML become documents of their language, a refusal leaves no roots and names its place, the opened tab is clean, untitled in the file sense, and carries the language's checks and generators) |
 | Text import, the note a JSON model may carry: `Json.Comment` is an `Json.Member` beside `Json.Property`, drawn as the JSONC spelling (`// why`) and mapped to the empty template, so generation omits it - and because an entry that emits nothing takes no separator with it, a note between two members leaves the document well-formed | `Projectional.Json` (`JsonConceptKeys.Member`/`Comment`, `JsonLanguage`, `Notation/JsonNotations`, `JsonTextGenerators`), `JsonDuplicateMemberCheck` (a note is not a name) | `JsonTextGeneratorsTests` (a note leaves no comma behind; a note-only object still prints a JSON object), `JsonNotationTests`, `JsonChecksTests` (two notes with the same words are not a duplicate member), `GenerationCoverageTests` (a concept that emits nothing is covered, not missing) |
 | Text generation, `ignore` and coverage: an entry that emits nothing is left out of a list together with its separator (each entry is buffered first, since a separator already written cannot be taken back), the declared generator language says the decision explicitly with `TextGen.Ignore` instead of an empty template box, and `GenerationCoverage.Of(model, generator)` answers what the chosen generator cannot print as one diagnostic per concept at its first node - so an editor can mark a document before anybody presses Generate. The `Of(model, generators)` overload asks once per generator, because a document can be complete for one target and not for another | `Generator.EmitEntries` (`Projectional.Semantics/Generation/`), `TextGenConceptKeys.Body`/`Ignore`, `TextGenLowering`, `Notation/TextGenNotations`, `GenerationCoverage` | `GeneratorTests` (an ignored entry takes no separator, a loop skips it too, a buffered region still names where it went), `TextGenLoweringTests` (the ignore mapping lowers to the empty template and generates nothing; a concept the language does not have is refused), `GenerationCoverageTests` (one finding per concept at its first node, inheritance answered as the run answers it, a covered document clean, one answer per generator, nothing for a language that declares none) |
@@ -204,7 +205,7 @@ Not done in M5: live preview, bootstrap and the language browser.
 Not done in M6: the remaining aspect as a definition language (intentions), refactorings,
 migrations tooling, model-aware diff/merge, model-to-model generation, the TOML and HOCON import
 languages, the projected C# base language,
-the embedded shell, packaging.
+the embedded shell.
 
 ## M7
 
@@ -215,10 +216,10 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
-| 19 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
+| 21 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2269 tests |
-| CI: Release build and tests on Windows and Linux, corpus job on Linux | `.github/workflows/ci.yml` | the workflow |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2270 tests |
+| CI: Release build and tests on Windows and Linux, corpus job on Linux, one-package-per-project `pack` job and a tag-gated `publish-nuget` job | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 
 ## What is not here

@@ -14,6 +14,14 @@
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
 
+  <ItemGroup Label="Build">
+    <!--
+      Derives the package version from the git history and the `v*` tags (GitVersion.yml) instead of a
+      hand-typed number. `PrivateAssets="all"` keeps it out of what a consumer of a package inherits.
+    -->
+    <PackageVersion Include="GitVersion.MsBuild" Version="6.8.2" />
+  </ItemGroup>
+
   <ItemGroup Label="Export">
     <!--
       The export compiles the source it just wrote in-process, so what a language becomes can be a package
