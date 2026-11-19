@@ -376,6 +376,104 @@ stage's job, not thisone's.
 model and asserts that the declared registry and `ExpressionsLanguage.Types` answer the same type for
 every node of the sample document - the same "two authoring paths, one answer" check the language layer has.
 
+### Planned: parity with MPS' typesystem
+
+**Planned, not built.** This section is the design of record for the next stage of the type system, and what it
+records is a *compatibility target*: the rules a language author can write in MPS' typesystem cookbook should be
+expressible here, in this repository's vocabulary, without falling back to C#. The cookbook is
+<https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these slices, not a
+specification to copy.
+
+Today the type layer answers **one** question per node - `ITypeRule.TypeFor(node)` returns an `IType` - and a type
+answers one: `expected.Accepts(actual)`. That is enough for a DSL whose types are written down, and it is *not*
+enough for the cookbook's central case: tying the type of one node to the type of another (`infer typeof(a) :<=:
+typeof(b)`), which needs variables over types and a solver.
+
+The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
+`do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
+interpreter this repository has refused four times (constraints, templates, types, intentions). The declarative
+equivalent is a **type equation**: a rule states relations over types, and a small solver finds an assignment. So
+"compatible with MPS" here means *every cookbook rule has a declarative spelling*, not that a `do` block can be
+typed in.
+
+#### What each kind of MPS rule becomes
+
+| MPS (cookbook section) | Its meaning there | Here: today | Here: planned |
+| --- | --- | --- | --- |
+| inference rule, equality (`typeof(x) :==: <T>`) | the node's type *is* this type | `TypeRule.Fixed`, `TypeRule.Child` | `TypeRule.Equation` with an `equals` relation |
+| inference rule, inequality (`infer typeof(a) :<=: <T>`) | the type must be a *subtype* | only `IType.Accepts` (conformance, not subtyping) | a subtype relation as data, `TypeRule.Equation` with `subtype`/`supertype` |
+| `var elementType` + anti-quotation | a variable shared between two statements | nothing - a rule cannot name a second node's type | `TypeRule.TypeVariable`, shared by equations; anti-quotation is unnecessary because a variable is declared once and referenced by name |
+| `join(A, B)` (least upper bound) | the common supertype of two types | `Unknown` is not it | `TypeRule.Join` as a type expression, with `Meet` beside it |
+| `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer | a solver pass order (`Settle`), so a rule may read a child's *settled* type and a cyclic read is a finding |
+| `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | a finding has to be a `Check` or a `Constraint`, both of which are separate aspects | `TypeRule.Complain` as a body, lowered into the same `Diagnostic` a check produces |
+| replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
+| subtyping rule | the direct supertypes of a type | nothing - `NamedType` has an expansion, not supertypes | `TypeRule.Supertypes` declared per type concept, feeding the subtype relation |
+| comparison rule | two types are interchangeable (weak/strong) | nothing | `TypeRule.Comparable` - a third question beside accept and subtype |
+| substitute type rule | swap the node representing a type (configuration-dependent `int`/`long`) | nothing | `TypeRule.Substitute`; last, because it needs a per-model configuration input the framework does not have |
+| checking rule + quick fix | report a problem, offer a repair | `ICheck` (with a repair) and `IConstraint` (without) | **done** - the cookbook's `checking rule` is this repository's check catalogue, not part of the type system |
+
+#### The type kinds the cookbook assumes
+
+| MPS type | Here: today | Planned |
+| --- | --- | --- |
+| `PrimitiveType` (`<string>`, `<boolean>`) | `PrimitiveType` | - |
+| `ClassifierType` / `RuntimeTypeVariable` | `NamedType` (a name plus an expansion) | keep; a declared name is compared by name, as MPS compares by classifier |
+| `SequenceType` / `ListType` / `ArrayType` | `ListType` | `Sequence`/`Array` as declared *aliases* of one list kind, so a rule written for MPS' vocabulary has a spelling that does not lose the element type |
+| `NullableType` | `OptionalType` | - |
+| `TupleType` | `RecordType` | - |
+| `JoinType` / `MeetType` | nothing | `Join`/`Meet` as type expressions, resolvable by the subtype relation |
+| `WildcardType` / `DynamicType` | `UnknownType` covers the "suppresses follow-on errors" job | a wildcard only when a rule needs to *say* "anything", which `Unknown` deliberately is not |
+| `NullType` | `Optional` accepts its inner type; there is no null literal in the shipped languages | not planned until a language has a null value to type |
+| `VoidType` | nothing | a `Void` primitive, when a statement language lands |
+
+#### Slices
+
+Each slice is independent and each is only worth starting when a language needs it - the same rule the rest of
+`docs/` follows, because a type system nobody writes rules in is a liability.
+
+- **T1 - the subtype relation as data.** `ISubtype`/`SubtypeRelation` in `Projectional.Language/Types/`, primitive
+  edges plus a declared one, answering `IsSubtype(actual, expected)`. `Accepts` keeps its meaning (conformance of a
+  value to a slot's type) and gains a default implementation on top of the relation; the two questions stay
+  distinguishable, because collapsing them is what makes `Unknown` leak.
+- **T2 - type variables and equations.** `TypeVariable`, `TypeEquation` (`Equals`, `Subtype`, `Supertype`),
+  `TypeSolution` and a fixpoint `TypeSolver` with a step budget. A rule's answer becomes "these equations hold", and
+  `ITypeRule` gains an overload that collects them while `TypeFor` keeps working for the rules that need no solving.
+- **T3 - `join` and `meet`.** Computed from the subtype relation, with `Unknown` if the two types share no supertype -
+  reported, never guessed.
+- **T4 - the declared forms of T1-T3.** `TypeRule.Equation`, `TypeRule.TypeVariable`, `TypeRule.Join`, and the
+  subtyping declaration, with the load-time validations the aspect already has (unique variable names, a relation
+  whose sides have the right kinds, a variable used but never constrained).
+- **T5 - comparison rules.** `TypeRule.Comparable`, and `IType.IsComparableTo` beside `Accepts` - a third question,
+  because "interchangeable" is what MPS' weak comparison means and neither accept nor subtype says it.
+- **T6 - the settle pass.** An explicit order so a rule may read a child's settled type (`when concrete`), with a
+  cycle reported as a finding instead of a stack overflow. Deliberately after T2: an equation solver makes most
+  `when concrete` blocks unnecessary, and the cookbook uses them to work around statement ordering.
+- **T7 - a type rule that reports.** `TypeRule.Complain`, lowered into `Diagnostic` with a severity, so a
+  "operation is not applicable to these operands" message reaches the squiggles and the problems panel through the
+  path that already exists. A complaint names its node, so no new diagnostic kind.
+- **T8 - replacement and substitution.** `TypeRule.Replacement` (rewrite an equation before solving) and
+  `TypeRule.Substitute` (configuration-dependent types, which needs a per-model configuration slot the framework does
+  not have - open question 113).
+
+#### What stays out, and why
+
+- **A statement list, mutation of a type node, and anti-quotation.** `%()%` exists in MPS to move AST fragments in
+  and out of a statement; a rule here is an expression over slots, so there is nothing to move. Reintroducing it
+  would mean shipping an interpreter - the line `docs/architecture/semantics.md` already draws for constraints,
+  templates, types and intentions.
+- **`overrides`, and rule-order resolution beyond concept declaration order.** Inheritance here is "own rule first,
+  then the super concepts in declaration order", stated once and used by notation, triggers, scopes, constraints,
+  types and intentions. A second resolution order is a second answer.
+- **A checking rule as part of the type system.** It is `ICheck`, with a repair, or `IConstraint`, without - and both
+  already run in the app.
+
+#### How it is proven
+
+The parity rule, exactly as `TypeRuleLoweringTests` proves it for the current three bodies: a **corpus of cookbook
+rules** written twice - once as a C# `ITypeRule` and once as a `Projectional.TypeRules` model - answered by the same
+`TypeRegistry` over the same documents, compared as `IType.Name` per node. A cookbook rule with no declarative
+spelling is a gap in the vocabulary, which is the same defect ADR 0014 calls it.
+
 ## Generation
 
 Text generation is a template tree per concept:
