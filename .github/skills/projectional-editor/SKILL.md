@@ -1289,7 +1289,7 @@ record, and `Projectional.Json` is the first reference language behind the contr
 - **Each reference language ships its own intentions and checks** (explicit user requirement, not a nicety), and since
   [ADR 0021](../../../docs/adr/0021-one-project-per-language.md) they are **folders inside the language project**:
   `Projectional.Json/Checks/` (namespace `Projectional.Json.Checks`), `Projectional.Json/Intentions/`,
-  `Projectional.Xml/Checks/`, `Projectional.Xml/Intentions/`. TOML has the same two folders, and HOCON and YAML get them when they land -
+  `Projectional.Xml/Checks/`, `Projectional.Xml/Intentions/`. TOML and HOCON have the same two folders, and YAML gets them when it lands -
   **never one shared "syntax languages" package**, which would have to ask which language it is looking at.
 - **XML's two intentions are mandatory, not a convenience.** Its notation hides both collections while they are empty -
   an empty XML slot cannot be drawn as a blank, because whitespace inside an element *is* content and a placeholder would
