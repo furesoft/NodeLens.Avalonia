@@ -31,9 +31,10 @@ check catalogue as a package (`Projectional.Checks`), the intention model and it
 preview of an offer (its description, then the result of its edit shown in place as a ghost of a discarded
 copy), the framework's own intention catalogue (rename, wrap in X, reset to the default, in
 `Projectional.Intentions`), the constraint language (a language's own rules written as models, in
-`Projectional.ConstraintRules`), and logical
+`Projectional.ConstraintRules`), logical
 scrolling (bars via
-`ILogicalScrollable`, wheel, page keys) are done. The
+`ILogicalScrollable`, wheel, page keys), and text import (the `ITextImporter` contract in
+`Projectional.Language/Import/` with `Projectional.Json` as its first reference language) are done. The
 standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
 
 **The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
