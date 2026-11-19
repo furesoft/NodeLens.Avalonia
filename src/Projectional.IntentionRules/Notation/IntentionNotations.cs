@@ -55,6 +55,13 @@ public static class IntentionNotations
             ed.Space,
             ed.Property(IntentionLanguage.SideSlot)));
 
+        notations.Add(
+            IntentionConceptKeys.Replace,
+            ed => ed.Line(
+                ed.Keyword("replace with"),
+                ed.Space,
+                ed.Property(IntentionLanguage.WithSlot, emptyText: "<concept>")));
+
         notations.Add(IntentionConceptKeys.Delete, ed => ed.Line(ed.Keyword("delete")));
 
         notations.Add(IntentionConceptKeys.Move, ed => ed.Line(

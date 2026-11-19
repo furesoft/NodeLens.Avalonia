@@ -30,6 +30,9 @@ public static class IntentionConceptKeys
     /// <summary>Moves the node among its siblings.</summary>
     public const string Move = "Intent.Move";
 
+    /// <summary>Replaces the node with a node of another concept.</summary>
+    public const string Replace = "Intent.Replace";
+
     /// <summary>Writes a property value on the node the caret is on.</summary>
     public const string Set = "Intent.Set";
 }

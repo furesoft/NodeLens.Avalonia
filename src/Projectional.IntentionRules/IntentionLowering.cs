@@ -68,7 +68,7 @@ public static class IntentionLowering
 
             var action = Single(rule, IntentionLanguage.ActionSlot);
 
-            var safety = action.Concept.Key == IntentionConceptKeys.Delete
+            var safety = action.Concept.Key is IntentionConceptKeys.Delete or IntentionConceptKeys.Replace
                 ? EditSafety.Destructive
                 : EditSafety.Plain;
 
@@ -92,6 +92,7 @@ public static class IntentionLowering
             IntentionConceptKeys.InsertSibling => InsertSibling(action),
             IntentionConceptKeys.Delete => Delete(),
             IntentionConceptKeys.Move => Move(action),
+            IntentionConceptKeys.Replace => Replace(action, subject, concepts),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an intention body; an intention wraps or sets."),
         };
@@ -145,6 +146,29 @@ public static class IntentionLowering
         // whatever the caret stands on, which no rule can know at load.
         return context => context.Node is { } node
             ? new WrapInAction(node.Id, wrapperKey, childSlot, presets)
+            : null;
+    }
+
+    private static Func<IntentionContext, EditAction?> Replace(Node action, Concept? subject, ConceptRegistry concepts)
+    {
+        var conceptKey = Required(
+            action,
+            IntentionLanguage.WithSlot,
+            "A replace has to name the concept that takes the place of the node.");
+
+        if (!concepts.TryGet(conceptKey, out var replacement))
+        {
+            throw new ConceptDefinitionException($"A replace names '{conceptKey}', which is not a concept of this language.");
+        }
+
+        if (subject is not null && replacement.Key == subject.Key)
+        {
+            throw new ConceptDefinitionException(
+                $"A replace of '{subject.Key}' names the same concept, so the replacement would be the node again.");
+        }
+
+        return context => context.Node is { } node
+            ? new ReplaceNodeAction(node.Id, replacement.Key)
             : null;
     }
 
