@@ -373,9 +373,12 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   every `Editor*` type of `Projectional.Editing`, and the notation of the notation lives in `…Editors.Rendering`
   because `…Notation` would shadow the `Notation` type.
 - **Both definition languages are drawn in MPS' shape** (`StructureNotations`, `Editors.Rendering.EditorNotations`):
-  a header, a block of options, then one section per kind of slot, with `[/ ... /]` / `[>` for the editor language's
-  cell model. The editor language shows an empty list as `<< ... >>`; the structure language names the kind instead
-  (see below). Neither replaces its placeholder with prose such as `<no notations>`.
+  a header, a block of options, then one section per kind of slot, with `[/ ... /]` / `[> ... <]` / `[ ... ]` /
+  `[\| ... \|]` for the editor language's cell model and a glyph per cell - `-word-` (keyword), `%slot%` (property),
+  `( slot )` (single child), `{ slot }` (list), `< slot >` (reference), `;` (gap). The editor language shows an
+  empty list as `<< ... >>`; the structure language names the kind instead (see below). Neither replaces its
+  placeholder with prose such as `<no notations>`. A line is `[` beside its cells beside `]`, which is what
+  `HorizontalNotationCell` exists for.
 - **A structure concept is a header and a brace block** (`StructureNotations`). The header says what the concept
   *is* and what it inherits - `abstract concept Rules.Rule extends Rules.Element, implements Framework.Named {` -
   and a list that is empty is **not drawn at all** (`concept Rules.Rule {`). The body is one block of options plus
@@ -494,10 +497,16 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 - **`Sequence` vs `Indent`.** A sequence stacks blocks unchanged and is usually the root of a
   notation; an indent stacks them one level deeper. They are separate on purpose, so a
   notation says exactly one thing at a time.
+- **`Horizontal` is the one cell where the parent decides a direction.** It takes blocks like a
+  sequence and lays them out in one row, so a notation whose cells are each a small diagram can put a
+  bracket beside them (`[ cells ]` in the editor language). Everywhere else the orientation is inherited -
+  an inline child whose notation root is vertical breaks the line - because the parent cannot see the
+  child's notation. It adds no gap of its own; a blank is a `Space` cell the notation asks for.
 - **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
   (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
-  `ChildNotationCell`, `CollectionNotationCell`, `ConditionalNotationCell`, `LineNotationCell`,
-  `SequenceNotationCell`, `IndentNotationCell`, `SpaceNotationCell`) precisely so they cannot be
+  `ChildNotationCell`, `CollectionNotationCell`, `ConditionalNotationCell`, `WhenFilledNotationCell`,
+  `LineNotationCell`, `SequenceNotationCell`, `IndentNotationCell`, `HorizontalNotationCell`,
+  `SpaceNotationCell`) precisely so they cannot be
   confused with the runtime cells `docs/architecture/projection.md` names (`ConstantCell`,
   `PropertyCell`, ...).
 - **`ConditionalNotationCell` is the only cell that may draw nothing.** It holds a property name, the
@@ -1970,7 +1979,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2047 tests**; anything below that means tests were deleted.
+it. **Baseline is 2054 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

@@ -3,9 +3,10 @@
 The second half of "a language is data": how a concept is drawn, written as nodes and lowered into the same
 `Notation` objects a language author writes by hand.
 
-Status: **delivered** as slice P2 of [language-authoring.md](language-authoring.md), and the surface now reads the
-way MPS writes an editor document - brackets for the cell model. What is still missing are MPS' *cell glyphs* (borders,
-collapsible folds, the checkbox of an option), which is P5.
+Status: **delivered** as slices P2 and P5 of [language-authoring.md](language-authoring.md): the surface reads the
+way MPS writes an editor document - brackets for the cell model and a glyph per cell (`-word-`, `%slot%`,
+`( slot )`, `{ slot }`, `< slot >`, `;`). What is still missing are MPS' *cell* chrome (borders, collapsible folds,
+the checkbox of an option), which no notation needs yet.
 
 ## One language per aspect, on purpose
 
@@ -29,6 +30,7 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Line` | `cells` over `Editor.InlineCell` | horizontal |
 | `Editor.Sequence` | `cells` over `Editor.BlockCell` | stacked |
 | `Editor.Indent` | `cells` over `Editor.BlockCell` | stacked deeper |
+| `Editor.Horizontal` | `cells` over `Editor.BlockCell` | the same blocks, in one row |
 | `Editor.Space` | - | a gap |
 | `Editor.Keyword` | `text` | a word the notation provides |
 | `Editor.Punct` | `text` | a symbol the notation provides |
@@ -63,26 +65,31 @@ A notation is drawn with MPS' own markers, because they are a reading aid that c
 opens and closes a container that stacks, and `[>` marks one cell of a line.
 
 ```text
-notations:
-  editor for concept Rules.Rule variant: default
-  node cell layout:
-    [/
-      [> line
-        [> constant "rule" [> space [> {name}
-    /]
+editor for concept Rules.Rule variant: default
+node cell layout:
+  [/
+    [-rule- ; %name% ; ( body )]
+    [>
+      [/ table steps empty: + step
+        column text as -send- empty: <empty>
+      /]
+    <]
+  /]
 ```
 
-The brackets say what a reviewer needs to know before running anything: the root of this notation stacks, the thing
-inside it is one line, and that line is three inline cells - a constant, a space and a slot. A structure that deep
-reads top to bottom.
+The brackets say what a reviewer needs to know before running anything: `[/ ... /]` stacks, `[> ... <]` stacks one
+level deeper, `[ ... ]` is one row, and each cell carries its own glyph - `-word-` for a keyword, `%slot%` for a
+property, `( slot )` for a single child, `{ slot }` for a list, `< slot >` for a reference, `;` for a gap. A
+structure that deep reads top to bottom, and the definition of a language looks like the language it defines.
 
-**One compromise, and it is the engine's.** In MPS the inline cells of a line sit *on* the line. Here a line's
+**One compromise, and P5 removed it.** In MPS the inline cells of a line sit *on* the line. Here a line's
 `cells` slot is a `Many` slot, and a many-child cell is a block cell, so `ed.Children(cells)` draws one row per
 inline cell - `[> constant "rule" [> space [> {name}` above is three cells side by side because they happen to be
-drawn by a collection, not because they are nested. The model is unchanged and so is the reading (`[>` still means
-"one cell of a line"); what the notation cannot do is put a marker around each cell *and* keep them on one row. A
-`Line`'s children would have to be drawn by a cell type that lays siblings out horizontally *and* brackets each -
-that is P5's cell glyphs, not a change to this model.
+drawn by a collection, not because they are nested. What the notation could not do was put a marker around each
+cell *and* keep them on one row. `Editor.Horizontal` answers exactly that: the same blocks a sequence holds,
+arranged in one row, so a line is drawn as `[` beside its cells beside `]`, each cell keeping its own glyph. Its
+C# twin is `ed.Horizontal`, and it is the one cell where the parent decides a direction instead of inheriting it
+from the child.
 
 ## The lowering
 
@@ -113,7 +120,6 @@ singular names (`EditorLanguage`, `EditorLowering`, `EditorConceptKeys`), and th
 | --- | --- |
 | a *block* conditional, hiding a whole line | when a notation needs one |
 | MPS' cell glyphs: borders, folds, an option's checkbox | P5 |
-| a line's inline cells drawn on one row *with* their own brackets | P5, with a horizontal sibling cell |
 | variants beyond the name (`variant` property) | when a language needs a second drawing of one concept |
 | lowering a *whole* language project (structure + editor + dependencies) | P3 |
 

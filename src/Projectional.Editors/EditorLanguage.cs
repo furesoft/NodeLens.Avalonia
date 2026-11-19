@@ -98,6 +98,16 @@ public static class EditorLanguage
             [EditorConceptKeys.BlockCell],
             description: "Blocks stacked one level deeper."),
 
+        // The one block container that does not stack: the same children a sequence holds, in a row. It exists
+        // because a notation whose cells are each a little diagram - an editor's `[`, its cells, its `]` - has to put
+        // those blocks beside one another, and neither a line (inline cells only) nor a sequence (vertical) can say
+        // that.
+        new ConceptDeclaration(
+            EditorConceptKeys.Horizontal,
+            [new ChildSlot(CellSlot, EditorConceptKeys.BlockCell, Cardinality.Many)],
+            [EditorConceptKeys.BlockCell],
+            description: "Blocks arranged side by side instead of stacked."),
+
         new ConceptDeclaration(
             EditorConceptKeys.Space,
             superConcepts: [EditorConceptKeys.InlineCell],

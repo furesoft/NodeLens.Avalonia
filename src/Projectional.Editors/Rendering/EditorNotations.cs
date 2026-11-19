@@ -48,76 +48,77 @@ public static class EditorNotations
         notations.Add(EditorConceptKeys.Cell, ed => ed.Line(ed.Keyword("cell")));
         notations.Add(EditorConceptKeys.InlineCell, ed => ed.Line(ed.Keyword("inline cell")));
         notations.Add(EditorConceptKeys.BlockCell, ed => ed.Line(ed.Keyword("block cell")));
-        notations.Add(EditorConceptKeys.Space, ed => ed.Line(ed.Keyword("[> space")));
+        notations.Add(EditorConceptKeys.Space, ed => ed.Line(ed.Punct(";")));
 
-        notations.Add(EditorConceptKeys.Line, ed => ed.Sequence(
-            ed.Line(ed.Keyword("[> line")),
-            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
+        // `[ cells ]`: the brackets beside the cells, on one row - which is what the horizontal cell is for. Without
+        // it the bracket would have to be a line of its own above the cells.
+        notations.Add(EditorConceptKeys.Line, ed => ed.Horizontal(
+            ed.Line(ed.Punct("[")),
+            ed.Children(EditorLanguage.CellSlot, NoEntries),
+            ed.Line(ed.Punct("]"))));
 
         notations.Add(EditorConceptKeys.Sequence, ed => ed.Sequence(
             ed.Line(ed.Keyword("[/")),
-            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries)),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries, stacked: true)),
             ed.Line(ed.Keyword("/]"))));
 
         notations.Add(EditorConceptKeys.Indent, ed => ed.Sequence(
-            ed.Line(ed.Keyword("[/ indent")),
-            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries)),
-            ed.Line(ed.Keyword("/]"))));
+            ed.Line(ed.Keyword("[>")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries, stacked: true)),
+            ed.Line(ed.Keyword("<]"))));
+
+        // The one block container whose children are not below one another, so it is bracketed differently - the
+        // brackets are what a reviewer reads the direction off.
+        notations.Add(EditorConceptKeys.Horizontal, ed => ed.Sequence(
+            ed.Line(ed.Keyword("[|")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries, stacked: true)),
+            ed.Line(ed.Keyword("|]"))));
 
         notations.Add(EditorConceptKeys.Keyword, ed => ed.Line(
-            ed.Keyword("[>"),
-            ed.Space,
-            ed.Keyword("constant"),
-            ed.Space,
-            ed.Punct("\""),
+            ed.Punct("-"),
             ed.Property("text"),
-            ed.Punct("\"")));
+            ed.Punct("-")));
 
         notations.Add(EditorConceptKeys.Punct, ed => ed.Line(
-            ed.Keyword("[>"),
-            ed.Space,
-            ed.Keyword("punctuation"),
-            ed.Space,
             ed.Punct("\""),
             ed.Property("text"),
             ed.Punct("\"")));
 
         notations.Add(EditorConceptKeys.Property, ed => ed.Line(
-            ed.Keyword("[> {"),
+            ed.Punct("%"),
             ed.Property("slot"),
-            ed.Punct("}"),
+            ed.Punct("%"),
             ed.Space,
             ed.Keyword("empty:"),
             ed.Space,
             ed.Property("emptyText")));
 
         notations.Add(EditorConceptKeys.Reference, ed => ed.Line(
-            ed.Keyword("[> reference {"),
+            ed.Punct("<"),
             ed.Property("slot"),
-            ed.Punct("}")));
+            ed.Punct(">")));
 
-        notations.Add(EditorConceptKeys.ChildInline, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("[> child <"),
-                ed.Space,
-                ed.Keyword("empty:"),
-                ed.Space,
-                ed.Property("emptyText")),
-            ed.Indent(ed.Sequence(ed.Line(ed.Property("slot"))))));
+        notations.Add(EditorConceptKeys.ChildInline, ed => ed.Line(
+            ed.Punct("("),
+            ed.Property("slot"),
+            ed.Punct(")"),
+            ed.Space,
+            ed.Keyword("empty:"),
+            ed.Space,
+            ed.Property("emptyText")));
 
-        notations.Add(EditorConceptKeys.Children, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("[/ children"),
-                ed.Space,
-                ed.Keyword("empty:"),
-                ed.Space,
-                ed.Property("emptyText"),
-                ed.Space,
-                ed.Keyword("spacing:"),
-                ed.Space,
-                ed.Property("spacing")),
-            ed.Indent(ed.Sequence(ed.Line(ed.Property("slot")))),
-            ed.Line(ed.Keyword("/]"))));
+        notations.Add(EditorConceptKeys.Children, ed => ed.Line(
+            ed.Punct("{"),
+            ed.Property("slot"),
+            ed.Punct("}"),
+            ed.Space,
+            ed.Keyword("empty:"),
+            ed.Space,
+            ed.Property("emptyText"),
+            ed.Space,
+            ed.Keyword("spacing:"),
+            ed.Space,
+            ed.Property("spacing")));
 
         // `[> if {slot} = "value"` reads as the question the cell asks, and the cells below it are what is drawn
         // while the answer is yes.
@@ -145,40 +146,43 @@ public static class EditorNotations
                 ed.Keyword("is filled")),
             ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
 
-        notations.Add(EditorConceptKeys.Collection, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("[/ collection"),
-                ed.Space,
-                ed.Keyword("empty:"),
-                ed.Space,
-                ed.Property("emptyText")),
-            ed.Indent(ed.Sequence(
-                ed.Line(ed.Property("slot")),
-                ed.Line(ed.Keyword("separator:"), ed.Space, ed.ChildInline("separator")))),
-            ed.Line(ed.Keyword("/]"))));
+        notations.Add(EditorConceptKeys.Collection, ed => ed.Line(
+            ed.Punct("{"),
+            ed.Property("slot"),
+            ed.Punct("}"),
+            ed.Space,
+            ed.Keyword("empty:"),
+            ed.Space,
+            ed.Property("emptyText"),
+            ed.Space,
+            ed.Keyword("separator:"),
+            ed.Space,
+            ed.ChildInline("separator")));
 
         notations.Add(EditorConceptKeys.Table, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("[/ table"),
                 ed.Space,
+                ed.Property("slot"),
+                ed.Space,
                 ed.Keyword("empty:"),
                 ed.Space,
                 ed.Property("emptyText")),
-            ed.Indent(ed.Sequence(
-                ed.Line(ed.Property("slot")),
-                ed.Line(ed.Keyword("columns:")),
-                ed.Indent(ed.Children(EditorLanguage.ColumnSlot, NoEntries)))),
+            ed.Indent(ed.Children(EditorLanguage.ColumnSlot, NoEntries, stacked: true)),
             ed.Line(ed.Keyword("/]"))));
 
-        notations.Add(EditorConceptKeys.Column, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("column"),
-                ed.Space,
-                ed.Property("slot"),
-                ed.Space,
-                ed.Keyword("as"),
-                ed.Space,
-                ed.ChildInline("header"))));
+        notations.Add(EditorConceptKeys.Column, ed => ed.Line(
+            ed.Keyword("column"),
+            ed.Space,
+            ed.Property("slot"),
+            ed.Space,
+            ed.Keyword("as"),
+            ed.Space,
+            ed.ChildInline("header"),
+            ed.Space,
+            ed.Keyword("empty:"),
+            ed.Space,
+            ed.Property("emptyText")));
     }
 
     /// <summary>A registry holding only the editor language.</summary>

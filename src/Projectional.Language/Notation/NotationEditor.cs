@@ -71,6 +71,10 @@ public sealed class NotationEditor
 
     public IndentNotationCell Indent(params ReadOnlySpan<BlockNotationCell> content) => new(content);
 
+    /// <summary>Block cells arranged side by side instead of stacked.</summary>
+    /// <param name="content">The blocks to place in one row, in drawing order.</param>
+    public HorizontalNotationCell Horizontal(params ReadOnlySpan<BlockNotationCell> content) => new(content);
+
     /// <summary>Every child of <paramref name="slot"/>, on one line or one per line.</summary>
     /// <param name="slot">The child slot to draw.</param>
     /// <param name="emptyText">What the slot shows while it holds nothing.</param>

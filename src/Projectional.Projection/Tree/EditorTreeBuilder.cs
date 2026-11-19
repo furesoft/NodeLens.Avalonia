@@ -106,6 +106,13 @@ public sealed class EditorTreeBuilder
                 CellOrientation.Vertical,
                 isIndented: true,
                 BuildBlocks(indent.Content, node, emphasis)),
+
+            // The mirror image of a sequence: the same blocks, the other direction. Layout already knows how to
+            // arrange a horizontal run of arbitrary cells, so this is the whole of the projection's part.
+            HorizontalNotationCell horizontal => new ContainerCell(
+                address,
+                CellOrientation.Horizontal,
+                BuildBlocks(horizontal.Content, node, emphasis)),
             ChildNotationCell children => BuildChildren(
                 children.Slot,
                 children.EmptyText,
