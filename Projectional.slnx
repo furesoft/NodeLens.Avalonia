@@ -4,6 +4,7 @@
     <Project Path="src/Projectional.ConstraintRules/Projectional.ConstraintRules.csproj" />
     <Project Path="src/Projectional.Core/Projectional.Core.csproj" />
     <Project Path="src/Projectional.Editing/Projectional.Editing.csproj" />
+    <Project Path="src/Projectional.IntentionRules/Projectional.IntentionRules.csproj" />
     <Project Path="src/Projectional.Intentions/Projectional.Intentions.csproj" />
     <Project Path="src/Projectional.Expressions/Projectional.Expressions.csproj" />
     <Project Path="src/Projectional.Editors/Projectional.Editors.csproj" />
