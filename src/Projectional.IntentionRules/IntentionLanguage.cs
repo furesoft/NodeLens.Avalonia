@@ -52,6 +52,9 @@ public static class IntentionLanguage
     /// <summary>Which way a declared move sends the node.</summary>
     public const string MoveSlot = "move";
 
+    /// <summary>The concept a declared replace puts in the place of the node.</summary>
+    public const string WithSlot = "with";
+
     /// <summary>The property an intention writes on the node.</summary>
     public const string SetSlot = "slot";
 
@@ -131,6 +134,14 @@ public static class IntentionLanguage
             ],
             [IntentionConceptKeys.Action],
             description: "Moves the node among its siblings."),
+
+        new ConceptDeclaration(
+            IntentionConceptKeys.Replace,
+            [
+                new PropertySlot(WithSlot, PropertyType.String, description: "The concept that takes the place of the node."),
+            ],
+            [IntentionConceptKeys.Action],
+            description: "Replaces the node with another concept."),
 
         new ConceptDeclaration(
             IntentionConceptKeys.Set,
