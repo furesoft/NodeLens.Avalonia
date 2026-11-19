@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Json;
 using Projectional.Language;
+using Projectional.Samples;
 using Projectional.Semantics;
 using Xunit;
 
@@ -72,6 +73,46 @@ public sealed class GenerationCoverageTests
             .Set(JsonLanguage.TextSlot, "why");
 
         Assert.Empty(GenerationCoverage.Of(model, JsonTextGenerators.Json));
+    }
+
+    [Fact]
+    public void EveryGeneratorIsAskedSeparately()
+    {
+        // A language has as many generators as it declares, so "can this be printed" has one answer per target. A
+        // document covered for one and not for the other must say so, and name the one that stops: one merged sentence
+        // would leave the user guessing which menu entry is the broken one.
+        var model = TestLanguage.NewModel();
+        model.NewNode(TestLanguage.Rule);
+
+        var covered = new TextGenerator("json", TemplateRegistry.Empty.Add(TestLanguage.Rule, TextTemplate.Empty));
+        var uncovered = new TextGenerator("csharp", TemplateRegistry.Empty);
+
+        var finding = Assert.Single(GenerationCoverage.Of(model, [covered, uncovered]));
+
+        Assert.Contains("csharp", finding.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("json", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageWithoutGeneratorsReportsNothing()
+    {
+        // "Cannot be printed" is not a defect of a document whose language declares no generator - the shell offers no
+        // Generate entry at all, so a warning about it would be advice the user cannot act on.
+        var model = TestLanguage.NewModel();
+        model.NewNode(TestLanguage.Rule);
+
+        Assert.Empty(GenerationCoverage.Of(model, Array.Empty<TextGenerator>()));
+    }
+
+    [Fact]
+    public void TheShippedSampleIsCoveredByBothOfItsGenerators()
+    {
+        // What the shell now asks on every change, over what the sample language actually declares: a healthy document
+        // must not grow marks just because coverage is reported. A gap in RulesTextGenerators shows up here rather than
+        // as a warning on the sample nobody can explain.
+        var model = PayrollSample.NewSampleModel();
+
+        Assert.Empty(GenerationCoverage.Of(model, RulesTextGenerators.All));
     }
 
     private static Model TextProject() => JsonLanguage.NewProject().NewModel("json");
