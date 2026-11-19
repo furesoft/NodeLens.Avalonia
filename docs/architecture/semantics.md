@@ -352,7 +352,7 @@ of the model - import mints fresh node ids, so the models are never equal.
 
 Two consumers of the same template tree are planned on top of this: projected C# as a base
 language, whose generator has to parenthesise by precedence ([csharp.md](csharp.md)), and the
-JSON and XML reference languages, which exercise it in both directions.
+JSON, XML, TOML and HOCON reference languages, which exercise it in both directions.
 
 ### What is implemented
 
@@ -403,9 +403,11 @@ The parity rule of ADR 0014 is executed by `TextGenLoweringTests`, which asserts
 the text of its hand-written twin.
 
 Not implemented: the model-producing second stage, planned in
-[model-generation.md](model-generation.md); escaping (a value is emitted verbatim, so a template that puts a
-string inside quotes does not escape it - that is a property of the reference languages, not of a template); and
-precedence-aware parenthesising, which is the C# base language's job ([csharp.md](csharp.md)).
+[model-generation.md](model-generation.md); the **format seam** - `FormattedPart` and the four `ITextFormat`
+spellings a template names instead of writing quotes and escapes itself - planned in
+[import.md](import.md#writing-into-a-format-without-spelling-it), because until it lands a value is emitted verbatim
+and a template that puts a string inside quotes does not escape it; and precedence-aware parenthesising, which is the
+C# base language's job ([csharp.md](csharp.md)).
 
 ## Interpretation
 

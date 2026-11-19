@@ -128,13 +128,36 @@ imported document, which is the only behaviour a user can predict.
 
 ## The reference languages
 
-Two languages ship as packages, for the same reason `Projectional.Expressions` exists: they
+Four languages ship as packages, for the same reason `Projectional.Expressions` exists: they
 are the executable proof that the layer composes, and they give the editor something to open
 that was not authored in it.
 
-Both parse with the platform library, not with a hand-written parser. A hand-written JSON or
+They are also **conversion targets**, and that is the role that matters once a user has a model
+of their own. A language package that maps its concepts into one of these models gets a
+correctly spelled file for free - quoting, escaping, table nesting, key quoting, comment syntax
+are the reference language's business, not a template's. The same four models are the two-stage
+answer of [model-generation.md](model-generation.md) (reduce into the target's model, let the
+target's generator print it), and the one-stage answer is the format seam described below, which
+exists so that a template aimed at JSON does not have to spell JSON.
+
+| Language | Package | What it adds beside the other three |
+| --- | --- | --- |
+| JSON | `Projectional.Json` | the smallest complete format; objects, arrays, four value kinds |
+| XML | `Projectional.Xml` | attributes, mixed content, whitespace as data, comments |
+| TOML | `Projectional.Toml` | **tables and arrays of tables**, four kinds of string, dates and times as types, comments, a document whose order *is* its structure |
+| HOCON | `Projectional.Hocon` | a JSON superset whose braces and commas are optional, unquoted keys and values, value concatenation, and constructs that are *evaluated* rather than read (`${...}`, `include`, `+=`) |
+
+Two of them parse with the platform library, not with a hand-written parser. A hand-written JSON or
 XML parser is a liability with no upside here; the point of the exercise is the mapping, not
-the grammar.
+the grammar. .NET has no TOML or HOCON reader in the box, so those two take a package dependency -
+in the reference language's own package, never in the toolkit (see open question 98).
+
+**What a reference language owns.** Not "how to print a value" in general, but the spellings a format differs in: a
+string (quoting plus escaping), a key (bare, quoted or dotted), a comment, and the value forms a property type has in
+that format. Those live in `Projectional.Language/Format/` as
+`ITextFormat` and four instances (`JsonFormat`, `XmlFormat`, `TomlFormat`, `HoconFormat`), because a
+spelling rule is language-level data with no dependency - which is also why a *user's* generator can
+name one without referencing `Projectional.Json`.
 
 ### `Projectional.Json`
 
@@ -185,7 +208,138 @@ array as a `Line` with `Punct(", ")` - the ordinary notation vocabulary, no new 
 - **Attribute order is preserved**, because `XDocument` preserves it and because some tools
   diff attributes positionally.
 
-Both packages reference `Projectional.Language` only, exactly like `Expressions`.
+### `Projectional.Toml`
+
+TOML is the format a .NET project writes its settings in, and it is the least JSON-like of the
+four: a document is an ordered sequence of key/value pairs and headers, and **the order is the
+structure** - `[a]` opens a table and every following pair belongs to it until the next header.
+
+| Concept | Slots | Notes |
+| --- | --- | --- |
+| `Toml.Document` | `entries`: many `Toml.Entry` | model order is document order |
+| `Toml.Entry` | - | abstract: one top-level line group |
+| `Toml.KeyValue` | `key`: string, `value`: single `Toml.Value` | a pair in the root table |
+| `Toml.Table` | `key`: string, `entries`: many `Toml.Entry` | `[a.b]`, followed by its pairs |
+| `Toml.ArrayOfTables` | `key`: string, `entries`: many `Toml.Entry` | `[[a]]`, one element |
+| `Toml.InlineTable` | `members`: many `Toml.KeyValue` | `{ a = 1 }`, a value rather than a header |
+| `Toml.String` | `kind`: enum, `text`: string | the **unescaped** value |
+| `Toml.Integer` | `text`: string | the literal, so `0x2A` and `42` stay different files |
+| `Toml.Float` | `text`: string | the literal, `inf` and `nan` included |
+| `Toml.Bool` | `value`: enum `true`, `false` | an enum property, as `Json.Bool` is |
+| `Toml.DateTime` | `kind`: enum, `text`: string | offset date-time, local date-time, local date, local time |
+| `Toml.Array` | `items`: many `Toml.Value` | may span lines; the model keeps the order |
+| `Toml.Comment` | `text`: string | `# ...` |
+
+Decisions worth stating, because each one is what stops the editor from rewriting a user's file:
+
+- **`Toml.String` keeps the kind of string it is.** Basic, multi-line basic, literal and
+  multi-line literal are four spellings of one value, and `'C:\temp'` rewritten as `"C:\\temp"` is
+  a diff a reviewer has to explain. `text` is the unescaped value; the kind is a slot.
+- **A number and a date keep their source text**, for the reason `Json.Number` does, and stronger:
+  TOML's four date/time kinds are different *types*, and a single `DateValue` property would lose
+  the kind, the offset and the sub-second precision.
+- **A table remembers whether it is a header or inline.** `[a]` and `a = { }` are not the same
+  document even when the trees are equal - a table defined by headers cannot be moved into an
+  inline one without changing what an order-sensitive reader sees, and `[[a]]` is a third spelling.
+- **A dotted key stays the text it was written as**, exactly as an XML namespace prefix does:
+  `a.b = 1` keeps `a.b` as the key, and is *not* resolved into nesting. Resolving it would rewrite
+  the file on the first save.
+- **A duplicate key is refused, not kept.** This is the one place the four languages disagree on
+  purpose: JSON's duplicate member is legal-but-discouraged and the model keeps both (generation
+  must reproduce the file), TOML makes it a syntax error, so the reader rejects the document with
+  `toml.duplicate-key` and nothing is imported. A language does not get to be more permissive than
+  the format it mirrors.
+- **A comment is a node.** TOML files are hand-edited settings, and dropping the comments of a file
+  the user imported would be data loss (invariant 8). One limitation is recorded rather than
+  solved: a comment that trailed a value on the same line becomes its own entry above it, because
+  the model has no "same line" notion - the corpus is the generator's own output, so a round trip
+  never sees it.
+
+### `Projectional.Hocon`
+
+HOCON is JSON's brace-light cousin and the config format of the .NET actor and streaming world.
+It is the hardest of the four to be honest about, because a HOCON file is *evaluated*: keys merge,
+substitutions resolve, includes pull in other files.
+
+| Concept | Slots | Notes |
+| --- | --- | --- |
+| `Hocon.Object` | `members`: many `Hocon.Value` | the root, and every nested object |
+| `Hocon.Property` | `key`: string, `operator`: enum, `value`: single `Hocon.Value` | `key = value`, `key : value`, `key value`, `key += value` |
+| `Hocon.Array` | `items`: many `Hocon.Value` | commas optional in the source, model order kept |
+| `Hocon.String` | `quoted`: enum, `text`: string | quoted, triple-quoted or unquoted |
+| `Hocon.Number` | `text`: string | the literal |
+| `Hocon.Bool` | `value`: enum `true`, `false` | |
+| `Hocon.Null` | - | a concept, as in JSON |
+| `Hocon.Concat` | `parts`: many `Hocon.Value` | `hello ${name}` - juxtaposition is concatenation |
+| `Hocon.Substitution` | `path`: string, `optional`: enum | `${a.b}` and `${?a.b}`, kept as written |
+| `Hocon.Include` | `target`: string | `include "x.conf"`, kept as written |
+| `Hocon.Comment` | `text`: string | `# ...` and `// ...` |
+
+- **A key keeps the text it was written with.** Dotted paths, quoting and unquoted keys are three
+  spellings of one path, and resolving them into nesting would rewrite the file - the TOML decision
+  and the XML decision, for the third time, which is what makes it a rule rather than a choice.
+- **Repeated keys are kept, in order.** HOCON's merge semantics fold them into one object at
+  resolution time; the text has two, and the model is the text's owner, not the resolver's. This is
+  the opposite of the TOML decision and follows from the formats, not from a preference.
+- **Sound-spelling is a slot, not a guess.** `Hocon.Property.operator` keeps `=`, `:` or the
+  whitespace separator, and `+=` is a fourth value rather than a resolved append; `Hocon.String.quoted`
+  keeps `foo` unquoted, `"foo"` quoted and `"""foo"""` triple-quoted apart.
+- **Nothing is evaluated, and nothing is read.** A substitution stays a substitution, an `include`
+  stays an `include`, and the framework **never follows an include**: import takes one string from
+  the host (`Import(Model, string)`), and a file read would be both a purity break and the same
+  class of vulnerability XML's refused external entities exist to prevent. That is not a limitation
+  to lift - a host that wants the resolved configuration evaluates it and imports *that*.
+- **Concatenation is its own concept** because HOCON makes juxtaposition meaningful
+  (`greeting = hello ${name}`), and flattening it into one string would lose the substitution
+  inside it. `Hocon.Concat` is the honest shape; an unquoted multi-word string is a `Concat` of
+  unquoted strings, which is what HOCON says it is.
+
+All four packages reference `Projectional.Language` only, exactly like `Expressions`; the two that
+need a reader take it as an ordinary package dependency (open question 98).
+
+## Writing into a format without spelling it
+
+A template emits text, and until now a template that wanted a JSON string had to write the quotes
+and the escaping itself - which is why `docs/architecture/semantics.md` records escaping as *not*
+implemented and calls it "a property of the reference languages, not of a template". This is the
+seam that makes that sentence true instead of a deferral, and it is what makes "convert my model
+into JSON/TOML/HOCON" a small piece of work rather than a re-implementation of four formats.
+
+`ITextFormat` lives in `Projectional.Language/Format/` with four instances beside it:
+
+```csharp
+public interface ITextFormat
+{
+    string Name { get; }
+    string Value(string text, PropertyType type);   // the format's spelling of a value
+    string Key(string text);                        // the format's spelling of a key
+    string Comment(string text);                    // the format's spelling of a comment
+}
+```
+
+Three decisions:
+
+- **It is in `Projectional.Language`, not in the reference language packages.** A spelling rule is
+  language-level data with no dependency, and a user's language must be able to name `json` without
+  referencing `Projectional.Json` - the same argument that puts `ICellEmphasis` and `ITypingRules`
+  there. The four instances are `JsonFormat`, `XmlFormat`, `TomlFormat` and `HoconFormat`, and
+  `TextFormats.Find(name)` is how the declared path resolves a name.
+- **`Value` takes the property's declared type**, because "spell this value" is not "quote this
+  string": `42` stays `42` in all four, a boolean becomes `true`, and a date is a quoted string in
+  JSON and a bare date-time in TOML - the same model value, four legal spellings. A value the
+  format cannot spell is a generation failure naming the slot - never a silent fallback, the same
+  rule as a concept with no template.
+- **The template part is `FormattedPart(slot, format)`**, so one template can target two formats and
+  a C# file that embeds JSON writes JSON inside C#. The declared twin is `TextGen.Formatted`
+  (`conceptKey` = the slot, `format` = a name `TextFormats` resolves), and `TextGenLowering` refuses
+  an unknown name at load - the earliest moment the author is looking at the file.
+
+What this deliberately is **not**: a second generator. A template that names a format still emits
+text, and everything the four languages promise - a round trip, a corpus, tier-2 raw text - stays
+with the reference language. A model that needs *structure* in the target (nested objects whose
+shape the source does not have) is the two-stage case of
+[model-generation.md](model-generation.md), and the seam here is what that pipeline's last step
+prints with.
 
 ## Slices
 
@@ -198,14 +352,25 @@ Both packages reference `Projectional.Language` only, exactly like `Expressions`
   number-literal cases, duplicate members, and a truncated file that must import nothing.
 - **I2 - XML.** `Projectional.Xml`: same shape, plus whitespace-only text, attributes in order,
   comments, a CDATA section landing in `Xml.Raw`, and the refused DTD case.
-- **I3 - appending to a non-empty model.** Import into a model that already has a root; assert
+- **I3 - TOML.** `Projectional.Toml`: same shape, plus a document whose order is its structure
+  (`[a]` then `[[b]]` then back to the root), the four string kinds, the four date/time kinds, a
+  dotted key that stays text, and a duplicate key that imports nothing.
+- **I4 - HOCON.** `Projectional.Hocon`: same shape, plus brace-less objects, the three separators,
+  unquoted and triple-quoted strings, a `Concat` with a substitution inside it, two repeated keys
+  that stay two, an `include` that is kept and **never followed** (asserted by making the target
+  a file that does not exist and demanding no diagnostic and no read).
+- **I5 - appending to a non-empty model.** Import into a model that already has a root; assert
   the existing root is untouched, the new one is last, and one `Ctrl+Z` removes only the
   import.
-- **I4 - the raw-text tier.** A construct the language does not map survives as `Xml.Raw` /
+- **I6 - the raw-text tier.** A construct the language does not map survives as `Xml.Raw` /
   a JSON-preserving node and regenerates to the same text.
-- **I5 - the shell.** File > Import in the workbench: pick a file, create a document from it,
+- **I7 - the format seam.** `ITextFormat` and the four instances, `TextGen.Formatted` and its
+  lowering, and the one test that matters: a value with a quote, a backslash and a newline in it
+  becomes a legal string in each of the four formats - compared against what that language's own
+  importer reads back, so the escaping cannot be right in one direction only.
+- **I8 - the shell.** File > Import in the workbench: pick a file, create a document from it,
   and land on a clean (not dirty) document, because nothing has been edited yet.
-- **I6 - docs and samples.** A sample corpus of `.json` and `.xml` files under
+- **I9 - docs and samples.** A sample corpus of `.json`, `.xml`, `.toml` and `.hocon` files under
   `tests/Projectional.Core.Tests/Corpus/Text/`, with the same rule as the `.mps` corpus:
   **never regenerate a corpus file to make a test pass** - a byte that moves is either a
   language bug or a deliberate change with a note in the commit.
@@ -221,6 +386,9 @@ Both packages reference `Projectional.Language` only, exactly like `Expressions`
 | One undo step | `UndoHistory.UndoDepth` grows by one; `Undo()` removes every imported root |
 | Diagnostics point at the text | line/column of a known bad character, asserted exactly |
 | Hostile XML is refused | a DOCTYPE with an external entity fails with `xml.external-entity-refused` and no file is read |
+| A HOCON include is never followed | the include names a path that does not exist; the import succeeds, reports nothing, and reads nothing |
+| TOML's order is the structure | `[a]`, then `[[b]]`, then a root pair again, regenerates in that order - a normalised document would move the pair |
+| A format's escaping is only right if it reads back | every value form is formatted, then imported by that language's own importer, and the value must come back equal |
 
 ## Open questions
 
@@ -233,3 +401,8 @@ Both packages reference `Projectional.Language` only, exactly like `Expressions`
    hold the value means the mapping is wrong, and the parser tier already catches that.
 4. **Should the reference languages be extensible** (a host adds `Json.Property` subtypes)?
    Concepts are open, so a host can already declare one; no extra seam needed.
+
+Two questions this plan raises are asked in [open-questions.md](../open-questions.md) rather than
+here, because each touches another band: **98** (may the TOML and HOCON readers be package
+dependencies, and what must such a reader answer?) and **99** (does a template name its target
+format per part or per generator?).

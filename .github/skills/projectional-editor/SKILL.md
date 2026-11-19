@@ -1137,8 +1137,11 @@ entries.
 - **A binary expression is always parenthesised by the pilot's generator.** A template cannot compute precedence - no
   part asks how an operand binds - so omitting the parentheses would be right only for the tree it saw. The pretty
   version belongs to the C# base language's generator (`docs/architecture/csharp.md`).
-- **Strings are emitted verbatim, with no escaping.** A template that put a value inside quotes does not escape it;
-  escaping is a property of the target text, and it arrives with the reference languages rather than as a part.
+- **Strings are emitted verbatim, with no escaping.** A template that put a value inside quotes does not escape it -
+  and that is a gap, not a rule: the planned seam is `FormattedPart(slot, format)` plus `ITextFormat` (in
+  `Projectional.Language/Format/`, with JSON, XML, TOML and HOCON spellings), so a template says "write this value as
+  JSON" instead of spelling quotes and escapes itself. Until it lands, escaping a value is the generator author's
+  job. Design: `docs/architecture/import.md` §Writing into a format without spelling it.
 
 **The output panel is shared with the interpreter**, and that is deliberate: a run report and a generated file are both
 "what this document produced", so one panel and one row type serve both. A generation shows one row per line and each
