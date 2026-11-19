@@ -35,6 +35,12 @@ public sealed class StructureIntentions : IIntentionProvider
     /// <summary>The stable id of "make interface".</summary>
     public const string MakeInterfaceId = "structures.make-interface";
 
+    /// <summary>The stable id of "inherit from".</summary>
+    public const string InheritFromId = "structures.inherit-from";
+
+    /// <summary>The stable id of "implement interface".</summary>
+    public const string ImplementInterfaceId = "structures.implement-interface";
+
     /// <summary>The stable id of "make concept".</summary>
     public const string MakeConceptId = "structures.make-concept";
 
@@ -62,6 +68,18 @@ public sealed class StructureIntentions : IIntentionProvider
         "Makes an interface an ordinary abstract concept again, so the concepts below it stop inheriting its members.",
         context => InterfaceAction(context, isInterface: false));
 
+    private static readonly Intention Inherit = new(
+        InheritFromId,
+        "Inherit from…",
+        "Adds a super concept. The caret lands on its key, ready to be typed.",
+        context => Fill(context, StructureLanguage.SuperTypeSlot));
+
+    private static readonly Intention Implement = new(
+        ImplementInterfaceId,
+        "Implement interface…",
+        "Adds an interface this concept implements. The caret lands on its key, ready to be typed.",
+        context => Fill(context, StructureLanguage.ImplementsSlot));
+
     /// <summary>The provider a host registers with <c>session.AddIntentions(..., IntentionSource.Language)</c>.</summary>
     public static StructureIntentions Provider { get; } = new();
 
@@ -77,7 +95,45 @@ public sealed class StructureIntentions : IIntentionProvider
             Concrete.With(AvailabilityOf(context, makingAbstract: false)),
             Interface.With(InterfaceAvailabilityOf(context, becomingInterface: true)),
             Concept.With(InterfaceAvailabilityOf(context, becomingInterface: false)),
+            Inherit.With(FillAvailabilityOf(context)),
+            Implement.With(FillAvailabilityOf(context)),
         ];
+    }
+
+    /// <summary>
+    /// Whether the caret's concept can take another entry in either inheritance list.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both entries exist for the state in which the header draws nothing: the notation hides the list while it is
+    /// empty, so without a second way in the first super concept could never be written at all.
+    /// </para>
+    /// <para>
+    /// They stay available once the list is on screen, and that is not belt and braces: Enter does not extend an
+    /// inline collection. <c>InsertNodeAction</c> fills a slot that is empty or adds a sibling to a block child, and
+    /// a super concept's key is neither - so without the entry a second super concept could not be written at all.
+    /// A block list has the caret's Enter as its own affordance; a list inside a line has this entry.
+    /// </para>    /// </remarks>
+    private static IntentionAvailability FillAvailabilityOf(IntentionContext context)
+    {
+        return context.Node is { Concept.Key: StructureConceptKeys.Concept }
+            ? IntentionAvailability.Applies
+            : IntentionAvailability.Absent;
+    }
+
+    private static EditAction? Fill(IntentionContext context, string slot)
+    {
+        if (context.Node is not { } node)
+        {
+            return null;
+        }
+
+        // Two shipped actions, chosen by the state the entry exists for: the empty slot is filled with the concept
+        // the language offers there, and a list that already has entries grows beside its last one - which is also
+        // the only way to grow it, because Enter does not extend an inline collection.
+        return node.GetChildren(slot) is [.., var last]
+            ? new InsertSiblingAction(last.Id, SiblingPlace.After)
+            : new InsertChildAction(node.Id, slot);
     }
 
     /// <summary>

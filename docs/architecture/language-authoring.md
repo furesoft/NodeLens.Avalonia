@@ -108,22 +108,40 @@ domain without any presentation.
 ## How a concept reads
 
 The structure model is written in `Projectional.Structures`, and it reads like MPS' structure
-language because it is the same three ideas: a header that says what the concept *is*, angle
-bracket blocks that say what it *holds*, and nothing else.
+language because it is the same three ideas: a header that says what the concept *is* and what it
+extends, angle bracket blocks that say what it *holds*, and nothing else.
 
 ```text
-concept RuleSet
-  <<property name : string>>
-  <<child rules : Rule[0..n]>>
-  <<shortDescription : a named set of rules>>
+concept RuleSet implements Framework.Named {
+  offered in completion: true
+  named by: name
+  collapsed by:
+  described as:
+  properties:
+    <<property name : string
+      default:
+      described as:
+      described when filled: false>>
+  children:
+    <<child rules : Rules.Rule[0..n]>>
+  references:
+    <<reference>>
 
-abstract concept Condition
-  <<property negated : boolean>>
-
-concept Comparison extends Condition implements Named
-  <<reference left : Value>>
-  <<reference right : Value>>
-  <<property operator : Operator>>
+abstract concept Condition {
+  offered in completion: true
+  named by:
+  collapsed by:
+  described as:
+  properties:
+    <<property negated : boolean
+      default:
+      described as:
+      described when filled: false>>
+  children:
+    <<child>>
+  references:
+    <<reference>>
+}
 
 enum Operator
   Less
@@ -131,20 +149,25 @@ enum Operator
   Greater
 ```
 
+The header says what the concept *is* - including what it extends and implements, so a reader does
+not have to scan the body for the shape of a hierarchy. The three slots below it say what it holds,
+one declaration per line, each saying its own kind and closing where it ends: that is what makes a
+section with four slots readable.
+
 The vocabulary, and what each piece lowers to:
 
 | Written | Lowers to | MPS equivalent |
 | --- | --- | --- |
 | `concept X`, `abstract concept X` | `ConceptDeclaration(key, isAbstract)` | `concept` / `abstract concept` |
 | `interface concept X` | `ConceptDeclaration(key, isAbstract: true, isInterface: true)` - a concept kind whose members implementers inherit, not a second conformance relation ([interfaces.md](interfaces.md)) | `interface concept` |
-| `concept X extends Y` | `superConcepts`, in written order | `extends` |
-| `concept X implements Y`, `Z` | `interfaces`, in written order; the same `IsKindOf` conformance, resolved after the extensions | `implements` |
-| `<<property name : string>>` | a property slot plus its `PropertyType` | `<<property>>` |
+| `... extends A, B, ...` | `superConcepts`, in written order | `extends` |
+| `... implements I, J {` | `interfaces`, in written order; the same `IsKindOf` conformance, resolved after the extensions | `implements` |
+| `<<property name : string ... >>` | a property slot plus its `PropertyType` | `<<property>>` |
 | `<<child steps : Step[0..n]>>` | a child slot plus its cardinality | `<<child>>` |
-| `<<reference target : Rule[0..1]>>` | a reference slot plus its cardinality | `<<reference>>` |
-| `<<shortDescription : ...>>` | the concept's documentation ([concept-descriptions.md](concept-descriptions.md); lowered to `ConceptDeclaration(description:)`) | `<<shortDescription>>` |
-| `<<nameSlot : name>>`, `<<collapseSlot : visible>>` | a designated slot ([language.md](language.md#the-two-designated-slots)) | none - MPS has no analogue |
-| `<<offeredInCompletion : false>>` | `isOfferedInCompletion` | `<<hideInEditor>>`-style flags |
+| `<<reference target : Rule[0..1] ... >>` | a reference slot plus its cardinality | `<<reference>>` |
+| `described as: ...` | the concept's documentation ([concept-descriptions.md](concept-descriptions.md); lowered to `ConceptDeclaration(description:)`) | `<<shortDescription>>` |
+| `named by: name`, `collapsed by: visible` | a designated slot ([language.md](language.md#the-two-designated-slots)) | none - MPS has no analogue |
+| `offered in completion: false` | `isOfferedInCompletion` | `<<hideInEditor>>`-style flags |
 
 Four details are deliberate:
 
@@ -155,19 +178,21 @@ Four details are deliberate:
   optional, `[0..n]` and `[1..n]` for lists. A default of "you did not say" would be a fourth
   meaning the reader has to learn.
 - **Inheritance is in the header; designated slots are in the body.** The header answers "what is
-  this", the body answers "what does it hold and how does the framework treat it".
+  this" - and a list that holds nothing is not drawn, so the header says only what is true of the
+  concept. Because that leaves the empty list without a cell, the two ways in are intentions:
+  `Inherit from…` and `Implement interface…` create the first entry and put the caret on its key. The
+  body answers "what does it hold and how does the framework treat it".
 - **`implements` promises members, not a drawing.** An interface contributes the properties and references
   an implementing concept inherits - the framework's `Framework.Named` is the name property and the name-slot
   designation in one declaration - and it may declare no child slot, so implementing one can never make a
   concept's notation owe a cell it never asked for ([interfaces.md](interfaces.md)).
 
-One honesty note about the brackets: `Cardinality` today has two values, `One` and `Many`, so
-`[0..1]` and `[1]` currently lower to the same thing - the minimum is written, checked against
-the syntax, and then dropped. That is fine for structure (`Many` is the only distinction the
-model makes) but it cannot stay: a required child that a model may omit is exactly the kind of
-finding a constraint should not have to rediscover. Whether the minimum belongs on
-`Cardinality` or on a separate slot property is open question 64, and it is decided before P4
-writes the structure notation.
+One honesty note about the brackets: `Cardinality` has two values, `One` and `Many`, and the
+minimum is a slot property beside it - open question 64's answer, delivered with the four ranges
+this notation offers. `[0..1]` and `[1]` therefore differ in `ChildSlot.Minimum` rather than in the
+storage shape, and the difference is *reported* by `STD010`/`STD011` instead of enforced at the
+keystroke: deleting the last element of a `1..n` list stays an ordinary edit. A minimum above one
+("at least two rules") is representable in the model and has no spelling in this notation yet.
 
 ## How an editor reads
 
@@ -360,9 +385,9 @@ shippable at the end of each, and so that the parity test exists before the seco
 | P1 ✓ | `feat/declared-structure` | M2 | `Projectional.Structures` (stage B): concepts, slots, inheritance, enumerations as nodes; lowering into `ConceptDeclaration` - delivered, see [declared-structure.md](declared-structure.md) |
 | P2 ✓ | `feat/declared-editor` | M2 | `Projectional.Editors` (stage B): notation as nodes, lowering into `Notation` - delivered, see [declared-editor.md](declared-editor.md). `Editor.Table`/`Editor.Column` were added with the M2 gate, so a declared language can draw a table |
 | C3 ✓ | `feat/declared-dsl-gate` | M2 | **the M2 gate**: `samples/declared-pipeline` is a DSL that exists only as data - a `structure` folder, an `editor` folder and a document - and `DeclaredSampleLanguageTests` loads the folder, draws the document as a table, edits it structurally, saves it and reloads it byte-identically, and hands the folder to the shell's own `WorkbenchLanguage`. There is no C# twin to delete, which is the strongest form of the gate's "deleting the language's C# code changes nothing" |
-| P2b ✓ | `feat/mps-shaped-notation` | M2 | both definition languages drawn in MPS' shape - a header, a block of options, one section per kind of slot, `<< ... >>` for an empty section, `[/ ... /]` and `[>` for the cell model. **Ahead of P4/P5 in the one part that is only notation**; what P4/P5 still add are the cell *glyphs* and the file layout |
-| P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)) |
-| P4 | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation: `<<property>>`-style slot markers where a section heading is not enough, conditional cells, and the file layout P3 needs |
+| P2b ✓ | `feat/mps-shaped-notation` | M2 | both definition languages drawn in MPS' shape - a header, a block of options, one section per kind of slot, `<< ... >>` for an empty section, `[/ ... /]` and `[>` for the cell model. **Ahead of P4/P5 in the one part that is only notation**; what P5 still adds are the cell *glyphs* |
+| P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)); a descriptor document waits for a language that can extend another |
+| P4 ✓ | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation, delivered: the header carries the inheritance and draws a list only while it is filled (`concept X extends A, implements B {`, `concept X {` when it has neither), the body is a brace block with one section per kind of slot, every declaration says its own kind and closes where it ends (`<<property … >>`, `<<child … >>`, `<<reference … >>`), every collection stacks so a definition is one declaration per line, an empty section names the kind it will create, and the four cardinality ranges reach `ChildSlot.Minimum` (open question 64) - see [declared-structure.md](declared-structure.md). The hiding needed a cell the notation layer did not have (`WhenFilledNotationCell`, `Editor.WhileFilled`) and the way back in (`Inherit from…`, `Implement interface…`) |
 | P5 | `feat/editor-notation` | M5 | `Projectional.Editor` with its own notation - the cell glyphs - and the table variant |
 | P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
 | P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structures` and `Projectional.Editors`, with the C# declarations as the fail-safe |
@@ -371,9 +396,9 @@ C1-C2 come first and are not optional: without the builder there is no surface t
 and without the parity tests the second path has nothing checking it. P1-P2 are the M2 meaning
 of "a language without C#", and they are where the generic renderer stops being the only
 renderer. P3-P5 are M5, and P4-P5 are the point at which the definition language looks like MPS
-rather than like data. P6 can happen any time after P2; it is scheduled after P5 so that it
-exports the finished shape rather than a provisional one. P7 is the self-hosting proof, and the
-last place a bootstrap-shaped shortcut can hide.
+rather than like data - P4 done, P5 next. P6 can happen any time after P2; it is scheduled after
+P5 so that it exports the finished shape rather than a provisional one. P7 is the self-hosting
+proof, and the last place a bootstrap-shaped shortcut can hide.
 
 ## Testing
 

@@ -1,7 +1,9 @@
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Structures;
+using Projectional.Structures.Intentions;
 using Projectional.Structures.Notation;
 using Xunit;
 
@@ -210,24 +212,21 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "concept Rules.Rule",
+                "concept Rules.Rule {",
                 "  offered in completion: true",
                 "  named by:",
                 "  collapsed by:",
                 "  described as:",
-                "  extends:",
-                "    << ... >>",
-                "  implements:",
-                "    << ... >>",
                 "  properties:",
-                "    name : string",
+                "    <<property name : string",
                 "      default:",
                 "      described as:",
-                "      described when filled: false",
+                "      described when filled: false>>",
                 "  children:",
-                "    << ... >>",
+                "    <<child>>",
                 "  references:",
-                "    << ... >>"),
+                "    <<reference>>",
+                "}"),
             LayoutSnapshot.Render(rule, notations, width: 120));
     }
 
@@ -265,6 +264,8 @@ public sealed class StructureLoweringTests
     public void AChildSlotIsDrawnWithItsRangeInBrackets()
     {
         // The one cell MPS offers for a cardinality: the range an author reads, right after the concept it holds.
+        // The declaration also says its own kind and closes where it ends, so a section with several slots needs
+        // no heading to be read correctly.
         var definition = new DefinitionBuilder();
 
         definition.Concept("Rules.Step", slots: [definition.Property("text", "string")]);
@@ -273,7 +274,170 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 120);
 
-        Assert.Contains("steps : Rules.Step[1..n]", drawn, StringComparison.Ordinal);
+        Assert.Contains("<<child steps : Rules.Step[1..n]>>", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheHeaderCarriesTheInheritanceAndTheBodyIsABlock()
+    {
+        // MPS' reading of a concept: what it extends and implements in the header, what it allows and holds inside
+        // braces. A list that holds nothing is not drawn at all, so the header says only what is true of this
+        // concept - which is why the language ships the two intentions that create a first entry.
+        var definition = new DefinitionBuilder();
+
+        var empty = definition.Concept("Rules.Element");
+
+        var comparison = definition.Concept(
+            "Rules.Comparison",
+            supers: ["Rules.Element", "Framework.Base"],
+            implements: ["Framework.Named"]);
+
+        var notations = StructureNotations.Create();
+
+        Assert.Equal(
+            string.Join(
+                '\n',
+                "concept Rules.Element {",
+                "  offered in completion: true",
+                "  named by:",
+                "  collapsed by:",
+                "  described as:",
+                "  properties:",
+                "    <<property>>",
+                "  children:",
+                "    <<child>>",
+                "  references:",
+                "    <<reference>>",
+                "}"),
+            LayoutSnapshot.Render(empty, notations, width: 120));
+
+        Assert.StartsWith(
+            "concept Rules.Comparison extends Rules.Element, Framework.Base, implements Framework.Named {",
+            LayoutSnapshot.Render(comparison, notations, width: 120),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EveryDeclarationOfASectionStartsANewLine()
+    {
+        // A collection lays out inline unless the notation asks it to stack, so before P4 two properties of one
+        // concept were drawn side by side and an enumeration's symbols shared a line. A definition is read one
+        // declaration per line, which is the shape a reviewer expects of a structure model.
+        var definition = new DefinitionBuilder();
+
+        var rule = definition.Concept(
+            "Rules.Rule",
+            slots:
+            [
+                definition.Property("name", "string"),
+                definition.Property("outcome", "Rules.Outcome"),
+                definition.Child("steps", "Rules.Step"),
+                definition.Child("body", "Rules.Body"),
+                definition.Reference("condition", "Rules.Condition"),
+                definition.Reference("other", "Rules.Condition"),
+            ]);
+
+        var lines = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 160).Split('\n');
+
+        Assert.Contains("    <<property name : string", lines);
+        Assert.Contains("    <<property outcome : Rules.Outcome", lines);
+        Assert.Contains("    <<child steps : Rules.Step[1]>>", lines);
+        Assert.Contains("    <<child body : Rules.Body[1]>>", lines);
+        Assert.Contains("    <<reference condition : Rules.Condition", lines);
+        Assert.Contains("    <<reference other : Rules.Condition", lines);
+        Assert.Contains("      own subtree: false>>", lines);
+    }
+
+    [Fact]
+    public void AnEmptyInheritanceIsNotDrawnAndLeavesNoCell()
+    {
+        // The price of the header shape: a list that is empty is not drawn, so nothing addresses the slot - not an
+        // empty cell, not a placeholder. That is why the language owes a second way in, and it is what these two
+        // tests pin.
+        var definition = new DefinitionBuilder();
+        var concept = definition.Concept("Rules.Rule");
+
+        var notations = StructureNotations.Create();
+
+        var drawn = LayoutSnapshot.Render(concept, notations, width: 120);
+
+        Assert.StartsWith("concept Rules.Rule {", drawn, StringComparison.Ordinal);
+        Assert.DoesNotContain("extends", drawn, StringComparison.Ordinal);
+        Assert.DoesNotContain("implements", drawn, StringComparison.Ordinal);
+
+        Assert.DoesNotContain(
+            CaretPlaces.Of(new EditorTreeBuilder(notations).Build(concept)),
+            place => place.Address.Equals(CellAddress.OfSlot(concept.Id, StructureLanguage.SuperTypeSlot)));
+    }
+
+    [Fact]
+    public void TheIntentionIsTheWayInToTheFirstSuperConcept()
+    {
+        // "Inherit from…" is what makes the hidden list reachable: it creates the entry and leaves the caret on the
+        // new key, so the name is typed straight away instead of being searched for.
+        var definition = new DefinitionBuilder();
+        var concept = definition.Concept("Rules.Rule");
+
+        using var session = new EditorSession(concept, StructureNotations.Create());
+
+        session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
+        session.Select(Selection.At(new CellAddress(concept.Id)));
+
+        var offer = IntentionList.For(session).Single(entry => entry.Id == StructureIntentions.InheritFromId);
+
+        Assert.True(offer.Availability.IsApplicable);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+
+        var superType = Assert.Single(concept.GetChildren(StructureLanguage.SuperTypeSlot));
+
+        Assert.Equal(StructureConceptKeys.SuperType, superType.Concept.Key);
+        Assert.Equal(CellAddress.OfSlot(superType.Id, "conceptKey"), session.Selection.Anchor.Address);
+
+        // From now on the list is on screen, which is what makes the entry absent rather than a second way to do
+        // what the caret in the list already does.
+        Assert.Contains("extends", LayoutSnapshot.Render(session.Layout, width: 120), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheInheritanceEntryAddsASecondEntryToAFilledList()
+    {
+        // The entry stays available once the list is on screen, and that is not decoration: Enter does not extend
+        // an inline collection - InsertNodeAction fills a slot that is empty or adds a sibling to a block child, and
+        // a super concept's key is neither. Without the entry a second super concept could not be written at all.
+        var definition = new DefinitionBuilder();
+
+        var concept = definition.Concept("Rules.Rule", supers: ["Rules.Element"]);
+
+        using var session = new EditorSession(concept, StructureNotations.Create());
+
+        session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
+        session.Select(Selection.At(new CellAddress(concept.Id)));
+
+        var offer = IntentionList.For(session).Single(entry => entry.Id == StructureIntentions.InheritFromId);
+
+        Assert.True(offer.Availability.IsApplicable);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+
+        Assert.Equal(2, concept.GetChildren(StructureLanguage.SuperTypeSlot).Count);
+
+        // The first one is untouched, the new one is second, and the caret is on its key.
+        var added = concept.GetChildren(StructureLanguage.SuperTypeSlot)[1];
+
+        Assert.Equal(CellAddress.OfSlot(added.Id, "conceptKey"), session.Selection.Anchor.Address);
+    }
+
+    [Fact]
+    public void AnEnumerationsSymbolsStandOnePerLine()
+    {
+        // The symbols are a `Many` slot like any other: the order is the order they are offered in, and reading
+        // them off one line would hide a symbol added in the middle.
+        var definition = new DefinitionBuilder();
+
+        var outcome = definition.Enumeration("Rules.Outcome", "accept", "review");
+
+        Assert.Equal(
+            string.Join('\n', "enum Rules.Outcome", "  accept", "  review"),
+            LayoutSnapshot.Render(outcome, StructureNotations.Create(), width: 120));
     }
 
     [Fact]

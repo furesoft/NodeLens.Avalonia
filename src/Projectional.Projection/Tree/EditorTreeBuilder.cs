@@ -170,6 +170,7 @@ public sealed class EditorTreeBuilder
             [BuildCollection(
                 inlineCollection.Slot, inlineCollection.Separator, inlineCollection.EmptyText, inlineCollection.Spacing, node, emphasis, rootAddress: null)],
         ConditionalNotationCell conditional => BuildConditional(conditional, node, emphasis),
+        WhenFilledNotationCell whenFilled => BuildWhenFilled(whenFilled, node, emphasis),
         _ => throw new ProjectionException(
             $"The notation of '{node.Concept.Key}' uses an inline cell of unknown kind '{cell.GetType().Name}'."),
     };
@@ -208,6 +209,26 @@ public sealed class EditorTreeBuilder
 
         return string.Equals(node.GetOrNull(conditional.Slot), conditional.Value, StringComparison.Ordinal)
             ? BuildInline(conditional.Content, node, emphasis)
+            : [];
+    }
+
+    /// <summary>
+    /// Builds the cells of a "while this slot is filled" run, or nothing when it holds no child.
+    /// </summary>
+    /// <remarks>
+    /// The slot is checked here as well as at registration because a tree is built for a concept the registry may
+    /// have validated against another notation - the same defensive read <see cref="BuildConditional"/> makes.
+    /// </remarks>
+    private EditorCell[] BuildWhenFilled(WhenFilledNotationCell cell, Node node, TextEmphasis emphasis)
+    {
+        if (node.Concept.FindChild(cell.Slot) is null)
+        {
+            throw new ProjectionException(
+                $"The notation of '{node.Concept.Key}' draws cells while '{cell.Slot}' holds a child, but the concept declares no such child.");
+        }
+
+        return node.GetChildren(cell.Slot).Count > 0
+            ? BuildInline(cell.Content, node, emphasis)
             : [];
     }
 

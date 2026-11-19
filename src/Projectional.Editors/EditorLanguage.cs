@@ -226,6 +226,20 @@ public static class EditorLanguage
             description: "Inline cells drawn only while a property holds a value."),
 
         new ConceptDeclaration(
+            EditorConceptKeys.WhileFilled,
+            [
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the child slot whose child decides whether these cells are drawn.",
+                    showDescriptionWhenFilled: true),
+                new ChildSlot(CellSlot, EditorConceptKeys.InlineCell, Cardinality.Many),
+            ],
+            [EditorConceptKeys.InlineCell],
+            nameSlot: "slot",
+            description: "Inline cells drawn only while a child slot holds a child."),
+
+        new ConceptDeclaration(
             EditorConceptKeys.Collection,
             [
                 new PropertySlot(

@@ -362,7 +362,7 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   "is this a language".
 - **The namespace is `Projectional.Structures`, not `Projectional.Structure`**: CA1716 is an error here and
   `Structure` is a VB keyword. The class names keep `Structure`.
-- **`Projectional.Editors` is the other half (slice P2)**: the editor language, sixteen concepts whose nodes are a
+- **`Projectional.Editors` is the other half (slice P2)**: the editor language, nineteen concepts whose nodes are a
   notation, and `EditorLowering` into real `Notation`s. It is a *separate* language from the structure one, because
   a definition that mixes the domain with the presentation cannot be reviewed. The **inline/block split is carried
   by slot declarations** here - `Editor.Line.cells` holds `Editor.InlineCell` - so `ed.Line(ed.Indent(...))`'s
@@ -373,9 +373,32 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   every `Editor*` type of `Projectional.Editing`, and the notation of the notation lives in `…Editors.Rendering`
   because `…Notation` would shadow the `Notation` type.
 - **Both definition languages are drawn in MPS' shape** (`StructureNotations`, `Editors.Rendering.EditorNotations`):
-  a header, a block of options, then one section per kind of slot, with `<< ... >>` for an empty section and
-  `[/ ... /]` / `[>` for the editor language's cell model. **`<< ... >>` is the empty-list placeholder in both** -
-  do not "improve" one of them back to prose such as `<no notations>`; the same state gets the same glyph.
+  a header, a block of options, then one section per kind of slot, with `[/ ... /]` / `[>` for the editor language's
+  cell model. The editor language shows an empty list as `<< ... >>`; the structure language names the kind instead
+  (see below). Neither replaces its placeholder with prose such as `<no notations>`.
+- **A structure concept is a header and a brace block** (`StructureNotations`). The header says what the concept
+  *is* and what it inherits - `abstract concept Rules.Rule extends Rules.Element, implements Framework.Named {` -
+  and a list that is empty is **not drawn at all** (`concept Rules.Rule {`). The body is one block of options plus
+  one section per kind of slot, closed by `}`. The comma between the two lists sits inside the `implements` run
+  and is conditioned on `extends`, so it never dangles.
+- **`WhenFilledNotationCell` (`ed.WhenFilled`) is the cell that hides an empty slot**, and hiding one is a pair:
+  the empty slot has no caret stop, so the language owes an intention that creates the first child.
+  `Projectional.Structures.Intentions` pays with `Inherit from…`/`Implement interface…`: `InsertChildAction` for
+  an empty list, `InsertSiblingAction` for one that already has entries - Enter does not extend an inline list -
+  and both land the caret on the new key. Do not add the cell without the entry: an unreachable slot is worse
+  than a placeholder. Its declared twin is `Editor.WhileFilled` (ADR 0014: anything C# can say, a model must be
+  able to say).
+- **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`,
+  `<<child steps : Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>` - and every collection in
+  that notation **stacks**, because a definition is read one declaration per line. Layout draws a collection inline
+  unless the notation asks otherwise, so this is `stacked: true` on every collection here, not a renderer default; a
+  section with four slots used to be drawn side by side. The marker is what makes a property's three option lines
+  readable: without a visible end nobody can tell where one declaration stops.
+- **An empty list names its kind in the structure language**: `<<property>>`, `<<child>>`, `<<reference>>`,
+  `<<symbol>>`. Three empty sections that shared one glyph could not tell an author which slot Enter would fill -
+  do not collapse them back into a single `<< ... >>`. The two header lists are the exception: `extends` and
+  `implements` already say which list they are, so an empty one is hidden rather than given a glyph. The editor
+  language keeps `<< ... >>` for its empty cell lists.
 - **`Structure.Concept` holds `properties`, `children` and `references` as three `Many` slots, not one `slots`
   list.** The kind of a slot is a fact of the model, not something the renderer infers from the child's concept -
   which is why MPS splits the sections too. The consequence is a **fixed rank**: lowering concatenates properties,
@@ -1947,7 +1970,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 1755 tests**; anything below that means tests were deleted.
+it. **Baseline is 2047 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,

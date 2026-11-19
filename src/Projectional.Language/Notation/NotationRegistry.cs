@@ -250,6 +250,10 @@ public sealed class NotationRegistry
             case ConditionalNotationCell conditional:
                 ValidateConditional(concept, conditional);
                 break;
+
+            case WhenFilledNotationCell whenFilled:
+                RequireChildSlotExists(concept, whenFilled.Slot);
+                break;
         }
     }
 

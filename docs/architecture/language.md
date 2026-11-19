@@ -131,6 +131,7 @@ Notation is a tree of **editor cells**. A cell is one of:
 | Collection | a child list with a separator cell between children | |
 | Table/Grid | rows (children) × columns (fixed or per-row roles) | cell-level caret |
 | Conditional | its inline cells, or nothing at all | as its content |
+| While filled | its inline cells, or nothing at all | as its content |
 | Line, Sequence, Indent, Space | layout modifiers | |
 
 The layout cells are the skeleton, and they come in two shapes that cannot be
@@ -163,6 +164,18 @@ one, the way MPS does.
   where the word is gone.
 - Inline only, for now. A block conditional is the same idea one level up and arrives when a notation needs
   to hide a whole line rather than a word.
+
+**The same question asked of a slot is `ed.WhenFilled`.** `ed.WhenFilled("supertypes", ed.Space,
+ed.Keyword("extends"), ed.Space, ed.InlineCollection("supertypes", ed.Punct(",")))` draws that run only while
+the slot holds a child, so a header reads `concept Rule extends Condition {` when there is one and
+`concept Rule {` when there is not. It follows every rule of the conditional - nothing rather than an empty
+cell, the gap inside, inline only - and adds the one consequence the conditional does not have:
+
+- **Hiding an empty slot removes the place its first child is written.** A conditional hides a word the user
+  changes somewhere else; this cell hides a slot the user has to fill, so a language that uses it owes a
+  second way in - an intention that creates the first child, the same answer `abstract` has because its word
+  has no cell either. The structure language ships `Inherit from…` and `Implement interface…` for exactly
+  that (P4); they also append beside the last entry, because Enter does not extend an inline list.
 
 ```csharp
 notation.Add("Sample.Ruleset", ed => ed.Sequence(

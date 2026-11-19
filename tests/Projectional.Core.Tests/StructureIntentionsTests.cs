@@ -37,9 +37,15 @@ public sealed class StructureIntentionsTests
         var (session, _) = Document(isAbstract: true);
 
         // "Make abstract" is absent rather than disabled - an entry that would change nothing is noise, and the
-        // catalogue drops it - so what is left at an abstract concept is the direction that changes something.
+        // catalogue drops it - so what is left at an abstract concept is the direction that changes something,
+        // followed by the two entries that can still add a first inheritance, because this fixture has neither.
         Assert.Equal(
-            [StructureIntentions.MakeConcreteId, StructureIntentions.MakeInterfaceId],
+            [
+                StructureIntentions.MakeConcreteId,
+                StructureIntentions.MakeInterfaceId,
+                StructureIntentions.InheritFromId,
+                StructureIntentions.ImplementInterfaceId,
+            ],
             IntentionList.For(session).Select(offer => offer.Id));
     }
 
@@ -51,7 +57,11 @@ public sealed class StructureIntentionsTests
         var (session, _) = Document(isAbstract: true, isInterface: true);
 
         Assert.Equal(
-            [StructureIntentions.MakeConceptId],
+            [
+                StructureIntentions.MakeConceptId,
+                StructureIntentions.InheritFromId,
+                StructureIntentions.ImplementInterfaceId,
+            ],
             IntentionList.For(session).Select(offer => offer.Id));
     }
 
@@ -128,24 +138,53 @@ public sealed class StructureIntentionsTests
     }
 
     [Fact]
-    public void TheGestureOpensTheListEvenWithOnlyOneIntention()
+    public void TheGestureOpensTheListAndAppliesNothing()
     {
-        // The route the user actually takes: the keystroke asks what can be done here, and the answer is a
-        // list - of one row, this time, because the gesture applies nothing by itself. An interface is the
-        // fixture that has exactly one: it cannot become abstract or concrete, and "make interface" is absent.
+        // The route the user actually takes: the keystroke asks what can be done here, and the answer is a list -
+        // the gesture never applies an entry by itself. (A one-entry list is pinned by OfferKeysTests; what is
+        // structure-specific is which entries an interface offers.)
         var (session, concept) = Document(isAbstract: true, isInterface: true);
 
         Assert.Equal(EditOutcome.Unchanged, session.Apply(new OfferAction()).Outcome);
 
         var offered = Assert.IsType<OfferList>(session.Offered);
 
-        Assert.Equal(StructureIntentions.MakeConceptId, Assert.Single(offered.Entries).Id);
+        Assert.Equal(StructureIntentions.MakeConceptId, offered.Entries[0].Id);
         Assert.Equal("true", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
 
         // Enter on the highlighted entry is what applies it.
         Assert.Equal(EditOutcome.Applied, session.Apply(new AcceptOfferAction()).Outcome);
         Assert.Null(session.Offered);
         Assert.Equal("false", concept.GetOrNull(StructureLanguage.IsInterfaceProperty));
+    }
+
+    [Fact]
+    public void TheTwoInheritanceEntriesFillTheirOwnSlotAndLeaveTheOtherAlone()
+    {
+        // One entry per list, and each decides its own: filling `implements` says nothing about `extends`.
+        var (session, concept) = Document(isAbstract: false);
+
+        Assert.Equal(EditOutcome.Applied, session.Apply(ById(session, StructureIntentions.ImplementInterfaceId)).Outcome);
+
+        var implemented = Assert.Single(concept.GetChildren(StructureLanguage.ImplementsSlot));
+
+        Assert.Equal(CellAddress.OfSlot(implemented.Id, "conceptKey"), session.Selection.Anchor.Address);
+        Assert.Contains(
+            "implements",
+            LayoutSnapshot.Render(session.Layout, width: 120),
+            StringComparison.Ordinal);
+
+        // Both entries stay on offer: an inline list has no Enter of its own, so the entry is how a second entry is
+        // written, not only the first.
+        session.Select(Selection.At(new CellAddress(concept.Id)));
+
+        Assert.Contains(
+            IntentionList.For(session),
+            offer => offer.Id == StructureIntentions.ImplementInterfaceId);
+
+        Assert.Contains(
+            IntentionList.For(session),
+            offer => offer.Id == StructureIntentions.InheritFromId);
     }
 
     [Fact]

@@ -416,10 +416,21 @@ a move.
 | --- | --- | --- | --- | --- |
 | `INT060` | `Make abstract` | sets the concept's `isAbstract` flag, so the header gains the word `abstract` | plain | `SetNodePropertyAction` - **shipped** in `Projectional.Structures.Intentions` |
 | `INT061` | `Make concrete` | clears it again | plain | the same action with the other value |
+| `INT062` | `Inherit from…` | adds a `SuperType` to `extends`, so the header gains `extends …` | plain | `InsertChildAction` when the list is empty and `InsertSiblingAction` when it has entries - **shipped**: the slot itself is hidden while it is empty, so an entry is the only way to write into it |
+| `INT063` | `Implement interface…` | the same for `implements` | plain | the same two actions with the other slot |
 
 Two entries rather than one `Toggle abstract`, because a label is fixed when the intention is declared and
 "what this gives you" is a better sentence than "the opposite of what is there". Each is absent where the
 concept already is what it would make it, so the list shows one line.
+
+`INT062`/`INT063` exist for the second reason an entry can exist: the value has no cell at all, not because
+it is a hidden property but because the **slot** is hidden while it is empty. The structure language draws
+`concept Rule extends Condition {` and `concept Rule {`, and the difference is a
+[while-filled cell](language.md#notation) - so the empty list has no caret stop, and the intention is what
+creates the first child. Unlike the two abstractness entries they stay on offer once the list is on screen,
+because `Enter` does not extend an inline collection: the second super concept is written with the entry too,
+and it is inserted beside the last one. Hiding a slot therefore buys a sentence in the header and costs an
+intention; a language pays for the two together, which is what the cell's own remarks say.
 
 This is the first intention in the catalogue that exists because a value has **no cell of its own**. The
 structure language writes `abstract concept Rule`, the word is drawn by a
