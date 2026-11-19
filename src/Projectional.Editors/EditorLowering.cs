@@ -107,6 +107,7 @@ public static class EditorLowering
             EditorConceptKeys.Line => ed.Line([.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerInline(child, conceptKey))]),
             EditorConceptKeys.Sequence => new SequenceNotationCell([.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
             EditorConceptKeys.Indent => new IndentNotationCell([.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
+            EditorConceptKeys.Horizontal => new HorizontalNotationCell([.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
             EditorConceptKeys.Children => ed.Children(
                 Required(cell, "slot"),
                 Optional(cell, "emptyText") ?? "<empty>",

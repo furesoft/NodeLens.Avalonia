@@ -251,6 +251,32 @@ public sealed class EditorLoweringTests
     }
 
     [Fact]
+    public void ADeclaredHorizontalPutsItsBlocksInOneRow()
+    {
+        // The twin of the C# cell, so the declared path can say "beside each other" too. It becomes the same
+        // HorizontalNotationCell, which is the whole point of lowering through the builder.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration("C.Rule", [new PropertySlot("name", PropertyType.String)]),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Horizontal);
+
+        var left = notation.Cell(root, EditorConceptKeys.Line);
+        var right = notation.Cell(root, EditorConceptKeys.Line);
+
+        notation.Cell(left, EditorConceptKeys.Keyword, ("text", "x"));
+        notation.Cell(right, EditorConceptKeys.Keyword, ("text", "y"));
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+
+        Assert.Equal("xy", LayoutSnapshot.Render(model.NewNode("C.Rule"), notations, width: 40).Trim());
+    }
+
+    [Fact]
     public void AVariantTravelsWithTheNotation()
     {
         var concepts = ConceptRegistry.Create([new ConceptDeclaration("Rules.Rule")]);

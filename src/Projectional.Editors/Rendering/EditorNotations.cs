@@ -64,6 +64,12 @@ public static class EditorNotations
             ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries)),
             ed.Line(ed.Keyword("/]"))));
 
+        // The one block container whose children are not below one another. The word says which direction, because
+        // that is the only thing that tells it apart from a sequence when a reviewer reads it.
+        notations.Add(EditorConceptKeys.Horizontal, ed => ed.Sequence(
+            ed.Line(ed.Keyword("[> side by side")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
+
         notations.Add(EditorConceptKeys.Keyword, ed => ed.Line(
             ed.Keyword("[>"),
             ed.Space,

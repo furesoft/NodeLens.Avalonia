@@ -132,16 +132,25 @@ Notation is a tree of **editor cells**. A cell is one of:
 | Table/Grid | rows (children) × columns (fixed or per-row roles) | cell-level caret |
 | Conditional | its inline cells, or nothing at all | as its content |
 | While filled | its inline cells, or nothing at all | as its content |
-| Line, Sequence, Indent, Space | layout modifiers | |
+| Line, Sequence, Indent, Horizontal, Space | layout modifiers | |
 
 The layout cells are the skeleton, and they come in two shapes that cannot be
 mixed up. A **line** runs its inline cells horizontally and is the unit of vertical
 layout; a **sequence** stacks blocks vertically unchanged; an **indent** stacks
-blocks one level deeper; a **space** separates two inline cells. Only inline cells
+blocks one level deeper; a **horizontal** puts blocks in a row instead of stacking them;
+a **space** separates two inline cells. Only inline cells
 (constants, properties, references, single children, spaces) may sit in a line, and
 only blocks (lines, sequences, indents, children, collections) may sit in a sequence
 or an indent. That split is expressed in the type hierarchy, so a notation that
 misplaces a cell fails to compile rather than at startup.
+
+**A horizontal cell is the one place a parent decides a direction.** Everything else
+inherits it: an inline child whose notation root is vertical breaks the line, because the
+parent cannot see the child's notation. `ed.Horizontal(...)` takes blocks like a sequence
+and lays them out in one row (with hanging continuation, so a tall block beside a short one
+keeps the row readable), which is what a notation needs when each of its cells is a small
+diagram of its own - an editor model's `[`, its cells and its `]`. It implies no gap: where a
+blank belongs is the notation's business, exactly as a collection's separator is.
 
 Empty slots are never invisible: a slot-bearing cell carries the text it shows while
 it is empty (`<empty>`, `<none>`, or for a property `<<operator>>`). The caret always needs something visible to
