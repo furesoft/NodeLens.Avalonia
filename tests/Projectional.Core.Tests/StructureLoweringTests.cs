@@ -454,13 +454,17 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
-    public void TheNameRuleCellOffersTheTwoRules()
+    public void TheNameRuleCellOffersEveryRule()
     {
-        // The declared words are the whole vocabulary, and the order is the order they are offered in.
+        // The declared words are the whole vocabulary, and the order is the order they are offered in - the same
+        // list NameRule.All carries, so the cell cannot offer a rule nothing parses.
         var nameRule = StructureLanguage.Concepts.Get(StructureConceptKeys.Concept).FindProperty("nameRule");
 
         Assert.NotNull(nameRule);
-        Assert.Equal(["any", "identifier"], nameRule.Type.Symbols);
+        Assert.Equal(
+            ["any", "identifier", "pascal", "camel", "snake", "screaming-snake", "kebab", "screaming-kebab", "train", "dot", "pascal-dot"],
+            nameRule.Type.Symbols);
+        Assert.Equal(NameRule.All.Select(rule => rule.Text), nameRule.Type.Symbols);
     }
 
     [Fact]
@@ -481,6 +485,26 @@ public sealed class StructureLoweringTests
 
         Assert.Same(NameRule.Identifier, concepts.Get("Rules.Element").NameRule);
         Assert.Same(NameRule.Identifier, concepts.Get("Rules.Rule").NameRule);
+    }
+
+    [Fact]
+    public void ADeclaredCaseRuleLowersToTheCaseRuleItNames()
+    {
+        // The cell offers every convention, and the lowering resolves the word through NameRule.Parse - so a
+        // declaration can ask for snake_case without the language writing any C#.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept(
+            "Rules.Column",
+            slots: [definition.Property("name", "string")],
+            nameSlot: "name",
+            nameRule: "screaming-snake");
+
+        var concepts = StructureLowering.CreateRegistry(definition.Roots);
+
+        Assert.Same(NameRule.ScreamingSnake, concepts.Get("Rules.Column").NameRule);
+        Assert.True(concepts.Get("Rules.Column").NameRule!.IsValid("ORDER_ID"));
+        Assert.False(concepts.Get("Rules.Column").NameRule!.IsValid("orderId"));
     }
 
     [Fact]

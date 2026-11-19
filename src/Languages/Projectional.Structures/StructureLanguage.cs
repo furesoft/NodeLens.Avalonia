@@ -110,8 +110,8 @@ public static class StructureLanguage
                     showDescriptionWhenFilled: true),
                 new PropertySlot(
                     "nameRule",
-                    PropertyType.Enum(["any", "identifier"]),
-                    description: "What a name of this concept may look like: any text, or an identifier. Empty means inherit.",
+                    PropertyType.Enum([.. NameRule.All.Select(rule => rule.Text)]),
+                    description: "How a name of this concept is spelled: any text, an identifier, or a case convention such as PascalCase or snake_case. Empty means inherit.",
                     showDescriptionWhenFilled: true),
                 new ChildSlot(SuperTypeSlot, StructureConceptKeys.SuperType, Cardinality.Many),
 

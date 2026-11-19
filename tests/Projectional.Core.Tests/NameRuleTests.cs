@@ -81,10 +81,125 @@ public sealed class NameRuleTests
     [Theory]
     [InlineData("any", "any")]
     [InlineData("identifier", "identifier")]
+    [InlineData("pascal", "pascal")]
+    [InlineData("pascal-dot", "pascal-dot")]
     public void ParseAnswersTheRuleTheWordNames(string word, string expected)
     {
         Assert.Equal(expected, NameRule.Parse(word).Text);
     }
+
+    [Fact]
+    public void EveryRuleParsesFromTheWordItCarries()
+    {
+        // The list a declaration enumerates and the list Parse accepts are one list, which is what keeps a
+        // definition document from offering a word the lowering would refuse.
+        Assert.Equal(11, NameRule.All.Count);
+
+        foreach (var rule in NameRule.All)
+        {
+            Assert.Same(rule, NameRule.Parse(rule.Text));
+        }
+    }
+
+    [Theory]
+    [InlineData("pascal", "MyRule")]
+    [InlineData("camel", "myRule")]
+    [InlineData("snake", "my_rule")]
+    [InlineData("screaming-snake", "MY_RULE")]
+    [InlineData("kebab", "my-rule")]
+    [InlineData("screaming-kebab", "MY-RULE")]
+    [InlineData("train", "My-Rule")]
+    [InlineData("dot", "my.rule")]
+    [InlineData("pascal-dot", "My.Rule")]
+    public void ACaseRuleAcceptsTheNameItSpells(string word, string name)
+    {
+        var rule = NameRule.Parse(word);
+
+        Assert.True(rule.IsValid(name));
+        Assert.Equal(name, rule.Propose(name));
+    }
+
+    [Theory]
+    [InlineData("pascal", "myRule")]
+    [InlineData("camel", "MyRule")]
+    [InlineData("snake", "myRule")]
+    [InlineData("screaming-snake", "my_rule")]
+    [InlineData("kebab", "MY-RULE")]
+    [InlineData("screaming-kebab", "my-rule")]
+    [InlineData("train", "my-rule")]
+    [InlineData("dot", "My.Rule")]
+    [InlineData("pascal-dot", "my.rule")]
+    public void ACaseRuleRefusesAnotherConventionsName(string word, string name) =>
+        Assert.False(NameRule.Parse(word).IsValid(name));
+
+    [Theory]
+    [InlineData("pascal", "my rule", "MyRule")]
+    [InlineData("pascal", "HTTP_server", "HttpServer")]
+    [InlineData("camel", "my rule", "myRule")]
+    [InlineData("snake", "myRule", "my_rule")]
+    [InlineData("snake", "ORDER_ID", "order_id")]
+    [InlineData("screaming-snake", "myRule", "MY_RULE")]
+    [InlineData("screaming-snake", "HTTPServer", "HTTP_SERVER")]
+    [InlineData("kebab", "my_rule", "my-rule")]
+    [InlineData("train", "my_rule", "My-Rule")]
+    [InlineData("dot", "My Rule", "my.rule")]
+    [InlineData("pascal-dot", "rules.rule", "Rules.Rule")]
+    public void ProposeJoinsTheWordsTheConventionAsksFor(string word, string name, string proposal) =>
+        Assert.Equal(proposal, NameRule.Parse(word).Propose(name));
+
+    [Theory]
+    [InlineData("camel", "_myField")]
+    [InlineData("snake", "_my_field")]
+    [InlineData("screaming-snake", "_MY_FIELD")]
+    public void ALeadingUnderscoreIsPartOfTheSpelling(string word, string name) =>
+        Assert.True(NameRule.Parse(word).IsValid(name), name);
+
+    [Fact]
+    public void ANameThatStartsWithADigitGainsAnUnderscore()
+    {
+        // A case rule is still an identifier rule, so the first character has to be a letter or an underscore -
+        // and the fix has to produce something the same rule accepts, which is what makes one repair enough.
+        Assert.Equal("_2nd", NameRule.Pascal.Propose("2nd"));
+        Assert.True(NameRule.Pascal.IsValid("_2nd"));
+        Assert.True(NameRule.Snake.IsValid("_2nd"));
+    }
+
+    [Fact]
+    public void EveryProposalIsANameItsOwnRuleAccepts()
+    {
+        // The repair and the test are one algorithm, so this is the property that keeps them honest: a fix may
+        // not leave its own finding behind, and repairing something already repaired changes nothing.
+        string[] names =
+        [
+            "my rule",
+            "MyRule",
+            "my_rule",
+            "MY_RULE",
+            "my-rule",
+            "2nd",
+            "HTTPServer",
+            " HTTPServer ",
+            "Gr" + char.ConvertFromUtf32(0x00F6) + "sse",
+            "___",
+            "123",
+            string.Empty,
+        ];
+
+        foreach (var rule in NameRule.All)
+        {
+            foreach (var name in names)
+            {
+                var proposal = rule.Propose(name);
+
+                Assert.True(rule.IsValid(proposal), $"{rule.Text}: '{name}' became '{proposal}'");
+                Assert.Equal(proposal, rule.Propose(proposal));
+            }
+        }
+    }
+
+    [Fact]
+    public void TheWordsOfARuleReadAsTheConventionIsCalled() =>
+        Assert.Equal("SCREAMING_SNAKE_CASE", NameRule.ScreamingSnake.Requirement);
 
     [Fact]
     public void ParseRefusesAWordThatNamesNoRule()
