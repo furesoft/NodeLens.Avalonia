@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Json;
 using Projectional.Language;
 using Projectional.Persistence;
 using Projectional.Samples;
@@ -276,6 +277,70 @@ public sealed class GeneratorTests
         Assert.Equal(3, result.Regions[1].Start);
         Assert.Equal(result.Regions[1], result.RegionAt(5));
         Assert.Equal(result.Regions[0], result.RegionAt(0));
+    }
+
+    [Fact]
+    public void AnEntryThatEmitsNothingTakesNoSeparatorWithIt()
+    {
+        // This is what makes "this concept is ignored" mean the same thing inside a list as outside one: the entry
+        // writes nothing, so the separator that would have joined it to its neighbour must not be written either.
+        var model = JsonLanguage.NewProject().NewModel("json");
+        var array = model.NewNode(JsonConceptKeys.Array);
+        model.NewChild(array, JsonLanguage.ItemsSlot, JsonConceptKeys.Null);
+        var number = model.NewChild(array, JsonLanguage.ItemsSlot, JsonConceptKeys.Number);
+        number.Set(JsonLanguage.TextSlot, "1");
+
+        var templates = TemplateRegistry.Empty
+            .Add(JsonConceptKeys.Array, TextTemplate.Of(
+                new ChildrenPart(JsonLanguage.ItemsSlot, Literal(", "))))
+            .Add(JsonConceptKeys.Number, Property(JsonLanguage.TextSlot))
+            .Add(JsonConceptKeys.Null, TextTemplate.Empty);
+
+        Assert.Equal("1", Generate(templates, array).Text);
+    }
+
+    [Fact]
+    public void ALoopSkipsTheChildrenItsBodyCannotSpeakAbout()
+    {
+        var model = JsonLanguage.NewProject().NewModel("json");
+        var array = model.NewNode(JsonConceptKeys.Array);
+        model.NewChild(array, JsonLanguage.ItemsSlot, JsonConceptKeys.Null);
+        var number = model.NewChild(array, JsonLanguage.ItemsSlot, JsonConceptKeys.Number);
+        number.Set(JsonLanguage.TextSlot, "1");
+
+        var templates = TemplateRegistry.Empty
+            .Add(JsonConceptKeys.Array, TextTemplate.Of(
+                new LoopPart(
+                    JsonLanguage.ItemsSlot,
+                    TextTemplate.Of(SelfPart.Instance),
+                    Literal(", "))))
+            .Add(JsonConceptKeys.Number, Property(JsonLanguage.TextSlot))
+            .Add(JsonConceptKeys.Null, TextTemplate.Empty);
+
+        Assert.Equal("1", Generate(templates, array).Text);
+    }
+
+    [Fact]
+    public void ARegionInAListStillNamesWhereItWent()
+    {
+        // The entries are written into a buffer of their own, so a region has to learn where that buffer ended up -
+        // otherwise "go to source" points at the wrong character.
+        var model = JsonLanguage.NewProject().NewModel("json");
+        var array = model.NewNode(JsonConceptKeys.Array);
+        model.NewChild(array, JsonLanguage.ItemsSlot, JsonConceptKeys.Null);
+        var number = model.NewChild(array, JsonLanguage.ItemsSlot, JsonConceptKeys.Number);
+        number.Set(JsonLanguage.TextSlot, "12");
+
+        var templates = TemplateRegistry.Empty
+            .Add(JsonConceptKeys.Array, TextTemplate.Of(
+                new ChildrenPart(JsonLanguage.ItemsSlot, Literal(", "))))
+            .Add(JsonConceptKeys.Number, Property(JsonLanguage.TextSlot))
+            .Add(JsonConceptKeys.Null, TextTemplate.Empty);
+
+        var generated = Generate(templates, array);
+
+        Assert.Equal("12", generated.Text);
+        Assert.Equal(number.Id, generated.RegionAt(1)?.Node);
     }
 
     private static TemplateRegistry Registry() => TemplateRegistry.Empty;

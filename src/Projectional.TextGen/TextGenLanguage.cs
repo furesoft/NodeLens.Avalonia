@@ -78,15 +78,29 @@ public static class TextGenLanguage
             TextGenConceptKeys.Mapping,
             [
                 new PropertySlot(ConceptKeySlot, PropertyType.String, description: "The concept whose text this is."),
-                new ChildSlot(TemplateSlot, TextGenConceptKeys.Template, Cardinality.One),
+                new ChildSlot(TemplateSlot, TextGenConceptKeys.Body, Cardinality.One),
             ],
             nameSlot: ConceptKeySlot,
             description: "What one concept emits."),
 
         new ConceptDeclaration(
+            TextGenConceptKeys.Body,
+            [],
+            isAbstract: true,
+            isOfferedInCompletion: false,
+            description: "What a mapping produces: a template, or the decision to emit nothing."),
+
+        new ConceptDeclaration(
             TextGenConceptKeys.Template,
             [new ChildSlot(PartsSlot, TextGenConceptKeys.Part, Cardinality.Many)],
+            [TextGenConceptKeys.Body],
             description: "An ordered list of parts; an empty one means this concept emits nothing."),
+
+        new ConceptDeclaration(
+            TextGenConceptKeys.Ignore,
+            [],
+            [TextGenConceptKeys.Body],
+            description: "This concept is deliberately left out of the text, even where it stands in a list."),
 
         new ConceptDeclaration(
             TextGenConceptKeys.Part,

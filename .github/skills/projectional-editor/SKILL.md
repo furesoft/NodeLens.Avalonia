@@ -1101,6 +1101,17 @@ design of record.
   allocating an array.
 - **A concept with no template is a failure; an empty template means "emits nothing".** Never collapse the two: the
   first is "nobody said", the second is a decision, and a silent hole in the output is the worst of both.
+- **An entry that emits nothing takes no separator with it.** `ChildrenPart` and `LoopPart` write each entry into its
+  own buffer (`Generator.EmitEntries`) and skip it when the buffer stays empty, because a separator already written
+  cannot be taken back. Without this, "ignored" would mean "nothing" at a single-child slot and "a stray comma" in a
+  list - a syntax error dressed up as a feature. Regions written into a buffer are shifted when the buffer is appended,
+  so "go to source" still lands on the right character.
+- **`TextGen.Ignore` is the declared way to say it** (a mapping body beside `TextGen.Template`, both conforming to the
+  abstract `TextGen.Body` the mapping's `template` slot holds - the slot name is persisted, so it keeps its name). A
+  concept rather than an empty template node because an empty box reads as unfinished work.
+- **`GenerationCoverage.Of(model, generator)` is the editor's hint**: one diagnostic per concept the chosen generator
+  cannot print, at its first node in document order, carrying no repair (writing a template is the author's decision).
+  The run still stops with a `GenerationFailure` - a report is what lets a user find out before pressing Generate.
 - **Indentation is the template's, never counted from the text.** `LineBreakPart` writes the newline *and* the current
   indentation; `IndentPart` raises the level for the lines inside it. A separator is a `TextTemplate` too, which is why
   a list on separate lines is `ChildrenPart(slot, Template(LineBreakPart))` inside an `IndentPart` - an "indent" flag

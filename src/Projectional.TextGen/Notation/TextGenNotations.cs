@@ -57,6 +57,8 @@ public static class TextGenNotations
             ed.Line(ed.Keyword("template")),
             ed.Indent(ed.Children(TextGenLanguage.PartsSlot, NoEntries))));
 
+        notations.Add(TextGenConceptKeys.Ignore, ed => ed.Line(ed.Keyword("ignore")));
+
         notations.Add(TextGenConceptKeys.Text, ed => ed.Line(
             ed.Keyword("\""),
             ed.Property(TextGenLanguage.TextSlot),
