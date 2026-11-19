@@ -49,6 +49,9 @@ public static class IntentionLanguage
     /// <summary>The side a declared insert puts the new sibling on.</summary>
     public const string SideSlot = "side";
 
+    /// <summary>Which way a declared move sends the node.</summary>
+    public const string MoveSlot = "move";
+
     /// <summary>The property an intention writes on the node.</summary>
     public const string SetSlot = "slot";
 
@@ -109,6 +112,25 @@ public static class IntentionLanguage
             ],
             [IntentionConceptKeys.Action],
             description: "Inserts a sibling of the node."),
+
+        new ConceptDeclaration(
+            IntentionConceptKeys.Delete,
+            [],
+            [IntentionConceptKeys.Action],
+            description: "Deletes the node."),
+
+        new ConceptDeclaration(
+            IntentionConceptKeys.Move,
+            [
+                new PropertySlot(
+                    MoveSlot,
+                    PropertyType.Enum(IntentionMoves.Up, IntentionMoves.Down, IntentionMoves.ToFront, IntentionMoves.ToBack),
+                    IntentionMoves.Up,
+                    "Which way the node moves among its siblings.",
+                    showDescriptionWhenFilled: true),
+            ],
+            [IntentionConceptKeys.Action],
+            description: "Moves the node among its siblings."),
 
         new ConceptDeclaration(
             IntentionConceptKeys.Set,
