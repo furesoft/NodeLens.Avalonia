@@ -4,7 +4,7 @@ using Projectional.Projection;
 namespace Projectional.Editing;
 
 /// <summary>
-/// Deletes the node the caret stands in, or empties the slot it fills.
+/// Deletes a node together with its subtree: the one the caret stands in, or the one the caller names.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -14,8 +14,16 @@ namespace Projectional.Editing;
 /// slot is emptied and for a list means one element is gone.
 /// </para>
 /// <para>
+/// The <see cref="DeleteNodeAction(NodeId)"/> form removes the node the caller names instead of the one the
+/// caret happens to be in, which is what a <see cref="DiagnosticFix"/> needs: a repair runs through the
+/// session without moving the caret there first, so a gesture-addressed delete would remove whatever the user
+/// happened to be looking at. It is the same operation otherwise - one action type rather than a second type
+/// that would have to keep the landing rule and the root refusal in step with this one.
+/// </para>
+/// <para>
 /// The document root is never deleted. Removing it would leave the editor with no tree at all, and
-/// closing a document is the host's decision rather than a keystroke's.
+/// closing a document is the host's decision rather than a keystroke's. The named form says so with a
+/// reason, because a caller that asked for a particular node is owed one.
 /// </para>
 /// <para>
 /// The caret lands where the removed node used to be: on the sibling before it, because that sibling's
@@ -25,6 +33,29 @@ namespace Projectional.Editing;
 /// </remarks>
 public sealed class DeleteNodeAction : EditAction
 {
+    private readonly NodeId _node;
+
+    /// <summary>Deletes the node the caret stands in.</summary>
+    public DeleteNodeAction()
+    {
+    }
+
+    /// <summary>Deletes <paramref name="node"/> wherever the caret is.</summary>
+    /// <param name="node">The node to remove, which must not be the document root.</param>
+    /// <exception cref="ArgumentException"><paramref name="node"/> is empty.</exception>
+    public DeleteNodeAction(NodeId node)
+    {
+        if (node.IsEmpty)
+        {
+            throw new ArgumentException("A deletion needs a node.", nameof(node));
+        }
+
+        _node = node;
+    }
+
+    /// <summary>The node this action removes, or <see cref="NodeId.Empty"/> for the caret's one.</summary>
+    public NodeId Node => _node;
+
     /// <inheritdoc/>
     public override EditResult Apply(EditContext context)
     {
@@ -32,19 +63,32 @@ public sealed class DeleteNodeAction : EditAction
 
         var selection = context.Selection;
 
-        if (context.PlaceAt(selection.Caret) is not { } place ||
-            context.NodeOf(place.Address) is not { } node ||
-            node.Parent is not { } parent ||
-            node.ParentSlot is not { } slot)
+        if (_node.IsEmpty)
         {
-            return EditResult.Unchanged(selection);
+            if (context.PlaceAt(selection.Caret) is not { } place ||
+                context.NodeOf(place.Address) is not { } caret ||
+                caret.Parent is not { } owner ||
+                caret.ParentSlot is not { } placeOfCaret)
+            {
+                return EditResult.Unchanged(selection);
+            }
+
+            return Remove(context, owner, placeOfCaret, caret, selection);
         }
 
-        var landing = Landing(parent, slot, node);
+        if (context.NodeOf(_node) is not { } node)
+        {
+            return EditResult.Rejected(selection, "The node this entry deletes is no longer in the document.");
+        }
 
-        context.DeleteChild(parent, slot, node);
+        if (node.Parent is not { } parent || node.ParentSlot is not { } slot)
+        {
+            return EditResult.Rejected(
+                selection,
+                $"Concept '{node.Concept.Key}' is the document itself, so there is nothing that could delete it.");
+        }
 
-        return EditResult.Applied(landing);
+        return Remove(context, parent, slot, node, selection);
     }
 
     /// <summary>Where the caret goes once <paramref name="node"/> is gone.</summary>
@@ -75,5 +119,18 @@ public sealed class DeleteNodeAction : EditAction
             : Selection.At(CellAddress.OfSlot(parent.Id, slot));
     }
 
-    public override string ToString() => "delete node";
+    /// <summary>Removes <paramref name="node"/> and answers where the caret should land.</summary>
+    /// <remarks>
+    /// The landing place is asked for before the removal, because it names an index the removal renumbers.
+    /// </remarks>
+    private static EditResult Remove(EditContext context, Node parent, string slot, Node node, Selection selection)
+    {
+        var landing = Landing(parent, slot, node);
+
+        context.DeleteChild(parent, slot, node);
+
+        return EditResult.Applied(landing);
+    }
+
+    public override string ToString() => _node.IsEmpty ? "delete node" : $"delete {_node}";
 }

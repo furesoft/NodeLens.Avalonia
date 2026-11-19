@@ -1062,9 +1062,11 @@ dependency, so every action is testable headlessly.
   document root) and removes them in one `Model.BeginTransaction()`, because `EditorSession.Apply`
   opens none and each `DeleteChild` journals its own step. A partly covered node removes
   nothing. `DeleteNodeAction.Landing` is `internal static` and shared, so both deletes land the
-  caret in the same place. Cut and Copy do act on a cross-cell selection: they copy the covered nodes as a
-  fragment (`CopySelectionAction`/`CutSelectionAction`) instead of text, which is what the structural
-  clipboard is for.
+  caret in the same place. `DeleteNodeAction(NodeId)` is the same removal addressed by node id, which is
+  what a repair needs - the caret may be anywhere when a fix runs - and it refuses the document root with
+  a reason where the gesture is simply `Unchanged`. Cut and Copy do act on a cross-cell selection: they
+  copy the covered nodes as a fragment (`CopySelectionAction`/`CutSelectionAction`) instead of text, which
+  is what the structural clipboard is for.
 - **`Model.DeleteSubtree` unlinks the top node only.** Descendants stay attached to each other
   and are merely unregistered from the project index, which is exactly what lets one
   `SubtreeSnapshot` undo restore the whole thing. So `body.GetChildren("steps")` still answers
@@ -1337,6 +1339,13 @@ Shipped checks and the rules they encode:
 - `STD001` (`PlaceholderNameCheck`, `Hint`) - name still equals the concept's declared default; the repair
   names it `<Concept>1` with the first free suffix, computed as a group so two unnamed rules get `Rule1`
   and `Rule2`. A concept with no default is not reported.
+- `STD002` (`DuplicateNameCheck`, `Warning`) - two children of one slot under one name. The group is one
+  slot of one node (roots are not a group), the **later** child is the one reported and offered a rename
+  from suffix 2, and a child whose name is still its concept's placeholder is skipped - that is `STD001`'s
+  finding. **A node anything in the project references is not reported at all**: the rename would dangle a
+  reference the repair never saw, so the ambiguity is left to the constraint that reports it at the
+  reference. The referrer scan is over `Project.Nodes`, not the model, because a reference may cross a
+  model boundary.
 - `STD003` (`SurroundingWhitespaceCheck`, `Warning`) - surrounding whitespace; `Trim to "..."`. A name
   that is only whitespace is skipped, because trimming it would produce the empty name.
 - `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
@@ -1345,6 +1354,11 @@ Shipped checks and the rules they encode:
 - `STD011` (`MinimumChildCountCheck`, `Hint`) - the list half: a `Cardinality.Many` slot whose declared
   `Minimum` is at least one and that holds nothing. The same `InsertChildAction`, which is why the two checks
   cannot drift from Enter either.
+- `STD012` (`EmptyNodeCheck`, `Hint`, destructive repair) - a list entry that holds nothing but its defaults;
+  the repair is `DeleteNodeAction(NodeId)`, which exists because this check needed a delete that names its
+  node. Three exclusions make it usable: **a list entry only** (emptying a single-child slot is `STD010`'s
+  finding), **a concept that declares a slot to fill** (a leaf is its value, and a default cannot be told from
+  a typed value), and **nothing set anywhere**.
 - `STD040` (`BinaryGroupingCheck`, `Warning`) - an operand drawn without the parentheses its grouping
   needs. **The finding names the operand, not its parent**, and the repair wraps that operand: wrapping the
   parent leaves the same finding, and a repair that survives itself is broken. Precedence lives in the
@@ -2077,7 +2091,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2054 tests**; anything below that means tests were deleted.
+it. **Baseline is 2269 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
