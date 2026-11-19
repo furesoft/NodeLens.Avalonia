@@ -328,13 +328,19 @@ the framework can provide; a language includes the ones it wants and inherits th
 | `STD001` | the name still equals the concept's declared default | `Name it "Rule1"` | plain - **shipped** in `Projectional.Checks`; the workbench's `SHELL001` was the first hand-written copy of it |
 | `STD002` | two children of one slot share a name | `Rename to "Check2"` | plain only while nothing references the name - **shipped**; the check stays silent about a node something points at, see the rule below |
 | `STD003` | the name has leading or trailing whitespace | `Trim to "Rule"` | plain - **shipped** |
-| `STD004` | the name breaks the identifier rule the concept declares | `Use "myRule"` | plain - **shipped**; the rule is a declaration (`NameRule.Identifier`, `NameRule.AnyText`), see [language.md](language.md#a-third-designation-what-a-name-may-look-like) |
+| `STD004` | the name breaks the spelling rule the concept declares | `Use "my_rule"` | plain - **shipped**; the rule is a declaration (`NameRule.Pascal`, `NameRule.Snake`, `NameRule.Identifier`, `NameRule.AnyText`, ...), see [language.md](language.md#a-third-designation-what-a-name-may-look-like) |
 
 `STD004` needs one declaration rather than a new mechanism: a concept says what a legal name is
-(`NameRule.Identifier`, `NameRule.AnyText`), and the check reads it. Without that declaration the check
-is not offered, which is the honest default for a language whose names may be sentences. The declared
-form is the structure language's `named by rule:` cell, so a definition document can ask for identifiers
-without writing C#.
+(`NameRule.AnyText`, `NameRule.Identifier`, or a case convention such as `NameRule.Pascal` or
+`NameRule.ScreamingSnake`), and the check reads it. Without that declaration the check is not offered,
+which is the honest default for a language whose names may be sentences. The declared form is the
+structure language's `named by rule:` cell, so a definition document can ask for a convention without
+writing C#.
+
+Three exclusions keep one state to one finding: an empty name and a name still equal to the concept's
+placeholder are `STD001`'s finding, and whitespace around a name is `STD003`'s. `STD001` and `STD002`
+respells their proposals with the concept's own rule, so the name a repair writes is one the language
+accepts - a fix that left `STD004` behind would be broken.
 
 ### Structure: whatever the declarations already say
 

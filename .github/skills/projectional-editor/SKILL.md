@@ -1357,13 +1357,22 @@ Shipped checks and the rules they encode:
   model boundary.
 - `STD003` (`SurroundingWhitespaceCheck`, `Warning`) - surrounding whitespace; `Trim to "..."`. A name
   that is only whitespace is skipped, because trimming it would produce the empty name.
-- `STD004` (`IdentifierNameCheck`, `Warning`) - the name breaks the identifier rule the concept declares;
+- `STD004` (`IdentifierNameCheck`, `Warning`) - the name breaks the spelling rule the concept declares;
   the repair is `Use "..."`, which is `NameRule.Propose`. **The rule is a declaration, not a setting**:
-  `Concept.NameRule` is `NameRule.Identifier` or `NameRule.AnyText` and stays **nullable**, because "nobody
-  declared a rule" and "somebody declared `any`" are different facts and only the second survives
-  inheritance - a default would let `Framework.Named` (which declares none) shadow a language's own rule.
-  An empty name is never reported: "no name yet" is `STD001`'s business. The declared form is the structure
-  language's `named by rule:` cell, where an empty cell means inherit.
+  `Concept.NameRule` is `NameRule.AnyText`, `NameRule.Identifier` or one of the case conventions
+  (`Pascal`, `Camel`, `Snake`, `ScreamingSnake`, `Kebab`, `ScreamingKebab`, `Train`, `Dot`, `PascalDot`)
+  and stays **nullable**, because "nobody declared a rule" and "somebody declared `any`" are different
+  facts and only the second survives inheritance - a default would let `Framework.Named` (which declares
+  none) shadow a language's own rule.
+  The case rules are one algorithm (`NameCase`: cut into the words the name carries, join them the way
+  the convention says), so `Propose` is both the repair and the test - a name the rule accepts is the
+  name it proposes, and a proposal always passes `IsValid`. **One state, one finding**: an empty name and
+  one still equal to the concept's placeholder are `STD001`'s, whitespace around a name is `STD003`'s, and
+  `STD001`/`STD002` respell their proposals with the concept's own rule so a repair cannot leave `STD004`
+  behind. The declared form is the structure language's `named by rule:` cell, which enumerates
+  `NameRule.All`, where an empty cell means inherit. The shipped languages use it: rules/states/features
+  are PascalCase, an expression name camelCase, schema/table/column names snake_case, a declared type
+  PascalCase and a record field camelCase.
 - `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
   `InsertChildAction`, which is the same creation path `InsertNodeAction` uses, so the fix and Enter cannot
   disagree. A slot whose whole set is abstract has no repair and therefore no finding.
@@ -2110,7 +2119,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2305 tests**; anything below that means tests were deleted.
+it. **Baseline is 2362 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
