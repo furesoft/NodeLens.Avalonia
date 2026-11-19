@@ -218,9 +218,9 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 
 | Feature | Where it lives | Proof |
 | --- | --- | --- |
-| 21 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
+| 22 accepted architecture decisions, frozen | `docs/adr/` | the files; a change needs a new ADR that supersedes |
 | Architecture documents per layer and per planned feature | `docs/architecture/` | the files |
-| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2270 tests |
+| Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2305 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux, one-package-per-project `pack` job and a tag-gated `publish-nuget` job | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
 
