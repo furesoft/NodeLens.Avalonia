@@ -328,11 +328,13 @@ the framework can provide; a language includes the ones it wants and inherits th
 | `STD001` | the name still equals the concept's declared default | `Name it "Rule1"` | plain - **shipped** in `Projectional.Checks`; the workbench's `SHELL001` was the first hand-written copy of it |
 | `STD002` | two children of one slot share a name | `Rename to "Check2"` | plain only while nothing references the name - **shipped**; the check stays silent about a node something points at, see the rule below |
 | `STD003` | the name has leading or trailing whitespace | `Trim to "Rule"` | plain - **shipped** |
-| `STD004` | the name breaks the identifier rule the concept declares | `Use "myRule"` | plain |
+| `STD004` | the name breaks the identifier rule the concept declares | `Use "myRule"` | plain - **shipped**; the rule is a declaration (`NameRule.Identifier`, `NameRule.AnyText`), see [language.md](language.md#a-third-designation-what-a-name-may-look-like) |
 
-`STD004` needs one new declaration rather than a new mechanism: a concept says what a legal name is
+`STD004` needs one declaration rather than a new mechanism: a concept says what a legal name is
 (`NameRule.Identifier`, `NameRule.AnyText`), and the check reads it. Without that declaration the check
-is not offered, which is the honest default for a language whose names may be sentences.
+is not offered, which is the honest default for a language whose names may be sentences. The declared
+form is the structure language's `named by rule:` cell, so a definition document can ask for identifiers
+without writing C#.
 
 ### Structure: whatever the declarations already say
 

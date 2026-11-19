@@ -1357,6 +1357,13 @@ Shipped checks and the rules they encode:
   model boundary.
 - `STD003` (`SurroundingWhitespaceCheck`, `Warning`) - surrounding whitespace; `Trim to "..."`. A name
   that is only whitespace is skipped, because trimming it would produce the empty name.
+- `STD004` (`IdentifierNameCheck`, `Warning`) - the name breaks the identifier rule the concept declares;
+  the repair is `Use "..."`, which is `NameRule.Propose`. **The rule is a declaration, not a setting**:
+  `Concept.NameRule` is `NameRule.Identifier` or `NameRule.AnyText` and stays **nullable**, because "nobody
+  declared a rule" and "somebody declared `any`" are different facts and only the second survives
+  inheritance - a default would let `Framework.Named` (which declares none) shadow a language's own rule.
+  An empty name is never reported: "no name yet" is `STD001`'s business. The declared form is the structure
+  language's `named by rule:` cell, where an empty cell means inherit.
 - `STD010` (`EmptyChildSlotCheck`, `Hint`) - a `Cardinality.One` slot with no child; the repair is
   `InsertChildAction`, which is the same creation path `InsertNodeAction` uses, so the fix and Enter cannot
   disagree. A slot whose whole set is abstract has no repair and therefore no finding.

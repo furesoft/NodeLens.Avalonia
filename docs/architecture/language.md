@@ -117,6 +117,25 @@ implements `Framework.Named` inherits the `name` property *and* the name-slot de
 a property of another name - `Structure.Concept` is named by `key`, and `Test.Tag` by `label` - and the two
 compose: an own `nameSlot` overrides the inherited one, exactly as it overrides a super concept's.
 
+### A third designation: what a name may look like
+
+`nameRule` is the same kind of nomination, and it is the first one that is not a slot: it is a
+`NameRule` - `AnyText` or `Identifier` - and it says what the *spelling* of a name may be
+(`STD004` reports a name that breaks it). It is inherited exactly like the two slots, but it stays
+**nullable** on the concept, and that is the decision worth understanding:
+
+- `Concept.NameRule` is `null` when nothing in the concept's chain declared a rule. "Nobody declared"
+  and "somebody declared `any`" are different facts, and only the second one survives inheritance. A
+  default here would make the framework's own `Framework.Named` interface - which declares no rule -
+  answer for every concept that implements it, and no language could ever ask for identifiers.
+- An **empty cell in the declared form means inherit**, the same way an empty `nameSlot` cell does. A
+  concept that wants "any text" below a base that asked for identifiers says so explicitly, and its
+  subtypes inherit *that*.
+
+The rule carries no check of its own: `NameRule.IsValid` is a predicate, `NameRule.Propose` is the
+repair, and the catalogue's `STD004` is the only thing that reads them. A concept with a name rule and
+no name slot is legal, because declaring the rule before the slot is a legitimate order of work.
+
 ## Notation
 
 Notation is a tree of **editor cells**. A cell is one of:
