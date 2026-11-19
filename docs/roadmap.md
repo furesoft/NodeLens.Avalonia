@@ -109,7 +109,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 
 | Delivers | Details |
 | --- | --- |
-| Declarative aspects | **types, generation, constraints and scopes are done** (`Projectional.TypeRules`, `Projectional.TextGen`, `Projectional.ConstraintRules`, `Projectional.ScopeRules`, [semantics.md](architecture/semantics.md#the-declared-form)); what is left is intentions as a definition language, lowering to the same delegate a C# language writes ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
+| Declarative aspects | **types, generation, constraints, scopes and intentions are done** (`Projectional.TypeRules`, `Projectional.TextGen`, `Projectional.ConstraintRules`, `Projectional.ScopeRules`, `Projectional.IntentionRules`, [semantics.md](architecture/semantics.md#the-declared-form)); a declared intention has the two bodies a language ships so far - wrap with presets, set a property - and what is left of the aspect set is nothing: a new aspect is a new language plus its lowering ([language-authoring.md](architecture/language-authoring.md#aspects-are-annotations)) |
 | Refactorings | rename, extract, inline, move — as edit-action programs |
 | Find usages | the reference index a rename needs first: who points at this node, across models, and the gesture that asks ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 | Concept behaviours | a node's name (and a one-sentence description) as a **declared pure function** per concept, so a composite name, a name that is a value and a name that is a sentence stop being the three things a `nameSlot` cannot express - one answer for the nine places that ask, and the declared twin of a C# lambda ([behaviours.md](architecture/behaviours.md)) |

@@ -296,7 +296,7 @@ Not every aspect is worth a declarative form, and the plan says which:
 | types | rule table over concept keys and slots | M6 | MPS' type system is the same idea; expressions stay for the odd case |
 | scopes | chain description plus per-slot overrides | M6 (delivered) | MPS needs a language for this too; the default chain covers most DSLs |
 | generation | template rules with traceability | M4 (delivered) | the largest declarative win, and the largest piece of work - it arrived with the generator itself rather than a milestone later |
-| intentions, textGen, accessories | block per concept | M6 | declarative by nature; these are where DSL authors spend their time |
+| intentions | block per concept | M6 (intentions delivered: wrap with presets, set a property; textGen and accessories remain) | declarative by nature; these are where DSL authors spend their time |
 | interpretation | never | - | evaluation is a host decision with security consequences |
 | migrations | stepping rules per version | M6 | declared form once one language has two versions |
 
