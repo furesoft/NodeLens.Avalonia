@@ -149,10 +149,12 @@ cleverness here until profiling says otherwise.
 
 Profiling has now spoken about the part that decides the order of the work, and the answer is
 that incrementality is the third problem rather than the first.
-`tools/Projectional.Benchmarks` builds a clean document of a given size,
-lays it out, runs the constraints, runs the checks, and rechecks one node - best of five
-runs, Release, one core of twenty. A clean document means no findings, so the times are
-traversal and nothing else.
+`tools/Projectional.Benchmarks` builds a clean document of a given size, lays it out, runs the
+constraints, runs the checks, and rechecks one node: best of five runs, Release build, on a
+twenty-core machine with nothing else loading it. A clean document means no findings, so the times are
+traversal and nothing else. Two runs of the same table differ by up to tens of percent, so read the growth
+and not the last digit - the question these tables answer is "linearly or quadratically", and that answer
+is stable.
 
 The rules language - `n` rules, `2n + 1` nodes, no references:
 
