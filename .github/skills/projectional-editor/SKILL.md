@@ -718,7 +718,13 @@ notation is registered per concept **and** variant
   keeps the rest merges them itself. The dependency-set machinery of the design is **not** implemented -
   a caller rechecks the subtree that changed, which is correct and cheaper than the document, but it does
   not yet know that a *referencing* node's rule may have changed too. Do not claim incrementality beyond
-  that.
+  that. **The numbers are measured, not assumed** (`tools/Projectional.Benchmarks`, recorded in
+  `docs/architecture/semantics.md` §What a full recheck costs): a document without references checks
+  linearly (6.5 ms at 40 001 nodes) and is dominated by the layout rebuild the same keystroke pays
+  (285 ms), while a document *made of* references checks quadratically (2 232.8 ms at 7 501 nodes) because
+  every reference asks the scope and `DefaultScopeProvider` walks the document to answer. That is why
+  open questions 110/111 put a name index and incremental layout before dependency sets - do not start
+  with the dependency sets.
 - **The app merges constraint findings with the check catalogue's in one list** (`PublishFindings`),
   because the panel and the markers must not be two answers to "what is wrong". A constraint finding has
   no fix, so it is a marker and a panel row only. Which rules it runs is the document's: `DocumentTab.Constraints`
@@ -2251,6 +2257,16 @@ machine default. Do not remove it.
 dotnet build
 dotnet test
 ```
+
+To measure rather than argue, `tools/Projectional.Benchmarks` reports layout, constraints, checks and one
+rechecked node per document size, for a language without references and one made of them:
+
+```powershell
+dotnet run -c Release --project tools/Projectional.Benchmarks   # best of five, pass N as the first argument
+```
+
+Release only - a Debug build reports numbers that are true of a Debug build - and the numbers belong in
+`docs/architecture/semantics.md` §What a full recheck costs, not in a comment.
 
 The self-contained single file is a **publish** shape, not a build shape - the single-file
 properties in the Workbench csproj are guarded by `'$(PublishSingleFile)' == 'true'`, so a normal

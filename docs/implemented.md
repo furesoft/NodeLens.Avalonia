@@ -227,6 +227,7 @@ alone, and `docs/architecture/standalone.md` describes the extraction M6 owns.
 | Two test projects, xunit.v3 on Microsoft.Testing.Platform | `tests/` | 2305 tests |
 | CI: Release build and tests on Windows and Linux, corpus job on Linux, one-package-per-project `pack` job and a tag-gated `publish-nuget` job | `.github/workflows/ci.yml` | the workflow |
 | Byte-identical round trip over the whole corpus | `tests/Projectional.Core.Tests/Corpus/` | `CorpusTests` |
+| What a full recheck costs, measured rather than argued: layout, constraints, checks and one rechecked node for a document of each size, in two languages | `tools/Projectional.Benchmarks/` | `dotnet run -c Release --project tools/Projectional.Benchmarks`; the numbers it answered with are recorded in [semantics.md](architecture/semantics.md#what-a-full-recheck-costs) |
 
 ## What is not here
 
