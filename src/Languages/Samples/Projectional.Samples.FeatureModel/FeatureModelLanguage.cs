@@ -76,7 +76,8 @@ public static class FeatureModelLanguage
                 new ChildSlot(ConstraintsSlot, FmConceptKeys.Constraint, Cardinality.Many),
             ],
             description: "A set of features and the rules that hold between them.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Pascal),
 
         new ConceptDeclaration(
             FmConceptKeys.Feature,
@@ -90,7 +91,8 @@ public static class FeatureModelLanguage
                     showDescriptionWhenFilled: true),
             ],
             description: "One feature of the product line.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Pascal),
 
         // Abstract, because a slot name a concept and not a set: it is what lets one `constraints` list hold
         // both kinds. It is never instantiated - `DefaultInstantiableFor` answers its first concrete

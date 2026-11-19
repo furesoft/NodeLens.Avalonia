@@ -91,7 +91,8 @@ public static class RulesLanguage
                 new ChildSlot(RulesSlot, RulesConceptKeys.Rule),
             ],
             description: "A named set of rules, evaluated in the order they are written.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Pascal),
 
         new ConceptDeclaration(
             RulesConceptKeys.Rule,
@@ -115,6 +116,7 @@ public static class RulesLanguage
             ],
             description: "One rule: a name, an optional condition and the outcome it decides.",
             collapseSlot: "foldable",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Pascal),
     ];
 }

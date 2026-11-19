@@ -81,7 +81,8 @@ public static class SqlSchemaLanguage
                 new ChildSlot(TablesSlot, SqlConceptKeys.Table, Cardinality.Many),
             ],
             description: "One document of a schema: the tables it holds.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Snake),
 
         new ConceptDeclaration(
             SqlConceptKeys.Table,
@@ -91,7 +92,8 @@ public static class SqlSchemaLanguage
                 new ChildSlot(KeysSlot, SqlConceptKeys.ForeignKey, Cardinality.Many),
             ],
             description: "A table: its columns, and the keys that point at other rows.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Snake),
 
         new ConceptDeclaration(
             SqlConceptKeys.Column,
@@ -105,7 +107,8 @@ public static class SqlSchemaLanguage
                     showDescriptionWhenFilled: true),
             ],
             description: "One column of a table.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Snake),
 
         new ConceptDeclaration(
             SqlConceptKeys.ForeignKey,

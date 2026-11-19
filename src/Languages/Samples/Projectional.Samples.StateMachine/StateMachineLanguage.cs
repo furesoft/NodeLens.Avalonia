@@ -83,7 +83,8 @@ public static class StateMachineLanguage
                 new ReferenceSlot(InitialSlot, SmConceptKeys.State, allowOwnSubtree: true),
             ],
             description: "A set of states and the transitions between them.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Pascal),
 
         new ConceptDeclaration(
             SmConceptKeys.State,
@@ -97,7 +98,8 @@ public static class StateMachineLanguage
                     showDescriptionWhenFilled: true),
             ],
             description: "One state of a machine.",
-            interfaces: [FrameworkInterfaces.Named]),
+            interfaces: [FrameworkInterfaces.Named],
+            nameRule: NameRule.Pascal),
 
         new ConceptDeclaration(
             SmConceptKeys.Transition,

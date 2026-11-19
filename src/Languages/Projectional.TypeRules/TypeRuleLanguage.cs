@@ -142,7 +142,10 @@ public static class TypeRuleLanguage
                 new ChildSlot(TypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
             ],
             nameSlot: NameSlot,
-            description: "One field of a record."),
+            description: "One field of a record.",
+
+            // A field is drawn as `(amount: int, currency: string)`, so its name reads like a variable.
+            nameRule: NameRule.Camel),
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.List,
@@ -170,7 +173,11 @@ public static class TypeRuleLanguage
                 new ChildSlot(TypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
             ],
             nameSlot: NameSlot,
-            description: "A type the language declares under a name, written as a root of the types model."),
+            description: "A type the language declares under a name, written as a root of the types model.",
+
+            // A type name is what a finding quotes back (`Amount`), so it is the convention types are written in
+            // everywhere: PascalCase.
+            nameRule: NameRule.Pascal),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>
