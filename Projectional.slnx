@@ -9,7 +9,6 @@
     <Project Path="src/Projectional.Json/Projectional.Json.csproj" />
     <Project Path="src/Projectional.Expressions/Projectional.Expressions.csproj" />
     <Project Path="src/Projectional.Editors/Projectional.Editors.csproj" />
-    <Project Path="src/Projectional.Expressions.Intentions/Projectional.Expressions.Intentions.csproj" />
     <Project Path="src/Projectional.Language/Projectional.Language.csproj" />
     <Project Path="src/Projectional.LanguageExport/Projectional.LanguageExport.csproj" />
     <Project Path="src/Projectional.Languages/Projectional.Languages.csproj" />

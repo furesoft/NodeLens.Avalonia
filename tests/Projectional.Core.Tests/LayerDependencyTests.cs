@@ -49,26 +49,18 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
-    public void TheIntentionPackagesReachDownwardOnly()
+    public void TheLanguagePackagesReachDownwardOnly()
     {
-        // A language's intentions are behaviour beside the language, so the packages sit in the same band as
-        // the checks package: they may name the layers below them and never the control, the app or each
-        // other's languages.
-        foreach (var assembly in new[]
-        {
-            "Projectional.Expressions.Intentions.dll",
-            "Projectional.Samples.Intentions.dll",
-        })
+        // A shipped language carries its own checks and intentions (ADR 0021), so it names the behaviour band
+        // below it - and never the control or the app above it. The check is by assembly rather than by rule,
+        // because a `ProjectReference` is what a host actually inherits.
+        foreach (var assembly in new[] { "Projectional.Json.dll", "Projectional.Expressions.dll" })
         {
             var referenced = ReadAssemblyReferences(assembly);
 
             Assert.Contains("Projectional.Editing", referenced);
-
-            var violations = referenced
-                .Where(name => name is "Projectional.Avalonia" or "Projectional.Workbench" or "Projectional.Checks")
-                .ToArray();
-
-            Assert.Empty(violations);
+            Assert.DoesNotContain("Projectional.Avalonia", referenced);
+            Assert.DoesNotContain("Projectional.Workbench", referenced);
         }
     }
 

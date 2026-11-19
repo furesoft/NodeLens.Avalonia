@@ -34,7 +34,6 @@
     <ProjectReference Include="..\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
     <ProjectReference Include="..\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\Projectional.LanguageExport\Projectional.LanguageExport.csproj" />
-    <ProjectReference Include="..\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\Projectional.Json\Projectional.Json.csproj" />
     <ProjectReference Include="..\Projectional.Xml\Projectional.Xml.csproj" />

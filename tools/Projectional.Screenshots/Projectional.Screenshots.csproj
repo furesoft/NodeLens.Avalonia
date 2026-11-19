@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
-    <ProjectReference Include="..\..\src\Projectional.Expressions.Intentions\Projectional.Expressions.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples\Projectional.Samples.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Samples.Intentions\Projectional.Samples.Intentions.csproj" />
     <!--
