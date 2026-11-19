@@ -85,6 +85,7 @@ public static class IntentionLowering
         {
             IntentionConceptKeys.Wrap => Wrap(action, subject, concepts),
             IntentionConceptKeys.Set => Set(action, subject),
+            IntentionConceptKeys.InsertSibling => InsertSibling(action),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an intention body; an intention wraps or sets."),
         };
@@ -138,6 +139,21 @@ public static class IntentionLowering
         // whatever the caret stands on, which no rule can know at load.
         return context => context.Node is { } node
             ? new WrapInAction(node.Id, wrapperKey, childSlot, presets)
+            : null;
+    }
+
+    private static Func<IntentionContext, EditAction?> InsertSibling(Node action)
+    {
+        var place = Optional(action, IntentionLanguage.SideSlot) switch
+        {
+            null or IntentionSiblings.After => SiblingPlace.After,
+            IntentionSiblings.Before => SiblingPlace.Before,
+            var other => throw new ConceptDefinitionException(
+                $"'{other}' is not a side; an insert puts the sibling {IntentionSiblings.Before} or {IntentionSiblings.After}."),
+        };
+
+        return context => context.Node is { } node
+            ? new InsertSiblingAction(node.Id, place)
             : null;
     }
 

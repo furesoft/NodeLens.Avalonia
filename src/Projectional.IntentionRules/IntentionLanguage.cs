@@ -46,6 +46,9 @@ public static class IntentionLanguage
     /// <summary>A preset's value.</summary>
     public const string PresetValueSlot = "value";
 
+    /// <summary>The side a declared insert puts the new sibling on.</summary>
+    public const string SideSlot = "side";
+
     /// <summary>The property an intention writes on the node.</summary>
     public const string SetSlot = "slot";
 
@@ -93,6 +96,19 @@ public static class IntentionLanguage
                 new PropertySlot(PresetValueSlot, PropertyType.String, description: "The value it is born with."),
             ],
             description: "One value the wrapper starts with."),
+
+        new ConceptDeclaration(
+            IntentionConceptKeys.InsertSibling,
+            [
+                new PropertySlot(
+                    SideSlot,
+                    PropertyType.Enum(IntentionSiblings.Before, IntentionSiblings.After),
+                    IntentionSiblings.After,
+                    "Which side of the node the new sibling goes on.",
+                    showDescriptionWhenFilled: true),
+            ],
+            [IntentionConceptKeys.Action],
+            description: "Inserts a sibling of the node."),
 
         new ConceptDeclaration(
             IntentionConceptKeys.Set,

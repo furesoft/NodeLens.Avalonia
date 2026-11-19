@@ -50,6 +50,11 @@ public static class IntentionNotations
             ed.Space,
             ed.Property(IntentionLanguage.PresetValueSlot, emptyText: "<value>")));
 
+        notations.Add(IntentionConceptKeys.InsertSibling, ed => ed.Line(
+            ed.Keyword("insert"),
+            ed.Space,
+            ed.Property(IntentionLanguage.SideSlot)));
+
         notations.Add(IntentionConceptKeys.Set, ed => ed.Line(
             ed.Keyword("set"),
             ed.Space,
