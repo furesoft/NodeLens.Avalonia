@@ -290,6 +290,37 @@ public sealed class EditContext
         return true;
     }
 
+    /// <summary>Puts the only child of <paramref name="slot"/> where <paramref name="node"/> stands.</summary>
+    /// <param name="node">The node that gives up its place; it must be part of the document being edited.</param>
+    /// <param name="slot">A child slot of its concept that holds exactly one child.</param>
+    /// <returns>Whether the unwrap ran.</returns>
+    /// <remarks>
+    /// The checks here are the ones this layer owns - the node has to be part of the document, the slot has to
+    /// exist and hold exactly one child. What the model adds on top (conformance, applicability, "the node holds
+    /// nothing else") is deliberately not repeated: the model is the authority on a legal placement, and a second
+    /// copy of those rules here would be a copy that can drift.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
+    /// <exception cref="ModelInvariantException">The model refuses the placement.</exception>
+    public bool UnwrapChild(Node node, string slot)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+
+        if (!ReferenceEquals(node.Model, _document.Model)
+            || node.Parent is null
+            || node.Concept.FindChild(slot) is null
+            || node.GetChildren(slot).Count != 1)
+        {
+            return false;
+        }
+
+        node.Model.Unwrap(node, slot);
+
+        return true;
+    }
+
     /// <summary>Adds a new child of <paramref name="conceptKey"/> to <paramref name="parent"/>.</summary>
     /// <exception cref="EditingException"><paramref name="parent"/> is not in the session's model.</exception>
     public Node AddChild(Node parent, string slot, string conceptKey)

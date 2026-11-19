@@ -31,8 +31,11 @@ public sealed class StandardChecksTests
         Assert.IsType<MinimumChildCountCheck>(StandardChecks.Structure[1]);
         Assert.IsType<EmptyNodeCheck>(StandardChecks.Structure[2]);
         Assert.IsType<UnresolvedReferenceCheck>(Assert.Single(StandardChecks.References));
-        Assert.IsType<BinaryGroupingCheck>(Assert.Single(StandardChecks.Expressions));
-        Assert.Equal(9, StandardChecks.All.Count);
+        Assert.Collection(
+            StandardChecks.Expressions,
+            check => Assert.IsType<BinaryGroupingCheck>(check),
+            check => Assert.IsType<DoubleNegationCheck>(check));
+        Assert.Equal(10, StandardChecks.All.Count);
     }
 
     [Fact]
