@@ -11,6 +11,7 @@ using Projectional.Samples.StateMachine.Checks;
 using Projectional.Structures.Intentions;
 using Projectional.Toml.Checks;
 using Projectional.Xml.Checks;
+using Projectional.Yaml.Checks;
 
 using Xunit;
 
@@ -85,6 +86,7 @@ public sealed class LayerDependencyTests
         Assert.Equal("Projectional.Hocon", typeof(HoconChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Toml", typeof(TomlChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Xml", typeof(XmlChecks).Assembly.GetName().Name);
+        Assert.Equal("Projectional.Yaml", typeof(YamlChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Expressions", typeof(ExpressionsIntentions).Assembly.GetName().Name);
         Assert.Equal("Projectional.Samples", typeof(SampleConstraints).Assembly.GetName().Name);
         Assert.Equal("Projectional.Samples.FeatureModel", typeof(FeatureModelChecks).Assembly.GetName().Name);
@@ -100,6 +102,7 @@ public sealed class LayerDependencyTests
         "Projectional.Hocon.dll",
         "Projectional.Toml.dll",
         "Projectional.Xml.dll",
+        "Projectional.Yaml.dll",
         "Projectional.Expressions.dll",
         "Projectional.Samples.dll",
         "Projectional.Samples.FeatureModel.dll",

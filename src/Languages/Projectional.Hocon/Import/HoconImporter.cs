@@ -57,7 +57,10 @@ public sealed class HoconImporter : ITextImporter
             var equals = trimmed.IndexOf('=', StringComparison.Ordinal);
             var colon = trimmed.IndexOf(':', StringComparison.Ordinal);
 
-            return (equals > 0 && (colon < 0 || equals < colon)) || (colon > 0 && equals < 0);
+            // The separator that comes first is the one this line uses; the other may still appear inside the value, as it
+            // does in `a: { b = 1 }` - a colon-separated property holding an object written with equals signs. Asking for
+            // one of the two to be absent made that line look like no HOCON at all.
+            return (colon > 0 && (equals < 0 || colon < equals)) || (equals > 0 && (colon < 0 || equals < colon));
         }
 
         return false;

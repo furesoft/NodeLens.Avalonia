@@ -21,7 +21,7 @@ namespace Projectional.Workbench;
 /// </remarks>
 /// <param name="Name">What a menu and a message call it, such as <c>JSON</c>.</param>
 /// <param name="Format">The name its importer reports, such as <c>json</c>.</param>
-/// <param name="Extension">The extension a file is expected to have, leading dot included.</param>
+/// <param name="Extensions">The extensions a file may have, leading dots included; the first is what a save suggests and a dialog lists first.</param>
 /// <param name="Importer">The importer that turns text into a model of this language.</param>
 /// <param name="Concepts">The concepts a document of it is written in.</param>
 /// <param name="Notations">How those concepts are drawn.</param>
@@ -31,10 +31,14 @@ namespace Projectional.Workbench;
 internal sealed record ReferenceLanguage(
     string Name,
     string Format,
-    string Extension,
+    IReadOnlyList<string> Extensions,
     ITextImporter Importer,
     ConceptRegistry Concepts,
     NotationRegistry Notations,
     IReadOnlyList<TextGenerator> Generators,
     IIntentionProvider? Intentions,
-    CheckSet Checks);
+    CheckSet Checks)
+{
+    /// <summary>The extension a save offers and a dialog lists first.</summary>
+    internal string Extension => Extensions[0];
+}
