@@ -3,9 +3,10 @@
 The second half of "a language is data": how a concept is drawn, written as nodes and lowered into the same
 `Notation` objects a language author writes by hand.
 
-Status: **delivered** as slice P2 of [language-authoring.md](language-authoring.md), and the surface now reads the
-way MPS writes an editor document - brackets for the cell model. What is still missing are MPS' *cell glyphs* (borders,
-collapsible folds, the checkbox of an option), which is P5.
+Status: **delivered** as slices P2 and P5 of [language-authoring.md](language-authoring.md): the surface reads the
+way MPS writes an editor document - brackets for the cell model and a glyph per cell (`-word-`, `%slot%`,
+`( slot )`, `{ slot }`, `< slot >`, `;`). What is still missing are MPS' *cell* chrome (borders, collapsible folds,
+the checkbox of an option), which no notation needs yet.
 
 ## One language per aspect, on purpose
 
@@ -64,18 +65,22 @@ A notation is drawn with MPS' own markers, because they are a reading aid that c
 opens and closes a container that stacks, and `[>` marks one cell of a line.
 
 ```text
-notations:
-  editor for concept Rules.Rule variant: default
-  node cell layout:
-    [/
-      [> line
-        [> constant "rule" [> space [> {name}
-    /]
+editor for concept Rules.Rule variant: default
+node cell layout:
+  [/
+    [-rule- ; %name% ; ( body )]
+    [>
+      [/ table steps empty: + step
+        column text as -send- empty: <empty>
+      /]
+    <]
+  /]
 ```
 
-The brackets say what a reviewer needs to know before running anything: the root of this notation stacks, the thing
-inside it is one line, and that line is three inline cells - a constant, a space and a slot. A structure that deep
-reads top to bottom.
+The brackets say what a reviewer needs to know before running anything: `[/ ... /]` stacks, `[> ... <]` stacks one
+level deeper, `[ ... ]` is one row, and each cell carries its own glyph - `-word-` for a keyword, `%slot%` for a
+property, `( slot )` for a single child, `{ slot }` for a list, `< slot >` for a reference, `;` for a gap. A
+structure that deep reads top to bottom, and the definition of a language looks like the language it defines.
 
 **One compromise, and P5 removed it.** In MPS the inline cells of a line sit *on* the line. Here a line's
 `cells` slot is a `Many` slot, and a many-child cell is a block cell, so `ed.Children(cells)` draws one row per

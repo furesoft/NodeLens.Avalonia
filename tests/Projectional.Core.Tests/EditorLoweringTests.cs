@@ -346,6 +346,7 @@ public sealed class EditorLoweringTests
 
         line.GetChildren(EditorLanguage.CellSlot)[0].Set("text", "rule");
         line.GetChildren(EditorLanguage.CellSlot)[2].Set("slot", "name");
+        line.GetChildren(EditorLanguage.CellSlot)[2].Set("emptyText", "<<name>>");
 
         Assert.Equal(
             string.Join(
@@ -353,8 +354,7 @@ public sealed class EditorLoweringTests
                 "editor for concept Rules.Rule variant: default",
                 "node cell layout:",
                 "  [/",
-                "    [> line",
-                "      [> constant \"rule\" [> space [> {name} empty:",
+                "    [-rule- ; %name% empty: <<name>>]",
                 "  /]"),
             LayoutSnapshot.Render(notation.Root, EditorNotations.Create(), width: 120));
     }

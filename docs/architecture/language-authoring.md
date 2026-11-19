@@ -197,18 +197,32 @@ keystroke: deleting the last element of a `1..n` list stays an ordinary edit. A 
 ## How an editor reads
 
 The editor model is written in `Projectional.Editor`. A concept editor is a nested cell tree
-drawn with brackets and markers, which is what makes MPS notation editable as text-like code
-rather than through a wizard:
+drawn with brackets and a glyph per cell, which is what makes MPS notation editable as text-like
+code rather than through a wizard:
 
 ```text
-concept editor RuleSet
-  [> -ruleset- %name% -{-
-       { rules }
-     -}- ]
-
-concept editor Comparison
-  [> %left% -(%operator%) -%- %right% <]
+editor for concept Pipeline.Pipeline variant: default
+node cell layout:
+  [/
+    [-pipeline- ; %name% empty:  ]
+    [>
+      [/ table stages empty: + stage
+        column name as -stage- empty: <empty>
+        column command as -run- empty: <empty>
+        column retries as -retries- empty: <empty>
+      /]
+    <]
+  /]
 ```
+
+```text
+editor for concept Pipeline.Stage variant: default
+node cell layout:
+  [%name% empty:   ; %command% empty:   ; %retries% empty:  ]
+```
+
+Both are the `samples/declared-pipeline` documents as the shipping notation draws them. The first stacks a header
+line and an indented block; the second is one row of three property cells with the gaps between them.
 
 The glyph set, and the cell each one lowers to:
 
@@ -220,13 +234,15 @@ The glyph set, and the cell each one lowers to:
 | `( slot )` | `SingleChildCell` | the one child's own notation, inline |
 | `< slot >` | `ReferenceCell` | the target's name |
 | `;` | `SpaceCell` | a gap in the gap's own address |
+| `[/ ... /]` | `SequenceCell` | blocks stacked unchanged |
 | `[> ... <]` | `IndentCell` | a block, one level deeper |
 | `[ ... ]` | `LineCell` | one line, inline cells only |
+| `[\| ... \|]` | `HorizontalCell` | blocks side by side, which is how a line keeps its brackets |
 
 The bracket letters are the notation, so a misplaced cell fails when the editor model is
 validated, exactly as `ed.Line(ed.Indent(...))` fails to compile in C#
-([language.md](language.md#notation)). Variants are a suffix on the block - `concept editor
-RuleSet : table` - because a variant is notation for the same concept, not a second concept.
+([language.md](language.md#notation)). A variant is the `variant` property of the notation - `variant: table` -
+because a variant is notation for the same concept, not a second concept.
 
 The point of the glyphs is that the *definition* is projected by the same engine it defines:
 one editor, one cell set, one caret. There is no separate authoring form widget, so the
@@ -388,7 +404,7 @@ shippable at the end of each, and so that the parity test exists before the seco
 | P2b ✓ | `feat/mps-shaped-notation` | M2 | both definition languages drawn in MPS' shape - a header, a block of options, one section per kind of slot, `<< ... >>` for an empty section, `[/ ... /]` and `[>` for the cell model. **Ahead of P4/P5 in the one part that is only notation**; what P5 still adds are the cell *glyphs* |
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)); a descriptor document waits for a language that can extend another |
 | P4 ✓ | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation, delivered: the header carries the inheritance and draws a list only while it is filled (`concept X extends A, implements B {`, `concept X {` when it has neither), the body is a brace block with one section per kind of slot, every declaration says its own kind and closes where it ends (`<<property … >>`, `<<child … >>`, `<<reference … >>`), every collection stacks so a definition is one declaration per line, an empty section names the kind it will create, and the four cardinality ranges reach `ChildSlot.Minimum` (open question 64) - see [declared-structure.md](declared-structure.md). The hiding needed a cell the notation layer did not have (`WhenFilledNotationCell`, `Editor.WhileFilled`) and the way back in (`Inherit from…`, `Implement interface…`) |
-| P5 | `feat/editor-notation` | M5 | `Projectional.Editor` with its own notation - the cell glyphs - and the table variant |
+| P5 ✓ | `feat/editor-notation` | M5 | `Projectional.Editors` drawn in its own glyphs: `-word-`, `%slot%`, `( slot )`, `{ slot }`, `< slot >`, `;`, `[/ ... /]`, `[> ... <]`, `[ ... ]`, `[\| ... \|]` - delivered, see [declared-editor.md](declared-editor.md). A line keeps its brackets beside its cells, which needed the one cell the notation layer was missing (`HorizontalNotationCell`/`Editor.Horizontal`); every string a cell carries (an `emptyText`, a `spacing`, a `separator`) stays editable, and the sample definition is drawn in the test that pins it |
 | P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
 | P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structures` and `Projectional.Editors`, with the C# declarations as the fail-safe |
 

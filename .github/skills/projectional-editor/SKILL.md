@@ -373,9 +373,12 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   every `Editor*` type of `Projectional.Editing`, and the notation of the notation lives in `…Editors.Rendering`
   because `…Notation` would shadow the `Notation` type.
 - **Both definition languages are drawn in MPS' shape** (`StructureNotations`, `Editors.Rendering.EditorNotations`):
-  a header, a block of options, then one section per kind of slot, with `[/ ... /]` / `[>` for the editor language's
-  cell model. The editor language shows an empty list as `<< ... >>`; the structure language names the kind instead
-  (see below). Neither replaces its placeholder with prose such as `<no notations>`.
+  a header, a block of options, then one section per kind of slot, with `[/ ... /]` / `[> ... <]` / `[ ... ]` /
+  `[\| ... \|]` for the editor language's cell model and a glyph per cell - `-word-` (keyword), `%slot%` (property),
+  `( slot )` (single child), `{ slot }` (list), `< slot >` (reference), `;` (gap). The editor language shows an
+  empty list as `<< ... >>`; the structure language names the kind instead (see below). Neither replaces its
+  placeholder with prose such as `<no notations>`. A line is `[` beside its cells beside `]`, which is what
+  `HorizontalNotationCell` exists for.
 - **A structure concept is a header and a brace block** (`StructureNotations`). The header says what the concept
   *is* and what it inherits - `abstract concept Rules.Rule extends Rules.Element, implements Framework.Named {` -
   and a list that is empty is **not drawn at all** (`concept Rules.Rule {`). The body is one block of options plus
