@@ -118,7 +118,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
 | Model-to-model generation | a generator whose output is a model of a target language, which that language's own text generator then prints: the rule vocabulary, the build and link phases, the reverse map that keeps "go to source" working through both stages ([model-generation.md](architecture/model-generation.md)) |
-| Text import | JSON, XML, TOML and HOCON as four reference **languages** behind an `ITextImporter`, each with its own concepts, notation and generator - so converting a model into one of them is model-to-model generation into that language's model, and the format's spelling lives in exactly one place ([import.md](architecture/import.md)) |
+| Text import | **The contract is in place** (`ITextImporter` and its result in `Projectional.Language/Import/`, [import.md](architecture/import.md)); what is left is the four reference **languages** behind it - JSON, XML, TOML and HOCON, each with its own concepts, notation and generator - so converting a model into one of them is model-to-model generation into that language's model, and the format's spelling lives in exactly one place |
 | Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
 | Embedded shell | the shell as a control a host composes: locked to one language, its storage and dialogs supplied by the host, its capabilities declared once and enforced by the command registry ([embedded-shell.md](architecture/embedded-shell.md)) |
 | Plugin packaging | one NuGet per language, versioned |

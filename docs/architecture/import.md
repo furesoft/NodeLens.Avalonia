@@ -6,8 +6,9 @@ enters a model, and it does so **once**, from a string the host supplies, after 
 string is thrown away. Nothing writes text back into the model, so the invariant is intact:
 there is still no text buffer and no parser in the editing path.
 
-Status: **planned**, M6. Generation is the opposite direction and is planned in
-[semantics.md](semantics.md#generation).
+Status: slice **I0 (the contract)** is delivered; the four reference languages, importing into a
+non-empty model, the raw-text tier and the shell's File ▸ Import are not. Generation is the
+opposite direction and is planned in [semantics.md](semantics.md#generation).
 
 ## Two directions, and only one of them is a parser
 
@@ -347,10 +348,11 @@ already written: `mapping.mps`, the build and link phases and the reverse map in
 
 ## Slices
 
-- **I0 - the contract.** `ITextImporter`, `ImportResult`, `ImportDiagnostic` in
-  `Projectional.Language/Import/`, plus tests with a hand-written importer that appends one
-  node and fails on demand, proving: success commits one undo step, failure leaves the model
-  byte-identical, and a diagnostic is reported at the right line and column.
+- **I0 - the contract.** *Delivered.* `ITextImporter`, `ImportResult`, `ImportDiagnostic`, `ImportSeverity`
+  in `Projectional.Language/Import/`, plus `TextImportTests` with a `ProbeImporter` - a language that
+  exists only to prove the contract - pinning: success commits one undo step and one change event, a
+  refusal and a mid-way throw both leave the model byte-identical, and the result says which of the
+  two outcomes it is.
 - **I1 - JSON.** `Projectional.Json`: concepts, notation, importer, generator. Tests: a golden
   text corpus (each file imported and regenerated must equal the input byte for byte), the
   number-literal cases, duplicate members, and a truncated file that must import nothing.
