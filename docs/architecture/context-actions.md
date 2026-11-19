@@ -328,7 +328,9 @@ Three decisions live in that entry:
 
 `INT001` deserves the note: it is a *navigation*, not a refactoring. It moves the caret into the name
 and lets the user type, so it cannot break a reference in another model - which is exactly the problem
-the standard rename *fix* has and cannot solve (open question 74).
+the standard rename *fix* has and cannot solve (open question 74). The project-wide rename is the shell's
+**Edit ▸ Rename...** (`Shift+F6`), a `RenameNodeAction` over the reference index; the two stay separate because
+an intention cannot ask for a value and a caret jump cannot refresh a fallback.
 
 `INT007` deserves the opposite note: it is the one entry in the catalogue that *loses* something. It
 becomes the concept the user picked and nothing else - the old node's properties, references and

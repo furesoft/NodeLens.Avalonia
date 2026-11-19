@@ -110,6 +110,10 @@ must rewrite every usage before it may change a name, and a host's usages panel 
   is faithful about what the model stores - but no live node answers that id, so a question about a
   node never returns it.
 
+A rename asks this index and refreshes each fallback by re-writing the reference through the editing
+layer: the index is what makes that one transaction and one undo step, and what the reverse question was
+for in the first place.
+
 ## Model, project
 
 | Level | Contains | Persisted as |
