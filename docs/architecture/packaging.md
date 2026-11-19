@@ -29,7 +29,7 @@ dependency. It also includes `Projectional.Workbench`: it is an application, but
 product, and its `--self-check` entry point makes it usable as a tool. A host that wants the shell as a
 library takes the package and ignores the executable.
 
-`dotnet pack Projectional.slnx` therefore produces **27 packages**:
+`dotnet pack Projectional.slnx` therefore produces **28 packages**:
 
 - **13 framework assemblies** - `Core`, `Language`, `Persistence`, `Projection`, `Semantics`, `Editing`,
   `Checks`, `Intentions`, `Toolkit`, `Avalonia`, `Workbench`, `Languages`, `LanguageExport`
@@ -101,7 +101,7 @@ GitVersion reads, so a shallow checkout produces a wrong version rather than an 
 
 ```powershell
 dotnet build                                 # GitVersion runs; the version is in the output
-dotnet pack Projectional.slnx -o artifacts   # 27 .nupkg + 27 .snupkg
+dotnet pack Projectional.slnx -o artifacts   # 28 .nupkg + 28 .snupkg
 ```
 
 `artifacts/` is gitignored. Packing needs no tag and no credentials: a local pack produces prerelease
@@ -122,7 +122,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-That pushes the tag, which triggers `ci`; the `pack` job produces the 27 packages and uploads them as an
+That pushes the tag, which triggers `ci`; the `pack` job produces the 28 packages and uploads them as an
 artifact, and `publish-nuget` downloads that artifact and pushes both `.nupkg` and `.snupkg` to nuget.org.
 
 Two properties of the job are deliberate:
@@ -154,7 +154,7 @@ it, so switching is a change to one job rather than a change to this document's 
 | --- | --- |
 | `build-and-test` | Builds and tests on Windows and Ubuntu with full history. |
 | `byte-stability` | The saved form of the corpus is still byte-identical (ADR 0005). |
-| `pack` | `dotnet pack` succeeds and produces exactly 27 packages; uploads them as an artifact. |
+| `pack` | `dotnet pack` succeeds and produces exactly 28 packages; uploads them as an artifact. |
 | `publish-nuget` | Tag-gated; pushes the artifact to nuget.org. |
 
 `single-file` publishes the standalone app and asserts the single-file shape; it is unrelated to packaging

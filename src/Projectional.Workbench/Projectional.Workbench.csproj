@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\src\Projectional.LanguageExport\Projectional.LanguageExport.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Json\Projectional.Json.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Toml\Projectional.Toml.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Xml\Projectional.Xml.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Intentions\Projectional.Intentions.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
