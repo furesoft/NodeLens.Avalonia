@@ -6,7 +6,7 @@ enters a model, and it does so **once**, from a string the host supplies, after 
 string is thrown away. Nothing writes text back into the model, so the invariant is intact:
 there is still no text buffer and no parser in the editing path.
 
-Status: slices **I0 (the contract), I1 (JSON), I2 (XML), I3 (TOML), I5 (appending to a non-empty model) and I7 (File ▸
+Status: slices **I0 (the contract), I1 (JSON), I2 (XML), I3 (TOML), I4 (HOCON), I5 (appending to a non-empty model) and I7 (File ▸
 Import)** are delivered, with the intentions and checks of the shipped languages in the same project as them; HOCON,
 the raw-text tier and the sample corpus are not. Generation is the opposite direction and is
 planned in [semantics.md](semantics.md#generation).
@@ -314,8 +314,11 @@ substitutions resolve, includes pull in other files.
 
 | Concept | Slots | Notes |
 | --- | --- | --- |
-| `Hocon.Object` | `members`: many `Hocon.Value` | the root, and every nested object |
-| `Hocon.Property` | `key`: string, `operator`: enum, `value`: single `Hocon.Value` | `key = value`, `key : value`, `key value`, `key += value` |
+| `Hocon.Document` | `members`: many `Hocon.Member` | the file: the object every file is, written without braces |
+| `Hocon.Member` | - | abstract: one entry of a document or an object |
+| `Hocon.Value` | - | abstract: anything a property can hold |
+| `Hocon.Object` | `members`: many `Hocon.Member` | every nested object, between braces |
+| `Hocon.Property` | `key`: string, `operator`: enum, `value`: single `Hocon.Value` | `key = value`, `key: value`, `key value`, `key += value` |
 | `Hocon.Array` | `items`: many `Hocon.Value` | commas optional in the source, model order kept |
 | `Hocon.String` | `quoted`: enum, `text`: string | quoted, triple-quoted or unquoted |
 | `Hocon.Number` | `text`: string | the literal |
@@ -324,11 +327,17 @@ substitutions resolve, includes pull in other files.
 | `Hocon.Concat` | `parts`: many `Hocon.Value` | `hello ${name}` - juxtaposition is concatenation |
 | `Hocon.Substitution` | `path`: string, `optional`: enum | `${a.b}` and `${?a.b}`, kept as written |
 | `Hocon.Include` | `target`: string | `include "x.conf"`, kept as written |
-| `Hocon.Comment` | `text`: string | `# ...` and `// ...` |
+| `Hocon.Comment` | `marker`: enum `#`, `//`, `text`: string | the marker is a slot, because the file used one of two |
+
+Two unions and a document rather than one object, and both follow from the format: a note and an include stand where a
+property stands but are not values, so `Hocon.Member` names that set - and a file is one brace-less object, which a
+document concept says without letting a nested object be written without braces.
 
 - **A key keeps the text it was written with.** Dotted paths, quoting and unquoted keys are three
   spellings of one path, and resolving them into nesting would rewrite the file - the TOML decision
-  and the XML decision, for the third time, which is what makes it a rule rather than a choice.
+  and the XML decision, for the third time, which is what makes it a rule rather than a choice. The
+  quotes of a quoted key stay in the slot for the same reason: `<a>` in XML is not the only name
+  whose spelling matters.
 - **Repeated keys are kept, in order.** HOCON's merge semantics fold them into one object at
   resolution time; the text has two, and the model is the text's owner, not the resolver's. This is
   the opposite of the TOML decision and follows from the formats, not from a preference.
@@ -348,10 +357,15 @@ substitutions resolve, includes pull in other files.
 Notation: an object as an `Indent` block of `key = value` lines under a `{` and `}`, the operator a
 property's own cell (so `=`, `:` and `+=` are visible as written), a substitution and an include as
 the one line they are - which is what makes a HOCON document readable in the editor as the thing a
-user typed rather than as a resolved tree.
+user typed rather than as a resolved tree. The drawing of an object that starts inside a line hangs,
+because the layout indents a vertical notation from the cell it begins at; the file a template writes
+is indented from the line start, and that is the template's business.
 
-All four packages reference `Projectional.Language` only, exactly like `Expressions`; the two that
-need a reader take it as an ordinary package dependency (open question 98).
+All four packages reference `Projectional.Language` only, exactly like `Expressions`. JSON and XML use the platform's
+reader; **TOML takes `Tomlyn` as a package dependency of its own language**, never of the toolkit (open question 98).
+**HOCON's lexer is hand-written**, and that is the same rule rather than an exception: the package may be taken only if
+it answers with a source position, and no HOCON reader for .NET does - a reader that answers a dictionary cannot make a
+tier-1 diagnostic point at the character that broke the file.
 
 ## Converting a model into one of these languages
 
@@ -410,9 +424,9 @@ For a notation of a real file format that means the operations of that format:
 | JSON | add a member to an object, add an item to an array | a string or name no longer spelled as JSON requires (escape it), a number slot that no longer holds a number (restore the declared default), one member name used twice (rename the later one) |
 | XML | add an attribute, add a child element - the two slots the notation cannot draw empty | text or an attribute value no longer well-formed (escape it), a comment containing `--` (separate the dashes) |
 | TOML | add a pair, a table or an array of tables to the list the caret is in | a duplicate key (rename to the first free suffix), a number cell that no longer holds a number (restore the declared default), a date or time that no longer parses (restore the default and its kind), a string no longer spelled as its kind allows (escape it as a basic string) |
-| HOCON | add a property, add an element to an array | an unquoted value that is not a legal token |
+| HOCON | add a property, add an item to an array - both into the nearest list the caret is inside | an unquoted value that no longer holds a legal run (quote it), a number cell that no longer holds a number (restore the declared default) |
 
-JSON, XML and TOML are implemented, so their rows are a report; HOCON's is still the requirement it describes. Each of
+All four are implemented, so every row is a report rather than a requirement. Each of
 the four is a language, so each ships the packages a language has. A format whose rules were only enforced by a shared
 catalogue would be a second opinion about what that format allows - and the rule itself would have to ask which
 language it is looking at, which is exactly what this design refuses to build.
@@ -627,10 +641,16 @@ documents.
   warning, a duplicate key refused with nothing imported, a legal `[[a]]` pair, the place of a syntax
   error, one undo step), `TomlTextGeneratorsTests`, `TomlNotationTests`, `TomlChecksTests`,
   `TomlIntentionsTests` and `TomlCorpusTests` (the byte-exact round trip).
-- **I4 - HOCON.** `Projectional.Hocon`: same shape, plus brace-less objects, the three separators,
-  unquoted and triple-quoted strings, a `Concat` with a substitution inside it, two repeated keys
-  that stay two, an `include` that is kept and **never followed** (asserted by making the target
-  a file that does not exist and demanding no diagnostic and no read).
+- **I4 - HOCON.** *Delivered.* `Projectional.Hocon`: fourteen concepts, a document that is the brace-less
+  object every file is, the four separators as one property with four conditional cells, unquoted,
+  quoted and triple-quoted strings, a `Concat` with a substitution inside it (and unwrapped again when
+  only one part arrived), two repeated keys that stay two, both comment markers, and an `include` that
+  is kept and **never followed**. The lexer is hand-written, because no HOCON reader for .NET answers
+  with a source position (open question 98). Tests: `HoconImporterTests` (the repeated key, the four
+  separators, the three string kinds, the number literals, the substitution's two forms, the
+  concatenation and the unwrapped single value, an include that is never followed, both markers, a stray
+  brace's place, one undo step), `HoconTextGeneratorsTests`, `HoconNotationTests`, `HoconChecksTests`,
+  `HoconIntentionsTests` and `HoconCorpusTests` (the byte-exact round trip).
 - **I5 - appending to a non-empty model.** *Delivered.* `JsonImporterTests.AnImportAppendsToANonEmptyModel`:
   the existing root is untouched and stays first, the imported one is last, and one `Ctrl+Z` removes only
   the import.

@@ -2,6 +2,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 
 using Projectional.Expressions.Intentions;
+using Projectional.Hocon.Checks;
 using Projectional.Json.Checks;
 using Projectional.Samples.Checks;
 using Projectional.Samples.FeatureModel.Checks;
@@ -81,6 +82,7 @@ public sealed class LayerDependencyTests
         // The half of ADR 0021 a binary can promise: the checks and intentions of a language are types *in*
         // that language's assembly, not a package beside it. Each pair is one language.
         Assert.Equal("Projectional.Json", typeof(JsonChecks).Assembly.GetName().Name);
+        Assert.Equal("Projectional.Hocon", typeof(HoconChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Toml", typeof(TomlChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Xml", typeof(XmlChecks).Assembly.GetName().Name);
         Assert.Equal("Projectional.Expressions", typeof(ExpressionsIntentions).Assembly.GetName().Name);
@@ -95,6 +97,7 @@ public sealed class LayerDependencyTests
     private static readonly string[] LanguageAssemblies =
     [
         "Projectional.Json.dll",
+        "Projectional.Hocon.dll",
         "Projectional.Toml.dll",
         "Projectional.Xml.dll",
         "Projectional.Expressions.dll",
