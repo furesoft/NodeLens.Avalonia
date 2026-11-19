@@ -134,6 +134,11 @@ public static class TextGenLowering
 
         TextGenConceptKeys.Self => SelfPart.Instance,
 
+        TextGenConceptKeys.WhenFilled => new WhenFilledPart(
+            SlotOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A filled-check names the slot.")),
+            CreateTemplate(Single(part, TextGenLanguage.BodySlot), target),
+            CreateTemplate(Single(part, TextGenLanguage.OtherwiseSlot), target)),
+
         _ => throw new ConceptDefinitionException(
             $"'{part.Concept.Key}' is not a template part this framework generates with."),
     };
@@ -171,6 +176,18 @@ public static class TextGenLowering
 
     private static string NameOf(Node generator) =>
         Required(generator, TextGenLanguage.NameSlot, "A generator needs a name, because a host picks it by name.");
+
+    /// <summary>The slot a filled-check asks about, which may be of any kind.</summary>
+    /// <remarks>
+    /// The one check that accepts all four kinds, because "is there anything here" is a question a property, a
+    /// reference, a single child and a list can each answer. A name that belongs to no slot is still a load error -
+    /// the same one a part that tried to emit the slot would raise, at the same moment.
+    /// </remarks>
+    private static string SlotOf(Node part, Concept target, string slot) =>
+        target.FindProperty(slot) is null && target.FindReference(slot) is null && target.FindChild(slot) is null
+            ? throw new ConceptDefinitionException(
+                $"'{slot}' is not a slot of {target.Key}, so '{part.Concept.Key}' cannot ask whether it is filled.")
+            : slot;
 
     private static string Required(Node node, string slot, string message) =>
         string.IsNullOrWhiteSpace(node.GetOrNull(slot)) ? throw new ConceptDefinitionException(message) : node.GetOrNull(slot)!;

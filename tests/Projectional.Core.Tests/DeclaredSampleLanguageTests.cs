@@ -7,6 +7,7 @@ using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Semantics;
 using Projectional.Structures;
+using Projectional.TextGen;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -192,6 +193,31 @@ public sealed class DeclaredSampleLanguageTests
     }
 
     [Fact]
+    public void TheDeclaredGeneratorTurnsTheDocumentIntoAShellScript()
+    {
+        // The fourth declared aspect, in the same folder: a generator is a model too, and `generator/shell-script.mps`
+        // is the language's only target. The stage with no command is the half a template could not say before - the
+        // `whenFilled` part asks the slot, not a property's value, so a missing command becomes a comment rather than
+        // an empty line.
+        var language = Language();
+        var generator = Assert.Single(language.Generators);
+
+        Assert.True(language.HasGenerators);
+        Assert.Equal("ShellScript", generator.Name);
+
+        var pipeline = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Declared", "pipeline.mps"));
+        var nightly = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Declared", "nightly.mps"));
+
+        Assert.Equal(
+            "# Release\ndotnet build\ndotnet test",
+            new Generator().Generate(pipeline.Roots[0], generator).Text);
+
+        Assert.Equal(
+            "# Nightly\ndotnet build\n# smoke has no command",
+            new Generator().Generate(nightly.Roots[0], generator).Text);
+    }
+
+    [Fact]
     public void EveryDefinitionDocumentSavesBackByteIdentically()
     {
         // The layout is a wire format too: each definition file is one root, and re-saving it must not move a byte.
@@ -204,10 +230,12 @@ public sealed class DeclaredSampleLanguageTests
             var structure = Directory.EnumerateFiles(Path.Combine(directory, "structure"), "*.mps").ToList();
             var editor = Directory.EnumerateFiles(Path.Combine(directory, "editor"), "*.mps").ToList();
             var constraints = Directory.EnumerateFiles(Path.Combine(directory, "constraints"), "*.mps").ToList();
+            var generators = Directory.EnumerateFiles(Path.Combine(directory, "generator"), "*.mps").ToList();
 
             Assert.Equal(2, structure.Count);
             Assert.Equal(2, editor.Count);
             Assert.Equal(2, constraints.Count);
+            Assert.Single(generators);
 
             foreach (var file in structure)
             {
@@ -222,6 +250,11 @@ public sealed class DeclaredSampleLanguageTests
             foreach (var file in constraints)
             {
                 AssertRoundTrips(file, new Project(ConstraintLanguage.Concepts));
+            }
+
+            foreach (var file in generators)
+            {
+                AssertRoundTrips(file, new Project(TextGenLanguage.Concepts));
             }
         }
         finally

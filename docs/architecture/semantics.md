@@ -361,13 +361,22 @@ The template is data in `Projectional.Language/Generation/`: `TextTemplate` is a
 the stand-in its language names), `ChildPart` (the single child's text),
 `ChildrenPart` (every child of a list, joined by a separator *template*), `LoopPart` (a body applied per child),
 `IndentPart` (one level deeper), `LineBreakPart` (a newline plus the current indentation), `ConditionalPart` (a
-property/value choice) and `SelfPart` (the node's own template, which is what a loop body needs). A generator is a
+property/value choice), `WhenFilledPart` (a choice on whether a slot holds anything) and `SelfPart` (the node's own
+template, which is what a loop body needs). A generator is a
 `TextGenerator` - a name and a `TemplateRegistry` - and a language declares as many as it has targets.
 
 `ReferencePart` is the tenth and arrived late, with the SQL schema example: a DDL script names the column a key
 points at, and without the part no language could emit a reference at all. It reads the model rather than a cell, so
 the three states a reference has (unset, unresolved, resolved) mean in generated text exactly what they mean on
 screen - the same argument `PropertyPart` makes for a value.
+
+`WhenFilledPart` is the eleventh and the only one that asks a question about a *slot* rather than about a value: is
+there anything in it. It accepts all four kinds of slot, which is what makes three things expressible that a template
+could not say before - brackets that close around a list only when it has an entry, a stand-in where a value is
+missing, and a tree, where a node expands its children only once they exist. It is a separate part rather than an
+overload of `ConditionalPart` because that one compares a property's value with a text and is validated as such,
+while this one is validated as a slot of any kind; merging them would have made one total case stand for two
+questions. A defaulted property counts as filled, exactly as it draws and as `PropertyPart` emits it.
 
 The walk is `Generator` in `Projectional.Semantics/Generation/`: it owns the indentation, a depth guard against a
 template that expands itself, and the **traceability map**. Every emitted stretch is recorded as a

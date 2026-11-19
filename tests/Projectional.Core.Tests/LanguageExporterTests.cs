@@ -48,6 +48,7 @@ public sealed class LanguageExporterTests
             //     Edit the definitions, not this file: the next export replaces it.
             // </auto-generated>
 
+            using System;
             using System.Collections.Generic;
 
             using Projectional.Core;
@@ -96,6 +97,10 @@ public sealed class LanguageExporterTests
 
                     return notations;
                 }
+
+                /// <summary>The declared text generators, which this export cannot write yet.</summary>
+                public static IReadOnlyList<TextGenerator> Generators =>
+                    throw new NotSupportedException("The text generators declared in 'generator' have no export spelling yet; write them in a behaviour package beside this language.");
             }
 
             """,
@@ -106,11 +111,13 @@ public sealed class LanguageExporterTests
     [Fact]
     public void TheReadmeSaysWhatTheExportCouldNotWrite()
     {
-        // The sample declares constraints and nothing else, so the README has to say so - and say why a constraint
-        // cannot even be stubbed.
+        // The sample declares constraints and a generator, so the README has to name both - and say why a constraint
+        // cannot even be stubbed while a generator can.
         var readme = LanguageExporter.Export(Declared(), "Sample.Language").Files[1].Text;
 
         Assert.Contains("| `constraints/` |", readme, StringComparison.Ordinal);
+        Assert.Contains("| `generator/` |", readme, StringComparison.Ordinal);
+        Assert.Contains("`Generators`", readme, StringComparison.Ordinal);
         Assert.DoesNotContain("| `types/` |", readme, StringComparison.Ordinal);
         Assert.DoesNotContain("`Types`", readme, StringComparison.Ordinal);
         Assert.Contains("These cannot be stubbed", readme, StringComparison.Ordinal);

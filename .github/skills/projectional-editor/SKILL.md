@@ -1079,11 +1079,18 @@ A language turns a model into text through a template per concept. The template 
 the walk is `Generator` in `Projectional.Semantics/Generation/`. `docs/architecture/semantics.md` §Generation is the
 design of record.
 
-- **Ten parts, and the set is closed.** `TextPart`, `PropertyPart`, `ReferencePart`, `ChildPart`, `ChildrenPart`,
-  `LoopPart`, `IndentPart`, `LineBreakPart`, `ConditionalPart`, `SelfPart`. There is deliberately no "compute", no
+- **Eleven parts, and the set is closed.** `TextPart`, `PropertyPart`, `ReferencePart`, `ChildPart`, `ChildrenPart`,
+  `LoopPart`, `IndentPart`, `LineBreakPart`, `ConditionalPart`, `WhenFilledPart`, `SelfPart`. There is deliberately
+  no "compute", no
   variable and no counter: a part emits, reads a slot, expands a child or chooses, and anything else is a generator
   this framework does not have. `SelfPart` exists for one reason - inside a `LoopPart` body "this node" is the child
   being visited.
+- **`WhenFilledPart` is the part that asks a slot, not a value.** `ConditionalPart` compares a property with a text;
+  this one asks whether the slot holds anything, and it accepts all four kinds - so brackets can close around a list
+  only when it has an entry, a missing value can become a stand-in, and a tree can expand a node's children only once
+  they exist. It is a separate part because the two are validated differently (a property, versus a slot of any kind),
+  and a defaulted property counts as filled, exactly as it draws and as `PropertyPart` emits it. The declared twin is
+  `TextGen.WhenFilled` (`conceptKey` = the slot, `body`, `otherwise`).
 - **`ReferencePart` reads the model's three reference states, not a cell's.** A target's name, the `unsetText` the
   language names, the `unresolvedText` for a dangling target - so a generated file and the editor cannot disagree
   about what a reference says. It arrived with the SQL schema example, whose DDL is unreadable without the name of the

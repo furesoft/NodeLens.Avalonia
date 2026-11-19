@@ -195,6 +195,13 @@ public sealed class Generator
                         generator);
                     break;
 
+                case WhenFilledPart whenFilled:
+                    EmitTemplate(
+                        IsFilled(node, whenFilled.Slot) ? whenFilled.Then : whenFilled.Otherwise,
+                        node,
+                        generator);
+                    break;
+
                 case SelfPart:
                     EmitNode(node, generator);
                     break;
@@ -282,6 +289,31 @@ public sealed class Generator
         node.Concept.FindChild(slot) is not null
             ? node.GetChildren(slot)
             : throw Fail(node, $"'{slot}' is not a child slot of {node.Concept.Key}.");
+
+    /// <summary>Whether <paramref name="slot"/> holds anything, whichever kind of slot it is.</summary>
+    /// <remarks>
+    /// The four kinds answer for themselves rather than through a second notion of "empty": a property is filled when
+    /// it holds text (a default counts, because the model materialised it), a reference when it was ever written -
+    /// linked or dangling, exactly the two states a reference cell draws as something other than unset - and a child
+    /// or list slot when it has a child. A slot name that belongs to no kind is a failure naming the concept and the
+    /// slot, because a template cannot ask about something the language did not declare.
+    /// </remarks>
+    private bool IsFilled(Node node, string slot)
+    {
+        if (node.Concept.FindProperty(slot) is not null)
+        {
+            return !string.IsNullOrEmpty(node.GetOrNull(slot));
+        }
+
+        if (node.Concept.FindReference(slot) is not null)
+        {
+            return node.GetReference(slot) is not null;
+        }
+
+        return node.Concept.FindChild(slot) is not null
+            ? node.GetChildren(slot).Count > 0
+            : throw Fail(node, $"'{slot}' is not a slot of {node.Concept.Key}.");
+    }
 
     private GenerationStoppedException Fail(Node node, string message)
     {

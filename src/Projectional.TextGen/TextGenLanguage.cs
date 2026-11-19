@@ -183,6 +183,17 @@ public static class TextGenLanguage
             description: "A choice between two templates, decided by a property's value."),
 
         new ConceptDeclaration(
+            TextGenConceptKeys.WhenFilled,
+            [
+                new PropertySlot(ConceptKeySlot, PropertyType.String, description: "The slot to ask whether it holds anything."),
+                new ChildSlot(BodySlot, TextGenConceptKeys.Template, Cardinality.One),
+                new ChildSlot(OtherwiseSlot, TextGenConceptKeys.Template, Cardinality.One),
+            ],
+            [TextGenConceptKeys.Part],
+            nameSlot: ConceptKeySlot,
+            description: "A choice between two templates, decided by whether a slot holds anything."),
+
+        new ConceptDeclaration(
             TextGenConceptKeys.Self,
             [],
             [TextGenConceptKeys.Part],
