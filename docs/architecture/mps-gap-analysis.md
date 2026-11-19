@@ -38,7 +38,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | **Generator macros and rule selection** - property, node and reference macros, `COPY_SRC`, `LOOP`, template fragments, mapping labels, root mapping versus reduction rules, queries | Shapes, the whole "Generator" chapter | **structurally different**: text generation is nine closed template parts with no macros, and one template per concept. Model-to-model generation is planned ([model-generation.md](model-generation.md)) and carries reduction rules; **mapping labels** - several rules for one concept, chosen by context - are missing even from that plan |
 | **Tests as models** - a `unitTest` language, tests living in the model and run from the IDE | Fast Track, the Garage and Calculator tutorials | **planned** ([language-tests.md](language-tests.md)): a `tests/` folder of declarative assertions, a runner in the behaviour band, and one xunit method per language project as the bridge to CI |
 | **SModel queries** - a language over the tree: `parent`, `children<link>`, `ancestors<...>`, `descendants<...>`, `isInstanceOf`, casts, `concept/Name/`, `node-ptr/.../`, model queries | the four smodel pages; used inside actions, refactorings and the generator | **planned** ([smodel.md](smodel.md)): the same operation words and meanings, a pure-read language with no modification operations, and concept keys of our own. Not file-compatible with MPS |
-| Property accessors and "allowed values" beyond an enumeration | Fast Track Step 6 | partial: `PropertyType` validates what a slot may hold and a C# constraint can state anything; the *declared* constraint language has four bodies ([semantics.md](semantics.md#language-of-constraints)) |
+| Property accessors and "allowed values" beyond an enumeration | Fast Track Step 6 | partial: `PropertyType` validates what a slot may hold and a C# constraint can state anything; the *declared* constraint language has four bodies ([semantics.md](semantics/constraints.md#language-of-constraints)) |
 | Devkits - a bundle of languages and solutions | MPS' project model | missing; it is a packaging question, and packaging is M6/M7 |
 
 ## Editor experience
@@ -72,7 +72,7 @@ query language of its own - a document you open, not a fragment you embed - is p
   ([language.md](language.md#notation)).
 - **A generator with no programming language in it.** MPS lets a template hold arbitrary BaseLanguage code;
   this framework's template parts are closed, for the same reason the type rules have three bodies and the
-  constraint language four ([semantics.md](semantics.md#the-declared-form)).
+  constraint language four ([semantics.md](semantics/types.md#the-declared-form)).
 - **No graphical notation, no `smodel` queries inside an aspect block, no Java type system** - the exclusions
   above. A standalone query language over the tree is a different thing, and it is planned
   ([smodel.md](smodel.md)).

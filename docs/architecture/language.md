@@ -518,7 +518,7 @@ A level is asked two questions, and they used to cost the same: the level was en
 `Resolve` filtered that list. For the nearest level, which is "my own children and my siblings", a flat
 document is one parent for everything - so resolving a single name walked the whole document, and a
 document whose nodes are mostly references checked quadratically. Measured at 7 501 nodes: 2 232.8 ms
-before, 2.25 ms after ([semantics.md](semantics.md#what-a-full-recheck-costs)).
+before, 2.25 ms after ([semantics.md](semantics/constraints.md#what-a-full-recheck-costs)).
 
 Three decisions make it linear, and none of them is an optimisation detail:
 
