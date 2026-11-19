@@ -20,7 +20,7 @@ internal static class DeclarationWriter
     /// <summary>Writes the <c>ConceptDeclarations</c> property into <paramref name="source"/>.</summary>
     public static void Write(SourceWriter source, IReadOnlyList<ConceptDeclaration> declarations)
     {
-        source.Line("internal static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =");
+        source.Line("public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =");
         source.Line("[");
 
         using (source.Indent())

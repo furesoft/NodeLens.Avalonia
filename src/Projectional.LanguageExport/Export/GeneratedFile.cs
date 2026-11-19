@@ -6,4 +6,4 @@ namespace Projectional.LanguageExport;
 /// directory, and a tool can put the same text wherever it likes. Writing is the host's business for the same reason
 /// text generation is: the framework does not guess a path.
 /// </remarks>
-internal sealed record GeneratedFile(string Name, string Text);
+public sealed record GeneratedFile(string Name, string Text);

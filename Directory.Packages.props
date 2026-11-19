@@ -14,4 +14,12 @@
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
 
+  <ItemGroup Label="Export">
+    <!--
+      The export compiles the source it just wrote in-process, so what a language becomes can be a package
+      without a toolchain: a host that ships the exporter needs no SDK, no temporary project and no shell.
+    -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+  </ItemGroup>
+
 </Project>

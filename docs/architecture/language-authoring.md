@@ -370,19 +370,31 @@ What M2 delivers so a language author needs nothing else:
 
 ## Export: declared to C#
 
-The gap between the two paths is closed from the workbench side by generating the C#
-declaration from a declared language. Without it, "prototype in the editor, ship as a package"
-means retyping, and retyped languages drift.
+The gap between the two paths is closed from the declared side by generating the C# declaration
+from a declared language. Without it, "prototype in the editor, ship as a package" means retyping,
+and retyped languages drift.
+
+`Projectional.LanguageExport` is that. `LanguageExporter.Export(language, namespaceName, output)`
+answers an `ExportResult`: `Files` is the generated `<Name>Language.cs` and its `README.md` as text,
+and `Assembly` is the compiled package - present only when the caller asks for
+`ExportOutput.Assembly`, because a language author reviewing a diff wants the source and a build
+wants the binary, and neither should have to do the other's work.
 
 What export guarantees, and what it refuses to hide:
 
 - Every structure, notation and designated-slot decision is emitted as the equivalent builder
-  call. The output compiles against `Projectional.Toolkit` and passes the same registry dump as
-  the source language.
-- **A behavioural aspect is emitted as an explicit stub** - the aspect is set and throws with a
-  message naming the concept and the aspect - because a language that silently lost its
-  constraint would look exported and be wrong. The parity test of an exported language therefore
-  compares declarations only, and the stubs are listed in the exported project's README.
+  call. The output compiles against `Projectional.Toolkit` - the emitted assembly references
+  `Projectional.Core` and `Projectional.Language` and nothing else - and passes the same registry
+  dump and the same drawing as the source language.
+- **A behavioural aspect is stubbed, not dropped.** `types` and `generator` become a member that
+  throws `NotSupportedException`, with a message naming the aspect and the folder to look in: a
+  language that silently answered an empty `Types` would look exported and be wrong. `constraints`
+  is named in the README alone, because a `ConstraintSet` lives in `Projectional.Semantics` -
+  which the toolkit deliberately does not aggregate - so a stub for it would break the compile
+  promise above. Both halves are listed in the exported project's README.
+- **The assembly is compiled in-process** (Roslyn, against the framework's trusted assemblies and
+  the two projectional assemblies), so a caller needs no SDK, no temporary project and no shell,
+  and emission is deterministic: the same language twice is the same bytes.
 - Export is one-way by design: the declared model stays the source of truth
   ([ADR 0002](../adr/0002-model-as-source-of-truth.md)) and re-export overwrites the generated
   files. Editing generated code and re-exporting loses the edit, which is stated in the header of
@@ -405,16 +417,16 @@ shippable at the end of each, and so that the parity test exists before the seco
 | P3 | `feat/definition-languages` | M5 | the MPS shape: `language.mps` root, one model per aspect, the project folder, dependencies and extended languages - the **loader** for such a folder is delivered (`feat/language-project`, [language-projects.md](language-projects.md)); a descriptor document waits for a language that can extend another |
 | P4 ✓ | `feat/structure-notation` | M5 | the rest of `Projectional.Structures`' own notation, delivered: the header carries the inheritance and draws a list only while it is filled (`concept X extends A, implements B {`, `concept X {` when it has neither), the body is a brace block with one section per kind of slot, every declaration says its own kind and closes where it ends (`<<property … >>`, `<<child … >>`, `<<reference … >>`), every collection stacks so a definition is one declaration per line, an empty section names the kind it will create, and the four cardinality ranges reach `ChildSlot.Minimum` (open question 64) - see [declared-structure.md](declared-structure.md). The hiding needed a cell the notation layer did not have (`WhenFilledNotationCell`, `Editor.WhileFilled`) and the way back in (`Inherit from…`, `Implement interface…`) |
 | P5 ✓ | `feat/editor-notation` | M5 | `Projectional.Editors` drawn in its own glyphs: `-word-`, `%slot%`, `( slot )`, `{ slot }`, `< slot >`, `;`, `[/ ... /]`, `[> ... <]`, `[ ... ]`, `[\| ... \|]` - delivered, see [declared-editor.md](declared-editor.md). A line keeps its brackets beside its cells, which needed the one cell the notation layer was missing (`HorizontalNotationCell`/`Editor.Horizontal`); every string a cell carries (an `emptyText`, a `spacing`, a `separator`) stays editable, and the sample definition is drawn in the test that pins it |
-| P6 | `feat/language-export` | M5 | declared to C# export, with the stub policy and the exported-project corpus |
+| P6 ✓ | `feat/language-export` | M5 | declared to C# export - delivered, see [Export](#export-declared-to-c): the concepts as declaration calls, the notation as `ed.*` calls, a README naming every aspect the export cannot write, and an option that compiles the source into the assembly a package ships (`ExportOutput.Assembly`). Proven by `LanguageExporterTests`, which loads the emitted assembly back and compares its registry dump and drawing with the declared folder's |
 | P7 | `feat/bootstrap-selfhost` | M5 | the new languages define themselves: the bootstrap corpus is the definition of `Projectional.Structures` and `Projectional.Editors`, with the C# declarations as the fail-safe |
 
 C1-C2 come first and are not optional: without the builder there is no surface to lower *into*,
 and without the parity tests the second path has nothing checking it. P1-P2 are the M2 meaning
 of "a language without C#", and they are where the generic renderer stops being the only
 renderer. P3-P5 are M5, and P4-P5 are the point at which the definition language looks like MPS
-rather than like data - P4 done, P5 next. P6 can happen any time after P2; it is scheduled after
-P5 so that it exports the finished shape rather than a provisional one. P7 is the self-hosting
-proof, and the last place a bootstrap-shaped shortcut can hide.
+rather than like data - both done, which is why P6 exports the finished shape rather than a
+provisional one. P7 is the self-hosting proof, and the last place a bootstrap-shaped shortcut can
+hide.
 
 ## Testing
 
@@ -429,8 +441,10 @@ proof, and the last place a bootstrap-shaped shortcut can hide.
   needs a rendering exception, it is not a real language yet.
 - **Bootstrap fail-safe.** Loading a deliberately broken bootstrap leaves the workbench running
   on the C# declarations and reports the problem ([ADR 0008](../adr/0008-bootstrap-order.md)).
-- **Export.** The generated project compiles and its registry dump matches the source language;
-  stubs are counted, so a new behavioural aspect cannot silently disappear from the export.
+- **Export.** The generated source is compiled in-process and loaded back, so the registry dump and
+  the drawing of the exported language are compared against the declared folder's. An aspect the
+  export cannot write is asserted to be either a throwing stub or a README row, so a new
+  behavioural aspect cannot silently disappear from the export.
 
 ## What this plan deliberately leaves out
 

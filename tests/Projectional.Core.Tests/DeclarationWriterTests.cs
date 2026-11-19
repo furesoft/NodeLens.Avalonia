@@ -6,13 +6,13 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The export turns a declared language into the C# a hand-written one is: the same declarations, written as calls.
+/// The declaration half of the export: a language's concepts written as the calls a hand-written language makes.
 /// </summary>
 /// <remarks>
-/// The shape is the one `language-authoring.md` documents as the code path a host ships, so the tests pin the text
-/// rather than a data structure: what a language author receives is source, and a diff in it is what they review.
+/// The tests pin text rather than a data structure, because source is what a language author receives and a diff in
+/// it is what they review.
 /// </remarks>
-public sealed class LanguageExportTests
+public sealed class DeclarationWriterTests
 {
     [Fact]
     public void ConceptsBecomeDeclarationCalls()
@@ -44,7 +44,7 @@ public sealed class LanguageExportTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "internal static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =",
+                "public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =",
                 "[",
                 "    new ConceptDeclaration(",
                 "        \"Rules.Rule\",",
@@ -80,33 +80,6 @@ public sealed class LanguageExportTests
         Assert.Contains("isAbstract: true,", text, StringComparison.Ordinal);
         Assert.Contains("isInterface: true,", text, StringComparison.Ordinal);
         Assert.Contains("isOfferedInCompletion: false", text, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void TheDeclaredSampleNotationsBecomeBuilderCalls()
-    {
-        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
-
-        Assert.Null(error);
-        Assert.NotNull(language);
-
-        var source = new SourceWriter();
-
-        NotationWriter.Write(source, language.Notations.Notations);
-
-        Assert.Equal(
-            """
-            notations.Add("Pipeline.Pipeline", ed => ed.Sequence(
-                ed.Line(ed.Keyword("pipeline"), ed.Space, ed.Property("name")),
-                ed.Indent(
-                    ed.Table("stages", "+ stage", ed.Column("name", ed.Keyword("stage")), ed.Column("command", ed.Keyword("run")), ed.Column("retries", ed.Keyword("retries")))
-                )
-            ));
-            notations.Add("Pipeline.Stage", ed => ed.Line(ed.Property("name"), ed.Space, ed.Property("command"), ed.Space, ed.Property("retries")));
-
-            """,
-            source.ToString(),
-            ignoreLineEndingDifferences: true);
     }
 
     [Fact]

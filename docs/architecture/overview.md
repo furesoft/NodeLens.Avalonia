@@ -70,14 +70,18 @@ makes it a usable test of the integration surface
 | `Projectional.Expressions.Intentions` | The one intention the expression vocabulary ships with: negate (the grouping entry retired in favour of the catalogue's `Wrap in "Parenthesized"`) | none |
 | `Projectional.Checks` | The standard catalogue a language includes by naming it: name, structure, value and expression checks, each with its repair | none |
 | `Projectional.Toolkit` | The surface a language package is written against: one reference that brings `Core`, `Language`, `Projection` and `Persistence`, plus `LanguageSnapshot` - the drawing a notation test asserts on ([ADR 0019](../adr/0019-toolkit-is-the-language-surface.md)) | none |
+| `Projectional.LanguageExport` | A declared language becomes the C# a package is made of: its declaration and notation calls, a README naming what the export cannot write, and - on request - the compiled assembly ([language-authoring.md](language-authoring.md#export-declared-to-c)) | none |
 | `tests/*` | Unit and snapshot tests | none |
 
-Three assemblies expose public API: `Projectional.Core`, `Projectional.Avalonia` and - since
+Three assemblies expose the *editor* API: `Projectional.Core`, `Projectional.Avalonia` and - since
 [ADR 0019](../adr/0019-toolkit-is-the-language-surface.md) - `Projectional.Toolkit`, which is what a
 language package references instead of reaching into four assemblies. `Language`, `Projection` and
 `Persistence` are public as a consequence of being aggregated there; `Editing` and `Semantics` stay
-internal, which is what keeps a language headless. Everything else is `internal` with
-`InternalsVisibleTo` for tests and for the one friend each layer names —
+internal, which is what keeps a language headless. Libraries a *host* calls for one capability -
+`Projectional.Languages` (opening a language folder) and `Projectional.LanguageExport` (turning one
+into a package) - are public for the same reason the control is: they are the surface of that
+capability rather than an internal another layer happens to name. Everything else is `internal`
+with `InternalsVisibleTo` for tests and for the one friend each layer names —
 see [ADR 0010](../adr/0010-public-api-surface.md). `Projectional.Workbench` deliberately
 has no such exemption: it is the reference consumer that keeps the public API honest
 ([ADR 0011](../adr/0011-standalone-editor.md), [standalone.md](standalone.md)).

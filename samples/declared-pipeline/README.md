@@ -52,6 +52,22 @@ The `nameSlot` property is *empty* in both documents rather than gone, and that 
 rather than a rule: a property can be emptied but not unset, so the writer emits
 `<nameSlot></nameSlot>`. It lowers to "no designation of my own", which is what is meant.
 
+## Ship it as C#
+
+The folder is a prototype; `Projectional.LanguageExport` turns it into the code a package is made
+of:
+
+```csharp
+var language = LanguageProject.Open("samples/declared-pipeline", out _);
+var exported = LanguageExporter.Export(language!, "Sample.Pipeline", ExportOutput.Assembly);
+
+// exported.Files:     DeclaredPipelineLanguage.cs and README.md, as text
+// exported.Assembly:  DeclaredPipelineLanguage.dll, compiled in-process
+```
+
+The generated README names what the export could not write: this language's two `constraints/`
+documents are behaviour rather than data, so they stay in C# beside the generated declarations.
+
 ## Why it is here rather than in the tests
 
 It is what a user opens. The tests copy this folder next to the test assembly and load exactly these
