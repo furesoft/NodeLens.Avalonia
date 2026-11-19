@@ -15,6 +15,7 @@
         <MenuItem Header="Open _language..." Click="OnOpenLanguage" />
         <MenuItem x:Name="ExportLanguageItem" Header="E_xport language to C#..." IsEnabled="False" />
         <MenuItem Header="_Open..." HotKey="Ctrl+O" Click="OnOpenDocument" />
+        <MenuItem Header="_Import..." Click="OnImportDocument" />
         <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />
         <Separator />
         <MenuItem Header="_Save" HotKey="Ctrl+S" Click="OnSaveDocument" />

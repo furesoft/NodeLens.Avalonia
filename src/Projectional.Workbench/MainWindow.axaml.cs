@@ -185,7 +185,9 @@ public sealed partial class MainWindow : Window, IDisposable
         TypeRegistry? types = null,
         ConstraintSet? constraints = null,
         IScopeProvider? scopes = null,
-        IIntentionProvider? intentions = null)
+        IIntentionProvider? intentions = null,
+        IReadOnlyList<TextGenerator>? generators = null,
+        Projectional.Checks.CheckSet? checks = null)
     {
         if (_documents.Find(model) is { } alreadyOpen)
         {
@@ -216,7 +218,8 @@ public sealed partial class MainWindow : Window, IDisposable
             scopes,
             intentions,
             WorkbenchLanguage.InterpreterFor(model),
-            WorkbenchLanguage.GeneratorsFor(model),
+            generators ?? WorkbenchLanguage.GeneratorsFor(model),
+            checks,
             _clipboard);
         editor.Session = document.Session;
         ApplyThemeTo(editor, _theme);
@@ -408,7 +411,12 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private static void PublishFindings(DocumentTab document, ProjectionalEditorControl editor)
     {
-        List<DiagnosticFix> fixes = [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
+        // A document whose language brings checks of its own is checked with them, and with nothing else: the shell's
+        // two rules are about rule names and rule sets, and a JSON document has neither. A document that brings none
+        // keeps the shell's pair, so every document the app has always opened is checked exactly as before.
+        List<DiagnosticFix> fixes = document.Checks is { } checks
+            ? [.. checks.Find(document.Model)]
+            : [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
 
         // The join itself lives beside the control, because a host owes its users the same one list. The
         // session's scope provider, not the default one: a language may have replaced a level of the chain,
@@ -1305,6 +1313,98 @@ public sealed partial class MainWindow : Window, IDisposable
         TryOpenPath(path);
     }
 
+    /// <summary>Imports a JSON or XML file as a new document of that language.</summary>
+    /// <remarks>
+    /// Import is not open: the model that comes out is not linked to the file it came from, so it opens as an untitled
+    /// document that is already clean - nothing has been edited - and saving writes a <c>.mps</c> document or the
+    /// generated text, never the original.
+    /// </remarks>
+    private async void OnImportDocument(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import a JSON or XML file",
+            AllowMultiple = false,
+            FileTypeFilter = [TextFileType()],
+        });
+
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        if (files[0].TryGetLocalPath() is not { } path)
+        {
+            _error = "That file has no path this app can read.";
+            UpdateStatus();
+
+            return;
+        }
+
+        ImportPath(path);
+    }
+
+    /// <summary>Imports the file at <paramref name="path"/>, reporting the importer's place when it refuses.</summary>
+    /// <remarks>
+    /// A refusal points at a line and a column of the file the user picked, not at a node: there is no model to point
+    /// at yet. That is why the message is built from the diagnostic rather than from the model, and why a refused file
+    /// leaves no tab behind at all.
+    /// </remarks>
+    private void ImportPath(string path)
+    {
+        _error = null;
+
+        string text;
+
+        try
+        {
+            text = File.ReadAllText(path);
+        }
+        catch (IOException failure)
+        {
+            _error = $"Could not read {Path.GetFileName(path)}: {failure.Message}";
+            UpdateStatus();
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _error = $"Could not read {Path.GetFileName(path)}: the file is not readable.";
+            UpdateStatus();
+            return;
+        }
+
+        if (ReferenceLanguages.Detect(path, text) is not { } language)
+        {
+            _error = $"{Path.GetFileName(path)} is neither JSON nor XML, so there is no importer for it.";
+            UpdateStatus();
+
+            return;
+        }
+
+        var outcome = ReferenceImport.Import(language, Path.GetFileNameWithoutExtension(path), text);
+
+        if (!outcome.Succeeded)
+        {
+            _error = outcome.Refusal is { } refusal
+                ? $"{language.Name} refused {Path.GetFileName(path)} at {refusal.Line}:{refusal.Column} - {refusal.Message}"
+                : $"{language.Name} refused {Path.GetFileName(path)}.";
+
+            UpdateStatus();
+
+            return;
+        }
+
+        OpenDocument(
+            outcome.Model,
+            language.Notations,
+            constraints: ConstraintSet.Empty,
+            intentions: language.Intentions,
+            generators: language.Generators,
+            checks: language.Checks);
+    }
+
     /// <summary>Opens the model at <paramref name="path"/>, reporting why it could not when it cannot.</summary>
     /// <remarks>
     /// The picker and the recent-files menu both end here, so "open a file" has one implementation: a second one would
@@ -1457,6 +1557,12 @@ public sealed partial class MainWindow : Window, IDisposable
     private static FilePickerFileType ModelFileType() => new("Projectional model")
     {
         Patterns = [$"*{DocumentFile.Extension}"],
+    };
+
+    /// <summary>The filter for the reference formats, one pattern per language the app can import.</summary>
+    private static FilePickerFileType TextFileType() => new("JSON or XML")
+    {
+        Patterns = [.. ReferenceLanguages.All.Select(language => $"*{language.Extension}")],
     };
 
     private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();

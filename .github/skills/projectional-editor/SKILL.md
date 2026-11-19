@@ -1994,9 +1994,13 @@ wiring.
 The repository ships two front ends and **one** public surface:
 
 - `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).
-- `Projectional.Workbench` is the standalone desktop editor. It references **only**
-  `Projectional.Avalonia` and has **no** `InternalsVisibleTo` entry, on purpose
-  ([ADR 0011](../../../docs/adr/0011-standalone-editor.md), `docs/architecture/standalone.md`).
+- `Projectional.Workbench` is the standalone desktop editor. It references `Projectional.Avalonia` **and** the language
+  and behaviour packages it composes (Samples, Structures, Editors, the reference languages and their
+  `…Checks`/`…Intentions` packages), because a shell is where those declarations meet. Its own types are `internal` and
+  the project grants `InternalsVisibleTo` **to the test project**, so the shell's logic is testable headlessly without
+  widening its public surface. What stays forbidden is the app *reaching past* the control into a layer it does not sit
+  above by needing a reference for a type no public member mentions ([ADR
+  0011](../../../docs/adr/0011-standalone-editor.md), `docs/architecture/standalone.md`).
 
 Rules that follow from that, and are easy to break by accident:
 

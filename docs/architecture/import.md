@@ -6,9 +6,9 @@ enters a model, and it does so **once**, from a string the host supplies, after 
 string is thrown away. Nothing writes text back into the model, so the invariant is intact:
 there is still no text buffer and no parser in the editing path.
 
-Status: slices **I0 (the contract), I1 (JSON), I2 (XML) and I5 (appending to a non-empty model)** are
-delivered, with the intentions and checks of the two shipped languages beside them; TOML and HOCON, the
-raw-text tier and the shell's File ▸ Import are not. Generation is the opposite direction and is
+Status: slices **I0 (the contract), I1 (JSON), I2 (XML), I5 (appending to a non-empty model) and I7 (File ▸
+Import)** are delivered, with the intentions and checks of the two shipped languages beside them; TOML and HOCON,
+the raw-text tier and the sample corpus are not. Generation is the opposite direction and is
 planned in [semantics.md](semantics.md#generation).
 
 ## Two directions, and only one of them is a parser
@@ -445,8 +445,13 @@ grammar.
   the import.
 - **I6 - the raw-text tier.** A construct the language does not map survives as `Xml.Raw` /
   a JSON-preserving node and regenerates to the same text.
-- **I7 - the shell.** File > Import in the workbench: pick a file, create a document from it,
-  and land on a clean (not dirty) document, because nothing has been edited yet.
+- **I7 - the shell.** *Delivered.* **File > Import...** in the workbench: the picker offers `.json` and `.xml`, the
+  file's *content* decides which language claims it (the extension only when the text starts like neither, since the
+  two shapes cannot both match), the text is imported into a fresh model named after the file, and the tab opens with
+  that language's notation, generators, intentions and checks. A refused file opens no tab at all and reports the
+  importer's line and column. Nothing is linked to the file it came from: the document starts clean because nothing was
+  edited, and a save writes a `.mps` document or the generated text. `ReferenceLanguages`/`ReferenceImport` hold the
+  decision and are tested headlessly; `MainWindow` only wires the dialog.
 - **I8 - docs and samples.** A sample corpus of `.json`, `.xml`, `.toml` and `.hocon` files under
   `tests/Projectional.Core.Tests/Corpus/Text/`, with the same rule as the `.mps` corpus:
   **never regenerate a corpus file to make a test pass** - a byte that moves is either a
