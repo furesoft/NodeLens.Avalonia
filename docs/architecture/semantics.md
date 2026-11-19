@@ -109,7 +109,9 @@ collector made explicit:
   keeps the rest merges them itself - only the caller knows what it kept. The dependency-set machinery
   below is not implemented yet: today a caller rechecks the subtree that changed, which is correct and
   cheaper than the whole document, but it does not yet know that a *referencing* node's rule may have
-  changed too.
+  changed too. What the seam is worth is measured rather than assumed - see
+  [What a full recheck costs](#what-a-full-recheck-costs): one node of a 7 501-node feature model costs
+  0.9 ms against 2 232.8 ms for the whole document.
 - **The consumers are two.** `SampleConstraints` in `Projectional.Samples.Checks` is a language's own
   sentence (a rule needs a condition). `ScopeConstraints` in `Projectional.Semantics/Scopes/` is the
   framework's: `AmbiguousReferenceConstraint` reports a reference whose name no longer identifies the
@@ -142,6 +144,58 @@ Naive full revalidation does not scale to a million nodes. The mechanism:
 Scope and type results are cached per snapshot, keyed by node, and invalidated the same
 way. Caches are discarded, not patched, on generation change — simplicity beats
 cleverness here until profiling says otherwise.
+
+#### What a full recheck costs
+
+Profiling has now spoken about the part that decides the order of the work, and the answer is
+that incrementality is the third problem rather than the first.
+`tools/Projectional.Benchmarks` builds a clean document of a given size,
+lays it out, runs the constraints, runs the checks, and rechecks one node - best of five
+runs, Release, one core of twenty. A clean document means no findings, so the times are
+traversal and nothing else.
+
+The rules language - `n` rules, `2n + 1` nodes, no references:
+
+| rules | nodes | layout | constraints | checks | both | one rule |
+| --- | --- | --- | --- | --- | --- | --- |
+| 100 | 201 | 1.4 | 0.2 | 0.9 | 0.9 | 0.002 |
+| 1 000 | 2 001 | 9.8 | 1.8 | 1.9 | 3.1 | 0.002 |
+| 5 000 | 10 001 | 64.8 | 1.5 | 7.1 | 8.5 | 0.000 |
+| 20 000 | 40 001 | 285.0 | 6.5 | 48.3 | 55.3 | 0.000 |
+
+The feature model - `n` features and `n / 2` constraints of two references each, `1.5n + 1`
+nodes:
+
+| features | nodes | layout | constraints | checks | both | one constraint |
+| --- | --- | --- | --- | --- | --- | --- |
+| 100 | 151 | 0.2 | 1.8 | 0.2 | 2.0 | 0.035 |
+| 500 | 751 | 0.8 | 17.6 | 0.9 | 15.7 | 0.050 |
+| 2 000 | 3 001 | 4.4 | 312.3 | 4.1 | 320.9 | 0.317 |
+| 5 000 | 7 501 | 10.0 | 2 232.8 | 21.9 | 2 399.6 | 0.926 |
+
+All times in milliseconds. Three consequences, and they decide the order of the work:
+
+- **Layout is linear and is the largest cost the editor already pays.** `EditorSession`
+  rebuilds tree and layout on every committed change, so 285 ms at 40 001 nodes is the
+  floor a keystroke costs today - and no incrementality of *constraints* can go below it.
+  Incremental layout is a separate problem from incremental validation, and the bigger one
+  for a document without references.
+- **Checking a document without references is linear** (6.5 ms at 40 001 nodes), so the
+  design's premise holds there: a full recheck is affordable and the dependency sets would
+  buy almost nothing.
+- **Checking a document with references is quadratic.** 2 232.8 ms at 7 501 nodes is
+  `AmbiguousReferenceConstraint` asking `ScopeOf` for every reference, and
+  `DefaultScopeProvider` walking the document to answer each one - roughly 0.45 ms per
+  reference, growing with the document. That is 2 400 times what rechecking the one node
+  costs (0.9 ms), so the seam pays for itself; what does not pay is finding the *right*
+  nodes, because a rename makes every reference in the document a candidate for a finding.
+  This is the same fact that forbids "recheck the changed subtree" from being simply
+  correct, now with a number attached.
+
+So the first thing to fix is not the dependency sets: it is the O(document) scope lookup
+(open question 110). The measurement is repeatable - `dotnet run -c Release --project
+tools/Projectional.Benchmarks` - and a change to `ScopeConstraints` that made the table
+worse would be visible the same day.
 
 ### Language of constraints
 

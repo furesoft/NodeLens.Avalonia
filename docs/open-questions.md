@@ -267,6 +267,18 @@ should decide rather than a plan.
 | 96 | May a concept narrow an inherited member's shape - a child slot over a more specific concept, a property over an enumeration where the interface said string? | Decided in I1 | No: shape equality is what makes the merge safe and an override readable, and narrowing is covariance in a storage model that has none. `ConceptRegistry.HasSameShape` refuses a different property type, reference target, cardinality or minimum, and keeps only the metadata overridable. A language that needs the narrower slot declares it itself and does not implement the interface. | M6 |
 | 97 | Does the framework ship a second interface (`Collapsible`), replacing the collapse-slot designation? | Open | No. The designation stays, because a concept may want its boolean named `foldable`, and question 55's per-node reason is unchanged; an interface would be a ready-made default, not a replacement. Add one only when two languages ask for the same member. | M6 |
 
+## Performance
+
+The cost of a full recheck has been measured rather than argued
+([semantics.md](architecture/semantics.md#what-a-full-recheck-costs)), and the numbers say the
+incrementality design is not the first thing to do. These two questions are what the tables put
+in front of it.
+
+| # | Question | Status | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 110 | May a reference cost the document? | Open | No - but the fix is an index, not a cache inside `DefaultScopeProvider`. Every reference pays a scope walk (`AmbiguousReferenceConstraint` asks `ScopeOf` per reference slot, and `DefaultScopeProvider` collects the named nodes of local, ancestors, model and project to answer), which measured 0.45 ms per reference at 7 501 nodes and grew with the document: a document made of references therefore checks quadratically, while one without them is linear. The order of preference is (1) a name index owned by the project, dropped wholesale on `Model.Changed` - a rename, a move and a deletion all invalidate it, and `changed` is the only seam that sees all three; (2) a per-session index given to the provider, which cannot see a change at all and would answer stale names; (3) a cache inside the provider, which is (2) with the invalidation hidden. Prefer (1) and make the drop cheaper than the walk it saves. | M6 |
+| 111 | Does checking become incremental now? | Open, and measured | Not yet, and the tables say why: for a document without references a full recheck is 6.5 ms at 40 001 nodes, which is below the 285 ms layout rebuild that fires on the *same* keystroke - so the dependency sets would optimise the smaller of two costs. For a reference-carrying document the cost is the scope lookup (110), not the walk, and a dependency set would not make that cheaper either. The order is incremental layout, then question 110, then dependency sets. Revisit when an edit latency survives both. | M6 |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
