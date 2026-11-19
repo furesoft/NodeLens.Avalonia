@@ -67,9 +67,9 @@ public sealed class ReferenceLanguagesTests
     }
 
     [Fact]
-    public void TheThreeShippedFormatsAreJsonXmlAndToml()
+    public void TheShippedFormatsAreJsonXmlTomlAndHocon()
     {
-        Assert.Equal(["JSON", "XML", "TOML"], ReferenceLanguages.All.Select(language => language.Name));
+        Assert.Equal(["JSON", "XML", "TOML", "HOCON"], ReferenceLanguages.All.Select(language => language.Name));
     }
 
     [Fact]
@@ -85,5 +85,15 @@ public sealed class ReferenceLanguagesTests
 
         Assert.False(ReferenceLanguages.Toml.Importer.CanImport("port: 8080"));
         Assert.True(ReferenceLanguages.Toml.Importer.CanImport("  port = 8080"));
+    }
+
+    [Fact]
+    public void AHoconFileIsClaimedByABraceOrASeparator()
+    {
+        Assert.Same(ReferenceLanguages.Hocon, ReferenceLanguages.Detect("application.hocon", "{ a = 1 }"));
+        Assert.Same(ReferenceLanguages.Hocon, ReferenceLanguages.Detect("application.hocon", "a: 1"));
+
+        // A colon before any equals sign is YAML's shape as much as HOCON's, so the name settles it.
+        Assert.Same(ReferenceLanguages.Hocon, ReferenceLanguages.Detect("application.hocon", "a: { b = 1 }"));
     }
 }

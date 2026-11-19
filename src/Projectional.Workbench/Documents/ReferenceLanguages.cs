@@ -1,3 +1,6 @@
+using Projectional.Hocon;
+using Projectional.Hocon.Checks;
+using Projectional.Hocon.Intentions;
 using Projectional.Json;
 using Projectional.Json.Checks;
 using Projectional.Json.Intentions;
@@ -10,7 +13,7 @@ using Projectional.Xml.Intentions;
 
 namespace Projectional.Workbench;
 
-/// <summary>The reference languages the app ships: a JSON, XML or TOML file opens as a document of its own format.</summary>
+/// <summary>The reference languages the app ships: a JSON, XML, TOML or HOCON file opens as a document of its own format.</summary>
 /// <remarks>
 /// <para>
 /// They are the languages the framework uses to prove that a model can mirror a file, and the app is where that stops
@@ -62,8 +65,20 @@ internal static class ReferenceLanguages
         TomlIntentions.Provider,
         TomlChecks.All);
 
+    /// <summary>HOCON: JSON's brace-light cousin, which a config-heavy host writes.</summary>
+    internal static ReferenceLanguage Hocon { get; } = new(
+        "HOCON",
+        "hocon",
+        ".hocon",
+        HoconLanguage.Importer,
+        HoconLanguage.Concepts,
+        HoconLanguage.Notations,
+        HoconTextGenerators.All,
+        HoconIntentions.Provider,
+        HoconChecks.All);
+
     /// <summary>Every format the app can import, in the order a file dialog should offer them.</summary>
-    internal static IReadOnlyList<ReferenceLanguage> All { get; } = [Json, Xml, Toml];
+    internal static IReadOnlyList<ReferenceLanguage> All { get; } = [Json, Xml, Toml, Hocon];
 
     /// <summary>Which language <paramref name="text"/> is, or <see langword="null"/> when none claims it.</summary>
     /// <param name="fileName">The name the file had, or <see langword="null"/> when it has none.</param>
