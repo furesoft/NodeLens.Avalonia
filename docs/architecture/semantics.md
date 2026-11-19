@@ -111,7 +111,7 @@ collector made explicit:
   cheaper than the whole document, but it does not yet know that a *referencing* node's rule may have
   changed too. What the seam is worth is measured rather than assumed - see
   [What a full recheck costs](#what-a-full-recheck-costs): one node of a 7 501-node feature model costs
-  0.001 ms against 2.3 ms for the whole document.
+  0.001 ms against 3.3 ms for the whole document.
 - **The consumers are two.** `SampleConstraints` in `Projectional.Samples.Checks` is a language's own
   sentence (a rule needs a condition). `ScopeConstraints` in `Projectional.Semantics/Scopes/` is the
   framework's: `AmbiguousReferenceConstraint` reports a reference whose name no longer identifies the
@@ -160,28 +160,30 @@ The rules language - `n` rules, `2n + 1` nodes, no references:
 
 | rules | nodes | layout | constraints | checks | both | one rule |
 | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 201 | 1.4 | 0.2 | 0.9 | 0.9 | 0.002 |
-| 1 000 | 2 001 | 9.8 | 1.8 | 1.9 | 3.1 | 0.002 |
-| 5 000 | 10 001 | 64.8 | 1.5 | 7.1 | 8.5 | 0.000 |
-| 20 000 | 40 001 | 285.0 | 6.5 | 48.3 | 55.3 | 0.000 |
+| 100 | 201 | 0.9 | 0.2 | 1.0 | 1.1 | 0.002 |
+| 1 000 | 2 001 | 7.2 | 1.6 | 5.8 | 9.5 | 0.002 |
+| 5 000 | 10 001 | 43.7 | 1.5 | 7.3 | 8.7 | 0.000 |
+| 20 000 | 40 001 | 123.1 | 6.6 | 48.2 | 52.1 | 0.000 |
 
 The feature model - `n` features and `n / 2` constraints of two references each, `1.5n + 1`
 nodes:
 
 | features | nodes | layout | constraints | checks | both | one constraint |
 | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 151 | 0.2 | 0.1 | 0.2 | 0.3 | 0.002 |
-| 500 | 751 | 0.8 | 0.5 | 1.0 | 1.5 | 0.002 |
-| 2 000 | 3 001 | 3.1 | 2.1 | 4.5 | 6.9 | 0.002 |
-| 5 000 | 7 501 | 14.8 | 2.3 | 20.4 | 24.2 | 0.001 |
+| 100 | 151 | 0.1 | 0.1 | 0.2 | 0.3 | 0.002 |
+| 500 | 751 | 0.5 | 0.5 | 0.9 | 1.4 | 0.002 |
+| 2 000 | 3 001 | 1.9 | 2.0 | 4.5 | 6.2 | 0.002 |
+| 5 000 | 7 501 | 15.1 | 3.3 | 20.7 | 23.5 | 0.001 |
 
 All times in milliseconds. Three consequences, and they decide the order of the work:
 
-- **Layout is linear and is the largest cost the editor already pays.** `EditorSession`
-  rebuilds tree and layout on every committed change, so 285 ms at 40 001 nodes is the
-  floor a keystroke costs today - and no incrementality of *constraints* can go below it.
-  Incremental layout is a separate problem from incremental validation, and the bigger one
-  for a document without references.
+- **Layout is linear and is the largest cost the editor already pays.** `EditorSession` rebuilds
+  tree and layout on every committed change, so 123 ms at 40 001 nodes is the floor a keystroke
+  costs today - and no incrementality of *constraints* can go below it. Of that number roughly a
+  third is the layout and two thirds the tree build, after the layout's per-cell bookkeeping was cut
+  from 503 to 156 bytes and its time from 286 ms to 35 ms on the same 280 011 cells
+  ([projection.md](projection.md)). Incremental layout is still a separate problem from incremental
+  validation, and the bigger one for a document without references.
 - **Checking a document without references is linear** (5.7 ms at 40 001 nodes), so the
   design's premise holds there: a full recheck is affordable and the dependency sets would
   buy almost nothing.
@@ -193,12 +195,12 @@ All times in milliseconds. Three consequences, and they decide the order of the 
   without walking, and the same document now costs 2.3 ms. The seam was never the problem: one
   node alone cost 0.9 ms before and 0.001 ms after.
 
-So what is left is not the dependency sets. A full recheck now costs 5.7 ms (rules) and 2.3 ms
-(features) against a layout rebuild of 285 ms and 14.8 ms on the same keystroke, so incremental
-*validation* would optimise the smaller of two costs; incremental layout is the one worth doing
-first (open question 111). The measurement is repeatable - `dotnet run -c Release --project
-tools/Projectional.Benchmarks` - and a change to `ScopeConstraints` or to the index that made the
-table worse would be visible the same day.
+So what is left is not the dependency sets. A full recheck now costs 6.6 ms (rules) and 3.3 ms
+(features) against a rebuild of 123 ms and 15.1 ms on the same keystroke, so incremental
+*validation* would optimise the smaller of two costs; what that rebuild is spent on is the tree and
+the layout, not the rules (open question 111). The measurement is repeatable - `dotnet run -c Release
+--project tools/Projectional.Benchmarks` - and a change to `ScopeConstraints`, to the index or to the
+layouter that made the table worse would be visible the same day.
 
 ### Language of constraints
 

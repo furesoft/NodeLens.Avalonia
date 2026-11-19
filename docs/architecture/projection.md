@@ -157,10 +157,22 @@ the tree, in abstract **layout units** rather than pixels.
   property that declares an `EmptyText` - `<<operator>>` - is measured to that instead, and
   the value replaces it the moment there is one. The placeholder is one token, never
   wrapped, and never part of the text the caret moves through.
-- **Lookups.** `BoundsOf(EditorCell)` and `BoundsOf(CellAddress)` scan document order and
-  answer with the outermost cell carrying that address; `Find(x, y)` scans in reverse and
-  answers with the innermost cell under the point. `LayoutRect.Contains` is half-open, so
-  a point on a border belongs to exactly one cell.
+- **Lookups.** `BoundsOf(CellAddress)` scans document order and answers with the outermost cell
+  carrying that address; `Find(x, y)` scans in reverse and answers with the innermost cell under
+  the point. `BoundsOf(EditorCell)` answers from a map that is built on its first call, because a
+  painter never asks for it - it walks `Cells` and has each cell's bounds in hand - while the caret,
+  the hit test and the markers do. `LayoutRect.Contains` is half-open, so a point on a border
+  belongs to exactly one cell.
+- **What the layout remembers per cell, and what it refuses to.** The placement list is the layout;
+  everything else is an index into it. `LinesOf(cell)` answers from a map holding only the texts
+  that **wrapped**, because one line is the text plus its width and needs no break to remember; a
+  single-line text is answered from the measure, which is not a re-measure of the case that would
+  cost one. Three rules follow, and each was worth several hundred bytes per cell of a document:
+  the text map is **kept, never copied** (a `CellLayout` is the only holder of the layouter's map),
+  the bounds map is **built lazily**, and `CellLayouter` asks `TextWrapper.SingleLineWidth` before it
+  builds a `LaidOutText` at all - a text with no break of its own that fits the limit is one line, and
+  that is most cells of most documents. Measured on 280 011 cells: 286 ms and 134 MB before, 35 ms
+  and 43 MB after.
 
 Only a text cell breaks with the width; nothing else in the notation does. A narrow page
 therefore makes a value taller instead of rearranging the notation, which is what keeps a
