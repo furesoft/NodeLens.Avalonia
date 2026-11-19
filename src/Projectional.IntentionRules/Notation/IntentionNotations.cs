@@ -56,6 +56,13 @@ public static class IntentionNotations
             ed.Property(IntentionLanguage.SideSlot)));
 
         notations.Add(
+            IntentionConceptKeys.Insert,
+            ed => ed.Line(
+                ed.Keyword("insert"),
+                ed.Space,
+                ed.Property(IntentionLanguage.ConceptSlot, emptyText: "<concept>")));
+
+        notations.Add(
             IntentionConceptKeys.Replace,
             ed => ed.Line(
                 ed.Keyword("replace with"),

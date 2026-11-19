@@ -72,9 +72,15 @@ public static class IntentionLowering
                 ? EditSafety.Destructive
                 : EditSafety.Plain;
 
+            // An insert only means something on an empty slot; anywhere else the offer would come back rejected.
+            Func<IntentionContext, bool>? place = action.Concept.Key == IntentionConceptKeys.Insert
+                ? context => context.Place is { } at && at.IsEmptySlot
+                : null;
+
             entries.Add(new DeclaredIntention(
                 new Intention(id, label, description, Create(action, label, subject, concepts), safety: safety),
-                conceptKey));
+                conceptKey,
+                place));
         }
 
         return new DeclaredIntentions(entries);
@@ -93,6 +99,7 @@ public static class IntentionLowering
             IntentionConceptKeys.Delete => Delete(),
             IntentionConceptKeys.Move => Move(action),
             IntentionConceptKeys.Replace => Replace(action, subject, concepts),
+            IntentionConceptKeys.Insert => Insert(action, concepts),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an intention body; an intention wraps or sets."),
         };
@@ -146,6 +153,21 @@ public static class IntentionLowering
         // whatever the caret stands on, which no rule can know at load.
         return context => context.Node is { } node
             ? new WrapInAction(node.Id, wrapperKey, childSlot, presets)
+            : null;
+    }
+
+    private static Func<IntentionContext, EditAction?> Insert(Node action, ConceptRegistry concepts)
+    {
+        var conceptKey = Required(action, IntentionLanguage.ConceptSlot, "An insert has to name the concept to add in the slot.");
+
+        if (!concepts.TryGet(conceptKey, out _))
+        {
+            throw new ConceptDefinitionException($"An insert names '{conceptKey}', which is not a concept of this language.");
+        }
+
+        // The slot is the caret's, not the rule's: "put one of these here" is about the empty place the user is in.
+        return context => context.Place is { } place && place.IsEmptySlot
+            ? new AddChildAction(place.Address.Owner, place.Address.Slot!, conceptKey)
             : null;
     }
 
