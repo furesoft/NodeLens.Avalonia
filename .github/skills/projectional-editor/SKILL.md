@@ -1150,6 +1150,38 @@ row points at the node that wrote the beginning of that line, which turns the tr
 a line of the generated file moves the caret to what produced it. A run's rows are its trace. An edit drops both, because
 neither can be derived again from the new model.
 
+## How text import works
+
+Import is the only place a parser exists, and it runs once: the host passes a string, the importer fills a model the
+host created, and the text is thrown away - so ADR 0002 is intact. `docs/architecture/import.md` is the design of
+record, and `Projectional.Json` is the first reference language behind the contract.
+
+- **The contract is in `Projectional.Language/Import/`** (`ITextImporter`, `ImportResult`, `ImportDiagnostic`,
+  `ImportSeverity`), beside `ICellEmphasis` and for the same reason: a language package must be able to declare an
+  importer without referencing `Editing`. An `ImportResult` is either refused (no roots, one error) or imported (roots
+  plus warnings), so a host writes one branch.
+- **One transaction is the whole failure path.** `using var transaction = model.BeginTransaction();` ... `Complete()`
+  and nothing else: a refusal or a throw disposes it, the model is byte-identical again, and a success is one undo step
+  and one change event. Import needs no new Core seam - `NewNode`/`NewChild`/`AddRoot` are public and journal
+  themselves, which is exactly what makes that true.
+- **An import diagnostic is not a `Diagnostic`.** That one names a `NodeId`, and a syntax error has no node - that is
+  the whole problem. The place is a 1-based line and column counted in *characters* of the text the host passed, plus a
+  code that is never localized (`json.unexpected-token`, `json.duplicate-name`).
+- **A reference language holds the file's spelling, not the decoded value.** `Json.String.text` is what sat between the
+  quotes, escapes included; a number keeps its literal (`1.0`, `1e3` and `1` are three files); a duplicate member is
+  kept and reported. That is what makes `Import` -> `Generate` byte-exact **without** an escaping cell in a notation or
+  an escaping part in generation.
+- **Whitespace is not a value**, so the round-trip corpus is the generator's own output. Never rewrite a corpus file to
+  make a test pass; a changed byte is a behaviour change.
+- **The tokenizer is the platform's, the mapping is ours.** `Utf8JsonReader` does the lexing, so escapes, number
+  grammar and UTF-8 are not our problem. The tokenizer reports byte offsets (`TokenStartIndex`, a `JsonException`'s
+  `LineNumber`/`BytePositionInLine`); `SourcePositions` translates them into the line and character column an editor
+  shows, and the exception's message has its appended position cut off because the diagnostic carries the place as a
+  field.
+- **A bracket's inner space is a `WhenFilled` cell in the notation and a `WhenFilledPart` in the generator; the brackets
+  themselves are unconditional.** So an empty object prints `{}` while it draws `{ }` - an empty slot must stay visible
+  to the caret, and a drawing is not the file.
+
 ## How interpretation works
 
 A language says what its nodes *mean* through one function per concept, and the framework runs it. The design is
