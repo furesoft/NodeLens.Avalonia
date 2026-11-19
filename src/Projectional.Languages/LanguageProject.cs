@@ -3,6 +3,7 @@ using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Persistence;
+using Projectional.ScopeRules;
 using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.TextGen;
@@ -45,6 +46,9 @@ public sealed class LanguageProject
     /// <summary>The folder holding the language's own constraints, which a language may leave out.</summary>
     public const string ConstraintsFolder = "constraints";
 
+    /// <summary>The folder holding the language's own scope rules, which a language may leave out.</summary>
+    public const string ScopesFolder = "scopes";
+
     private LanguageProject(
         string name,
         string directory,
@@ -53,7 +57,8 @@ public sealed class LanguageProject
         NotationRegistry notations,
         TypeRegistry types,
         IReadOnlyList<TextGenerator> generators,
-        ConstraintSet constraints)
+        ConstraintSet constraints,
+        ScopeProviderRegistry scopes)
     {
         Name = name;
         Directory = directory;
@@ -63,6 +68,7 @@ public sealed class LanguageProject
         Types = types;
         Generators = generators;
         Constraints = constraints;
+        Scopes = scopes;
     }
 
     /// <summary>The language's name, which is the name of the folder it lives in.</summary>
@@ -111,6 +117,17 @@ public sealed class LanguageProject
     /// <summary>Whether the project declared a rule of its own.</summary>
     public bool HasConstraints => Constraints.Count > 0;
 
+    /// <summary>The scope providers the language declares, or the empty registry when it has no <c>scopes</c> folder.</summary>
+    /// <remarks>
+    /// The declared half of the scope aspect: the same <see cref="ScopeProviderRegistry"/> a language written in C#
+    /// installs on a session, lowered from rules that are models themselves. A language that declares none loads and
+    /// its documents get <see cref="DefaultScopeProvider"/> - the honest state of a language being written, like a
+    /// missing <c>editor</c> folder.
+    /// </remarks>
+    public ScopeProviderRegistry Scopes { get; }
+
+    /// <summary>Whether the project declared a scope rule of its own.</summary>
+    public bool HasScopes => Scopes.Count > 0;
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -174,7 +191,8 @@ public sealed class LanguageProject
                 LowerNotation(directory, concepts),
                 LowerTypes(directory),
                 LowerGenerators(directory, concepts),
-                LowerConstraints(directory, concepts));
+                LowerConstraints(directory, concepts),
+                LowerScopes(directory, concepts));
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -282,5 +300,16 @@ public sealed class LanguageProject
     private static ConstraintSet LowerConstraints(string directory, ConceptRegistry concepts) =>
         ConstraintLowering.CreateConstraints(
             Read(directory, ConstraintsFolder, new Project(ConstraintLanguage.Concepts)),
+            concepts);
+
+    /// <summary>Every scope rule the project declares, or none when it has no <c>scopes</c> folder.</summary>
+    /// <remarks>
+    /// The lowering is given the concepts the structure documents just declared, so a rule naming a concept or a
+    /// reference slot this language does not have is refused here - the same "earliest moment both halves exist"
+    /// rule the notation, the templates and the constraints follow.
+    /// </remarks>
+    private static ScopeProviderRegistry LowerScopes(string directory, ConceptRegistry concepts) =>
+        ScopeLowering.CreateProviders(
+            Read(directory, ScopesFolder, new Project(ScopeLanguage.Concepts)),
             concepts);
 }

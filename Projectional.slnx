@@ -18,10 +18,10 @@
     <Project Path="src/Projectional.Samples.StateMachine.Checks/Projectional.Samples.StateMachine.Checks.csproj" />
     <Project Path="src/Projectional.Samples.FeatureModel/Projectional.Samples.FeatureModel.csproj" />
     <Project Path="src/Projectional.Samples.FeatureModel.Checks/Projectional.Samples.FeatureModel.Checks.csproj" />
-    <Project Path="src/Projectional.Samples.SqlSchema/Projectional.Samples.SqlSchema.csproj" />
-    <Project Path="src/Projectional.Samples.SqlSchema.Checks/Projectional.Samples.SqlSchema.Checks.csproj" />
+    <Project Path="src/Projectional.Samples.SqlSchema/Projectional.Samples.SqlSchema.csproj" />    <Project Path="src/Projectional.Samples.SqlSchema.Checks/Projectional.Samples.SqlSchema.Checks.csproj" />
     <Project Path="src/Projectional.Samples.Checks/Projectional.Samples.Checks.csproj" />
     <Project Path="src/Projectional.Samples.Intentions/Projectional.Samples.Intentions.csproj" />
+    <Project Path="src/Projectional.ScopeRules/Projectional.ScopeRules.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
     <Project Path="src/Projectional.Structures.Intentions/Projectional.Structures.Intentions.csproj" />
     <Project Path="src/Projectional.TextGen/Projectional.TextGen.csproj" />

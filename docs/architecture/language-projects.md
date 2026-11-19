@@ -29,6 +29,8 @@ MyRules/
     Json.mps                      one generator
   constraints/                    the rules the language states about itself (Projectional.ConstraintRules)
     Pipeline.Stage.mps            one rule
+  scopes/                         where each reference's names come from (Projectional.ScopeRules)
+    Pipeline.Stage.retries.mps    one scope rule
   pipeline.mps                    a document of the language, not part of the definition
 ```
 

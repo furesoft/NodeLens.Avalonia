@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\Projectional.TypeRules\Projectional.TypeRules.csproj" />
+    <ProjectReference Include="..\Projectional.ScopeRules\Projectional.ScopeRules.csproj" />
     <ProjectReference Include="..\Projectional.TextGen\Projectional.TextGen.csproj" />
   </ItemGroup>
 

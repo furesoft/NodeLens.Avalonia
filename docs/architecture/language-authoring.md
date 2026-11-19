@@ -294,7 +294,7 @@ Not every aspect is worth a declarative form, and the plan says which:
 | structure, notation | full | M2 (provisional), M5 (MPS shape) | pure declaration, the reason the path exists |
 | constraints | expression-shaped rules | M6 | small closed vocabulary, covers the common check |
 | types | rule table over concept keys and slots | M6 | MPS' type system is the same idea; expressions stay for the odd case |
-| scopes | chain description plus per-slot overrides | M6 | MPS needs a language for this too; the default chain covers most DSLs |
+| scopes | chain description plus per-slot overrides | M6 (delivered) | MPS needs a language for this too; the default chain covers most DSLs |
 | generation | template rules with traceability | M4 (delivered) | the largest declarative win, and the largest piece of work - it arrived with the generator itself rather than a milestone later |
 | intentions, textGen, accessories | block per concept | M6 | declarative by nature; these are where DSL authors spend their time |
 | interpretation | never | - | evaluation is a host decision with security consequences |
