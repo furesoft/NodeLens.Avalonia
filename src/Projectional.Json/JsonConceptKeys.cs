@@ -17,6 +17,12 @@ public static class JsonConceptKeys
     /// <summary>Any value: the abstract super concept every other one here conforms to.</summary>
     public const string Value = "Json.Value";
 
+    /// <summary>One entry of an object: a member, or a note beside one.</summary>
+    public const string Member = "Json.Member";
+
+    /// <summary>A note the format cannot express, kept in the model and left out of the generated text.</summary>
+    public const string Comment = "Json.Comment";
+
     /// <summary>A set of members.</summary>
     public const string Object = "Json.Object";
 

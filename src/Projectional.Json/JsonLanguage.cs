@@ -50,8 +50,26 @@ public static class JsonLanguage
             description: "Anything a JSON document can hold."),
 
         new ConceptDeclaration(
+            JsonConceptKeys.Member,
+            isAbstract: true,
+            isOfferedInCompletion: false,
+            description: "One entry of an object: a member, or a note beside one."),
+
+        new ConceptDeclaration(
+            JsonConceptKeys.Comment,
+            [new PropertySlot(
+                TextSlot,
+                PropertyType.String,
+                "why",
+                "What the note says. JSON has no syntax for it, so generation leaves the note out.",
+                showDescriptionWhenFilled: true)],
+            [JsonConceptKeys.Member],
+            nameSlot: TextSlot,
+            description: "A note in the model that the generated document cannot express."),
+
+        new ConceptDeclaration(
             JsonConceptKeys.Object,
-            [new ChildSlot(MembersSlot, JsonConceptKeys.Property, Cardinality.Many)],
+            [new ChildSlot(MembersSlot, JsonConceptKeys.Member, Cardinality.Many)],
             [JsonConceptKeys.Value],
             description: "A set of members, drawn in the order the document has them."),
 
@@ -66,6 +84,7 @@ public static class JsonLanguage
                     showDescriptionWhenFilled: true),
                 new ChildSlot(ValueSlot, JsonConceptKeys.Value, Cardinality.One),
             ],
+            [JsonConceptKeys.Member],
             nameSlot: NameSlot,
             description: "One member: a name and the value it holds."),
 

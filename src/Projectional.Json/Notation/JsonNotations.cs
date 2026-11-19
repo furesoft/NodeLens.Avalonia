@@ -61,5 +61,12 @@ internal static class JsonNotations
         notations.Add(JsonConceptKeys.Bool, ed => ed.Line(ed.Property(JsonLanguage.ValueSlot)));
 
         notations.Add(JsonConceptKeys.Null, ed => ed.Line(ed.Keyword("null")));
+
+        // A note the format has no syntax for. It is drawn as the JSONC spelling a reader would recognise, and the
+        // generator leaves it out - the drawing says what the model holds, the file says what JSON can carry.
+        notations.Add(JsonConceptKeys.Comment, ed => ed.Line(
+            ed.Keyword("//"),
+            ed.Space,
+            ed.Property(JsonLanguage.TextSlot, emptyText: "why")));
     }
 }

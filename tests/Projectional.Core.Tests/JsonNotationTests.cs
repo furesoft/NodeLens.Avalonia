@@ -64,6 +64,18 @@ public class JsonNotationTests
         Assert.Equal("\"a\\\"b\"", Render(text));
     }
 
+    [Fact]
+    public void ACommentIsDrawnAsTheNoteItIs()
+    {
+        // The drawing says what the model holds; the generated file says what JSON can carry. A note is the one place
+        // those two answers differ on purpose.
+        var model = JsonLanguage.NewProject().NewModel("json");
+        var comment = model.NewNode(JsonConceptKeys.Comment);
+        comment.Set(JsonLanguage.TextSlot, "why");
+
+        Assert.Equal("// why", Render(comment));
+    }
+
     private static string Render(Node node) =>
         LayoutSnapshot.Render(node, JsonLanguage.Notations, width: 120).Trim();
 }

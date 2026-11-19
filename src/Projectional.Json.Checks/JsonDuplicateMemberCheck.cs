@@ -58,6 +58,13 @@ public sealed class JsonDuplicateMemberCheck : ICheck
 
         foreach (var member in container.GetChildren(JsonLanguage.MembersSlot))
         {
+            // A note is not a member: it has no name to collide with, and reading its text as one would report two
+            // comments with the same words as a duplicate key.
+            if (!string.Equals(member.Concept.Key, JsonConceptKeys.Property, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             if (member.GetOrNull(JsonLanguage.NameSlot) is not { Length: > 0 } spelled)
             {
                 continue;

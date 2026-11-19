@@ -90,6 +90,23 @@ public sealed class JsonChecksTests
         Assert.Empty(JsonChecks.All.Find(model));
     }
 
+    [Fact]
+    public void TwoCommentsWithTheSameWordsAreNotADuplicateMember()
+    {
+        // A note has no name to collide with: reading its text as one would report two notes that say the same thing
+        // as a duplicated key.
+        var model = JsonLanguage.NewProject().NewModel("json");
+        var container = model.NewNode(JsonConceptKeys.Object);
+
+        foreach (var text in new[] { "same", "same" })
+        {
+            var note = model.NewChild(container, JsonLanguage.MembersSlot, JsonConceptKeys.Comment);
+            note.Set(JsonLanguage.TextSlot, text);
+        }
+
+        Assert.Empty(new JsonDuplicateMemberCheck().Find(model));
+    }
+
     private static Node Member(Model model, Node container, string name)
     {
         var member = model.NewChild(container, JsonLanguage.MembersSlot, JsonConceptKeys.Property);

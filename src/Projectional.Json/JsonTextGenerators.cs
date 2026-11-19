@@ -59,7 +59,12 @@ public static class JsonTextGenerators
 
         .Add(JsonConceptKeys.Bool, TextTemplate.Of(new PropertyPart(JsonLanguage.ValueSlot)))
 
-        .Add(JsonConceptKeys.Null, TextTemplate.Of(new TextPart("null"))));
+        .Add(JsonConceptKeys.Null, TextTemplate.Of(new TextPart("null")))
+
+        // JSON has no comments, so a note the model carries is left out of the document. This is the explicit "emits
+        // nothing" rather than a missing template: a concept nobody mapped is a failure, and a decided silence is not
+        // (see TextGen.Ignore for the same decision expressed in a generated-language model).
+        .Add(JsonConceptKeys.Comment, TextTemplate.Empty));
 
     /// <summary>Every generator this language declares, in the order a menu should list them.</summary>
     public static IReadOnlyList<TextGenerator> All { get; } = [Json];
