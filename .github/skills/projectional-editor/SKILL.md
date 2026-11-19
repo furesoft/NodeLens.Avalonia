@@ -37,7 +37,8 @@ scrolling (bars via
 `Projectional.Language/Import/` with `Projectional.Json` as its first reference language) are done, as is
 find usages (a reverse reference index in `Projectional.Core`, the caret query in `Projectional.Editing` and the
 app's usages panel), and the rename refactoring that index was built for (`RenameNodeAction`: the name plus every
-reference fallback in one undo step, with **Edit ▸ Rename...** in the shell). The
+reference fallback in one undo step, with **Edit ▸ Rename...** in the shell), and go to definition (`Ctrl+B`,
+`Ctrl+click` and the context menu). The
 standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
 
 **The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
@@ -746,6 +747,15 @@ another model belongs to that model's history, so it is left alone, and a node i
 than renamed outside the history that would undo it. Renaming to the same name is `Unchanged` and refreshes
 nothing. The shell's **Edit ▸ Rename...** (`Shift+F6`) opens a prefilled bar and applies the action; `INT001` stays
 the caret jump into the name slot, because an intention cannot ask for a value.
+
+`GoToDefinitionAction` is the other consumer: **Ctrl+B**, **Ctrl+click** and the context menu's `Go to Definition`
+move the caret to the declaration a reference names. `GoToDefinition.TargetOf` answers only for a reference cell -
+unlike `FindUsages.TargetOf`, which falls back to the node the caret is in - because there is nothing to go to
+otherwise. `PlaceOf` requires the target to be **drawn in this tree**: a session projects one root, so a sibling
+root, another model, or a concept without notation is a rejection with a reason and a disabled menu entry, never a
+caret dropped somewhere unrelated. The name cell is selected through `SelectSlotAction`; navigation creates no undo
+step. Ctrl+B is one more Control exception in `EditorKeyMap` (no host can navigate a model it cannot see), and
+Ctrl+click is the pointer's spelling of it in the control.
 
 ## How constraints work
 
@@ -2234,7 +2244,7 @@ Work that touches any of this also touches a doc; the app's plan lives in
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2450 tests**; anything below that means tests were deleted.
+it. **Baseline is 2459 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
