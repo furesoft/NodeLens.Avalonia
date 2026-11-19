@@ -79,6 +79,43 @@ public sealed class JsonTextGeneratorsTests
     }
 
     [Fact]
+    public void ACommentIsLeftOutWithoutDisturbingItsNeighbour()
+    {
+        // JSON has no comments, so the note the model holds is not in the file. Because the list walk drops an entry
+        // that emits nothing, the member beside it keeps its own separator instead of gaining a second one.
+        var model = NewModel();
+        var document = model.NewNode(JsonConceptKeys.Object);
+
+        var first = model.NewChild(document, JsonLanguage.MembersSlot, JsonConceptKeys.Property);
+        first.Set(JsonLanguage.NameSlot, "a");
+        model.NewChild(first, JsonLanguage.ValueSlot, JsonConceptKeys.Null);
+
+        var note = model.NewChild(document, JsonLanguage.MembersSlot, JsonConceptKeys.Comment);
+        note.Set(JsonLanguage.TextSlot, "why");
+
+        var second = model.NewChild(document, JsonLanguage.MembersSlot, JsonConceptKeys.Property);
+        second.Set(JsonLanguage.NameSlot, "b");
+        model.NewChild(second, JsonLanguage.ValueSlot, JsonConceptKeys.Bool)
+            .Set(JsonLanguage.ValueSlot, "true");
+
+        Assert.Equal("{ \"a\": null, \"b\": true }", Generate(document));
+    }
+
+    [Fact]
+    public void ACommentInAnObjectThatHoldsNothingStillGeneratesAJsonObject()
+    {
+        // The gaps inside the braces are chosen by whether the slot holds a *child*, and a comment is one - so the
+        // document prints with those two spaces. It is still valid JSON, and the alternative would be a second answer
+        // to "is this object empty" that no part can ask.
+        var model = NewModel();
+        var document = model.NewNode(JsonConceptKeys.Object);
+        var note = model.NewChild(document, JsonLanguage.MembersSlot, JsonConceptKeys.Comment);
+        note.Set(JsonLanguage.TextSlot, "why");
+
+        Assert.Equal("{  }", Generate(document));
+    }
+
+    [Fact]
     public void TheGeneratorIsNamedSoAMenuCanListIt()
     {
         Assert.Equal("Json", JsonTextGenerators.Json.Name);

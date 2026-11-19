@@ -1210,6 +1210,13 @@ record, and `Projectional.Json` is the first reference language behind the contr
   a host composes them with `StandardChecks.All`.
 - **`XmlEscaping` is public on purpose**: the checks package must spell a repaired value exactly as the importer did, and
   a second escaper in a behaviour package would be a second answer to "how is this written".
+- **A reference language may hold a note the format cannot express.** `Json.Comment` is a `Json.Member` beside
+  `Json.Property`, drawn as `// why` and mapped to `TextTemplate.Empty`, so generation omits it - and the "an entry that
+  emits nothing takes no separator" rule is what keeps a note between two members from producing a stray comma. It is
+  never imported (a JSONC file stays refused, because the round trip would drop the notes), `JsonDuplicateMemberCheck`
+  skips it (a note has no name to collide with), and `GenerationCoverage` counts it as covered - a decided silence is
+  not a missing template. A note-only object prints `{  }`: the inner spaces are chosen by whether the slot holds a
+  child, which is the price of not having a second answer to "is this object empty".
 
 ## How interpretation works
 

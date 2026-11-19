@@ -61,5 +61,18 @@ public sealed class GenerationCoverageTests
         Assert.Single(GenerationCoverage.Of(model, new TextGenerator("test", TemplateRegistry.Empty)));
     }
 
+    [Fact]
+    public void AConceptThatEmitsNothingIsCoveredRatherThanMissing()
+    {
+        // The distinction the whole thing rests on: Json.Comment has a template - the empty one - so it is a decided
+        // silence, not a hole. A checker that reported it would tell an author to fix something that is correct.
+        var model = TextProject();
+        var container = model.NewNode(JsonConceptKeys.Object);
+        model.NewChild(container, JsonLanguage.MembersSlot, JsonConceptKeys.Comment)
+            .Set(JsonLanguage.TextSlot, "why");
+
+        Assert.Empty(GenerationCoverage.Of(model, JsonTextGenerators.Json));
+    }
+
     private static Model TextProject() => JsonLanguage.NewProject().NewModel("json");
 }

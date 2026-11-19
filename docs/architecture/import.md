@@ -167,8 +167,10 @@ targets the same file format then reuses that language instead of re-deriving it
 | Concept | Slots | Notes |
 | --- | --- | --- |
 | `Json.Value` | - | abstract; every slot typed over a value uses it |
-| `Json.Object` | `members`: many `Json.Property` | member order is model order |
+| `Json.Member` | - | abstract; one entry of an object |
+| `Json.Object` | `members`: many `Json.Member` | member order is model order |
 | `Json.Property` | `name`: string, `value`: single `Json.Value` | duplicate names are kept and reported |
+| `Json.Comment` | `text`: string | a note JSON cannot express; generation leaves it out |
 | `Json.Array` | `items`: many `Json.Value` | |
 | `Json.String` | `text`: string | the unescaped value |
 | `Json.Number` | `text`: string | **the literal text**, not a double |
@@ -183,6 +185,16 @@ Two decisions worth stating:
 - **`true`/`false` is an enum property**, so the delivered enum completion (see
   [completion.md](completion.md#values)) offers exactly those two symbols in the cell, and the
   notation can render them as keywords.
+- **A comment is a model-only note.** JSON has no syntax for one, so `Json.Comment` is an entry of an
+  object that the generator deliberately leaves out - the empty template, not a missing one, because
+  a silence somebody decided is not a hole (see
+  [semantics.md](semantics.md#what-is-implemented) and `TextGen.Ignore`). It is kept in the model
+  because a note is what makes a generated document reviewable, and an editor that dropped it would
+  delete the author's explanation of their own model. An import never produces one: a JSONC file is
+  still refused rather than half-understood, because a round trip would silently lose its comments.
+  One cosmetic consequence is recorded rather than solved: the two spaces inside the braces are chosen
+  by whether the members slot holds a child, so an object whose only entry is a note prints `{  }` -
+  valid JSON, and the price of not having a second answer to "is this object empty".
 
 Notation: the file's own line, because the layout engine does not wrap and a projection that re-broke the lines would
 show a shape the file does not have - an object as `{ name: value, ... }`, an array as `[ 1, 2 ]`, with `Punct(",")`
