@@ -2210,6 +2210,18 @@ starts**, so it needs no display: it builds the shell's language registry, proje
 prints the counts. The `single-file` CI job publishes for `win-x64` and `linux-x64`, asserts
 `publish/` holds exactly one file, and runs the check.
 
+### Packing
+
+```powershell
+dotnet pack Projectional.slnx -o artifacts
+```
+
+Every project under `src/` is packable, so this produces **27 packages** (`.nupkg` + `.snupkg`) and nothing
+else; tests, the screenshot tool, the host sample and the language template opt out. `artifacts/` is gitignored.
+A local pack needs no tag and no credentials and produces prerelease versions - that is the correct answer,
+because nothing was released. The version is derived by GitVersion from the commits and the `v*` tags, so a
+package is reproducible from the commit it names. See [packaging.md](../../../docs/architecture/packaging.md).
+
 `global.json` also carries `"test": { "runner": "Microsoft.Testing.Platform" }`. Without it `dotnet test` on this
 SDK falls back to VSTest and every xunit.v3 project fails with "Testing with VSTest target is no longer
 supported". A template that ships a `global.json` must carry that section for the same reason - and only that
@@ -2241,6 +2253,19 @@ because `dotnet new` caches by identity, not by content.
 - Warnings are errors, code style is enforced during build, and analysis runs at
   `latest-recommended`. Fix the cause; do not add `NoWarn` to get a green build.
 - Tests use xunit.v3 on Microsoft.Testing.Platform, so a test project is an executable.
+- **Every project under `src/` is a NuGet package** ([ADR 0022](../../../docs/adr/0022-every-project-is-a-package.md),
+  [packaging.md](../../../docs/architecture/packaging.md)). `IsPackable=true` is the repository default and the
+  metadata lives in `Directory.Build.props`; only the four non-products opt out (`tests/`, the screenshot tool,
+  the host sample, the language template). A new project is therefore a package unless it says otherwise, and
+  the CI `pack` job's "exactly 27 packages" assertion must be updated in the same commit that adds or removes
+  one.
+- **The version comes from the repository, never from a literal.** `GitVersion.yml` derives it from the
+  commits and the `v*` tags; `<Version>0.1.0</Version>` in `Directory.Build.props` is only the no-git
+  fallback. Do not set `tag-prefix` in `GitVersion.yml` - with `next-version` present it makes GitVersion 6.8.2
+  fail with "Failed to parse ... into a Semantic Version". Every CI job that builds needs `fetch-depth: 0`, or
+  GitVersion reads a shallow history and computes a wrong version.
+- **Only a `v*` tag publishes.** A merge builds and packs but never pushes; `publish-nuget` is guarded by
+  `startsWith(github.ref, 'refs/tags/v')` and needs the `NUGET_API_KEY` secret in the `nuget` environment.
 
 ## Windows and PowerShell pitfalls in this environment
 

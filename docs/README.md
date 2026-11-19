@@ -59,7 +59,9 @@ records what was actually verified.
     the drawing, the findings, the generated text, a run's answer (planned; M6).
 29. [Gaps against MPS](architecture/mps-gap-analysis.md) — what MPS has that this framework does
     not, and which of it is deliberate.
-30. [Roadmap](roadmap.md) — milestones and acceptance gates.
+30. [Packaging](architecture/packaging.md) — every project is a NuGet package, versioned by
+    GitVersion and published from a tag.
+31. [Roadmap](roadmap.md) — milestones and acceptance gates.
 31. [Open questions](open-questions.md) — what is deliberately still undecided.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
@@ -107,3 +109,4 @@ directory stays authoritative whenever the two disagree.
 | [0019](adr/0019-toolkit-is-the-language-surface.md) | The toolkit is the surface a language is written against |
 | [0020](adr/0020-framework-vocabulary-is-injected.md) | The framework's vocabulary is injected into every registry |
 | [0021](adr/0021-one-project-per-language.md) | One project per language: checks and intentions are folders in the language |
+| [0022](adr/0022-every-project-is-a-package.md) | Every project is a package, versioned by GitVersion and published from a tag |

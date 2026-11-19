@@ -145,6 +145,15 @@ editor.Session = new EditorSession(list, notations, editor.TextMeasure);
 
 Two statements rather than one object initializer, because the session needs the *control's own* measure: layout has to be computed with the same font the control paints with, or the caret and the glyphs disagree.
 
+**Every project under `src/` is published as a NuGet package**, so embedding starts with a reference rather than a folder in your solution:
+
+```xml
+<PackageReference Include="Projectional.Avalonia" Version="*" />
+<PackageReference Include="Projectional.Toolkit" Version="*" />  <!-- what a language is written against -->
+```
+
+A language is one package too (`Projectional.Json`, `Projectional.Xml`, …), carrying its own checks and intentions, so a host that wants JSON takes `Projectional.Json` and nothing else. Versions are derived from the repository's tags and a release is a `v*` tag ([ADR 0022](docs/adr/0022-every-project-is-a-package.md), [packaging.md](docs/architecture/packaging.md)). Until the project's first tagged release these are `ProjectReference`s, so today the two lines above are the shape rather than a published feed.
+
 Everything else—palette, marker colors, caret brush, gutter colors, typeface—is an optional property on the control, so a host can theme the editor without touching the model. The control has a parameterless constructor, so it can also be placed in XAML and sized by the surrounding layout.
 
 ### 5. Save and load

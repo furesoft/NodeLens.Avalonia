@@ -122,7 +122,6 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Text import | **JSON and XML are delivered** as the first two of four languages (`Projectional.Json`, `Projectional.Xml`: the concept models, their notations, importers and generators, [import.md](architecture/import.md)), and **File ▸ Import…** opens a file of either as a document of that language - with its own intentions, checks and generators. What is left is TOML and HOCON, each the same shape, so converting a model into one of them stays model-to-model generation into that language's model and the format's spelling lives in exactly one place |
 | Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
 | Embedded shell | the shell as a control a host composes: locked to one language, its storage and dialogs supplied by the host, its capabilities declared once and enforced by the command registry ([embedded-shell.md](architecture/embedded-shell.md)) |
-| Plugin packaging | one NuGet per language, versioned |
 
 **Gate:** a model can be renamed project-wide without breaking references, and two
 branches editing different parts of one model merge without hand-editing XML.
@@ -176,7 +175,7 @@ the gate (compiled output and the interpreter must agree on the corpus):
 | IME | `TextInputMethodClient`, composition handling, CJK testing |
 | Docs and samples | tutorial DSL, embedding guide, language-author guide |
 | Editor experience | comments, go to definition, block-selection shrink, inspector and hierarchy view, completion filter reset and camel humps, show type, paste history, and the keys the intentions already have ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
-| Packaging | NuGet, CI matrix, public API baseline, AOT/trimming validation |
+| Packaging | **NuGet, the CI matrix and the tag-driven publish are delivered** ([packaging.md](architecture/packaging.md), [ADR 0022](adr/0022-every-project-is-a-package.md)); what is left is a public API baseline (so a breaking change fails a build) and AOT/trimming validation |
 | App distribution | self-contained installers per OS, file association for `.prj`, winget/Homebrew manifests |
 
 **Gate:** a developer unfamiliar with the project builds a small DSL by following the
