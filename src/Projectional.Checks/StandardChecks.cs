@@ -50,8 +50,8 @@ public static class StandardChecks
     /// </remarks>
     public static IReadOnlyList<ICheck> References { get; } = [new UnresolvedReferenceCheck()];
 
-    /// <summary>The checks that need the expression sub-language: <c>STD040</c>.</summary>
-    public static IReadOnlyList<ICheck> Expressions { get; } = [new BinaryGroupingCheck()];
+    /// <summary>The checks that need the expression sub-language: <c>STD040</c> and <c>STD041</c>.</summary>
+    public static IReadOnlyList<ICheck> Expressions { get; } = [new BinaryGroupingCheck(), new DoubleNegationCheck()];
 
     /// <summary>Every check the framework ships, as one set a language can extend.</summary>
     public static CheckSet All { get; } = new([.. Names, .. Structure, .. References, .. Expressions]);
