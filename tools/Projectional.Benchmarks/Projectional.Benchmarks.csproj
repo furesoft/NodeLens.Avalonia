@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- A tool, not a product: nothing depends on it, so it is not a package. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
+  </ItemGroup>
+
+</Project>
