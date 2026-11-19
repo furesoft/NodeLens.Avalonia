@@ -1846,10 +1846,10 @@ public sealed partial class MainWindow : Window, IDisposable
         Patterns = [$"*{DocumentFile.Extension}"],
     };
 
-    /// <summary>The filter for the reference formats, one pattern per language the app can import.</summary>
-    private static FilePickerFileType TextFileType() => new("JSON or XML")
+    /// <summary>The filter for the reference formats, one pattern per extension the app can import.</summary>
+    private static FilePickerFileType TextFileType() => new("JSON, XML, TOML, HOCON or YAML")
     {
-        Patterns = [.. ReferenceLanguages.All.Select(language => $"*{language.Extension}")],
+        Patterns = [.. ReferenceLanguages.All.SelectMany(language => language.Extensions.Select(extension => $"*{extension}"))],
     };
 
     private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();

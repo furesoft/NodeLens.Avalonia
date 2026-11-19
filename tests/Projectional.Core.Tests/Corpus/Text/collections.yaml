@@ -1,0 +1,7 @@
+server:
+  host: localhost
+  ports:
+    - 8080
+    - 9090
+  tags: [ alpha, beta ]
+limits: { cpu: 2, memory: 512 }

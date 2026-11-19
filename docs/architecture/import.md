@@ -6,9 +6,9 @@ enters a model, and it does so **once**, from a string the host supplies, after 
 string is thrown away. Nothing writes text back into the model, so the invariant is intact:
 there is still no text buffer and no parser in the editing path.
 
-Status: slices **I0 (the contract), I1 (JSON), I2 (XML), I3 (TOML), I4 (HOCON), I5 (appending to a non-empty model) and I7 (File ▸
-Import)** are delivered, with the intentions and checks of the shipped languages in the same project as them; HOCON,
-the raw-text tier and the sample corpus are not. Generation is the opposite direction and is
+Status: slices **I0 (the contract), I1 (JSON), I2 (XML), I3 (TOML), I4 (HOCON), I4b (YAML), I5 (appending to a non-empty
+model), I7 (File ▸ Import) and I8 (the corpus)** are delivered, with the intentions and checks of the shipped languages in
+the same project as them; the declared importer (I9-I11) is not. Generation is the opposite direction and is
 planned in [semantics.md](semantics.md#generation).
 
 ## Two directions, and only one of them is a parser
@@ -131,7 +131,7 @@ imported document, which is the only behaviour a user can predict.
 
 ## The reference languages
 
-Four languages ship as packages, for the same reason `Projectional.Expressions` exists: they
+Five languages ship as packages, for the same reason `Projectional.Expressions` exists: they
 are the executable proof that the layer composes, and they give the editor something to open
 that was not authored in it.
 
@@ -144,17 +144,19 @@ model, let the target's own text generator print it), and there is deliberately 
 see [Converting a model into one of these languages](#converting-a-model-into-one-of-these-languages)
 for why a template-level escaping part is the wrong answer.
 
-| Language | Package | What it adds beside the other three |
+| Language | Package | What it adds beside the others |
 | --- | --- | --- |
 | JSON | `Projectional.Json` | the smallest complete format; objects, arrays, four value kinds |
 | XML | `Projectional.Xml` | attributes, mixed content, whitespace as data, comments |
 | TOML | `Projectional.Toml` | **tables and arrays of tables**, four kinds of string, dates and times as types, comments, a document whose order *is* its structure |
 | HOCON | `Projectional.Hocon` | a JSON superset whose braces and commas are optional, unquoted keys and values, value concatenation, and constructs that are *evaluated* rather than read (`${...}`, `include`, `+=`) |
+| YAML | `Projectional.Yaml` | a format whose **layout is its syntax**: block *and* flow collections as separate concepts, three scalar spellings plus block scalars, anchors, aliases, tags and comments |
 
-Two of them parse with the platform library, not with a hand-written parser. A hand-written JSON or
+Three of them parse with the platform library, not with a hand-written parser. A hand-written JSON or
 XML parser is a liability with no upside here; the point of the exercise is the mapping, not
-the grammar. .NET has no TOML or HOCON reader in the box, so those two take a package dependency -
-in the reference language's own package, never in the toolkit (see open question 98).
+the grammar. .NET has no TOML, HOCON or YAML reader in the box, so those take a package dependency
+(TOML, YAML) or a hand-written lexer (HOCON) - in the reference language's own package, never in the
+toolkit (see open question 98).
 
 **What a reference language owns.** Every spelling its format has: how a string is quoted and escaped, how a key is
 written, how a comment is written, how a date and a number are spelled. That is not a property of a *template* and not
@@ -288,7 +290,7 @@ Decisions worth stating, because each one is what stops the editor from rewritin
 - **A dotted key stays the text it was written as**, exactly as an XML namespace prefix does:
   `a.b = 1` keeps `a.b` as the key, and is *not* resolved into nesting. Resolving it would rewrite
   the file on the first save.
-- **A duplicate key is refused, not kept.** This is the one place the four languages disagree on
+- **A duplicate key is refused, not kept.** This is the one place the reference languages disagree on
   purpose: JSON's duplicate member is legal-but-discouraged and the model keeps both (generation
   must reproduce the file), TOML makes it a syntax error, so the reader rejects the document with
   `toml.duplicate-key` and nothing is imported. A language does not get to be more permissive than
@@ -309,7 +311,7 @@ structure *is* its layout.
 ### `Projectional.Hocon`
 
 HOCON is JSON's brace-light cousin and the config format of the .NET actor and streaming world.
-It is the hardest of the four to be honest about, because a HOCON file is *evaluated*: keys merge,
+It is the hardest of the five to be honest about, because a HOCON file is *evaluated*: keys merge,
 substitutions resolve, includes pull in other files.
 
 | Concept | Slots | Notes |
@@ -361,21 +363,95 @@ user typed rather than as a resolved tree. The drawing of an object that starts 
 because the layout indents a vertical notation from the cell it begins at; the file a template writes
 is indented from the line start, and that is the template's business.
 
-All four packages reference `Projectional.Language` only, exactly like `Expressions`. JSON and XML use the platform's
-reader; **TOML takes `Tomlyn` as a package dependency of its own language**, never of the toolkit (open question 98).
-**HOCON's lexer is hand-written**, and that is the same rule rather than an exception: the package may be taken only if
-it answers with a source position, and no HOCON reader for .NET does - a reader that answers a dictionary cannot make a
-tier-1 diagnostic point at the character that broke the file.
+
+
+### `Projectional.Yaml`
+
+YAML is the format whose **layout is part of its syntax**, and that is what makes it the hardest of the five to mirror
+honestly: indentation decides where a mapping ends, so the reader has to know block structure rather than see it emerge
+from a tree. `YamlDotNet`'s `Scanner` answers that - it resolves indentation into block tokens - and this importer owns
+the mapping only, taken with `skipComments: false` so a note is visible at all.
+
+| Concept | Slots | Notes |
+| --- | --- | --- |
+| `Yaml.Document` | `entries`: many `Yaml.Entry` | the file: its notes, its markers and its node, in order |
+| `Yaml.Node` | - | abstract: anything that is a YAML node |
+| `Yaml.Entry` | - | abstract: one line of the document or one item of a block sequence |
+| `Yaml.Member` | - | abstract: one line of a block mapping |
+| `Yaml.FlowValue` | - | abstract: what may stand inside a flow collection |
+| `Yaml.Scalar` | `text`: string | the **whole spelling**: quotes, escapes, an anchor, a tag, a block body |
+| `Yaml.Alias` | `name`: string | `*base`, kept as text and never resolved |
+| `Yaml.Comment` | `text`: string | what the note says, without the hash |
+| `Yaml.Raw` | `text`: string | a directive, a marker, a complex key - or an anchored collection |
+| `Yaml.Mapping` | `members`: many `Yaml.Member` | one `key: value` per line |
+| `Yaml.Sequence` | `items`: many `Yaml.Entry` | one `- value` per line |
+| `Yaml.SequenceItem` | `value`: single `Yaml.Node` | the dash and the node it introduces |
+| `Yaml.Pair` | `key`: single `Yaml.Node`, `value`: single `Yaml.Node`, `layout`: enum | one line of a block mapping |
+| `Yaml.FlowMapping` | `members`: many `Yaml.FlowPair` | `{ a: 1 }` |
+| `Yaml.FlowSequence` | `items`: many `Yaml.FlowValue` | `[ 1, 2 ]` |
+| `Yaml.FlowPair` | `key`, `value`: single `Yaml.FlowValue` | one member between braces |
+
+Decisions worth stating, because each one is what stops the editor from rewriting a user's file:
+
+- **Block and flow are separate concepts, not one concept with a style.** Notation is chosen per *concept* and a
+  variant is view state, so a `style` slot could not have given one node two drawings. Splitting them costs a concept
+  each and buys the guarantee: `Yaml.FlowMapping.members` is typed over `Yaml.FlowPair` and its keys and values over
+  `Yaml.FlowValue`, which no block collection conforms to - so a block collection inside a flow collection, which YAML
+  forbids, is **unrepresentable** rather than merely discouraged.
+- **A scalar keeps the whole spelling.** One step further than JSON, XML, TOML and HOCON take it, because YAML has more
+  ways to write one value than any of them: `plain`, `'single'`, `"double"`, `|` and `>`, each with anchors and tags in
+  front. The slot holds everything, `Notation`/`Generator` emit it verbatim, and no escaping part exists. A cell whose
+  text stops being one scalar is `YAML002`, whose repair quotes it as a double-quoted scalar.
+- **A pair remembers where its value stands.** A block collection cannot be written on its key's line, and a template
+  cannot ask what kind of node its child is, so `Yaml.Pair.layout` records `inline` or `nested` - the file's own
+  placement, the shape TOML uses for "a table remembers whether it is a header or inline". Replacing a scalar value with
+  a sequence is what breaks it, and `YAML001` offers the placement the child now needs.
+- **Anchored and tagged collections are raw text.** A template cannot put a prefix in front of a child whose spelling it
+  does not know, so `&base` (or `!!map`) in front of a block or flow collection keeps the **whole node** as
+  `Yaml.Raw` with `yaml.kept-as-raw` - tier 2 of the design: the file survives, and the construct is not pretended to
+  be modelled. In front of a *scalar* the prefix is one run of text with it, so it stays inside the scalar's spelling
+  and nothing is reported.
+- **A note is a node, and where it stands is a fact of the file.** A note above a mapping is an entry of the document, a
+  note between two pairs is a member of the mapping, and a note that stands between a key's colon and the collection it
+  introduces is **held until that collection starts**, so it stays inside the nested list instead of moving out to the
+  list that asked for the value. A note inside a *flow* collection has nowhere to live, so it is hoisted to the
+  surrounding block list with `yaml.comment-moved`; a note written beside a value is kept, moved to its own line, and
+  reported with the same code - the text is never dropped (invariant 8), only its line moves.
+- **The line break that ends a line belongs to the file's line structure, not to a spelling.** A block scalar and a kept
+  raw span both run to the end of their line, so the importer strips exactly that one break: the model's separators write
+  it back, and a spelling that kept it would print the next member one line too low.
+- **A complex key is one raw line.** `? [a, b]` has no implicit spelling in a block mapping and no template could express
+  one, so the key and its value are stepped over and kept verbatim - built by skipping, never by creating a pair and
+  deleting it again, because that would be a second undo step and a second way to build a pair.
+- **Line breaks are normalized to LF before the tokens are read**, because a block scalar's body is a slice of the text:
+  a carriage return inside it would travel into the model and out into a file the corpus no longer matches.
+- **YAML's shape question is broader than HOCON's, so it is asked after it.** Both formats answer yes to `a: value`, and
+  YAML also answers yes to `a: { b = 1 }`, which HOCON writes with equals signs inside an object. The file name breaks
+  the tie for a named file; `ReferenceLanguages.All` puts YAML before HOCON for the unnamed fallback, because YAML's
+  claim is the broader one and importing a colon document as HOCON can refuse a file YAML would have read.
+
+Notation: the document and both block collections as stacks of one line per entry, a sequence item as `-` beside its
+value, a pair as `key:` beside its value (inline, because the drawing is not the file), and a flow collection in braces
+or brackets with commas between its members. A block collection drawn *inside* a pair's line hangs from the cell it
+begins at - `server: port: 8080` then its later lines indented from that column - which is the documented consequence of
+asking layout for a vertical notation inside an inline child, the same one HOCON's object shows.
+All five packages reference `Projectional.Language` only, exactly like `Expressions`. JSON and XML use the platform's
+reader; **TOML takes `Tomlyn` and YAML takes `YamlDotNet`**, each as a package dependency of its own language and never
+of the toolkit (open question 98). **HOCON's lexer is hand-written**, and that is the same rule rather than an exception:
+the package may be taken only if it answers with a source position, and no HOCON reader for .NET does - a reader that
+answers a dictionary cannot make a tier-1 diagnostic point at the character that broke the file. YAML is the case that
+shows why: its scanner is worth having because it resolves indentation, which no hand-written reader in this repository
+would get right first time.
 
 ## Converting a model into one of these languages
 
-The reason the four formats are **languages** rather than a printing mode is this: converting a
-model into JSON, TOML or HOCON produces a **model of that language**, and that language's own text
+The reason the five formats are **languages** rather than a printing mode is this: converting a
+model into JSON, XML, TOML, HOCON or YAML produces a **model of that language**, and that language's own text
 generator prints it. Nothing else knows how to spell the format, so the spelling exists once.
 
 That answers the question a conversion always raises - who escapes the value? - with "the language
 that owns the format, in the same place it always does". A user's language maps its concepts into
-`Json.Object`, `Toml.Table` or `Hocon.Object` nodes, exactly as
+`Json.Object`, `Toml.Table`, `Hocon.Object` or `Yaml.Mapping` nodes, exactly as
 [model-generation.md](model-generation.md) describes, and never writes a quote, a backslash, a
 table header or a comment marker:
 
@@ -389,7 +465,7 @@ Three consequences, and the third is the one that keeps the framework honest:
 - **The target is validated by the target's own language.** A value that the target cannot hold is
   a mapping defect the target's checks report, at a node, in the editor - not a malformed file that
   someone discovers when a tool refuses to read it.
-- **The four formats stay symmetric.** Import and generation are two directions of *one* language,
+- **The five formats stay symmetric.** Import and generation are two directions of *one* language,
   so a round trip is a property of that language and a corpus can pin it. A printing mode would
   need its own corpus and would drift from the importer's idea of the same syntax.
 - **There is no per-value "as JSON" part in the template vocabulary, and that is deliberate.** Such
@@ -409,10 +485,11 @@ already written: `mapping.mps`, the build and link phases and the reverse map in
 
 A reference language is a language like any other, so it brings behaviour of its own and not only a notation:
 the intentions and checks of the two shipped formats live in `Projectional.Json/Intentions/`,
-`Projectional.Json/Checks/`, `Projectional.Xml/Intentions/` and `Projectional.Xml/Checks/` - folders in the
+`Projectional.Json/Checks/`, `Projectional.Xml/Intentions/`, `Projectional.Xml/Checks/`, `Projectional.Toml/Checks/`, `Projectional.Hocon/Checks/` and
+`Projectional.Yaml/Checks/` - folders in the
 language's own project ([ADR 0021](../adr/0021-one-project-per-language.md)), with the namespaces they had when
 they were separate. The framework's own catalogue (`Projectional.Checks`) stays a package of its own, because it is
-shared by every language and belongs to none. TOML and HOCON get the same two folders when they land, and never a
+shared by every language and belongs to none. All five reference languages have those two folders, and there is never a
 shared "reference languages" package - that would have to ask which language it is looking at.
 
 The split against the standard intentions is the usual one: the framework's catalogue derives what the *place* implies
@@ -425,9 +502,10 @@ For a notation of a real file format that means the operations of that format:
 | XML | add an attribute, add a child element - the two slots the notation cannot draw empty | text or an attribute value no longer well-formed (escape it), a comment containing `--` (separate the dashes) |
 | TOML | add a pair, a table or an array of tables to the list the caret is in | a duplicate key (rename to the first free suffix), a number cell that no longer holds a number (restore the declared default), a date or time that no longer parses (restore the default and its kind), a string no longer spelled as its kind allows (escape it as a basic string) |
 | HOCON | add a property, add an item to an array - both into the nearest list the caret is inside | an unquoted value that no longer holds a legal run (quote it), a number cell that no longer holds a number (restore the declared default) |
+| YAML | add a member to a block mapping, add an item to a block sequence - both into the nearest *block* list, never a flow one | a block collection on its key's line (write the value on the next line), a scalar whose spelling stopped being one (quote it) |
 
-All four are implemented, so every row is a report rather than a requirement. Each of
-the four is a language, so each ships the packages a language has. A format whose rules were only enforced by a shared
+All five are implemented, so every row is a report rather than a requirement. Each of
+the five is a language, so each ships the packages a language has. A format whose rules were only enforced by a shared
 catalogue would be a second opinion about what that format allows - and the rule itself would have to ask which
 language it is looking at, which is exactly what this design refuses to build.
 
@@ -651,12 +729,23 @@ documents.
   concatenation and the unwrapped single value, an include that is never followed, both markers, a stray
   brace's place, one undo step), `HoconTextGeneratorsTests`, `HoconNotationTests`, `HoconChecksTests`,
   `HoconIntentionsTests` and `HoconCorpusTests` (the byte-exact round trip).
-- **I5 - appending to a non-empty model.** *Delivered.* `JsonImporterTests.AnImportAppendsToANonEmptyModel`:
+- **I4b - YAML.** *Delivered.* `Projectional.Yaml`: sixteen concepts, one document root holding the file's notes, markers
+  and node in order, block *and* flow collections as separate concepts with the flow slots typed over `Yaml.FlowValue`
+  (so a block collection inside a flow collection cannot be built), a scalar whose slot is the file's whole spelling, a
+  pair that records whether its value stands on its key's line, an anchored or tagged collection kept as `Yaml.Raw`, a
+  complex key kept as one raw line, and a note that is held until the list it belongs to starts. The reader is
+  `YamlDotNet`'s scanner with `skipComments: false`, taken as a package dependency of the language. Tests:
+  `YamlImporterTests` (the one root, both collection kinds, the scalar spellings including block scalars, anchors and tags
+  inside a spelling, an alias, `inline` versus `nested`, a held note, a hoisted note and a note beside a value with their
+  warnings, a marker and a directive, an anchored collection and a complex key as raw text with line and column of a
+  refusal, CRLF normalization, one undo step), `YamlTextGeneratorsTests`, `YamlNotationTests`, `YamlChecksTests`,
+  `YamlIntentionsTests` and `YamlCorpusTests` (the byte-exact round trip).- **I5 - appending to a non-empty model.** *Delivered.* `JsonImporterTests.AnImportAppendsToANonEmptyModel`:
   the existing root is untouched and stays first, the imported one is last, and one `Ctrl+Z` removes only
   the import.
 - **I6 - the raw-text tier.** A construct the language does not map survives as `Xml.Raw` /
   a JSON-preserving node and regenerates to the same text.
-- **I7 - the shell.** *Delivered.* **File > Import...** in the workbench: the picker offers `.json` and `.xml`, the
+- **I7 - the shell.** *Delivered.* **File > Import...** in the workbench: the picker offers every extension of the five formats (`.yaml` and `.yml`
+  alike), the
   file's *content* decides which language claims it (the extension only when the text starts like neither, since the
   two shapes cannot both match), the text is imported into a fresh model named after the file, and the tab opens with
   that language's notation, generators, intentions and checks. A refused file opens no tab at all and reports the
@@ -669,9 +758,10 @@ documents.
 - **I8 - the corpus.** The reference languages' corpus grows with the formats:
   `tests/Projectional.Core.Tests/Corpus/Text/` holds one file per format shape, and every file is what the generator
   prints - a byte that moves is a language bug or a deliberate change with a note in the commit, never a number edited
-  until the test went green. Covered so far: JSON (nested objects, an array of values, a number in four spellings) and
-  XML (attributes in order, mixed content, CDATA, a processing instruction, a namespace prefix); TOML and HOCON join it
-  with their languages.
+  until the test went green. Covered: JSON (nested objects, an array of values, a number in four spellings),
+  XML (attributes in order, mixed content, CDATA, a processing instruction, a namespace prefix), TOML (root pairs,
+  tables, arrays of tables, dotted keys, the value kinds), HOCON (properties, objects, notes) and YAML (a document with a
+  marker and a note, nested collections and flow collections, the scalar spellings, notes at two levels).
 - **I9 - the declared importer, as a language.** `Projectional.ImportRules`: the two-layer vocabulary of
   [The shape of the declaration](#the-shape-of-the-declaration) - six token concepts (`Literal`, `Word`, `Number`,
   `Quoted`, `Fixed`, `Skipped`) and ten rule words (`Node`, `Sequence`, `Alternative`, `Repeat`, `Capture`, `Nest`,

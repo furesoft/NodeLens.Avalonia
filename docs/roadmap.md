@@ -122,7 +122,7 @@ out of its own languages, so the bootstrap corpus gets the strictest tests.*
 | Migrations tooling | migration language, golden-file corpus |
 | Model-aware diff/merge | 3-way merge keyed on node IDs |
 | Model-to-model generation | a generator whose output is a model of a target language, which that language's own text generator then prints: the rule vocabulary, the build and link phases, the reverse map that keeps "go to source" working through both stages ([model-generation.md](architecture/model-generation.md)) |
-| Text import | **JSON, XML, TOML and HOCON are delivered** as the four formats (`Projectional.Json`, `Projectional.Xml`, `Projectional.Toml`, `Projectional.Hocon`: the concept models, their notations, importers and generators, [import.md](architecture/import.md)), and **File ▸ Import…** opens a file of any of them as a document of that language - with its own intentions, checks and generators. What is left of import is the declared importer (a language written as a model reading its own files), so converting a model into one of them stays model-to-model generation into that language's model and the format's spelling lives in exactly one place |
+| Text import | **JSON, XML, TOML, HOCON and YAML are delivered** as the five formats (`Projectional.Json`, `Projectional.Xml`, `Projectional.Toml`, `Projectional.Hocon`, `Projectional.Yaml`: the concept models, their notations, importers and generators, [import.md](architecture/import.md)), and **File ▸ Import…** opens a file of any of them as a document of that language - with its own intentions, checks and generators. What is left of import is the declared importer (a language written as a model reading its own files), so converting a model into one of them stays model-to-model generation into that language's model and the format's spelling lives in exactly one place |
 | Projected C# base language | expression and statement subset, behaviour methods, generator ([csharp.md](architecture/csharp.md)) |
 | Embedded shell | the shell as a control a host composes: locked to one language, its storage and dialogs supplied by the host, its capabilities declared once and enforced by the command registry ([embedded-shell.md](architecture/embedded-shell.md)) |
 
@@ -135,10 +135,11 @@ branches editing different parts of one model merge without hand-editing XML.
 Import is the only path by which text becomes a model, and it runs once: the host passes a
 string, the framework builds nodes inside one transaction, the string is discarded. It is
 therefore not the text buffer [ADR 0002](adr/0002-model-as-source-of-truth.md) forbids - nothing
-writes text back. Four reference languages ship with it - JSON and XML, which everyone already
-has, and TOML and HOCON, which is what a .NET project's settings and a config-heavy host actually
-use - because a language that imports and generates a format everyone already has is the cheapest
-possible proof that the mapping layer is sound. Each of the four is a **language**, not a printing
+writes text back. Five reference languages ship with it - JSON and XML, which everyone already
+has, TOML and HOCON, which is what a .NET project's settings and a config-heavy host actually
+use, and YAML, whose layout is part of its syntax - because a language that imports and
+generates a format everyone already has is the cheapest possible proof that the mapping layer is
+sound. Each of the five is a **language**, not a printing
 mode: that is what makes converting a user's model into one of them a matter of producing a model
 of *that* language, whose own generator spells quoting, escaping, table nesting and comment syntax.
 Details, including why a construct the language does not model is kept as raw text rather than

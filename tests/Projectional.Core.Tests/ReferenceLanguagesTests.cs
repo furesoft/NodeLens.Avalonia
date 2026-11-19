@@ -67,9 +67,11 @@ public sealed class ReferenceLanguagesTests
     }
 
     [Fact]
-    public void TheShippedFormatsAreJsonXmlTomlAndHocon()
+    public void TheShippedFormatsAreJsonXmlTomlYamlAndHocon()
     {
-        Assert.Equal(["JSON", "XML", "TOML", "HOCON"], ReferenceLanguages.All.Select(language => language.Name));
+        Assert.Equal(
+            ["JSON", "XML", "TOML", "YAML", "HOCON"],
+            ReferenceLanguages.All.Select(language => language.Name));
     }
 
     [Fact]
@@ -95,5 +97,20 @@ public sealed class ReferenceLanguagesTests
 
         // A colon before any equals sign is YAML's shape as much as HOCON's, so the name settles it.
         Assert.Same(ReferenceLanguages.Hocon, ReferenceLanguages.Detect("application.hocon", "a: { b = 1 }"));
+    }
+
+    [Fact]
+    public void AYamlFileIsClaimedByAPairADashOrAMarker()
+    {
+        Assert.Same(ReferenceLanguages.Yaml, ReferenceLanguages.Detect("pipeline.yaml", "name: release"));
+        Assert.Same(ReferenceLanguages.Yaml, ReferenceLanguages.Detect("pipeline.yml", "- one"));
+        Assert.Same(ReferenceLanguages.Yaml, ReferenceLanguages.Detect("pipeline.yaml", "---\nname: release"));
+
+        // A pair with a colon is YAML's shape and HOCON's alike, so the name decides between them - and `.yml` is the
+        // second extension a YAML file may have.
+        Assert.Same(ReferenceLanguages.Yaml, ReferenceLanguages.Detect("pipeline.yml", "a: { b = 1 }"));
+
+        Assert.False(ReferenceLanguages.Yaml.Importer.CanImport("port = 8080"));
+        Assert.False(ReferenceLanguages.Yaml.Importer.CanImport("<a port=\"1\"/>"));
     }
 }

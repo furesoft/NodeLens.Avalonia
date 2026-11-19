@@ -1,0 +1,10 @@
+quote: "he said \"hi\""
+single: 'it''s here'
+literal: |
+  one
+  two
+folded: >-
+  one
+  two
+plain: hello world
+number: 42

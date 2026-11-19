@@ -10,10 +10,13 @@ using Projectional.Toml.Intentions;
 using Projectional.Xml;
 using Projectional.Xml.Checks;
 using Projectional.Xml.Intentions;
+using Projectional.Yaml;
+using Projectional.Yaml.Checks;
+using Projectional.Yaml.Intentions;
 
 namespace Projectional.Workbench;
 
-/// <summary>The reference languages the app ships: a JSON, XML, TOML or HOCON file opens as a document of its own format.</summary>
+/// <summary>The reference languages the app ships: a JSON, XML, TOML, HOCON or YAML file opens as a document of its own format.</summary>
 /// <remarks>
 /// <para>
 /// They are the languages the framework uses to prove that a model can mirror a file, and the app is where that stops
@@ -33,7 +36,7 @@ internal static class ReferenceLanguages
     internal static ReferenceLanguage Json { get; } = new(
         "JSON",
         "json",
-        ".json",
+        [".json"],
         JsonLanguage.Importer,
         JsonLanguage.Concepts,
         JsonLanguage.Notations,
@@ -45,7 +48,7 @@ internal static class ReferenceLanguages
     internal static ReferenceLanguage Xml { get; } = new(
         "XML",
         "xml",
-        ".xml",
+        [".xml"],
         XmlLanguage.Importer,
         XmlLanguage.Concepts,
         XmlLanguage.Notations,
@@ -57,7 +60,7 @@ internal static class ReferenceLanguages
     internal static ReferenceLanguage Toml { get; } = new(
         "TOML",
         "toml",
-        ".toml",
+        [".toml"],
         TomlLanguage.Importer,
         TomlLanguage.Concepts,
         TomlLanguage.Notations,
@@ -69,7 +72,7 @@ internal static class ReferenceLanguages
     internal static ReferenceLanguage Hocon { get; } = new(
         "HOCON",
         "hocon",
-        ".hocon",
+        [".hocon"],
         HoconLanguage.Importer,
         HoconLanguage.Concepts,
         HoconLanguage.Notations,
@@ -77,8 +80,25 @@ internal static class ReferenceLanguages
         HoconIntentions.Provider,
         HoconChecks.All);
 
+    /// <summary>YAML: the format whose layout is part of its syntax.</summary>
+    internal static ReferenceLanguage Yaml { get; } = new(
+        "YAML",
+        "yaml",
+        [".yaml", ".yml"],
+        YamlLanguage.Importer,
+        YamlLanguage.Concepts,
+        YamlLanguage.Notations,
+        YamlTextGenerators.All,
+        YamlIntentions.Provider,
+        YamlChecks.All);
+
     /// <summary>Every format the app can import, in the order a file dialog should offer them.</summary>
-    internal static IReadOnlyList<ReferenceLanguage> All { get; } = [Json, Xml, Toml, Hocon];
+    /// <remarks>
+    /// The order is also the fallback when several formats claim the same text and the file has no name to break the tie:
+    /// YAML stands before HOCON because a colon pair is the broader shape - YAML claims every one of them, HOCON only the
+    /// ones its own separator spelling allows - so the more specific answer has to be asked second.
+    /// </remarks>
+    internal static IReadOnlyList<ReferenceLanguage> All { get; } = [Json, Xml, Toml, Yaml, Hocon];
 
     /// <summary>Which language <paramref name="text"/> is, or <see langword="null"/> when none claims it.</summary>
     /// <param name="fileName">The name the file had, or <see langword="null"/> when it has none.</param>
@@ -98,7 +118,7 @@ internal static class ReferenceLanguages
         var extension = fileName is null ? null : Path.GetExtension(fileName);
         var byExtension = extension is null
             ? null
-            : All.FirstOrDefault(language => string.Equals(extension, language.Extension, StringComparison.OrdinalIgnoreCase));
+            : All.FirstOrDefault(language => language.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase));
 
         // One format claiming the text is the answer; the extension breaks a tie between two that both claim it, and is
         // the only witness when the text starts like none of them.
