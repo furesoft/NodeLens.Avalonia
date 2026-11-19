@@ -21,6 +21,9 @@ public static class IntentionConceptKeys
     /// <summary>One value the wrapper is born with.</summary>
     public const string Preset = "Intent.Preset";
 
+    /// <summary>Inserts a sibling of the node the caret is on.</summary>
+    public const string InsertSibling = "Intent.InsertSibling";
+
     /// <summary>Writes a property value on the node the caret is on.</summary>
     public const string Set = "Intent.Set";
 }
