@@ -227,6 +227,40 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
+    public void ANameRuleSurvivesTheExport()
+    {
+        // The rule is written as the singleton it is, so the compiled declaration still asks for identifiers -
+        // and the generated source compiles, which is what proves the member name it emits exists.
+        IReadOnlyList<ConceptDeclaration> declarations =
+        [
+            new ConceptDeclaration(
+                "Rules.Rule",
+                [new PropertySlot("name", PropertyType.String)],
+                nameSlot: "name",
+                nameRule: NameRule.Identifier),
+        ];
+
+        var result = LanguageExporter.Export(
+            "Rules",
+            declarations,
+            [],
+            "Sample.Language",
+            output: ExportOutput.Assembly);
+
+        Assert.Contains("nameRule: NameRule.Identifier", result.Files[0].Text, StringComparison.Ordinal);
+
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+        var type = assembly.GetType("Sample.Language.RulesLanguage", throwOnError: true);
+        var exported = (IReadOnlyList<ConceptDeclaration>)type!
+            .GetProperty("ConceptDeclarations", BindingFlags.Public | BindingFlags.Static)!
+            .GetValue(null)!;
+
+        Assert.Equal(
+            ParityHarness.Dump(ConceptRegistry.Create(declarations)),
+            ParityHarness.Dump(ConceptRegistry.Create(exported)));
+    }
+
+    [Fact]
     public void TheCompiledAssemblyNeedsNothingTheToolkitDoesNotBring()
     {
         // ADR 0019: a language package references the toolkit and nothing else. An exported language that needed
