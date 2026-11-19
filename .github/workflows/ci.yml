@@ -3,6 +3,8 @@ name: ci
 on:
   push:
     branches: [main]
+    # A tag is what publishes: `v1.2.3` becomes three NuGet packages' worth of version 1.2.3 (ADR 0022).
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -25,6 +27,10 @@ jobs:
         os: [windows-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # GitVersion reads the commits and the tags; a shallow clone has neither, so every job that
+          # builds asks for the history.
+          fetch-depth: 0
 
       - name: Set up the SDK the repository pins
         uses: actions/setup-dotnet@v4
@@ -42,8 +48,11 @@ jobs:
 
   byte-stability:
     name: stored form is byte-stable
-    runs-on: ubuntu-latest    steps:
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up the SDK the repository pins
         uses: actions/setup-dotnet@v4
@@ -55,6 +64,88 @@ jobs:
       # the contract that broke instead of the whole suite.
       - name: Run the corpus
         run: dotnet test tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj --filter-class "*CorpusTests"
+
+  pack:
+    name: pack the packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up the SDK the repository pins
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Projectional.slnx
+
+      # `pack` on the solution packs every project that is packable and skips the rest (tests, tools, the
+      # host sample, the template), so this one command answers "is the repository publishable".
+      - name: Pack
+        run: dotnet pack Projectional.slnx --configuration Release --no-restore --output artifacts
+
+      - name: Assert every product produced a package
+        shell: bash
+        run: |
+          count=$(find artifacts -maxdepth 1 -name '*.nupkg' | wc -l)
+          echo "artifacts/ holds $count package(s):"
+          find artifacts -maxdepth 1 -name '*.nupkg' -printf '  %f\n' | sort
+          # 27 projects are packable today; a drop means one silently stopped being packed.
+          test "$count" -eq 27
+
+      - name: Upload the packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error
+
+  publish-nuget:
+    name: publish to nuget.org
+    # Only a tag publishes, so a merge or a pull request can never ship.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: pack
+    runs-on: ubuntu-latest
+    environment: nuget
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up the SDK the repository pins
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Download the packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts
+
+      # The version comes from the tag through GitVersion, so a published package is reproducible from the
+      # commit it names. `--skip-duplicate` makes a re-run of a partly failed publish safe: what is already
+      # there is a success, not an error.
+      - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::NUGET_API_KEY is not set; see docs/architecture/packaging.md"
+            exit 1
+          fi
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          dotnet nuget push "artifacts/*.snupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
   single-file:
     name: self-contained single file (${{ matrix.rid }})
@@ -72,6 +163,8 @@ jobs:
             exe: Projectional.Workbench
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up the SDK the repository pins
         uses: actions/setup-dotnet@v4
