@@ -117,6 +117,17 @@ public sealed class TemplateImporterTests
         Assert.Contains("no text at all", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AskingForAGeneratorTheLanguageDoesNotDeclareSaysSo()
+    {
+        var language = Open();
+
+        Assert.False(language.TryCreateImporter("Nope", out var importer, out var error));
+
+        Assert.Null(importer);
+        Assert.Contains("no generator 'Nope'", error, StringComparison.Ordinal);
+    }
+
     private static TemplateImporter Build(TextTemplate template)
     {
         var concepts = ConceptRegistry.Create(
