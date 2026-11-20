@@ -62,6 +62,22 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void TheTestingPackageReachesDownwardOnly()
+    {
+        // The runner reads a language project's tests folder and the persistence layer, so it sits in the
+        // behaviour band beside Checks: it may name the layers below it and never the control or the app.
+        var referenced = ReadAssemblyReferences("Projectional.Testing.dll");
+
+        Assert.NotEmpty(referenced);
+
+        var violations = referenced
+            .Where(name => name is "Projectional.Avalonia" or "Projectional.Workbench")
+            .ToArray();
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
     public void TheLanguagePackagesNeverReachUpward()
     {
         // A shipped language carries its own checks and intentions (ADR 0021), so it names the behaviour band
