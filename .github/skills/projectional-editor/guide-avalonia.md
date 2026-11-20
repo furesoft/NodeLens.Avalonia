@@ -277,6 +277,14 @@ A finding whose node is gone still gets a row and sorts last; hiding it would cl
 Add the next panel the same way: derive the rows in a non-Avalonia type, assert them, and leave the window as
 wiring.
 
+**A row is a snapshot, so choosing one goes through `PlaceResolver`.** The list is derived at one moment and outlives
+it: the user can delete the node a row names, or switch to a variant that hides the slot it points at. Selecting
+either is a no-op that looks like the click being ignored, so `PlaceResolver.Resolve(session, place)` answers in three
+parts - a node that is gone has no place (the panel says so instead of selecting), a place the tree draws is the
+place, and a place that is not drawn falls back to the node it belongs to. Both the problems panel and the usages
+panel ask it, because the question is about an address rather than about a kind of row; before it existed the usages
+panel had the fallback inline and the problems panel had neither half.
+
 **One finding, one row.** The shell adds its own pair of checks (`DefaultNames`, `DuplicateRuleNames`) only to a
 document whose language states nothing: `MainWindow.PublishFindings` prefers the language's `Checks`, then its
 `Constraints`, and the shell's pair only when both are absent. The middle case is the one a picture caught - a

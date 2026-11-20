@@ -817,7 +817,17 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        document.Session.Select(Selection.At(entry.Place));
+        // A row is a snapshot, so it can name a node the user has since deleted: say so rather than selecting an
+        // address that draws nothing, which looks like the click being ignored.
+        if (PlaceResolver.Resolve(document.Session, entry.Place) is not { } place)
+        {
+            _error = "That problem's node is no longer in the document.";
+            UpdateStatus();
+
+            return;
+        }
+
+        document.Session.Select(Selection.At(place));
         editor.ScrollToCaret();
         editor.Focus();
     }
@@ -909,7 +919,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>Puts the caret on a chosen usage, opening the document that holds it first.</summary>
     /// <remarks>
     /// A reference the notation hides has no cell, so the row falls back to the owner's node: the nearest place a
-    /// reader can be sent to, rather than a press that does nothing.
+    /// reader can be sent to, rather than a press that does nothing. A row whose node has been deleted says so, because
+    /// the list is a snapshot and the model is not - both halves are <see cref="PlaceResolver"/>'s now, since the
+    /// problems panel asks the same question of the same kind of address.
     /// </remarks>
     private void OnUsageChosen(object? sender, SelectionChangedEventArgs e)
     {
@@ -929,17 +941,13 @@ public sealed partial class MainWindow : Window, IDisposable
         _error = null;
         Select(document);
 
-        if (document.Model.Project.FindNode(entry.Place.Owner) is not { } owner)
+        if (PlaceResolver.Resolve(document.Session, entry.Place) is not { } place)
         {
             _error = "That usage's owner is no longer in the document.";
             UpdateStatus();
 
             return;
         }
-
-        var place = document.Session.Tree.Find(entry.Place) is not null
-            ? entry.Place
-            : new CellAddress(owner.Id);
 
         document.Session.Select(Selection.At(place));
 
