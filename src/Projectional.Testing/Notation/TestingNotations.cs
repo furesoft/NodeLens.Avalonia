@@ -88,6 +88,11 @@ public static class TestingNotations
             ed.Space,
             ed.Property(TestingLanguage.RoleSlot, emptyText: Anywhere)));
 
+        notations.Add(TestingConceptKeys.Imports, ed => ed.Line(
+            ed.Keyword("imports"),
+            ed.Space,
+            ed.Property(TestingLanguage.GeneratorSlot, emptyText: NoGenerator)));
+
         notations.Add(TestingConceptKeys.Generates, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("generates"),

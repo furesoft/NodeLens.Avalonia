@@ -39,6 +39,9 @@ public static class TestingConceptKeys
     /// <summary>The document generates as the text the test spells out, one line per entry.</summary>
     public const string Generates = "Testing.Generates";
 
+    /// <summary>The text the document generates reads back to a document that generates the same text.</summary>
+    public const string Imports = "Testing.Imports";
+
     /// <summary>The document evaluates to the answer the test spells out, or to the failure it names.</summary>
     public const string Evaluates = "Testing.Evaluates";
 
