@@ -21,6 +21,7 @@ internal sealed class RuleReader
     private int _position;
     private int _depth;
     private bool _endAllowed;
+    private readonly Dictionary<string, string> _bound = new(StringComparer.Ordinal);
 
     /// <summary>Reads <paramref name="text"/> into <paramref name="model"/> through the declared rules.</summary>
     public RuleReader(
@@ -122,6 +123,31 @@ internal sealed class RuleReader
                         return false;
 
                     case ImportPartKind.Repeat when !ParseRepeat(node, part, follow):
+                        return false;
+
+                    case ImportPartKind.Raw when !Capture(node, part.Slot, part.Text.Length > 0 ? part.Text : next):
+                        return false;
+
+                    case ImportPartKind.Bind:
+                        if (Run(part.Token, next) is not { } bound)
+                        {
+                            return false;
+                        }
+
+                        _bound[part.Name] = bound;
+                        break;
+
+                    case ImportPartKind.Matches:
+                        if (!Matches(part, next))
+                        {
+                            return false;
+                        }
+
+                        break;
+
+                    case ImportPartKind.Fail:
+                        Refusal = Diagnostic(_position, part.Text, part.Message);
+
                         return false;
                 }
             }
@@ -402,6 +428,7 @@ internal sealed class RuleReader
             { Kind: ImportTokenKind.Word } word => ReadWord(word),
             { Kind: ImportTokenKind.Number } => ReadNumber(),
             { Kind: ImportTokenKind.Quoted } quoted => ReadQuoted(quoted),
+            { Kind: ImportTokenKind.Fixed } fixedRun => ReadFixed(fixedRun),
             var other => throw new ConceptDefinitionException($"'{other.Name}' is a token class a capture cannot read."),
         };
 
@@ -420,6 +447,113 @@ internal sealed class RuleReader
         return true;
     }
 
+    /// <summary>Reads one run the way a token class or the next literal says, without filling a slot.</summary>
+    private string? Run(string token, string? terminator)
+    {
+        if (token.Length > 0)
+        {
+            var start = _position;
+            var value = _tokens[token] switch
+            {
+                { Kind: ImportTokenKind.Word } word => ReadWord(word),
+                { Kind: ImportTokenKind.Number } => ReadNumber(),
+                { Kind: ImportTokenKind.Quoted } quoted => ReadQuoted(quoted),
+                { Kind: ImportTokenKind.Fixed } fixedRun => ReadFixed(fixedRun),
+                var other => throw new ConceptDefinitionException($"'{other.Name}' is a class a run cannot read."),
+            };
+
+            if (value is null || _position == start)
+            {
+                Refusal = Diagnostic(start, DeclaredImporter.UnexpectedText, $"'{Snippet(start)}' is where a '{token}' was expected.");
+
+                return null;
+            }
+
+            return value;
+        }
+
+        if (terminator is null)
+        {
+            var rest = _text[_position..];
+            _position = _text.Length;
+
+            return rest;
+        }
+
+        var end = _text.IndexOf(terminator, _position, StringComparison.Ordinal);
+
+        if (end < 0)
+        {
+            Refusal = Diagnostic(
+                _position,
+                DeclaredImporter.EndsEarly,
+                $"The text ends before '{terminator}', so nothing was read.");
+
+            return null;
+        }
+
+        var run = _text[_position..end];
+        _position = end;
+
+        return run;
+    }
+
+    /// <summary>Requires the next run to be the one a bind remembered.</summary>
+    private bool Matches(ImportPart part, string? terminator)
+    {
+        if (!_bound.TryGetValue(part.Name, out var expected))
+        {
+            Refusal = Diagnostic(
+                _position,
+                DeclaredImporter.UnexpectedText,
+                $"'{part.Name}' is required again before anything bound it.");
+
+            return false;
+        }
+
+        var start = _position;
+        var actual = Run(part.Token, terminator);
+
+        if (actual is null)
+        {
+            return false;
+        }
+
+        if (string.Equals(actual, expected, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        Refusal = Diagnostic(
+            start,
+            DeclaredImporter.UnexpectedText,
+            $"'{actual}' has to be '{expected}' again, and it is not.");
+
+        return false;
+    }
+
+    /// <summary>Reads a run between two marks, resolving no escapes.</summary>
+    private string? ReadFixed(ImportToken token)
+    {
+        if (token.Extra.Length == 0 || !StartsWith(token.Extra))
+        {
+            return null;
+        }
+
+        var start = _position + token.Extra.Length;
+        var end = token.Quote.Length == 0
+            ? _text.Length
+            : _text.IndexOf(token.Quote, start, StringComparison.Ordinal);
+
+        if (end < 0)
+        {
+            return null;
+        }
+
+        _position = end + token.Quote.Length;
+
+        return _text[start..end];
+    }
     private string? ReadWord(ImportToken token)
     {
         var start = _position;

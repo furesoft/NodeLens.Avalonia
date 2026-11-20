@@ -80,6 +80,11 @@ public static class ImportLowering
             {
                 ImportConceptKeys.Word => new ImportToken(name, ImportTokenKind.Word, Extra: node.GetOrNull(ImportLanguage.ExtraSlot) ?? string.Empty),
                 ImportConceptKeys.Number => new ImportToken(name, ImportTokenKind.Number),
+                ImportConceptKeys.Fixed => new ImportToken(
+                    name,
+                    ImportTokenKind.Fixed,
+                    Extra: node.GetOrNull(ImportLanguage.OpenSlot) ?? string.Empty,
+                    Quote: node.GetOrNull(ImportLanguage.CloseSlot) ?? string.Empty),
                 ImportConceptKeys.Quoted => new ImportToken(
                     name,
                     ImportTokenKind.Quoted,
@@ -119,6 +124,18 @@ public static class ImportLowering
             Required(key, part, ImportLanguage.SlotSlot),
             part.GetOrNull(ImportLanguage.TokenSlot) ?? string.Empty),
         ImportConceptKeys.Nest => ImportPart.Nest(Required(key, part, ImportLanguage.SlotSlot)),
+        ImportConceptKeys.Raw => ImportPart.Raw(
+            Required(key, part, ImportLanguage.SlotSlot),
+            Required(key, part, ImportLanguage.UntilSlot)),
+        ImportConceptKeys.Bind => ImportPart.Bind(
+            Required(key, part, ImportLanguage.AsSlot),
+            part.GetOrNull(ImportLanguage.TokenSlot) ?? string.Empty),
+        ImportConceptKeys.Matches => ImportPart.Matches(
+            Required(key, part, ImportLanguage.AsSlot),
+            part.GetOrNull(ImportLanguage.TokenSlot) ?? string.Empty),
+        ImportConceptKeys.Fail => ImportPart.Fail(
+            Required(key, part, ImportLanguage.CodeSlot),
+            part.GetOrNull(ImportLanguage.MessageSlot) ?? string.Empty),
         ImportConceptKeys.Repeat => ImportPart.Repeat(
             Required(key, part, ImportLanguage.SlotSlot),
             part.GetOrNull(ImportLanguage.SeparatorSlot) ?? string.Empty,

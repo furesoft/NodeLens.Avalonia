@@ -18,6 +18,9 @@ public enum ImportTokenKind
     /// <summary>A run between two marks, with escapes resolved.</summary>
     Quoted,
 
+    /// <summary>A run between two marks in which nothing is escaped.</summary>
+    Fixed,
+
     /// <summary>Whitespace or a comment: text no rule sees.</summary>
     Skipped,
 }

@@ -19,4 +19,16 @@ public enum ImportPartKind
 
     /// <summary>The entries of a list, separated by a literal.</summary>
     Repeat,
+
+    /// <summary>A run kept verbatim, up to a terminator.</summary>
+    Raw,
+
+    /// <summary>A run remembered under a name, filling no slot.</summary>
+    Bind,
+
+    /// <summary>The next run required to be the one a bind remembered.</summary>
+    Matches,
+
+    /// <summary>A refusal with the rule's own message.</summary>
+    Fail,
 }
