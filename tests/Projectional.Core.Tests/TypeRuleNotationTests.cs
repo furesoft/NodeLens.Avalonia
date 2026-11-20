@@ -345,6 +345,29 @@ public sealed class TypeRuleNotationTests
     }
 
     [Fact]
+    public void AWidestBodyDrawsAsTheQuestionItIs()
+    {
+        // "The widest of these two" has no operator symbol, because the answer depends on the language's edges -
+        // which is exactly what a reader of the source cannot see.
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.If");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Widest);
+
+        body.Set(TypeRuleLanguage.LeftSlot, "then");
+        body.Set(TypeRuleLanguage.RightSlot, "else");
+
+        Assert.Equal(
+            """
+            rule Expressions.If is
+              widest of then and else
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
     public void AComparableDocumentDrawsTheInterchangeItDeclares()
     {
         // An interchange has no symbol to draw, so it reads as the sentence it means - the same sentence a complaint

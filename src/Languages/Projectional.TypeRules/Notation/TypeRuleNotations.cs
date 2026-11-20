@@ -59,6 +59,17 @@ public static class TypeRuleNotations
             ed.Space,
             ed.Property(TypeRuleLanguage.SlotSlot)));
 
+        // "The widest of these two" reads as a question rather than as an operator, because it is one: the answer
+        // depends on the language's edges, which a reader of the source cannot see.
+        notations.Add(TypeRuleConceptKeys.Widest, ed => ed.Line(
+            ed.Keyword("widest of"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.LeftSlot),
+            ed.Space,
+            ed.Keyword("and"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.RightSlot)));
+
         notations.Add(TypeRuleConceptKeys.Switch, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("switch on"),

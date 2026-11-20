@@ -41,7 +41,7 @@ internal static class ExpressionTypes
         .Add(ExpressionsConceptKeys.Parenthesized, new SameAs("inner"))
         .Add(ExpressionsConceptKeys.Binary, new Binary())
         .Add(ExpressionsConceptKeys.Unary, new Unary())
-        .Add(ExpressionsConceptKeys.If, new Branches(Subtypes))
+        .Add(ExpressionsConceptKeys.If, new Branches())
         .WithSubtypes(Subtypes);
 
     private sealed class Literal(PropertyType type) : ITypeRule
@@ -105,11 +105,11 @@ internal static class ExpressionTypes
     /// earned. The two-branch question is asked only when there are two branches.
     /// </para>
     /// </remarks>
-    private sealed class Branches(SubtypeRelation subtypes) : ITypeRule
+    private sealed class Branches : ITypeRule
     {
         public IType TypeFor(TypeContext context) =>
             context.Node.GetChild("else") is null
                 ? context.TypeOfChild("then")
-                : TypeLattice.Join(subtypes, context.TypeOfChild("then"), context.TypeOfChild("else"));
+                : TypeLattice.Join(context.Subtypes, context.TypeOfChild("then"), context.TypeOfChild("else"));
     }
 }

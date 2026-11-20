@@ -342,6 +342,12 @@ public static class TypeRuleLowering
                     RequireChildSlot(concept, conceptKey, Required(child, TypeRuleLanguage.SlotSlot));
                     break;
 
+                // A widest body names two slots for the same reason, so both are refused the same way.
+                case { Concept.Key: TypeRuleConceptKeys.Widest } widest:
+                    RequireChildSlot(concept, conceptKey, Required(widest, TypeRuleLanguage.LeftSlot));
+                    RequireChildSlot(concept, conceptKey, Required(widest, TypeRuleLanguage.RightSlot));
+                    break;
+
                 // A condition reads the same two child slots a child body does, so it is refused the same way: a
                 // condition naming a reference slot would throw when the check runs, where the author is not looking.
                 case { Concept.Key: TypeRuleConceptKeys.Complain } complaint
@@ -429,6 +435,9 @@ public static class TypeRuleLowering
     {
         TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey, aliases, [])),
         TypeRuleConceptKeys.Child => new ChildRule(Required(body, TypeRuleLanguage.SlotSlot)),
+        TypeRuleConceptKeys.Widest => new WidestRule(
+            Required(body, TypeRuleLanguage.LeftSlot),
+            Required(body, TypeRuleLanguage.RightSlot)),
         TypeRuleConceptKeys.Switch => LowerSwitch(body, conceptKey, aliases),
         TypeRuleConceptKeys.Equations => LowerEquations(body, conceptKey, aliases),
         _ => throw new ConceptDefinitionException(
@@ -783,6 +792,40 @@ public static class TypeRuleLowering
     private sealed class ChildRule(string slot) : ITypeRule
     {
         public IType TypeFor(TypeContext context) => context.TypeOfChild(slot);
+    }
+
+    /// <summary>The common supertype of the types of two of the node's children.</summary>
+    /// <remarks>
+    /// <para>
+    /// The one answer a rule could not give before: <see cref="ChildRule"/> names one child and a
+    /// <see cref="TypeRuleConceptKeys.Join"/> joins two <em>written</em> types, so "the widest of these two children"
+    /// had no spelling. A conditional needs exactly that - <c>if c then 1 else "x"</c> is neither branch's type.
+    /// </para>
+    /// <para>
+    /// A child that is not filled contributes nothing rather than its <see cref="UnknownType"/>: a half-written
+    /// conditional is the ordinary state of a document being edited, and joining against an unknown would answer
+    /// unknown and lose the type the written branch just earned. With neither filled the answer is unknown, because
+    /// nothing said anything.
+    /// </para>
+    /// </remarks>
+    private sealed class WidestRule(string left, string right) : ITypeRule
+    {
+        public IType TypeFor(TypeContext context)
+        {
+            if (context.Node.GetChild(left) is null)
+            {
+                return context.Node.GetChild(right) is null
+                    ? UnknownType.Instance
+                    : context.TypeOfChild(right);
+            }
+
+            if (context.Node.GetChild(right) is null)
+            {
+                return context.TypeOfChild(left);
+            }
+
+            return TypeLattice.Join(context.Subtypes, context.TypeOfChild(left), context.TypeOfChild(right));
+        }
     }
 
     /// <summary>A choice between bodies, decided by a property's value.</summary>
