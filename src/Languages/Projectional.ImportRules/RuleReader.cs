@@ -346,6 +346,16 @@ internal sealed class RuleReader
         return false;
     }
 
+    /// <summary>The text a mark stands for, with the usual escapes resolved.</summary>
+    /// <remarks>
+    /// A terminator that is a line break cannot be written in a drawing - it would break the line the notation is
+    /// drawing - so a declaration spells it <c>\n</c> and the reader resolves it here. That is why the same property
+    /// draws as two characters and matches one.
+    /// </remarks>
+    private static string Marks(string text) =>
+        text.Replace("\\n", "\n", StringComparison.Ordinal)
+            .Replace("\\t", "\t", StringComparison.Ordinal)
+            .Replace("\\r", "\r", StringComparison.Ordinal);
     /// <summary>Steps over whatever the importer declares as producing no node.</summary>
     /// <remarks>
     /// Nothing is skipped unless a class says so, which is why an importer written before the token layer keeps reading
@@ -397,7 +407,7 @@ internal sealed class RuleReader
             return at;
         }
 
-        if (!StartsWith(token.Prefix))
+        if (!StartsWith(Marks(token.Prefix)))
         {
             return _position;
         }
@@ -407,7 +417,7 @@ internal sealed class RuleReader
             return _text.Length;
         }
 
-        var end = _text.IndexOf(token.Until, _position + token.Prefix.Length, StringComparison.Ordinal);
+        var end = _text.IndexOf(Marks(token.Until), _position + Marks(token.Prefix).Length, StringComparison.Ordinal);
 
         return end < 0 ? _text.Length : end;
     }
@@ -535,7 +545,7 @@ internal sealed class RuleReader
     /// <summary>Reads a run between two marks, resolving no escapes.</summary>
     private string? ReadFixed(ImportToken token)
     {
-        if (token.Extra.Length == 0 || !StartsWith(token.Extra))
+        if (token.Extra.Length == 0 || !StartsWith(Marks(token.Extra)))
         {
             return null;
         }

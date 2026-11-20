@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Expressions;
+using Projectional.ImportRules;
 using Projectional.Samples.FeatureModel;
 using Projectional.Samples.SqlSchema;
 using Projectional.Samples.StateMachine;
@@ -189,5 +190,54 @@ internal static class LanguageDocuments
         var key = model.NewChild(table, SqlSchemaLanguage.KeysSlot, SqlConceptKeys.ForeignKey);
         key.SetReference(SqlSchemaLanguage.LocalSlot, local);
         key.SetReference(SqlSchemaLanguage.TargetSlot, target);
+    }
+
+    /// <summary>A declared importer, which is how a language written as a project reads a file back.</summary>
+    /// <remarks>
+    /// Built through the import language's own API rather than loaded from the sample folder, for the reason this class
+    /// gives: the picture must not depend on where the sources sit. It is the <c>relaxed</c> importer's shape - a quoted
+    /// value, a comment stepped over, and a rule per concept - because that is the one that shows a token class and a
+    /// rule in one drawing.
+    /// </remarks>
+    internal static Model DeclaredImporter()
+    {
+        var model = ImportLanguage.NewModel();
+        var importer = model.Roots[0];
+
+        importer.Set(ImportLanguage.NameSlot, "relaxed");
+
+        var text = model.NewChild(importer, ImportLanguage.TokensSlot, ImportConceptKeys.Quoted);
+        text.Set(ImportLanguage.TokenNameSlot, "Text");
+
+        var comment = model.NewChild(importer, ImportLanguage.TokensSlot, ImportConceptKeys.Skipped);
+        comment.Set(ImportLanguage.TokenNameSlot, "Comment");
+        comment.Set(ImportLanguage.PrefixSlot, "#");
+
+        var pipeline = model.NewChild(importer, ImportLanguage.RulesSlot, ImportConceptKeys.Rule);
+        pipeline.Set(ImportLanguage.ConceptKeySlot, "Pipeline.Pipeline");
+
+        model.NewChild(pipeline, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "pipeline");
+        model.NewChild(pipeline, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "=");
+
+        var name = model.NewChild(pipeline, ImportLanguage.PartsSlot, ImportConceptKeys.Capture);
+        name.Set(ImportLanguage.SlotSlot, "name");
+        name.Set(ImportLanguage.TokenSlot, "Text");
+
+        var stages = model.NewChild(pipeline, ImportLanguage.PartsSlot, ImportConceptKeys.Repeat);
+        stages.Set(ImportLanguage.SlotSlot, "stages");
+        stages.Set(ImportLanguage.SeparatorSlot, "");
+        stages.Set(ImportLanguage.MinimumSlot, "0");
+
+        var stage = model.NewChild(importer, ImportLanguage.RulesSlot, ImportConceptKeys.Rule);
+        stage.Set(ImportLanguage.ConceptKeySlot, "Pipeline.Stage");
+
+        model.NewChild(stage, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "stage");
+        model.NewChild(stage, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "=");
+
+        var command = model.NewChild(stage, ImportLanguage.PartsSlot, ImportConceptKeys.Capture);
+        command.Set(ImportLanguage.SlotSlot, "command");
+        command.Set(ImportLanguage.TokenSlot, "Text");
+
+        return model;
     }
 }

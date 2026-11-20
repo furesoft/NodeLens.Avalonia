@@ -259,7 +259,7 @@ public static class ImportLanguage
                 new PropertySlot(
                     UntilSlot,
                     PropertyType.String,
-                    "\n",
+                    "\\n",
                     "What ends a comment, or empty to run to the end of the input."),
             ],
             [ImportConceptKeys.Token],
