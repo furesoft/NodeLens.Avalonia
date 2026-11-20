@@ -139,6 +139,17 @@ public static class TypeRuleNotations
             ed.Space,
             ed.ChildInline(TypeRuleLanguage.SupertypeSlot)));
 
+        // An interchange is not a relation, so it has no symbol to draw: it reads as the sentence it means, which
+        // is also the sentence a complaint about two incomparable operands is about.
+        notations.Add(TypeRuleConceptKeys.Comparable, ed => ed.Line(
+            ed.Keyword("comparable"),
+            ed.Space,
+            ed.ChildInline(TypeRuleLanguage.LeftSlot),
+            ed.Space,
+            ed.Keyword("with"),
+            ed.Space,
+            ed.ChildInline(TypeRuleLanguage.RightSlot)));
+
         // A variable draws as the `?` spelling IType.Name prints for it, so an equation in the source and the
         // sentence a failed solve quotes read the same.
         notations.Add(TypeRuleConceptKeys.TypeVariable, ed => ed.Line(

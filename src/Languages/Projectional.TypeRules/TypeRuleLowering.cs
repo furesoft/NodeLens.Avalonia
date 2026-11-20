@@ -64,6 +64,7 @@ public static class TypeRuleLowering
         var aliases = Aliases(roots);
         var registry = TypeRegistry.Empty;
         var subtypes = SubtypeRelation.Primitives;
+        var comparisons = ComparisonRelation.Empty;
         List<TypeReplacement> replacements = [];
 
         foreach (var root in roots)
@@ -90,17 +91,24 @@ public static class TypeRuleLowering
                     subtypes = Declare(subtypes, root, aliases);
                     break;
 
+                case TypeRuleConceptKeys.Comparable:
+                    comparisons = LowerComparable(comparisons, root, aliases);
+                    break;
+
                 case TypeRuleConceptKeys.Replacement:
                     replacements.Add(LowerReplacement(root, aliases));
                     break;
 
                 default:
                     throw new ConceptDefinitionException(
-                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}', one '{TypeRuleConceptKeys.Named}', one '{TypeRuleConceptKeys.Supertypes}' or one '{TypeRuleConceptKeys.Replacement}'.");
+                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}', one '{TypeRuleConceptKeys.Named}', one '{TypeRuleConceptKeys.Supertypes}', one '{TypeRuleConceptKeys.Comparable}' or one '{TypeRuleConceptKeys.Replacement}'.");
             }
         }
 
-        return registry.WithSubtypes(subtypes).WithReplacements(replacements);
+        return registry
+            .WithSubtypes(subtypes)
+            .WithComparisons(comparisons)
+            .WithReplacements(replacements);
     }
 
     /// <summary>
@@ -125,6 +133,32 @@ public static class TypeRuleLowering
         {
             throw new ConceptDefinitionException(
                 $"The declared edge '{subtype}' <: '{supertype}' cannot be held: {error.Message}", error);
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="comparisons"/> with the pair <paramref name="declaration"/> states, or a load-time error.
+    /// </summary>
+    /// <remarks>
+    /// The comparison relation refuses a type it cannot relate and refuses <c>unknown</c>, for the reason the edges do;
+    /// both are turned into a load-time error in the author's vocabulary rather than thrown as an argument exception.
+    /// </remarks>
+    private static ComparisonRelation LowerComparable(
+        ComparisonRelation comparisons,
+        Node declaration,
+        DeclaredTypes aliases)
+    {
+        var left = LowerType(RequiredChild(declaration, TypeRuleLanguage.LeftSlot), TypeRuleConceptKeys.Comparable, aliases, []);
+        var right = LowerType(RequiredChild(declaration, TypeRuleLanguage.RightSlot), TypeRuleConceptKeys.Comparable, aliases, []);
+
+        try
+        {
+            return comparisons.Add(left, right);
+        }
+        catch (ArgumentException error)
+        {
+            throw new ConceptDefinitionException(
+                $"The declared comparison between '{left}' and '{right}' cannot be held: {error.Message}", error);
         }
     }
 
@@ -716,8 +750,10 @@ public static class TypeRuleLowering
         /// <remarks>
         /// A condition asks about two operands, so without them there is nothing to say and the complaint stays
         /// silent - reporting "not comparable" for a missing operand would blame the author for a node that is
-        /// merely incomplete. Comparability is asked of the type itself first, then of the declared edges: a name
-        /// compares by its expansion, and a language that declares two types interchangeable is honoured.
+        /// merely incomplete. Comparability is asked of the type itself first, then of the declared edges and the
+        /// declared comparisons: a name compares by its expansion, a language that declares two types interchangeable
+        /// is honoured, and so is one that declares a pair interchangeable without making either a subtype of the
+        /// other.
         /// </remarks>
         private static bool IsComparable(ConstraintContext context, string left, string right)
         {
@@ -731,7 +767,8 @@ public static class TypeRuleLowering
             var rightType = context.TypeOf(rightNode);
 
             return leftType.IsComparableTo(rightType)
-                || context.Types.Subtypes.IsComparableTo(leftType, rightType);
+                || context.Types.Subtypes.IsComparableTo(leftType, rightType)
+                || context.Types.Comparisons.IsComparableTo(leftType, rightType);
         }
     }
 

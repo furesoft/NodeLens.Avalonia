@@ -92,4 +92,9 @@ public static class TypeRuleConceptKeys
     /// One declared rewrite: a claim of a relation between two type patterns is replaced by other relations.
     /// </summary>
     public const string Replacement = "TypeRule.Replacement";
+
+    /// <summary>
+    /// Two types a language declares interchangeable, without claiming either is a subtype of the other.
+    /// </summary>
+    public const string Comparable = "TypeRule.Comparable";
 }
