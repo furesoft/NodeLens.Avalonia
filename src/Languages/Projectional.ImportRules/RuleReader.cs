@@ -19,6 +19,7 @@ internal sealed class RuleReader
 
     private int _position;
     private int _depth;
+    private bool _endAllowed;
 
     /// <summary>Reads <paramref name="text"/> into <paramref name="model"/> through the declared rules.</summary>
     public RuleReader(
@@ -51,6 +52,8 @@ internal sealed class RuleReader
         }
 
         var root = _model.NewNode(rule.ConceptKey);
+
+        _endAllowed = true;
 
         if (!ParseRule(rule, root, follow: null))
         {
@@ -127,21 +130,35 @@ internal sealed class RuleReader
 
         while (true)
         {
-            var rule = ChooseRule(owner, part.Slot, optional: written > 0);
+            // The separator stands between entries, so it is read before the next one is chosen: looking for an
+            // entry first would stop the list at its own separator, because that text is not an anchor.
+            if (written > 0 && part.Separator.Length > 0)
+            {
+                if (!StartsWith(part.Separator))
+                {
+                    break;
+                }
+
+                _position += part.Separator.Length;
+            }
+
+            var rule = ChooseRule(owner, part.Slot, optional: written == 0);
 
             if (rule is null)
             {
                 break;
             }
 
-            if (written > 0 && part.Separator.Length > 0 && !Expect(part.Separator))
-            {
-                return false;
-            }
-
             var start = _position;
+            var was = _endAllowed;
 
-            if (!ParseRule(rule, _model.NewChild(owner, part.Slot, rule.ConceptKey), FirstLiteral(part, follow)))
+            _endAllowed = true;
+
+            var parsed = ParseRule(rule, _model.NewChild(owner, part.Slot, rule.ConceptKey), FirstLiteral(part, follow));
+
+            _endAllowed = was;
+
+            if (!parsed)
             {
                 return false;
             }
@@ -290,6 +307,11 @@ internal sealed class RuleReader
 
         var end = terminator is null ? _text.Length : _text.IndexOf(terminator, _position, StringComparison.Ordinal);
 
+        if (end < 0 && _endAllowed)
+        {
+            end = _text.Length;
+        }
+
         if (end < 0)
         {
             Refusal = Diagnostic(
@@ -307,8 +329,28 @@ internal sealed class RuleReader
     }
 
     /// <summary>The first literal of the parts from <paramref name="index"/> on, or null when there is none.</summary>
-    private static string? FirstLiteral(IReadOnlyList<ImportPart> parts, int index) =>
-        index < parts.Count && parts[index].Kind == ImportPartKind.Literal ? parts[index].Text : null;
+    /// <summary>The text that ends a run from <paramref name="index" /> on, or null when nothing does.</summary>
+    /// <remarks>
+    /// The next literal, or the separator of a repeat, because a capture that stands before a list ends where the list
+    /// starts - the same question a template's parts answer, asked of a rule's.
+    /// </remarks>
+    private static string? FirstLiteral(IReadOnlyList<ImportPart> parts, int index)
+    {
+        for (var look = index; look < parts.Count; look++)
+        {
+            if (parts[look].Kind == ImportPartKind.Literal)
+            {
+                return parts[look].Text;
+            }
+
+            if (parts[look].Kind == ImportPartKind.Repeat && parts[look].Separator.Length > 0)
+            {
+                return parts[look].Separator;
+            }
+        }
+
+        return null;
+    }
 
     private int? FirstNonWhitespace(int from)
     {

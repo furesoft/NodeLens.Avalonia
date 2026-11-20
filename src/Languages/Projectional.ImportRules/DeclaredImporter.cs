@@ -154,7 +154,7 @@ public sealed class DeclaredImporter : ITextImporter
 
                     case ImportPartKind.Repeat:
                         RequireSlot(concept, rule, part, many: true);
-                        RequireSeparable(rule, part);
+                        RequireSeparable(rule, part, rules, _concepts);
                         break;
                 }
             }
@@ -178,21 +178,34 @@ public sealed class DeclaredImporter : ITextImporter
         }
     }
 
-    /// <summary>Refuses a repeat whose separator the entry's own text could begin with.</summary>
-    private static void RequireSeparable(ImportRule rule, ImportPart part)
+    /// <summary>Refuses a repeat whose separator an entry's own text could begin with.</summary>
+    /// <remarks>
+    /// The question is asked of the rules that fill the slot, not of the rule that owns the list: what has to be told
+    /// apart is where one entry ends and the separator begins. A literal of the owning rule that equals the separator
+    /// is therefore fine - the newline before a list is not competing with the newline between its entries.
+    /// </remarks>
+    private static void RequireSeparable(
+        ImportRule owner,
+        ImportPart part,
+        IReadOnlyList<ImportRule> rules,
+        ConceptRegistry concepts)
     {
         if (part.Separator.Length == 0)
         {
             return;
         }
 
-        foreach (var other in rule.Parts.Where(other => other.Kind == ImportPartKind.Literal))
+        var slot = concepts.Get(owner.ConceptKey).FindChild(part.Slot)
+            ?? throw new ConceptDefinitionException(
+                $"The rule of '{owner.ConceptKey}' reads '{part.Slot}', which is not a child slot of it.");
+
+        foreach (var entry in rules.Where(entry => concepts.Get(entry.ConceptKey).IsKindOf(slot.ChildConceptKey)))
         {
-            if (other.Text.Length > 0 && other.Text.StartsWith(part.Separator, StringComparison.Ordinal))
+            if (entry.Anchor.Length > 0 && entry.Anchor.StartsWith(part.Separator, StringComparison.Ordinal))
             {
                 throw new ConceptDefinitionException(
-                    $"The rule of '{rule.ConceptKey}' separates '{part.Slot}' with '{part.Separator}', which its own "
-                    + $"'{other.Text}' begins with, so the text could not be split.");
+                    $"The rule of '{owner.ConceptKey}' separates '{part.Slot}' with '{part.Separator}', which the rule of "
+                    + $"'{entry.ConceptKey}' begins with ('{entry.Anchor}'), so the text could not be split.");
             }
         }
     }
