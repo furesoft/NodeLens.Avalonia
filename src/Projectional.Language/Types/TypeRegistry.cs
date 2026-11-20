@@ -21,10 +21,35 @@ public sealed class TypeRegistry
 {
     private readonly Dictionary<string, ITypeRule> _rules;
 
-    private TypeRegistry(Dictionary<string, ITypeRule> rules) => _rules = rules;
+    private TypeRegistry(Dictionary<string, ITypeRule> rules, SubtypeRelation subtypes)
+    {
+        _rules = rules;
+        Subtypes = subtypes;
+    }
 
     /// <summary>A registry that declares nothing, so every node is <see cref="UnknownType"/>.</summary>
-    public static TypeRegistry Empty { get; } = new([]);
+    public static TypeRegistry Empty { get; } = new([], SubtypeRelation.Primitives);
+
+    /// <summary>
+    /// The subtype edges the language declared, which a consumer solving equations hands to a
+    /// <see cref="TypeSolver"/> or <see cref="TypeLattice"/>.
+    /// </summary>
+    /// <remarks>
+    /// A registry owns both halves of a language's types aspect: the rules that answer what a node's type is,
+    /// and the edges that say which types may stand where another is required. Keeping them together is what
+    /// lets a consumer solve with the language's own relation instead of only the framework's primitives - the
+    /// relation is otherwise reachable only by a C# caller that built the edges by hand.
+    /// </remarks>
+    public SubtypeRelation Subtypes { get; }
+
+    /// <summary>The same registry, carrying <paramref name="subtypes"/> as its declared edges.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="subtypes"/> is <see langword="null"/>.</exception>
+    public TypeRegistry WithSubtypes(SubtypeRelation subtypes)
+    {
+        ArgumentNullException.ThrowIfNull(subtypes);
+
+        return ReferenceEquals(subtypes, Subtypes) ? this : new TypeRegistry(_rules, subtypes);
+    }
 
     /// <summary>How many concepts declare a rule.</summary>
     public int Count => _rules.Count;
@@ -42,7 +67,7 @@ public sealed class TypeRegistry
             [conceptKey] = rule,
         };
 
-        return new TypeRegistry(rules);
+        return new TypeRegistry(rules, Subtypes);
     }
 
     /// <summary>The rule that answers for <paramref name="concept"/>, or <see langword="null"/>.</summary>

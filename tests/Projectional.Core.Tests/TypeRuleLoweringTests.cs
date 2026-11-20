@@ -584,6 +584,80 @@ public sealed class TypeRuleLoweringTests
         Assert.Equal(1, registry.Count);
     }
 
+    [Fact]
+    public void TheRegistryCarriesNoEdgeWhenNoneIsDeclared()
+    {
+        var registry = Lower(rules => rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.Fixed("int")));
+
+        Assert.Equal(0, registry.Subtypes.Count);
+        Assert.True(registry.Subtypes.IsSubtype(
+            PrimitiveType.Of(PropertyType.Integer),
+            PrimitiveType.Of(PropertyType.Integer)));
+    }
+
+    [Fact]
+    public void ADeclaredEdgeIsCarriedByTheRegistry()
+    {
+        // A declared edge joins the types a rule answers, so the registry hands out one instance per name: a name
+        // is a classifier, and the relation compares named types by identity. A rule and the edge that joins it
+        // are therefore given the same instance, which is what makes the edge reachable at all.
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Declare("Money", rules.Primitive("int"));
+            rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.FixedAs(rules.Ref("Amount")));
+            rules.Rule(ExpressionsConceptKeys.StringLiteral, rules.FixedAs(rules.Ref("Money")));
+            rules.Supertypes(rules.Ref("Amount"), rules.Ref("Money"));
+        });
+
+        Assert.Equal(1, registry.Subtypes.Count);
+
+        Assert.True(registry.Subtypes.IsSubtype(
+            TypeOf(registry, ExpressionsConceptKeys.IntLiteral),
+            TypeOf(registry, ExpressionsConceptKeys.StringLiteral)));
+    }
+
+    [Fact]
+    public void DeclaredEdgesAreTransitive()
+    {
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Alpha", rules.Primitive("int"));
+            rules.Declare("Beta", rules.Primitive("int"));
+            rules.Declare("Gamma", rules.Primitive("int"));
+            rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.FixedAs(rules.Ref("Alpha")));
+            rules.Rule(ExpressionsConceptKeys.StringLiteral, rules.FixedAs(rules.Ref("Beta")));
+            rules.Rule(ExpressionsConceptKeys.BoolLiteral, rules.FixedAs(rules.Ref("Gamma")));
+            rules.Supertypes(rules.Ref("Alpha"), rules.Ref("Beta"));
+            rules.Supertypes(rules.Ref("Beta"), rules.Ref("Gamma"));
+        });
+
+        Assert.Equal(2, registry.Subtypes.Count);
+
+        Assert.True(registry.Subtypes.IsSubtype(
+            TypeOf(registry, ExpressionsConceptKeys.IntLiteral),
+            TypeOf(registry, ExpressionsConceptKeys.BoolLiteral)));
+    }
+
+    [Fact]
+    public void AnEdgeNamingAnUndeclaredTypeIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Supertypes(rules.Ref("Amount"), rules.Ref("Money"));
+        }));
+
+        Assert.Contains("'Money'", exception.Message, StringComparison.Ordinal);
+    }
+
+    private static IType TypeOf(TypeRegistry registry, string conceptKey)
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+
+        return registry.TypeOf(model.NewNode(conceptKey));
+    }
+
     private static ConstraintSet Complaints(Action<RuleBuilder> declare)
     {
         var builder = new RuleBuilder();
@@ -816,6 +890,17 @@ public sealed class TypeRuleLoweringTests
             variable.Set(TypeRuleLanguage.NameSlot, name);
 
             return variable;
+        }
+
+        /// <summary>Declares a subtype edge, as a root of the same model the rules live in.</summary>
+        public Node Supertypes(Node subtype, Node supertype)
+        {
+            var edge = _model.NewNode(TypeRuleConceptKeys.Supertypes);
+
+            edge.AddChild(TypeRuleLanguage.SubtypeSlot, subtype);
+            edge.AddChild(TypeRuleLanguage.SupertypeSlot, supertype);
+
+            return edge;
         }
     }
 }

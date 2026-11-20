@@ -31,9 +31,16 @@ namespace Projectional.TypeRules;
 public static class TypeRuleLowering
 {
     /// <summary>The rules a language's type documents declare, as a registry.</summary>
+    /// <remarks>
+    /// A registry carries both halves of a types aspect: the rules that answer what a node's type is, and the
+    /// subtype edges the language declared. A <see cref="TypeRuleConceptKeys.Supertypes"/> document states one
+    /// edge, and the relation they build is what a consumer hands to a <see cref="TypeSolver"/> or
+    /// <see cref="TypeLattice"/>, so a language's own edges are used instead of only the framework's primitives.
+    /// </remarks>
     /// <param name="documents">
-    /// The roots of those documents: one <see cref="TypeRuleConceptKeys.Rule"/> or one
-    /// <see cref="TypeRuleConceptKeys.Named"/> per document, in file order.
+    /// The roots of those documents: one <see cref="TypeRuleConceptKeys.Rule"/>, one
+    /// <see cref="TypeRuleConceptKeys.Named"/> or one <see cref="TypeRuleConceptKeys.Supertypes"/> per document,
+    /// in file order.
     /// </param>
     /// <param name="concepts">
     /// The language's concepts, when the caller has them, so a rule naming a concept that does not exist or a
@@ -42,7 +49,7 @@ public static class TypeRuleLowering
     /// the lowering's own validations asks for.
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="documents"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ConceptDefinitionException">A root is neither a rule nor a named type, a rule cannot be lowered, or a rule names a concept or child slot the language does not have.</exception>
+    /// <exception cref="ConceptDefinitionException">A root is not a kind of type definition, a rule cannot be lowered, a rule names a concept or child slot the language does not have, or a declared edge cannot be held.</exception>
     public static TypeRegistry CreateRegistry(IEnumerable<Node> documents, ConceptRegistry? concepts = null)
     {
         ArgumentNullException.ThrowIfNull(documents);
@@ -56,6 +63,7 @@ public static class TypeRuleLowering
 
         var aliases = Aliases(roots);
         var registry = TypeRegistry.Empty;
+        var subtypes = SubtypeRelation.Primitives;
 
         foreach (var root in roots)
         {
@@ -77,13 +85,42 @@ public static class TypeRuleLowering
                 case TypeRuleConceptKeys.Named:
                     break;
 
+                case TypeRuleConceptKeys.Supertypes:
+                    subtypes = Declare(subtypes, root, aliases);
+                    break;
+
                 default:
                     throw new ConceptDefinitionException(
-                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}' or one '{TypeRuleConceptKeys.Named}'.");
+                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}', one '{TypeRuleConceptKeys.Named}' or one '{TypeRuleConceptKeys.Supertypes}'.");
             }
         }
 
-        return registry;
+        return registry.WithSubtypes(subtypes);
+    }
+
+    /// <summary>
+    /// <paramref name="subtypes"/> with the edge <paramref name="declaration"/> states, or a load-time error.
+    /// </summary>
+    /// <remarks>
+    /// The relation refuses an edge that mentions <c>unknown</c>, because "unknown may stand in for a type" is how a
+    /// guess becomes a proof. That refusal is a load-time error in the author's vocabulary here rather than an
+    /// argument exception from the relation's own: the author wrote a declaration, so the message names the
+    /// declaration and quotes the edge.
+    /// </remarks>
+    private static SubtypeRelation Declare(SubtypeRelation subtypes, Node declaration, DeclaredTypes aliases)
+    {
+        var subtype = LowerType(RequiredChild(declaration, TypeRuleLanguage.SubtypeSlot), TypeRuleConceptKeys.Supertypes, aliases, []);
+        var supertype = LowerType(RequiredChild(declaration, TypeRuleLanguage.SupertypeSlot), TypeRuleConceptKeys.Supertypes, aliases, []);
+
+        try
+        {
+            return subtypes.Add(subtype, supertype);
+        }
+        catch (ArgumentException error)
+        {
+            throw new ConceptDefinitionException(
+                $"The declared edge '{subtype}' <: '{supertype}' cannot be held: {error.Message}", error);
+        }
     }
 
     /// <summary>The complaints a language's type documents declare, as the constraints that report them.</summary>
@@ -181,9 +218,9 @@ public static class TypeRuleLowering
     /// exactly one shape a reader has to learn: the rules, and the names they may use. Duplicates are a
     /// load-time error here because nothing later could choose between them.
     /// </remarks>
-    private static Dictionary<string, Node> Aliases(IReadOnlyList<Node> roots)
+    private static DeclaredTypes Aliases(IReadOnlyList<Node> roots)
     {
-        Dictionary<string, Node> aliases = new(StringComparer.Ordinal);
+        Dictionary<string, Node> declarations = new(StringComparer.Ordinal);
 
         foreach (var root in roots)
         {
@@ -194,17 +231,37 @@ public static class TypeRuleLowering
 
             var name = Required(root, TypeRuleLanguage.NameSlot);
 
-            if (!aliases.TryAdd(name, root))
+            if (!declarations.TryAdd(name, root))
             {
                 throw new ConceptDefinitionException(
                     $"The language declares the type '{name}' twice, so nothing says which one a rule means.");
             }
         }
 
-        return aliases;
+        return new DeclaredTypes(declarations);
     }
 
-    private static ITypeRule LowerRule(Node rule, string conceptKey, Dictionary<string, Node> aliases)
+    /// <summary>
+    /// The types the language declares under a name, and the instances a lowering hands out for them.
+    /// </summary>
+    /// <remarks>
+    /// A name is a classifier, and the language's answer to "are two declarations with one name one type?" is yes:
+    /// it says so by handing out one instance per name. That matters because the relation compares named types by
+    /// identity - a name reaches the relation only through the instance it was given - so a declared edge over a
+    /// name and a rule writing that name must be given the same instance, or the edge joins nothing. The expansion
+    /// is therefore computed once per name, which also means a name written twice costs one expansion.
+    /// </remarks>
+    private sealed class DeclaredTypes(Dictionary<string, Node> declarations)
+    {
+        /// <summary>The instance each name stands for, once it has been lowered.</summary>
+        public Dictionary<string, NamedType> Interned { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>The document that declares <paramref name="name"/>, if the language declares it.</summary>
+        public bool TryGetDeclaration(string name, out Node declaration) =>
+            declarations.TryGetValue(name, out declaration!);
+    }
+
+    private static ITypeRule LowerRule(Node rule, string conceptKey, DeclaredTypes aliases)
     {
         if (rule.GetChild(TypeRuleLanguage.BodySlot) is not { } body)
         {
@@ -215,7 +272,7 @@ public static class TypeRuleLowering
         return LowerBody(body, conceptKey, aliases);
     }
 
-    private static ITypeRule LowerBody(Node body, string conceptKey, Dictionary<string, Node> aliases) => body.Concept.Key switch
+    private static ITypeRule LowerBody(Node body, string conceptKey, DeclaredTypes aliases) => body.Concept.Key switch
     {
         TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey, aliases, [])),
         TypeRuleConceptKeys.Child => new ChildRule(Required(body, TypeRuleLanguage.SlotSlot)),
@@ -236,7 +293,7 @@ public static class TypeRuleLowering
     private static IType LowerType(
         Node expr,
         string conceptKey,
-        Dictionary<string, Node> aliases,
+        DeclaredTypes aliases,
         HashSet<string> expanding,
         Dictionary<string, TypeVariable>? variables = null) => expr.Concept.Key switch
     {
@@ -298,11 +355,16 @@ public static class TypeRuleLowering
     private static NamedType Alias(
         string name,
         string conceptKey,
-        Dictionary<string, Node> aliases,
+        DeclaredTypes aliases,
         HashSet<string> expanding,
         Dictionary<string, TypeVariable>? variables = null)
     {
-        if (!aliases.TryGetValue(name, out var declaration))
+        if (aliases.Interned.TryGetValue(name, out var interned))
+        {
+            return interned;
+        }
+
+        if (!aliases.TryGetDeclaration(name, out var declaration))
         {
             throw new ConceptDefinitionException(
                 $"The type rule for '{conceptKey}' names the type '{name}', which the types model does not declare.");
@@ -316,9 +378,13 @@ public static class TypeRuleLowering
 
         try
         {
-            return new NamedType(
+            var named = new NamedType(
                 name,
                 LowerType(RequiredChild(declaration, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding, variables));
+
+            aliases.Interned[name] = named;
+
+            return named;
         }
         finally
         {
@@ -329,7 +395,7 @@ public static class TypeRuleLowering
     private static RecordType LowerRecord(
         Node expr,
         string conceptKey,
-        Dictionary<string, Node> aliases,
+        DeclaredTypes aliases,
         HashSet<string> expanding,
         Dictionary<string, TypeVariable>? variables = null)
     {
@@ -355,7 +421,7 @@ public static class TypeRuleLowering
         }
     }
 
-    private static SwitchRule LowerSwitch(Node body, string conceptKey, Dictionary<string, Node> aliases)
+    private static SwitchRule LowerSwitch(Node body, string conceptKey, DeclaredTypes aliases)
     {
         var property = Required(body, TypeRuleLanguage.PropertySlot);
         var cases = new Dictionary<string, ITypeRule>(StringComparer.Ordinal);
@@ -394,7 +460,7 @@ public static class TypeRuleLowering
     /// the whole reason a body of this kind exists: a relation between two unknowns says nothing unless the
     /// unknowns are shared, and sharing them is a property of the document, not of the solver.
     /// </remarks>
-    private static EquationsRule LowerEquations(Node body, string conceptKey, Dictionary<string, Node> aliases)
+    private static EquationsRule LowerEquations(Node body, string conceptKey, DeclaredTypes aliases)
     {
         Dictionary<string, TypeVariable> variables = new(StringComparer.Ordinal);
         List<TypeEquation> equations = [];
@@ -416,7 +482,7 @@ public static class TypeRuleLowering
     private static TypeEquation LowerEquation(
         Node node,
         string conceptKey,
-        Dictionary<string, Node> aliases,
+        DeclaredTypes aliases,
         Dictionary<string, TypeVariable> variables)
     {
         var relation = Required(node, TypeRuleLanguage.RelationSlot);

@@ -77,4 +77,9 @@ public static class TypeRuleConceptKeys
 
     /// <summary>A body that reports instead of answering a type.</summary>
     public const string Complain = "TypeRule.Complain";
+
+    /// <summary>
+    /// One declared edge of the subtype relation: a type that may stand where another is required.
+    /// </summary>
+    public const string Supertypes = "TypeRule.Supertypes";
 }

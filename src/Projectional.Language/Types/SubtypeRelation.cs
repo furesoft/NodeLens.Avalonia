@@ -210,7 +210,9 @@ public sealed class SubtypeRelation : ISubtype
     /// <summary>Whether two types are the same one, as far as the relation is concerned.</summary>
     /// <remarks>
     /// Identity first, then the one value equality the framework has: two <see cref="PrimitiveType"/>s with one name
-    /// are one type, because a declaration writes the name and the instances are made where they are needed.
+    /// are one type, because a declaration writes the name and the instances are made where they are needed. A named
+    /// type is compared by identity: a name is a classifier, and whether two declarations with one name are one type
+    /// is the language's question, not the relation's.
     /// </remarks>
     private static bool Same(IType left, IType right) =>
         ReferenceEquals(left, right)
