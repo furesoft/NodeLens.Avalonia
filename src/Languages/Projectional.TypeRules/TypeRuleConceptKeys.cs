@@ -59,4 +59,13 @@ public static class TypeRuleConceptKeys
 
     /// <summary>A type expression that names a declared type.</summary>
     public const string Ref = "TypeRule.Ref";
+
+    /// <summary>A body that states relations instead of answering a type.</summary>
+    public const string Equations = "TypeRule.Equations";
+
+    /// <summary>One relation a rule states between two type expressions.</summary>
+    public const string Equation = "TypeRule.Equation";
+
+    /// <summary>A type expression the solver gives a type to.</summary>
+    public const string TypeVariable = "TypeRule.TypeVariable";
 }

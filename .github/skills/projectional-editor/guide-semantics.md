@@ -128,7 +128,17 @@
   into its inner, a record never). It refuses three temptations - it does not invent the missing side of
   `?a == ?b`, it does not give a variable a type nothing demanded, and it stops on a budget instead of hanging.
   `ITypeRule.EquationsFor` states equations and defaults to none, so `TypeFor` keeps working for every rule that
-  needs no solve; **no consumer asks for equations yet**, which is what slices T3/T4 add.
+  needs no solve. `TypeRegistry.EquationsFor(node)` is the consumer: it hands a node's declared relations to a
+  solver, so a rule table that needs solving is solved without every consumer learning a second question.
+- **A rule states relations in a model, not in C#**: a `TypeRule.Equations` body holds `TypeRule.Equation`
+  children, each a `relation` (`==`, `<:`, `:>`) between two type expressions, and `TypeRule.TypeVariable` is a
+  type expression the solver gives a type to. The symbols are the ones `TypeEquation.ToString()` prints, so a rule
+  and the sentence a failed solve quotes read the same text. A variable is an **identity**, not a name: two nodes
+  writing `?element` in one rule lower to one `TypeVariable`, because relations between unrelated unknowns say
+  nothing. Refusals sit where the value is written - the relation's enumeration makes the model refuse a spelling
+  the lowering never sees, and the lowering refuses an equations body that states nothing, an equation whose two
+  sides are the same variable, and a variable outside a body that states equations. Declared `join`/`meet` and the
+  subtyping declaration are still deferred.
 - **Join and meet are questions about the relation, not new kinds of type**: `JoinType`/`MeetType` are what a slot
   or a rule *writes* ("either", "both"), and `TypeLattice` reduces them from the declared edges - one side below the
   other, or the unique least/greatest common type. When the edges do not determine one the answer is `UnknownType`,

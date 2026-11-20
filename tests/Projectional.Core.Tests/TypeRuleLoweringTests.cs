@@ -317,6 +317,124 @@ public sealed class TypeRuleLoweringTests
         }
     }
 
+    [Fact]
+    public void AnEquationsRuleAnswersUnknownAndStatesItsRelations()
+    {
+        var registry = Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.Equations(("==", rules.Variable("element"), rules.Primitive("int")))));
+
+        var literal = Literal();
+
+        Assert.Equal("unknown", registry.TypeOf(literal).Name);
+
+        var equation = Assert.Single(registry.EquationsFor(literal));
+
+        Assert.Equal("?element == int", equation.ToString());
+    }
+
+    [Fact]
+    public void AVariableWrittenTwiceIsOneVariable()
+    {
+        var registry = Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.Equations(
+                ("==", rules.Variable("element"), rules.Primitive("int")),
+                ("<:", rules.Variable("element"), rules.Primitive("string")))));
+
+        TypeEquation[] equations = [.. registry.EquationsFor(Literal())];
+
+        Assert.Equal(2, equations.Length);
+        Assert.Same(equations[0].Left, equations[1].Left);
+    }
+
+    [Fact]
+    public void ADeclaredRelationIsSolvedThroughItsRule()
+    {
+        var registry = Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.Equations(("==", rules.Variable("element"), rules.Primitive("int")))));
+
+        var equation = Assert.Single(registry.EquationsFor(Literal()));
+        var solution = new TypeSolver().Solve([equation]);
+
+        Assert.True(solution.Succeeded, solution.Failure);
+        Assert.Equal("int", solution.Of(Assert.IsType<TypeVariable>(equation.Left)).Name);
+    }
+
+    [Fact]
+    public void AnEquationsBodyThatStatesNothingIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+        rule.AddChild(TypeRuleLanguage.BodySlot, model.NewNode(TypeRuleConceptKeys.Equations));
+
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
+
+        Assert.Contains("states none", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEquationOfAVariableWithItselfIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+        var equations = model.NewNode(TypeRuleConceptKeys.Equations);
+        var equation = model.NewChild(equations, TypeRuleLanguage.EquationsSlot, TypeRuleConceptKeys.Equation);
+        var left = model.NewNode(TypeRuleConceptKeys.TypeVariable);
+        var right = model.NewNode(TypeRuleConceptKeys.TypeVariable);
+
+        left.Set(TypeRuleLanguage.NameSlot, "element");
+        right.Set(TypeRuleLanguage.NameSlot, "element");
+
+        equation.Set(TypeRuleLanguage.RelationSlot, "==");
+        equation.AddChild(TypeRuleLanguage.LeftSlot, left);
+        equation.AddChild(TypeRuleLanguage.RightSlot, right);
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+        rule.AddChild(TypeRuleLanguage.BodySlot, equations);
+
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
+
+        Assert.Contains("relates to itself", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AVariableOutsideAnEquationsBodyIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+        var variable = model.NewNode(TypeRuleConceptKeys.TypeVariable);
+        var body = model.NewNode(TypeRuleConceptKeys.Fixed);
+
+        variable.Set(TypeRuleLanguage.NameSlot, "element");
+        body.AddChild(TypeRuleLanguage.TypeSlot, variable);
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+        rule.AddChild(TypeRuleLanguage.BodySlot, body);
+
+        var exception = Assert.Throws<ConceptDefinitionException>(() => TypeRuleLowering.CreateRegistry(model.Roots));
+
+        Assert.Contains("nothing constrains it", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnUnknownRelationIsRefusedWhenItIsWritten()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var equations = model.NewNode(TypeRuleConceptKeys.Equations);
+        var equation = model.NewChild(equations, TypeRuleLanguage.EquationsSlot, TypeRuleConceptKeys.Equation);
+
+        // The relation is an enumeration, so the model refuses a spelling the lowering never sees: the
+        // validation lives where the value is written, which is the earliest place an author can be told.
+        var exception = Assert.Throws<ModelInvariantException>(
+            () => equation.Set(TypeRuleLanguage.RelationSlot, "similar"));
+
+        Assert.Contains("==, <:, :>", exception.Message, StringComparison.Ordinal);
+    }
+
     private static Node Literal()
     {
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");
@@ -476,6 +594,33 @@ public sealed class TypeRuleLoweringTests
             body.AddChild(TypeRuleLanguage.OtherwiseSlot, otherwise);
 
             return body;
+        }
+
+        /// <summary>A body that states relations instead of answering a type.</summary>
+        public Node Equations(params (string Relation, Node Left, Node Right)[] equations)
+        {
+            var body = _model.NewNode(TypeRuleConceptKeys.Equations);
+
+            foreach (var (relation, left, right) in equations)
+            {
+                var equation = _model.NewChild(body, TypeRuleLanguage.EquationsSlot, TypeRuleConceptKeys.Equation);
+
+                equation.Set(TypeRuleLanguage.RelationSlot, relation);
+                equation.AddChild(TypeRuleLanguage.LeftSlot, left);
+                equation.AddChild(TypeRuleLanguage.RightSlot, right);
+            }
+
+            return body;
+        }
+
+        /// <summary>A type expression the solver gives a type to.</summary>
+        public Node Variable(string name)
+        {
+            var variable = _model.NewNode(TypeRuleConceptKeys.TypeVariable);
+
+            variable.Set(TypeRuleLanguage.NameSlot, name);
+
+            return variable;
         }
     }
 }

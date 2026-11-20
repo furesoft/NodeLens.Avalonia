@@ -106,6 +106,7 @@ public static class TypeRuleLowering
         TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey, aliases, [])),
         TypeRuleConceptKeys.Child => new ChildRule(Required(body, TypeRuleLanguage.SlotSlot)),
         TypeRuleConceptKeys.Switch => LowerSwitch(body, conceptKey, aliases),
+        TypeRuleConceptKeys.Equations => LowerEquations(body, conceptKey, aliases),
         _ => throw new ConceptDefinitionException(
             $"The type rule for '{conceptKey}' has a body of '{body.Concept.Key}', which is not a kind of body."),
     };
@@ -118,18 +119,52 @@ public static class TypeRuleLowering
     /// a structural walk and nothing more. Which is why a record field's type cannot be "the type of my
     /// left child": there is no node there to ask.
     /// </remarks>
-    private static IType LowerType(Node expr, string conceptKey, Dictionary<string, Node> aliases, HashSet<string> expanding) => expr.Concept.Key switch
+    private static IType LowerType(
+        Node expr,
+        string conceptKey,
+        Dictionary<string, Node> aliases,
+        HashSet<string> expanding,
+        Dictionary<string, TypeVariable>? variables = null) => expr.Concept.Key switch
     {
         TypeRuleConceptKeys.Primitive => Primitive(Required(expr, TypeRuleLanguage.NameSlot), conceptKey),
-        TypeRuleConceptKeys.Record => LowerRecord(expr, conceptKey, aliases, expanding),
+        TypeRuleConceptKeys.Record => LowerRecord(expr, conceptKey, aliases, expanding, variables),
         TypeRuleConceptKeys.List => new ListType(
-            LowerType(RequiredChild(expr, TypeRuleLanguage.ElementSlot), conceptKey, aliases, expanding)),
+            LowerType(RequiredChild(expr, TypeRuleLanguage.ElementSlot), conceptKey, aliases, expanding, variables)),
         TypeRuleConceptKeys.Optional => new OptionalType(
-            LowerType(RequiredChild(expr, TypeRuleLanguage.InnerSlot), conceptKey, aliases, expanding)),
-        TypeRuleConceptKeys.Ref => Alias(Required(expr, TypeRuleLanguage.NameSlot), conceptKey, aliases, expanding),
+            LowerType(RequiredChild(expr, TypeRuleLanguage.InnerSlot), conceptKey, aliases, expanding, variables)),
+        TypeRuleConceptKeys.Ref => Alias(Required(expr, TypeRuleLanguage.NameSlot), conceptKey, aliases, expanding, variables),
+        TypeRuleConceptKeys.TypeVariable => Variable(expr, conceptKey, variables),
         _ => throw new ConceptDefinitionException(
             $"The type rule for '{conceptKey}' names a type of '{expr.Concept.Key}', which is not a kind of type."),
     };
+
+    /// <summary>
+    /// The variable <paramref name="expr"/> names, one per name within the rule that states it.
+    /// </summary>
+    /// <remarks>
+    /// A variable is an identity, not a name: two nodes writing <c>?element</c> in one rule must lower to the
+    /// same <see cref="TypeVariable"/>, or the equations over them would relate two unrelated unknowns and the
+    /// solve would answer nothing. The table therefore lives for one rule's lowering and is keyed by the name
+    /// the author wrote.
+    /// </remarks>
+    private static TypeVariable Variable(Node expr, string conceptKey, Dictionary<string, TypeVariable>? variables)
+    {
+        var name = Required(expr, TypeRuleLanguage.NameSlot);
+
+        if (variables is null)
+        {
+            throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' writes the type variable '{name}' outside a body that states equations, so nothing constrains it.");
+        }
+
+        if (!variables.TryGetValue(name, out var variable))
+        {
+            variable = new TypeVariable(name);
+            variables.Add(name, variable);
+        }
+
+        return variable;
+    }
 
     /// <summary>
     /// The type a declared name stands for, expanded where it is used.
@@ -144,7 +179,8 @@ public static class TypeRuleLowering
         string name,
         string conceptKey,
         Dictionary<string, Node> aliases,
-        HashSet<string> expanding)
+        HashSet<string> expanding,
+        Dictionary<string, TypeVariable>? variables = null)
     {
         if (!aliases.TryGetValue(name, out var declaration))
         {
@@ -162,7 +198,7 @@ public static class TypeRuleLowering
         {
             return new NamedType(
                 name,
-                LowerType(RequiredChild(declaration, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding));
+                LowerType(RequiredChild(declaration, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding, variables));
         }
         finally
         {
@@ -170,7 +206,12 @@ public static class TypeRuleLowering
         }
     }
 
-    private static RecordType LowerRecord(Node expr, string conceptKey, Dictionary<string, Node> aliases, HashSet<string> expanding)
+    private static RecordType LowerRecord(
+        Node expr,
+        string conceptKey,
+        Dictionary<string, Node> aliases,
+        HashSet<string> expanding,
+        Dictionary<string, TypeVariable>? variables = null)
     {
         List<(string Name, IType Type)> fields = [];
 
@@ -178,7 +219,7 @@ public static class TypeRuleLowering
         {
             fields.Add((
                 Required(field, TypeRuleLanguage.NameSlot),
-                LowerType(RequiredChild(field, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding)));
+                LowerType(RequiredChild(field, TypeRuleLanguage.TypeSlot), conceptKey, aliases, expanding, variables)));
         }
 
         try
@@ -223,6 +264,59 @@ public static class TypeRuleLowering
         }
 
         return new SwitchRule(property, cases, LowerBody(otherwise, conceptKey, aliases));
+    }
+
+    /// <summary>
+    /// A body that states relations instead of answering a type.
+    /// </summary>
+    /// <remarks>
+    /// The variables are lowered once per rule, so <c>?a</c> written in two equations is one variable. That is
+    /// the whole reason a body of this kind exists: a relation between two unknowns says nothing unless the
+    /// unknowns are shared, and sharing them is a property of the document, not of the solver.
+    /// </remarks>
+    private static EquationsRule LowerEquations(Node body, string conceptKey, Dictionary<string, Node> aliases)
+    {
+        Dictionary<string, TypeVariable> variables = new(StringComparer.Ordinal);
+        List<TypeEquation> equations = [];
+
+        foreach (var equation in body.GetChildren(TypeRuleLanguage.EquationsSlot))
+        {
+            equations.Add(LowerEquation(equation, conceptKey, aliases, variables));
+        }
+
+        if (equations.Count == 0)
+        {
+            throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' states equations but states none, so it means nothing.");
+        }
+
+        return new EquationsRule(equations);
+    }
+
+    private static TypeEquation LowerEquation(
+        Node node,
+        string conceptKey,
+        Dictionary<string, Node> aliases,
+        Dictionary<string, TypeVariable> variables)
+    {
+        var relation = Required(node, TypeRuleLanguage.RelationSlot);
+        var left = LowerType(RequiredChild(node, TypeRuleLanguage.LeftSlot), conceptKey, aliases, [], variables);
+        var right = LowerType(RequiredChild(node, TypeRuleLanguage.RightSlot), conceptKey, aliases, [], variables);
+
+        if (left is TypeVariable variable && ReferenceEquals(variable, right))
+        {
+            throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' states that {variable.Name} relates to itself, which every type satisfies and no type decides.");
+        }
+
+        return relation switch
+        {
+            "==" => TypeEquation.Equal(left, right),
+            "<:" => TypeEquation.Subtype(left, right),
+            ":>" => TypeEquation.Supertype(left, right),
+            _ => throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' states a relation of '{relation}', which is not one of ==, <: or :>."),
+        };
     }
 
     /// <summary>
@@ -279,5 +373,19 @@ public static class TypeRuleLowering
                 ? rule.TypeFor(context)
                 : otherwise.TypeFor(context);
         }
+    }
+
+    /// <summary>A body that states relations, which the solver satisfies instead of the rule answering a type.</summary>
+    /// <remarks>
+    /// <see cref="TypeFor"/> answers <see cref="UnknownType"/> because a rule that states relations has not said
+    /// what type the node is - it has said what must hold for the types around it. Answering anything else would
+    /// be the guess the solver exists to avoid, and the solver reads the equations from
+    /// <see cref="ITypeRule.EquationsFor"/> precisely so the two answers stay separate.
+    /// </remarks>
+    private sealed class EquationsRule(IReadOnlyList<TypeEquation> equations) : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) => UnknownType.Instance;
+
+        public IEnumerable<TypeEquation> EquationsFor(TypeContext context) => equations;
     }
 }
