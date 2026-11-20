@@ -36,12 +36,19 @@ public sealed class TypeSolver
     public const int DefaultBudget = 1_000;
 
     private readonly ISubtype _subtypes;
+    private readonly ComparisonRelation _comparisons;
     private readonly IReadOnlyList<TypeReplacement> _replacements;
 
     /// <summary>Creates a solver that decides concrete edges with <paramref name="subtypes"/>.</summary>
     /// <param name="subtypes">
     /// The subtype relation the language declared, or <see langword="null"/> for
     /// <see cref="SubtypeRelation.Primitives"/> - which answers "a type is itself" and nothing more.
+    /// </param>
+    /// <param name="comparisons">
+    /// The types the language declared interchangeable, or <see langword="null"/> for
+    /// <see cref="ComparisonRelation.Empty"/> - which relates a type to itself only. They decide whether two types
+    /// may be one type; they deliberately do not widen <see cref="ISubtype"/>, so declaring two types
+    /// interchangeable does not also put either below the other.
     /// </param>
     /// <param name="replacements">
     /// The replacements the language declared, which are tried after the framework's own
@@ -51,12 +58,14 @@ public sealed class TypeSolver
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="budget"/> is not positive.</exception>
     public TypeSolver(
         ISubtype? subtypes = null,
+        ComparisonRelation? comparisons = null,
         IReadOnlyList<TypeReplacement>? replacements = null,
         int budget = DefaultBudget)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(budget);
 
         _subtypes = subtypes ?? SubtypeRelation.Primitives;
+        _comparisons = comparisons ?? ComparisonRelation.Empty;
         _replacements = replacements is null or { Count: 0 }
             ? TypeReplacements.Covariance
             : [.. TypeReplacements.Covariance, .. replacements];
@@ -218,8 +227,10 @@ public sealed class TypeSolver
 
             default:
                 // Two concrete types are a fact the relation settles; a disagreement is the one thing a solve can
-                // report as a contradiction rather than as an unfinished job.
-                if (!_subtypes.IsComparableTo(left, right))
+                // report as a contradiction rather than as an unfinished job. Comparison is asked as well as
+                // subtyping, because a language may say two types are interchangeable without putting either below
+                // the other.
+                if (!_subtypes.IsComparableTo(left, right) && !_comparisons.IsComparableTo(left, right))
                 {
                     failure = $"{left.Name} and {right.Name} cannot be one type.";
                 }

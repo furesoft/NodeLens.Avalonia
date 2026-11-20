@@ -24,25 +24,28 @@ public sealed class TypeRegistry
     private TypeRegistry(
         Dictionary<string, ITypeRule> rules,
         SubtypeRelation subtypes,
+        ComparisonRelation comparisons,
         IReadOnlyList<TypeReplacement> replacements)
     {
         _rules = rules;
         Subtypes = subtypes;
+        Comparisons = comparisons;
         Replacements = replacements;
     }
 
     /// <summary>A registry that declares nothing, so every node is <see cref="UnknownType"/>.</summary>
-    public static TypeRegistry Empty { get; } = new([], SubtypeRelation.Primitives, []);
+    public static TypeRegistry Empty { get; } = new([], SubtypeRelation.Primitives, ComparisonRelation.Empty, []);
 
     /// <summary>
     /// The subtype edges the language declared, which a consumer solving equations hands to a
     /// <see cref="TypeSolver"/> or <see cref="TypeLattice"/>.
     /// </summary>
     /// <remarks>
-    /// A registry owns both halves of a language's types aspect: the rules that answer what a node's type is,
-    /// and the edges that say which types may stand where another is required. Keeping them together is what
-    /// lets a consumer solve with the language's own relation instead of only the framework's primitives - the
-    /// relation is otherwise reachable only by a C# caller that built the edges by hand.
+    /// A registry owns the whole of a language's types aspect: the rules that answer what a node's type is, the edges
+    /// that say which types may stand where another is required, the pairs it declares interchangeable, and the
+    /// replacements that say what a claim about two compound types really means. Keeping them together is what lets a
+    /// consumer solve with the language's own relations instead of only the framework's primitives - they are
+    /// otherwise reachable only by a C# caller that built them by hand.
     /// </remarks>
     public SubtypeRelation Subtypes { get; }
 
@@ -51,12 +54,22 @@ public sealed class TypeRegistry
     /// <see cref="Subtypes"/>.
     /// </summary>
     /// <remarks>
-    /// A replacement is the third half of a language's types aspect: the edges say which types may stand where
-    /// another is required, and the replacements say what a claim about two compound types really means. They sit
-    /// on the registry for the same reason the edges do - so that a consumer solving a rule table is given the
-    /// language's own rules rather than only the framework's.
+    /// A replacement is what a claim about two compound types really means, where the edges say which types may stand
+    /// where another is required. They sit on the registry for the same reason the edges do - so that a consumer
+    /// solving a rule table is given the language's own rules rather than only the framework's.
     /// </remarks>
     public IReadOnlyList<TypeReplacement> Replacements { get; }
+
+    /// <summary>
+    /// The types the language declared interchangeable, which a consumer asks beside <see cref="Subtypes"/>.
+    /// </summary>
+    /// <remarks>
+    /// The one that answers "may each of these be used for the other" without claiming either is below the other. It
+    /// is kept apart from <see cref="Subtypes"/> on purpose: two edges, one each way, would say the same about
+    /// interchange while also collapsing the two types in <see cref="TypeLattice"/>, and a language may mean the
+    /// first without the second.
+    /// </remarks>
+    public ComparisonRelation Comparisons { get; }
 
     /// <summary>The same registry, carrying <paramref name="subtypes"/> as its declared edges.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="subtypes"/> is <see langword="null"/>.</exception>
@@ -64,7 +77,18 @@ public sealed class TypeRegistry
     {
         ArgumentNullException.ThrowIfNull(subtypes);
 
-        return ReferenceEquals(subtypes, Subtypes) ? this : new TypeRegistry(_rules, subtypes, Replacements);
+        return ReferenceEquals(subtypes, Subtypes) ? this : new TypeRegistry(_rules, subtypes, Comparisons, Replacements);
+    }
+
+    /// <summary>The same registry, carrying <paramref name="comparisons"/> as its declared comparisons.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="comparisons"/> is <see langword="null"/>.</exception>
+    public TypeRegistry WithComparisons(ComparisonRelation comparisons)
+    {
+        ArgumentNullException.ThrowIfNull(comparisons);
+
+        return ReferenceEquals(comparisons, Comparisons)
+            ? this
+            : new TypeRegistry(_rules, Subtypes, comparisons, Replacements);
     }
 
     /// <summary>The same registry, carrying <paramref name="replacements"/> as its declared replacements.</summary>
@@ -75,7 +99,7 @@ public sealed class TypeRegistry
 
         return ReferenceEquals(replacements, Replacements)
             ? this
-            : new TypeRegistry(_rules, Subtypes, replacements);
+            : new TypeRegistry(_rules, Subtypes, Comparisons, replacements);
     }
 
     /// <summary>How many concepts declare a rule.</summary>
@@ -94,7 +118,7 @@ public sealed class TypeRegistry
             [conceptKey] = rule,
         };
 
-        return new TypeRegistry(rules, Subtypes, Replacements);
+        return new TypeRegistry(rules, Subtypes, Comparisons, Replacements);
     }
 
     /// <summary>The rule that answers for <paramref name="concept"/>, or <see langword="null"/>.</summary>
