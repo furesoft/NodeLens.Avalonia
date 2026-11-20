@@ -1,12 +1,93 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:a="using:Avalonia.Automation"
+             xmlns:local="using:Projectional.Workbench"
              x:Class="Projectional.Workbench.OutlinePanelView">
-  <!-- The outline of the document in front, as the rows the shell derived from it. -->
-  <ListBox
-    x:Name="Rows"
-    Classes="panelList"
-    BorderThickness="0"
-    Background="Transparent"
-    a:AutomationProperties.Name="Outline" />
+  <!--
+    A tool window rather than a bare list: a header naming what the tree is about, the two actions a browser needs, and
+    the document's structure underneath. The header is the panel's own - the tab above it says which tool this is, and a
+    tool window in the editors this one follows carries both.
+  -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <local:OutlineAccentConverter x:Key="OutlineAccent" />
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="panelHeaderBar">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock
+          x:Name="Title"
+          Grid.Column="0"
+          Classes="panelHeader"
+          Text="Outline"
+          Margin="4,0"
+          TextTrimming="CharacterEllipsis" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+          <Button
+            x:Name="RevealButton"
+            Classes="toolAction"
+            a:AutomationProperties.Name="Select the caret's node"
+            a:AutomationProperties.HelpText="Moves the tree to the node the caret is in, opening the nodes above it">
+            <Path Classes="inlineIcon" Data="{DynamicResource IconEye}" />
+          </Button>
+          <Button
+            x:Name="MoreButton"
+            Classes="toolAction"
+            a:AutomationProperties.Name="Outline options"
+            a:AutomationProperties.HelpText="Expands or collapses the whole tree">
+            <Path Classes="inlineIcon" Data="{DynamicResource IconKebab}" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <ListBox
+      x:Name="Rows"
+      Classes="panelList"
+      BorderThickness="0"
+      Background="Transparent"
+      a:AutomationProperties.Name="Outline">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:OutlineEntry">
+          <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">
+            <Border Width="{Binding Indent}" IsVisible="{Binding HasIndent}" />
+            <Button
+              Classes="chevron"
+              IsVisible="{Binding HasChildren}"
+              a:AutomationProperties.Name="Expand or collapse">
+              <Panel>
+                <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronRight}" IsVisible="{Binding !IsExpanded}" />
+                <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronDown}" IsVisible="{Binding IsExpanded}" />
+              </Panel>
+            </Button>
+            <Border Width="16" IsVisible="{Binding !HasChildren}" />
+
+            <!-- The concept's initial in the concept's own colour: what a row *is*, at a glance. -->
+            <Border
+              Width="14"
+              Height="14"
+              CornerRadius="7"
+              Background="{Binding Concept, Converter={StaticResource OutlineAccent}}"
+              VerticalAlignment="Center"
+              Margin="2,0,6,0">
+              <TextBlock
+                Text="{Binding Badge}"
+                FontSize="9"
+                FontWeight="SemiBold"
+                Foreground="White"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+            </Border>
+
+            <TextBlock
+              Text="{Binding Text}"
+              VerticalAlignment="Center"
+              TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
 </UserControl>

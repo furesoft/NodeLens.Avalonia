@@ -33,6 +33,10 @@ internal static class ShellCapture
             {
                 succeeded = false;
                 log.Add($"{shot.FileName}: {exception}");
+
+                // Said out loud as well as logged: the log is a file nobody opens, and a shot that failed used to leave
+                // the previous picture in place with nothing on the console to say so.
+                Console.Error.WriteLine($"{shot.FileName} was not written: {exception.Message}");
             }
         }
 
@@ -48,6 +52,7 @@ internal static class ShellCapture
             {
                 succeeded = false;
                 log.Add($"{shot.FileName}: {exception}");
+                Console.Error.WriteLine($"{shot.FileName} was not written: {exception.Message}");
             }
         }
 

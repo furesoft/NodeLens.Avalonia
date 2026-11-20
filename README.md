@@ -433,6 +433,17 @@ badge on a definition file naming the kind of definition it holds. The outline b
 *A folder says what it holds and a file says what kind of definition it is: a green `C` under `structure` is a concept,
 an amber `E` under `editor` is a notation.*
 
+#### The outline: the document in front, as a tree
+
+The other tab is the model browser. It walks the model rather than the drawing—so a concept without notation is still
+part of it—and draws each row as the concept it is: the concept's initial in a colour that concept owns, identical in
+every document. Nodes fold, the eye moves the tree to the caret without moving the caret, and the menu expands or
+collapses the whole tree at once.
+
+![The outline as a tool window: a header naming the document, two actions, and the ruleset as a tree of coloured concept badges](docs/images/feature-outline.png)
+
+*One colour per concept, not one icon per row: five rules and their outcome read as two families at a glance.*
+
 #### Module settings: what a language says about itself
 
 A right press in the explorer offers `Module settings…` for the module under the pointer: its identity and versions,

@@ -33,7 +33,20 @@ internal static class ShellShots
         new("feature-import-file", ShowImportedDocument, Width: 720, Height: 540),
         new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 600),
         new("feature-project-explorer", ShowProjectExplorer, Width: 900, Height: 900),
+        new("feature-outline", ShowOutline, Width: 720, Height: 560),
     ];
+
+    /// <summary>Shows the outline of the sample document, which is a ruleset of several nested rules.</summary>
+    /// <remarks>
+    /// The tab is selected rather than the panel rebuilt: the picture is of the browser the shell shows, and which tab
+    /// the left column is on is a piece of the shell's own state.
+    /// </remarks>
+    private static async Task ShowOutline(MainWindow window)
+    {
+        window.FindControl<TabControl>("SideTabs")!.SelectedIndex = 1;
+
+        await Task.Delay(250);
+    }
 
     /// <summary>The images of dialogs, which are windows of their own rather than states of the workbench.</summary>
     /// <remarks>
@@ -178,7 +191,7 @@ internal static class ShellShots
     /// <summary>Runs the sample ruleset against <c>amount=1500</c>, which accepts and leaves a trace.</summary>
     private static async Task ShowRunOutput(MainWindow window)
     {
-        window.FindControl<TextBox>("RunInputsInput")!.Text = "amount=1500";
+        window.RunInputs = "amount=1500";
 
         Click(window.FindControl<MenuItem>("RunDocumentItem")!);
 

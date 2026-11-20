@@ -214,21 +214,38 @@ one path per line.
 
 ### The model browser
 
-A left panel lists the active document's structure: every node, depth first, indented by its depth, named by its
-concept and - when it has one - its name ("Rule \"Approved\""). Clicking a row puts the caret on the node.
-`Outline/Outline.cs` builds the rows; the window only fills a list.
+A left panel lists the active document's structure as a tree: every node, depth first, indented by its depth, named by
+its concept and - when it has one - its name ("Rule \"Approved\""). Clicking a row puts the caret on the node.
+`Outline/Outline.cs` builds the rows and `Shell/Panels/OutlinePanelView.axaml` draws them; the window keeps the set of
+shut nodes and decides what a press means.
 
 - **It walks the model, not the projection** - the exact opposite of the find bar, and for the opposite reason. A
   browser answers "what is this document made of", so a concept whose notation is missing is still part of it;
   hiding it would make the browser disagree with the tree it describes. Find answers "where is this text on the
   page", which only the projection knows.
 - **Depth is counted, not stored.** Depth is a property of a place, and a node can be moved.
-- **A flat list, not a tree widget.** Expansion state would be a feature without a reason: nothing is hidden yet,
-  and indentation is what a reader uses. When a document grows past a screen a tree may earn its keep - as a
-  decision, not as a rewrite.
+- **A tree, not a flat list.** A document the size of a ruleset is read by pattern, and folding the parts that are
+  already understood is how a reader keeps the part they are working on in view. A collapsed node's children are not
+  built at all, so the rows cannot drift from the tree they describe; the set of shut nodes is the window's view state,
+  keyed by node id and reset when the document in front changes, because an id means nothing in another model.
+- **A row is drawn as the concept it is**: the concept's initial in a colour that concept owns, both derived from its
+  key by a written-out hash - the same concept is the same colour in every document, and in every process, which is what
+  makes the colour worth having. It is a grouping cue rather than an identity: the palette is small, so two concepts can
+  share a colour.
 - **Rebuilt on every model change**, like the findings. A browser that had to be refreshed by a command is one the
   user forgets to refresh; the cost is one walk of the active model, the same order as the checks that already run
   there.
+
+The header is the tool window's own, and the tab above it names the tool: the header names the **document** the rows
+describe and carries the two actions the browser has. The eye moves the tree to the node the caret is in - opening the
+nodes above it, because a collapsed ancestor is exactly when the row is not there to be found - and it does **not** move
+the caret, which is why the selection it makes is flagged. The kebab offers **Expand all** and **Collapse all**, and
+`Outline.NodesWithChildren` answers the second from the model rather than from the rows, since a collapsed tree no longer
+names what is below it.
+
+A press that lands on a chevron folds and does not navigate: the list selects on the press and the button fires on the
+release, so the selection change in between is the one the browser ignores. Without that guard, folding a row would move
+the caret - the same bug the project explorer cannot have, because a selection there has no side effect.
 
 ### The project explorer
 

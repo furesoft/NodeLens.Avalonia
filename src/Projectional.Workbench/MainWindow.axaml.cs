@@ -109,6 +109,13 @@ public sealed partial class MainWindow : Window, IDisposable
     // Which nodes of the project explorer are drawn shut, by key. View state, so it lives here and not in the rows:
     // a rebuilt list asks this set what is open rather than remembering it itself.
     private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
+
+    // The outline's own view state, by node, and the document it belongs to: a node id means nothing in another model,
+    // so switching documents starts the tree open again rather than folding rows that may not exist.
+    private readonly HashSet<NodeId> _outlineCollapsed = [];
+    private Model? _outlineModel;
+    private bool _outlineRevealing;
+    private bool _outlineToggling;
     private double _panelHeight;
     private bool _outputClosed;
     private bool _problemsClosed;
@@ -126,7 +133,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private ListBox RunOutput => OutputView.List;
 
-    private TextBox RunInputsInput => OutputView.Inputs;
+    /// <summary>
+    /// What the output panel's inputs line holds, which a run reads when it starts.
+    /// </summary>
+    /// <remarks>
+    /// Internal for the screenshot harness: a picture of a run has to say what the run was given, and the field itself
+    /// belongs to the panel's view rather than to the window.
+    /// </remarks>
+    internal string RunInputs
+    {
+        get => OutputView.Inputs.Text ?? string.Empty;
+        set => OutputView.Inputs.Text = value;
+    }
 
     /// <summary>Creates the window with every module - the standalone editor.</summary>
     public MainWindow() : this(ShellCapabilities.Standalone)
@@ -164,6 +182,14 @@ public sealed partial class MainWindow : Window, IDisposable
         ProjectView.List.AddHandler(PointerPressedEvent, OnProjectPointerPressed, RoutingStrategies.Tunnel);
         ProjectView.ModuleSettings.Click += OnModuleSettings;
         OutlineView.List.SelectionChanged += OnOutlineChosen;
+
+        // A press that lands on a chevron folds, it does not navigate: the row would otherwise select on the way to the
+        // button, and selecting a row in a browser moves the caret.
+        OutlineView.List.AddHandler(PointerPressedEvent, OnOutlinePointerPressed, RoutingStrategies.Tunnel);
+        OutlineView.List.AddHandler(PointerReleasedEvent, OnOutlinePointerReleased, RoutingStrategies.Tunnel);
+        OutlineView.List.AddHandler(Button.ClickEvent, OnOutlineToggle);
+        OutlineView.RevealButton.Click += OnOutlineReveal;
+        OutlineView.MoreButton.Click += OnOutlineMore;
         ProblemsView.List.DoubleTapped += OnProblemChosen;
         ProblemsView.List.KeyDown += OnProblemKeyDown;
         UsagesView.List.DoubleTapped += OnUsageChosen;
@@ -1227,12 +1253,132 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void ShowOutline()
     {
-        OutlineList.ItemsSource = _documents.Active is { } document ? Outline.Of(document.Model) : [];
+        if (_documents.Active is { } document)
+        {
+            // A node id belongs to one model, so a document switch starts the tree open rather than folding rows that
+            // belong to the model that was in front a moment ago.
+            if (!ReferenceEquals(_outlineModel, document.Model))
+            {
+                _outlineCollapsed.Clear();
+                _outlineModel = document.Model;
+            }
+
+            OutlineList.ItemsSource = Outline.Of(document.Model, _outlineCollapsed);
+        }
+        else
+        {
+            _outlineCollapsed.Clear();
+            _outlineModel = null;
+            OutlineList.ItemsSource = Array.Empty<OutlineEntry>();
+        }
+
         OutlineList.SelectedItem = null;
 
-        // The header names the document the rows belong to: a panel called "Models" that lists one document's
-        // nodes is a header describing something nobody is looking at.
-        OutlineHeader.Text = _documents.Active is { } active ? $"Outline - {active.Title}" : "Outline";
+        // The tool window's own header names the document the rows describe, and the tab above it names the tool: a
+        // header that repeated "Outline" would be the same word twice, and one that said nothing would describe a tree
+        // nobody knows the owner of.
+        OutlineView.Title.Text = _documents.Active is { } active ? active.Title : "Outline";
+        OutlineHeader.Text = "Outline";
+    }
+
+    /// <summary>Notes that the press about to arrive is aimed at a row's chevron rather than at the row.</summary>
+    /// <remarks>
+    /// Set on the way down and cleared on the way up, because the list selects on the press and the button fires on the
+    /// release: the selection change that lands between the two is the one that must not navigate.
+    /// </remarks>
+    private void OnOutlinePointerPressed(object? sender, PointerPressedEventArgs e) =>
+        _outlineToggling = (e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) is not null;
+
+    private void OnOutlinePointerReleased(object? sender, PointerReleasedEventArgs e) =>
+        _outlineToggling = false;
+
+    /// <summary>Opens or shuts the node a browser row's chevron belongs to.</summary>
+    private void OnOutlineToggle(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: OutlineEntry entry })
+        {
+            return;
+        }
+
+        if (!_outlineCollapsed.Remove(entry.Id))
+        {
+            _outlineCollapsed.Add(entry.Id);
+        }
+
+        ShowOutline();
+        e.Handled = true;
+    }
+
+    /// <summary>Moves the tree to the node the caret is in, opening the nodes above it.</summary>
+    /// <remarks>
+    /// A collapsed parent is the one case where the row a user is looking for is not in the list at all, so the tree has
+    /// to be opened from the model - the ancestors of the caret's node - rather than from what it is showing.
+    /// </remarks>
+    private void OnOutlineReveal(object? sender, RoutedEventArgs e)
+    {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        var id = document.Session.Selection.Caret.Address.Owner;
+
+        if (document.Model.Project.FindNode(id) is not { } node)
+        {
+            return;
+        }
+
+        for (var ancestor = node.Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            _outlineCollapsed.Remove(ancestor.Id);
+        }
+
+        ShowOutline();
+
+        // Selecting the row must not move the caret: revealing is "show me where I am", and the row selection is the
+        // browser's own navigation. The flag keeps the two apart.
+        if (OutlineList.ItemsSource is IEnumerable<OutlineEntry> rows
+            && rows.FirstOrDefault(row => row.Id == id) is { } found)
+        {
+            _outlineRevealing = true;
+
+            try
+            {
+                OutlineList.SelectedItem = found;
+                OutlineList.ScrollIntoView(found);
+            }
+            finally
+            {
+                _outlineRevealing = false;
+            }
+        }
+    }
+
+    /// <summary>Offers the commands that act on the whole tree.</summary>
+    private void OnOutlineMore(object? sender, RoutedEventArgs e)
+    {
+        var expand = new MenuItem { Header = "Expand all" };
+        var collapse = new MenuItem { Header = "Collapse all", IsEnabled = _documents.Active is not null };
+
+        expand.Click += (_, _) =>
+        {
+            _outlineCollapsed.Clear();
+            ShowOutline();
+        };
+
+        collapse.Click += (_, _) =>
+        {
+            if (_documents.Active is { } document)
+            {
+                _outlineCollapsed.Clear();
+                _outlineCollapsed.UnionWith(Outline.NodesWithChildren(document.Model));
+                ShowOutline();
+            }
+        };
+
+        var menu = new ContextMenu { ItemsSource = new[] { expand, collapse } };
+
+        menu.Open(OutlineView.MoreButton);
     }
 
     /// <summary>Puts the caret on the node a browser row stands for.</summary>
@@ -1242,7 +1388,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void OnOutlineChosen(object? sender, SelectionChangedEventArgs e)
     {
-        if (OutlineList.SelectedItem is not OutlineEntry entry
+        if (_outlineRevealing
+            || _outlineToggling
+            || OutlineList.SelectedItem is not OutlineEntry entry
             || _documents.Active is not { } document
             || !_tabs.TryGetValue(document, out var tab)
             || EditorOf(tab) is not { } editor)
@@ -1760,7 +1908,7 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         _error = null;
-        document.Output = DocumentRun.Of(document.Root, rules, RunInputsInput.Text);
+        document.Output = DocumentRun.Of(document.Root, rules, RunInputs);
 
         RevealOutput();
         UpdateStatus();
