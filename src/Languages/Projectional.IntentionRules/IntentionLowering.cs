@@ -232,9 +232,13 @@ public static class IntentionLowering
                 return null;
             }
 
+            // The use leaves first, because it may be the only child its slot holds: a copy into a full single-valued
+            // slot is refused, and the slot is only free once the node that stood there is gone. The place it occupied
+            // is the index the copy goes to, which the delete does not change - every sibling after it shifts down by
+            // one and the copy takes its place.
             return EditProgram.Of(
-                new InsertCopyAction(target.Id, parent.Id, place, node.IndexInParent),
-                new DeleteNodeAction(node.Id));
+                new DeleteNodeAction(node.Id),
+                new InsertCopyAction(target.Id, parent.Id, place, node.IndexInParent));
         };
     }
 

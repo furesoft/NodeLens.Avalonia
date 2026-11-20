@@ -275,7 +275,12 @@ must not have.
 **`InsertCopyAction` is the same place-based shape for a copy.** `DuplicateNodeAction` copies a node next to itself -
 that is what "duplicate" means - while a refactoring says "put what that node holds *here*". The copy is a new subtree
 with new identities (`Model.InsertCopy`), which is the difference from `MoveNodeToAction`: the source stays, so a use
-can be given its definition's content without taking it from every other use.
+can be given its definition's content without taking it from every other use. **It refuses a source that is an
+ancestor of the destination** (`source.IsAncestorOf(parent)`), and that check is not defensive: `Model.InsertCopy`
+walks the source subtree with no such guard, so copying a node into its own subtree recurses until the stack overflows
+- a public API a host can hang with one call. The model answers "what may this slot hold" and not "would this shape be
+finite"; the action is where finiteness is answered. The same lesson applies to any future place-based edit: state the
+structural invariant in the action, not only in the model.
 
 `Projectional.IntentionRules` is the declared half of the intention machinery and is easy to miss because the shipped
 entries (rename, wrap, reset) come from `Projectional.Intentions`: a language writes one `Intent.Rule` document per

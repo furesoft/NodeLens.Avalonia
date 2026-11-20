@@ -95,6 +95,51 @@ public sealed class DeclaredWorkflowSampleTests
     }
 
     [Fact]
+    public void TheDeclaredInlineReplacesACallWithACopyOfTheStepItCalls()
+    {
+        // The use-shape the refactoring plan asked for, in a shipped language: `release.mps` ends with a call to
+        // `build`, and inlining it runs those commands here instead - a copy, so `build` keeps its own place in the
+        // chain. It is the one case where the two halves of R2 meet: a declaration in `intentions/` and the framework's
+        // copy-then-delete.
+        var language = Language();
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Workflow", "release.mps"));
+        var workflow = model.Roots[0];
+        var build = workflow.GetChild("first")!;
+        var test = build.GetChild("next")!;
+        var call = test.GetChild("next")!;
+        var shared = workflow.GetChildren("library")[0];
+
+        Assert.Equal("Workflow.Call", call.Concept.Key);
+
+        using var session = new EditorSession(workflow, language.Notations);
+
+        session.AddIntentions(language.Intentions, IntentionSource.Language);
+
+        var place = CaretPlaces.Of(session.Tree).First(each => each.Address.Owner == call.Id);
+
+        session.Select(Selection.At(CaretPosition.At(place, 0)));
+
+        var offer = Assert.Single(IntentionList.For(session), each => each.Label == "Inline this call");
+
+        Assert.Equal(EditSafety.Destructive, offer.Safety);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+
+        // What stood where the call stood is now a step running the commands the shared step runs - a copy, with its
+        // own id.
+        var inlined = test.GetChild("next")!;
+
+        Assert.Equal("Workflow.Step", inlined.Concept.Key);
+        Assert.Equal("dotnet build", inlined.GetOrNull("command"));
+        Assert.NotEqual(shared.Id, inlined.Id);
+
+        // And the definition is untouched, in the library where it belongs: a copy, not a move.
+        Assert.Same(shared, Assert.Single(workflow.GetChildren("library")));
+
+        session.History.Undo();
+
+        Assert.Equal("Workflow.Call", test.GetChild("next")!.Concept.Key);
+    }
+    [Fact]
     public void TheInsertEntryIsOfferedOnTheEmptySlotAndFillsIt()
     {
         var language = Language();
