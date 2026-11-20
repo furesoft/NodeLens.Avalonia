@@ -31,8 +31,8 @@ document:
   transition" is a C# class, so it cannot ship with a language written in a folder.
 - **Concepts are C#.** `ConceptRegistry.Get`, `Concepts`, `Concept.SuperConcepts`,
   `Concept.IsKindOf` exist; a document cannot name a concept or walk the hierarchy.
-- **There is no node value and no node type.** `Value` has `IntValue`, `BoolValue`, `StringValue`
-  and `DateValue`; `IType` has the four primitives plus records, lists, optionals, names and
+- **There is no node value and no node type.** `Value` has `IntValue`, `FloatValue`, `BoolValue`,
+  `StringValue` and `DateValue`; `IType` has the primitives plus records, lists, optionals, names and
   `UnknownType`. A query's answer has no representation at either end.
 - **There is no subtree walk a document can reach.** `Node.SelfAndDescendants()` exists but is
   `internal` to `Projectional.Core`, and the walk is written **five more times** in the tree:

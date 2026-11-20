@@ -212,7 +212,7 @@ A second, orthogonal axis: `TextEmphasis` is a `[Flags]` enum in
   `WideBoldTextMeasure` (bold char = 2 units) to prove geometry actually follows emphasis.
 
 `CellStyler.Default` reads only the cell: `ConstantCell` uses the notation's `ConstantKind`,
-`PropertyCell` switches on `PropertyType.Name` (`"int"`/`"date"` -> `Number`, `"string"` ->
+`PropertyCell` switches on `PropertyType.Name` (`"int"`/`"float"`/`"date"` -> `Number`, `"string"` ->
 `Text`, bool and every enumeration -> `Keyword`), references use `ReferenceState`, an empty
 child/collection is `Placeholder`, `MissingNotationCell` is `Missing`. It never emits
 `Identifier` - that kind exists for a host styler that knows a cell is a name, and the

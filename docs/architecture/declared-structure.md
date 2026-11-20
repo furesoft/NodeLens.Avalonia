@@ -154,7 +154,7 @@ The remaining gap is not the notation's:
 declarations build.
 
 - **It checks what the compiler would have checked** for a hand-written language: that every property names a type,
-  that the type is one of the four built-ins or a declared enumeration, that an enumeration has symbols and a unique
+  that the type is one of the five built-ins or a declared enumeration, that an enumeration has symbols and a unique
   key, and that every slot is one of the three kinds. Each failure is a `ConceptDefinitionException` naming the
   concept and the slot, because a definition is user data and its errors are user-facing.
 - **It does not check the graph** - whether a super concept exists, whether a child slot names a declared concept,

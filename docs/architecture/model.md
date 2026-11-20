@@ -61,10 +61,12 @@ Deliberate restrictions:
 
 ### Property types
 
-`string`, `int`, `bool`, `enum(symbols)`, `date`. Everything else — numbers with
+`string`, `int`, `float`, `bool`, `enum(symbols)`, `date`. Everything else — numbers with
 units, expressions, structured values — is modelled as a child node, not a property.
 This keeps the renderer and the XML small and forces domain concepts into the model
-where they can be validated.
+where they can be validated. `float` is a `double` and is stored in the shortest
+spelling that reads back as the same number; `NaN` and the infinities are refused,
+because a value no comparison can answer is a mistake wherever it is kept.
 
 ## Identity
 

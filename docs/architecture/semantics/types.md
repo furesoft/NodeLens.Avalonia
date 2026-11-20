@@ -124,7 +124,7 @@ have written ([ADR 0014](../../adr/0014-both-authoring-paths-are-permanent.md)).
 | `TypeRule.Replacement` | `claim`, `left`, `right` and `instead`: a claim between two patterns, and what to prove in its place |
 | `TypeRule.Comparable` | `left` and `right`: two types either may be used for the other |
 | `TypeRule.TypeExpr` | a type written as data, abstract: one of the four kinds below |
-| `TypeRule.Primitive` | `name`: `string`, `int`, `bool`, `date` |
+| `TypeRule.Primitive` | `name`: `string`, `int`, `float`, `bool`, `date` |
 | `TypeRule.Record` | `fields`: a fixed set of named fields |
 | `TypeRule.Field` | `name` and `type` |
 | `TypeRule.List` | `element` |
@@ -363,7 +363,7 @@ specification, not a capability.
 | operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.OperandsNotComparable`, on the C# authoring path: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
 | a language's own types aspect, declared in C# | `SqlSchemaLanguage.Types` (`SqlSchemaTypes`): the first shipped language with types of its own. Each column type is a `NamedType` over a primitive, one instance per value, so two columns of one type are one type - which is what lets a key compare them |
 | a one-way requirement ("this may stand where that is required") | `SqlSchemaLanguage.Constraints` (`KeyTypesConstraint`): a key whose column type cannot be used to look up its target's is reported, which no amount of model structure could say because both reference slots accept any column |
-| `TypeRule.Supertypes` | **no subject.** No shipped language declares a type hierarchy. The schema is the closest, and the framework has four primitives to SQL's five column types, so `decimal` can only be modelled over `int` - which asserts interchange rather than a widening edge. A fifth primitive is a type-layer decision no language has asked for |
+| `TypeRule.Supertypes` | **no subject.** No shipped language declares a type hierarchy. The schema is the closest, and there is no decimal primitive for `decimal` to be a widening of, so it can only be modelled over `int` - which asserts interchange rather than a widening edge. A decimal primitive is a type-layer decision no language has asked for |
 | `TypeRule.Comparable` | **no subject.** No shipped language has two types interchangeable without one being below the other - and the expression language's three primitives are genuinely incomparable, which is precisely what makes its operand rule fire |
 | `TypeRule.Replacement` | **no subject.** Covariance rewrites a claim about a compound type, and no shipped language has one: the expression language declares no list, record or optional, and a schema column is never a collection |
 
