@@ -161,7 +161,10 @@ public static class TypeRuleLowering
 
             complaints = complaints.Add(
                 conceptKey,
-                new ComplaintConstraint(Required(body, TypeRuleLanguage.MessageSlot), Severity(body)));
+                new ComplaintConstraint(
+                    Required(body, TypeRuleLanguage.MessageSlot),
+                    Severity(body),
+                    Condition(body)));
         }
 
         return complaints;
@@ -195,18 +198,30 @@ public static class TypeRuleLowering
                     $"The type rule names the concept '{conceptKey}', which the language does not declare.");
             }
 
-            if (root.GetChild(TypeRuleLanguage.BodySlot) is not { Concept.Key: TypeRuleConceptKeys.Child } body)
+            switch (root.GetChild(TypeRuleLanguage.BodySlot))
             {
-                continue;
-            }
+                case { Concept.Key: TypeRuleConceptKeys.Child } child:
+                    RequireChildSlot(concept, conceptKey, Required(child, TypeRuleLanguage.SlotSlot));
+                    break;
 
-            var slot = Required(body, TypeRuleLanguage.SlotSlot);
-
-            if (concept.FindChild(slot) is null)
-            {
-                throw new ConceptDefinitionException(
-                    $"The type rule for '{conceptKey}' names the slot '{slot}', which '{conceptKey}' declares as no child slot.");
+                // A condition reads the same two child slots a child body does, so it is refused the same way: a
+                // condition naming a reference slot would throw when the check runs, where the author is not looking.
+                case { Concept.Key: TypeRuleConceptKeys.Complain } complaint
+                    when complaint.GetChild(TypeRuleLanguage.WhenSlot) is { } when:
+                    RequireChildSlot(concept, conceptKey, Required(when, TypeRuleLanguage.LeftSlot));
+                    RequireChildSlot(concept, conceptKey, Required(when, TypeRuleLanguage.RightSlot));
+                    break;
             }
+        }
+    }
+
+    /// <summary>Refuses <paramref name="slot"/> unless <paramref name="concept"/> declares it as a child slot.</summary>
+    private static void RequireChildSlot(Concept concept, string conceptKey, string slot)
+    {
+        if (concept.FindChild(slot) is null)
+        {
+            throw new ConceptDefinitionException(
+                $"The type rule for '{conceptKey}' names the slot '{slot}', which '{conceptKey}' declares as no child slot.");
         }
     }
 
@@ -537,6 +552,12 @@ public static class TypeRuleLowering
     private static bool IsComplaint(Node rule) =>
         rule.GetChild(TypeRuleLanguage.BodySlot)?.Concept.Key == TypeRuleConceptKeys.Complain;
 
+    /// <summary>The two child slots a complaint's condition compares, or <see langword="null"/> when it always reports.</summary>
+    private static (string Left, string Right)? Condition(Node body) =>
+        body.GetChild(TypeRuleLanguage.WhenSlot) is { } when
+            ? (Required(when, TypeRuleLanguage.LeftSlot), Required(when, TypeRuleLanguage.RightSlot))
+            : null;
+
     /// <summary>How much a complaint matters, as the severity its spelling names.</summary>
     private static DiagnosticSeverity Severity(Node body) =>
         body.GetOrNull(TypeRuleLanguage.SeveritySlot) switch
@@ -546,11 +567,28 @@ public static class TypeRuleLowering
             _ => DiagnosticSeverity.Error,
         };
 
-    /// <summary>A complaint: a message with a severity, reported wherever the concept the rule names appears.</summary>
-    private sealed class ComplaintConstraint(string message, DiagnosticSeverity severity) : IConstraint
+    /// <summary>
+    /// A complaint: a message with a severity, reported wherever the concept the rule names appears.
+    /// </summary>
+    /// <remarks>
+    /// A condition makes the complaint report only when the types of two child slots are not interchangeable - the
+    /// "operation is not applicable to these operands" case. The types are read at check time, from the context's
+    /// own type layer, so a condition costs nothing until a check runs and follows whatever the language's rules and
+    /// declared edges say. Without a condition the complaint always reports, which is what a statement about the
+    /// concept itself is.
+    /// </remarks>
+    private sealed class ComplaintConstraint(
+        string message,
+        DiagnosticSeverity severity,
+        (string Left, string Right)? when) : IConstraint
     {
         public void Check(ConstraintContext context)
         {
+            if (when is { } condition && IsComparable(context, condition.Left, condition.Right))
+            {
+                return;
+            }
+
             switch (severity)
             {
                 case DiagnosticSeverity.Warning:
@@ -565,6 +603,31 @@ public static class TypeRuleLowering
                     context.Error(message);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Whether the two child slots' types are interchangeable, or <see langword="true"/> when either slot is
+        /// empty.
+        /// </summary>
+        /// <remarks>
+        /// A condition asks about two operands, so without them there is nothing to say and the complaint stays
+        /// silent - reporting "not comparable" for a missing operand would blame the author for a node that is
+        /// merely incomplete. Comparability is asked of the type itself first, then of the declared edges: a name
+        /// compares by its expansion, and a language that declares two types interchangeable is honoured.
+        /// </remarks>
+        private static bool IsComparable(ConstraintContext context, string left, string right)
+        {
+            if (context.Node.GetChild(left) is not { } leftNode
+                || context.Node.GetChild(right) is not { } rightNode)
+            {
+                return true;
+            }
+
+            var leftType = context.TypeOf(leftNode);
+            var rightType = context.TypeOf(rightNode);
+
+            return leftType.IsComparableTo(rightType)
+                || context.Types.Subtypes.IsComparableTo(leftType, rightType);
         }
     }
 

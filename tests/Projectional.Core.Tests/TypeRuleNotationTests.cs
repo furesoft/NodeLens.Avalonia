@@ -268,6 +268,30 @@ public sealed class TypeRuleNotationTests
     }
 
     [Fact]
+    public void AConditionalComplaintDrawsTheConditionAfterTheMessage()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.Binary");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Complain);
+        body.Set(TypeRuleLanguage.SeveritySlot, "error");
+        body.Set(TypeRuleLanguage.MessageSlot, "The operands are not comparable.");
+
+        var condition = model.NewChild(body, TypeRuleLanguage.WhenSlot, TypeRuleConceptKeys.NotComparable);
+        condition.Set(TypeRuleLanguage.LeftSlot, "left");
+        condition.Set(TypeRuleLanguage.RightSlot, "right");
+
+        Assert.Equal(
+            """
+            rule Expressions.Binary is
+              report error "The operands are not comparable." type of left is not comparable with type of right
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 120));
+    }
+
+    [Fact]
     public void ASupertypesDocumentDrawsTheEdgeItDeclares()
     {
         var model = TypeRuleLanguage.NewProject().NewModel("supertypes");

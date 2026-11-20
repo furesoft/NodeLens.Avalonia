@@ -82,6 +82,9 @@ public static class TypeRuleLanguage
     /// <summary>The type it may stand in place of.</summary>
     public const string SupertypeSlot = "supertype";
 
+    /// <summary>The condition a complaint reports only when it holds.</summary>
+    public const string WhenSlot = "when";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// A rule is a document of its own, and so is a named type: the root <em>is</em> the definition, the shape MPS
@@ -238,10 +241,20 @@ public static class TypeRuleLanguage
             [
                 new PropertySlot(MessageSlot, PropertyType.String),
                 new PropertySlot(SeveritySlot, PropertyType.Enum("error", "warning", "hint")),
+                new ChildSlot(WhenSlot, TypeRuleConceptKeys.NotComparable, Cardinality.One),
             ],
             [TypeRuleConceptKeys.Body],
             nameSlot: MessageSlot,
-            description: "A body that reports instead of answering a type: the message and how much it matters."),
+            description: "A body that reports instead of answering a type: the message and how much it matters, optionally only when a condition holds."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.NotComparable,
+            [
+                new PropertySlot(LeftSlot, PropertyType.String),
+                new PropertySlot(RightSlot, PropertyType.String),
+            ],
+            nameSlot: LeftSlot,
+            description: "The condition under which a complaint reports: the types of two child slots are not interchangeable."),
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.Named,

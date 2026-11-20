@@ -82,4 +82,9 @@ public static class TypeRuleConceptKeys
     /// One declared edge of the subtype relation: a type that may stand where another is required.
     /// </summary>
     public const string Supertypes = "TypeRule.Supertypes";
+
+    /// <summary>
+    /// A condition a complaint states: the types of two child slots are not interchangeable.
+    /// </summary>
+    public const string NotComparable = "TypeRule.NotComparable";
 }

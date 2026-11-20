@@ -543,6 +543,97 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void AConditionalComplaintStaysSilentWhenTheOperandsAreComparable()
+    {
+        var builder = new RuleBuilder();
+
+        builder.Rule(ExpressionsConceptKeys.Binary, builder.Complain(
+            "The operands are not comparable.",
+            when: ("left", "right")));
+        builder.Rule(ExpressionsConceptKeys.IntLiteral, builder.Fixed("int"));
+
+        var findings = Findings(
+            builder,
+            BinaryOf(ExpressionsConceptKeys.IntLiteral, ExpressionsConceptKeys.IntLiteral));
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void AConditionalComplaintReportsWhenTheOperandsAreNotComparable()
+    {
+        var builder = new RuleBuilder();
+
+        builder.Rule(ExpressionsConceptKeys.Binary, builder.Complain(
+            "The operands are not comparable.",
+            when: ("left", "right")));
+        builder.Rule(ExpressionsConceptKeys.IntLiteral, builder.Fixed("int"));
+        builder.Rule(ExpressionsConceptKeys.StringLiteral, builder.Fixed("string"));
+
+        var findings = Findings(
+            builder,
+            BinaryOf(ExpressionsConceptKeys.IntLiteral, ExpressionsConceptKeys.StringLiteral));
+
+        var finding = Assert.Single(findings);
+
+        Assert.Equal("The operands are not comparable.", finding.Message);
+        Assert.Equal(DiagnosticSeverity.Error, finding.Severity);
+    }
+
+    [Fact]
+    public void AConditionalComplaintStaysSilentWhenAnOperandIsMissing()
+    {
+        // The condition compares two operands; with one of them absent there is nothing to compare, so the
+        // complaint stays quiet rather than blaming a node for a comparison it could not make.
+        var builder = new RuleBuilder();
+
+        builder.Rule(ExpressionsConceptKeys.Binary, builder.Complain(
+            "The operands are not comparable.",
+            when: ("left", "right")));
+        builder.Rule(ExpressionsConceptKeys.IntLiteral, builder.Fixed("int"));
+
+        Assert.Empty(Findings(builder, BinaryOf(ExpressionsConceptKeys.IntLiteral, right: null)));
+    }
+
+    [Fact]
+    public void AConditionHonoursTheEdgesTheLanguageDeclares()
+    {
+        // Comparability is asked of the declared relation as well as of the types themselves: a language that says
+        // two names may each stand for the other has answered the question the condition is asking, even though
+        // neither name knows about the other on its own.
+        var builder = new RuleBuilder();
+
+        builder.Rule(ExpressionsConceptKeys.Binary, builder.Complain(
+            "The operands are not comparable.",
+            when: ("left", "right")));
+        builder.Declare("Amount", builder.Primitive("int"));
+        builder.Declare("Money", builder.Primitive("string"));
+        builder.Rule(ExpressionsConceptKeys.IntLiteral, builder.FixedAs(builder.Ref("Amount")));
+        builder.Rule(ExpressionsConceptKeys.StringLiteral, builder.FixedAs(builder.Ref("Money")));
+        builder.Supertypes(builder.Ref("Amount"), builder.Ref("Money"));
+        builder.Supertypes(builder.Ref("Money"), builder.Ref("Amount"));
+
+        var findings = Findings(
+            builder,
+            BinaryOf(ExpressionsConceptKeys.IntLiteral, ExpressionsConceptKeys.StringLiteral));
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void AConditionNamingAReferenceSlotIsRefusedAtLoad()
+    {
+        var builder = new RuleBuilder();
+
+        builder.Rule(SmConceptKeys.Transition, builder.Complain("Never mind.", when: ("source", "source")));
+
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => TypeRuleLowering.CreateRegistry(builder.Roots, StateMachineLanguage.Concepts));
+
+        Assert.Contains("'source'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ANamedTypeDeclaredInTermsOfItselfIsALoadTimeError()
     {
         // The only cycle a type read can express: a name whose expansion is itself. The lowering refuses it and
@@ -694,6 +785,34 @@ public sealed class TypeRuleLoweringTests
     }
 
     /// <summary>
+    /// An expressions model holding one <c>Binary</c> whose operands are literals of the named concepts.
+    /// </summary>
+    /// <param name="left">The concept the left operand instantiates.</param>
+    /// <param name="right">The concept the right operand instantiates, or <see langword="null"/> to leave the slot
+    /// empty and so stand for an incomplete node.</param>
+    private static Model BinaryOf(string left, string? right)
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "+");
+        model.NewChild(binary, "left", left);
+
+        if (right is not null)
+        {
+            model.NewChild(binary, "right", right);
+        }
+
+        return model;
+    }
+
+    /// <summary>The findings the complaints a builder's rules state report on <paramref name="model"/>.</summary>
+    private static IReadOnlyList<Diagnostic> Findings(RuleBuilder builder, Model model) =>
+        new ConstraintEngine(
+            TypeRuleLowering.CreateComplaints(builder.Roots),
+            types: TypeRuleLowering.CreateRegistry(builder.Roots)).Check(model);
+
+    /// <summary>
     /// Writes type rules the way a language author would: one rule per root, in one model the fixture owns.
     /// </summary>
     /// <remarks>
@@ -762,7 +881,7 @@ public sealed class TypeRuleLoweringTests
         }
 
         /// <summary>A body that reports instead of typing.</summary>
-        public Node Complain(string message, string? severity = null)
+        public Node Complain(string message, string? severity = null, (string Left, string Right)? when = null)
         {
             var body = _model.NewNode(TypeRuleConceptKeys.Complain);
 
@@ -771,6 +890,14 @@ public sealed class TypeRuleLoweringTests
             if (severity is not null)
             {
                 body.Set(TypeRuleLanguage.SeveritySlot, severity);
+            }
+
+            if (when is { } condition)
+            {
+                var conditionNode = _model.NewChild(body, TypeRuleLanguage.WhenSlot, TypeRuleConceptKeys.NotComparable);
+
+                conditionNode.Set(TypeRuleLanguage.LeftSlot, condition.Left);
+                conditionNode.Set(TypeRuleLanguage.RightSlot, condition.Right);
             }
 
             return body;
