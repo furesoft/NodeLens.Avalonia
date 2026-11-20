@@ -170,7 +170,7 @@ internal sealed class WorkbenchLanguage
     /// <param name="name">The document name to give the model the text becomes.</param>
     /// <param name="text">The file's text, as the shell read it.</param>
     /// <param name="reason">Why nothing read it, or <see langword="null"/> when a language read it or none was asked.</param>
-    /// <returns>The document and the language that read it, or <see langword="null"/>.</returns>
+    /// <returns>The document, the language that read it and what it answered, or <see langword="null"/>.</returns>
     /// <remarks>
     /// <para>
     /// Every importer is tried, each into a model of its own, and the first that reads the text keeps it: a failed
@@ -205,7 +205,7 @@ internal sealed class WorkbenchLanguage
                 {
                     reason = null;
 
-                    return new ImportedDocument(model, language);
+                    return new ImportedDocument(model, language, result);
                 }
 
                 if (result.Diagnostics.Count == 0)

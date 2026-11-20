@@ -284,6 +284,12 @@ declared language has no check set, so asking only for `Checks` let `SHELL001` r
 "a stage is still called unnamed" rule and every stage reported the same hint twice. A language that declares
 findings has said what it wants a name to be, whichever of the two ways it said it.
 
+**An import's answer is not a panel row.** `ImportDiagnostic` describes the file - a line and a column, and for a
+refusal no node at all - while a panel row carries a `CellAddress` and is re-derived from the model on every edit.
+So both import outcomes go to the status line in the importer's own words (`ImportSummary` for a success, the
+importer's refusal for a failure), and a success **with warnings** is still a sentence the user must see: the
+importer reports "kept as raw text" rather than failing, so the host is the only place that can say it.
+
 The repository ships two front ends and **one** public surface:
 
 - `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).
