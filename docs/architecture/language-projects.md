@@ -33,6 +33,8 @@ MyRules/
     Pipeline.Stage.retries.mps    one scope rule
   intentions/                     what a language offers at a caret (Projectional.IntentionRules)
     Pipeline.Stage.mps            one intention
+  tests/                          what the language asserts about its own documents (Projectional.Testing)
+    Pipeline.Stage.mps            one test
   pipeline.mps                    a document of the language, not part of the definition
 ```
 
@@ -46,6 +48,10 @@ one child would be a second place to say which definitions exist.
 
 The folder's name is the language's name. The `structure` folder is required and must hold at least one document; the
 other four are optional.
+
+The `tests` folder is not an aspect of the language: `LanguageProject.Open` does not read it, because a language does
+not depend on its own tests. `TestRunner` in `Projectional.Testing` reads it, in the same ordinal order, and runs the
+assertions each document states ([language-tests.md](language-tests.md)).
 
 ## The file name is the declaration order
 

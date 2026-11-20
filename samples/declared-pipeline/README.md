@@ -10,6 +10,7 @@ sees" is not a claim to check - there is nothing to delete.
 | `editor/` | how those concepts are drawn - one document per notation, a header line and a table |
 | `constraints/` | the rules the language states about itself - one document per rule |
 | `generator/` | the language's one text generator, `ShellScript`, as a model of the generator language |
+| `tests/` | what the language asserts about its own documents - one test per document |
 | `pipeline.mps` | a document of the language, so the folder is something to open |
 | `nightly.mps` | a second document, with a stage that has no command |
 
@@ -49,6 +50,10 @@ with the pipeline's name, then one line per stage - and its second mapping is wh
 template could not say before: `when command is filled` emits the command and otherwise a comment, so
 `nightly.mps`, whose `smoke` stage has none, generates `# smoke has no command` rather than an empty
 line. Run it in the app with **Generate â–¸ ShellScript**.
+
+`tests/round-trips.mps` is the language's own test: one document written in the test language, saying
+that `pipeline.mps` saves and reloads to the same text. It is not C# - the repository's suite runs the
+folder through `TestRunner` and fails a named test document if the round trip ever stops holding.
 
 ## What it takes from the framework
 
