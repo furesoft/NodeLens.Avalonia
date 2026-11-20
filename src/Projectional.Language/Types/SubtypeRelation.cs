@@ -111,6 +111,62 @@ public sealed class SubtypeRelation : ISubtype
         return _edges.Any(edge => Same(edge.Subtype, actual) && Reaches(edge.Supertype, expected, []));
     }
 
+    /// <summary>Every type <paramref name="type"/> may stand as, beginning with itself.</summary>
+    /// <param name="type">The type to walk up from.</param>
+    /// <remarks>
+    /// Transitive and in reference order rather than a useful order - a caller that needs a lattice position
+    /// compares them with <see cref="IsSubtype"/>. It exists because "is A below B" is not enough to ask "what is
+    /// above both": a least upper bound needs the set, not one comparison, and that set can only come from the
+    /// edges.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="type"/> is <see langword="null"/>.</exception>
+    public IReadOnlyList<IType> SupertypesOf(IType type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return Reach(type, edge => edge.Subtype, edge => edge.Supertype);
+    }
+
+    /// <summary>Every type that may stand as <paramref name="type"/>, beginning with itself.</summary>
+    /// <param name="type">The type to walk down from.</param>
+    /// <remarks>The mirror of <see cref="SupertypesOf"/>, walked along the edges in the other direction.</remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="type"/> is <see langword="null"/>.</exception>
+    public IReadOnlyList<IType> SubtypesOf(IType type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return Reach(type, edge => edge.Supertype, edge => edge.Subtype);
+    }
+
+    /// <summary>Everything reachable from <paramref name="type"/> along one side of the edges.</summary>
+    /// <remarks>
+    /// A worklist rather than recursion: a relation a language declares may hold a cycle (two names for one type),
+    /// and a walk that visited a type twice would not terminate. "Seen" is the same comparison
+    /// <see cref="Same"/> makes, so a primitive reached by two routes is one entry.
+    /// </remarks>
+    private List<IType> Reach(
+        IType type,
+        Func<(IType Subtype, IType Supertype), IType> from,
+        Func<(IType Subtype, IType Supertype), IType> to)
+    {
+        List<IType> found = [type];
+
+        for (var index = 0; index < found.Count; index++)
+        {
+            var current = found[index];
+
+            foreach (var edge in _edges)
+            {
+                if (Same(from(edge), current) && !found.Any(each => Same(each, to(edge))))
+                {
+                    found.Add(to(edge));
+                }
+            }
+        }
+
+        return found;
+    }
+
     /// <summary>Whether the chain from <paramref name="from"/> arrives at <paramref name="expected"/>.</summary>
     private bool Reaches(IType from, IType expected, HashSet<IType> seen)
     {
