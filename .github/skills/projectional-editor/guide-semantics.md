@@ -123,6 +123,12 @@
   stands in **no** edge - an edge naming it is refused where it is declared. That separation is the point:
   `Accepts` is lenient about `Unknown` so one mistake is not fifty findings, and a type rule must never be told a
   guess satisfies `int`. Collapsing the two is how `Unknown` leaks.
+- **Equations are how a rule ties two nodes' types**, and `TypeSolver` is the fixpoint over them: a bounds solver
+  where an equality pins, a subtyping narrows, and a list-against-list decomposes into its elements (an optional
+  into its inner, a record never). It refuses three temptations - it does not invent the missing side of
+  `?a == ?b`, it does not give a variable a type nothing demanded, and it stops on a budget instead of hanging.
+  `ITypeRule.EquationsFor` states equations and defaults to none, so `TypeFor` keeps working for every rule that
+  needs no solve; **no consumer asks for equations yet**, which is what slices T3/T4 add.
 - **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
   a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
   rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.
