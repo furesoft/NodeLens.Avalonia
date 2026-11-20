@@ -113,8 +113,16 @@
 `Projectional.Language/Types/` computes what a node evaluates to; the design is
 `docs/architecture/semantics.md` §Types.
 
-- **`expected.Accepts(actual)` is the only question**, and the direction matters: a caller that got it
-  wrong would be comparing two types for equality, which is a different and much weaker question.
+- **`expected.Accepts(actual)` is the only question a slot asks**, and the direction matters: a caller that got it
+  wrong would be comparing two types for equality, which is a different and much weaker question. It has a
+  **default implementation** on `IType` answering with `SubtypeRelation.Primitives`, so a type a language adds
+  needs only a `Name`; the lenient types override it. A default member is reached through `IType`, so hold the
+  interface, not the concrete class.
+- **Subtyping is the second question and it is strict**: `ISubtype.IsSubtype(actual, expected)` asks the declared
+  edges in `SubtypeRelation` (its own type, a primitive of the same name, transitive declared edges) and `unknown`
+  stands in **no** edge - an edge naming it is refused where it is declared. That separation is the point:
+  `Accepts` is lenient about `Unknown` so one mistake is not fifty findings, and a type rule must never be told a
+  guess satisfies `int`. Collapsing the two is how `Unknown` leaks.
 - **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
   a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
   rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.
