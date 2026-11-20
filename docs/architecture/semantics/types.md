@@ -32,6 +32,8 @@ there. The consumers sit above and read the registry the language hands them.
 | Type | Job |
 | --- | --- |
 | `IType` | `Name` and `Accepts(actual)` - assignability, asked in that direction |
+| `ISubtype` | `IsSubtype(actual, expected)` - the language's subtype edges, asked in the same direction and deliberately **stricter** than `Accepts` |
+| `SubtypeRelation` | those edges: a primitive is its own subtype by name, a declared edge is transitive, and `unknown` stands in no edge at all |
 | `PrimitiveType` | wraps a `PropertyType`, so a language declares its primitives where it already declares properties |
 | `RecordType` | a fixed set of named fields, compared **by name, not by order** |
 | `ListType` | its element type; a length is a fact about a value, not about its type |
@@ -44,9 +46,18 @@ there. The consumers sit above and read the registry the language hands them.
 
 Four rules worth knowing:
 
-- **`expected.Accepts(actual)` is the only question.** It reads the way the rule does, and a caller that
+- **`expected.Accepts(actual)` is the only question a slot asks.** It reads the way the rule does, and a caller that
   got the direction wrong would be comparing two types for equality - a different and much weaker
-  question.
+  question. It has a **default implementation** on the interface, which answers with
+  `SubtypeRelation.Primitives`: a type a language adds needs only its `Name`, and a type whose answer is more
+  lenient says so where the leniency belongs. Being a default member it is reached through `IType`, which is why
+  every consumer here holds an `IType` rather than a concrete class.
+- **Subtyping is the second question, and it is strict.** `ISubtype.IsSubtype(actual, expected)` answers what the
+  language's declared edges say, and `SubtypeRelation` is where they live: a type is its own subtype, a primitive
+  is its own subtype **by name**, a declared edge is transitive, and `unknown` stands in **no** edge - neither as
+  the subtype nor as the supertype. That last one is the whole reason the two questions are separate: `Accepts` is
+  lenient about `Unknown` so one mistake does not become fifty findings, and a type rule must never be told that a
+  guess satisfies `int`. Collapsing them is how `Unknown` leaks out of the one place it belongs.
 - **`Unknown` accepts and is accepted**, which is what suppresses follow-on errors: one mistake in a
   condition must not produce a finding on every expression that reads it. It is therefore **not** a
   wildcard to rely on - a caller that must not proceed on a guess (a generator) asks
@@ -155,11 +166,11 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built.** This section is the design of record for the next stage of the type system, and what it
-records is a *compatibility target*: the rules a language author can write in MPS' typesystem cookbook should be
-expressible here, in this repository's vocabulary, without falling back to C#. The cookbook is
-<https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these slices, not a
-specification to copy.
+**Planned, not built** - except T1, which is delivered. This section is the design of record for the next stage of
+the type system, and what it records is a *compatibility target*: the rules a language author can write in MPS'
+typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
+cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
+slices, not a specification to copy.
 
 Today the type layer answers **one** question per node - `ITypeRule.TypeFor(node)` returns an `IType` - and a type
 answers one: `expected.Accepts(actual)`. That is enough for a DSL whose types are written down, and it is *not*
@@ -211,7 +222,10 @@ Each slice is independent and each is only worth starting when a language needs 
 - **T1 - the subtype relation as data.** `ISubtype`/`SubtypeRelation` in `Projectional.Language/Types/`, primitive
   edges plus a declared one, answering `IsSubtype(actual, expected)`. `Accepts` keeps its meaning (conformance of a
   value to a slot's type) and gains a default implementation on top of the relation; the two questions stay
-  distinguishable, because collapsing them is what makes `Unknown` leak.
+  distinguishable, because collapsing them is what makes `Unknown` leak. **Delivered**: the relation is immutable
+  and transitive, `unknown` stands in no edge (an edge that names it is refused at declaration), `Accepts`'s
+  default answers with `SubtypeRelation.Primitives`, and `SubtypeRelationTests` pins the distinction by asserting
+  that an unknown type conforms to a primitive while being no subtype of it.
 - **T2 - type variables and equations.** `TypeVariable`, `TypeEquation` (`Equals`, `Subtype`, `Supertype`),
   `TypeSolution` and a fixpoint `TypeSolver` with a step budget. A rule's answer becomes "these equations hold", and
   `ITypeRule` gains an overload that collects them while `TypeFor` keeps working for the rules that need no solving.
