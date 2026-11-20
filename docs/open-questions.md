@@ -285,12 +285,12 @@ in front of it.
 ## Type-rule complaints
 
 A declared type rule can report instead of answering a type ([types.md](architecture/semantics/types.md)), and a
-language's own tests can pin what it reports (`LanguageProject`'s `tests/` folder). What that reporting still cannot
-say is open.
+language's own tests can pin what it reports (`LanguageProject`'s `tests/` folder). The one part that looked open was
+where a finding's identifier comes from, and it is decided.
 
 | # | Question | State | Recommendation | Decide by |
 | --- | --- | --- | --- | --- |
-| 115 | Can a declared complaint state the identifier its finding reports under? | Open | Yes, but not yet: `ConstraintContext.Error` already takes a code and every finding in the check catalogue has one, while `TypeRule.Complain` has slots for the message and the severity only. The blocker is the notation, not the model - a slot written by the author must be drawn, and the notation vocabulary has no "draw this while the property has a value" cell (`WhenFilled` is for children, `Conditional` compares against a value), so adding the slot today would make it writable in XML and unwritable in the editor. The order is therefore the optional-property cell first, with a language that needs one, then the slot. Until then a finding a declared rule reports is uncoded and a language test names it by severity and place. | M5, with a language that asks |
+| 115 | Can a declared complaint state the identifier its finding reports under? | **Decided: yes, by an optional `code` property** | It was blocked by a wrong reading of the notation, not by the model. The assumption was that an optional property has to be *hidden* when it is empty and that no cell can hide a property, so the slot would have been writable in XML and unwritable in the editor. The framework's rule is the opposite, and it is written down twice: every slot-bearing cell has an `EmptyText`, and empty is never invisible because the caret needs something to stand on. `Conditional` hides a *constant* and `WhenFilled` hides a *child slot*; a **property cell is always drawn**, so an optional code shows a placeholder and typing over it writes one - `ed.Property("code", emptyText: "<none>")`. A "draw only while the property is set" cell would have been quiet and unwritable, the debt `WhenFilledNotationCell` already pays with an intention. So `TypeRule.Complain` has the slot, `ConstraintContext.Error`'s existing `code` parameter carries it, a blank code reports uncoded, and `Testing.ExpectedFinding` keeps its code optional for the honest reason that *both* declaration paths allow one to be absent | M5, delivered |
 
 ## Scope honesty
 

@@ -302,6 +302,7 @@ public static class TypeRuleLowering
                 new ComplaintConstraint(
                     Required(body, TypeRuleLanguage.MessageSlot),
                     Severity(body),
+                    Code(body),
                     Condition(body)));
         }
 
@@ -715,6 +716,15 @@ public static class TypeRuleLowering
             _ => DiagnosticSeverity.Error,
         };
 
+    /// <summary>The identifier a complaint reports under, or <see langword="null"/> when it states none.</summary>
+    /// <remarks>
+    /// Blank and absent mean one thing here, and both mean "no code": a finding reported under an empty identifier
+    /// would key nothing, so the complaint reports uncoded rather than under a name no rule and no suppression can
+    /// match.
+    /// </remarks>
+    private static string? Code(Node body) =>
+        body.GetOrNull(TypeRuleLanguage.CodeSlot)?.Trim() is { Length: > 0 } code ? code : null;
+
     /// <summary>
     /// A complaint: a message with a severity, reported wherever the concept the rule names appears.
     /// </summary>
@@ -728,6 +738,7 @@ public static class TypeRuleLowering
     private sealed class ComplaintConstraint(
         string message,
         DiagnosticSeverity severity,
+        string? code,
         (string Left, string Right)? when) : IConstraint
     {
         public void Check(ConstraintContext context)
@@ -740,15 +751,15 @@ public static class TypeRuleLowering
             switch (severity)
             {
                 case DiagnosticSeverity.Warning:
-                    context.Warning(message);
+                    context.Warning(message, code: code);
                     break;
 
                 case DiagnosticSeverity.Hint:
-                    context.Hint(message);
+                    context.Hint(message, code: code);
                     break;
 
                 default:
-                    context.Error(message);
+                    context.Error(message, code: code);
                     break;
             }
         }

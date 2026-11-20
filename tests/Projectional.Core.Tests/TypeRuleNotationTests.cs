@@ -262,7 +262,7 @@ public sealed class TypeRuleNotationTests
         Assert.Equal(
             """
             rule Expressions.IntLiteral is
-              report error "An integer literal is not allowed here."
+              report error "An integer literal is not allowed here." code <none>
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 80));
     }
@@ -286,9 +286,36 @@ public sealed class TypeRuleNotationTests
         Assert.Equal(
             """
             rule Expressions.Binary is
-              report error "The operands are not comparable." type of left is not comparable with type of right
+              report error "The operands are not comparable." code <none> type of left is not comparable with type of right
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 120));
+    }
+
+    [Fact]
+    public void AComplaintDrawsTheCodeItStates()
+    {
+        // The code is a property cell like the severity, so it is drawn whether or not it is set - an empty one
+        // shows the placeholder, which is the only place the caret could stand to write one.
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.Binary");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Complain);
+        body.Set(TypeRuleLanguage.SeveritySlot, "error");
+        body.Set(TypeRuleLanguage.MessageSlot, "The operands are not comparable.");
+        body.Set(TypeRuleLanguage.CodeSlot, "expr.operands");
+
+        var condition = model.NewChild(body, TypeRuleLanguage.WhenSlot, TypeRuleConceptKeys.NotComparable);
+        condition.Set(TypeRuleLanguage.LeftSlot, "left");
+        condition.Set(TypeRuleLanguage.RightSlot, "right");
+
+        Assert.Equal(
+            """
+            rule Expressions.Binary is
+              report error "The operands are not comparable." code expr.operands type of left is not comparable with type of right
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 160));
     }
 
     [Fact]

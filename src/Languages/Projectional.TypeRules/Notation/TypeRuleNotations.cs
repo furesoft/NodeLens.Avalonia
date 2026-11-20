@@ -194,8 +194,11 @@ public static class TypeRuleNotations
             ed.Indent(ed.Children(TypeRuleLanguage.InsteadSlot, NothingToProve))));
 
         // A complaint draws as the sentence a finding quotes, so the author reads the diagnostic before it is
-        // reported: the severity first, then the message the user will see. A condition draws only when it is
-        // there, so an unconditional complaint reads as the sentence it always reports.
+        // reported: the severity first, then the message the user will see. The code follows the message and is
+        // drawn even when it is empty - a property cell is never hidden, because the caret needs something to stand
+        // on (see guide-language.md), so an unset code shows the placeholder and typing over it writes one. A
+        // condition draws only when it is there, so an unconditional complaint reads as the sentence it always
+        // reports.
         notations.Add(TypeRuleConceptKeys.Complain, ed => ed.Line(
             ed.Keyword("report"),
             ed.Space,
@@ -204,6 +207,10 @@ public static class TypeRuleNotations
             ed.Keyword("\""),
             ed.Property(TypeRuleLanguage.MessageSlot),
             ed.Keyword("\""),
+            ed.Space,
+            ed.Keyword("code"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.CodeSlot, emptyText: "<none>"),
             ed.WhenFilled(TypeRuleLanguage.WhenSlot, ed.Space, ed.ChildInline(TypeRuleLanguage.WhenSlot))));
 
         // A condition draws as the sentence it means: the two child slots whose types are compared, and what it

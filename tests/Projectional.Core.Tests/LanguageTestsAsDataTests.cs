@@ -115,6 +115,30 @@ public sealed class LanguageTestsAsDataTests
     }
 
     [Fact]
+    public void AnExpectedFindingWithoutACodeStillDrawsACellToWriteOneInto()
+    {
+        // The code is optional - a declared complaint or constraint may report none - so the cell has to be
+        // visible when it is empty. Empty is never invisible: a zero-width cell would be a caret stop on an
+        // address that draws no text, so the placeholder is what makes the code writable at all.
+        var model = TestingLanguage.NewModel();
+        var test = model.Roots[0];
+
+        test.Set(TestingLanguage.DocumentSlot, "pipeline.mps");
+
+        var findings = model.NewChild(test, TestingLanguage.AssertionSlot, TestingConceptKeys.Findings);
+
+        model.NewChild(findings, TestingLanguage.ExpectedSlot, TestingConceptKeys.ExpectedFinding);
+
+        Assert.Equal(
+            """
+            test pipeline.mps
+              reports
+                << which code >> error << anywhere >>
+            """,
+            LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
+    }
+
+    [Fact]
     public void ATestWithoutADocumentIsRefused()
     {
         var model = TestingLanguage.NewModel();

@@ -21,14 +21,15 @@ document someone can open rather than only by the test suite.
 `widest of then and else` - the common supertype of its two branches, so `if 1 < 2 then 3 else 4` is an `int` and a
 conditional with a number on one side and a truth value on the other is `unknown` rather than a claim nobody made.
 
-`operands-not-comparable.mps` is a complaint with a condition:
+`operands-not-comparable.mps` is a complaint with a condition and a code:
 
     rule Decl.Binary is
-      report error "The operands are not comparable, so no value of one could be used as the other." type of left is not comparable with type of right
+      report error "The operands are not comparable, so no value of one could be used as the other." code decl.type.operands type of left is not comparable with type of right
 
-It reports only where the condition holds, which is why `1 == true` is a finding and `1 == 2` is not. The complaint
-states no code, because the type-rule language has no slot for one - so its finding is uncoded, and a test names it by
-its severity and its place rather than by an identifier.
+It reports only where the condition holds, which is why `1 == true` is a finding and `1 == 2` is not. The code is the
+identifier a report groups the finding under and a suppression keys on; a complaint that states none reports uncoded,
+which draws as `code <none>`. That placeholder is the whole reason the slot needs no hiding: a property cell is never
+hidden, because the caret has to stand somewhere to write the value.
 
 ## What the tests folder says
 
@@ -39,7 +40,7 @@ Four rows, one assertion per file because a test names one assertion:
 | `types.mps` | the literal `3` in `expressions.mps` is `int` |
 | `operator-type.mps` | the operator `<` of `expressions.mps` is `bool`, which is the switch over the operator |
 | `clean.mps` | `expressions.mps` reports nothing |
-| `reports.mps` | `uncomparable.mps` reports exactly one finding, an error with no code |
+| `reports.mps` | `uncomparable.mps` reports exactly one finding, `decl.type.operands` as an error |
 
 **Run > Run tests** runs them, and so does `TestRunner.Run(language)`. They are the reason the runner hands the
 constraint engine the language's own scopes and types: a complaint that asks a slot for its type reads `unknown`

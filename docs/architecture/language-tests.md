@@ -60,7 +60,7 @@ that a language author writes an assertion, not a program.
 | Assertion | What it runs | What it pins |
 | --- | --- | --- |
 | `Testing.Draws` | `LayoutSnapshot.Render(document, notations, width)` | the notation: a projection change that moves a cell fails a named test |
-| `Testing.Findings` | `ConstraintEngine` over `LanguageProject.Constraints` | the language's declared constraints: which findings, where, and their severities |
+| `Testing.Findings` | `ConstraintEngine` over `LanguageProject.Constraints`, with the language's own `Scopes` and `Types` - the engine a session runs, because a rule that asks a slot for its type reads `unknown` without them | the language's declared constraints: which findings, where, their severities and their codes (a code may be empty - neither declaration path requires one) |
 | `Testing.Generates` | the language's `TextGenerator`, by name | the generated text; the traceability map is not pinned yet |
 | `Testing.Evaluates` | `Interpreter` over the rules the caller supplies, with the variables a test names | the answer, or the message of the failure that stopped the run; the trace is not pinned yet |
 | `Testing.RoundTrips` | `ModelXml.Serialize` twice | invariant 7 for that document |
