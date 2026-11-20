@@ -46,6 +46,40 @@
       <StreamGeometry x:Key="IconFind">M6.5,2.5 A3.9,3.9 0 1 0 6.5,10.3 A3.9,3.9 0 1 0 6.5,2.5 Z M9.4,9.4 L13.8,13.8</StreamGeometry>
       <StreamGeometry x:Key="IconPen">M2.5,13.5 L3.5,10.2 L10.4,3.3 L12.7,5.6 L5.8,12.5 Z</StreamGeometry>
       <StreamGeometry x:Key="IconClose">M3,3 L11,11 M11,3 L3,11</StreamGeometry>
+      <StreamGeometry x:Key="IconPlus">M8,3 V13 M3,8 H13</StreamGeometry>
+
+      <!--
+        A document strip of its own: the stock TabControl theme puts the items presenter straight into a
+        DockPanel, so a strip with more tabs than the window is wide wraps into rows and eats the page. This
+        one scrolls sideways instead, and leaves a gap at the right end for the new-tab button that floats
+        over it.
+      -->
+      <ControlTheme x:Key="DocumentTabStripTheme" TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}">
+              <DockPanel>
+                <ScrollViewer
+                  DockPanel.Dock="Top"
+                  Margin="0,0,30,0"
+                  HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Disabled"
+                  Focusable="False">
+                  <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+                <Panel ClipToBounds="True">
+                  <ContentPresenter
+                    Name="PART_SelectedContentHost"
+                    Margin="{TemplateBinding Padding}"
+                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Panel>
+              </DockPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
     </ResourceDictionary>
   </Window.Resources>
 
@@ -153,6 +187,39 @@
     </Style>
     <Style Selector="Button.tabClose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <Style Selector="Button.tabPlus">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="24" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="Button.tabPlus:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.tabPlus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <!-- A status-bar item that is a command: flat, quiet, and a pointer cursor. -->
+    <Style Selector="Button.statusAction">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+    <Style Selector="Button.statusAction:pointerover">
+      <Setter Property="Opacity" Value="1" />
     </Style>
 
     <!-- The two lists share one row height, so a panel row is the same size wherever it stands. -->
@@ -429,14 +496,25 @@
       group is one string rather than a row of blocks, so it never grows a separator for a part it does not have.
     -->
     <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Classes="statusBar">
-      <Grid ColumnDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
         <TextBlock x:Name="StatusDocument" Grid.Column="0" Classes="statusText" />
+        <!--
+          The count is only worth a word while the problems tab is closed: with the tab open the number is in its
+          header, and a second copy would be noise. Pressing it is the way back to the list.
+        -->
+        <Button
+          x:Name="StatusProblems"
+          Grid.Column="1"
+          Classes="statusAction"
+          IsVisible="False"
+          Click="OnShowProblemsPanel"
+          a:AutomationProperties.Name="Show the problems panel" />
         <TextBlock
           x:Name="StatusText"
-          Grid.Column="1"
+          Grid.Column="2"
           Classes="statusQuiet"
           TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="StatusDetail" Grid.Column="2" Classes="statusText" />
+        <TextBlock x:Name="StatusDetail" Grid.Column="3" Classes="statusText" />
       </Grid>
     </Border>
 
@@ -487,7 +565,25 @@
           <RowDefinition Height="180" />
         </Grid.RowDefinitions>
         <Grid Grid.Row="0" x:Name="EditorArea">
-          <TabControl x:Name="Documents" Classes="documentsTabStrip" Padding="0" FontSize="14" />
+          <TabControl x:Name="Documents" Classes="documentsTabStrip" Padding="0" FontSize="14" Theme="{StaticResource DocumentTabStripTheme}">
+            <TabControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </TabControl.ItemsPanel>
+          </TabControl>
+
+          <!-- The gap the strip leaves at its right end, so a new document is one press away. -->
+          <Button
+            x:Name="NewTabButton"
+            Classes="tabPlus"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Click="OnNewDocument"
+            a:AutomationProperties.Name="New document"
+            a:AutomationProperties.HelpText="Opens an empty document (Ctrl+N)">
+            <Path Classes="closeIcon" Data="{StaticResource IconPlus}" Width="10" Height="10" />
+          </Button>
 
           <!-- What a fresh window shows while nothing is open, instead of a white page that says nothing. -->
           <Border x:Name="EmptyState" Classes="panelSurface" IsVisible="False">
@@ -568,7 +664,8 @@
                   Background="Transparent"
                   FontFamily="Consolas,Menlo,monospace"
                   a:AutomationProperties.Name="Run output"
-                  SelectionChanged="OnRunRowChosen" />
+                  DoubleTapped="OnRunRowChosen"
+                  KeyDown="OnRunRowKeyDown" />
               </DockPanel>
             </TabItem>
 
@@ -590,7 +687,8 @@
                 BorderThickness="0"
                 Background="Transparent"
                 a:AutomationProperties.Name="Problems"
-                SelectionChanged="OnProblemChosen" />
+                DoubleTapped="OnProblemChosen"
+                KeyDown="OnProblemKeyDown" />
             </TabItem>
 
             <TabItem x:Name="UsagesTab">
@@ -611,7 +709,8 @@
                 BorderThickness="0"
                 Background="Transparent"
                 a:AutomationProperties.Name="Usages"
-                SelectionChanged="OnUsageChosen" />
+                DoubleTapped="OnUsageChosen"
+                KeyDown="OnUsageKeyDown" />
             </TabItem>
           </TabControl>
         </Border>

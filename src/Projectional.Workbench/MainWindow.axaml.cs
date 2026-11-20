@@ -61,6 +61,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>The least a drag may leave of the panel area, so the splitter cannot lose it.</summary>
     private const double MinimumPanelHeight = 96;
 
+    /// <summary>What the window is called when no document decides it, and the half that stays.</summary>
+    private const string WindowTitle = "Projectional Workbench";
+
     private readonly DocumentSet _documents = new();
     private readonly WorkbenchLanguage _language = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
@@ -129,6 +132,12 @@ public sealed partial class MainWindow : Window, IDisposable
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
         Documents.SelectionChanged += OnSelectionChanged;
         Opened += (_, _) => FocusActiveDocument();
+
+        // A file dragged in from the desktop is the shortest way to open it. The window is the target, so the
+        // gesture works wherever the pointer happens to be - over a panel, the outline or the page.
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DropEvent, OnDrop);
 
         // Read once at startup: a list read per opening would be a list the menu and the shell could disagree about,
         // and a broken file must cost one empty menu rather than an exception on every open.
@@ -278,6 +287,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         Documents.Items.Add(tab);
         Documents.SelectedItem = tab;
+        tab.BringIntoView();
 
         ShowProblems();
         ShowOutput();
@@ -407,6 +417,9 @@ public sealed partial class MainWindow : Window, IDisposable
         if (_tabs.TryGetValue(document, out var tab))
         {
             Documents.SelectedItem = tab;
+
+            // The strip scrolls now, so a tab that was off the right edge has to be scrolled to.
+            tab.BringIntoView();
         }
     }
 
@@ -949,9 +962,8 @@ public sealed partial class MainWindow : Window, IDisposable
     /// editor and leaves the user where the row pointed - so the next keystroke, or Alt+Enter for the fix, acts on the
     /// finding rather than on wherever the caret happened to be.
     /// </remarks>
-    private void OnProblemChosen(object? sender, SelectionChangedEventArgs e)
-    {
-        if (Problems.SelectedItem is not ProblemEntry entry
+    private void OnProblemChosen(object? sender, RoutedEventArgs e)
+    {        if (Problems.SelectedItem is not ProblemEntry entry
             || _documents.Active is not { } document
             || !_tabs.TryGetValue(document, out var tab)
             || EditorOf(tab) is not { } editor)
@@ -1040,6 +1052,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         _usagesClosed = true;
         ShowPanel(UsagesTab, false);
+        UpdateStatus();
     }
 
     /// <summary>Closes the output tab; the next run is what brings it back.</summary>
@@ -1047,6 +1060,7 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         _outputClosed = true;
         ShowOutput();
+        UpdateStatus();
     }
 
     /// <summary>Closes the problems tab; View ▸ Panels is what brings it back.</summary>
@@ -1054,18 +1068,67 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         _problemsClosed = true;
         ShowProblems();
+        UpdateStatus();
     }
 
     private void OnToggleOutputPanel(object? sender, RoutedEventArgs e)
     {
         _outputClosed = !_outputClosed;
         ShowOutput();
+        UpdateStatus();
     }
 
     private void OnToggleProblemsPanel(object? sender, RoutedEventArgs e)
     {
         _problemsClosed = !_problemsClosed;
         ShowProblems();
+        UpdateStatus();
+    }
+
+    /// <summary>Brings the problems tab back from the status bar's count.</summary>
+    private void OnShowProblemsPanel(object? sender, RoutedEventArgs e)
+    {
+        _problemsClosed = false;
+        ShowProblems();
+        PanelTabs.SelectedItem = ProblemsTab;
+        UpdateStatus();
+    }
+
+    /// <summary>Enter on a chosen row does what a double click does, so a list is usable without a pointer.</summary>
+    private void OnProblemKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        OnProblemChosen(sender, e);
+    }
+
+    private void OnUsageKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        OnUsageChosen(sender, e);
+    }
+
+    private void OnRunRowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        OnRunRowChosen(sender, e);
     }
 
     private void OnToggleUsagesPanel(object? sender, RoutedEventArgs e)
@@ -1080,6 +1143,8 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             SyncUsages();
         }
+
+        UpdateStatus();
     }
 
     /// <summary>Re-asks the open question, or closes the tab when it can no longer be answered.</summary>
@@ -1223,7 +1288,7 @@ public sealed partial class MainWindow : Window, IDisposable
     /// the list is a snapshot and the model is not - both halves are <see cref="PlaceResolver"/>'s now, since the
     /// problems panel asks the same question of the same kind of address.
     /// </remarks>
-    private void OnUsageChosen(object? sender, SelectionChangedEventArgs e)
+    private void OnUsageChosen(object? sender, RoutedEventArgs e)
     {
         if (Usages.SelectedItem is not UsageEntry entry)
         {
@@ -1395,7 +1460,7 @@ public sealed partial class MainWindow : Window, IDisposable
     /// The pick is cleared afterwards, so the same row is clickable twice: a trace is something a user reads back
     /// and forth between the document and the panel, unlike a problem, which is a state they are working through.
     /// </remarks>
-    private void OnRunRowChosen(object? sender, SelectionChangedEventArgs e)
+    private void OnRunRowChosen(object? sender, RoutedEventArgs e)
     {
         if (_documents.Active is not { } document)
         {
@@ -1604,9 +1669,17 @@ public sealed partial class MainWindow : Window, IDisposable
             ? "No document open"
             : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")}";
 
+        // The task bar and Alt-Tab are part of the shell too, and they said "Projectional Workbench" whatever
+        // was open - including whether it had unsaved changes.
+        Title = _documents.Active is { } shown
+            ? $"{(shown.IsDirty ? "*" : string.Empty)}{shown.Title} - {WindowTitle}"
+            : WindowTitle;
+
         // The message goes last and is not cleared here: it is the answer to the command the user just
-        // ran, and the next command clears it, so it cannot go stale while the user reads it.
+        // ran, and the next command clears it, so it cannot go stale while the user reads it. It is also
+        // trimmed when it is long, so the tooltip is where the whole sentence lives.
         StatusText.Text = _error ?? string.Empty;
+        ToolTip.SetTip(StatusText, string.IsNullOrEmpty(_error) ? null : _error);
 
         UpdateStatusDetail();
 
@@ -1686,14 +1759,21 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>Says which panels are in the area, and which ones could be.</summary>
     private void UpdatePanelCommands()
     {
+        var problems = _documents.Active?.Problems ?? [];
+
         OutputPanelItem.IsEnabled = _documents.Active?.Output is not null;
         OutputPanelItem.IsChecked = IsPanelOpen(OutputTab);
 
-        ProblemsPanelItem.IsEnabled = _documents.Active?.Problems is { Count: > 0 };
+        ProblemsPanelItem.IsEnabled = problems.Count > 0;
         ProblemsPanelItem.IsChecked = IsPanelOpen(ProblemsTab);
 
         UsagesPanelItem.IsEnabled = _usageTarget is not null;
         UsagesPanelItem.IsChecked = IsPanelOpen(UsagesTab);
+
+        // The count is shown while the tab is not: a user who closed it still has to know the document is not
+        // clean, and the status bar is where the rest of the document's state lives.
+        StatusProblems.IsVisible = problems.Count > 0 && !IsPanelOpen(ProblemsTab);
+        StatusProblems.Content = problems.Count == 1 ? "1 problem" : $"{problems.Count} problems";
     }
 
     /// <summary>The editor of the document in front, or <see langword="null"/> when there is none.</summary>
@@ -1949,6 +2029,48 @@ public sealed partial class MainWindow : Window, IDisposable
             editor.Refresh();
         }
     }
+
+    /// <summary>Opens the documents the user dragged onto the window.</summary>
+    /// <remarks>
+    /// A saved model opens as a document; anything else is offered to the importers, which is the same command
+    /// the File menu runs and speaks its own refusal when it cannot read the file. Which of the two applies is
+    /// the file's extension and not a guess: a <c>.mps</c> file is a model this app wrote.
+    /// </remarks>
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        if (e.DataTransfer.TryGetFiles() is not { Length: > 0 } files)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        foreach (var file in files)
+        {
+            if (file.TryGetLocalPath() is not { } path)
+            {
+                _error = "A dropped file has no path this app can read.";
+                continue;
+            }
+
+            if (path.EndsWith(DocumentFile.Extension, StringComparison.OrdinalIgnoreCase))
+            {
+                TryOpenPath(path);
+            }
+            else
+            {
+                ImportPath(path);
+            }
+        }
+
+        UpdateStatus();
+    }
+
+    /// <summary>Says "copy" while files are dragged over the window, so the gesture looks possible before it is tried.</summary>
+    private void OnDragOver(object? sender, DragEventArgs e) =>
+        e.DragEffects = e.DataTransfer.TryGetFiles() is { Length: > 0 }
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
 
     private static string FormatFile(string? filePath) =>
         filePath is null ? string.Empty : $" ({Path.GetFileName(filePath)})";
