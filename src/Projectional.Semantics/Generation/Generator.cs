@@ -152,6 +152,10 @@ public sealed class Generator
                     Emit(node, property.Slot, PropertyOf(node, property.Slot));
                     break;
 
+                case ParentPart parent:
+                    EmitParentProperty(node, parent);
+                    break;
+
                 case ReferencePart reference:
                     Emit(node, reference.Slot, ReferenceOf(node, reference));
                     break;
@@ -300,6 +304,35 @@ public sealed class Generator
         node.Concept.FindProperty(slot) is not null
             ? node.GetOrNull(slot) ?? string.Empty
             : throw Fail(node, $"'{slot}' is not a property of {node.Concept.Key}.");
+
+    /// <summary>The value of <paramref name="slot"/> of the node that holds <paramref name="node"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// Empty for the outermost node: nothing holds it, so there is no property to read - not a mistake to refuse. The
+    /// text is recorded as a region of the <em>holding</em> node, because that is where the characters came from and
+    /// therefore where "go to source" belongs.
+    /// </para>
+    /// <para>
+    /// A holding concept that does not declare <paramref name="part"/>'s slot stops the run naming both concepts: the
+    /// template names a slot the parent's concept must have, and the author has to be able to see which one is wrong.
+    /// </para>
+    /// </remarks>
+    private void EmitParentProperty(Node node, ParentPart part)
+    {
+        if (node.Parent is not { } holder)
+        {
+            return;
+        }
+
+        if (holder.Concept.FindProperty(part.Slot) is null)
+        {
+            throw Fail(
+                node,
+                $"'{part.Slot}' is not a property of {holder.Concept.Key}, which holds '{node.Concept.Key}'.");
+        }
+
+        Emit(holder, part.Slot, holder.GetOrNull(part.Slot) ?? string.Empty);
+    }
 
     /// <summary>What <paramref name="part"/>'s reference says: its target's name, or its stand-in text.</summary>
     /// <remarks>

@@ -72,6 +72,48 @@ public sealed class TextGenLoweringTests
     }
 
     [Fact]
+    public void ADeclaredParentPartEmitsWhatItsCSharpTwinEmits()
+    {
+        // The declared `^name` is the C# `ParentPart("name")`: a mapping for a rule that names the ruleset holding it.
+        var rules = PayrollSample.NewSampleModel();
+        var model = TextGenLanguage.NewModel();
+        var template = Mapping(model, Generator(model, "Held"), RulesConceptKeys.Rule);
+
+        Part(model, template, TextGenConceptKeys.Parent).Set(TextGenLanguage.ConceptKeySlot, "name");
+
+        var declared = TextGenLowering.CreateGenerators(model.Roots, rules.Concepts).Single();
+        var twin = new TextGenerator("Held", TemplateRegistry.Empty.Add(
+            RulesConceptKeys.Rule,
+            TextTemplate.Of(new ParentPart("name"))));
+
+        var lowered = Assert.IsType<ParentPart>(Assert.Single(
+            declared.Templates.TemplateFor(rules.Concepts.Get(RulesConceptKeys.Rule))!.Parts));
+
+        Assert.Equal("name", lowered.Slot);
+
+        var rule = rules.Roots[0].GetChildren(RulesLanguage.RulesSlot)[0];
+
+        Assert.Equal(
+            new Generator().Generate(rule, twin).Text,
+            new Generator().Generate(rule, declared).Text);
+        Assert.Equal("Payroll", new Generator().Generate(rule, declared).Text);
+    }
+
+    [Fact]
+    public void AParentPartWithoutAPropertyIsRefused()
+    {
+        // The one part whose slot cannot be checked against a concept at load - the holding concept is not declared
+        // anywhere - so what a load can still refuse is the part that names no property at all.
+        var model = TextGenLanguage.NewModel();
+
+        Part(model, Mapping(model, Generator(model, "Held"), RulesConceptKeys.Rule), TextGenConceptKeys.Parent);
+
+        var error = Assert.Throws<ConceptDefinitionException>(() => Lower(model));
+
+        Assert.Contains("holding-node part", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AFilledCheckOnASlotTheConceptHasNotIsRefused()
     {
         var model = TextGenLanguage.NewModel();

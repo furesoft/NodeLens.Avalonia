@@ -199,12 +199,19 @@ A language turns a model into text through a template per concept. The template 
 the walk is `Generator` in `Projectional.Semantics/Generation/`. `docs/architecture/semantics.md` §Generation is the
 design of record.
 
-- **Eleven parts, and the set is closed.** `TextPart`, `PropertyPart`, `ReferencePart`, `ChildPart`, `ChildrenPart`,
+- **Twelve parts, and the set is closed.** `TextPart`, `PropertyPart`, `ParentPart`, `ReferencePart`, `ChildPart`,
+  `ChildrenPart`,
   `LoopPart`, `IndentPart`, `LineBreakPart`, `ConditionalPart`, `WhenFilledPart`, `SelfPart`. There is deliberately
   no "compute", no
   variable and no counter: a part emits, reads a slot, expands a child or chooses, and anything else is a generator
   this framework does not have. `SelfPart` exists for one reason - inside a `LoopPart` body "this node" is the child
   being visited.
+- **`ParentPart` is the part that reads the node above.** `PropertyPart` reads this node's property; this one reads a
+  property of the node that holds it, which is how a fragment names what it belongs to (a key its table). The slot is
+  named like every other part - `ParentPart("name")` is the name - the outermost node emits nothing rather than
+  failing, and the emitted region belongs to the *holding* node, so "go to source" lands where the characters came
+  from. It is the one part a load cannot validate: the holding concept is not declared anywhere, so the engine checks
+  it and names both concepts. Declared twin: `TextGen.Parent`, drawn `^slot`.
 - **`WhenFilledPart` is the part that asks a slot, not a value.** `ConditionalPart` compares a property with a text;
   this one asks whether the slot holds anything, and it accepts all four kinds - so brackets can close around a list
   only when it has an entry, a missing value can become a stand-in, and a tree can expand a node's children only once

@@ -82,7 +82,7 @@ findings, and a declared rule answers one question per node.
 
 ## Generation
 
-Templates are data and the walk is `Generator`: eleven closed parts, output that carries a traceability map,
+Templates are data and the walk is `Generator`: twelve closed parts, output that carries a traceability map,
 and a language that declares as many generators as it prints formats.
 
 [semantics/generation.md](semantics/generation.md)

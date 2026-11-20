@@ -22,6 +22,81 @@ public sealed class GeneratorTests
     }
 
     [Fact]
+    public void AParentPartEmitsThePropertyOfTheNodeThatHolds()
+    {
+        // The reason the part exists: a table's key could name the columns it points at but never the table it hangs
+        // on, because a template that walks into a child cannot see the child's place.
+        var templates = Registry()
+            .Add(RulesConceptKeys.Ruleset, Child(RulesLanguage.RulesSlot))
+            .Add(RulesConceptKeys.Rule, TextTemplate.Of(new ParentPart("name")));
+
+        var result = Generate(templates, Sample());
+
+        Assert.True(result.Succeeded, result.Failure?.Message);
+        Assert.Equal("Payroll", result.Text);
+    }
+
+    [Fact]
+    public void AParentPartOnTheOutermostNodeEmitsNothing()
+    {
+        // Generating a subtree is an ordinary thing to do, so the node nothing holds is not a mistake to refuse: the
+        // part has no property to read and writes nothing.
+        var result = Generate(Registry().Add(RulesConceptKeys.Ruleset, TextTemplate.Of(new ParentPart("name"))), Sample());
+
+        Assert.True(result.Succeeded, result.Failure?.Message);
+        Assert.Equal(string.Empty, result.Text);
+    }
+
+    [Fact]
+    public void AParentPartOnAPropertyTheHoldingConceptHasNotFailsNamingBoth()
+    {
+        var result = Generate(
+            Registry()
+                .Add(RulesConceptKeys.Ruleset, Child(RulesLanguage.RulesSlot))
+                .Add(RulesConceptKeys.Rule, TextTemplate.Of(new ParentPart("outcome"))),
+            Sample());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("'outcome' is not a property of Rules.Ruleset", result.Failure!.Message, StringComparison.Ordinal);
+        Assert.Contains("Rules.Rule", result.Failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AParentPartRecordsTheRegionOnTheHoldingNode()
+    {
+        // The characters came from the holding node's property, so that is where "go to source" has to land - not on
+        // the node whose template read them.
+        var model = PayrollSample.NewSampleModel();
+        var ruleset = model.Roots[0];
+
+        var result = Generate(
+            Registry()
+                .Add(RulesConceptKeys.Ruleset, Child(RulesLanguage.RulesSlot))
+                .Add(RulesConceptKeys.Rule, TextTemplate.Of(new ParentPart("name"))),
+            ruleset);
+
+        var region = Assert.Single(result.Regions);
+
+        Assert.Equal(ruleset.Id, region.Node);
+        Assert.Equal("name", region.Slot);
+        Assert.Equal("Payroll", result.Text.Substring(region.Start, region.Length));
+    }
+
+    [Fact]
+    public void AParentPartInALoopBodyReadsTheNodeTheListBelongsTo()
+    {
+        // Inside a loop body "this node" is the entry, so the holding node is the list's owner - the same question a
+        // child expansion asks, answered for a body that is applied rather than expanded.
+        var templates = Registry()
+            .Add(RulesConceptKeys.Ruleset, TextTemplate.Of(new LoopPart(
+                RulesLanguage.RulesSlot,
+                TextTemplate.Of(new ParentPart("name"), new TextPart("."), SelfPart.Instance))))
+            .Add(RulesConceptKeys.Rule, Property("name"));
+
+        Assert.Equal("Payroll.Approved", Generate(templates, Sample()).Text);
+    }
+
+    [Fact]
     public void ALiteralIsEmittedAsWritten()
     {
         var result = Generate(Registry().Add(RulesConceptKeys.Ruleset, Literal("// payroll")), Sample());

@@ -124,6 +124,13 @@ public static class TextGenLanguage
             description: "A property's value, emitted as it is stored."),
 
         new ConceptDeclaration(
+            TextGenConceptKeys.Parent,
+            [new PropertySlot(ConceptKeySlot, PropertyType.String, description: "The property of the holding node to emit.")],
+            [TextGenConceptKeys.Part],
+            nameSlot: ConceptKeySlot,
+            description: "A property of the node that holds this one - the table a key belongs to."),
+
+        new ConceptDeclaration(
             TextGenConceptKeys.Reference,
             [
                 new PropertySlot(ConceptKeySlot, PropertyType.String, description: "The reference to emit."),

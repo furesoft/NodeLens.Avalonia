@@ -113,6 +113,13 @@ public static class TextGenLowering
         TextGenConceptKeys.Property => new PropertyPart(
             PropertyOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A property part names the property."))),
 
+        // The one part whose slot cannot be checked here: it is declared on the concept that holds the mapping's
+        // concept, and a language does not say which concept that is - a child slot names a concept, a node names its
+        // parent at run time. So the check happens in the engine, naming both concepts, rather than being faked here
+        // against the wrong one.
+        TextGenConceptKeys.Parent => new ParentPart(
+            Required(part, TextGenLanguage.ConceptKeySlot, "A holding-node part names the property to read.")),
+
         TextGenConceptKeys.Reference => new ReferencePart(
             ReferenceOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A reference part names the reference.")),
             part.GetOrNull(TextGenLanguage.UnsetTextSlot) ?? "<none>",
