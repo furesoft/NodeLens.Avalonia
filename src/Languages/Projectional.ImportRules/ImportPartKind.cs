@@ -1,10 +1,10 @@
 namespace Projectional.ImportRules;
 
-/// <summary>The four kinds of part a rule is built from.</summary>
+/// <summary>The kinds of part a rule is built from.</summary>
 /// <remarks>
-/// One enum rather than four record types, because this is the lowered shape the importer walks and not the language's
-/// surface - the four kinds are concepts the author writes, and they are closed on purpose: a part either finds text,
-/// fills a property, reads a child or repeats one.
+/// One enum rather than a record type per kind, because this is the lowered shape the importer walks and not the
+/// language's surface - each kind is a concept the author writes, and they are closed on purpose: a part finds text,
+/// reads a run into a property, reads a child or repeats one.
 /// </remarks>
 public enum ImportPartKind
 {
@@ -13,6 +13,9 @@ public enum ImportPartKind
 
     /// <summary>The run up to the next literal, filled into a property.</summary>
     Capture,
+
+    /// <summary>The rest of the line, filled into a property.</summary>
+    Line,
 
     /// <summary>A child, read by the rule its slot allows.</summary>
     Nest,

@@ -167,6 +167,18 @@ public static class ImportLanguage
             description: "The run up to the next literal, filled into a property as it was written.");
 
         yield return new ConceptDeclaration(
+            ImportConceptKeys.Line,
+            [
+                new PropertySlot(
+                    SlotSlot,
+                    PropertyType.String,
+                    description: "The property the rest of the line is written into."),
+            ],
+            [ImportConceptKeys.Part],
+            nameSlot: SlotSlot,
+            description: "The rest of the line, filled into a property, with the line break read and discarded.");
+
+        yield return new ConceptDeclaration(
             ImportConceptKeys.Nest,
             [
                 new PropertySlot(

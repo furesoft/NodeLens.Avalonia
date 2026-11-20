@@ -31,7 +31,7 @@ Two layers, and the split is the design rather than an implementation detail:
 | Layer | Answers | Vocabulary (closed) |
 | --- | --- | --- |
 | Tokens | what counts as a token, and where it started | `Import.Literal` (an anchor), `Import.Word` / `Import.Number` / `Import.Quoted` / `Import.Fixed` (the lexical classes a config format needs, one concept each), `Import.Skipped` (whitespace, comments: text that produces no node) |
-| Rules | which concept a run of tokens becomes | `Import.Node` (concept + parts), `Import.Sequence`, `Import.Alternative`, `Import.Repeat` (with separator and minimum), `Import.Capture` (a run into a property, spelled as stored), `Import.Nest` (a child slot taking another rule), `Import.Bind` / `Import.Matches` (a run remembered, then required to repeat), `Import.Raw` (a run the model does not map, kept verbatim), `Import.Fail` (the message a rule gives instead of "expected") |
+| Rules | which concept a run of tokens becomes | `Import.Node` (concept + parts), `Import.Sequence`, `Import.Alternative`, `Import.Repeat` (with separator and minimum), `Import.Capture` (a run into a property, spelled as stored), `Import.Line` (the rest of the line into a property, the line break read and discarded), `Import.Nest` (a child slot taking another rule), `Import.Bind` / `Import.Matches` (a run remembered, then required to repeat), `Import.Raw` (a run the model does not map, kept verbatim), `Import.Fail` (the message a rule gives instead of "expected") |
 
 - **No delegate, no expression, no "compute".** A rule either matches, captures, nests, repeats or chooses - the same
   small set of verbs a template has, for the same reason: a rule that could calculate is a programming language hiding
@@ -45,7 +45,7 @@ Two layers, and the split is the design rather than an implementation detail:
 - **Tier 2 has a place in the vocabulary.** `Import.Raw` is what lets a declared importer be honest about a construct
   the model does not model: the run survives as a raw node and regenerates to the same text, exactly as `Xml.Raw` does
   today.
-- **Four words came from the proof cases, not from imagination.** Each is the smallest verb that makes a format the
+- **Every word beyond the template's four came from a proof case, not from imagination.** Each is the smallest verb that makes a format the
   framework already ships declarable, and the case that demands it is written down here so the vocabulary cannot grow
   into a grammar by accident:
 
@@ -54,6 +54,7 @@ Two layers, and the split is the design rather than an implementation detail:
 | `Import.Bind` + `Import.Matches` | a run remembered under a name, then required to be the same run again | XML's `<a>...</a>`: the closing tag must equal the opening one, and nothing else in the vocabulary compares two runs |
 | `Import.Fixed` | a run between two marks in which nothing is escaped | CDATA. `Import.Quoted` resolves the escapes it declares, so a section that must not is a different class rather than a flag |
 | `Import.Fail` | the message a rule gives when it is the one that should have matched | "a trailing comma is not allowed" is what the file's author needs; "expected `}`" is what the parser happened to think. It carries a code and a message and never branches |
+| `Import.Line` | the rest of the line into a property, with the line break read and discarded | a value that ends at the line break, in a format whose files are written on both Windows and Unix. A terminator literal matches one spelling of the break, so the other spelling stays in the value and the model carries a carriage return it can never generate back; "the end of the line" is also not expressible as a literal at all, because the newline is the terminator *and* the text |
 | `Import.Importer.target` | the generator this importer reads back | the inverse of a template is the inverse of *one* template set, and a language has as many generators as it declares ([One importer per target](#one-importer-per-target)) |
 
 ### The shape of the declaration

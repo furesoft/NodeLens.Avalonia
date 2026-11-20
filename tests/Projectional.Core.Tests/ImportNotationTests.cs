@@ -10,8 +10,8 @@ namespace Projectional.Core.Tests;
 /// <remarks>
 /// A notation only earns its place if the document it draws is the one an author already wrote, so both samples are
 /// loaded from disk and rendered. The assertions name the lines they mean rather than pinning a whole drawing, because a
-/// literal whose text <em>is</em> a line break draws as one - the sample ends a value with a newline, and what an author
-/// reads there is a break, not <c>\n</c>.
+/// literal whose text <em>is</em> a line break draws as one - whether a rule spells its break as a literal is the
+/// author's choice, and what a reader of the drawing should see is the break either way.
 /// </remarks>
 public sealed class ImportNotationTests
 {
@@ -22,10 +22,10 @@ public sealed class ImportNotationTests
 
         Assert.Contains("importer ini", drawn, StringComparison.Ordinal);
         Assert.Contains("rule Pipeline.Pipeline", drawn, StringComparison.Ordinal);
-        Assert.Contains("capture name from << which class >>", drawn, StringComparison.Ordinal);
+        Assert.Contains("line name", drawn, StringComparison.Ordinal);
         Assert.Contains("repeat stages separated by", drawn, StringComparison.Ordinal);
         Assert.Contains("rule Pipeline.Stage", drawn, StringComparison.Ordinal);
-        Assert.Contains("capture command from << which class >>", drawn, StringComparison.Ordinal);
+        Assert.Contains("line command", drawn, StringComparison.Ordinal);
     }
 
     [Fact]

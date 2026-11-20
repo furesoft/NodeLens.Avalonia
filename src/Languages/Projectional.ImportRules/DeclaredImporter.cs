@@ -184,7 +184,7 @@ public sealed class DeclaredImporter : ITextImporter
                             "The rule of '" + rule.ConceptKey + "' captures the skipped class '" + part.Token
                             + "', which by definition produces no value.");
 
-                    case ImportPartKind.Capture when concept.FindProperty(part.Slot) is null:
+                    case ImportPartKind.Capture or ImportPartKind.Line when concept.FindProperty(part.Slot) is null:
                         throw new ConceptDefinitionException(
                             $"The rule of '{rule.ConceptKey}' fills '{part.Slot}', which is not a property of it.");
 

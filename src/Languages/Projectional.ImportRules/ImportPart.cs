@@ -31,6 +31,11 @@ public sealed record ImportPart(
     public static ImportPart Capture(string slot, string token = "") =>
         new(ImportPartKind.Capture, token, slot, string.Empty, 0);
 
+    /// <summary>A part that fills <paramref name="slot"/> with the rest of the line, reading the line break and discarding it.</summary>
+    /// <param name="slot">The property to fill.</param>
+    public static ImportPart Line(string slot) =>
+        new(ImportPartKind.Line, string.Empty, slot, string.Empty, 0);
+
     /// <summary>A part that reads one child of <paramref name="slot"/>.</summary>
     /// <param name="slot">The child slot to fill.</param>
     public static ImportPart Nest(string slot) =>
@@ -74,6 +79,7 @@ public sealed record ImportPart(
     {
         ImportPartKind.Literal => $"literal \"{Text}\"",
         ImportPartKind.Capture => $"capture {Slot}",
+        ImportPartKind.Line => $"line {Slot}",
         ImportPartKind.Nest => $"nest {Slot}",
         _ => $"repeat {Slot}",
     };
