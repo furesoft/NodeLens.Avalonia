@@ -172,10 +172,18 @@
   concept the rule names, and `LanguageProject` composes it into the language's own constraints - so
   the existing engine, findings and squiggles carry it with no new path. A complaint states no type,
   so it stays out of the registry: a language with only a complaint has `HasTypes` false and
-  `HasConstraints` true, and a concept that also has a type rule keeps that type. The declared form
-  reports *unconditionally* - the message is a sentence about the concept, not a condition on the
-  node - so a conditional "operation is not applicable to these operands" is deferred rather than
-  approximated.
+  `HasConstraints` true, and a concept that also has a type rule keeps that type. **An optional `when`
+  body gates the report.** Without one the message is a sentence about the concept and reports wherever
+  the concept appears; with one it reports only where the condition holds. `TypeRule.NotComparable` is
+  the one condition kind there is - the types of two child slots are not interchangeable - and it is how
+  "operation is not applicable to these operands" is written without a second diagnostic path. Three
+  rules make it behave: the types are read at check time from `ConstraintContext`, so a condition costs
+  nothing until a check runs; comparability is asked of `IType.IsComparableTo` **and** of
+  `TypeRegistry.Subtypes`, because the interface's default only consults the primitive relation and a
+  language that declares two names interchangeable has answered a question the types alone cannot; and an
+  empty operand slot makes the condition *hold*, because there is nothing to compare and blaming a merely
+  incomplete node is the wrong finding. The condition's slots are validated at load like a child body's,
+  so a reference slot is refused where the author is looking rather than throwing during a check.
 - **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
   a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
   rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.

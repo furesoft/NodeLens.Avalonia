@@ -153,7 +153,8 @@ public static class TypeRuleNotations
             ed.ChildInline(TypeRuleLanguage.RightSlot)));
 
         // A complaint draws as the sentence a finding quotes, so the author reads the diagnostic before it is
-        // reported: the severity first, then the message the user will see.
+        // reported: the severity first, then the message the user will see. A condition draws only when it is
+        // there, so an unconditional complaint reads as the sentence it always reports.
         notations.Add(TypeRuleConceptKeys.Complain, ed => ed.Line(
             ed.Keyword("report"),
             ed.Space,
@@ -161,6 +162,20 @@ public static class TypeRuleNotations
             ed.Space,
             ed.Keyword("\""),
             ed.Property(TypeRuleLanguage.MessageSlot),
-            ed.Keyword("\"")));
+            ed.Keyword("\""),
+            ed.WhenFilled(TypeRuleLanguage.WhenSlot, ed.Space, ed.ChildInline(TypeRuleLanguage.WhenSlot))));
+
+        // A condition draws as the sentence it means: the two child slots whose types are compared, and what it
+        // says about them. The `type of` phrasing is the one a child body draws with, so one reading covers both.
+        notations.Add(TypeRuleConceptKeys.NotComparable, ed => ed.Line(
+            ed.Keyword("type of"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.LeftSlot),
+            ed.Space,
+            ed.Keyword("is not comparable with"),
+            ed.Space,
+            ed.Keyword("type of"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.RightSlot)));
     }
 }
