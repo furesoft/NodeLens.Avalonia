@@ -592,7 +592,11 @@ public sealed class LanguageTestsAsDataTests
                     TestingLanguage.IntentionSlot,
                     "intent.Workflow.Workflow.Add-the-first-step");
 
-                AddLine(model, script, "workflow Draft ->   :   <none> then <empty>");
+                // The notation now draws the reusable steps under the chain, so the drawing is two lines - and the
+                // step the intention added is the `first` the header points at.
+                AddLine(model, script, "workflow Draft -> <empty>");
+                AddLine(model, script, "library");
+                AddLine(model, script, "    :   <none> then <empty>");
             });
 
             var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "adds-a-step");
@@ -741,7 +745,10 @@ public sealed class LanguageTestsAsDataTests
                 scope.Set(TestingLanguage.AtSlot, "dotnet test");
                 scope.Set(TestingLanguage.ScopeSlot, "onFailure");
 
+                // `build` is the step above it, and the reusable steps of this workflow are visible too: a failure
+                // handler may point at a step it shares with the chain.
                 AddLine(model, scope, "build");
+                AddLine(model, scope, "shared build");
             });
 
             var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "what-onfailure-sees");

@@ -87,6 +87,13 @@ public sealed class InsertCopyAction : EditAction
                 $"Concept '{parent.Concept.Key}' declares no child slot '{_slot}', so nothing can be copied there.");
         }
 
+        if (ReferenceEquals(source, parent) || source.IsAncestorOf(parent))
+        {
+            return EditResult.Rejected(
+                selection,
+                "A node cannot be copied into its own subtree, because the copy would contain the place it goes.");
+        }
+
         if (!source.Concept.IsKindOf(place.ChildConceptKey))
         {
             return EditResult.Rejected(

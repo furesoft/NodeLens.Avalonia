@@ -89,7 +89,7 @@ policy (what a definition is, and where it belongs).
 | Slice | Delivers | Effort |
 | --- | --- | --- |
 | R1 | **delivered.** The cross-parent move was already possible - `Node.InsertChild` detaches the node from wherever it stood inside one mutation, and `EditContext.MoveChild` takes any parent - but nothing proved it and no action stated a *place*. `MoveNodeToAction` is that action: a parent, a slot and an index instead of a direction, answered as a reason when the computed place has gone stale, because a program must not throw halfway through. `MoveNodeToActionTests` pins what the primitive promises (identity kept, the old slot emptied, one undo step, a reference into the moved subtree still resolving, and a program of a move plus an edit undone once) and what it refuses (a node that is gone, a slot the parent does not declare, a concept the slot does not hold, a one-child slot already filled, a node into itself) | - |
-| R2 | **the framework half is delivered.** `Intent.Inline` is a body: the declaration names the reference slot whose target stands for what the node means, and the edit is a program of `InsertCopyAction` (a copy of the target into the use's own place, new identities, the definition untouched) and `DeleteNodeAction` of the use - one undo step. It is `Destructive`, because replacing a node is. **Two parts remain and both are deliberate**: the deletion of a definition nobody references (the open question below, not a detail to slip in), and a *shipped* sample - no language in the repository has the "node standing for a use" shape yet, so the end-to-end proof lives in `InlineLanguage`, a fixture that has exactly that shape | - / 1 week for the rest |
+| R2 | **delivered, with its subject.** `Intent.Inline` is a body: the declaration names the reference slot whose target stands for what the node means, and the edit is a program of `InsertCopyAction` (a copy of the target into the use's own place, new identities, the definition untouched) and `DeleteNodeAction` of the use - one undo step. It is `Destructive`, because replacing a node is. The subject is the **workflow sample**, which now has the shape the plan said nothing shipped: `Workflow.Call` extends `Workflow.Step` and references the step it runs, and `Workflow.Workflow.library` holds the reusable steps - so a call in the chain can be inlined into the commands of a step it shares. **The subject found a crash and a gap**: inlining a call whose target is an *ancestor* of the use builds a copy that contains the place it goes, and `Model.InsertCopy` recursed until the stack gave out - `InsertCopyAction` now refuses that with a reason, the way a move refuses a node into itself. What remains open is the plan's own question: whether inlining the last use should delete the definition | - / open: the cleanup |
 | R3 | `Intent.Extract`: five more declarations (the enclosing concept, its slot, the new concept, the reference slot, the name), the lowering, and the empty-declaration cleanup | 1-2 weeks |
 | R4 | the shell's **Edit ▸ Refactor** submenu, once two refactorings exist to put in it | 2-3 days |
 
@@ -99,6 +99,18 @@ boundary this plan already draws for extract ("into the nearest enclosing declar
 found that the only reference slots in the test language live on the rule rather than on the node a refactoring would
 move, so "leave a reference where it stood" cannot be exercised until the sample language for extract exists - the
 order the plan already has, now with a reason.
+
+**What measuring R2 found.** A copy of a node that *contains* the place it goes is an infinite structure, and
+`Model.InsertCopy` builds it by recursing until the stack gives out - a public API that a host can hang with one
+call. The refactoring that runs into it is obvious in hindsight: inlining a call whose target is an ancestor of the
+use copies the use's own parent chain into the use's place. `InsertCopyAction` refuses it with a reason, the way a
+move refuses a node into itself; the model-level gap is real and stays recorded here rather than being papered
+over, because the model answers "what can this slot hold" and not "would this shape be finite".
+
+It also found what the plan predicted: a chain of steps cannot host the shape at all, because every step's target is
+either above it (an ancestor) or below it, so the only non-cyclic inline is a *forward* reference - which is not
+what "reuse this step" means. Hence `Workflow.Workflow.library`: a workflow declares its reusable steps beside its
+chain, a call in the chain references one of them, and the copy has somewhere to go that is not inside itself.
 
 R1 was the only slice with no semantics to decide, which is why it came first and why it is shared with
 the move plan.

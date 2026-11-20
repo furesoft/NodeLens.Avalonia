@@ -81,6 +81,20 @@ public sealed class InsertCopyActionTests
     }
 
     [Fact]
+    public void ANodeCannotBeCopiedIntoItsOwnSubtree()
+    {
+        // A copy of an ancestor would contain the place it goes, so the structure would never end - and the model's own
+        // InsertCopy recurses until the stack gives out rather than refusing. The action is where that is answered.
+        var (_, root, _, _) = Model();
+
+        using var session = TestEditor.Open(root);
+
+        var result = session.Apply(new InsertCopyAction(root.Id, root.Id, InlineLanguage.Uses, 0));
+
+        Assert.Equal(EditOutcome.Rejected, result.Outcome);
+        Assert.Contains("its own subtree", result.Reason, StringComparison.Ordinal);
+    }
+    [Fact]
     public void ADeclaredInlineReplacesTheUseWithACopyOfItsDefinition()
     {
         var (_, root, definition, use) = Model();

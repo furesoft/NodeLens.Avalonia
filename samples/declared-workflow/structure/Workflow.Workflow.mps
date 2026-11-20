@@ -27,6 +27,13 @@
             <cardinality>0..1</cardinality>
           </properties>
         </node>
+        <node id="7f8e9d0c-1b2a-4c3d-9e4f-5a6b7c8d9e05" concept="Structure.ChildDecl" name="library">
+          <properties>
+            <name>library</name>
+            <childConceptKey>Workflow.Step</childConceptKey>
+            <cardinality>0..n</cardinality>
+          </properties>
+        </node>
       </children>
     </node>
   </nodes>
