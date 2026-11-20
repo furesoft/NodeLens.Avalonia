@@ -20,6 +20,7 @@
     <Project Path="src/Languages/Projectional.Editors/Projectional.Editors.csproj" />
     <Project Path="src/Languages/Projectional.Expressions/Projectional.Expressions.csproj" />
     <Project Path="src/Languages/Projectional.Hocon/Projectional.Hocon.csproj" />
+    <Project Path="src/Languages/Projectional.ImportRules/Projectional.ImportRules.csproj" />
     <Project Path="src/Languages/Projectional.IntentionRules/Projectional.IntentionRules.csproj" />
     <Project Path="src/Languages/Projectional.Json/Projectional.Json.csproj" />
     <Project Path="src/Languages/Projectional.ScopeRules/Projectional.ScopeRules.csproj" />

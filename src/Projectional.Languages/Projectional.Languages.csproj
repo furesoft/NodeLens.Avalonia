@@ -5,6 +5,7 @@
     <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Editors\Projectional.Editors.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.ImportRules\Projectional.ImportRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />

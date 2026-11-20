@@ -284,7 +284,7 @@ A language written as a model should read its own files and not only print them.
 `Projectional.ImportRules`: an `import` folder beside `generator` and `constraints`, two layers - tokens
 and rules - and a closed vocabulary that mirrors the template's verbs.
 
-**I9-a, the inverse of the template, is delivered** and is the base the rest builds on:
+**I9-a, the rule layer, is delivered**: `Projectional.ImportRules` declares an importer as a document in an `import` folder - `Import.Literal`, `Import.Capture`, `Import.Nest` and `Import.Repeat` - and `LanguageProject` offers it beside the importers its generators derive. The token layer, `Raw`, `Bind`/`Matches` and `Fail` are the rest of the plan and arrive with a format that needs them. **I9-b, the inverse of the template, is delivered** and is the base the rest builds on:
 `TemplateImporter` (`Projectional.Language/Import/`) reads back what a generator's own templates write, so
 a declared language is no longer a one-way street for the case its generator can already print.
 `LanguageProject.Importers` offers one importer per generator that inverts, and `TryCreateImporter` says why
