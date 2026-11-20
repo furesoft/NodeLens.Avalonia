@@ -27,11 +27,11 @@ internal static class ShellShots
     /// </remarks>
     internal static IReadOnlyList<ShellShot> All { get; } =
     [
-        new("feature-run-output", ShowRunOutput, Width: 720, Height: 380),
-        new("feature-generate-output", ShowGeneratedText, Width: 720, Height: 340),
-        new("feature-run-tests", ShowTestRun, Width: 840, Height: 420),
-        new("feature-import-file", ShowImportedDocument, Width: 720, Height: 520),
-        new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 560),
+        new("feature-run-output", ShowRunOutput, Width: 720, Height: 420),
+        new("feature-generate-output", ShowGeneratedText, Width: 720, Height: 420),
+        new("feature-run-tests", ShowTestRun, Width: 840, Height: 460),
+        new("feature-import-file", ShowImportedDocument, Width: 720, Height: 540),
+        new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 600),
     ];
 
     /// <summary>Imports an ini-shaped file into a document of the language that declares a rule for it.</summary>
