@@ -225,6 +225,38 @@ public sealed class ExpressionsLanguageTests
     }
 
     [Fact]
+    public void AnIfIsAsWideAsItsTwoBranches()
+    {
+        // The one rule that is not local propagation: "as wide as its then-branch" answers `int` for
+        // `if c then 1 else "x"`, which is a type the node does not have.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+
+        var both = model.NewNode(ExpressionsConceptKeys.If);
+        model.NewChild(both, "then", ExpressionsConceptKeys.IntLiteral);
+        model.NewChild(both, "else", ExpressionsConceptKeys.IntLiteral);
+
+        var mismatched = model.NewNode(ExpressionsConceptKeys.If);
+        model.NewChild(mismatched, "then", ExpressionsConceptKeys.IntLiteral);
+        model.NewChild(mismatched, "else", ExpressionsConceptKeys.StringLiteral);
+
+        Assert.Equal("int", ExpressionsLanguage.Types.TypeOf(both).Name);
+        Assert.Same(UnknownType.Instance, ExpressionsLanguage.Types.TypeOf(mismatched));
+    }
+
+    [Fact]
+    public void AnIfWithOneBranchWrittenIsAsWideAsThatBranch()
+    {
+        // The ordinary state of a document being edited, and the reason the two-branch question is asked only when
+        // there are two branches: making this unknown would make typing an `if` lose the type it just earned.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var conditional = model.NewNode(ExpressionsConceptKeys.If);
+
+        model.NewChild(conditional, "then", ExpressionsConceptKeys.BoolLiteral);
+
+        Assert.Equal("bool", ExpressionsLanguage.Types.TypeOf(conditional).Name);
+    }
+
+    [Fact]
     public void ANameIsUnknownBecauseWhatItMeansIsDeclaredElsewhere()
     {
         // The sub-language has no declaration to resolve a name against, so it says so instead of

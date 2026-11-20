@@ -262,6 +262,48 @@ public sealed class SampleConstraintsTests
     }
 
     [Fact]
+    public void AnIfWhoseBranchesCannotBeOneTypeIsReported()
+    {
+        // The same predicate as the operator rule, on the other place a value has to fit beside another. Without it
+        // `if c then 1 else "x"` is an `unknown` nobody explains.
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var conditional = model.NewNode(ExpressionsConceptKeys.If);
+
+        model.NewChild(conditional, "then", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+        model.NewChild(conditional, "else", ExpressionsConceptKeys.StringLiteral).Set("value", "x");
+
+        var finding = Assert.Single(
+            new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+
+        Assert.Equal(SampleConstraints.OperandsNotComparableCode, finding.Code);
+        Assert.Equal("then", finding.Role);
+        Assert.Contains("branches", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnIfWithOneBranchWrittenIsNotReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var conditional = model.NewNode(ExpressionsConceptKeys.If);
+
+        model.NewChild(conditional, "then", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
+    public void AnIfWhoseBranchesAreOneTypeIsNotReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var conditional = model.NewNode(ExpressionsConceptKeys.If);
+
+        model.NewChild(conditional, "then", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+        model.NewChild(conditional, "else", ExpressionsConceptKeys.IntLiteral).Set("value", "2");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
     public void ALogicalOperandOfUnknownTypeIsNotReported()
     {
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");

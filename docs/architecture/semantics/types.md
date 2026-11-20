@@ -363,6 +363,7 @@ specification, not a capability.
 | operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.OperandsNotComparable`, on the C# authoring path: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
 | a language's own types aspect, declared in C# | `SqlSchemaLanguage.Types` (`SqlSchemaTypes`): the first shipped language with types of its own. Each column type is a `NamedType` over a primitive, one instance per value, so two columns of one type are one type - which is what lets a key compare them |
 | a one-way requirement ("this may stand where that is required") | two consumers now. `KeyTypesConstraint` asks it of a key's two columns, and `SampleConstraints.LogicalOperandMustBeBoolean` asks it of `&&`/`||`'s operands - which is the case that shows why the two questions are different: `1 && 2` is comparable and still wrong |
+| the join (`TypeRule.Join`, `TypeLattice.Join`) | two: the declared `TypeRule.Join`/`Meet` expressions, and the expression language's `if`, whose type is the join of its two branches. Until that rule existed the join had no consumer inside a shipped language, only in the type layer's own tests |
 | subtyping - the capability `TypeRule.Supertypes` states | `SqlSchemaTypes.Subtypes` declares the one edge the schema has (`int` may stand where `decimal` is required), and `KeyTypesConstraint` is the consumer: its question is directed, so the edge decides that a whole number may be looked up in a fractional column while the reverse is reported. On the C# authoring path, because the schema is a C# language and declares no `types` folder |
 | `TypeRule.Supertypes` | **no subject for the document form.** The capability is exercised (above), the declared document is not: no language project that ships a `types/` folder needs a hierarchy. `TypeRule.Comparable` and `TypeRule.Replacement` are still unexercised in either form |
 | `TypeRule.Comparable` | **no subject.** No shipped language has two types interchangeable without one being below the other - and the expression language's three primitives are genuinely incomparable, which is precisely what makes its operand rule fire |
@@ -381,8 +382,7 @@ while `TypeRule.Supertypes`, the document that states the same edge in a `types/
 that needs it. The same holds for the one-way requirement: two shipped rules ask it, and no declared condition states
 it. That is the next declared slice, and its subject would be a language project with a `types/` folder whose rules
 need it - adding the vocabulary before that document exists would be the specification the top of this table warns
-about. A mismatched `if` branch is the remaining gap: typed as its `then`-branch with no finding, because a three-way
-question is neither comparability nor a requirement on one slot.
+about.
 
 #### What stays out, and why
 

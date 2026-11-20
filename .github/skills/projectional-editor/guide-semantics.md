@@ -205,6 +205,13 @@
   whether it accepts; when it states that two things go together, ask comparability. Getting these two the wrong way
   round is silent: the symmetric question accepts `decimal` keyed into an `int`, and the one-way question refuses
   `int` keyed into a `decimal`.
+- **A conditional's type is a join, and its branches are a comparability question.** `if c then 1 else "x"` used to be
+  typed as its then-branch, which is a type the node does not have. `ExpressionTypes.Branches` answers
+  `TypeLattice.Join` of the two branches - the common supertype, or `UnknownType` when there is none - and with the
+  `else` unwritten it answers the then-branch, because that is the state of a document being edited. The same
+  `Comparability` constraint that serves a binary operator's operands serves the branches; it takes its two slots and
+  the phrase naming them so the question is written once. Keep both halves together: a join without the finding
+  turns a mistake into a silent `unknown`, and a finding without the join leaves the wrong type in place.
 - **A type rule may report instead of typing.** `TypeRule.Complain` is a body carrying a `message`
   and a `severity`; `TypeRuleLowering.CreateComplaints` lowers it into an `IConstraint` keyed by the
   concept the rule names, and `LanguageProject` composes it into the language's own constraints - so

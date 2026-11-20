@@ -47,7 +47,16 @@ public static class SampleConstraints
     public static ConstraintSet All { get; } = ConstraintSet.Empty
         .Add(RulesConceptKeys.Rule, new MissingCondition())
         .Add(RulesConceptKeys.Rule, new ConditionMustBeBoolean())
-        .Add(ExpressionsConceptKeys.Binary, new OperandsNotComparable())
+        .Add(ExpressionsConceptKeys.Binary, new Comparability(
+            "left",
+            "right",
+            "operator",
+            node => node.GetOrNull("operator") is { } op ? $"the operands of '{op}'" : null))
+        .Add(ExpressionsConceptKeys.If, new Comparability(
+            "then",
+            "else",
+            "then",
+            _ => "the branches of the if"))
         .Add(ExpressionsConceptKeys.Binary, new LogicalOperandMustBeBoolean())
         .Add(ExpressionsConceptKeys.Unary, new NegationOperandMustBeBoolean());
 
@@ -98,43 +107,48 @@ public static class SampleConstraints
     }
 
     /// <summary>
-    /// An operation whose two operands cannot be used together: <c>1 + "x"</c>, <c>1 &lt; "x"</c>.
+    /// Two child slots whose types must be usable one for the other: <c>1 + "x"</c>, <c>if c then 1 else "x"</c>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This is the "operation is not applicable to these operands" rule, and it is why the expression
-    /// language needs a type at all: without it <c>1 + "x"</c> is typed as an <c>int</c> and nothing is
-    /// reported, because the operator decides the type and never looks at what it was given.
+    /// This is the "operation is not applicable to these operands" rule, and it is why the expression language needs a
+    /// type at all: without it <c>1 + "x"</c> is typed as an <c>int</c> and nothing is reported, because the operator
+    /// decides the type and never looks at what it was given.
     /// </para>
     /// <para>
-    /// Comparability is the question, not sameness: two operands of one operator have to be usable one for
-    /// the other, and asking whether they are the same type would refuse <c>1 + 2</c> the moment a language
-    /// declared two numeric types interchangeable. It is asked of the type first and then of the registry's
-    /// relations, which is the same order the declared <c>TypeRule.NotComparable</c> condition asks it in -
-    /// two authoring paths, one answer.
+    /// Comparability is the question, not sameness: two operands of one operator have to be usable one for the other,
+    /// and asking whether they are the same type would refuse <c>1 + 2</c> the moment a language declared two numeric
+    /// types interchangeable. It is asked of the type first and then of the registry's relations, which is the same
+    /// order the declared <c>TypeRule.NotComparable</c> condition asks it in - two authoring paths, one answer.
     /// </para>
     /// <para>
-    /// An <see cref="UnknownType"/> operand is not reported: it is what a rule says it does not know, so a
-    /// name this language cannot type would otherwise turn one missing answer into a finding on every
-    /// expression that uses it. An operator or a side that is not filled in is not reported either - the
-    /// node is merely incomplete, which is not the author's mistake to be told about.
+    /// The slots and the phrasing are parameters because one predicate serves both places a value has to fit
+    /// beside another: a binary operator's two operands, and a conditional's two branches. What differs is only how
+    /// the sentence names them, so the question is written once.
+    /// </para>
+    /// <para>
+    /// An <see cref="UnknownType"/> side is not reported: it is what a rule says it does not know, so a name this
+    /// language cannot type would otherwise turn one missing answer into a finding on every expression that uses it.
+    /// An absent side is not reported either - the node is merely incomplete, which is not the author's mistake.
     /// </para>
     /// </remarks>
-    private sealed class OperandsNotComparable : IConstraint
+    private sealed class Comparability(
+        string left,
+        string right,
+        string role,
+        Func<Node, string?> subject) : IConstraint
     {
         public void Check(ConstraintContext context)
         {
-            var op = context.Node.GetOrNull("operator");
-
-            if (op is null
-                || context.Node.GetChild("left") is not { } left
-                || context.Node.GetChild("right") is not { } right)
+            if (subject(context.Node) is not { } what
+                || context.Node.GetChild(left) is not { } leftNode
+                || context.Node.GetChild(right) is not { } rightNode)
             {
                 return;
             }
 
-            var leftType = context.TypeOf(left);
-            var rightType = context.TypeOf(right);
+            var leftType = context.TypeOf(leftNode);
+            var rightType = context.TypeOf(rightNode);
 
             if (leftType.IsComparableTo(rightType)
                 || context.Types.Subtypes.IsComparableTo(leftType, rightType)
@@ -144,8 +158,8 @@ public static class SampleConstraints
             }
 
             context.Error(
-                $"the operands of '{op}' are not comparable: {leftType.Name} and {rightType.Name}.",
-                role: "operator",
+                $"{what} are not comparable: {leftType.Name} and {rightType.Name}.",
+                role: role,
                 code: OperandsNotComparableCode);
         }
     }
