@@ -91,4 +91,97 @@ public sealed class SampleConstraintsTests
 
         Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
     }
+
+    [Fact]
+    public void AnOperationOnTwoDifferentTypesIsReported()
+    {
+        // Without this rule the expression is typed as an int and nothing is said about it, because the
+        // operator decides the type and never looks at what it was given.
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "+");
+
+        var left = model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral);
+        var right = model.NewChild(binary, "right", ExpressionsConceptKeys.StringLiteral);
+
+        left.Set("value", "1");
+        right.Set("value", "x");
+
+        var finding = Assert.Single(
+            new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+
+        Assert.Equal(binary.Id, finding.Target);
+        Assert.Equal("operator", finding.Role);
+        Assert.Equal(SampleConstraints.OperandsNotComparableCode, finding.Code);
+        Assert.Equal(DiagnosticSeverity.Error, finding.Severity);
+        Assert.Contains("'+'", finding.Message, StringComparison.Ordinal);
+        Assert.Contains("int", finding.Message, StringComparison.Ordinal);
+        Assert.Contains("string", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnOperationWhoseOperandIsUnknownIsNotReported()
+    {
+        // A name is what this language cannot type, and a finding on every expression that reads one would turn
+        // one missing answer into a wall of them.
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "+");
+        model.NewChild(binary, "left", ExpressionsConceptKeys.Name).Set("name", "amount");
+        model.NewChild(binary, "right", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
+    public void AnOperationWithAMissingSideIsNotReported()
+    {
+        // An incomplete node is not the author's mistake to be told about.
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "+");
+        model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
+    public void AnOperationInsideARuleConditionIsReported()
+    {
+        // The realistic shape: the expression language has no documents of its own in the samples, but its nodes
+        // are what a rule's condition is made of, so this rule is live wherever expressions actually appear.
+        var model = RulesLanguage.NewProject().NewModel("rules");
+        var ruleset = model.NewNode(RulesConceptKeys.Ruleset);
+        ruleset.Set("name", "Payroll");
+
+        var rule = model.NewChild(ruleset, RulesLanguage.RulesSlot, RulesConceptKeys.Rule);
+        rule.Set("name", "Approved");
+
+        var comparison = model.NewChild(rule, "condition", ExpressionsConceptKeys.Binary);
+        comparison.Set("operator", "<");
+        model.NewChild(comparison, "left", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+        model.NewChild(comparison, "right", ExpressionsConceptKeys.StringLiteral).Set("value", "x");
+
+        // The comparison is a truth value, so the condition rule stays silent; what is wrong is the operands.
+        var finding = Assert.Single(
+            new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+
+        Assert.Equal(SampleConstraints.OperandsNotComparableCode, finding.Code);
+        Assert.Equal(comparison.Id, finding.Target);
+    }
+
+    [Fact]
+    public void AnOperationWithNoOperatorIsNotReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+        model.NewChild(binary, "right", ExpressionsConceptKeys.StringLiteral).Set("value", "x");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
 }
