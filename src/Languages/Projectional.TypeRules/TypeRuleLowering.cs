@@ -133,6 +133,12 @@ public static class TypeRuleLowering
         TypeRuleConceptKeys.Optional => new OptionalType(
             LowerType(RequiredChild(expr, TypeRuleLanguage.InnerSlot), conceptKey, aliases, expanding, variables)),
         TypeRuleConceptKeys.Ref => Alias(Required(expr, TypeRuleLanguage.NameSlot), conceptKey, aliases, expanding, variables),
+        TypeRuleConceptKeys.Join => new JoinType(
+            LowerType(RequiredChild(expr, TypeRuleLanguage.LeftSlot), conceptKey, aliases, expanding, variables),
+            LowerType(RequiredChild(expr, TypeRuleLanguage.RightSlot), conceptKey, aliases, expanding, variables)),
+        TypeRuleConceptKeys.Meet => new MeetType(
+            LowerType(RequiredChild(expr, TypeRuleLanguage.LeftSlot), conceptKey, aliases, expanding, variables),
+            LowerType(RequiredChild(expr, TypeRuleLanguage.RightSlot), conceptKey, aliases, expanding, variables)),
         TypeRuleConceptKeys.TypeVariable => Variable(expr, conceptKey, variables),
         _ => throw new ConceptDefinitionException(
             $"The type rule for '{conceptKey}' names a type of '{expr.Concept.Key}', which is not a kind of type."),

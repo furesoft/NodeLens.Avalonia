@@ -137,10 +137,12 @@
   writing `?element` in one rule lower to one `TypeVariable`, because relations between unrelated unknowns say
   nothing. Refusals sit where the value is written - the relation's enumeration makes the model refuse a spelling
   the lowering never sees, and the lowering refuses an equations body that states nothing, an equation whose two
-  sides are the same variable, and a variable outside a body that states equations. Declared `join`/`meet` and the
-  subtyping declaration are still deferred.
+  sides are the same variable, and a variable outside a body that states equations. `TypeRule.Join`/`TypeRule.Meet`
+  are type expressions too, so "either" and "both" are spellable in a model; the subtyping declaration is still
+  deferred.
 - **Join and meet are questions about the relation, not new kinds of type**: `JoinType`/`MeetType` are what a slot
-  or a rule *writes* ("either", "both"), and `TypeLattice` reduces them from the declared edges - one side below the
+  or a rule *writes* ("either", "both") - `TypeRule.Join`/`TypeRule.Meet` in a model - and `TypeLattice` reduces
+  them from the declared edges - one side below the
   other, or the unique least/greatest common type. When the edges do not determine one the answer is `UnknownType`,
   never a pick between two incomparable candidates, which is why the relation had to learn to enumerate
   (`SupertypesOf`/`SubtypesOf`) before the reduce could be honest.
@@ -173,7 +175,7 @@
   `Editing`). Do not move the types back into `Semantics` - it looked tidier and it is wrong.
 - **`Projectional.TypeRules` is the declared form** - the first declared aspect: a rule is a model
   (`TypeRule.Rule` with a `Fixed`/`Child`/`Switch` body) and `TypeRuleLowering` turns it into the
-  same `ITypeRule` a C# author writes. **Three bodies, not a statement list**: MPS' typesystem is
+  same `ITypeRule` a C# author writes. **Four bodies, not a statement list**: MPS' typesystem is
   imperative, and copying that would mean shipping an interpreter for a language whose only job is to
   answer one question per node. A body that cannot be lowered (no body, an unknown type name, a value
   declared twice, a switch with no `otherwise`) is a `ConceptDefinitionException` at load, not a rule
@@ -183,7 +185,8 @@
   parity rule applies: `TypeRuleLoweringTests` asserts the declared registry and
   `ExpressionsLanguage.Types` answer the same type for every node of the sample document.
 - **A type expression is a family of its own, not a body.** `TypeExpr` (abstract) + `Primitive` /
-  `Record` / `Field` / `List` / `Optional`, and `Fixed` holds one instead of a type name. The split is
+  `Record` / `Field` / `List` / `Optional` / `Ref` / `Join` / `Meet` / `TypeVariable`, and `Fixed` holds one
+  instead of a type name. The split is
   load-bearing: a body may read the node (`type of left`), a type may not - a record field's type cannot
   depend on the node that holds the rule, because a field is part of a *type* and there is no node there
   to ask. Nested arbitrarily; **the drawing of a complete type expression is exactly `IType.Name`**, so

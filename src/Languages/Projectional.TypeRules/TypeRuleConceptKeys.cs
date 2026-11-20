@@ -2,7 +2,7 @@ namespace Projectional.TypeRules;
 
 /// <summary>The keys of the type-rule language: the concepts a type rule is written with.</summary>
 /// <remarks>
-/// One root and eleven concepts, and the small number is the design. A type rule says what a concept
+/// One root and the concepts beneath it, and the small number is the design. A type rule says what a concept
 /// evaluates to - a fixed type, the type of one of its children, or a choice between those two decided by
 /// a property - and nothing about how it is computed. That is the declarative subset of MPS' typesystem:
 /// enough to state the rules a DSL actually has, and not a programming language.
@@ -59,6 +59,12 @@ public static class TypeRuleConceptKeys
 
     /// <summary>A type expression that names a declared type.</summary>
     public const string Ref = "TypeRule.Ref";
+
+    /// <summary>Either of two types, as a type expression.</summary>
+    public const string Join = "TypeRule.Join";
+
+    /// <summary>Both of two types at once, as a type expression.</summary>
+    public const string Meet = "TypeRule.Meet";
 
     /// <summary>A body that states relations instead of answering a type.</summary>
     public const string Equations = "TypeRule.Equations";

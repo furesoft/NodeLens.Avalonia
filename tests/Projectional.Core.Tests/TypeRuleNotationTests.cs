@@ -198,4 +198,52 @@ public sealed class TypeRuleNotationTests
 
         Assert.Contains("<< ... >>", LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AJoinDrawsAsTheOperatorItsNameUses()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var join = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Join);
+
+        model.NewChild(join, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+        model.NewChild(join, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "string");
+
+        Assert.Equal(
+            """
+            rule Expressions.IntLiteral is
+              type int|string
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
+    public void AMeetDrawsAsTheOperatorItsNameUses()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var meet = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Meet);
+
+        model.NewChild(meet, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+        model.NewChild(meet, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.Ref)
+            .Set(TypeRuleLanguage.NameSlot, "Amount");
+
+        Assert.Equal(
+            """
+            rule Expressions.IntLiteral is
+              type int&Amount
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
 }

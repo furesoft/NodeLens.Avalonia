@@ -129,6 +129,59 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void AFixedRuleCanNameEitherOfTwoTypes()
+    {
+        var registry = Lower(rules => rules.Rule(
+            "Expressions.IntLiteral",
+            rules.FixedAs(rules.JoinOf(rules.Primitive("int"), rules.Primitive("string")))));
+
+        var type = registry.TypeOf(Literal());
+
+        // A join is a union, so it accepts what either side accepts and nothing else.
+        Assert.Equal("int|string", type.Name);
+        Assert.True(type.Accepts(PrimitiveType.Of(PropertyType.Integer)));
+        Assert.True(type.Accepts(PrimitiveType.Of(PropertyType.String)));
+        Assert.False(type.Accepts(PrimitiveType.Of(PropertyType.Boolean)));
+    }
+
+    [Fact]
+    public void AFixedRuleCanNameBothOfTwoTypes()
+    {
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.MeetOf(rules.Primitive("int"), rules.Ref("Amount"))));
+        });
+
+        var type = registry.TypeOf(Literal());
+
+        // A meet is an intersection, so it accepts only what both sides accept.
+        Assert.Equal("int&Amount", type.Name);
+        Assert.True(type.Accepts(PrimitiveType.Of(PropertyType.Integer)));
+        Assert.False(type.Accepts(PrimitiveType.Of(PropertyType.String)));
+    }
+
+    [Fact]
+    public void AJoinWithoutASecondSideIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var join = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Join);
+
+        model.NewChild(join, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => TypeRuleLowering.CreateRegistry(model.Roots));
+
+        Assert.Contains("missing its 'right'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ARecordFieldWithoutATypeIsALoadTimeError()
     {
         var model = TypeRuleLanguage.NewModel();
@@ -536,6 +589,28 @@ public sealed class TypeRuleLoweringTests
             list.AddChild(TypeRuleLanguage.ElementSlot, element);
 
             return list;
+        }
+
+        /// <summary>Either of two types, as a type expression.</summary>
+        public Node JoinOf(Node left, Node right)
+        {
+            var join = _model.NewNode(TypeRuleConceptKeys.Join);
+
+            join.AddChild(TypeRuleLanguage.LeftSlot, left);
+            join.AddChild(TypeRuleLanguage.RightSlot, right);
+
+            return join;
+        }
+
+        /// <summary>Both of two types at once, as a type expression.</summary>
+        public Node MeetOf(Node left, Node right)
+        {
+            var meet = _model.NewNode(TypeRuleConceptKeys.Meet);
+
+            meet.AddChild(TypeRuleLanguage.LeftSlot, left);
+            meet.AddChild(TypeRuleLanguage.RightSlot, right);
+
+            return meet;
         }
 
         public Node OptionalOf(Node inner)
