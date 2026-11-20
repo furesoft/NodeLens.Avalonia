@@ -128,6 +128,20 @@ public static class TypeRuleLanguage
             nameSlot: SlotSlot,
             description: "The type of one of the node's children."),
 
+        // A body, not a type expression, because it reads the node - which is the split that keeps a record field
+        // from depending on the rule's node. It exists because "the type of one child" and "either of two written
+        // types" between them cannot say "the common supertype of these two children", and a conditional needs exactly
+        // that.
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Widest,
+            [
+                new PropertySlot(LeftSlot, PropertyType.String),
+                new PropertySlot(RightSlot, PropertyType.String),
+            ],
+            [TypeRuleConceptKeys.Body],
+            nameSlot: LeftSlot,
+            description: "The common supertype of the types of two of the node's children: the widest type a value of either branch may be read as."),
+
         new ConceptDeclaration(
             TypeRuleConceptKeys.Switch,
             [

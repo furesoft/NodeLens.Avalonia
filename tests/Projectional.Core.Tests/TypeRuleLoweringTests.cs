@@ -319,7 +319,7 @@ public sealed class TypeRuleLoweringTests
             rules.Rule("Expressions.BoolLiteral", rules.Fixed("bool"));
             rules.Rule("Expressions.StringLiteral", rules.Fixed("string"));
             rules.Rule("Expressions.Parenthesized", rules.Child("inner"));
-            rules.Rule("Expressions.If", rules.Child("then"));
+            rules.Rule("Expressions.If", rules.Widest("then", "else"));
             rules.Rule("Expressions.Binary", rules.Switch(
                 "operator",
                 [
@@ -345,6 +345,16 @@ public sealed class TypeRuleLoweringTests
         {
             Assert.Equal(ExpressionsLanguage.Types.TypeOf(node).Name, declared.TypeOf(node).Name);
         }
+
+        // A conditional whose branches differ: this is where the two answers part company, because the twin says
+        // "as wide as the then-branch" and the language joins the two.
+        var mismatched = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var conditional = mismatched.NewNode(ExpressionsConceptKeys.If);
+
+        mismatched.NewChild(conditional, "then", ExpressionsConceptKeys.IntLiteral);
+        mismatched.NewChild(conditional, "else", ExpressionsConceptKeys.StringLiteral);
+
+        Assert.Equal(ExpressionsLanguage.Types.TypeOf(conditional).Name, declared.TypeOf(conditional).Name);
     }
 
     private static IEnumerable<Node> Nodes(Model model)
@@ -786,6 +796,76 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void AWidestBodyAnswersTheCommonSupertypeOfTwoChildren()
+    {
+        // The answer a rule could not give before: `type of left` names one child and `Join` joins two written
+        // types, so "the widest of these two children" had no spelling.
+        var registry = Lower(rules =>
+        {
+            rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.Fixed("int"));
+            rules.Rule(ExpressionsConceptKeys.StringLiteral, rules.Fixed("string"));
+            rules.Rule(ExpressionsConceptKeys.BoolLiteral, rules.Fixed("bool"));
+            rules.Rule(ExpressionsConceptKeys.Binary, rules.Widest("left", "right"));
+        });
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+
+        var same = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        model.NewChild(same, "left", ExpressionsConceptKeys.IntLiteral);
+        model.NewChild(same, "right", ExpressionsConceptKeys.IntLiteral);
+
+        var mixed = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        model.NewChild(mixed, "left", ExpressionsConceptKeys.IntLiteral);
+        model.NewChild(mixed, "right", ExpressionsConceptKeys.StringLiteral);
+
+        Assert.Equal("int", registry.TypeOf(same).Name);
+        Assert.Same(UnknownType.Instance, registry.TypeOf(mixed));
+    }
+
+    [Fact]
+    public void AWidestBodyWithOneChildWrittenIsThatChildsType()
+    {
+        // Joining against an absent branch would answer unknown and lose the type the written one just earned, which
+        // is why an unfilled slot contributes nothing rather than its unknown.
+        var registry = Lower(rules =>
+        {
+            rules.Rule(ExpressionsConceptKeys.BoolLiteral, rules.Fixed("bool"));
+            rules.Rule(ExpressionsConceptKeys.Binary, rules.Widest("left", "right"));
+        });
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        model.NewChild(binary, "left", ExpressionsConceptKeys.BoolLiteral);
+
+        Assert.Equal("bool", registry.TypeOf(binary).Name);
+    }
+
+    [Fact]
+    public void AWidestBodyWithNoChildWrittenIsUnknown()
+    {
+        var registry = Lower(rules => rules.Rule(ExpressionsConceptKeys.Binary, rules.Widest("left", "right")));
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+
+        Assert.Same(UnknownType.Instance, registry.TypeOf(model.NewNode(ExpressionsConceptKeys.Binary)));
+    }
+
+    [Fact]
+    public void AWidestBodyNamingAReferenceSlotIsRefusedAtLoad()
+    {
+        var builder = new RuleBuilder();
+
+        builder.Rule(SmConceptKeys.Transition, builder.Widest("source", "source"));
+
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => TypeRuleLowering.CreateRegistry(builder.Roots, StateMachineLanguage.Concepts));
+
+        Assert.Contains("'source'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AFloatPrimitiveIsNameable()
     {
         // Every property type the framework has must be nameable in a types document, or a slot of that type could
@@ -1191,6 +1271,17 @@ public sealed class TypeRuleLoweringTests
             var body = _model.NewNode(TypeRuleConceptKeys.Child);
 
             body.Set(TypeRuleLanguage.SlotSlot, slot);
+
+            return body;
+        }
+
+        /// <summary>The common supertype of two child slots' types, as a body.</summary>
+        public Node Widest(string left, string right)
+        {
+            var body = _model.NewNode(TypeRuleConceptKeys.Widest);
+
+            body.Set(TypeRuleLanguage.LeftSlot, left);
+            body.Set(TypeRuleLanguage.RightSlot, right);
 
             return body;
         }

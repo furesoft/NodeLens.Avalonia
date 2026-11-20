@@ -97,4 +97,9 @@ public static class TypeRuleConceptKeys
     /// Two types a language declares interchangeable, without claiming either is a subtype of the other.
     /// </summary>
     public const string Comparable = "TypeRule.Comparable";
+
+    /// <summary>
+    /// A body that answers the common supertype of the types of two of the node's children.
+    /// </summary>
+    public const string Widest = "TypeRule.Widest";
 }
