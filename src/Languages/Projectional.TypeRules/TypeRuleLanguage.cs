@@ -85,6 +85,12 @@ public static class TypeRuleLanguage
     /// <summary>The condition a complaint reports only when it holds.</summary>
     public const string WhenSlot = "when";
 
+    /// <summary>Which relation's claim a replacement rewrites.</summary>
+    public const string ClaimSlot = "claim";
+
+    /// <summary>The relations a replacement proves in place of the claim.</summary>
+    public const string InsteadSlot = "instead";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// A rule is a document of its own, and so is a named type: the root <em>is</em> the definition, the shape MPS
@@ -276,6 +282,22 @@ public static class TypeRuleLanguage
                 new ChildSlot(SupertypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
             ],
             description: "A declared edge of the subtype relation: the subtype may stand where the supertype is required."),
+
+        // A replacement is a document too: one rule, the claim it rewrites and the relations it puts in its place.
+        // An empty `instead` is not an unfinished rule but a finished one - the claim holds outright, which is how
+        // MPS states that the null type is a subtype of everything a classifier is.
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Replacement,
+            [
+                // The symbol it is written with is the symbol the equation it rewrites prints, so a reader compares
+                // the rule against the relation it acts on without translating. `:>` is deliberately absent: it is
+                // `<:` with the sides swapped, so it would be one claim with two spellings.
+                new PropertySlot(ClaimSlot, PropertyType.Enum("<:", "==")),
+                new ChildSlot(LeftSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(RightSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(InsteadSlot, TypeRuleConceptKeys.Equation, Cardinality.Many),
+            ],
+            description: "A declared rewrite: a claim of a relation between two type patterns is replaced by the relations this rule states instead, or discharged when it states none."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

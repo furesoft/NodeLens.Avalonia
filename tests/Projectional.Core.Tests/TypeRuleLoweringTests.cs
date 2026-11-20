@@ -742,6 +742,129 @@ public sealed class TypeRuleLoweringTests
         Assert.Contains("'Money'", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ADeclaredReplacementRewritesAClaimTheLanguageStates()
+    {
+        // Covariance written the way a language declares it: a claim about two optionals is a claim about their
+        // inners, and the registry carries the rule so a solver built from it has it.
+        var registry = Lower(rules => rules.Replacement(
+            "<:",
+            rules.OptionalOf(rules.Var("inner")),
+            rules.Var("inner"),
+            []));
+
+        var replacement = Assert.Single(registry.Replacements);
+
+        Assert.Equal(TypeEquationKind.Subtype, replacement.Claim);
+        Assert.Empty(replacement.Instead);
+    }
+
+    [Fact]
+    public void AReplacementStatesTheRelationsToProveInstead()
+    {
+        var registry = Lower(rules => rules.Replacement(
+            "<:",
+            rules.ListOf(rules.Var("element")),
+            rules.ListOf(rules.Var("other")),
+            ("<:", rules.Var("element"), rules.Var("other"))));
+
+        var replacement = Assert.Single(registry.Replacements);
+        var relation = Assert.Single(replacement.Instead);
+
+        Assert.Equal(TypeEquationKind.Subtype, relation.Kind);
+        Assert.Equal("?element", relation.Left.Name);
+        Assert.Equal("?other", relation.Right.Name);
+
+        // One variable name is one variable across the patterns and the relations, which is what makes the
+        // relation a statement about what the patterns bound - so applying the rule fills the relation in.
+        Assert.True(replacement.TryApply(
+            new ListType(PrimitiveType.Of(PropertyType.Integer)),
+            new ListType(PrimitiveType.Of(PropertyType.String)),
+            out var instead));
+        Assert.Equal("int", Assert.Single(instead).Left.Name);
+        Assert.Equal("string", Assert.Single(instead).Right.Name);
+    }
+
+    [Fact]
+    public void ADeclaredReplacementIsWhatASolverBuiltFromTheRegistryUses()
+    {
+        // The chain the three halves exist for: a document states a rewrite, the registry carries it beside the
+        // rules and the edges, and a solver built from the registry is what honours it. Without the registry's
+        // replacements the same claim is a contradiction, so the declaration is what made it hold.
+        var registry = Lower(rules => rules.Replacement(
+            "<:",
+            rules.OptionalOf(rules.Var("inner")),
+            rules.Var("inner")));
+
+        TypeEquation widening = TypeEquation.Subtype(
+            new OptionalType(PrimitiveType.Of(PropertyType.Integer)),
+            PrimitiveType.Of(PropertyType.Integer));
+
+        Assert.True(new TypeSolver(registry.Subtypes, registry.Replacements).Solve([widening]).Succeeded);
+        Assert.False(new TypeSolver(registry.Subtypes).Solve([widening]).Succeeded);
+    }
+
+    [Fact]
+    public void AReplacementRelatingAVariableNoPatternBindsIsALoadTimeError()
+    {
+        // Nothing would decide what the variable stands for, so the rule could never be applied to anything: the
+        // author is told where the mistake is instead of owning a rule that silently never fires.
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules => rules.Replacement(
+            "<:",
+            rules.Primitive("int"),
+            rules.Primitive("string"),
+            ("==", rules.Var("stray"), rules.Primitive("int")))));
+
+        Assert.Contains("?stray", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("binds", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AReplacementPatternThatIsAJoinIsALoadTimeError()
+    {
+        // "either of these" is not one shape, so a claim about it has nothing to match; refusing it at load keeps
+        // the author from owning a rule that can never fire.
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules => rules.Replacement(
+            "<:",
+            rules.JoinOf(rules.Primitive("int"), rules.Primitive("string")),
+            rules.Primitive("int"))));
+
+        Assert.Contains("join", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'left'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AReplacementClaimingAnUnknownRelationIsRefusedWhereItIsWritten()
+    {
+        // The claim is an enumeration too, so like an equation's relation the model refuses a spelling the
+        // lowering never sees - validation lives where the value is written.
+        var model = TypeRuleLanguage.NewProject().NewModel("replacement");
+        var replacement = model.NewNode(TypeRuleConceptKeys.Replacement);
+
+        var exception = Assert.Throws<ModelInvariantException>(
+            () => replacement.Set(TypeRuleLanguage.ClaimSlot, "~"));
+
+        Assert.Contains("<:, ==", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AReplacementIsCarriedBesideTheEdgesAndTheRules()
+    {
+        // Three answers from one document: what a node's type is, which types may stand where another is
+        // required, and what a claim about a compound type really means.
+        var registry = Lower(rules =>
+        {
+            rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.Fixed("int"));
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Supertypes(rules.Ref("Amount"), rules.Primitive("int"));
+            rules.Replacement("<:", rules.ListOf(rules.Var("element")), rules.ListOf(rules.Var("other")), ("<:", rules.Var("element"), rules.Var("other")));
+        });
+
+        Assert.Equal(1, registry.Count);
+        Assert.Equal(1, registry.Subtypes.Count);
+        Assert.Single(registry.Replacements);
+    }
+
     private static IType TypeOf(TypeRegistry registry, string conceptKey)
     {
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");
@@ -1028,6 +1151,37 @@ public sealed class TypeRuleLoweringTests
             edge.AddChild(TypeRuleLanguage.SupertypeSlot, supertype);
 
             return edge;
+        }
+
+        /// <summary>A rewrite of one claim between two patterns, as a root of the same model the rules live in.</summary>
+        public Node Replacement(string claim, Node left, Node right, params (string Relation, Node Left, Node Right)[] instead)
+        {
+            var replacement = _model.NewNode(TypeRuleConceptKeys.Replacement);
+
+            replacement.Set(TypeRuleLanguage.ClaimSlot, claim);
+            replacement.AddChild(TypeRuleLanguage.LeftSlot, left);
+            replacement.AddChild(TypeRuleLanguage.RightSlot, right);
+
+            foreach (var (relation, insteadLeft, insteadRight) in instead)
+            {
+                var equation = _model.NewChild(replacement, TypeRuleLanguage.InsteadSlot, TypeRuleConceptKeys.Equation);
+
+                equation.Set(TypeRuleLanguage.RelationSlot, relation);
+                equation.AddChild(TypeRuleLanguage.LeftSlot, insteadLeft);
+                equation.AddChild(TypeRuleLanguage.RightSlot, insteadRight);
+            }
+
+            return replacement;
+        }
+
+        /// <summary>A type expression that names a variable.</summary>
+        public Node Var(string name)
+        {
+            var variable = _model.NewNode(TypeRuleConceptKeys.TypeVariable);
+
+            variable.Set(TypeRuleLanguage.NameSlot, name);
+
+            return variable;
         }
     }
 }

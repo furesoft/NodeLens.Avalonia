@@ -64,6 +64,7 @@ public static class TypeRuleLowering
         var aliases = Aliases(roots);
         var registry = TypeRegistry.Empty;
         var subtypes = SubtypeRelation.Primitives;
+        List<TypeReplacement> replacements = [];
 
         foreach (var root in roots)
         {
@@ -89,13 +90,17 @@ public static class TypeRuleLowering
                     subtypes = Declare(subtypes, root, aliases);
                     break;
 
+                case TypeRuleConceptKeys.Replacement:
+                    replacements.Add(LowerReplacement(root, aliases));
+                    break;
+
                 default:
                     throw new ConceptDefinitionException(
-                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}', one '{TypeRuleConceptKeys.Named}' or one '{TypeRuleConceptKeys.Supertypes}'.");
+                        $"'{root.Concept.Key}' is not a type definition; a types document holds one '{TypeRuleConceptKeys.Rule}', one '{TypeRuleConceptKeys.Named}', one '{TypeRuleConceptKeys.Supertypes}' or one '{TypeRuleConceptKeys.Replacement}'.");
             }
         }
 
-        return registry.WithSubtypes(subtypes);
+        return registry.WithSubtypes(subtypes).WithReplacements(replacements);
     }
 
     /// <summary>
@@ -122,6 +127,105 @@ public static class TypeRuleLowering
                 $"The declared edge '{subtype}' <: '{supertype}' cannot be held: {error.Message}", error);
         }
     }
+
+    /// <summary>
+    /// The rewrite <paramref name="declaration"/> states, or a load-time error.
+    /// </summary>
+    /// <remarks>
+    /// The two patterns and the relations to prove instead share one variable table, which is the whole mechanism:
+    /// <c>?element</c> written in a pattern and again in a relation is one variable, exactly as it is twice in one
+    /// equations body. Three refusals are placed here rather than left to a rule that never matches: a pattern that
+    /// is "either of these" or "both of these" (no single shape can claim it), a relation naming a variable no
+    /// pattern binds (nothing would decide what it stands for), and a claim that is not one of the two it may be.
+    /// </remarks>
+    private static TypeReplacement LowerReplacement(Node declaration, DeclaredTypes aliases)
+    {
+        var claim = Required(declaration, TypeRuleLanguage.ClaimSlot);
+        Dictionary<string, TypeVariable> variables = new(StringComparer.Ordinal);
+
+        var left = LowerType(RequiredChild(declaration, TypeRuleLanguage.LeftSlot), TypeRuleConceptKeys.Replacement, aliases, [], variables);
+        var right = LowerType(RequiredChild(declaration, TypeRuleLanguage.RightSlot), TypeRuleConceptKeys.Replacement, aliases, [], variables);
+
+        RequirePattern(left, TypeRuleLanguage.LeftSlot);
+        RequirePattern(right, TypeRuleLanguage.RightSlot);
+
+        List<TypeEquation> instead = [];
+
+        foreach (var equation in declaration.GetChildren(TypeRuleLanguage.InsteadSlot))
+        {
+            instead.Add(LowerEquation(equation, TypeRuleConceptKeys.Replacement, aliases, variables));
+        }
+
+        HashSet<TypeVariable> bound = [.. VariablesIn(left), .. VariablesIn(right)];
+
+        foreach (var variable in instead.SelectMany(each => VariablesIn(each.Left).Concat(VariablesIn(each.Right))))
+        {
+            if (!bound.Contains(variable))
+            {
+                throw new ConceptDefinitionException(
+                    $"The replacement relates the variable {variable.Name}, which neither of its patterns binds, so nothing decides what it stands for.");
+            }
+        }
+
+        return new TypeReplacement(
+            claim switch
+            {
+                "==" => TypeEquationKind.Equal,
+                "<:" => TypeEquationKind.Subtype,
+                _ => throw new ConceptDefinitionException(
+                    $"The replacement claims a relation of '{claim}', which is not one of == or <:."),
+            },
+            left,
+            right,
+            instead);
+    }
+
+    /// <summary>Refuses <paramref name="pattern"/> unless a single shape can claim it.</summary>
+    /// <remarks>
+    /// "Either of these" is a type a value may conform to, not a shape a claim can be about: matching it would have
+    /// to mean "both sides", and a rule that never matches is worse than one refused where it is written.
+    /// </remarks>
+    private static void RequirePattern(IType pattern, string slot)
+    {
+        switch (pattern)
+        {
+            case JoinType:
+                throw new ConceptDefinitionException(
+                    $"The replacement's '{slot}' pattern is a join, which is 'either of these' rather than one shape, so no claim can be about it.");
+
+            case MeetType:
+                throw new ConceptDefinitionException(
+                    $"The replacement's '{slot}' pattern is a meet, which is 'both of these' at once rather than one shape, so no claim can be about it.");
+
+            case ListType list:
+                RequirePattern(list.Element, slot);
+                break;
+
+            case OptionalType optional:
+                RequirePattern(optional.Inner, slot);
+                break;
+
+            case RecordType record:
+                foreach (var (_, field) in record.Fields)
+                {
+                    RequirePattern(field, slot);
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>Every variable <paramref name="type"/> mentions, at any depth.</summary>
+    private static IEnumerable<TypeVariable> VariablesIn(IType type) => type switch
+    {
+        TypeVariable variable => [variable],
+        ListType list => VariablesIn(list.Element),
+        OptionalType optional => VariablesIn(optional.Inner),
+        RecordType record => record.Fields.SelectMany(field => VariablesIn(field.Type)),
+        JoinType join => VariablesIn(join.Left).Concat(VariablesIn(join.Right)),
+        MeetType meet => VariablesIn(meet.Left).Concat(VariablesIn(meet.Right)),
+        _ => [],
+    };
 
     /// <summary>The complaints a language's type documents declare, as the constraints that report them.</summary>
     /// <param name="documents">

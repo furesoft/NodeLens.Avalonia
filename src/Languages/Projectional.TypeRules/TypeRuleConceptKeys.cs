@@ -87,4 +87,9 @@ public static class TypeRuleConceptKeys
     /// A condition a complaint states: the types of two child slots are not interchangeable.
     /// </summary>
     public const string NotComparable = "TypeRule.NotComparable";
+
+    /// <summary>
+    /// One declared rewrite: a claim of a relation between two type patterns is replaced by other relations.
+    /// </summary>
+    public const string Replacement = "TypeRule.Replacement";
 }

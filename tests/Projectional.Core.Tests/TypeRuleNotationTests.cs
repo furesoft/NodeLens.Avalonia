@@ -292,6 +292,59 @@ public sealed class TypeRuleNotationTests
     }
 
     [Fact]
+    public void AReplacementDrawsTheClaimItRewritesAndWhatItSaysInstead()
+    {
+        var model = TypeRuleLanguage.NewProject().NewModel("replacement");
+        var replacement = model.NewNode(TypeRuleConceptKeys.Replacement);
+
+        replacement.Set(TypeRuleLanguage.ClaimSlot, "<:");
+
+        var left = model.NewChild(replacement, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.List);
+        model.NewChild(left, TypeRuleLanguage.ElementSlot, TypeRuleConceptKeys.TypeVariable)
+            .Set(TypeRuleLanguage.NameSlot, "element");
+
+        var right = model.NewChild(replacement, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.List);
+        model.NewChild(right, TypeRuleLanguage.ElementSlot, TypeRuleConceptKeys.TypeVariable)
+            .Set(TypeRuleLanguage.NameSlot, "other");
+
+        var instead = model.NewChild(replacement, TypeRuleLanguage.InsteadSlot, TypeRuleConceptKeys.Equation);
+        instead.Set(TypeRuleLanguage.RelationSlot, "<:");
+        model.NewChild(instead, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.TypeVariable)
+            .Set(TypeRuleLanguage.NameSlot, "element");
+        model.NewChild(instead, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.TypeVariable)
+            .Set(TypeRuleLanguage.NameSlot, "other");
+
+        Assert.Equal(
+            """
+            replace [?element] <: [?other] by
+              ?element <: ?other
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
+    public void AReplacementThatStatesNothingSaysSo()
+    {
+        // An empty `instead` is a finished rule - the claim holds outright - so it does not draw the placeholder
+        // that means "this slot is waiting to be filled".
+        var model = TypeRuleLanguage.NewProject().NewModel("replacement");
+        var replacement = model.NewNode(TypeRuleConceptKeys.Replacement);
+
+        replacement.Set(TypeRuleLanguage.ClaimSlot, "<:");
+        model.NewChild(replacement, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+        model.NewChild(replacement, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "string");
+
+        Assert.Equal(
+            """
+            replace int <: string by
+              nothing
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
     public void ASupertypesDocumentDrawsTheEdgeItDeclares()
     {
         var model = TypeRuleLanguage.NewProject().NewModel("supertypes");
