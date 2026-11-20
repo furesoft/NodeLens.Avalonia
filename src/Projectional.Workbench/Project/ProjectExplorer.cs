@@ -17,6 +17,11 @@ namespace Projectional.Workbench;
 /// or deleted shows up the next time the panel is filled, which is the same rule the outline follows for the
 /// model. Open documents are the tab strip's own list, so the two cannot disagree about what is open.
 /// </para>
+/// <para>
+/// <paramref name="collapsed"/> is the view state the rows are derived from - never mutated here. A node in it is
+/// drawn shut and its children are not built at all, which is why a closed project is one row and not a tree that is
+/// merely hidden.
+/// </para>
 /// </remarks>
 internal static class ProjectExplorer
 {
@@ -38,51 +43,97 @@ internal static class ProjectExplorer
         TestRunner.Folder,
     ];
 
+    /// <summary>The key of the open-documents heading.</summary>
+    internal const string DocumentsKey = "documents";
+
+    /// <summary>The key of the languages heading.</summary>
+    internal const string LanguagesKey = "languages";
+
+    /// <summary>The key of one project's row.</summary>
+    /// <param name="language">The project.</param>
+    internal static string ProjectKey(LanguageProject language) => "project:" + language.Directory;
+
+    /// <summary>The key of one folder's row.</summary>
+    /// <param name="directory">The project's folder.</param>
+    /// <param name="folder">The aspect folder.</param>
+    internal static string FolderKey(string directory, string folder) => "folder:" + Path.Combine(directory, folder);
+
     /// <summary>The rows, in the order the explorer draws them.</summary>
     /// <param name="documents">The open documents, in tab order.</param>
     /// <param name="languages">The language projects this window has opened, in the order they joined.</param>
+    /// <param name="collapsed">The keys of the nodes drawn shut.</param>
     internal static IReadOnlyList<ProjectEntry> Of(
         IReadOnlyList<DocumentTab> documents,
-        IReadOnlyList<LanguageProject> languages)
+        IReadOnlyList<LanguageProject> languages,
+        IReadOnlySet<string> collapsed)
     {
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(languages);
+        ArgumentNullException.ThrowIfNull(collapsed);
 
         var rows = new List<ProjectEntry>();
 
         if (documents.Count > 0)
         {
-            rows.Add(new ProjectEntry("Documents", 0));
+            var open = !collapsed.Contains(DocumentsKey);
 
-            foreach (var document in documents)
+            rows.Add(new ProjectEntry("Documents", 0, ProjectNode.Group, DocumentsKey, open));
+
+            if (open)
             {
-                rows.Add(new ProjectEntry(document.Title, 1, document, document.FilePath));
+                foreach (var document in documents)
+                {
+                    rows.Add(new ProjectEntry(document.Title, 1, ProjectNode.Document, document: document, path: document.FilePath));
+                }
             }
         }
 
-        var headed = false;
+        if (languages.Count == 0)
+        {
+            return rows;
+        }
+
+        var languagesOpen = !collapsed.Contains(LanguagesKey);
+
+        rows.Add(new ProjectEntry("Languages", 0, ProjectNode.Group, LanguagesKey, languagesOpen));
+
+        if (!languagesOpen)
+        {
+            return rows;
+        }
 
         foreach (var language in languages)
         {
-            if (!headed)
-            {
-                rows.Add(new ProjectEntry("Languages", 0));
-                headed = true;
-            }
+            var projectKey = ProjectKey(language);
+            var projectOpen = !collapsed.Contains(projectKey);
 
-            rows.Add(new ProjectEntry(language.Name, 1));
+            rows.Add(new ProjectEntry(language.Name, 1, ProjectNode.Project, projectKey, projectOpen));
+
+            if (!projectOpen)
+            {
+                continue;
+            }
 
             foreach (var (folder, files) in FoldersOf(language.Directory))
             {
-                rows.Add(new ProjectEntry(folder, 2));
+                var folderKey = FolderKey(language.Directory, folder);
+                var folderOpen = !collapsed.Contains(folderKey);
+
+                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen));
+
+                if (!folderOpen)
+                {
+                    continue;
+                }
 
                 foreach (var file in files)
                 {
                     rows.Add(new ProjectEntry(
                         Path.GetFileName(file),
                         3,
-                        OpenDocumentFor(documents, file),
-                        file));
+                        ProjectNode.File,
+                        path: file,
+                        document: OpenDocumentFor(documents, file)));
                 }
             }
         }

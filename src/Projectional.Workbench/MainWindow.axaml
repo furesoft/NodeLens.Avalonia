@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:a="using:Avalonia.Automation"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:local="using:Projectional.Workbench"
         x:Class="Projectional.Workbench.MainWindow"
         Title="Projectional Workbench"
         Width="1200"
@@ -47,6 +48,9 @@
       <StreamGeometry x:Key="IconPen">M2.5,13.5 L3.5,10.2 L10.4,3.3 L12.7,5.6 L5.8,12.5 Z</StreamGeometry>
       <StreamGeometry x:Key="IconClose">M3,3 L11,11 M11,3 L3,11</StreamGeometry>
       <StreamGeometry x:Key="IconPlus">M8,3 V13 M3,8 H13</StreamGeometry>
+      <StreamGeometry x:Key="IconProject">M2,4 L8,1 L14,4 L8,7 Z M2,4 V11 L8,14 V7 M14,4 V11 L8,14</StreamGeometry>
+      <StreamGeometry x:Key="IconChevronRight">M6,4 L10,8 L6,12</StreamGeometry>
+      <StreamGeometry x:Key="IconChevronDown">M4,6 L8,10 L12,6</StreamGeometry>
 
       <!--
         A document strip of its own: the stock TabControl theme puts the items presenter straight into a
@@ -220,6 +224,39 @@
     </Style>
     <Style Selector="Button.statusAction:pointerover">
       <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- A tree row: chevron, icon, text, and the dirty star the rest of the shell uses. -->
+    <Style Selector="Button.chevron">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="16" />
+      <Setter Property="MinHeight" Value="16" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style Selector="Button.chevron:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+    <Style Selector="Path.treeIcon">
+      <Setter Property="Width" Value="13" />
+      <Setter Property="Height" Value="13" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="StrokeThickness" Value="1.2" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Path.chevronGlyph">
+      <Setter Property="Width" Value="9" />
+      <Setter Property="Height" Value="9" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchQuietTextBrush}" />
+      <Setter Property="StrokeThickness" Value="1.5" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="3,0" />
     </Style>
 
     <!-- The two lists share one row height, so a panel row is the same size wherever it stands. -->
@@ -551,7 +588,31 @@
               Background="Transparent"
               a:AutomationProperties.Name="Project"
               DoubleTapped="OnProjectChosen"
-              KeyDown="OnProjectKeyDown" />
+              KeyDown="OnProjectKeyDown">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="local:ProjectEntry">
+                  <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">
+                    <Border Width="{Binding Indent}" IsVisible="{Binding HasIndent}" />
+                    <Button
+                      Classes="chevron"
+                      IsVisible="{Binding HasChildren}"
+                      Click="OnProjectToggle"
+                      a:AutomationProperties.Name="Expand or collapse">
+                      <Panel>
+                        <Path Classes="chevronGlyph" Data="{StaticResource IconChevronRight}" IsVisible="{Binding !IsExpanded}" />
+                        <Path Classes="chevronGlyph" Data="{StaticResource IconChevronDown}" IsVisible="{Binding IsExpanded}" />
+                      </Panel>
+                    </Button>
+                    <Border Width="16" IsVisible="{Binding !HasChildren}" />
+                    <Path Classes="treeIcon" Data="{StaticResource IconFolder}" IsVisible="{Binding IsFolder}" Margin="2,0,6,0" />
+                    <Path Classes="treeIcon" Data="{StaticResource IconProject}" IsVisible="{Binding IsProject}" Margin="2,0,6,0" />
+                    <Path Classes="treeIcon" Data="{StaticResource IconDocument}" IsVisible="{Binding IsFile}" Margin="2,0,6,0" />
+                    <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+                    <TextBlock Text="*" VerticalAlignment="Center" Margin="3,0,0,0" IsVisible="{Binding IsDirty}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
           </TabItem>
 
           <TabItem x:Name="OutlineTab">

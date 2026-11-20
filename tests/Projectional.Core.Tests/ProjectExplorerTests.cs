@@ -6,15 +6,17 @@ using Xunit;
 namespace Projectional.Core.Tests;
 
 /// <summary>
-/// The project explorer answers "what is open, and what is this language made of" without walking a model, so
-/// the rows are a function of the tab strip and the project folders.
+/// The project explorer answers "what is open, and what is this language made of" without walking a model, so the
+/// rows are a function of the tab strip, the project folders and the set of nodes drawn shut.
 /// </summary>
 public sealed class ProjectExplorerTests
 {
+    private static readonly HashSet<string> NothingCollapsed = [];
+
     [Fact]
     public void NoDocumentsAndNoLanguagesIsNoRows()
     {
-        Assert.Empty(ProjectExplorer.Of([], []));
+        Assert.Empty(ProjectExplorer.Of([], [], NothingCollapsed));
     }
 
     [Fact]
@@ -23,23 +25,24 @@ public sealed class ProjectExplorerTests
         using var first = Tab("payroll");
         using var second = Tab("Release");
 
-        var rows = ProjectExplorer.Of([first, second], []);
+        var rows = ProjectExplorer.Of([first, second], [], NothingCollapsed);
 
         Assert.Equal(["Documents", "payroll", "Release"], rows.Select(row => row.Text));
         Assert.Equal([0, 1, 1], rows.Select(row => row.Depth));
         Assert.Same(first, rows[1].Document);
+        Assert.Equal(ProjectNode.Document, rows[1].Kind);
     }
 
     [Fact]
-    public void AModifiedDocumentCarriesTheSameStarItCarriesEverywhere()
+    public void AModifiedDocumentCarriesItsStar()
     {
         using var tab = Tab("payroll");
 
         tab.Root.Set("name", "Renamed");
 
-        var row = Assert.Single(ProjectExplorer.Of([tab], []).Skip(1));
+        var row = Assert.Single(ProjectExplorer.Of([tab], [], NothingCollapsed).Skip(1));
 
-        Assert.EndsWith("*", row.ToString(), StringComparison.Ordinal);
+        Assert.True(row.IsDirty);
     }
 
     [Fact]
@@ -47,43 +50,78 @@ public sealed class ProjectExplorerTests
     {
         var language = Language();
 
-        var rows = ProjectExplorer.Of([], [language]);
-        var folders = rows.Where(row => row.Depth == 2).ToList();
-        var files = rows.Where(row => row.Depth == 3).ToList();
+        var rows = ProjectExplorer.Of([], [language], NothingCollapsed);
+        var folders = rows.Where(row => row.Kind == ProjectNode.Folder).ToList();
+        var files = rows.Where(row => row.Kind == ProjectNode.File).ToList();
 
         Assert.Equal(["Languages", language.Name], rows.Take(2).Select(row => row.Text));
-        Assert.Contains(folders, row => row.Text == "structure");
+        Assert.Contains(folders, row => row.Text == "structure" && row.HasChildren);
         Assert.Contains(folders, row => row.Text == "editor");
         Assert.NotEmpty(files);
         Assert.All(files, row => Assert.NotNull(row.Path));
+        Assert.All(files, row => Assert.False(row.HasChildren));
         Assert.All(files, row => Assert.DoesNotContain("/", row.Text, StringComparison.Ordinal));
+    }
 
-        // Every file sits under the folder it lives in, not under a different one.
-        foreach (var folder in folders)
-        {
-            var index = rows.ToList().IndexOf(folder);
+    [Fact]
+    public void ACollapsedFolderIsOneRowAndItsFilesAreNotBuilt()
+    {
+        var language = Language();
+        var rows = ProjectExplorer.Of([], [language], NothingCollapsed);
+        var structure = rows.Single(row => row.Kind == ProjectNode.Folder && row.Text == "structure");
 
-            Assert.Equal(3, rows[index + 1].Depth);
-        }
+        var collapsed = new HashSet<string> { structure.Key! };
+        var after = ProjectExplorer.Of([], [language], collapsed);
+
+        Assert.False(after.Single(row => row.Key == structure.Key).IsExpanded);
+        Assert.DoesNotContain(after, row => row.Depth == 3 && row.Path?.Contains("structure", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public void ACollapsedHeadingDropsEverythingUnderIt()
+    {
+        using var tab = Tab("payroll");
+        var language = Language();
+
+        var collapsed = new HashSet<string> { ProjectExplorer.DocumentsKey, ProjectExplorer.LanguagesKey };
+        var rows = ProjectExplorer.Of([tab], [language], collapsed);
+
+        Assert.Equal(["Documents", "Languages"], rows.Select(row => row.Text));
+        Assert.All(rows, row => Assert.False(row.IsExpanded));
     }
 
     [Fact]
     public void AFileThatIsOpenCarriesItsTab()
     {
         var language = Language();
-        var path = ProjectExplorer.Of([], [language]).First(row => row.Depth == 3).Path!;
+        var path = ProjectExplorer.Of([], [language], NothingCollapsed).First(row => row.Kind == ProjectNode.File).Path!;
 
         using var tab = Tab("Pipeline", path);
 
         // Twice on purpose: once under what is open, once under the project it belongs to.
-        var rows = ProjectExplorer.Of([tab], [language]);
+        var rows = ProjectExplorer.Of([tab], [language], NothingCollapsed);
 
         Assert.Same(tab, rows.Single(row => row.Depth == 1 && row.Document is not null).Document);
 
-        var row = rows.Single(row => row.Depth == 3 && row.Path == path);
+        var row = rows.Single(row => row.Kind == ProjectNode.File && row.Path == path);
 
         Assert.Same(tab, row.Document);
         Assert.Equal(Path.GetFileName(path), row.Text);
+    }
+
+    [Fact]
+    public void OnlyRealFoldersAndDocumentsAreLeavesAndTheRestCanBeOpened()
+    {
+        var language = Language();
+
+        var rows = ProjectExplorer.Of([], [language], NothingCollapsed);
+
+        Assert.True(rows[0].HasChildren);                                    // the heading
+        Assert.True(rows.Single(row => row.Kind == ProjectNode.Project).HasChildren);
+        Assert.All(rows.Where(row => row.Kind == ProjectNode.Folder), row => Assert.True(row.HasChildren));
+        Assert.All(rows.Where(row => row.Kind == ProjectNode.File), row => Assert.False(row.HasChildren));
+        Assert.All(rows.Where(row => row.Kind == ProjectNode.Folder), row => Assert.True(row.IsFolder));
+        Assert.All(rows.Where(row => row.Kind == ProjectNode.Project), row => Assert.True(row.IsProject));
     }
 
     private static LanguageProject Language() =>

@@ -104,6 +104,10 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly TabItem[] _panelOrder;
     private readonly double _splitterHeight;
     private readonly double _sideWidth;
+
+    // Which nodes of the project explorer are drawn shut, by key. View state, so it lives here and not in the rows:
+    // a rebuilt list asks this set what is open rather than remembering it itself.
+    private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
     private double _panelHeight;
     private bool _outputClosed;
     private bool _problemsClosed;
@@ -990,13 +994,34 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void ShowProject()
     {
-        var rows = ProjectExplorer.Of(_documents.Documents, _language.Opened);
+        var rows = ProjectExplorer.Of(_documents.Documents, _language.Opened, _collapsed);
 
         ProjectList.ItemsSource = rows;
 
         // The row of the document in front is selected, which is how the panel says which one it is - the tab
         // strip's own selection is one place, and the two must not be able to disagree.
         ProjectList.SelectedItem = rows.FirstOrDefault(row => ReferenceEquals(row.Document, _documents.Active));
+    }
+
+    /// <summary>Opens or closes a node of the project explorer.</summary>
+    /// <remarks>
+    /// The rows are rebuilt rather than mutated: a row is a value, and a collapsed node's children are not part of the
+    /// list at all, so flipping the key and deriving again is what keeps the panel and its state from drifting.
+    /// </remarks>
+    private void OnProjectToggle(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: ProjectEntry { Key: { } key } })
+        {
+            return;
+        }
+
+        if (!_collapsed.Remove(key))
+        {
+            _collapsed.Add(key);
+        }
+
+        ShowProject();
+        e.Handled = true;
     }
 
     /// <summary>Opens or activates what a project row stands for.</summary>

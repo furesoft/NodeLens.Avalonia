@@ -1,16 +1,89 @@
 namespace Projectional.Workbench;
 
-/// <summary>One row of the project explorer: an open document, or a file of an opened language.</summary>
-/// <param name="Text">What the row says - a document's title, a project's name, or a file's path inside it.</param>
-/// <param name="Depth">How far the row is indented, in two-space steps.</param>
-/// <param name="Document">
-/// The open document the row stands for, or <see langword="null"/> for a file that has no tab: pressing a row
-/// with one activates it, which is why the row carries the tab rather than a path it would have to look up.
-/// </param>
-/// <param name="Path">The file the row stands for, or <see langword="null"/> for a group or a project row.</param>
-internal sealed record ProjectEntry(string Text, int Depth, DocumentTab? Document = null, string? Path = null)
+/// <summary>One row of the project explorer: a heading, a project, a folder, or a file.</summary>
+/// <remarks>
+/// A row is a value, and the tree's expansion state is not in it: whether a node is open belongs to the shell's view
+/// state, so <see cref="IsExpanded"/> is what the builder was told, not something a row changes. Pressing a chevron
+/// rebuilds the rows with one key flipped, which keeps the "derive the rows, leave the window as wiring" rule the
+/// outline and the panels follow - and means a rebuilt list can never disagree with the tree.
+/// </remarks>
+internal sealed record ProjectEntry
 {
-    /// <summary>The row as the explorer draws it, with the star a modified document carries everywhere else.</summary>
-    public override string ToString() =>
-        new string(' ', Depth * 2) + Text + (Document is { IsDirty: true } ? " *" : string.Empty);
+    /// <summary>How far one level of nesting indents a row, in pixels.</summary>
+    private const double IndentStep = 14;
+
+    /// <summary>Creates a row.</summary>
+    /// <param name="text">What the row says.</param>
+    /// <param name="depth">How deep it sits, which is how far it is indented.</param>
+    /// <param name="kind">What it is, which decides the icon and whether a chevron is drawn.</param>
+    /// <param name="key">What the row is expanded or collapsed by, or <see langword="null"/> for a leaf.</param>
+    /// <param name="isExpanded">Whether the row was drawn open.</param>
+    /// <param name="document">The open document the row stands for, if any.</param>
+    /// <param name="path">The file the row stands for, if any.</param>
+    internal ProjectEntry(
+        string text,
+        int depth,
+        ProjectNode kind,
+        string? key = null,
+        bool isExpanded = true,
+        DocumentTab? document = null,
+        string? path = null)
+    {
+        Text = text;
+        Depth = depth;
+        Kind = kind;
+        Key = key;
+        IsExpanded = isExpanded;
+        Document = document;
+        Path = path;
+    }
+
+    /// <summary>What the row says.</summary>
+    internal string Text { get; }
+
+    /// <summary>How deep the row sits.</summary>
+    internal int Depth { get; }
+
+    /// <summary>What the row is.</summary>
+    internal ProjectNode Kind { get; }
+
+    /// <summary>The key the row is expanded or collapsed by, or <see langword="null"/> for a leaf.</summary>
+    /// <remarks>
+    /// Keys are file and folder paths, so a rebuild after an edit finds the same node again; a heading's key is its own
+    /// name, which is stable for the life of the window.
+    /// </remarks>
+    internal string? Key { get; }
+
+    /// <summary>Whether the row was drawn open.</summary>
+    internal bool IsExpanded { get; }
+
+    /// <summary>The open document the row stands for, or <see langword="null"/> when it has no tab.</summary>
+    internal DocumentTab? Document { get; }
+
+    /// <summary>The file the row stands for, or <see langword="null"/> for a heading, a project or a folder.</summary>
+    internal string? Path { get; }
+
+    /// <summary>Whether the row can be opened and closed, which is what draws a chevron.</summary>
+    internal bool HasChildren => Kind is ProjectNode.Group or ProjectNode.Project or ProjectNode.Folder;
+
+    /// <summary>Whether the row is a folder, which is drawn with a folder icon.</summary>
+    internal bool IsFolder => Kind is ProjectNode.Folder;
+
+    /// <summary>Whether the row is a language project, which is drawn with its own icon.</summary>
+    internal bool IsProject => Kind is ProjectNode.Project;
+
+    /// <summary>Whether the row is a file or a document, which is drawn with a page icon.</summary>
+    internal bool IsFile => Kind is ProjectNode.File or ProjectNode.Document;
+
+    /// <summary>Whether the row's document has changes that are not on disk.</summary>
+    internal bool IsDirty => Document is { IsDirty: true };
+
+    /// <summary>How far the row is indented, in pixels.</summary>
+    internal double Indent => Depth * IndentStep;
+
+    /// <summary>Whether the row is indented at all, so a spacer of width zero is not drawn.</summary>
+    internal bool HasIndent => Depth > 0;
+
+    /// <summary>The text alone, which is what a screen reader is given for a row.</summary>
+    public override string ToString() => Text;
 }
