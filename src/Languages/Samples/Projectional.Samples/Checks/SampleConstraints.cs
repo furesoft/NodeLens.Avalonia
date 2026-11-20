@@ -40,11 +40,16 @@ public static class SampleConstraints
     /// <summary>The identifier the operand rule reports under.</summary>
     public const string OperandsNotComparableCode = "expressions.operands.not-comparable";
 
+    /// <summary>The identifier the required-type operand rule reports under.</summary>
+    public const string OperandNotBooleanCode = "expressions.operand.not-boolean";
+
     /// <summary>Every constraint the built-in sample documents are checked with.</summary>
     public static ConstraintSet All { get; } = ConstraintSet.Empty
         .Add(RulesConceptKeys.Rule, new MissingCondition())
         .Add(RulesConceptKeys.Rule, new ConditionMustBeBoolean())
-        .Add(ExpressionsConceptKeys.Binary, new OperandsNotComparable());
+        .Add(ExpressionsConceptKeys.Binary, new OperandsNotComparable())
+        .Add(ExpressionsConceptKeys.Binary, new LogicalOperandMustBeBoolean())
+        .Add(ExpressionsConceptKeys.Unary, new NegationOperandMustBeBoolean());
 
     /// <summary>A rule without a condition, which is the design's own example of a constraint.</summary>
     private sealed class MissingCondition : IConstraint
@@ -142,6 +147,89 @@ public static class SampleConstraints
                 $"the operands of '{op}' are not comparable: {leftType.Name} and {rightType.Name}.",
                 role: "operator",
                 code: OperandsNotComparableCode);
+        }
+    }
+
+    /// <summary>
+    /// A logical operator on something that is not a truth value: <c>1 &amp;&amp; 2</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The comparability rule cannot catch this one, and that is why it needs its own: <c>1 &amp;&amp; 2</c> has two
+    /// operands of one type, so they are perfectly comparable, and the operator's answer is a <c>bool</c> either way.
+    /// A comparability question is "may these two be used together", and this is "must each of them be this type" -
+    /// the one-way question, answered by asking the required type whether it accepts the operand.
+    /// </para>
+    /// <para>
+    /// Each operand is reported where it stands, because the two are separate mistakes: a reader who is told "the
+    /// left operand of &amp;&amp; is int" fixes one thing, and a single finding about the pair would leave them
+    /// looking. An operand that is missing or unknown is not reported - an incomplete node is not the author's
+    /// mistake, and a name this language cannot type must not become a finding on everything that reads it.
+    /// </para>
+    /// </remarks>
+    private sealed class LogicalOperandMustBeBoolean : IConstraint
+    {
+        private static readonly PrimitiveType Boolean = PrimitiveType.Of(PropertyType.Boolean);
+
+        public void Check(ConstraintContext context)
+        {
+            var op = context.Node.GetOrNull("operator");
+
+            if (op is not ("&&" or "||"))
+            {
+                return;
+            }
+
+            Report(context, op, "left");
+            Report(context, op, "right");
+        }
+
+        private static void Report(ConstraintContext context, string op, string slot)
+        {
+            if (context.Node.GetChild(slot) is not { } operand)
+            {
+                return;
+            }
+
+            var type = context.TypeOf(operand);
+
+            if (Boolean.Accepts(type))
+            {
+                return;
+            }
+
+            context.Error(
+                $"the {slot} operand of '{op}' has to be true or false, but it is {type.Name}.",
+                role: slot,
+                code: OperandNotBooleanCode);
+        }
+    }
+
+    /// <summary>Negation of something that is not a truth value: <c>!1</c>.</summary>
+    /// <remarks>The same one-way question as the logical operators, on the unary form of it.</remarks>
+    private sealed class NegationOperandMustBeBoolean : IConstraint
+    {
+        private static readonly PrimitiveType Boolean = PrimitiveType.Of(PropertyType.Boolean);
+
+        public void Check(ConstraintContext context)
+        {
+            if (context.Node.GetOrNull("operator") != "!"
+                || context.Node.GetChild("operand") is not { } operand)
+            {
+                return;
+            }
+
+            var type = context.TypeOf(operand);
+
+            if (Boolean.Accepts(type))
+            {
+                return;
+            }
+
+            context.Error(
+                $"the operand of '!' has to be true or false, but it is {type.Name}.",
+                role: "operand",
+                code: OperandNotBooleanCode);
         }
     }
 }

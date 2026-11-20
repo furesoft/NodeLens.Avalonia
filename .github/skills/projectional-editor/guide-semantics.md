@@ -191,12 +191,20 @@
   A comparison a language states as data is no longer waiting for a consumer: the solver's fact check and the
   `TypeRule.NotComparable` condition both ask one.
 - **The same question has two authoring paths, and they must answer alike.** "Are these two operands usable one
-  for the other" is `TypeRule.NotComparable` in a types document and
-  `SampleConstraints.OperandsNotComparable` in C# - the expression language's own rule, which is what makes
-  `1 + "x"` a finding instead of a silent `int`. Both ask the type first and then `Subtypes` and `Comparisons`, in
-  that order: **if you change one, change the other**, or the two paths start answering differently. The C# one
-  lives in `Projectional.Samples` because `Projectional.Expressions` deliberately does not reference the semantics
-  layer, and keying a constraint by concept is what lets one set hold two languages' rules.
+  for the other" is `TypeRule.NotComparable` in a types document and `SampleConstraints.OperandsNotComparable` in C#
+  - the expression language's own rule, which is what makes `1 + "x"` a finding instead of a silent `int`. Both ask
+  the type first and then `Subtypes` and `Comparisons`, in that order: **if you change one, change the other**, or
+  the two paths start answering differently. The C# one lives in `Projectional.Samples` because
+  `Projectional.Expressions` deliberately does not reference the semantics layer, and keying a constraint by concept
+  is what lets one set hold two languages' rules.
+- **"May these be used together" and "must this be one of those" are different questions, and a language needs
+  both.** Comparability answers the first and cannot answer the second: `1 && 2` has two operands of one type, so
+  they are perfectly comparable, and what is wrong is that neither is a truth value.
+  `SampleConstraints.LogicalOperandMustBeBoolean` asks `required.Accepts(operand)` instead, which is the one-way
+  form - the same shape as the schema's key rule. When a language states a requirement, ask the *required* type
+  whether it accepts; when it states that two things go together, ask comparability. Getting these two the wrong way
+  round is silent: the symmetric question accepts `decimal` keyed into an `int`, and the one-way question refuses
+  `int` keyed into a `decimal`.
 - **A type rule may report instead of typing.** `TypeRule.Complain` is a body carrying a `message`
   and a `severity`; `TypeRuleLowering.CreateComplaints` lowers it into an `IConstraint` keyed by the
   concept the rule names, and `LanguageProject` composes it into the language's own constraints - so

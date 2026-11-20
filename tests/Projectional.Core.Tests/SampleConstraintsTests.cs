@@ -184,4 +184,93 @@ public sealed class SampleConstraintsTests
 
         Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
     }
+
+    [Fact]
+    public void EachNonBooleanLogicalOperandIsReportedWhereItStands()
+    {
+        // The comparability rule cannot catch this: `1 && 2` has two operands of one type, so they are perfectly
+        // comparable. What is wrong is that neither is a truth value, which is the one-way question.
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "&&");
+        model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+        model.NewChild(binary, "right", ExpressionsConceptKeys.IntLiteral).Set("value", "2");
+
+        var findings = new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model);
+
+        Assert.Equal(2, findings.Count);
+        Assert.All(findings, finding => Assert.Equal(SampleConstraints.OperandNotBooleanCode, finding.Code));
+        Assert.Equal(["left", "right"], findings.Select(finding => finding.Role));
+        Assert.All(findings, finding => Assert.Contains("int", finding.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ALogicalOperationOnTwoTruthValuesIsNotReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "||");
+        model.NewChild(binary, "left", ExpressionsConceptKeys.BoolLiteral).Set("value", "true");
+        model.NewChild(binary, "right", ExpressionsConceptKeys.BoolLiteral).Set("value", "false");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
+    public void AnOperatorThatIsNotLogicalIsLeftToTheComparabilityRule()
+    {
+        // `1 + 2` is arithmetic: two whole numbers are comparable and neither has to be a truth value, so nothing is
+        // reported. Pinning this keeps the operator set from growing into "every binary operator requires bool".
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "+");
+        model.NewChild(binary, "left", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+        model.NewChild(binary, "right", ExpressionsConceptKeys.IntLiteral).Set("value", "2");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
+    public void ANonBooleanNegationIsReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var unary = model.NewNode(ExpressionsConceptKeys.Unary);
+
+        unary.Set("operator", "!");
+        model.NewChild(unary, "operand", ExpressionsConceptKeys.IntLiteral).Set("value", "1");
+
+        var finding = Assert.Single(
+            new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+
+        Assert.Equal(SampleConstraints.OperandNotBooleanCode, finding.Code);
+        Assert.Equal("operand", finding.Role);
+    }
+
+    [Fact]
+    public void ANegationOfATruthValueIsNotReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var unary = model.NewNode(ExpressionsConceptKeys.Unary);
+
+        unary.Set("operator", "!");
+        model.NewChild(unary, "operand", ExpressionsConceptKeys.BoolLiteral).Set("value", "true");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
+
+    [Fact]
+    public void ALogicalOperandOfUnknownTypeIsNotReported()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var binary = model.NewNode(ExpressionsConceptKeys.Binary);
+
+        binary.Set("operator", "&&");
+        model.NewChild(binary, "left", ExpressionsConceptKeys.Name).Set("name", "ready");
+        model.NewChild(binary, "right", ExpressionsConceptKeys.BoolLiteral).Set("value", "true");
+
+        Assert.Empty(new ConstraintEngine(SampleConstraints.All, types: ExpressionsLanguage.Types).Check(model));
+    }
 }
