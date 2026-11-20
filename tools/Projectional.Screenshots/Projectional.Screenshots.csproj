@@ -34,4 +34,13 @@
     <ProjectReference Include="..\..\src\Projectional.Testing\Projectional.Testing.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      A picture of a language's own tests has to run the folder the tests belong to, and a LanguageProject is loaded
+      from disk - so the declared sample is copied into the tool's output, the way the test project copies it. It is
+      the sample a user opens, not a fixture: the picture is therefore of the real documents.
+    -->
+    <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
