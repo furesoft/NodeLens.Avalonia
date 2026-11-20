@@ -74,7 +74,15 @@ public static class TestingLowering
                 Width: 0,
                 Lines: null,
                 Findings(children[0])),
-            TestingConceptKeys.Generates => new LanguageTest(
+            TestingConceptKeys.Reads => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width: 0,
+                Lines(children[0]),
+                Findings: null,
+                Generator: Required(children[0], TestingLanguage.GeneratorSlot),
+                Importer: Required(children[0], TestingLanguage.ImporterSlot)),            TestingConceptKeys.Generates => new LanguageTest(
                 name,
                 target,
                 assertion,

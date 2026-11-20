@@ -88,6 +88,13 @@ public static class TestRunner
 
         var test = TestingLowering.Lower(document.Roots[0]);
 
+        // A reads assertion names a text file rather than a document, so there is no model to load first - which is
+        // why it is answered before the load and not after it.
+        if (test.Assertion == TestingConceptKeys.Reads)
+        {
+            return Reads(language, test);
+        }
+
         var path = Path.Combine(language.Directory, test.Document);
 
         Model model;
@@ -193,6 +200,63 @@ public static class TestRunner
     /// generation stopped, and where.
     /// </para>
     /// </remarks>
+    /// <summary>Whether a text file reads into a model that prints as the lines the test spells out.</summary>
+    /// <remarks>
+    /// The assertion the rule layer needed: a declared importer used to be proved only by a C# test, which is the one
+    /// thing a language cannot carry with it. The file is named the way a document is, so a language's own fixture is
+    /// part of its project, and the expected text is the generator's output because that is what makes the two halves
+    /// agree - the importer's model and the generator's spelling.
+    /// </remarks>
+    private static TestResult Reads(LanguageProject language, LanguageTest test)
+    {
+        var generator = language.Generators
+            .FirstOrDefault(candidate => string.Equals(candidate.Name, test.Generator, StringComparison.Ordinal));
+
+        if (generator is null)
+        {
+            return TestResult.Failed(
+                test.Test,
+                test.Document,
+                test.AssertionName,
+                test.Generator,
+                language.HasGenerators
+                    ? $"'{language.Name}' declares {string.Join(", ", language.Generators.Select(candidate => candidate.Name))}"
+                    : $"'{language.Name}' declares no generator");
+        }
+
+        if (!language.TryCreateImporter(test.Importer ?? string.Empty, out var importer, out var why))
+        {
+            return TestResult.Failed(test.Test, test.Document, test.AssertionName, test.Importer, why);
+        }
+
+        var path = Path.Combine(language.Directory, test.Document);
+
+        if (!File.Exists(path))
+        {
+            return TestResult.Failed(test.Test, test.Document, test.AssertionName, expected: null, actual: $"'{path}' does not exist");
+        }
+
+        var target = language.NewProject().NewModel("imported");
+        var imported = importer!.Import(target, File.ReadAllText(path));
+
+        if (!imported.Succeeded || imported.Roots.Count != 1)
+        {
+            return TestResult.Failed(
+                test.Test,
+                test.Document,
+                test.AssertionName,
+                expected: string.Join('\n', test.Lines ?? []),
+                actual: string.Join('\n', imported.Diagnostics.Select(diagnostic => diagnostic.ToString())));
+        }
+
+        var generated = new Generator().Generate(imported.Roots[0], generator);
+        var actual = generated.Succeeded ? generated.Text : generated.Failure!.Message;
+        var expected = string.Join('\n', test.Lines ?? []);
+
+        return expected == actual
+            ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
+            : TestResult.Failed(test.Test, test.Document, test.AssertionName, expected, actual);
+    }
     /// <summary>Whether the text the document generates reads back to a document that generates the same text.</summary>
     /// <remarks>
     /// The assertion is the round trip and nothing else: the importer is the inverse of the generator, so a template

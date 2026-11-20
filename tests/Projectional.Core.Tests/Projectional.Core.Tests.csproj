@@ -59,6 +59,7 @@
       fixture. The test copies it so it can load the same folder the app does.
     -->
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\declared-pipeline\**\*.ini" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-workflow\**\*.mps" Link="Workflow\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-expressions\**\*.mps" Link="Expressions\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Languages\Samples\Projectional.Samples.StateMachine\Corpus\**\*.mps" Link="StateMachine\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

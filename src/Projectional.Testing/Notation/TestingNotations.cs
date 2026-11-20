@@ -15,6 +15,7 @@ public static class TestingNotations
     private const string NoLines = "<< what it draws >>";
     private const string NoFindings = "<< what it reports >>";
     private const string NoCode = "<< which code >>";
+    private const string NoImporter = "<< which importer >>";
     private const string Anywhere = "<< anywhere >>";
     private const string NoGenerated = "<< what it generates >>";
     private const string NoGenerator = "<< which generator >>";
@@ -88,6 +89,16 @@ public static class TestingNotations
             ed.Space,
             ed.Property(TestingLanguage.RoleSlot, emptyText: Anywhere)));
 
+        notations.Add(TestingConceptKeys.Reads, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("reads"),
+                ed.Space,
+                ed.Property(TestingLanguage.ImporterSlot, emptyText: NoImporter),
+                ed.Space,
+                ed.Keyword("as"),
+                ed.Space,
+                ed.Property(TestingLanguage.GeneratorSlot, emptyText: NoGenerator)),
+            ed.Indent(ed.Children(TestingLanguage.LinesSlot, NoLines, stacked: true))));
         notations.Add(TestingConceptKeys.Imports, ed => ed.Line(
             ed.Keyword("imports"),
             ed.Space,
