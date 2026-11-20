@@ -37,6 +37,7 @@ public sealed class DeclaredImporter : ITextImporter
     private readonly ConceptRegistry _concepts;
     private readonly IReadOnlyDictionary<string, ImportRule> _rules;
     private readonly IReadOnlyList<string> _roots;
+    private readonly Dictionary<string, ImportToken> _tokens;
 
     /// <summary>Builds an importer from rules a language declared.</summary>
     /// <param name="format">The format's name, which a host's file dialog filters on.</param>
@@ -48,11 +49,13 @@ public sealed class DeclaredImporter : ITextImporter
     public DeclaredImporter(
         string format,
         IReadOnlyList<ImportRule> rules,
+        IReadOnlyList<ImportToken> tokens,
         ConceptRegistry concepts,
         IReadOnlyList<string> roots)
     {
         ArgumentException.ThrowIfNullOrEmpty(format);
         ArgumentNullException.ThrowIfNull(rules);
+        ArgumentNullException.ThrowIfNull(tokens);
         ArgumentNullException.ThrowIfNull(concepts);
         ArgumentNullException.ThrowIfNull(roots);
 
@@ -60,6 +63,7 @@ public sealed class DeclaredImporter : ITextImporter
         _concepts = concepts;
         _roots = roots;
         _rules = rules.ToDictionary(rule => rule.ConceptKey, StringComparer.Ordinal);
+        _tokens = tokens.ToDictionary(token => token.Name, StringComparer.Ordinal);
 
         Validate(rules);
     }
@@ -95,7 +99,7 @@ public sealed class DeclaredImporter : ITextImporter
 
         using var transaction = model.BeginTransaction();
 
-        var reader = new RuleReader(model, _concepts, _rules, text);
+        var reader = new RuleReader(model, _concepts, _rules, _tokens, text);
 
         if (reader.ParseRoot(_roots) is not { } root)
         {
@@ -144,6 +148,16 @@ public sealed class DeclaredImporter : ITextImporter
             {
                 switch (part.Kind)
                 {
+                    case ImportPartKind.Capture when part.Token.Length > 0 && !_tokens.ContainsKey(part.Token):
+                        throw new ConceptDefinitionException(
+                            "The rule of '" + rule.ConceptKey + "' reads a '" + part.Token
+                            + "', and the importer declares no token class of that name.");
+
+                    case ImportPartKind.Capture when part.Token.Length > 0 && _tokens[part.Token].Kind == ImportTokenKind.Skipped:
+                        throw new ConceptDefinitionException(
+                            "The rule of '" + rule.ConceptKey + "' captures the skipped class '" + part.Token
+                            + "', which by definition produces no value.");
+
                     case ImportPartKind.Capture when concept.FindProperty(part.Slot) is null:
                         throw new ConceptDefinitionException(
                             $"The rule of '{rule.ConceptKey}' fills '{part.Slot}', which is not a property of it.");

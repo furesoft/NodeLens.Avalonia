@@ -15,6 +15,7 @@ internal sealed class RuleReader
     private readonly Model _model;
     private readonly ConceptRegistry _concepts;
     private readonly IReadOnlyDictionary<string, ImportRule> _rules;
+    private readonly IReadOnlyDictionary<string, ImportToken> _tokens;
     private readonly string _text;
 
     private int _position;
@@ -26,11 +27,13 @@ internal sealed class RuleReader
         Model model,
         ConceptRegistry concepts,
         IReadOnlyDictionary<string, ImportRule> rules,
+        IReadOnlyDictionary<string, ImportToken> tokens,
         string text)
     {
         _model = model;
         _concepts = concepts;
         _rules = rules;
+        _tokens = tokens;
         _text = text;
     }
 
@@ -44,6 +47,10 @@ internal sealed class RuleReader
     /// <param name="roots">The concepts that may stand at the top of a document.</param>
     public Node? ParseRoot(IReadOnlyList<string> roots)
     {
+        // A file may open with the trivia an importer declares - a licence comment, a blank line - so the root is
+        // chosen after it, not before it.
+        SkipTrivia();
+
         var rule = ChooseRoot(roots);
 
         if (rule is null)
@@ -85,6 +92,10 @@ internal sealed class RuleReader
         {
             for (var index = 0; index < rule.Parts.Count; index++)
             {
+                // An importer that declares a skipped class reads a stream of tokens, so what stands between the
+                // parts is not part of the text: whitespace and comments go before anything is matched.
+                SkipTrivia();
+
                 var part = rule.Parts[index];
                 var next = FirstLiteral(rule.Parts, index + 1) ?? follow;
 
@@ -92,6 +103,17 @@ internal sealed class RuleReader
                 {
                     case ImportPartKind.Literal when !Expect(part.Text):
                         return false;
+
+                    // The two captures are exclusive: a class was named, so the token reader answers and the run to the
+                    // next literal never runs - otherwise a successful token read would fall through and overwrite the
+                    // value with the rest of the text.
+                    case ImportPartKind.Capture when part.Token.Length > 0:
+                        if (!CaptureToken(node, part))
+                        {
+                            return false;
+                        }
+
+                        break;
 
                     case ImportPartKind.Capture when !Capture(node, part.Slot, next):
                         return false;
@@ -141,6 +163,8 @@ internal sealed class RuleReader
 
                 _position += part.Separator.Length;
             }
+
+            SkipTrivia();
 
             var rule = ChooseRule(owner, part.Slot, optional: written == 0);
 
@@ -296,6 +320,182 @@ internal sealed class RuleReader
         return false;
     }
 
+    /// <summary>Steps over whatever the importer declares as producing no node.</summary>
+    /// <remarks>
+    /// Nothing is skipped unless a class says so, which is why an importer written before the token layer keeps reading
+    /// its own exact spelling: whitespace is text until a language calls it trivia.
+    /// </remarks>
+    private void SkipTrivia()
+    {
+        while (true)
+        {
+            var matched = false;
+
+            foreach (var token in _tokens.Values)
+            {
+                if (token.Kind != ImportTokenKind.Skipped)
+                {
+                    continue;
+                }
+
+                var after = Skip(token);
+
+                if (after > _position)
+                {
+                    _position = after;
+                    matched = true;
+
+                    break;
+                }
+            }
+
+            if (!matched)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>The offset past one skipped run at the cursor, or the cursor when there is none.</summary>
+    private int Skip(ImportToken token)
+    {
+        if (token.Prefix.Length == 0)
+        {
+            var at = _position;
+
+            while (at < _text.Length && char.IsWhiteSpace(_text[at]))
+            {
+                at++;
+            }
+
+            return at;
+        }
+
+        if (!StartsWith(token.Prefix))
+        {
+            return _position;
+        }
+
+        if (token.Until.Length == 0)
+        {
+            return _text.Length;
+        }
+
+        var end = _text.IndexOf(token.Until, _position + token.Prefix.Length, StringComparison.Ordinal);
+
+        return end < 0 ? _text.Length : end;
+    }
+
+    /// <summary>Reads one token of the class <paramref name="part"/> names into its property.</summary>
+    private bool CaptureToken(Node node, ImportPart part)
+    {
+        if (node.Concept.FindProperty(part.Slot) is null)
+        {
+            Refusal = Diagnostic(_position, DeclaredImporter.UnexpectedText, $"'{part.Slot}' is not a property of '{node.Concept.Key}'.");
+
+            return false;
+        }
+
+        var start = _position;
+        var value = _tokens[part.Token] switch
+        {
+            { Kind: ImportTokenKind.Word } word => ReadWord(word),
+            { Kind: ImportTokenKind.Number } => ReadNumber(),
+            { Kind: ImportTokenKind.Quoted } quoted => ReadQuoted(quoted),
+            var other => throw new ConceptDefinitionException($"'{other.Name}' is a token class a capture cannot read."),
+        };
+
+        if (value is null || _position == start)
+        {
+            Refusal = Diagnostic(
+                start,
+                DeclaredImporter.UnexpectedText,
+                $"'{Snippet(start)}' is where a '{part.Token}' was expected.");
+
+            return false;
+        }
+
+        node.Set(part.Slot, value);
+
+        return true;
+    }
+
+    private string? ReadWord(ImportToken token)
+    {
+        var start = _position;
+
+        while (_position < _text.Length
+            && (char.IsLetterOrDigit(_text[_position]) || _text[_position] == '_' || token.Extra.Contains(_text[_position], StringComparison.Ordinal)))
+        {
+            _position++;
+        }
+
+        return _position == start ? null : _text[start.._position];
+    }
+
+    private string? ReadNumber()
+    {
+        var start = _position;
+
+        if (_position < _text.Length && (_text[_position] == '-' || _text[_position] == '+'))
+        {
+            _position++;
+        }
+
+        var digits = 0;
+
+        while (_position < _text.Length && (char.IsAsciiDigit(_text[_position]) || _text[_position] is '.' or 'e' or 'E'
+            || ((_text[_position] == '-' || _text[_position] == '+') && _position > start && _text[_position - 1] is 'e' or 'E')))
+        {
+            if (char.IsAsciiDigit(_text[_position]))
+            {
+                digits++;
+            }
+
+            _position++;
+        }
+
+        return digits == 0 ? null : _text[start.._position];
+    }
+
+    private string? ReadQuoted(ImportToken token)
+    {
+        if (_position >= _text.Length || !StartsWith(token.Quote))
+        {
+            return null;
+        }
+
+        var value = new System.Text.StringBuilder();
+        var at = _position + token.Quote.Length;
+
+        while (at < _text.Length)
+        {
+            if (string.CompareOrdinal(_text, at, token.Quote, 0, token.Quote.Length) == 0)
+            {
+                _position = at + token.Quote.Length;
+
+                return value.ToString();
+            }
+
+            if (token.Escape.Length > 0 && string.CompareOrdinal(_text, at, token.Escape, 0, token.Escape.Length) == 0)
+            {
+                at += token.Escape.Length;
+
+                if (at < _text.Length)
+                {
+                    value.Append(_text[at]);
+                    at++;
+                }
+
+                continue;
+            }
+
+            value.Append(_text[at]);
+            at++;
+        }
+
+        return null;
+    }
     private bool Capture(Node node, string slot, string? terminator)
     {
         if (node.Concept.FindProperty(slot) is null)
@@ -364,6 +564,9 @@ internal sealed class RuleReader
 
         return null;
     }
+
+    private string Snippet(int from) =>
+        from >= _text.Length ? "the end of the text" : _text[from..Math.Min(from + 12, _text.Length)];
 
     private string Snippet() =>
         _position >= _text.Length ? "the end of the text" : _text[_position..Math.Min(_position + 12, _text.Length)];

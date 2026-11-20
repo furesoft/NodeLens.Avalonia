@@ -133,6 +133,73 @@ public sealed class DeclaredImporterTests
         Assert.Equal("# Release\ndotnet build\ndotnet test", new Generator().Generate(root, generator).Text);
     }
 
+    [Fact]
+    public void ATokenClassDecidesWhereACaptureEnds()
+    {
+        // Without a class, a capture runs to the next literal - which is the wrong answer for a value that may contain
+        // the character the next literal starts with. A word stops at the space, and a number after it.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteTokens(folder.Root);
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+
+        var model = language!.NewProject().NewModel("imported");
+        var result = Assert.IsType<DeclaredImporter>(Assert.Single(language.Importers))
+            .Import(model, "item dotnet-cli 42");
+
+        Assert.True(result.Succeeded, Describe(result));
+        Assert.Equal("dotnet-cli", result.Roots[0].GetOrNull("name"));
+        Assert.Equal("42", result.Roots[0].GetOrNull("detail"));
+    }
+
+    /// <summary>An importer whose name is a word and whose detail is a number.</summary>
+    private static void WriteTokens(string directory)
+    {
+        var model = ImportLanguage.NewModel();
+        var importer = model.Roots[0];
+
+        importer.Set(ImportLanguage.NameSlot, "ini");
+
+        var word = model.NewChild(importer, ImportLanguage.TokensSlot, ImportConceptKeys.Word);
+
+        word.Set(ImportLanguage.TokenNameSlot, "Name");
+        word.Set(ImportLanguage.ExtraSlot, "-");
+
+        model.NewChild(importer, ImportLanguage.TokensSlot, ImportConceptKeys.Number)
+            .Set(ImportLanguage.TokenNameSlot, "Count");
+
+        var rule = model.NewChild(importer, ImportLanguage.RulesSlot, ImportConceptKeys.Rule);
+
+        rule.Set(ImportLanguage.ConceptKeySlot, "Item");
+
+        model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "item");
+
+        var space = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal);
+
+        space.Set(ImportLanguage.TextSlot, " ");
+
+        var name = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Capture);
+
+        name.Set(ImportLanguage.SlotSlot, "name");
+        name.Set(ImportLanguage.TokenSlot, "Name");
+
+        model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, " ");
+
+        var detail = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Capture);
+
+        detail.Set(ImportLanguage.SlotSlot, "detail");
+        detail.Set(ImportLanguage.TokenSlot, "Count");
+
+        var imports = Path.Combine(directory, LanguageProject.ImportFolder);
+
+        Directory.CreateDirectory(imports);
+        ModelFile.Save(model, Path.Combine(imports, "ini.mps"));
+    }
+
     private static DeclaredImporter Import(string directory) =>
         Assert.IsType<DeclaredImporter>(Assert.Single(LanguageProject.Open(directory, out _)!.Importers));
 
