@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 
 namespace Projectional.ImportRules;
 
@@ -84,6 +85,9 @@ public static class ImportLanguage
     /// <summary>The concepts of the import language.</summary>
     public static ConceptRegistry Concepts { get; } = ConceptRegistry.Create(Declarations());
 
+    /// <summary>How those concepts are drawn, so an importer document is readable in the editor.</summary>
+    public static NotationRegistry Notations { get; } = CreateNotations();
+
     /// <summary>A project with the import language's concepts, ready to hold a document.</summary>
     public static Project NewProject() => new(Concepts);
 
@@ -97,6 +101,14 @@ public static class ImportLanguage
         return model;
     }
 
+    private static NotationRegistry CreateNotations()
+    {
+        var notations = new NotationRegistry(Concepts);
+
+        ImportNotations.AddTo(notations);
+
+        return notations;
+    }
     private static IEnumerable<ConceptDeclaration> Declarations()
     {
         yield return new ConceptDeclaration(
