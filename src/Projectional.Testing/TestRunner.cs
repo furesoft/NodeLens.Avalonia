@@ -154,13 +154,19 @@ public static class TestRunner
     /// The findings are the language's own declared constraints, run through the engine a session runs. A host's
     /// check catalogue is not part of a language project, so a test that pins those is the host's to write; the
     /// language's own rules are what a language author can state and this assertion can reach.
+    /// <para>
+    /// "The engine a session runs" includes the language's scopes and types: a rule that asks a slot for its type
+    /// sees <c>unknown</c> without them, so a type-dependent complaint would stay silent and this assertion would
+    /// pin the silence as if it were the answer. The scopes and types are the language's own, for the same reason
+    /// the constraints are.
+    /// </para>
     /// </remarks>
     private static TestResult Findings(LanguageProject language, LanguageTest test, Model model)
     {
         var expected = string.Join('\n', (test.Findings ?? []).Select(finding => finding.ToLine()));
         var actual = string.Join(
             '\n',
-            new ConstraintEngine(language.Constraints)
+            new ConstraintEngine(language.Constraints, scopes: language.Scopes, types: language.Types)
                 .Check(model)
                 .Select(finding => new ExpectedFinding(
                     finding.Code ?? string.Empty,

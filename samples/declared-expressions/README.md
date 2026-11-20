@@ -10,7 +10,9 @@ document someone can open rather than only by the test suite.
 | `structure/` | five concepts: an abstract `Decl.Expression`, an integer and a truth value, a binary form and a conditional |
 | `editor/` | one line each - `1`, `true`, `1 + 2`, `if 1 < 2 then 3 else 4` |
 | `types/` | the rules: two fixed types, a switch over the operator, a `widest of` and one complaint |
+| `tests/` | four assertions the language states about itself |
 | `expressions.mps` | a document of the language |
+| `uncomparable.mps` | a document the complaint reports on |
 
 ## What the types folder says
 
@@ -24,7 +26,31 @@ conditional with a number on one side and a truth value on the other is `unknown
     rule Decl.Binary is
       report error "The operands are not comparable, so no value of one could be used as the other." type of left is not comparable with type of right
 
-It reports only where the condition holds, which is why `1 == true` is a finding and `1 == 2` is not.
+It reports only where the condition holds, which is why `1 == true` is a finding and `1 == 2` is not. The complaint
+states no code, because the type-rule language has no slot for one - so its finding is uncoded, and a test names it by
+its severity and its place rather than by an identifier.
+
+## What the tests folder says
+
+Four rows, one assertion per file because a test names one assertion:
+
+| File | Assertion |
+| --- | --- |
+| `types.mps` | the literal `3` in `expressions.mps` is `int` |
+| `operator-type.mps` | the operator `<` of `expressions.mps` is `bool`, which is the switch over the operator |
+| `clean.mps` | `expressions.mps` reports nothing |
+| `reports.mps` | `uncomparable.mps` reports exactly one finding, an error with no code |
+
+**Run > Run tests** runs them, and so does `TestRunner.Run(language)`. They are the reason the runner hands the
+constraint engine the language's own scopes and types: a complaint that asks a slot for its type reads `unknown`
+without them and stays silent. `reports.mps` is the row that notices - it is the one that fails when that plumbing is
+removed - while `clean.mps` would pass either way, which is exactly the trap: a "reports nothing" assertion is true
+whether the engine could see or not.
+
+A row names the node by the text the document *shows and the user can change*, so it reaches a property cell - the
+literal `3` or the operator `<`. A keyword is drawn from the notation, not from the document, so no row can name the
+conditional itself by the `if` it draws; the `widest of` rule is therefore pinned by
+`DeclaredExpressionsTests.AConditionalIsAsWideAsItsTwoBranches` rather than from here.
 
 ## Open it
 

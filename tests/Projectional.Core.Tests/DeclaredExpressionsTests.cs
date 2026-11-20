@@ -6,6 +6,7 @@ using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Semantics;
 using Projectional.Structures;
+using Projectional.Testing;
 using Projectional.TypeRules;
 using Xunit;
 
@@ -168,6 +169,22 @@ public sealed class DeclaredExpressionsTests
                 Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(target));
             }
         }
+    }
+
+    /// <summary>The language tests itself: its own <c>tests/</c> folder runs green.</summary>
+    /// <remarks>
+    /// Two of the assertions are about findings, one for a document that reports nothing and one for the complaint in
+    /// <c>types/operands-not-comparable.mps</c>. That pair is what proves the runner hands the engine the language's
+    /// types: without them the operands read as <c>unknown</c>, the complaint stays silent, and the row that expects a
+    /// finding fails. A runner that skipped them would be running a different engine than a session does.
+    /// </remarks>
+    [Fact]
+    public void TheSampleRunsItsOwnDeclaredTests()
+    {
+        var report = TestRunner.Run(Language);
+
+        Assert.Equal(4, report.Ran);
+        Assert.True(report.Succeeded, report.ToString());
     }
 
     private static IReadOnlyList<Diagnostic> Check(Model model) =>

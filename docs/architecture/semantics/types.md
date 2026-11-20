@@ -377,6 +377,8 @@ specification, not a capability.
 | `TypeRule.Supertypes` | **no subject for the document form.** The capability is exercised (above), the declared document is not: no language project that ships a `types/` folder needs a hierarchy. `TypeRule.Comparable` and `TypeRule.Replacement` are still unexercised in either form |
 | `TypeRule.Comparable` | **no subject.** No shipped language has two types interchangeable without one being below the other - and the expression language's three primitives are genuinely incomparable, which is precisely what makes its operand rule fire |
 | `TypeRule.Replacement` | **no subject.** Covariance rewrites a claim about a compound type, and no shipped language has one: the expression language declares no list, record or optional, and a schema column is never a collection |
+| a declared test that pins a **type** | `samples/declared-expressions/tests/`: `types.mps` asserts the literal `3` is an `int` and `operator-type.mps` asserts the operator `<` is a `bool`, both run by `TestRunner` over the language's own `tests/` folder |
+| a declared test that pins a **finding** | the same folder, twice over: `clean.mps` expects nothing from a document that is clean and `reports.mps` expects the one error the declared complaint reports. The pair is what proved `TestRunner` was handing the constraint engine no types - the session reads `int` there and the runner read `unknown`, so the complaint was invisible and the "reports nothing" row would have been true for the wrong reason |
 
 Two consequences follow, and they are worth stating rather than discovering twice. A declared language gets a
 `types/` folder only when something in it has a type: the pipeline's and the workflow's slots are strings, counts
@@ -399,6 +401,15 @@ that needs it. The same holds for the one-way requirement: two shipped rules ask
 it. That is the next declared slice, and its subject would be a language project with a `types/` folder whose rules
 need it - adding the vocabulary before that document exists would be the specification the top of this table warns
 about.
+
+One capability is deliberately still missing from a declared complaint: it cannot state the identifier its finding
+reports under. The context already takes a code and every finding in the check catalogue has one, so the gap is not in
+the reporting path - it is in the notation, which has no cell that draws a property only while it has a value
+(`WhenFilled` is for children, `Conditional` compares against a value). Adding the slot without that cell would make a
+complaint's code writable in XML and unwritable in the editor, which is the "specification, not a capability" failure
+this document keeps warning about in the other direction. It is recorded as [open question 115](../../open-questions.md);
+until then a finding a declared rule reports is uncoded, and a language's own test names it by its severity and its
+place.
 
 #### What stays out, and why
 
