@@ -298,6 +298,18 @@ So both import outcomes go to the status line in the importer's own words (`Impo
 importer's refusal for a failure), and a success **with warnings** is still a sentence the user must see: the
 importer reports "kept as raw text" rather than failing, so the host is the only place that can say it.
 
+**The bottom of the shell is one area, not a stack.** Output, Problems and Usages are tabs of a strip under the
+document; `MainWindow.ShowPanel` keeps two questions apart - the content says whether a panel *may* show, and a flag
+per panel says whether the user closed it, because a re-derived list must not reopen a tab the user put away. The
+strip and the outline column are both sized by a `GridSplitter`, and the document's row keeps a `MinHeight` so the
+panel can never be dragged over the page.
+
+**The caret's place is the control's to derive and the shell's to show.** `ProjectionalEditorControl` raises
+`SelectionChanged` from `Show()` - the funnel every edit and every move lands in - and only when the selection
+really changed. `CaretSpot.Of(session)` answers the line and column from the layout: the line is the numbered row
+`LineNumbers` already paints, the column is the caret's characters into its own cell's line, which is the only
+column an offset can name when several cells share a drawn row.
+
 The repository ships two front ends and **one** public surface:
 
 - `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).

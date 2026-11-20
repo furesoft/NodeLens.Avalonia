@@ -21,16 +21,17 @@ internal static class ShellShots
 {
     /// <summary>Everything to capture, in the order the README presents the features.</summary>
     /// <remarks>
-    /// The sizes are the window's own rather than a crop, so there is enough page for the document and enough
-    /// panel for its rows but no empty third of a window: the outline is a column, the output panel is a strip.
+    /// The sizes are the window's own rather than a crop, so there is enough page for a document and enough
+    /// strip for the panel area's tabs and rows: the outline is a column, and Output, Problems and Usages are
+    /// tabs of one area rather than three stacked panels.
     /// </remarks>
     internal static IReadOnlyList<ShellShot> All { get; } =
     [
-        new("feature-run-output", ShowRunOutput, Width: 700, Height: 300),
-        new("feature-generate-output", ShowGeneratedText, Width: 700, Height: 250),
-        new("feature-run-tests", ShowTestRun, Width: 820, Height: 320),
-        new("feature-import-file", ShowImportedDocument, Width: 700, Height: 470),
-        new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 520),
+        new("feature-run-output", ShowRunOutput, Width: 720, Height: 380),
+        new("feature-generate-output", ShowGeneratedText, Width: 720, Height: 340),
+        new("feature-run-tests", ShowTestRun, Width: 840, Height: 420),
+        new("feature-import-file", ShowImportedDocument, Width: 720, Height: 520),
+        new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 560),
     ];
 
     /// <summary>Imports an ini-shaped file into a document of the language that declares a rule for it.</summary>
