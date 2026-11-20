@@ -104,8 +104,10 @@ order the plan already has, now with a reason.
 `Model.InsertCopy` builds it by recursing until the stack gives out - a public API that a host can hang with one
 call. The refactoring that runs into it is obvious in hindsight: inlining a call whose target is an ancestor of the
 use copies the use's own parent chain into the use's place. `InsertCopyAction` refuses it with a reason, the way a
-move refuses a node into itself; the model-level gap is real and stays recorded here rather than being papered
-over, because the model answers "what can this slot hold" and not "would this shape be finite".
+move refuses a node into itself - and so does the model now: `Model.InsertCopy` asks the same question of the
+*source* that `InsertChild` asks of the child, because the node it inserts is a fresh copy whose own check passes
+while the copy still contains the place it is going into. A host calling the model directly used to hang the
+process; the action's check stays beside it, as the sentence a user reads rather than an exception.
 
 It also found what the plan predicted: a chain of steps cannot host the shape at all, because every step's target is
 either above it (an ancestor) or below it, so the only non-cyclic inline is a *forward* reference - which is not

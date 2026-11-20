@@ -801,7 +801,8 @@ public sealed class Model
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
     /// <exception cref="ModelInvariantException">
     /// Either node belongs to another model, the slot does not hold children of the copy's concept, the copy may not
-    /// stand there, or the slot is single-valued and already full.
+    /// stand there, the slot is single-valued and already full, or <paramref name="source"/> is
+    /// <paramref name="parent"/> or an ancestor of it.
     /// </exception>
     /// <remarks>
     /// <para>
@@ -834,6 +835,14 @@ public sealed class Model
         if (!ReferenceEquals(source.Model, this) || !ReferenceEquals(parent.Model, this))
         {
             throw new ModelInvariantException("A copy is taken inside one model: both nodes must belong to it.");
+        }
+
+        // The same shape `InsertChild` refuses, asked of the source instead of the child: the node being inserted is a
+        // fresh copy, so the child's own check passes while the copy still contains the place it is going into -
+        // `CopyFresh` walks the source subtree, so that structure would recurse until the stack gives out.
+        if (ReferenceEquals(source, parent) || source.IsAncestorOf(parent))
+        {
+            throw new ModelInvariantException($"Node {source.Id} cannot be copied into its own subtree.");
         }
 
         using var transaction = BeginTransaction();
