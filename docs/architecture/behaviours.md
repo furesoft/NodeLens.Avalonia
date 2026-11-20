@@ -1,10 +1,12 @@
 # Concept behaviours
 
-Status: **B1 started** (M6). The seam exists: `ConceptDeclaration(nameOf:)` and `Concept.NameOf(node)` answer
-"what is this node called" as a pure function of the node, and `Node.Name` asks it first and the name slot second,
-so every consumer that reads `Node.Name` reads the computed name too. What is left of B1 is the body vocabulary and
-the declared `behaviour` folder, B2 the `Describe` function, B3 the samples and the parity test, B4 the override
-finding.
+Status: **B1 partly delivered** (M6) and **parked here by decision**. The seam exists:
+`ConceptDeclaration(nameOf:)` and `Concept.NameOf(node)` answer "what is this node called" as a pure function of the
+node, `Node.Name` asks it first and the name slot second, and the body vocabulary a name is written in lives in
+`Projectional.Language/Names/` (`NameLiteral`, `NameProperty`, `NameChild`, `NameReference`, `NameJoin`,
+`NameFallback`, `NameChoice`, with a depth budget and empty-answering slots). What is **not** started: the declared
+`behaviour` folder, `Describe`, the samples and the parity test, and the override finding. Further behaviour work is
+deliberately deferred; the seam and the vocabulary are what a language package uses in C# meanwhile.
 
 The nine consumers no longer each ask the slot: a reference cell (`EditorTreeBuilder`), sort by name (`ChildOrder`),
 the outline, the problems panel, the usages header, the scope index (`NameIndex`), ambiguity
