@@ -13,11 +13,11 @@ namespace Projectional.TypeRules;
 /// <see cref="TypeRuleLowering"/> is the C# twin of the language itself.
 /// </para>
 /// <para>
-/// The vocabulary is deliberately three bodies rather than a statement list. MPS' typesystem is
+/// The vocabulary is deliberately a handful of bodies rather than a statement list. MPS' typesystem is
 /// imperative - <c>do { typeof(node) :== int; }</c> - and copying that would mean shipping an interpreter
-/// for a language whose only job is to answer one question per node. A fixed type, a child's type and a
-/// switch over a property cover what a DSL's rules actually say, and each lowers to a delegate the C#
-/// path could have written by hand.
+/// for a language whose only job is to answer one question per node. A fixed type, a child's type, a
+/// switch over a property, a set of relations and a report cover what a DSL's rules actually say, and each
+/// lowers to a delegate the C# path could have written by hand.
 /// </para>
 /// </remarks>
 public static class TypeRuleLanguage
@@ -75,6 +75,12 @@ public static class TypeRuleLanguage
 
     /// <summary>How much a complaint matters.</summary>
     public const string SeveritySlot = "severity";
+
+    /// <summary>The type that may stand in place of the other, in a declared subtype edge.</summary>
+    public const string SubtypeSlot = "subtype";
+
+    /// <summary>The type it may stand in place of.</summary>
+    public const string SupertypeSlot = "supertype";
 
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
@@ -249,6 +255,14 @@ public static class TypeRuleLanguage
             // A type name is what a finding quotes back (`Amount`), so it is the convention types are written in
             // everywhere: PascalCase.
             nameRule: NameRule.Pascal),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Supertypes,
+            [
+                new ChildSlot(SubtypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(SupertypeSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            description: "A declared edge of the subtype relation: the subtype may stand where the supertype is required."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

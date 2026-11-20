@@ -127,6 +127,15 @@ public static class TypeRuleNotations
             ed.Space,
             ed.ChildInline(TypeRuleLanguage.TypeSlot)));
 
+        // A declared edge draws as the relation it states, with the `<:` spelling TypeEquation.ToString() prints,
+        // so a subtyping declaration and the sentence a failed solve quotes read the same.
+        notations.Add(TypeRuleConceptKeys.Supertypes, ed => ed.Line(
+            ed.ChildInline(TypeRuleLanguage.SubtypeSlot),
+            ed.Space,
+            ed.Keyword("<:"),
+            ed.Space,
+            ed.ChildInline(TypeRuleLanguage.SupertypeSlot)));
+
         // A variable draws as the `?` spelling IType.Name prints for it, so an equation in the source and the
         // sentence a failed solve quotes read the same.
         notations.Add(TypeRuleConceptKeys.TypeVariable, ed => ed.Line(

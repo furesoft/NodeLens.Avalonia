@@ -266,4 +266,22 @@ public sealed class TypeRuleNotationTests
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 80));
     }
+
+    [Fact]
+    public void ASupertypesDocumentDrawsTheEdgeItDeclares()
+    {
+        var model = TypeRuleLanguage.NewProject().NewModel("supertypes");
+        var edge = model.NewNode(TypeRuleConceptKeys.Supertypes);
+
+        model.NewChild(edge, TypeRuleLanguage.SubtypeSlot, TypeRuleConceptKeys.Ref)
+            .Set(TypeRuleLanguage.NameSlot, "Amount");
+        model.NewChild(edge, TypeRuleLanguage.SupertypeSlot, TypeRuleConceptKeys.Ref)
+            .Set(TypeRuleLanguage.NameSlot, "Money");
+
+        Assert.Equal(
+            """
+            Amount <: Money
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
 }

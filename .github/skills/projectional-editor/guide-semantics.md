@@ -138,8 +138,13 @@
   nothing. Refusals sit where the value is written - the relation's enumeration makes the model refuse a spelling
   the lowering never sees, and the lowering refuses an equations body that states nothing, an equation whose two
   sides are the same variable, and a variable outside a body that states equations. `TypeRule.Join`/`TypeRule.Meet`
-  are type expressions too, so "either" and "both" are spellable in a model; the subtyping declaration is still
-  deferred.
+  are type expressions too, so "either" and "both" are spellable in a model.
+- **A subtyping declaration is a document, not a slot on a type**: `TypeRule.Supertypes` states one edge
+  (`subtype <: supertype`) and lowers into a `SubtypeRelation` the `TypeRegistry` carries beside its rules, so the
+  solver and the lattice a consumer builds are given the language's own edges rather than only the framework's
+  primitives. The relation compares a named type by **identity** - "are two declarations of one name one type?" is
+  the language's question - so the language answers it by handing out one instance per name: a rule writing
+  `Ref Amount` and an edge naming `Amount` receive the same type, which is what makes the edge join anything.
 - **Join and meet are questions about the relation, not new kinds of type**: `JoinType`/`MeetType` are what a slot
   or a rule *writes* ("either", "both") - `TypeRule.Join`/`TypeRule.Meet` in a model - and `TypeLattice` reduces
   them from the declared edges - one side below the

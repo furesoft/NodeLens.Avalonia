@@ -207,7 +207,7 @@ typed in.
 | `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer, and a type read descends a tree so it cannot cycle | - closed: the solver's fixpoint is the ordering, and a self-referential name is refused at load |
 | `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | **`TypeRule.Complain`** as a body - a `message` and a `severity` lowered into an `IConstraint` the language's own set carries, so the existing findings path reports it; it states a type for nothing | a *conditional* complaint: the message as a sentence about the concept is unconditional, and "operation is not applicable to these operands" needs a condition vocabulary the body does not have |
 | replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
-| subtyping rule | the direct supertypes of a type | nothing - `NamedType` has an expansion, not supertypes | `TypeRule.Supertypes` declared per type concept, feeding the subtype relation |
+| subtyping rule | the direct supertypes of a type | **`TypeRule.Supertypes`** - a document stating one edge (`subtype <: supertype`), lowered into the `SubtypeRelation` the registry carries; a name is one instance per document, so a rule and an edge naming it are given the same type | - |
 | comparison rule | two types are interchangeable (weak/strong) | **`IType.IsComparableTo`** - the third question, asked both ways through the relation, so "interchangeable" is neither conformance nor a one-way subtype edge; `TypeSolver` asks it instead of comparing two subtype checks by hand | `TypeRule.Comparable` as a declared pair, when a language needs to state a comparison its edges do not express |
 | substitute type rule | swap the node representing a type (configuration-dependent `int`/`long`) | nothing | `TypeRule.Substitute`; last, because it needs a per-model configuration input the framework does not have |
 | checking rule + quick fix | report a problem, offer a repair | `ICheck` (with a repair) and `IConstraint` (without) | **done** - the cookbook's `checking rule` is this repository's check catalogue, not part of the type system |
@@ -275,8 +275,13 @@ Each slice is independent and each is only worth starting when a language needs 
   (nothing would constrain it). The type expressions were closed the same way: `TypeRule.Join` and
   `TypeRule.Meet` are the two types the layer already had but a model could not write, so a slot that accepts
   "either" or "both" is now spellable and lowers to `JoinType`/`MeetType` - the drawing being the operator the
-  type's `Name` prints (`int|string`, `int&Amount`), the invariant the rest of the family keeps. Deferred: the
-  subtyping declaration, which needs a project-level property the language layer does not have.
+  type's `Name` prints (`int|string`, `int&Amount`), the invariant the rest of the family keeps. **Delivered for
+  the subtyping declaration**: `TypeRule.Supertypes` is a document of its own - one edge, `subtype <: supertype` -
+  lowered into the `SubtypeRelation` the registry now carries, so a language's edges reach the solver and the
+  lattice instead of only the framework's primitives. What the shape forced: the relation compares a named type by
+  *identity*, because whether two declarations of one name are one type is the language's question, not the
+  relation's - so the language answers it by handing out one instance per name. A rule writing `Ref Amount` and an
+  edge naming `Amount` therefore receive the same type, which is what makes the edge join anything at all.
 - **T5 - comparison rules.** `TypeRule.Comparable`, and `IType.IsComparableTo` beside `Accepts` - a third question,
   because "interchangeable" is what MPS' weak comparison means and neither accept nor subtype says it. **Delivered
   for the question**: `IType.IsComparableTo` asks the relation both ways, so "interchangeable" is a conjunction of
