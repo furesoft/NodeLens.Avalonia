@@ -20,7 +20,7 @@ public sealed record ImportToken(
     string Quote = "\"",
     string Escape = "\\",
     string Prefix = "",
-    string Until = "\n")
+    string Until = "\\n")
 {
     public override string ToString() => Kind switch
     {

@@ -2,6 +2,7 @@ using Projectional.Avalonia;
 using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Expressions.Intentions;
+using Projectional.ImportRules;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Samples;
@@ -167,6 +168,15 @@ internal static class Shots
             Surface: StateMachine),
 
         // A language's own test, written as data in the test language: the picture the tests-as-data slice is for.
+        // The declared importer, which is the last aspect a language can state as a model: the picture is the
+        // declaration itself, drawn by the notation that aspect ships.
+        new(
+            "language-declared-importer",
+            LanguageDocuments.DeclaredImporter,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            FontSize: 12,
+            Surface: LanguageSurface.Plain(ImportLanguage.Notations)),
         new(
             "language-test",
             LanguageDocuments.Testing,

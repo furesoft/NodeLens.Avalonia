@@ -17,16 +17,14 @@
           <properties>
             <tokenName>Space</tokenName>
             <prefix></prefix>
-            <until>
-</until>
+            <until>\n</until>
           </properties>
         </node>
         <node id="f0cfab98-f2ec-4af5-96a4-b8fffb593a0d" concept="Import.Skipped" name="Comment">
           <properties>
             <tokenName>Comment</tokenName>
             <prefix>#</prefix>
-            <until>
-</until>
+            <until>\n</until>
           </properties>
         </node>
       </children>

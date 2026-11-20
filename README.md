@@ -261,7 +261,7 @@ Tables are a grid of columns, and a key names a column of *another document* of 
 
 ### Tests as data: a language's own test, written in the test language
 
-A language's tests are documents, not C#. A `tests/` folder beside the aspects holds one test per document, written in the test language: it names the document it is about and makes one assertion, and the runner turns each row into a diff when it fails. Eight assertions are closed over: `RoundTrips` (write, read back, write again), `Draws` (the notation at a stated width), `Findings` (the findings the language's own constraints report), `Generates` (one named generator's text, line by line), `Evaluates` (the interpreter's answer, or the message of the failure that stopped it), `Script` (the editor test: a caret, typing, a key and an offer, replayed through the editor's own input routing, then drawn), `TypeOf` (the type a node has) and `ScopeOf` (which names a reference slot sees). A node - for the last two, and for the caret a script moves - is named by the text the document shows at it, so no test spells a node id. The picture is a drawing assertion over the pipeline sample, with the table it expects beneath it:
+A language's tests are documents, not C#. A `tests/` folder beside the aspects holds one test per document, written in the test language: it names the document it is about and makes one assertion, and the runner turns each row into a diff when it fails. Nine assertions are closed over: `RoundTrips` (write, read back, write again), `Draws` (the notation at a stated width), `Findings` (the findings the language's own constraints report), `Generates` (one named generator's text, line by line), `Imports` (the round trip through a generator's own inverse), `Reads` (a text file, through a declared importer, to the text a generator prints), `Evaluates` (the interpreter's answer, or the message of the failure that stopped it), `Script` (the editor test: a caret, typing, a key and an offer, replayed through the editor's own input routing, then drawn), `TypeOf` (the type a node has) and `ScopeOf` (which names a reference slot sees). A node - for the last two, and for the caret a script moves - is named by the text the document shows at it, so no test spells a node id. The picture is a drawing assertion over the pipeline sample, with the table it expects beneath it:
 
 ![A language test written in the test language: a drawing assertion over the pipeline, with the expected table beneath it](docs/images/language-test.png)
 
@@ -287,6 +287,16 @@ if (!report.Succeeded)
 A language's tests also run from the app: **Run ▸ Run tests** runs the `tests/` folder of the language the document in front belongs to - the project it was opened from - and puts one row per test in the output panel, so a failing test is a line to look at rather than a build to wait for. Choosing a row opens the test document it names, which is possible because a test is a document of this language like any other.
 
 ![The output panel listing one row per test of the pipeline sample, all passed](docs/images/feature-run-tests.png)
+
+### Import as a declaration: a language that reads its own files
+
+Every other aspect of a language can be written as a model—its concepts, its notation, its types, its generator, its constraints, its scopes, its intentions and now its tests. Reading was the one that could not: an importer was a C# interface, so a language that lived in a project folder printed its documents and could never read one back.
+
+It needs no second grammar. A generator already says how the language is printed, so `TemplateImporter` reads exactly what it writes—no new declaration at all. For a file that does *not* look like the generator's output there is a second, explicit form: `Import.Rules` in an `import` folder, one document per importer, with the four verbs a template has (an anchor, a capture, a nest, a repeat) and four lexical classes (a word, a number, a quoted run, a fixed run) beside text that produces no node, so whitespace and comments step out of the way. Here is the `relaxed` importer of the pipeline sample, drawn by the notation that aspect ships:
+
+![A declared importer: two token classes and the rule per concept that reads an ini-shaped file](docs/images/language-declared-importer.png)
+
+Writing it as a model is what makes it declarable rather than merely configurable: the rule names a property, the slot decides which concept may stand there, and every ambiguity—two anchors that begin alike, a repeat whose separator its own entry begins with—is refused when the importer is built rather than discovered halfway through a file. `samples/declared-pipeline` uses it to read an ini-shaped variant no generator would write, and its own `tests/` folder asserts that reading it yields the model the generator prints.
 
 ### Feature Gallery
 
