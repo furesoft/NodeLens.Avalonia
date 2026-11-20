@@ -3,6 +3,7 @@ using Projectional.Expressions;
 using Projectional.Samples.FeatureModel;
 using Projectional.Samples.SqlSchema;
 using Projectional.Samples.StateMachine;
+using Projectional.Testing;
 
 namespace Projectional.Screenshots;
 
@@ -82,6 +83,36 @@ internal static class LanguageDocuments
         var addressCity = Column(model, address, "city_id", "int");
         Key(model, address, addressPerson, personId);
         Key(model, address, addressCity, cityId);
+
+        return model;
+    }
+
+    /// <summary>
+    /// A language's own test, written in the test language: one document asserting that the pipeline draws as the
+    /// table it should. The picture is the point of the slice - a language author writes a test as data, not in C#.
+    /// </summary>
+    internal static Model Testing()
+    {
+        var model = TestingLanguage.NewModel();
+        var test = model.Roots[0];
+
+        test.Set(TestingLanguage.DocumentSlot, "pipeline.mps");
+
+        var draws = model.NewChild(test, TestingLanguage.AssertionSlot, TestingConceptKeys.Draws);
+
+        draws.Set(TestingLanguage.WidthSlot, "60");
+
+        foreach (var line in new[]
+        {
+            "pipeline Release",
+            "  stage run          retries",
+            "  build dotnet build 1",
+            "  test  dotnet test  0",
+        })
+        {
+            model.NewChild(draws, TestingLanguage.LinesSlot, TestingConceptKeys.Line)
+                .Set(TestingLanguage.TextSlot, line);
+        }
 
         return model;
     }

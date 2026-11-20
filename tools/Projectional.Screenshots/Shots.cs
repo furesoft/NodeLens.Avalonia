@@ -10,6 +10,7 @@ using Projectional.Samples.Intentions;
 using Projectional.Samples.SqlSchema;
 using Projectional.Samples.StateMachine;
 using Projectional.Semantics;
+using Projectional.Testing;
 
 namespace Projectional.Screenshots;
 
@@ -164,6 +165,14 @@ internal static class Shots
             Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
             LineNumbers: true,
             Surface: StateMachine),
+
+        // A language's own test, written as data in the test language: the picture the tests-as-data slice is for.
+        new(
+            "language-test",
+            LanguageDocuments.Testing,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            Surface: Testing),
     ];
 
     /// <summary>The state machine's own language, with its two notations.</summary>
@@ -177,6 +186,10 @@ internal static class Shots
     /// <summary>The SQL schema's own language.</summary>
     private static LanguageSurface SqlSchema =>
         LanguageSurface.Plain(SqlSchemaLanguage.CreateNotations(SqlSchemaLanguage.Concepts));
+
+    /// <summary>The test language a language's own tests are written in.</summary>
+    private static LanguageSurface Testing =>
+        LanguageSurface.Plain(TestingNotations.Registry);
 
     /// <summary>Switches the machine to the table of its transitions, which is a view state and not a model change.</summary>
     private static void StateMachineTable(ProjectionalEditorControl editor, EditorSession session)
