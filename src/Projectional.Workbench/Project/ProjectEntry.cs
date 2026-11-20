@@ -27,7 +27,8 @@ internal sealed record ProjectEntry
         string? key = null,
         bool isExpanded = true,
         DocumentTab? document = null,
-        string? path = null)
+        string? path = null,
+        string? folder = null)
     {
         Text = text;
         Depth = depth;
@@ -36,6 +37,7 @@ internal sealed record ProjectEntry
         IsExpanded = isExpanded;
         Document = document;
         Path = path;
+        Folder = folder;
     }
 
     /// <summary>What the row says.</summary>
@@ -62,6 +64,9 @@ internal sealed record ProjectEntry
 
     /// <summary>The file the row stands for, or <see langword="null"/> for a heading, a project or a folder.</summary>
     internal string? Path { get; }
+
+    /// <summary>The folder's name on disk, which decides the icon the row is drawn with.</summary>
+    internal string? Folder { get; }
 
     /// <summary>Whether the row can be opened and closed, which is what draws a chevron.</summary>
     internal bool HasChildren => Kind is ProjectNode.Group or ProjectNode.Project or ProjectNode.Folder;

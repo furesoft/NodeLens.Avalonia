@@ -51,6 +51,7 @@
       <StreamGeometry x:Key="IconProject">M2,4 L8,1 L14,4 L8,7 Z M2,4 V11 L8,14 V7 M14,4 V11 L8,14</StreamGeometry>
       <StreamGeometry x:Key="IconChevronRight">M6,4 L10,8 L6,12</StreamGeometry>
       <StreamGeometry x:Key="IconChevronDown">M4,6 L8,10 L12,6</StreamGeometry>
+      <local:FolderIconConverter x:Key="FolderIcon" />
 
       <!--
         A document strip of its own: the stock TabControl theme puts the items presenter straight into a
@@ -604,7 +605,7 @@
                       </Panel>
                     </Button>
                     <Border Width="16" IsVisible="{Binding !HasChildren}" />
-                    <Path Classes="treeIcon" Data="{StaticResource IconFolder}" IsVisible="{Binding IsFolder}" Margin="2,0,6,0" />
+                    <Path Classes="treeIcon" Data="{Binding Folder, Converter={StaticResource FolderIcon}}" IsVisible="{Binding IsFolder}" Margin="2,0,6,0" />
                     <Path Classes="treeIcon" Data="{StaticResource IconProject}" IsVisible="{Binding IsProject}" Margin="2,0,6,0" />
                     <Path Classes="treeIcon" Data="{StaticResource IconDocument}" IsVisible="{Binding IsFile}" Margin="2,0,6,0" />
                     <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />

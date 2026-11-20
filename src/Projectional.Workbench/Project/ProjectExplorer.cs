@@ -119,7 +119,7 @@ internal static class ProjectExplorer
                 var folderKey = FolderKey(language.Directory, folder);
                 var folderOpen = !collapsed.Contains(folderKey);
 
-                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen));
+                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen, folder: folder));
 
                 if (!folderOpen)
                 {

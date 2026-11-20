@@ -70,6 +70,12 @@ internal static class Shots
             Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(Rule(session, 1).Id, "name"))),
 
         new(
+            "editor-light",
+            Documents.ThreeRules,
+            Arrange: MarkEverything,
+            LineNumbers: true),
+
+        new(
             "feature-line-numbers",
             Documents.ThreeRules,
             Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(Rule(session, 1).Id, "name")),
