@@ -82,7 +82,7 @@ public sealed class LanguageTestsAsDataTests
             var report = TestRunner.Run(LanguageProject.Open(folder, out var error)!);
 
             Assert.Null(error);
-            Assert.Equal(5, report.Ran);
+            Assert.Equal(6, report.Ran);
             Assert.Equal(1, report.Failed);
 
             var failed = report.Results.Single(result => !result.Succeeded);
@@ -436,6 +436,198 @@ public sealed class LanguageTestsAsDataTests
         EvaluationRegistry.Empty.Add(
             "Workflow.Workflow",
             new DelegateEvaluationRule(context => context.PropertyValue("name")));
+
+    [Fact]
+    public void AScriptRowReplaysItsStepsAndPasses()
+    {
+        var row = Row(TestRunner.Run(Open("Declared")), "script");
+
+        Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        Assert.Equal("replays", row.Assertion);
+    }
+
+    [Fact]
+    public void ACaretTheDocumentCannotShowIsAFailedRow()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "nowhere", "pipeline.mps", TestingConceptKeys.Script, (model, script) =>
+                AddStep(model, script, TestingConceptKeys.Caret, TestingLanguage.AtSlot, "nowhere"));
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "nowhere");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("caret at 'nowhere'", row.Expected);
+            Assert.Contains("nothing shows 'nowhere'", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnEditTheEditorRefusesIsAFailedRowNamingTheStep()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "cannot-type", "pipeline.mps", TestingConceptKeys.Script, (model, script) =>
+            {
+                AddStep(model, script, TestingConceptKeys.Caret, TestingLanguage.AtSlot, "1");
+                AddStep(model, script, TestingConceptKeys.Type, TestingLanguage.TypedSlot, "x");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "cannot-type");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("type 'x'", row.Expected);
+            Assert.False(string.IsNullOrEmpty(row.Actual));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnOfferTheCaretDoesNotHaveIsAFailedRowListingWhatItDoes()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "no-such-offer", "pipeline.mps", TestingConceptKeys.Script, (model, script) =>
+            {
+                AddStep(model, script, TestingConceptKeys.Caret, TestingLanguage.AtSlot, "Release");
+                AddStep(model, script, TestingConceptKeys.Invoke, TestingLanguage.IntentionSlot, "intent.nothing");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "no-such-offer");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("invoke intent.nothing", row.Expected);
+            Assert.Contains("nothing is offered", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void APressedKeyIsRoutedAndChangesTheDocument()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "delete-a-letter", "pipeline.mps", TestingConceptKeys.Script, (model, script) =>
+            {
+                script.Set(TestingLanguage.WidthSlot, "60");
+                AddStep(model, script, TestingConceptKeys.Caret, TestingLanguage.AtSlot, "Release");
+                AddStep(model, script, TestingConceptKeys.Press, TestingLanguage.KeySlot, "Delete");
+                AddLine(model, script, "pipeline elease");
+                AddLine(model, script, "  stage run          retries");
+                AddLine(model, script, "  build dotnet build 1");
+                AddLine(model, script, "  test  dotnet test  0");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "delete-a-letter");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnInvokedOfferEditsTheDocument()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "adds-a-step", "draft.mps", TestingConceptKeys.Script, (model, script) =>
+            {
+                script.Set(TestingLanguage.WidthSlot, "80");
+
+                // The empty `first` slot is where the language's own intention applies, and a key is how a user
+                // reaches a place that shows no text for the finder to match.
+                AddStep(model, script, TestingConceptKeys.Press, TestingLanguage.KeySlot, "ControlEnd");
+                AddStep(
+                    model,
+                    script,
+                    TestingConceptKeys.Invoke,
+                    TestingLanguage.IntentionSlot,
+                    "intent.Workflow.Workflow.Add-the-first-step");
+
+                AddLine(model, script, "workflow Draft ->   :   <none> then <empty>");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "adds-a-step");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void APressStepNamingAKeyTheEditorDoesNotRouteIsRefused()
+    {
+        var model = TestingLanguage.NewModel();
+        var test = model.Roots[0];
+
+        test.Set(TestingLanguage.DocumentSlot, "pipeline.mps");
+
+        var script = model.NewChild(test, TestingLanguage.AssertionSlot, TestingConceptKeys.Script);
+
+        AddStep(model, script, TestingConceptKeys.Press, TestingLanguage.KeySlot, "Entr");
+
+        var refused = Assert.Throws<ConceptDefinitionException>(() => TestingLowering.Lower(test));
+
+        Assert.Contains("is not a key the editor routes", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("Enter", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AScriptDrawsAsItsStepsAndThenTheDrawing()
+    {
+        var model = TestingLanguage.NewModel();
+        var test = model.Roots[0];
+
+        test.Set(TestingLanguage.DocumentSlot, "pipeline.mps");
+
+        var script = model.NewChild(test, TestingLanguage.AssertionSlot, TestingConceptKeys.Script);
+
+        script.Set(TestingLanguage.WidthSlot, "60");
+        AddStep(model, script, TestingConceptKeys.Caret, TestingLanguage.AtSlot, "Release");
+        AddStep(model, script, TestingConceptKeys.Type, TestingLanguage.TypedSlot, "Pre");
+        AddLine(model, script, "pipeline PreRelease");
+
+        Assert.Equal(
+            """
+            test pipeline.mps
+              script 60 columns
+                caret at Release
+                type Pre
+              then draws
+                pipeline PreRelease
+            """,
+            LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
+    }
+
+    /// <summary>Adds one step to a script assertion.</summary>
+    private static void AddStep(Model model, Node script, string kind, string slot, string value) =>
+        model.NewChild(script, TestingLanguage.StepsSlot, kind).Set(slot, value);
 
     /// <summary>Writes a test document into the copied language's <c>tests</c> folder.</summary>
     private static void SaveTest(

@@ -10,6 +10,7 @@ namespace Projectional.Testing;
 /// <param name="Generator">The generator a generation assertion runs; ignored by the others.</param>
 /// <param name="Variables">The <c>name=value</c> pairs an evaluation assertion runs with; ignored by the others.</param>
 /// <param name="Outcome">The answer or failure an evaluation assertion expects; ignored by the others.</param>
+/// <param name="Steps">The steps a script assertion replays, in order; ignored by the others.</param>
 /// <remarks>
 /// <para>
 /// A value rather than the node it came from: the runner needs to say what it is about to run before it runs it,
@@ -18,7 +19,7 @@ namespace Projectional.Testing;
 /// <see cref="LanguageTest"/> exists.
 /// </para>
 /// <para>
-/// The expectation is flat rather than a hierarchy of assertion types: five assertions need five different
+/// The expectation is flat rather than a hierarchy of assertion types: six assertions need six different
 /// shapes, and a record with one field per shape is still smaller than a type per assertion and easier to read in
 /// a report. The assertion key says which fields matter, and lowering fills only those - a field set on the wrong
 /// assertion is never read.
@@ -33,7 +34,8 @@ public sealed record LanguageTest(
     IReadOnlyList<ExpectedFinding>? Findings = null,
     string? Generator = null,
     string? Variables = null,
-    string? Outcome = null)
+    string? Outcome = null,
+    IReadOnlyList<TestStep>? Steps = null)
 {
     /// <summary>The assertion as a person reads it.</summary>
     public string AssertionName => Assertion switch
@@ -43,6 +45,7 @@ public sealed record LanguageTest(
         TestingConceptKeys.Findings => "reports",
         TestingConceptKeys.Generates => "generates",
         TestingConceptKeys.Evaluates => "evaluates",
+        TestingConceptKeys.Script => "replays",
         _ => Assertion,
     };
 }
