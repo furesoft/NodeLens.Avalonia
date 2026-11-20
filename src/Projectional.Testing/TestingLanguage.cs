@@ -176,6 +176,18 @@ public static class TestingLanguage
             description: "The document generates as the text the test spells out, one line per entry."),
 
         new ConceptDeclaration(
+            TestingConceptKeys.Imports,
+            [
+                new PropertySlot(
+                    GeneratorSlot,
+                    PropertyType.String,
+                    description: "The name of the generator whose text is read back."),
+            ],
+            [TestingConceptKeys.Assertion],
+            nameSlot: GeneratorSlot,
+            description: "The text the document generates reads back, through that generator's inverse, to a document that generates the same text."),
+
+        new ConceptDeclaration(
             TestingConceptKeys.Evaluates,
             [
                 new PropertySlot(

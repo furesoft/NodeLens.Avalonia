@@ -82,6 +82,14 @@ public static class TestingLowering
                 Lines(children[0]),
                 Findings: null,
                 Generator: Required(children[0], TestingLanguage.GeneratorSlot)),
+            TestingConceptKeys.Imports => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width: 0,
+                [],
+                Findings: null,
+                Generator: Required(children[0], TestingLanguage.GeneratorSlot)),
             TestingConceptKeys.Evaluates => new LanguageTest(
                 name,
                 target,

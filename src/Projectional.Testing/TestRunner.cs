@@ -107,6 +107,7 @@ public static class TestRunner
             TestingConceptKeys.Draws => Draws(language, test, model),
             TestingConceptKeys.Findings => Findings(language, test, model),
             TestingConceptKeys.Generates => Generates(language, test, model),
+            TestingConceptKeys.Imports => Imports(language, test, model),
             TestingConceptKeys.Evaluates => Evaluates(test, model, rules),
             TestingConceptKeys.Script => Script(language, test, model),
             TestingConceptKeys.TypeOf => TypeOf(language, test, model),
@@ -192,6 +193,69 @@ public static class TestRunner
     /// generation stopped, and where.
     /// </para>
     /// </remarks>
+    /// <summary>Whether the text the document generates reads back to a document that generates the same text.</summary>
+    /// <remarks>
+    /// The assertion is the round trip and nothing else: the importer is the inverse of the generator, so a template
+    /// that writes a spelling it cannot read fails here rather than in a user's file. A generator with no inverse is a
+    /// failed row naming why, because a language that cannot read back what it prints is exactly what this asserts.
+    /// </remarks>
+    private static TestResult Imports(LanguageProject language, LanguageTest test, Model model)
+    {
+        if (SingleRoot(model) is not { } root)
+        {
+            return NotASingleRoot(test, model);
+        }
+
+        var generator = language.Generators
+            .FirstOrDefault(candidate => string.Equals(candidate.Name, test.Generator, StringComparison.Ordinal));
+
+        if (generator is null)
+        {
+            return TestResult.Failed(
+                test.Test,
+                test.Document,
+                test.AssertionName,
+                expected: test.Generator ?? string.Empty,
+                actual: $"no generator named '{test.Generator}'; '{language.Name}' declares {string.Join(", ", language.Generators.Select(candidate => candidate.Name))}");
+        }
+
+        if (!language.TryCreateImporter(generator.Name, out var importer, out var error))
+        {
+            return TestResult.Failed(
+                test.Test,
+                test.Document,
+                test.AssertionName,
+                expected: $"{generator.Name} reads back",
+                actual: error ?? string.Empty);
+        }
+
+        var written = new Generator().Generate(root, generator);
+
+        if (written.Failure is { } failure)
+        {
+            return TestResult.Failed(test.Test, test.Document, test.AssertionName, expected: null, actual: failure.Message);
+        }
+
+        var target = language.NewProject().NewModel("imported");
+        var imported = importer.Import(target, written.Text);
+
+        if (!imported.Succeeded || imported.Roots.Count != 1)
+        {
+            return TestResult.Failed(
+                test.Test,
+                test.Document,
+                test.AssertionName,
+                expected: written.Text,
+                actual: string.Join('\n', imported.Diagnostics.Select(diagnostic => diagnostic.ToString())));
+        }
+
+        var again = new Generator().Generate(imported.Roots[0], generator);
+
+        return string.Equals(again.Text, written.Text, StringComparison.Ordinal)
+            ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
+            : TestResult.Failed(test.Test, test.Document, test.AssertionName, written.Text, again.Text);
+    }
+
     private static TestResult Generates(LanguageProject language, LanguageTest test, Model model)
     {
         var generator = language.Generators
