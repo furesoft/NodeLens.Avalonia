@@ -79,9 +79,8 @@ public sealed class SqlSchemaTests
 
         Assert.True(generated.Succeeded, generated.Failure?.Message);
 
-        // The trailing indentation after the last `);` is the documented gap, not an accident of this language: a
-        // template cannot ask whether a slot is filled, so the line break in front of a table's keys is emitted even
-        // when the table declares none. See worked-examples.md.
+        // A table with no keys ends at `);`: the line break in front of the keys is written only when there is one,
+        // which is what `WhenFilledPart` is for and why the choice was never the language's to make.
         const string Expected =
             "create table person (\n" +
             "  id int,\n" +
@@ -92,8 +91,7 @@ public sealed class SqlSchemaTests
             "create table city (\n" +
             "  id int,\n" +
             "  name text\n" +
-            ");\n" +
-            "  ";
+            ");";
 
         Assert.Equal(Expected, generated.Text);
     }

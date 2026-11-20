@@ -92,8 +92,8 @@ Two findings from building it, both recorded rather than worked around:
 ## 2. Feature model - `Projectional.Samples.FeatureModel`
 
 A list of features with `requires` and `excludes` references, a selection, and a generator that writes the
-configuration out. (The plan said *tree*, and the list is flat for the reason recorded below - a generator
-template cannot lay out nested children.)
+configuration out. (The plan said *tree*; the list is flat because the language declares no child slot on a
+feature, not because a template cannot nest - see the third bullet below.)
 
 The axis is **constraints that read references**: a selected feature whose `requires` target is not selected,
 and one whose `excludes` target is. The interpreter evaluates a selection against those rules, which is the
@@ -110,12 +110,14 @@ pilot's JSON and C# fragment.
 - **The selection is a property, not a variable.** `Fm.Feature.isSelected` is saved with the document and
   undone with it; the state machine's `attempts` is a value a reader supplies for one run. A configuration
   belongs to the document, which is why it is model state and why the notation can draw it.
-- **A many-valued reference cannot be drawn, and a template cannot lay out a tree.** Both are real gaps rather
-  than choices: `NotationEditor` has `Reference(slot)` and no collection of references, so `requires` became two
-  single-valued slots; and every generator template that surrounds a child list with line breaks emits them
-  unconditionally, so a *nested* feature tree would leave a stray break after every leaf. The sample is
-  therefore a flat list of features, and the nesting waits for a template part that can ask whether a slot is
-  filled - a `ConditionalPart` asks about a property, not a slot.
+- **A many-valued reference cannot be drawn.** A real gap rather than a choice: `NotationEditor` has
+  `Reference(slot)` and no collection of references, so `requires` became two single-valued slots.
+- **A template can lay out a tree, and this sample still does not nest.** `WhenFilledPart` - the eleventh part,
+  delivered after this sample was written - asks whether a slot holds anything, so a node expands its children
+  only once they exist and a leaf leaves no stray break behind it
+  (`GeneratorTests.AFilledCheckLaysOutATree`). What nesting still needs here is a *model* decision, a child slot
+  on `Fm.Feature`, which changes the checks, the corpus and the interpreter; the sample stays flat on purpose,
+  and the reason is the language rather than the template.
 
 The check it ships is a duplicate name, **two features under one name**, which breaks the constraints, the
 reader and the generated configuration at once. It is a `CheckSet` entry with a repair
@@ -167,11 +169,12 @@ column of the other, the grid of a table, and a DDL fragment whose keys name the
 covers the byte-identical round trip of both files, the notation, the generated text, the cross-document
 resolution and the degradation when one document is loaded alone.
 
+One gap this sample recorded is closed: the DDL used to end a keyless table with the indentation of a key block
+that was not there, because no part could ask a slot whether it held anything. `WhenFilledPart` is that
+question, and `TheGeneratedDdlNamesTheColumnsItsKeysPointAt` now pins a table without keys ending at `);`.
+
 Still open, and recorded rather than worked around:
 
-- **A template cannot lay out a tree and cannot ask whether a slot is filled** - so the DDL's line break in
-  front of a table's keys is emitted even for a table with none, and the golden test pins the resulting
-  trailing indentation on purpose.
 - **A key is a fragment, not an `alter table`**: a template cannot read the name of the node that *holds* the
   node it expands, so the table's own name is not available inside the key's template.
 - **A many-valued reference cannot be drawn**, which is still the shape a list of links would take.
