@@ -88,12 +88,19 @@ policy (what a definition is, and where it belongs).
 
 | Slice | Delivers | Effort |
 | --- | --- | --- |
-| R1 | the cross-parent move as a model operation, an `EditContext` method and the `MoveNodeAction` directions it needs - shared with node-moves slice B | 2-3 days |
+| R1 | **delivered.** The cross-parent move was already possible - `Node.InsertChild` detaches the node from wherever it stood inside one mutation, and `EditContext.MoveChild` takes any parent - but nothing proved it and no action stated a *place*. `MoveNodeToAction` is that action: a parent, a slot and an index instead of a direction, answered as a reason when the computed place has gone stale, because a program must not throw halfway through. `MoveNodeToActionTests` pins what the primitive promises (identity kept, the old slot emptied, one undo step, a reference into the moved subtree still resolving, and a program of a move plus an edit undone once) and what it refuses (a node that is gone, a slot the parent does not declare, a concept the slot does not hold, a one-child slot already filled, a node into itself) | - |
 | R2 | `Intent.Inline`: the concept, the notation, the lowering into a program of copy-then-replace, and the deletion of the declaration when it has no other referrer | 1 week |
 | R3 | `Intent.Extract`: five more declarations (the enclosing concept, its slot, the new concept, the reference slot, the name), the lowering, and the empty-declaration cleanup | 1-2 weeks |
 | R4 | the shell's **Edit ▸ Refactor** submenu, once two refactorings exist to put in it | 2-3 days |
 
-R1 is the only slice with no semantics to decide, which is why it is first and why it is shared with
+**What measuring R1 found.** A session draws one root and `EditContext.NodeOf` walks from it, so a node of another
+root of the same model is not in the session's tree at all: a move is a *within-one-tree* operation, which is the
+boundary this plan already draws for extract ("into the nearest enclosing declaration", never a new document). It also
+found that the only reference slots in the test language live on the rule rather than on the node a refactoring would
+move, so "leave a reference where it stood" cannot be exercised until the sample language for extract exists - the
+order the plan already has, now with a reason.
+
+R1 was the only slice with no semantics to decide, which is why it came first and why it is shared with
 the move plan.
 
 ## What this plan deliberately leaves out
