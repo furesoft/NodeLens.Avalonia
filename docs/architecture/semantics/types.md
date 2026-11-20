@@ -172,7 +172,7 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1, T2, T3 and T4, which are delivered. This section is the design of record for the next
+**Planned, not built** - except T1, T2, T3 and T4, which are delivered, and T5's third question, which is delivered while its declared form stays open. This section is the design of record for the next
 stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
 MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
@@ -185,7 +185,8 @@ typeof(b)`), which needs variables over types and a solver. `TypeVariable`, `Typ
 exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses to state relations instead of
 answering a type. `TypeRegistry.EquationsFor` is the caller that door was missing (slice T4): it hands a node's
 declared relations to a `TypeSolver`, so a rule table that needs solving is solved without teaching every consumer
-to ask a second question - `TypeFor` stays what everything asks. The remaining slices are T5-T8.
+to ask a second question - `TypeFor` stays what everything asks. The remaining slices are T6-T8, with T5's third
+question delivered and its declared form still open.
 
 The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
 `do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
@@ -206,7 +207,7 @@ typed in.
 | `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | a finding has to be a `Check` or a `Constraint`, both of which are separate aspects | `TypeRule.Complain` as a body, lowered into the same `Diagnostic` a check produces |
 | replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
 | subtyping rule | the direct supertypes of a type | nothing - `NamedType` has an expansion, not supertypes | `TypeRule.Supertypes` declared per type concept, feeding the subtype relation |
-| comparison rule | two types are interchangeable (weak/strong) | nothing | `TypeRule.Comparable` - a third question beside accept and subtype |
+| comparison rule | two types are interchangeable (weak/strong) | **`IType.IsComparableTo`** - the third question, asked both ways through the relation, so "interchangeable" is neither conformance nor a one-way subtype edge; `TypeSolver` asks it instead of comparing two subtype checks by hand | `TypeRule.Comparable` as a declared pair, when a language needs to state a comparison its edges do not express |
 | substitute type rule | swap the node representing a type (configuration-dependent `int`/`long`) | nothing | `TypeRule.Substitute`; last, because it needs a per-model configuration input the framework does not have |
 | checking rule + quick fix | report a problem, offer a repair | `ICheck` (with a repair) and `IConstraint` (without) | **done** - the cookbook's `checking rule` is this repository's check catalogue, not part of the type system |
 
@@ -276,7 +277,13 @@ Each slice is independent and each is only worth starting when a language needs 
   type's `Name` prints (`int|string`, `int&Amount`), the invariant the rest of the family keeps. Deferred: the
   subtyping declaration, which needs a project-level property the language layer does not have.
 - **T5 - comparison rules.** `TypeRule.Comparable`, and `IType.IsComparableTo` beside `Accepts` - a third question,
-  because "interchangeable" is what MPS' weak comparison means and neither accept nor subtype says it.
+  because "interchangeable" is what MPS' weak comparison means and neither accept nor subtype says it. **Delivered
+  for the question**: `IType.IsComparableTo` asks the relation both ways, so "interchangeable" is a conjunction of
+  two subtype edges rather than a one-way edge, and each type whose acceptance is structural overrides it so its
+  comparison is structural too (a list compares its elements, a record its fields, a name its expansion, a join
+  either side, a meet both). `TypeSolver` now asks it instead of comparing two subtype checks by hand - the
+  consumer the machinery needed. Deferred: the declared `TypeRule.Comparable`, because a comparison a language
+  states as data needs a relation built at load time and nothing in the tree consumes one yet.
 - **T6 - the settle pass.** An explicit order so a rule may read a child's settled type (`when concrete`), with a
   cycle reported as a finding instead of a stack overflow. Deliberately after T2: an equation solver makes most
   `when concrete` blocks unnecessary, and the cookbook uses them to work around statement ordering.

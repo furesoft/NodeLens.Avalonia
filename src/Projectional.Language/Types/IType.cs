@@ -47,4 +47,26 @@ public interface IType
     /// </para>
     /// </remarks>
     bool Accepts(IType actual) => SubtypeRelation.Primitives.IsSubtype(actual, this);
+
+    /// <summary>Whether each of this type and <paramref name="other"/> may stand where the other is expected.</summary>
+    /// <param name="other">The type to compare this one with.</param>
+    /// <remarks>
+    /// <para>
+    /// The third question, beside <see cref="Accepts"/>: "may this value stand there" is conformance, and "may
+    /// these two be used one for the other" is comparison, and neither answers the other. A type that accepts a
+    /// value and a type that value accepts are one type; a type that accepts a value the value does not accept is
+    /// two types the language relates in one direction only.
+    /// </para>
+    /// <para>
+    /// The default asks <see cref="SubtypeRelation.Primitives"/> both ways, which is the strict reading: a type is
+    /// comparable with itself and with what the relation says both ways, and nothing else. A type whose
+    /// <see cref="Accepts"/> is structural - a list, a record, a declared name - overrides this the same way, so
+    /// that its comparability is as structural as its acceptance.
+    /// </para>
+    /// <para>
+    /// Being a default member, it is reached through <see cref="IType"/> and not through a variable typed as the
+    /// implementing class - the same rule <see cref="Accepts"/> has.
+    /// </para>
+    /// </remarks>
+    bool IsComparableTo(IType other) => SubtypeRelation.Primitives.IsComparableTo(this, other);
 }

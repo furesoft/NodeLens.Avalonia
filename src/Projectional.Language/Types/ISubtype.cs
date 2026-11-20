@@ -24,4 +24,23 @@ public interface ISubtype
     /// <param name="expected">The type the language requires.</param>
     /// <exception cref="ArgumentNullException">Either argument is <see langword="null"/>.</exception>
     bool IsSubtype(IType actual, IType expected);
+
+    /// <summary>Whether each of the two types may stand where the other is expected.</summary>
+    /// <param name="left">One type.</param>
+    /// <param name="right">The other type.</param>
+    /// <remarks>
+    /// <para>
+    /// The third question a type asks, beside "may this value stand there" (<see cref="IType.Accepts"/>) and "is
+    /// this below that" (<see cref="IsSubtype"/>): two types are comparable when the relation holds in both
+    /// directions, which is what "interchangeable" means and neither of the other two answers. One direction is a
+    /// subtype edge; both is one type with two names.
+    /// </para>
+    /// <para>
+    /// It is derived rather than declared, so a relation that adds a way of answering <see cref="IsSubtype"/> gets
+    /// the comparison for free and the two cannot disagree. It is symmetric by construction, because the relation
+    /// is asked both ways rather than once - a caller that asks it the other way round gets the same answer, which
+    /// is the property a comparison needs and a subtype check deliberately does not have.
+    /// </para>
+    /// </remarks>
+    bool IsComparableTo(IType left, IType right) => IsSubtype(left, right) && IsSubtype(right, left);
 }

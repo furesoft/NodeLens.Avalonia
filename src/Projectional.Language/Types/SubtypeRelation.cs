@@ -111,6 +111,25 @@ public sealed class SubtypeRelation : ISubtype
         return _edges.Any(edge => Same(edge.Subtype, actual) && Reaches(edge.Supertype, expected, []));
     }
 
+    /// <summary>Whether each of the two types may stand where the other is expected.</summary>
+    /// <param name="left">One type.</param>
+    /// <param name="right">The other type.</param>
+    /// <remarks>
+    /// The third question, answered here as well as by the default on <see cref="ISubtype"/> so that a caller
+    /// holding the concrete relation - as <see cref="TypeSolver"/> and <see cref="IType.Accepts"/> do - can ask it
+    /// without a cast. It is computed directly rather than delegating to the interface member, which would find this
+    /// method as its implementation and call itself. One direction is a subtype edge; both is one type with two
+    /// names, which is what "interchangeable" means and neither conformance nor subtyping answers.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Either argument is <see langword="null"/>.</exception>
+    public bool IsComparableTo(IType left, IType right)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return IsSubtype(left, right) && IsSubtype(right, left);
+    }
+
     /// <summary>Every type <paramref name="type"/> may stand as, beginning with itself.</summary>
     /// <param name="type">The type to walk up from.</param>
     /// <remarks>
