@@ -786,6 +786,83 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void ADeclaredComparisonIsCarriedByTheRegistryAndAnswersBothWays()
+    {
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Declare("Money", rules.Primitive("string"));
+            rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.FixedAs(rules.Ref("Amount")));
+            rules.Rule(ExpressionsConceptKeys.StringLiteral, rules.FixedAs(rules.Ref("Money")));
+            rules.Comparable(rules.Ref("Amount"), rules.Ref("Money"));
+        });
+
+        var amount = TypeOf(registry, ExpressionsConceptKeys.IntLiteral);
+        var money = TypeOf(registry, ExpressionsConceptKeys.StringLiteral);
+
+        Assert.Equal(1, registry.Comparisons.Count);
+        Assert.True(registry.Comparisons.IsComparableTo(amount, money));
+        Assert.True(registry.Comparisons.IsComparableTo(money, amount));
+    }
+
+    [Fact]
+    public void ADeclaredComparisonLeavesTheSubtypeRelationAlone()
+    {
+        // The reason a comparison is not just two edges: declaring two types interchangeable says nothing about
+        // which may stand where the other is required, so neither goes below the other.
+        var registry = Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Declare("Money", rules.Primitive("string"));
+            rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.FixedAs(rules.Ref("Amount")));
+            rules.Rule(ExpressionsConceptKeys.StringLiteral, rules.FixedAs(rules.Ref("Money")));
+            rules.Comparable(rules.Ref("Amount"), rules.Ref("Money"));
+        });
+
+        var amount = TypeOf(registry, ExpressionsConceptKeys.IntLiteral);
+        var money = TypeOf(registry, ExpressionsConceptKeys.StringLiteral);
+
+        Assert.True(registry.Comparisons.IsComparableTo(amount, money));
+        Assert.False(registry.Subtypes.IsSubtype(amount, money));
+        Assert.False(registry.Subtypes.IsSubtype(money, amount));
+    }
+
+    [Fact]
+    public void AComparisonNamingAnUndeclaredTypeIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Primitive("int"));
+            rules.Comparable(rules.Ref("Amount"), rules.Ref("Money"));
+        }));
+
+        Assert.Contains("'Money'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConditionalComplaintHonoursTheComparisonsTheLanguageDeclares()
+    {
+        // The consumer whose absence deferred the comparison rule in the first place: a condition asks whether two
+        // operands are interchangeable, and a language may answer with a pair rather than with two edges.
+        var builder = new RuleBuilder();
+
+        builder.Rule(ExpressionsConceptKeys.Binary, builder.Complain(
+            "The operands are not comparable.",
+            when: ("left", "right")));
+        builder.Declare("Amount", builder.Primitive("int"));
+        builder.Declare("Money", builder.Primitive("string"));
+        builder.Rule(ExpressionsConceptKeys.IntLiteral, builder.FixedAs(builder.Ref("Amount")));
+        builder.Rule(ExpressionsConceptKeys.StringLiteral, builder.FixedAs(builder.Ref("Money")));
+        builder.Comparable(builder.Ref("Amount"), builder.Ref("Money"));
+
+        var findings = Findings(
+            builder,
+            BinaryOf(ExpressionsConceptKeys.IntLiteral, ExpressionsConceptKeys.StringLiteral));
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
     public void ADeclaredReplacementIsWhatASolverBuiltFromTheRegistryUses()
     {
         // The chain the three halves exist for: a document states a rewrite, the registry carries it beside the
@@ -800,7 +877,7 @@ public sealed class TypeRuleLoweringTests
             new OptionalType(PrimitiveType.Of(PropertyType.Integer)),
             PrimitiveType.Of(PropertyType.Integer));
 
-        Assert.True(new TypeSolver(registry.Subtypes, registry.Replacements).Solve([widening]).Succeeded);
+        Assert.True(new TypeSolver(registry.Subtypes, replacements: registry.Replacements).Solve([widening]).Succeeded);
         Assert.False(new TypeSolver(registry.Subtypes).Solve([widening]).Succeeded);
     }
 
@@ -1182,6 +1259,17 @@ public sealed class TypeRuleLoweringTests
             variable.Set(TypeRuleLanguage.NameSlot, name);
 
             return variable;
+        }
+
+        /// <summary>A declared interchange between two types, as a root of the same model the rules live in.</summary>
+        public Node Comparable(Node left, Node right)
+        {
+            var pair = _model.NewNode(TypeRuleConceptKeys.Comparable);
+
+            pair.AddChild(TypeRuleLanguage.LeftSlot, left);
+            pair.AddChild(TypeRuleLanguage.RightSlot, right);
+
+            return pair;
         }
     }
 }

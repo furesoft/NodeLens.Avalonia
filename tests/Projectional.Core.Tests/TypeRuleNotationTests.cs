@@ -345,6 +345,26 @@ public sealed class TypeRuleNotationTests
     }
 
     [Fact]
+    public void AComparableDocumentDrawsTheInterchangeItDeclares()
+    {
+        // An interchange has no symbol to draw, so it reads as the sentence it means - the same sentence a complaint
+        // about two incomparable operands is about.
+        var model = TypeRuleLanguage.NewProject().NewModel("comparable");
+        var pair = model.NewNode(TypeRuleConceptKeys.Comparable);
+
+        model.NewChild(pair, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.Ref)
+            .Set(TypeRuleLanguage.NameSlot, "Amount");
+        model.NewChild(pair, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.Ref)
+            .Set(TypeRuleLanguage.NameSlot, "Money");
+
+        Assert.Equal(
+            """
+            comparable Amount with Money
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
+    }
+
+    [Fact]
     public void ASupertypesDocumentDrawsTheEdgeItDeclares()
     {
         var model = TypeRuleLanguage.NewProject().NewModel("supertypes");

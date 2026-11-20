@@ -214,7 +214,7 @@ public sealed class SubtypeRelation : ISubtype
     /// type is compared by identity: a name is a classifier, and whether two declarations with one name are one type
     /// is the language's question, not the relation's.
     /// </remarks>
-    private static bool Same(IType left, IType right) =>
+    internal static bool Same(IType left, IType right) =>
         ReferenceEquals(left, right)
         || (left is PrimitiveType a
             && right is PrimitiveType b

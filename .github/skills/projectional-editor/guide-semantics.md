@@ -158,6 +158,15 @@
   these" is not one shape a claim can be about. Refused at load: a join or meet pattern, a relation naming a variable
   no pattern binds, and (through the enumeration) a claim that is not `<:` or `==` - `:>` is `<:` with the sides
   swapped, so it is not a second claim.
+- **A comparison is a relation apart from the edges, on purpose.** `TypeRule.Comparable` states that two types may
+  each be used for the other, and lowers into a `ComparisonRelation` the registry carries beside `SubtypeRelation`.
+  It is not written as two `<:` edges: those say the same about interchange while also putting each type in the
+  other's supertype set, so `TypeLattice` would reduce a join of the two to one of them and a walk up from either
+  would cycle. So a language can state an interchange without ordering the two types. The relation is symmetric
+  (one declaration, one fact) and transitive (a chain relates its ends), because that is exactly the answer the
+  both-ways subtype reading gives - two spellings of one fact must not answer differently. It refuses `unknown`
+  where a pair is declared, for the reason the edges do. Two consumers ask it: the solver's fact check, and the
+  `TypeRule.NotComparable` condition of a complaint.
 - **Join and meet are questions about the relation, not new kinds of type**: `JoinType`/`MeetType` are what a slot
   or a rule *writes* ("either", "both") - `TypeRule.Join`/`TypeRule.Meet` in a model - and `TypeLattice` reduces
   them from the declared edges - one side below the

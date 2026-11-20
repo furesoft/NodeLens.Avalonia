@@ -298,6 +298,16 @@ public static class TypeRuleLanguage
                 new ChildSlot(InsteadSlot, TypeRuleConceptKeys.Equation, Cardinality.Many),
             ],
             description: "A declared rewrite: a claim of a relation between two type patterns is replaced by the relations this rule states instead, or discharged when it states none."),
+
+        // The comparison a language states as data. It is a document like an edge, and the two are kept apart
+        // because two edges, one each way, would also collapse the two types in the lattice.
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Comparable,
+            [
+                new ChildSlot(LeftSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(RightSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            description: "Two types a language declares interchangeable: either may stand where the other is required, without either being a subtype of the other."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>
