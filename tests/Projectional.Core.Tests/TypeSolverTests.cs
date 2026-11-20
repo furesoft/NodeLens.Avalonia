@@ -166,4 +166,60 @@ public sealed class TypeSolverTests
         Assert.True(solution.Succeeded);
         Assert.Equal(0, solution.Solved);
     }
+
+    [Fact]
+    public void ADeclaredReplacementRewritesTheClaimItCovers()
+    {
+        // Covariance is not the only thing a language may say about a compound type: here an optional is declared
+        // to be a subtype of its own inner, which is the null-type shape MPS states with a replacement rule.
+        TypeVariable element = new("element");
+        var widening = new TypeReplacement(
+            TypeEquationKind.Subtype,
+            new OptionalType(element),
+            element,
+            []);
+
+        Assert.False(new TypeSolver().Solve([TypeEquation.Subtype(new OptionalType(Int), Int)]).Succeeded);
+
+        var solution = new TypeSolver(replacements: [widening])
+            .Solve([TypeEquation.Subtype(new OptionalType(Int), Int)]);
+
+        Assert.True(solution.Succeeded);
+    }
+
+    [Fact]
+    public void ADeclaredReplacementIsAddedToTheFrameworksOwn()
+    {
+        // The two do not compete: a language adds rules, and the covariance a solver always had keeps working, so
+        // declaring one thing about optionals does not cost a language the list it never mentioned.
+        TypeVariable element = new("element");
+        var widening = new TypeReplacement(
+            TypeEquationKind.Subtype,
+            new OptionalType(element),
+            element,
+            []);
+        var solver = new TypeSolver(replacements: [widening]);
+
+        // The framework's own rule still decomposes a list claim.
+        var lists = solver.Solve([TypeEquation.Equal(new ListType(element), new ListType(Int))]);
+
+        Assert.True(lists.Succeeded);
+        Assert.Same(Int, lists.Of(element));
+
+        // The declared rule holds beside it, and is what makes the claim hold: without it the same claim is a
+        // contradiction, which is the proof that it is the declaration doing the work.
+        Assert.True(solver.Solve([TypeEquation.Subtype(new OptionalType(Int), Int)]).Succeeded);
+        Assert.False(new TypeSolver().Solve([TypeEquation.Subtype(new OptionalType(Int), Int)]).Succeeded);
+    }
+
+    [Fact]
+    public void AReplacementThatDischargesAClaimSolvesIt()
+    {
+        // An empty replacement is MPS' "remove the inequation": nothing is left to prove, so the solve has nothing
+        // to report even though no edge connects the two types.
+        var rule = new TypeReplacement(TypeEquationKind.Subtype, Text, Int, []);
+
+        Assert.False(new TypeSolver().Solve([TypeEquation.Subtype(Text, Int)]).Succeeded);
+        Assert.True(new TypeSolver(replacements: [rule]).Solve([TypeEquation.Subtype(Text, Int)]).Succeeded);
+    }
 }

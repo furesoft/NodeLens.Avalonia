@@ -21,14 +21,18 @@ public sealed class TypeRegistry
 {
     private readonly Dictionary<string, ITypeRule> _rules;
 
-    private TypeRegistry(Dictionary<string, ITypeRule> rules, SubtypeRelation subtypes)
+    private TypeRegistry(
+        Dictionary<string, ITypeRule> rules,
+        SubtypeRelation subtypes,
+        IReadOnlyList<TypeReplacement> replacements)
     {
         _rules = rules;
         Subtypes = subtypes;
+        Replacements = replacements;
     }
 
     /// <summary>A registry that declares nothing, so every node is <see cref="UnknownType"/>.</summary>
-    public static TypeRegistry Empty { get; } = new([], SubtypeRelation.Primitives);
+    public static TypeRegistry Empty { get; } = new([], SubtypeRelation.Primitives, []);
 
     /// <summary>
     /// The subtype edges the language declared, which a consumer solving equations hands to a
@@ -42,13 +46,36 @@ public sealed class TypeRegistry
     /// </remarks>
     public SubtypeRelation Subtypes { get; }
 
+    /// <summary>
+    /// The replacements the language declared, which a consumer hands to a <see cref="TypeSolver"/> beside
+    /// <see cref="Subtypes"/>.
+    /// </summary>
+    /// <remarks>
+    /// A replacement is the third half of a language's types aspect: the edges say which types may stand where
+    /// another is required, and the replacements say what a claim about two compound types really means. They sit
+    /// on the registry for the same reason the edges do - so that a consumer solving a rule table is given the
+    /// language's own rules rather than only the framework's.
+    /// </remarks>
+    public IReadOnlyList<TypeReplacement> Replacements { get; }
+
     /// <summary>The same registry, carrying <paramref name="subtypes"/> as its declared edges.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="subtypes"/> is <see langword="null"/>.</exception>
     public TypeRegistry WithSubtypes(SubtypeRelation subtypes)
     {
         ArgumentNullException.ThrowIfNull(subtypes);
 
-        return ReferenceEquals(subtypes, Subtypes) ? this : new TypeRegistry(_rules, subtypes);
+        return ReferenceEquals(subtypes, Subtypes) ? this : new TypeRegistry(_rules, subtypes, Replacements);
+    }
+
+    /// <summary>The same registry, carrying <paramref name="replacements"/> as its declared replacements.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="replacements"/> is <see langword="null"/>.</exception>
+    public TypeRegistry WithReplacements(IReadOnlyList<TypeReplacement> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(replacements);
+
+        return ReferenceEquals(replacements, Replacements)
+            ? this
+            : new TypeRegistry(_rules, Subtypes, replacements);
     }
 
     /// <summary>How many concepts declare a rule.</summary>
@@ -67,7 +94,7 @@ public sealed class TypeRegistry
             [conceptKey] = rule,
         };
 
-        return new TypeRegistry(rules, Subtypes);
+        return new TypeRegistry(rules, Subtypes, Replacements);
     }
 
     /// <summary>The rule that answers for <paramref name="concept"/>, or <see langword="null"/>.</summary>
