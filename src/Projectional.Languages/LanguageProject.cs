@@ -108,6 +108,91 @@ public sealed class LanguageProject
     /// <summary>Whether the project declared a generator at all.</summary>
     public bool HasGenerators => Generators.Count > 0;
 
+    /// <summary>The importers this project's generators can be read back with, one per generator that inverts.</summary>
+    /// <remarks>
+    /// A generator is already a promise about the printed form, so reading it back needs no second declaration: each
+    /// importer is the inverse of one generator's templates. A generator that cannot be inverted is left out rather
+    /// than failing the language - a language whose generator writes a reference or a parent's property is perfectly
+    /// usable, it simply cannot be read back - and <see cref="TryCreateImporter(string, out ITextImporter?, out string?)"/>
+    /// is where a host asks why.
+    /// </remarks>
+    public IReadOnlyList<ITextImporter> Importers
+    {
+        get
+        {
+            List<ITextImporter> importers = [];
+
+            foreach (var generator in Generators)
+            {
+                if (TryCreate(generator, out var importer, out _))
+                {
+                    importers.Add(importer);
+                }
+            }
+
+            return importers;
+        }
+    }
+
+    /// <summary>Builds the importer that reads a generator's output back.</summary>
+    /// <param name="name">The generator's name, which becomes the importer's format.</param>
+    /// <param name="importer">The importer, or <see langword="null"/> when it cannot be built.</param>
+    /// <param name="error">Why not, when it could not.</param>
+    /// <returns>Whether the generator can be read back.</returns>
+    public bool TryCreateImporter(
+        string name,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out ITextImporter? importer,
+        out string? error)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        if (Generators.FirstOrDefault(generator => string.Equals(generator.Name, name, StringComparison.Ordinal)) is not { } found)
+        {
+            importer = null;
+            error = $"The language declares no generator '{name}'.";
+
+            return false;
+        }
+
+        return TryCreate(found, out importer, out error);
+    }
+
+    private bool TryCreate(
+        TextGenerator generator,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out ITextImporter? importer,
+        out string? error)
+    {
+        try
+        {
+            importer = new TemplateImporter(generator.Name, generator, Concepts, RootConcepts(generator));
+
+            error = null;
+
+            return true;
+        }
+        catch (ConceptDefinitionException exception)
+        {
+            importer = null;
+            error = exception.Message;
+
+            return false;
+        }
+    }
+
+    /// <summary>The concepts whose template may stand at the top of a document.</summary>
+    /// <remarks>
+    /// Concrete, with a template, not restricted to a place in a node, and <b>not reachable through a child slot</b> -
+    /// a concept that some other concept declares as a child is a part of a document, not a document. Without that last
+    /// condition a stage would be as good a root as a pipeline, and every stray line of text would import as one.
+    /// </remarks>
+    private IReadOnlyList<string> RootConcepts(TextGenerator generator) =>
+        [.. Concepts.Concepts
+            .Where(concept => !concept.IsAbstract)
+            .Where(concept => concept.Applicability.IsAnywhere)
+            .Where(concept => generator.Templates.TemplateFor(concept) is not null)
+            .Where(concept => !Concepts.Concepts.Any(owner => owner.Slots.OfType<ChildSlot>().Any(slot => concept.IsKindOf(slot.ChildConceptKey))))
+            .Select(concept => concept.Key)];
+
     /// <summary>The rules the language states about itself; empty when it has no <c>constraints</c> folder.</summary>
     /// <remarks>
     /// <para>
