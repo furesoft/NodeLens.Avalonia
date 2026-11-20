@@ -5,11 +5,10 @@ namespace Projectional.Samples.SqlSchema;
 /// <summary>The schema as Data Definition Language: one <c>create table</c> per table, then its keys.</summary>
 /// <remarks>
 /// <para>
-/// A fragment rather than a runnable script, which is the same claim the pilot's C# generator makes: a key is
-/// emitted as <c>foreign key (&lt;column&gt;) references &lt;column&gt;</c> without the <c>alter table</c> that would
-/// hang it on a table, because a template cannot read the name of the node that *holds* the node it is expanding.
-/// That is a gap in the part set, recorded in <c>docs/architecture/worked-examples.md</c>, not an oversight of this
-/// language.
+/// A fragment rather than a runnable script, which is the same claim the pilot's C# generator makes: the keys are
+/// emitted as <c>alter table &lt;table&gt; add foreign key (&lt;column&gt;) references &lt;column&gt;</c>, hanging on
+/// the table their template reads with <see cref="ParentPart"/> - the part that arrived when this language could
+/// create the tables but not name the one a key belonged to.
 /// </para>
 /// <para>
 /// The output is dialect-free on purpose: `int`, `text` and `bool` are this language's own type names, and a real
@@ -59,7 +58,9 @@ public static class SqlSchemaTextGenerators
             new PropertyPart("type")))
 
         .Add(SqlConceptKeys.ForeignKey, TextTemplate.Of(
-            new TextPart("foreign key ("),
+            new TextPart("alter table "),
+            new ParentPart("name"),
+            new TextPart(" add foreign key ("),
             new ReferencePart(SqlSchemaLanguage.LocalSlot),
             new TextPart(") references "),
             new ReferencePart(SqlSchemaLanguage.TargetSlot))));

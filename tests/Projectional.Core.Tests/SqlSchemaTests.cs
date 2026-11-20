@@ -80,14 +80,15 @@ public sealed class SqlSchemaTests
         Assert.True(generated.Succeeded, generated.Failure?.Message);
 
         // A table with no keys ends at `);`: the line break in front of the keys is written only when there is one,
-        // which is what `WhenFilledPart` is for and why the choice was never the language's to make.
+        // which is what `WhenFilledPart` is for and why the choice was never the language's to make. A key hangs on
+        // the table its template could not name before `ParentPart`.
         const string Expected =
             "create table person (\n" +
             "  id int,\n" +
             "  name text,\n" +
             "  city_id int\n" +
             ");\n" +
-            "  foreign key (city_id) references id\n" +
+            "  alter table person add foreign key (city_id) references id\n" +
             "create table city (\n" +
             "  id int,\n" +
             "  name text\n" +
