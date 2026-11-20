@@ -60,6 +60,21 @@ public static class ImportLanguage
     /// <summary>The token classes an importer declares.</summary>
     public const string TokensSlot = "tokens";
 
+    /// <summary>The mark a fixed run opens with.</summary>
+    public const string OpenSlot = "open";
+
+    /// <summary>The mark a fixed run closes with.</summary>
+    public const string CloseSlot = "close";
+
+    /// <summary>The name a bind remembers a run under, or the name a matches requires again.</summary>
+    public const string AsSlot = "as";
+
+    /// <summary>The identifier a fail reports under.</summary>
+    public const string CodeSlot = "code";
+
+    /// <summary>The sentence a fail gives instead of "expected".</summary>
+    public const string MessageSlot = "message";
+
     /// <summary>The parts of a rule, in the order the text has them.</summary>
     public const string PartsSlot = "parts";
 
@@ -238,5 +253,73 @@ public static class ImportLanguage
             [ImportConceptKeys.Token],
             nameSlot: TokenNameSlot,
             description: "Text that produces no node: whitespace, or a comment the reader steps over.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Fixed,
+            [
+                new PropertySlot(OpenSlot, PropertyType.String, description: "The mark the run opens with."),
+                new PropertySlot(CloseSlot, PropertyType.String, description: "The mark the run closes with."),
+            ],
+            [ImportConceptKeys.Token],
+            nameSlot: TokenNameSlot,
+            description: "A run between two marks in which nothing is escaped, because a section that must not resolve escapes is a class rather than a flag.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Raw,
+            [
+                new PropertySlot(
+                    SlotSlot,
+                    PropertyType.String,
+                    description: "The property the run is kept in, exactly as written."),
+                new PropertySlot(
+                    UntilSlot,
+                    PropertyType.String,
+                    description: "The text that ends the run."),
+            ],
+            [ImportConceptKeys.Part],
+            nameSlot: SlotSlot,
+            description: "Tier 2: a run the model does not map, kept verbatim so it generates back unchanged.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Bind,
+            [
+                new PropertySlot(
+                    AsSlot,
+                    PropertyType.String,
+                    description: "The name the run is remembered under."),
+                new PropertySlot(
+                    TokenSlot,
+                    PropertyType.String,
+                    description: "The token class to read, or empty to run to the next literal."),
+            ],
+            [ImportConceptKeys.Part],
+            nameSlot: AsSlot,
+            description: "A run remembered under a name and filling no slot, so a later part can require it again.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Matches,
+            [
+                new PropertySlot(
+                    AsSlot,
+                    PropertyType.String,
+                    description: "The name a bind earlier in this rule remembered."),
+                new PropertySlot(
+                    TokenSlot,
+                    PropertyType.String,
+                    description: "The token class to read, or empty to run to the next literal."),
+            ],
+            [ImportConceptKeys.Part],
+            nameSlot: AsSlot,
+            description: "The next run has to be the one a bind remembered: the closing tag that must equal the opening one.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Fail,
+            [
+                new PropertySlot(CodeSlot, PropertyType.String, description: "The identifier the refusal reports under."),
+                new PropertySlot(MessageSlot, PropertyType.String, description: "The sentence a reader gets instead of \"expected\"."),
+            ],
+            [ImportConceptKeys.Part],
+            nameSlot: CodeSlot,
+            description: "The message a rule gives when it is the one that should have matched: \"a trailing comma is not allowed\".");
     }
 }

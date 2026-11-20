@@ -144,10 +144,36 @@ public sealed class DeclaredImporter : ITextImporter
                     $"The rule of '{rule.ConceptKey}' has no parts, so it would read nothing and leave a node behind.");
             }
 
+            // A matches whose bind is not earlier in the same rule would be a name nothing remembers, which is
+            // knowable here and surprising only later.
+            var bound = new HashSet<string>(StringComparer.Ordinal);
+
             foreach (var part in rule.Parts)
             {
                 switch (part.Kind)
                 {
+                    case ImportPartKind.Bind when part.Token.Length > 0 && !_tokens.ContainsKey(part.Token):
+                        throw new ConceptDefinitionException(
+                            "The rule of '" + rule.ConceptKey + "' binds a '" + part.Token
+                            + "', and the importer declares no token class of that name.");
+
+                    case ImportPartKind.Bind:
+                        bound.Add(part.Name);
+                        break;
+
+                    case ImportPartKind.Matches when !bound.Contains(part.Name):
+                        throw new ConceptDefinitionException(
+                            "The rule of '" + rule.ConceptKey + "' requires '" + part.Name
+                            + "' again, and nothing in it bound that name earlier.");
+
+                    case ImportPartKind.Raw when part.Text.Length == 0:
+                        throw new ConceptDefinitionException(
+                            "The raw part of '" + rule.ConceptKey + "' names no terminator, so it would swallow the rest of the file.");
+
+                    case ImportPartKind.Fail when part.Text.Length == 0:
+                        throw new ConceptDefinitionException(
+                            "The fail part of '" + rule.ConceptKey + "' states no code, so a host could not group the refusal.");
+
                     case ImportPartKind.Capture when part.Token.Length > 0 && !_tokens.ContainsKey(part.Token):
                         throw new ConceptDefinitionException(
                             "The rule of '" + rule.ConceptKey + "' reads a '" + part.Token

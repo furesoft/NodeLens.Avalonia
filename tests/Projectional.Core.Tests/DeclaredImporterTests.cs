@@ -200,6 +200,125 @@ public sealed class DeclaredImporterTests
         ModelFile.Save(model, Path.Combine(imports, "ini.mps"));
     }
 
+    [Fact]
+    public void ABoundRunHasToBeTheSameRunAgain()
+    {
+        // XML's closing tag: nothing else in the vocabulary compares two runs, which is why bind and matches exist.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+
+        WriteParts(folder.Root, (model, rule) =>
+        {
+            var bind = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Bind);
+            bind.Set(ImportLanguage.AsSlot, "open");
+            bind.Set(ImportLanguage.TokenSlot, "Tag");
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, ">");
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Capture).Set(ImportLanguage.SlotSlot, "detail");
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "</");
+            var matches = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Matches);
+            matches.Set(ImportLanguage.AsSlot, "open");
+            matches.Set(ImportLanguage.TokenSlot, "Tag");
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, ">");
+        }, ("Tag", ImportConceptKeys.Word));
+
+        var importer = Import(folder.Root);
+        var good = importer.Import(NewModel(folder.Root), "a>x</a>");
+
+        Assert.True(good.Succeeded, Describe(good));
+        Assert.Equal("x", good.Roots[0].GetOrNull("detail"));
+
+        var bad = importer.Import(NewModel(folder.Root), "a>x</b>");
+
+        Assert.False(bad.Succeeded);
+        Assert.Contains("has to be 'a' again", Assert.Single(bad.Diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFixedRunResolvesNoEscapes()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+
+        WriteParts(folder.Root, (model, rule) =>
+        {
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "item ");
+            var capture = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Capture);
+            capture.Set(ImportLanguage.SlotSlot, "name");
+            capture.Set(ImportLanguage.TokenSlot, "Body");
+        }, ("Body", ImportConceptKeys.Fixed));
+
+        var importer = Import(folder.Root);
+        var result = importer.Import(NewModel(folder.Root), "item <![CDATA[a\\b]]>");
+
+        Assert.True(result.Succeeded, Describe(result));
+        Assert.Equal("a\\b", result.Roots[0].GetOrNull("name"));
+    }
+
+    [Fact]
+    public void AFailGivesTheRulesOwnMessage()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+
+        WriteParts(folder.Root, (model, rule) =>
+        {
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "item");
+            var fail = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Fail);
+            fail.Set(ImportLanguage.CodeSlot, "ini.trailing-comma");
+            fail.Set(ImportLanguage.MessageSlot, "a trailing comma is not allowed");
+        }, []);
+
+        var result = Import(folder.Root).Import(NewModel(folder.Root), "item,");
+
+        Assert.False(result.Succeeded);
+
+        var diagnostic = Assert.Single(result.Diagnostics);
+
+        Assert.Equal("ini.trailing-comma", diagnostic.Code);
+        Assert.Equal("a trailing comma is not allowed", diagnostic.Message);
+    }
+
+    /// <summary>An importer with one rule whose parts a test writes, plus the token classes it declares.</summary>
+    private static void WriteParts(
+        string directory,
+        Action<Model, Node> parts,
+        params (string Key, string Concept)[] tokens)
+    {
+        var model = ImportLanguage.NewModel();
+        var importer = model.Roots[0];
+
+        importer.Set(ImportLanguage.NameSlot, "ini");
+
+        foreach (var (key, concept) in tokens)
+        {
+            var token = model.NewChild(importer, ImportLanguage.TokensSlot, concept);
+
+            token.Set(ImportLanguage.TokenNameSlot, key);
+
+            if (concept == ImportConceptKeys.Fixed)
+            {
+                token.Set(ImportLanguage.OpenSlot, "<![CDATA[");
+                token.Set(ImportLanguage.CloseSlot, "]]>");
+            }
+        }
+
+        var rule = model.NewChild(importer, ImportLanguage.RulesSlot, ImportConceptKeys.Rule);
+
+        rule.Set(ImportLanguage.ConceptKeySlot, "Item");
+        parts(model, rule);
+
+        var imports = Path.Combine(directory, LanguageProject.ImportFolder);
+
+        Directory.CreateDirectory(imports);
+        ModelFile.Save(model, Path.Combine(imports, "ini.mps"));
+    }
+
+    private static Model NewModel(string directory) =>
+        LanguageProject.Open(directory, out _)!.NewProject().NewModel("imported");
+
     private static DeclaredImporter Import(string directory) =>
         Assert.IsType<DeclaredImporter>(Assert.Single(LanguageProject.Open(directory, out _)!.Importers));
 

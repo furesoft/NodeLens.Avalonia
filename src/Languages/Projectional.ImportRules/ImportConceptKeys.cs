@@ -38,4 +38,19 @@ public static class ImportConceptKeys
 
     /// <summary>Text that produces no node: whitespace, or a comment.</summary>
     public const string Skipped = "Import.Skipped";
+
+    /// <summary>A run between two marks in which nothing is escaped.</summary>
+    public const string Fixed = "Import.Fixed";
+
+    /// <summary>A run the model does not map, kept verbatim.</summary>
+    public const string Raw = "Import.Raw";
+
+    /// <summary>A run remembered under a name, filling no slot.</summary>
+    public const string Bind = "Import.Bind";
+
+    /// <summary>The next run required to be the one a bind remembered.</summary>
+    public const string Matches = "Import.Matches";
+
+    /// <summary>The message a rule gives instead of "expected".</summary>
+    public const string Fail = "Import.Fail";
 }
