@@ -11,7 +11,7 @@
 `Test.Rule`, `Test.Body`, `Test.Step`, `Test.Note`) and `TestNotations.cs` (their notation, in
 the same style a language author would write it) exist once. If a second test project
 ever needs that language, promote it to a `Projectional.TestLanguage` library - do not copy
-it. **Baseline is 2749 tests**; anything below that means tests were deleted.
+it. **Baseline is 2752 tests**; anything below that means tests were deleted.
 
 `tests/Projectional.Toolkit.Tests` is the second test project and is deliberately unlike the first: it
 references **only** `Projectional.Toolkit`, and declares its own two-concept language (`BoardLanguage`,
@@ -35,8 +35,9 @@ none. `Testing.Script` is the editor test: it holds an `EditorSession` and repla
 by its `Intention.Id`) - then compares the drawing; a place showing no text is reached with a key, not
 by name, because `Finder` only finds text a user could change. `LanguageTestsAsDataTests` is the bridge
 that runs the shipped samples' folders in CI. `LanguageProject.Open` does **not** read `tests/`, because
-a language does not depend on its own tests. The assertion set is closed; the plan for what is left
-(node-addressed assertions, the workbench command) is in
+a language does not depend on its own tests. The assertion set is closed; **Run ▸ Run tests** in the shell runs
+the open document's language folder and lists one row per test in the output panel, a row opening the test
+document it names. The plan for what is left (node-addressed assertions) is in
 [language-tests.md](../../../docs/architecture/language-tests.md).
 
 Two *real* languages sit next to the fixture and are the executable proof that the language
