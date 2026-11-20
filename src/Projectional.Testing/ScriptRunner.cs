@@ -97,21 +97,18 @@ public static class ScriptRunner
 
     /// <summary>Puts the caret in front of the first occurrence of <paramref name="text"/>.</summary>
     /// <remarks>
-    /// Ordinal matching, unlike a user's find: a test that says <c>release</c> and lands on <c>Release</c> would pass
-    /// for the wrong reason, and the whole point of spelling the text out is that the test is exact about where it
-    /// stands. The caret goes in front of the occurrence rather than after it, so a step that types prefixes a value
-    /// the way a reader expects.
+    /// The search is <see cref="TestNodes"/>', so a caret step and a node-addressed assertion cannot disagree about
+    /// which occurrence a text names. The caret goes in front of it rather than after, so a step that types prefixes
+    /// a value the way a reader expects.
     /// </remarks>
     private static string? PlaceCaret(EditorSession session, string text)
     {
-        var matches = Finder.Find(session, new FindQuery(text, MatchCase: true));
-
-        if (matches.Count == 0)
+        if (TestNodes.Match(session, text) is not { } match)
         {
             return $"nothing shows '{text}', so the caret cannot go there";
         }
 
-        session.Select(Selection.At(CaretPosition.At(matches[0].Address, matches[0].Offset)));
+        session.Select(Selection.At(CaretPosition.At(match.Address, match.Offset)));
 
         return null;
     }

@@ -73,6 +73,12 @@ public static class TestingLanguage
     /// <summary>The id of the offer an invoke step applies.</summary>
     public const string IntentionSlot = "intention";
 
+    /// <summary>The name of the type a type assertion expects.</summary>
+    public const string TypeSlot = "type";
+
+    /// <summary>The reference slot whose scope a scope assertion reports.</summary>
+    public const string ScopeSlot = "slot";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// The document is also the name slot, so a test reads as the document it is about in a tree, a reference and
@@ -252,6 +258,39 @@ public static class TestingLanguage
             [TestingConceptKeys.Step],
             nameSlot: IntentionSlot,
             description: "Applies the offer whose id the step names, at the caret."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.TypeOf,
+            [
+                new PropertySlot(
+                    AtSlot,
+                    PropertyType.String,
+                    description: "The text the document shows at the node whose type is asserted."),
+                new PropertySlot(
+                    TypeSlot,
+                    PropertyType.String,
+                    description: "The type the node is expected to have, written the way the framework writes it."),
+            ],
+            [TestingConceptKeys.Assertion],
+            nameSlot: AtSlot,
+            description: "The node the test names has the type the test spells out."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.ScopeOf,
+            [
+                new PropertySlot(
+                    AtSlot,
+                    PropertyType.String,
+                    description: "The text the document shows at the node whose reference slot is asked."),
+                new PropertySlot(
+                    ScopeSlot,
+                    PropertyType.String,
+                    description: "The reference slot to ask, such as onFailure."),
+                new ChildSlot(LinesSlot, TestingConceptKeys.Line, Cardinality.Many),
+            ],
+            [TestingConceptKeys.Assertion],
+            nameSlot: AtSlot,
+            description: "The reference slot the test names sees exactly the names the test lists, in order."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

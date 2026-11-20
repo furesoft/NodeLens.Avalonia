@@ -109,6 +109,8 @@ public static class TestRunner
             TestingConceptKeys.Generates => Generates(language, test, model),
             TestingConceptKeys.Evaluates => Evaluates(test, model, rules),
             TestingConceptKeys.Script => Script(language, test, model),
+            TestingConceptKeys.TypeOf => TypeOf(language, test, model),
+            TestingConceptKeys.ScopeOf => ScopeOf(language, test, model),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an assertion this framework runs."),
         };
@@ -268,6 +270,75 @@ public static class TestRunner
         SingleRoot(model) is { } root
             ? ScriptRunner.Run(language, test, root)
             : NotASingleRoot(test, model);
+
+    /// <summary>Whether the node the test names has the type the test spells out.</summary>
+    /// <remarks>
+    /// <para>
+    /// The type is computed, never stored, so this asserts what the language's type rules answer about that node -
+    /// which is the whole of the type aspect a language author can state. A language that declares no rules answers
+    /// <c>unknown</c> for every node, and a test that expects that is asserting the framework's fallback rather than
+    /// the language: it holds, and says so, instead of failing for a reason the author cannot act on.
+    /// </para>
+    /// <para>
+    /// The comparison is the type's <see cref="IType.Name"/> - the way the framework writes the type, which is also
+    /// what a diagnostic quotes, so a test and a finding spell a type the same way.
+    /// </para>
+    /// </remarks>
+    private static TestResult TypeOf(LanguageProject language, LanguageTest test, Model model)
+    {
+        if (SingleRoot(model) is not { } root)
+        {
+            return NotASingleRoot(test, model);
+        }
+
+        if (TestNodes.Resolve(language, root, test.At ?? string.Empty, out var refusal) is not { } node)
+        {
+            return Unnamed(test, refusal!);
+        }
+
+        var actual = language.Types.TypeOf(node).Name;
+
+        return test.Type == actual
+            ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
+            : TestResult.Failed(test.Test, test.Document, test.AssertionName, test.Type, actual);
+    }
+
+    /// <summary>Whether the reference slot the test names sees exactly the names the test lists.</summary>
+    /// <remarks>
+    /// <para>
+    /// The entries are in the scope's own order, which is the order a completion list offers them in - nearest
+    /// first - so pinning the order pins the ranking as well as the contents. That is deliberate: a language that
+    /// starts seeing one more name, or stops ranking one first, has changed what its users can reference.
+    /// </para>
+    /// <para>
+    /// The scope is the language's own registry, with the framework's default chain behind it, which is exactly what
+    /// a session installs - so a test reports the scope a user would meet, including for a language that declares no
+    /// scopes of its own.
+    /// </para>
+    /// </remarks>
+    private static TestResult ScopeOf(LanguageProject language, LanguageTest test, Model model)
+    {
+        if (SingleRoot(model) is not { } root)
+        {
+            return NotASingleRoot(test, model);
+        }
+
+        if (TestNodes.Resolve(language, root, test.At ?? string.Empty, out var refusal) is not { } node)
+        {
+            return Unnamed(test, refusal!);
+        }
+
+        var expected = string.Join('\n', test.Lines ?? []);
+        var actual = string.Join('\n', language.Scopes.ScopeOf(node, test.Scope!).Entries.Select(entry => entry.Name));
+
+        return expected == actual
+            ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
+            : TestResult.Failed(test.Test, test.Document, test.AssertionName, expected, actual);
+    }
+
+    /// <summary>The row for a test whose node the document does not show.</summary>
+    private static TestResult Unnamed(LanguageTest test, string refusal) =>
+        TestResult.Failed(test.Test, test.Document, test.AssertionName, test.At, refusal);
 
     /// <summary>The one root a generation, an evaluation or a script starts at, or <see langword="null"/>.</summary>
     /// <remarks>
