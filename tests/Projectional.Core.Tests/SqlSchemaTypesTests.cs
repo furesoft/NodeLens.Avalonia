@@ -56,25 +56,26 @@ public sealed class SqlSchemaTypesTests
     }
 
     [Fact]
-    public void IntAndDecimalAreInterchangeable()
+    public void AWholeNumberVariantMayStandWhereADecimalIsRequiredButNotTheReverse()
     {
-        // The documented boundary: the framework has four primitives and SQL has five column types, so `decimal`
-        // leans on `int`. This is what the key rule rests on, so it is pinned rather than left implicit.
+        // The one edge the schema declares, and the reason it declares one: the two column types expand to
+        // different primitives, so neither expansion can say what widening is. This is the direction a key check
+        // rests on, so it is pinned rather than left implicit.
         var whole = Column("int", out var model);
-        var fixedPoint = model.NewChild(model.Roots[0].GetChildren(SqlSchemaLanguage.TablesSlot)[0], SqlSchemaLanguage.ColumnsSlot, SqlConceptKeys.Column);
+        var fraction = model.NewChild(model.Roots[0].GetChildren(SqlSchemaLanguage.TablesSlot)[0], SqlSchemaLanguage.ColumnsSlot, SqlConceptKeys.Column);
 
-        fixedPoint.Set("name", "b");
-        fixedPoint.Set("type", "decimal");
+        fraction.Set("name", "b");
+        fraction.Set("type", "decimal");
 
         var wholeType = SqlSchemaLanguage.Types.TypeOf(whole);
-        var fixedPointType = SqlSchemaLanguage.Types.TypeOf(fixedPoint);
+        var fractionType = SqlSchemaLanguage.Types.TypeOf(fraction);
 
-        Assert.True(wholeType.IsComparableTo(fixedPointType));
-        Assert.True(fixedPointType.IsComparableTo(wholeType));
+        Assert.True(SqlSchemaLanguage.Types.Subtypes.IsSubtype(wholeType, fractionType));
+        Assert.False(SqlSchemaLanguage.Types.Subtypes.IsSubtype(fractionType, wholeType));
     }
 
     [Fact]
-    public void TwoDifferentColumnTypesAreNotInterchangeable()
+    public void TwoDifferentColumnTypesAreNotSubtypesEitherWay()
     {
         var number = Column("int", out var model);
         var text = model.NewChild(model.Roots[0].GetChildren(SqlSchemaLanguage.TablesSlot)[0], SqlSchemaLanguage.ColumnsSlot, SqlConceptKeys.Column);
@@ -82,7 +83,11 @@ public sealed class SqlSchemaTypesTests
         text.Set("name", "b");
         text.Set("type", "text");
 
-        Assert.False(SqlSchemaLanguage.Types.TypeOf(number).IsComparableTo(SqlSchemaLanguage.Types.TypeOf(text)));
+        var numberType = SqlSchemaLanguage.Types.TypeOf(number);
+        var textType = SqlSchemaLanguage.Types.TypeOf(text);
+
+        Assert.False(SqlSchemaLanguage.Types.Subtypes.IsSubtype(numberType, textType));
+        Assert.False(SqlSchemaLanguage.Types.Subtypes.IsSubtype(textType, numberType));
     }
 
     /// <summary>One column in one table, which is the smallest schema a type can be asked about.</summary>
