@@ -71,7 +71,7 @@ cd "dotnet projectional editor"
 dotnet run --project src/Projectional.Workbench
 ```
 
-The workbench opens with the sample rules language. Tabs hold documents and each one closes from the button in its header, the outline beside them lists the active document's nodes and is as wide as you drag it, and the status bar tracks the active one - the caret's line and column, the language, the theme and the font size. Output, Problems and Usages are tabs of one strip under the document: drag the splitter to size it, close a tab to give the page its room back, and **View ▸ Panels** brings it back. Closing a modified tab asks before it discards anything.
+The workbench opens with the sample rules language. Tabs hold documents and each one closes from the button in its header, the strip scrolls sideways when there are more than fit and a "+" at its right end opens an empty document, a file dragged onto the window opens as a document (or is offered to the importers), the outline beside the page lists the active document's nodes and is as wide as you drag it, and the status bar tracks the active one - the caret's line and column, the language, the theme and the font size, plus any problem count while the problems tab is closed. Output, Problems and Usages are tabs of one strip under the document: drag the splitter to size it, close a tab to give the page its room back, and **View ▸ Panels** brings it back. Closing a modified tab asks before it discards anything.
 
 | Menu | Entries |
 | --- | --- |
