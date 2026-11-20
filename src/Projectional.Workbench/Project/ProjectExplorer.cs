@@ -58,6 +58,35 @@ internal static class ProjectExplorer
     /// <param name="folder">The aspect folder.</param>
     internal static string FolderKey(string directory, string folder) => "folder:" + Path.Combine(directory, folder);
 
+    /// <summary>Every key a project contributes: its own row and one per folder it actually has.</summary>
+    /// <param name="language">The project.</param>
+    /// <remarks>
+    /// A caller that wants the whole tree shut asks this rather than guessing folder names: which folders exist is a
+    /// fact about the folder on disk, and the same walk that builds the rows answers it.
+    /// </remarks>
+    internal static IReadOnlyList<string> KeysOf(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        return [ProjectKey(language), .. FolderKeysOf(language)];
+    }
+
+    /// <summary>The key of each aspect folder a project actually has.</summary>
+    /// <param name="language">The project.</param>
+    /// <remarks>
+    /// Apart from <see cref="KeysOf"/> because the two questions differ: closing a project hides its folders, while
+    /// closing the folders leaves the projects listed as what they consist of.
+    /// </remarks>
+    internal static IReadOnlyList<string> FolderKeysOf(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        return
+        [
+            .. FoldersOf(language.Directory).Select(folder => FolderKey(language.Directory, folder.Folder)),
+        ];
+    }
+
     /// <summary>The rows, in the order the explorer draws them.</summary>
     /// <param name="documents">The open documents, in tab order.</param>
     /// <param name="languages">The language projects this window has opened, in the order they joined.</param>
@@ -107,7 +136,7 @@ internal static class ProjectExplorer
             var projectKey = ProjectKey(language);
             var projectOpen = !collapsed.Contains(projectKey);
 
-            rows.Add(new ProjectEntry(language.Name, 1, ProjectNode.Project, projectKey, projectOpen));
+            rows.Add(new ProjectEntry(language.Name, 1, ProjectNode.Project, projectKey, projectOpen, module: language));
 
             if (!projectOpen)
             {
@@ -119,7 +148,7 @@ internal static class ProjectExplorer
                 var folderKey = FolderKey(language.Directory, folder);
                 var folderOpen = !collapsed.Contains(folderKey);
 
-                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen, folder: folder));
+                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen, folder: folder, module: language));
 
                 if (!folderOpen)
                 {
@@ -133,7 +162,9 @@ internal static class ProjectExplorer
                         3,
                         ProjectNode.File,
                         path: file,
-                        document: OpenDocumentFor(documents, file)));
+                        document: OpenDocumentFor(documents, file),
+                        folder: folder,
+                        module: language));
                 }
             }
         }

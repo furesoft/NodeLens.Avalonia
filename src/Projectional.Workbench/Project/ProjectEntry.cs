@@ -1,3 +1,5 @@
+using Projectional.Languages;
+
 namespace Projectional.Workbench;
 
 /// <summary>One row of the project explorer: a heading, a project, a folder, or a file.</summary>
@@ -20,6 +22,10 @@ internal sealed record ProjectEntry
     /// <param name="isExpanded">Whether the row was drawn open.</param>
     /// <param name="document">The open document the row stands for, if any.</param>
     /// <param name="path">The file the row stands for, if any.</param>
+    /// <param name="document">The open document the row stands for, if any.</param>
+    /// <param name="path">The file the row stands for, if any.</param>
+    /// <param name="folder">The aspect the row belongs to, if any.</param>
+    /// <param name="module">The language module the row belongs to, if any.</param>
     internal ProjectEntry(
         string text,
         int depth,
@@ -28,7 +34,8 @@ internal sealed record ProjectEntry
         bool isExpanded = true,
         DocumentTab? document = null,
         string? path = null,
-        string? folder = null)
+        string? folder = null,
+        LanguageProject? module = null)
     {
         Text = text;
         Depth = depth;
@@ -38,6 +45,7 @@ internal sealed record ProjectEntry
         Document = document;
         Path = path;
         Folder = folder;
+        Module = module;
     }
 
     /// <summary>What the row says.</summary>
@@ -65,8 +73,51 @@ internal sealed record ProjectEntry
     /// <summary>The file the row stands for, or <see langword="null"/> for a heading, a project or a folder.</summary>
     internal string? Path { get; }
 
-    /// <summary>The folder's name on disk, which decides the icon the row is drawn with.</summary>
+    /// <summary>The aspect this row belongs to, which decides the mark and the colour it is drawn with.</summary>
+    /// <remarks>
+    /// A folder row carries its own name on disk; a file row carries the folder it sits in, because a definition is
+    /// read as "a concept of the structure", not as "a file called concept.mps". It is a plain string so that a row
+    /// can answer it without a rendering platform.
+    /// </remarks>
     internal string? Folder { get; }
+
+    /// <summary>The language module the row belongs to, or <see langword="null"/> for a heading and for a document whose language has no folder.</summary>
+    /// <remarks>
+    /// The row carries it because "which module is this" is a fact the tree already had in hand when it built the row,
+    /// and a shell that had to work it out again would answer from the selection - which is a different question the
+    /// moment the user right-clicks a row that is not the selected one.
+    /// </remarks>
+    internal LanguageProject? Module { get; }
+
+    /// <summary>What the row is drawn with, or <see langword="null"/> when it is drawn with nothing.</summary>
+    /// <remarks>
+    /// A heading is a heading: it leads the rows below it and needs no icon. Everything else is drawn with the mark of
+    /// its aspect - or, when the aspect is unknown, with the plain folder or page the row really is.
+    /// </remarks>
+    internal string? Icon => Kind switch
+    {
+        ProjectNode.Group => null,
+        ProjectNode.Project => ProjectIcons.ProjectKey,
+        ProjectNode.Document => ProjectIcons.DocumentKey,
+        ProjectNode.Folder => Folder ?? ProjectIcons.FolderKey,
+        _ => Folder ?? ProjectIcons.FileKey,
+    };
+
+    /// <summary>The letter a file row is drawn as, or <see langword="null"/> when the row has a glyph instead.</summary>
+    /// <remarks>
+    /// A file says what kind of definition it holds - a concept, an editor, a rule - which is the one thing a folder
+    /// name alone cannot say. The letter comes from a table of names, so a test can assert it without a window.
+    /// </remarks>
+    internal string? Badge => Kind is ProjectNode.File ? ProjectIcons.BadgeOf(Folder) : null;
+
+    /// <summary>Whether the row is drawn with a glyph.</summary>
+    internal bool HasIcon => Icon is not null && Badge is null;
+
+    /// <summary>Whether the row is drawn with a letter badge instead of a glyph.</summary>
+    internal bool HasBadge => Badge is not null;
+
+    /// <summary>Whether the row is a heading or a project, which the tree draws heavier than its rows.</summary>
+    internal bool IsBold => Kind is ProjectNode.Group or ProjectNode.Project;
 
     /// <summary>Whether the row can be opened and closed, which is what draws a chevron.</summary>
     internal bool HasChildren => Kind is ProjectNode.Group or ProjectNode.Project or ProjectNode.Folder;

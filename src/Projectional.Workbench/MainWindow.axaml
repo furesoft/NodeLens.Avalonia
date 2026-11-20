@@ -1,7 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:a="using:Avalonia.Automation"
-        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:local="using:Projectional.Workbench"
         x:Class="Projectional.Workbench.MainWindow"
         Title="Projectional Workbench"
@@ -16,26 +15,13 @@
   -->
   <Window.Resources>
     <ResourceDictionary>
-      <ResourceDictionary.ThemeDictionaries>
-        <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="WorkbenchPanelBrush" Color="#FCFCFC" />
-          <SolidColorBrush x:Key="WorkbenchHeaderBrush" Color="#EFEFEF" />
-          <SolidColorBrush x:Key="WorkbenchDividerBrush" Color="#CFCFCF" />
-          <SolidColorBrush x:Key="WorkbenchHoverBrush" Color="#1F000000" />
-          <SolidColorBrush x:Key="WorkbenchQuietTextBrush" Color="#5C5C5C" />
-          <SolidColorBrush x:Key="WorkbenchIconBrush" Color="#4C4C4C" />
-        </ResourceDictionary>
-        <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="WorkbenchPanelBrush" Color="#232323" />
-          <SolidColorBrush x:Key="WorkbenchHeaderBrush" Color="#2E2E2E" />
-          <SolidColorBrush x:Key="WorkbenchDividerBrush" Color="#3E3E3E" />
-          <SolidColorBrush x:Key="WorkbenchHoverBrush" Color="#33FFFFFF" />
-          <SolidColorBrush x:Key="WorkbenchQuietTextBrush" Color="#B0B0B0" />
-          <SolidColorBrush x:Key="WorkbenchIconBrush" Color="#C4C4C4" />
-        </ResourceDictionary>
-      </ResourceDictionary.ThemeDictionaries>
-
-      <sys:Double x:Key="WorkbenchChromeFontSize">12</sys:Double>
+      <!--
+        The surfaces and the chrome's type size are shared with the module settings dialog, so they live in a dictionary
+        of their own rather than beside this window's icons - two windows that drew two palettes would drift apart.
+      -->
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Projectional.Workbench/Styles/WorkbenchPalette.axaml" />
+      </ResourceDictionary.MergedDictionaries>
 
       <!-- Icons are strokes in a 16-unit box: one geometry, scaled by the style that draws it. -->
       <StreamGeometry x:Key="IconDocument">M3,1.5 H9.5 L12.5,4.5 V14.5 H3 Z M9.5,1.5 V4.5 H12.5</StreamGeometry>
@@ -48,10 +34,8 @@
       <StreamGeometry x:Key="IconPen">M2.5,13.5 L3.5,10.2 L10.4,3.3 L12.7,5.6 L5.8,12.5 Z</StreamGeometry>
       <StreamGeometry x:Key="IconClose">M3,3 L11,11 M11,3 L3,11</StreamGeometry>
       <StreamGeometry x:Key="IconPlus">M8,3 V13 M3,8 H13</StreamGeometry>
-      <StreamGeometry x:Key="IconProject">M2,4 L8,1 L14,4 L8,7 Z M2,4 V11 L8,14 V7 M14,4 V11 L8,14</StreamGeometry>
       <StreamGeometry x:Key="IconChevronRight">M6,4 L10,8 L6,12</StreamGeometry>
       <StreamGeometry x:Key="IconChevronDown">M4,6 L8,10 L12,6</StreamGeometry>
-      <local:FolderIconConverter x:Key="FolderIcon" />
 
       <!--
         A document strip of its own: the stock TabControl theme puts the items presenter straight into a
@@ -582,51 +566,14 @@
             <TabItem.Header>
               <TextBlock x:Name="ProjectHeader" Classes="panelHeader" Text="Project" Margin="4,0" />
             </TabItem.Header>
-            <ListBox
-              x:Name="ProjectList"
-              Classes="panelList"
-              BorderThickness="0"
-              Background="Transparent"
-              a:AutomationProperties.Name="Project"
-              DoubleTapped="OnProjectChosen"
-              KeyDown="OnProjectKeyDown">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="local:ProjectEntry">
-                  <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">
-                    <Border Width="{Binding Indent}" IsVisible="{Binding HasIndent}" />
-                    <Button
-                      Classes="chevron"
-                      IsVisible="{Binding HasChildren}"
-                      Click="OnProjectToggle"
-                      a:AutomationProperties.Name="Expand or collapse">
-                      <Panel>
-                        <Path Classes="chevronGlyph" Data="{StaticResource IconChevronRight}" IsVisible="{Binding !IsExpanded}" />
-                        <Path Classes="chevronGlyph" Data="{StaticResource IconChevronDown}" IsVisible="{Binding IsExpanded}" />
-                      </Panel>
-                    </Button>
-                    <Border Width="16" IsVisible="{Binding !HasChildren}" />
-                    <Path Classes="treeIcon" Data="{Binding Folder, Converter={StaticResource FolderIcon}}" IsVisible="{Binding IsFolder}" Margin="2,0,6,0" />
-                    <Path Classes="treeIcon" Data="{StaticResource IconProject}" IsVisible="{Binding IsProject}" Margin="2,0,6,0" />
-                    <Path Classes="treeIcon" Data="{StaticResource IconDocument}" IsVisible="{Binding IsFile}" Margin="2,0,6,0" />
-                    <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
-                    <TextBlock Text="*" VerticalAlignment="Center" Margin="3,0,0,0" IsVisible="{Binding IsDirty}" />
-                  </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
+            <local:ProjectPanelView x:Name="ProjectView" />
           </TabItem>
 
           <TabItem x:Name="OutlineTab">
             <TabItem.Header>
               <TextBlock x:Name="OutlineHeader" Classes="panelHeader" Text="Outline" Margin="4,0" />
             </TabItem.Header>
-            <ListBox
-              x:Name="OutlineList"
-              Classes="panelList"
-              BorderThickness="0"
-              Background="Transparent"
-              a:AutomationProperties.Name="Outline"
-              SelectionChanged="OnOutlineChosen" />
+            <local:OutlinePanelView x:Name="OutlineView" />
           </TabItem>
         </TabControl>
       </Border>
@@ -721,36 +668,7 @@
                   </Button>
                 </StackPanel>
               </TabItem.Header>
-              <DockPanel>
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="8,6,8,4">
-                  <TextBlock
-                    Grid.Column="0"
-                    Text="Inputs"
-                    Classes="statusQuiet"
-                    Margin="0,0,8,0" />
-                  <TextBox
-                    x:Name="RunInputsInput"
-                    Grid.Column="1"
-                    a:AutomationProperties.Name="Run inputs"
-                    PlaceholderText="run inputs, e.g. amount=1500"
-                    KeyDown="OnRunInputsKeyDown" />
-                  <Button Grid.Column="2" Margin="8,0,0,0" Click="OnRunDocument">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Path Classes="inlineIcon" Data="{StaticResource IconPlay}" />
-                      <TextBlock Text="Run" VerticalAlignment="Center" />
-                    </StackPanel>
-                  </Button>
-                </Grid>
-                <ListBox
-                  x:Name="RunOutput"
-                  Classes="panelList"
-                  BorderThickness="0"
-                  Background="Transparent"
-                  FontFamily="Consolas,Menlo,monospace"
-                  a:AutomationProperties.Name="Run output"
-                  DoubleTapped="OnRunRowChosen"
-                  KeyDown="OnRunRowKeyDown" />
-              </DockPanel>
+              <local:OutputPanelView x:Name="OutputView" />
             </TabItem>
 
             <TabItem x:Name="ProblemsTab">
@@ -765,14 +683,7 @@
                   </Button>
                 </StackPanel>
               </TabItem.Header>
-              <ListBox
-                x:Name="Problems"
-                Classes="panelList"
-                BorderThickness="0"
-                Background="Transparent"
-                a:AutomationProperties.Name="Problems"
-                DoubleTapped="OnProblemChosen"
-                KeyDown="OnProblemKeyDown" />
+              <local:ProblemsPanelView x:Name="ProblemsView" />
             </TabItem>
 
             <TabItem x:Name="UsagesTab">
@@ -787,14 +698,7 @@
                   </Button>
                 </StackPanel>
               </TabItem.Header>
-              <ListBox
-                x:Name="Usages"
-                Classes="panelList"
-                BorderThickness="0"
-                Background="Transparent"
-                a:AutomationProperties.Name="Usages"
-                DoubleTapped="OnUsageChosen"
-                KeyDown="OnUsageKeyDown" />
+              <local:UsagesPanelView x:Name="UsagesView" />
             </TabItem>
           </TabControl>
         </Border>

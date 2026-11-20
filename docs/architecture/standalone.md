@@ -230,6 +230,53 @@ concept and - when it has one - its name ("Rule \"Approved\""). Clicking a row p
   user forgets to refresh; the cost is one walk of the active model, the same order as the checks that already run
   there.
 
+### The project explorer
+
+The other tab of the left column answers the question one level above the browser's: which documents are open, and
+what the languages opened from a folder are made of. `Project/ProjectExplorer.cs` derives the rows - headings, the open
+documents, each language, its aspect folders and the definition files inside them - and
+`Shell/Panels/ProjectPanelView.axaml` draws them; the window only decides what a press means.
+
+- **A row says what it is drawn as.** One colour per aspect, the aspect's own glyph on a folder, and a letter badge on
+  a file naming the kind of definition that aspect holds - a green `C` under `structure`, an amber `E` under `editor`.
+  A project is drawn heavier than its rows and a heading carries no mark at all. It is the convention the tools this
+  editor is modelled on use, and it is why the tree can be read without being read word by word.
+- **The marks are tables of strings, not of geometries.** `Project/ProjectIcons.cs` holds the glyph paths, the colours
+  and the letters and parses a geometry only when a row is first painted: a row has to answer "what will I be drawn
+  as" while the tests build it headlessly, and a `StreamGeometry` needs a rendering platform. An aspect the table does
+  not know falls back to the page the row really is rather than to somebody else's badge.
+- **A folder row carries the aspect, a file row carries the folder it sits in**, which is what lets a definition read
+  as "a concept of the structure" rather than as "a file called `Pipeline.Stage.mps`".
+- **Expansion state is the window's.** A row is a value and a collapsed node's children are not built at all, so
+  flipping one key and deriving again is what keeps the panel from drifting away from its own state.
+
+**The context menu belongs to the panel, not to a row**, because a module is what the whole tree is about - and
+`Module settings…` is its entry. A right press selects the row it landed on before the menu opens
+(`OnProjectPointerPressed`), so the command is about what the user pointed at rather than about whatever happened to be
+selected; the module is then the row's own, or the language a document row's model was written in, and only when
+neither answers does the single opened module stand in.
+
+### Module settings
+
+**Module settings…** opens a dialog about the language the tree is pointed at, with four pages: the module's identity
+and version numbers, a dependencies table (which aspect is written in which language, the absent aspects included),
+what the shell lowered out of the definitions, and where its documentation goes.
+
+- **Almost all of it is derived, and that is the point.** `Modules/ModuleFacts.cs` reads the folder and asks the
+  `LanguageProject` what it built: a language with two hundred declarations and no notation cannot be drawn, and
+  `Notations 0` is how an author finds that out without opening a document and wondering why the page is empty.
+- **Every aspect is listed, empty ones included.** The explorer hides an absent folder because a tree is about what is
+  there; settings are about what could be, and "no constraints" is a fact worth reading.
+- **Three settings are the author's**: the language version, the module version and the documentation target. They are
+  written to `module.settings` inside the module's folder - so a folder copied to another machine carries them - in the
+  same `key = value` spelling the recent list uses: a file a user can fix by hand, read tolerantly, written with LF and
+  UTF-8 without a BOM so two machines produce the same bytes.
+- **A refused write keeps the dialog open and says so.** Closing on OK after a write the disk rejected would be the
+  shell reporting a change that lives only in a control nobody will look at again.
+- **The palette is shared, not copied.** `Styles/WorkbenchPalette.axaml` holds the surfaces and the chrome's type size
+  and is merged into both windows; two windows carrying their own copies would drift apart at the first change. The
+  dialog also takes the theme variant of the window it belongs to, or it would flash white over a dark shell.
+
 ### Find
 
 **View ▸ Find...** (`Ctrl+F`) opens a strip above the document with a query box, a match-case toggle, the match

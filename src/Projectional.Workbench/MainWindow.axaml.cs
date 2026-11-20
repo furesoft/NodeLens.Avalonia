@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 using Projectional.Avalonia;
 using Projectional.Core;
@@ -113,6 +114,20 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _problemsClosed;
     private bool _usagesClosed;
 
+    // A panel is a view of its own, so the shell reaches the list through it rather than through a name the window's
+    // markup used to declare. The view owns what a panel shows; the shell owns what a row means.
+    private ListBox ProjectList => ProjectView.List;
+
+    private ListBox OutlineList => OutlineView.List;
+
+    private ListBox Problems => ProblemsView.List;
+
+    private ListBox Usages => UsagesView.List;
+
+    private ListBox RunOutput => OutputView.List;
+
+    private TextBox RunInputsInput => OutputView.Inputs;
+
     /// <summary>Creates the window with every module - the standalone editor.</summary>
     public MainWindow() : this(ShellCapabilities.Standalone)
     {
@@ -137,6 +152,26 @@ public sealed partial class MainWindow : Window, IDisposable
         _panelHeight = DocumentArea.RowDefinitions[2].Height.Value;
         _splitterHeight = DocumentArea.RowDefinitions[1].Height.Value;
         _sideWidth = SideArea.ColumnDefinitions[0].Width.Value;
+
+        // A panel's view is a list; what a press on a row means is the shell's answer, so the handlers are attached
+        // here rather than written into the view's markup - which is also what lets the same view be docked anywhere.
+        ProjectView.List.DoubleTapped += OnProjectChosen;
+        ProjectView.List.KeyDown += OnProjectKeyDown;
+        ProjectView.List.AddHandler(Button.ClickEvent, OnProjectToggle);
+
+        // A right press picks the row it lands on before the menu opens, so a command is about what the user pointed at
+        // rather than about whatever happened to be selected - which is how a tree behaves everywhere else.
+        ProjectView.List.AddHandler(PointerPressedEvent, OnProjectPointerPressed, RoutingStrategies.Tunnel);
+        ProjectView.ModuleSettings.Click += OnModuleSettings;
+        OutlineView.List.SelectionChanged += OnOutlineChosen;
+        ProblemsView.List.DoubleTapped += OnProblemChosen;
+        ProblemsView.List.KeyDown += OnProblemKeyDown;
+        UsagesView.List.DoubleTapped += OnUsageChosen;
+        UsagesView.List.KeyDown += OnUsageKeyDown;
+        OutputView.List.DoubleTapped += OnRunRowChosen;
+        OutputView.List.KeyDown += OnRunRowKeyDown;
+        OutputView.Inputs.KeyDown += OnRunInputsKeyDown;
+        OutputView.RunButton.Click += OnRunDocument;
 
         Compose();
 
@@ -1001,6 +1036,102 @@ public sealed partial class MainWindow : Window, IDisposable
         // The row of the document in front is selected, which is how the panel says which one it is - the tab
         // strip's own selection is one place, and the two must not be able to disagree.
         ProjectList.SelectedItem = rows.FirstOrDefault(row => ReferenceEquals(row.Document, _documents.Active));
+
+        // Nothing to configure when no module is open: the entry says so rather than opening a dialog about nothing.
+        ProjectView.ModuleSettings.IsEnabled = CommandModule() is not null;
+    }
+
+    /// <summary>Closes every aspect folder of every opened language, so the tree lists what a language is made of.</summary>
+    /// <remarks>
+    /// Internal for the screenshot harness: a picture of the explorer is about the aspect icons, and the definition
+    /// files of three projects would push the folders a picture is meant to show out of the window.
+    /// </remarks>
+    internal void CollapseProjectFolders()
+    {
+        _collapsed.Clear();
+        _collapsed.Add(ProjectExplorer.DocumentsKey);
+
+        foreach (var language in _language.Opened)
+        {
+            foreach (var key in ProjectExplorer.FolderKeysOf(language))
+            {
+                _collapsed.Add(key);
+            }
+        }
+
+        ShowProject();
+    }
+
+    /// <summary>Opens one aspect folder in every opened language, so the rows below the folders are listed too.</summary>
+    /// <param name="folder">The aspect folder's name on disk.</param>
+    internal void ExpandProjectFolder(string folder)
+    {
+        foreach (var language in _language.Opened)
+        {
+            _collapsed.Remove(ProjectExplorer.FolderKey(language.Directory, folder));
+        }
+
+        ShowProject();
+    }
+
+    /// <summary>Selects the row a right press landed on, before its menu opens.</summary>
+    /// <remarks>
+    /// A tree's context menu is about the row under the pointer. Without this, right-clicking a second module would offer
+    /// the first one's settings, because a right press does not move a list's selection on its own.
+    /// </remarks>
+    private void OnProjectPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(ProjectList).Properties.IsRightButtonPressed)
+        {
+            return;
+        }
+
+        if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { DataContext: ProjectEntry entry })
+        {
+            ProjectList.SelectedItem = entry;
+        }
+    }
+
+    /// <summary>Opens the settings dialog of the module the project explorer is pointed at.</summary>
+    private async void OnModuleSettings(object? sender, RoutedEventArgs e)
+    {
+        if (CommandModule() is not { } module)
+        {
+            _error = "No language module is open; File \u25b8 Open language\u2026 opens one.";
+            UpdateStatus();
+
+            return;
+        }
+
+        await ModuleSettingsDialog.ShowAsync(this, module);
+
+        // The dialog writes files beside the module's definitions, which is a change the next build of the tree has to
+        // see: the settings are part of what a module is made of.
+        ShowProject();
+    }
+
+    /// <summary>The module a command on the project explorer is about, or <see langword="null"/> when none is open.</summary>
+    /// <remarks>
+    /// The row the user pointed at decides: a project, folder or file row carries its module, and a document row carries
+    /// the language its model was written in. Only when nothing usable is selected does the single opened module stand in
+    /// - which is the case a window with one language opened is in almost all of the time.
+    /// </remarks>
+    private LanguageProject? CommandModule()
+    {
+        if (ProjectList.SelectedItem is ProjectEntry entry)
+        {
+            if (entry.Module is { } module)
+            {
+                return module;
+            }
+
+            if (entry.Document is { } document && _language.ProjectFor(document.Model) is { } fromDocument)
+            {
+                return fromDocument;
+            }
+        }
+
+        return _language.Opened.Count > 0 ? _language.Opened[0] : null;
     }
 
     /// <summary>Opens or closes a node of the project explorer.</summary>

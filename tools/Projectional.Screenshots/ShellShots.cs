@@ -35,15 +35,49 @@ internal static class ShellShots
         new("feature-project-explorer", ShowProjectExplorer, Width: 900, Height: 900),
     ];
 
-    /// <summary>Opens the three declared sample languages, so every aspect folder a language can have is listed.</summary>
+    /// <summary>The images of dialogs, which are windows of their own rather than states of the workbench.</summary>
     /// <remarks>
-    /// One project cannot show all nine folder icons - the pipeline has no types, scopes or intentions, the workflow
-    /// has no constraints, imports or generators - so the picture holds the three projects the repository ships. The
-    /// documents they open are closed again: the picture is the tree, and thirty definition documents listed above it
-    /// would push the folders out of view.
+    /// The module settings dialog is photographed twice - its identity page and its dependency table - because the two
+    /// answer different questions and one crop of both would answer neither.
     /// </remarks>
-    private static async Task ShowProjectExplorer(MainWindow window)
+    internal static IReadOnlyList<DialogShot> Dialogs { get; } =
+    [
+        new("feature-module-settings", ShowModuleSettings, Width: 760, Height: 540),
+        new("feature-module-dependencies", ShowModuleDependencies, Width: 760, Height: 540),
+    ];
+
+    /// <summary>Shows the settings of the pipeline sample's module.</summary>
+    private static async Task<Window> ShowModuleSettings(MainWindow window)
     {
+        var dialog = ModuleSettingsDialog.Open(window, OpenModules(window));
+
+        await Task.Delay(250);
+
+        return dialog;
+    }
+
+    /// <summary>Shows the same dialog on its dependency table, which is what a module is made of.</summary>
+    private static async Task<Window> ShowModuleDependencies(MainWindow window)
+    {
+        var dialog = await ShowModuleSettings(window);
+
+        dialog.FindControl<TabControl>("Pages")!.SelectedIndex = 1;
+
+        await Task.Delay(250);
+
+        return dialog;
+    }
+
+    /// <summary>Opens the three declared sample languages and answers the first of them.</summary>
+    /// <remarks>
+    /// One project cannot show every aspect - the pipeline has no types, scopes or intentions, the workflow has no
+    /// constraints, imports or generators - so a picture of the tree or of a module's settings holds the three projects
+    /// the repository ships.
+    /// </remarks>
+    private static LanguageProject OpenModules(MainWindow window)
+    {
+        LanguageProject? first = null;
+
         foreach (var name in (string[])["declared-pipeline", "declared-expressions", "declared-workflow"])
         {
             var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, name), out var error)
@@ -53,7 +87,21 @@ internal static class ShellShots
             {
                 throw new InvalidOperationException($"The shell refused '{language.Name}'.");
             }
+
+            first ??= language;
         }
+
+        return first!;
+    }
+
+    /// <summary>Opens the three declared sample languages, so every aspect folder a language can have is listed.</summary>
+    /// <remarks>
+    /// The documents they open are closed again: the picture is the tree, and thirty definition documents listed above it
+    /// would push the folders out of view.
+    /// </remarks>
+    private static async Task ShowProjectExplorer(MainWindow window)
+    {
+        OpenModules(window);
 
         var close = window.FindControl<MenuItem>("CloseDocumentItem")!;
         var documents = window.FindControl<TabControl>("Documents")!;
@@ -62,6 +110,11 @@ internal static class ShellShots
         {
             Click(close);
         }
+
+        // Every folder shut but one: the picture is about the aspect icons, which only stay on screen while the files
+        // below them are not listed - and one folder is open so the badges a file row is drawn with are visible too.
+        window.CollapseProjectFolders();
+        window.ExpandProjectFolder(LanguageProject.StructureFolder);
 
         await Task.Delay(250);
     }

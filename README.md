@@ -306,7 +306,7 @@ Writing it as a model is what makes it declarable rather than merely configurabl
 
 ### Feature Gallery
 
-One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, and a feature that lives in the shell is rendered from a real `MainWindow`. Both kinds are produced by the same command:
+One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, a feature that lives in the shell is rendered from a real `MainWindow`, and a dialog is rendered from the window it was opened over. All three kinds are produced by the same command:
 
 ```powershell
 dotnet run --project tools/Projectional.Screenshots
@@ -421,6 +421,28 @@ A document runs through the interpreter its own language declares, so one whose 
 A language declares as many generators as it likes, so the submenu is built from the active document rather than written in the shell. The panel shows one row per generated line and the header counts the characters and the regions the traceability map knows, so "where did this line come from" is a gesture rather than a search.
 
 ![The output panel showing generated C# text and its region count](docs/images/feature-generate-output.png)
+
+#### The shell: what is open, and what a language is made of
+
+The left column answers two questions with two tabs. The project explorer lists the open documents and the opened
+languages—each language as its aspect folders, drawn in the colour that aspect carries everywhere else, with a letter
+badge on a definition file naming the kind of definition it holds. The outline beside it lists the document in front.
+
+![The project explorer: three languages, each with its aspect folders, and the concepts under structure as green badges](docs/images/feature-project-explorer.png)
+
+*A folder says what it holds and a file says what kind of definition it is: a green `C` under `structure` is a concept,
+an amber `E` under `editor` is a notation.*
+
+#### Module settings: what a language says about itself
+
+A right press in the explorer offers `Module settings…` for the module under the pointer: its identity and versions,
+the language each aspect is written in, what the shell built out of the definitions, and where its documentation goes.
+Everything but the three settings that are the author's is derived from the folder and from the language that was
+loaded, so the dialog also answers "why is this document's page empty".
+
+![Module settings for a language, on the common page: its name, its path, its two versions and the folders it is made of](docs/images/feature-module-settings.png)
+
+![The dependencies page: every aspect the module could have, the language it is written in, and how many documents it holds](docs/images/feature-module-dependencies.png)
 
 ---
 
