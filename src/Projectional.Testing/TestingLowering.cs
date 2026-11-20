@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Projectional.Core;
 
 namespace Projectional.Testing;
@@ -50,15 +52,65 @@ public static class TestingLowering
 
         var assertion = children[0].Concept.Key;
 
-        if (assertion is not TestingConceptKeys.RoundTrips)
+        var name = document.Model.Name ?? Path.GetFileNameWithoutExtension(asserted);
+        var target = asserted.Trim();
+
+        return assertion switch
         {
-            throw new ConceptDefinitionException(
-                $"'{assertion}' is not an assertion this framework runs.");
+            TestingConceptKeys.RoundTrips => new LanguageTest(name, target, assertion),
+            TestingConceptKeys.Draws => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width(children[0]),
+                Lines(children[0]),
+                Findings: null),
+            TestingConceptKeys.Findings => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width: 0,
+                Lines: null,
+                Findings(children[0])),
+            _ => throw new ConceptDefinitionException(
+                $"'{assertion}' is not an assertion this framework runs."),
+        };
+    }
+
+    /// <summary>The columns a drawing assertion renders into.</summary>
+    private static int Width(Node draws)
+    {
+        var text = draws.GetOrNull(TestingLanguage.WidthSlot);
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return 80;
         }
 
-        return new LanguageTest(
-            document.Model.Name ?? Path.GetFileNameWithoutExtension(asserted),
-            asserted.Trim(),
-            assertion);
+        return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var width) && width > 0
+            ? width
+            : throw new ConceptDefinitionException(
+                $"'{text}' is not a number of columns; a drawing has to render into a positive width.");
+    }
+
+    /// <summary>The lines a drawing assertion expects, in order.</summary>
+    private static IReadOnlyList<string> Lines(Node draws) =>
+        [.. draws.GetChildren(TestingLanguage.LinesSlot).Select(line =>
+            line.GetOrNull(TestingLanguage.TextSlot) ?? string.Empty)];
+
+    /// <summary>The findings a findings assertion expects, in order.</summary>
+    private static IReadOnlyList<ExpectedFinding> Findings(Node findings) =>
+        [.. findings.GetChildren(TestingLanguage.ExpectedSlot).Select(finding => new ExpectedFinding(
+            Required(finding, TestingLanguage.CodeSlot),
+            Required(finding, TestingLanguage.SeveritySlot),
+            finding.GetOrNull(TestingLanguage.RoleSlot)?.Trim() ?? string.Empty))];
+
+    private static string Required(Node node, string slot)
+    {
+        var value = node.GetOrNull(slot);
+
+        return string.IsNullOrWhiteSpace(value)
+            ? throw new ConceptDefinitionException($"'{node.Concept.Key}' has to fill '{slot}'.")
+            : value.Trim();
     }
 }

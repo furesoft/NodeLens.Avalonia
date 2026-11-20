@@ -27,6 +27,11 @@
       tool hosts the shipping MainWindow for them. Nothing is reimplemented here: the picture is the app.
     -->
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
+    <!--
+      A language's tests are documents of the test language, so a picture of one is drawn by that language's own
+      notation registry, exactly as a picture of a sample language is.
+    -->
+    <ProjectReference Include="..\..\src\Projectional.Testing\Projectional.Testing.csproj" />
   </ItemGroup>
 
 </Project>

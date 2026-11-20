@@ -1,9 +1,10 @@
 # Tests of a language, as data
 
-Status: **partly delivered** (M6). Slice T1's round trip is in: the `tests/` folder, the test
-language, `TestRunner`, the xunit bridge and the sample's first test document. The other assertions
-(`Testing.Draws`, `Testing.Findings`, `Testing.Generates`, `Testing.Evaluates`, `Testing.Script`) are
-still planned, and the rest of this document is the plan for them as much as for what is delivered.
+Status: **partly delivered** (M6). Slice T1 is complete: the `tests/` folder, the test language,
+`TestRunner`, the xunit bridge and the sample's test documents, with all three assertions a document
+can make - `Testing.RoundTrips`, `Testing.Draws` and `Testing.Findings`. The remaining assertions
+(`Testing.Generates`, `Testing.Evaluates`, `Testing.Script`) are still planned, and the rest of this
+document is the plan for them as much as for what is delivered.
 
 Before this existed, every test in this repository was C# xunit over `Projectional.Core.Tests`, and a
 language author had no way to test a language at all.
@@ -105,12 +106,12 @@ the outcome and the actual-versus-expected text, so a failure reads as a diff. T
 
 ## What is delivered
 
-The folder, the language, the runner and the bridge, with one assertion:
+The folder, the language, the runner and the bridge, with all three assertions:
 
 - **`Projectional.Testing`** is the behaviour package: `TestingLanguage` declares the concepts
-  (`Testing.Test`, `Testing.Assertion`, `Testing.RoundTrips`), `Notation/TestingNotations` draws one
-  sentence (`test pipeline round trips`), and `TestingLowering` turns a written test into a
-  `LanguageTest`.
+  (`Testing.Test`, `Testing.Assertion`, `Testing.RoundTrips`, `Testing.Draws`, `Testing.Line`,
+  `Testing.Findings`, `Testing.ExpectedFinding`), `Notation/TestingNotations` draws one sentence per
+  assertion, and `TestingLowering` turns a written test into a `LanguageTest`.
 - **`TestRunner.Run(language)`** reads the language's `tests/` folder in ordinal file-name order and
   answers a `TestReport` - one `TestResult` per document, carrying the assertion and, on a failure,
   the actual-versus-expected text so the report reads as a diff. A language with no `tests/` folder
@@ -119,20 +120,27 @@ The folder, the language, the runner and the bridge, with one assertion:
 - **`Testing.RoundTrips`** asserts invariant 7 for the document it names: serialise, read back,
   serialise again, compare the text. A projection or persistence change that moves a byte fails the
   test that names the document.
+- **`Testing.Draws`** asserts the document's notation at a stated width: the expected lines are child
+  nodes of the assertion, so a projection change that moves a cell fails a named test with the two
+  texts side by side.
+- **`Testing.Findings`** asserts which findings the document's own constraints report, each row naming
+  a code, a severity and optionally the slot it is about. A check catalogue is a C# package and not
+  part of a language project, so the assertion covers the language's declared constraints; when checks
+  become declarable it widens with them.
 - **The xunit bridge** is `LanguageTestsAsDataTests`: it runs the shipped sample's folder, so CI
-  covers a language's own tests without new runner infrastructure. The sample's first test document
-  is `samples/declared-pipeline/tests/round-trips.mps`.
+  covers a language's own tests without new runner infrastructure. The sample's test documents are
+  `samples/declared-pipeline/tests/round-trips.mps`, `draws.mps` and `reports.mps`.
 
 The remaining assertions are additive: each is one more concept in the test language, one more
-notation, and one more branch in the runner. `Testing.Draws` and `Testing.Findings` are the ones that
-need the runner to reach the projection and the semantics layer, which is why the package sits in the
-behaviour band rather than beside a language.
+notation, and one more branch in the runner. `Testing.Generates` and `Testing.Evaluates` need the
+generator and the interpreter, and `Testing.Script` needs the editing layer - reaching those layers is
+why the package sits in the behaviour band rather than beside a language.
 
 ## Slices
 
 | Slice | Content | Effort |
 | --- | --- | --- |
-| T1 | the `tests/` folder and the language (`Testing.Draws`, `Testing.Findings`, `Testing.RoundTrips`), `TestRunner`, the xunit bridge, and the sample language's first tests | 1 week |
+| T1 | the `tests/` folder and the language (`Testing.Draws`, `Testing.Findings`, `Testing.RoundTrips`), `TestRunner`, the xunit bridge, and the sample language's first tests - **delivered** | 1 week |
 | T2 | `Testing.Generates` and `Testing.Evaluates` (generators by name, variables from one line of `name=value` pairs, the way `RunInputs` already reads them) | 3-4 days |
 | T3 | `Testing.Script`: the action vocabulary, caret placement, and the comparison after the run - the editor test | 1-2 weeks |
 | T4 | node-addressed assertions (`Testing.TypeOf`, `Testing.ScopeOf`), which need a way for a test to name a node: a path syntax, or a reference once a common base concept exists | open |

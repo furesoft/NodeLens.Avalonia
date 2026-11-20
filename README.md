@@ -259,6 +259,28 @@ Tables are a grid of columns, and a key names a column of *another document* of 
 
 ![A SQL schema with tables drawn as grids and foreign keys under them](docs/images/language-sql-schema.png)
 
+### Tests as data: a language's own test, written in the test language
+
+A language's tests are documents, not C#. A `tests/` folder beside the aspects holds one test per document, written in the test language: it names the document it is about and makes one assertion - `RoundTrips`, `Draws` or `Findings` - and the runner turns each row into a diff when it fails. The picture is a drawing assertion over the pipeline sample, with the table it expects beneath it:
+
+![A language test written in the test language: a drawing assertion over the pipeline, with the expected table beneath it](docs/images/language-test.png)
+
+```csharp
+var language = LanguageProject.Open("samples/declared-pipeline", out var error);
+
+if (language is null)
+{
+    throw new InvalidOperationException(error);
+}
+
+var report = TestRunner.Run(language);
+
+if (!report.Succeeded)
+{
+    throw new InvalidOperationException(report.ToString());
+}
+```
+
 ### Feature Gallery
 
 One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, and a feature that lives in the shell is rendered from a real `MainWindow`. Both kinds are produced by the same command:
