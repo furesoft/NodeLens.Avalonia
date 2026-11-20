@@ -528,6 +528,44 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void AComplaintCarriesTheCodeItStates()
+    {
+        var set = Complaints(rules =>
+            rules.Rule("Expressions.IntLiteral", rules.Complain("Not allowed here.", code: "expr.literal")));
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        model.NewNode(ExpressionsConceptKeys.IntLiteral);
+
+        Assert.Equal("expr.literal", Assert.Single(new ConstraintEngine(set).Check(model)).Code);
+    }
+
+    [Fact]
+    public void AComplaintThatStatesNoCodeReportsUnderNone()
+    {
+        // The finding is uncoded rather than coded with an empty string: a code is what a suppression and a quick
+        // fix key on, and "" keys nothing while still being a value a reader would wonder about.
+        var set = Complaints(rules =>
+            rules.Rule("Expressions.IntLiteral", rules.Complain("Not allowed here.")));
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        model.NewNode(ExpressionsConceptKeys.IntLiteral);
+
+        Assert.Null(Assert.Single(new ConstraintEngine(set).Check(model)).Code);
+    }
+
+    [Fact]
+    public void AComplaintWhoseCodeIsBlankReportsUnderNone()
+    {
+        var set = Complaints(rules =>
+            rules.Rule("Expressions.IntLiteral", rules.Complain("Not allowed here.", code: "   ")));
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        model.NewNode(ExpressionsConceptKeys.IntLiteral);
+
+        Assert.Null(Assert.Single(new ConstraintEngine(set).Check(model)).Code);
+    }
+
+    [Fact]
     public void AComplaintContributesNoType()
     {
         var registry = Lower(rules =>
@@ -1183,7 +1221,11 @@ public sealed class TypeRuleLoweringTests
         }
 
         /// <summary>A body that reports instead of typing.</summary>
-        public Node Complain(string message, string? severity = null, (string Left, string Right)? when = null)
+        public Node Complain(
+            string message,
+            string? severity = null,
+            (string Left, string Right)? when = null,
+            string? code = null)
         {
             var body = _model.NewNode(TypeRuleConceptKeys.Complain);
 
@@ -1192,6 +1234,11 @@ public sealed class TypeRuleLoweringTests
             if (severity is not null)
             {
                 body.Set(TypeRuleLanguage.SeveritySlot, severity);
+            }
+
+            if (code is not null)
+            {
+                body.Set(TypeRuleLanguage.CodeSlot, code);
             }
 
             if (when is { } condition)

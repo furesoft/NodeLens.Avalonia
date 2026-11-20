@@ -144,31 +144,71 @@ public sealed class DeclaredExpressionsTests
 
         try
         {
-            AssertRoundTrips(directory, "structure", new Project(StructureLanguage.Concepts));
-            AssertRoundTrips(directory, "editor", new Project(EditorLanguage.Concepts));
-            AssertRoundTrips(directory, "types", new Project(TypeRuleLanguage.Concepts));
+            AssertByteIdentical(temporary.FullName, directory, "structure", new Project(StructureLanguage.Concepts));
+            AssertByteIdentical(temporary.FullName, directory, "editor", new Project(EditorLanguage.Concepts));
+            AssertByteIdentical(temporary.FullName, directory, "types", new Project(TypeRuleLanguage.Concepts));
         }
         finally
         {
             temporary.Delete(recursive: true);
         }
+    }
 
-        void AssertRoundTrips(string root, string folder, Project project)
+    [Fact]
+    public void EveryDocumentOfTheSampleSavesBackByteIdentically()
+    {
+        // A sample ships documents as well as definitions, and they are the writer's bytes for the same reason: a
+        // user opens one, edits it and saves it, so a file that would change on the first save is drift they would
+        // meet immediately. The two places differ in whose concepts they need - the root holds documents of the
+        // declared language, the tests folder holds testing-language documents.
+        var directory = Path.Combine(AppContext.BaseDirectory, "Expressions");
+        var temporary = Directory.CreateTempSubdirectory("declared-expressions-documents");
+
+        try
         {
-            var files = Directory.EnumerateFiles(Path.Combine(root, folder), "*.mps").ToList();
-
-            Assert.NotEmpty(files);
-
-            foreach (var file in files)
-            {
-                var model = ModelFile.Load(project, file);
-                var target = Path.Combine(temporary.FullName, Path.GetFileName(file));
-
-                ModelFile.Save(model, target);
-
-                Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(target));
-            }
+            AssertRoundTripsIn(temporary.FullName, directory, Language.NewProject());
+            AssertRoundTripsIn(temporary.FullName, Path.Combine(directory, TestRunner.Folder), TestingLanguage.NewProject());
         }
+        finally
+        {
+            temporary.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Round-trips every document in <paramref name="folder"/> and compares the bytes.</summary>
+    private static void AssertByteIdentical(string temporary, string root, string folder, Project project)
+    {
+        var files = Directory.EnumerateFiles(Path.Combine(root, folder), "*.mps").ToList();
+
+        Assert.NotEmpty(files);
+
+        foreach (var file in files)
+        {
+            AssertByteIdentical(temporary, file, project);
+        }
+    }
+
+    /// <summary>Round-trips the documents in <paramref name="folder"/> without descending into its own folders.</summary>
+    private static void AssertRoundTripsIn(string temporary, string folder, Project project)
+    {
+        var files = Directory.EnumerateFiles(folder, "*.mps", SearchOption.TopDirectoryOnly).ToList();
+
+        Assert.NotEmpty(files);
+
+        foreach (var file in files)
+        {
+            AssertByteIdentical(temporary, file, project);
+        }
+    }
+
+    private static void AssertByteIdentical(string temporary, string file, Project project)
+    {
+        var model = ModelFile.Load(project, file);
+        var target = Path.Combine(temporary, Path.GetFileName(file));
+
+        ModelFile.Save(model, target);
+
+        Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(target));
     }
 
     /// <summary>The language tests itself: its own <c>tests/</c> folder runs green.</summary>

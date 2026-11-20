@@ -39,6 +39,13 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   (`ed.Conditional(..., ed.Keyword("abstract"), ed.Space)`, or every drawing without the word starts with a
   blank). `NotationRegistry` validates the slot is a property and the value is one its type accepts.
   Inline only - a block conditional is the same idea one level up, when something needs it.
+- **A property cell is therefore never hidden; what a conditional or a when-filled cell hides is a
+  constant or a child slot.** Hiding a property would hide the only place its value can be typed, so an
+  optional property is drawn with its `EmptyText` instead (`ed.Property("code", emptyText: "<none>")` -
+  `TypeRule.Complain`'s identifier is the worked example). Reaching for a "draw this only while the property
+  is set" cell is the mistake: the cell would be quiet and unwritable, which is the debt `WhenFilledNotationCell`
+  already documents and pays with an intention. If a notation genuinely needs a property to disappear, the
+  language wants two variants, not a hidden slot.
 - **Every slot-bearing cell has an `EmptyText`** (`<empty>`, `<none>`, and for a property
   whatever the notation wants to say - `<<operator>>`). Empty is never invisible: the caret
   needs something visible to attach to, and an empty list must stay fillable. Do not make it

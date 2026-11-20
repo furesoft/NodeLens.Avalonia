@@ -14,6 +14,7 @@ public static class TestingNotations
     private const string NoAssertion = "<< what it asserts >>";
     private const string NoLines = "<< what it draws >>";
     private const string NoFindings = "<< what it reports >>";
+    private const string NoCode = "<< which code >>";
     private const string Anywhere = "<< anywhere >>";
     private const string NoGenerated = "<< what it generates >>";
     private const string NoGenerator = "<< which generator >>";
@@ -81,7 +82,7 @@ public static class TestingNotations
             ed.Indent(ed.Children(TestingLanguage.ExpectedSlot, NoFindings, stacked: true))));
 
         notations.Add(TestingConceptKeys.ExpectedFinding, ed => ed.Line(
-            ed.Property(TestingLanguage.CodeSlot),
+            ed.Property(TestingLanguage.CodeSlot, emptyText: NoCode),
             ed.Space,
             ed.Property(TestingLanguage.SeveritySlot),
             ed.Space,

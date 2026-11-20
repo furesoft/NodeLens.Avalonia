@@ -10,6 +10,7 @@
           <properties>
             <message>The operands are not comparable, so no value of one could be used as the other.</message>
             <severity>error</severity>
+            <code>decl.type.operands</code>
           </properties>
           <children role="when">
             <node id="d0000000-0000-4000-8002-000000000215" concept="TypeRule.NotComparable" name="left">

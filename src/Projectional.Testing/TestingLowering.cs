@@ -158,10 +158,9 @@ public static class TestingLowering
 
     /// <summary>The findings a findings assertion expects, in order.</summary>
     /// <remarks>
-    /// The severity is required and the code is not, because a finding may be reported without one: a declared
-    /// complaint states a message and how much it matters, and the type-rule language has no slot for an identifier
-    /// yet (<c>docs/open-questions.md</c>, question 115), so demanding a code would make such a finding impossible
-    /// to name.
+    /// The severity is required and the code is not, because a finding may be reported without one: both declaration
+    /// paths allow it - a constraint names its identifier "or empty for none", and a complaint's code is an optional
+    /// property - so demanding one here would make an uncoded finding impossible to name.
     /// </remarks>
     private static IReadOnlyList<ExpectedFinding> Findings(Node findings) =>
         [.. findings.GetChildren(TestingLanguage.ExpectedSlot).Select(finding => new ExpectedFinding(

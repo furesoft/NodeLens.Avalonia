@@ -76,6 +76,9 @@ public static class TypeRuleLanguage
     /// <summary>How much a complaint matters.</summary>
     public const string SeveritySlot = "severity";
 
+    /// <summary>The identifier a complaint reports under.</summary>
+    public const string CodeSlot = "code";
+
     /// <summary>The type that may stand in place of the other, in a declared subtype edge.</summary>
     public const string SubtypeSlot = "subtype";
 
@@ -261,11 +264,12 @@ public static class TypeRuleLanguage
             [
                 new PropertySlot(MessageSlot, PropertyType.String),
                 new PropertySlot(SeveritySlot, PropertyType.Enum("error", "warning", "hint")),
+                new PropertySlot(CodeSlot, PropertyType.String),
                 new ChildSlot(WhenSlot, TypeRuleConceptKeys.NotComparable, Cardinality.One),
             ],
             [TypeRuleConceptKeys.Body],
             nameSlot: MessageSlot,
-            description: "A body that reports instead of answering a type: the message and how much it matters, optionally only when a condition holds."),
+            description: "A body that reports instead of answering a type: the message and how much it matters, the identifier it reports under, and optionally only when a condition holds."),
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.NotComparable,

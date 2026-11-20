@@ -8,7 +8,12 @@
       <children role="assertion">
         <node id="d0000000-0000-4000-8005-000000000201" concept="Testing.Findings">
           <children role="expected">
-        <node id="d0000000-0000-4000-8005-000000000301" concept="Testing.ExpectedFinding" />
+            <node id="d0000000-0000-4000-8005-000000000301" concept="Testing.ExpectedFinding" name="decl.type.operands">
+              <properties>
+                <code>decl.type.operands</code>
+                <severity>error</severity>
+              </properties>
+            </node>
           </children>
         </node>
       </children>
