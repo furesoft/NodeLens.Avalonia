@@ -182,6 +182,14 @@ record, and `Projectional.Json` is the first reference language behind the contr
   `Projectional.Json/Checks/` (namespace `Projectional.Json.Checks`), `Projectional.Json/Intentions/`,
   `Projectional.Xml/Checks/`, `Projectional.Xml/Intentions/`. TOML, HOCON and YAML have the same two folders -
   **never one shared "syntax languages" package**, which would have to ask which language it is looking at.
+- **A sample language owns every aspect it has, and exposes it from its own `Language` type.** The schema is the
+  worked example: `SqlSchemaLanguage.Types` (its column types, in `SqlSchemaTypes`) and `SqlSchemaLanguage.Constraints`
+  (its key rule, in `Checks/`) sit beside `Concepts` and `CreateNotations`, so a host composes the language rather
+  than assembling one. `Checks/` is the folder for the language's own rules whether they are an `ICheck` (which can
+  repair) or an `IConstraint` (which cannot) - the distinction is whether there is a repair, not the folder. A rule
+  that needs types lives in a package that references `Projectional.Semantics`; a language package that deliberately
+  does not (the expression language) has its typed rule stated where the semantics layer is reachable instead, and
+  keying a constraint by concept is what lets one set hold two languages' rules.
 - **XML's two intentions are mandatory, not a convenience.** Its notation hides both collections while they are empty -
   an empty XML slot cannot be drawn as a blank, because whitespace inside an element *is* content and a placeholder would
   make `<a></a>` and `<a> </a>` indistinguishable - so "add attribute" and "add child element" are the only way into

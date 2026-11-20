@@ -1,5 +1,7 @@
 using Projectional.Core;
 using Projectional.Language;
+using Projectional.Samples.SqlSchema.Checks;
+using Projectional.Semantics;
 
 namespace Projectional.Samples.SqlSchema;
 
@@ -71,6 +73,17 @@ public static class SqlSchemaLanguage
     /// cross-model reference the point of this example.
     /// </remarks>
     public static Project NewProject() => new(Concepts);
+
+    /// <summary>What a node of this language evaluates to, which every column has an answer to.</summary>
+    /// <remarks>
+    /// A type is part of what a language means, so it is composed the same way its notation and its checks are: a
+    /// host that opens the language gets the type of a column without building a registry of its own.
+    /// </remarks>
+    public static TypeRegistry Types { get; } = SqlSchemaTypes.Registry;
+
+    /// <summary>The rules this language states about itself, which the type layer is what makes expressible.</summary>
+    public static ConstraintSet Constraints { get; } = ConstraintSet.Empty
+        .Add(SqlConceptKeys.ForeignKey, new KeyTypesConstraint());
 
     private static List<ConceptDeclaration> CreateDeclarations() =>
     [

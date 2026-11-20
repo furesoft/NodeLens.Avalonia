@@ -361,9 +361,11 @@ specification, not a capability.
 | --- | --- |
 | the declared vocabulary as a whole (`Rule`, `Fixed`, `Child`, `Switch`, `Equations`, `Variable`, `Join`, `Meet`, `Named`, `Ref`, `Supertypes`, `Comparable`, `Replacement`, `Complain`) | **nowhere in a shipped document**: no language project under `src/Languages` or `samples/` ships a `types/` folder. The vocabulary is proved by `TypeRuleLoweringTests` and by its parity test against `ExpressionsLanguage.Types`, not by a document anyone opens |
 | operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.OperandsNotComparable`, on the C# authoring path: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
-| `TypeRule.Supertypes` | **no subject.** No shipped language declares a type hierarchy: the expression language's three primitives stand in no relation to each other, and the declared samples have no types aspect at all |
+| a language's own types aspect, declared in C# | `SqlSchemaLanguage.Types` (`SqlSchemaTypes`): the first shipped language with types of its own. Each column type is a `NamedType` over a primitive, one instance per value, so two columns of one type are one type - which is what lets a key compare them |
+| a one-way requirement ("this may stand where that is required") | `SqlSchemaLanguage.Constraints` (`KeyTypesConstraint`): a key whose column type cannot be used to look up its target's is reported, which no amount of model structure could say because both reference slots accept any column |
+| `TypeRule.Supertypes` | **no subject.** No shipped language declares a type hierarchy. The schema is the closest, and the framework has four primitives to SQL's five column types, so `decimal` can only be modelled over `int` - which asserts interchange rather than a widening edge. A fifth primitive is a type-layer decision no language has asked for |
 | `TypeRule.Comparable` | **no subject.** No shipped language has two types interchangeable without one being below the other - and the expression language's three primitives are genuinely incomparable, which is precisely what makes its operand rule fire |
-| `TypeRule.Replacement` | **no subject.** Covariance rewrites a claim about a compound type, and no shipped language has one: the expression language declares no list, record or optional, so there is no part for a claim to be about |
+| `TypeRule.Replacement` | **no subject.** Covariance rewrites a claim about a compound type, and no shipped language has one: the expression language declares no list, record or optional, and a schema column is never a collection |
 
 Two consequences follow, and they are worth stating rather than discovering twice. A declared language gets a
 `types/` folder only when something in it has a type: the pipeline's and the workflow's slots are strings, counts
@@ -371,11 +373,12 @@ and references, so every node would type as `unknown` and the folder would be in
 recording one. And the three unexercised slices are not dead code - each is one `Add` call away from a language
 that needs it, and the tests are what hold them to their meaning until then.
 
-Two gaps the comparison of features exposed, both deliberately left open: a <em>one-way</em> requirement ("this may
-stand where that is required") is not expressible as a condition, so a foreign key whose local column's type does
-not match its target's cannot be reported - that needs a condition kind beside `NotComparable`; and a mismatched
-`if` branch is typed as its `then`-branch with no finding at all, because a three-way question is neither
-comparability nor a relation between two slots.
+One gap the comparison of features exposed, deliberately left open: a **declared** condition for a one-way
+requirement ("this may stand where that is required") does not exist, so the schema states its key rule in C# while
+a declared language could not. The capability is there and tested; the vocabulary for it is one concept away, and it
+waits for a language project that writes one - adding it before that would be the specification the top of this
+table warns about. A mismatched `if` branch is the other: typed as its `then`-branch with no finding, because a
+three-way question is neither comparability nor a relation between two slots.
 
 #### What stays out, and why
 
