@@ -1,0 +1,63 @@
+using Projectional.Core;
+using Projectional.Language;
+
+namespace Projectional.Samples.SqlSchema;
+
+/// <summary>What a column means as a type: the type its `type` property names.</summary>
+/// <remarks>
+/// <para>
+/// The schema is the first shipped language with a type of its own, and it needs one for a reason a reader of the
+/// DDL already accepts: a column is declared <c>name type</c>, so "a value of this column may be used to look up
+/// that column" is a question about two declared types rather than about two nodes.
+/// </para>
+/// <para>
+/// Each column type is a <see cref="NamedType"/>, so it has an identity of its own - the property's value names it,
+/// and one instance per value is what makes two columns of one type the same type. The expansion is the primitive
+/// underneath, which is what a comparison falls back to.
+/// </para>
+/// <para>
+/// <c>decimal</c> expands to <c>int</c>, and that is a boundary rather than an oversight: the framework has four
+/// primitives and SQL has five column types here, so the fifth leans on the nearest one. What follows is that
+/// <c>int</c> and <c>decimal</c> are interchangeable, which is the direction a key check wants anyway; the other
+/// direction is the price. A fifth primitive is a type-layer decision this sample does not make.
+/// </para>
+/// </remarks>
+internal static class SqlSchemaTypes
+{
+    /// <summary>A whole number.</summary>
+    internal static NamedType Int { get; } = new("int", PrimitiveType.Of(PropertyType.Integer));
+
+    /// <summary>Free text.</summary>
+    internal static NamedType Text { get; } = new("text", PrimitiveType.Of(PropertyType.String));
+
+    /// <summary>A truth value.</summary>
+    internal static NamedType Bool { get; } = new("bool", PrimitiveType.Of(PropertyType.Boolean));
+
+    /// <summary>A calendar date.</summary>
+    internal static NamedType Date { get; } = new("date", PrimitiveType.Of(PropertyType.Date));
+
+    /// <summary>A fixed-point number, modelled over the nearest primitive the framework has.</summary>
+    internal static NamedType Decimal { get; } = new("decimal", PrimitiveType.Of(PropertyType.Integer));
+
+    /// <summary>The registry <see cref="SqlSchemaLanguage.Types"/> answers with.</summary>
+    internal static TypeRegistry Registry { get; } =
+        TypeRegistry.Empty.Add(SqlConceptKeys.Column, new ColumnType());
+
+    /// <summary>A column is the type its `type` property names, and nothing else.</summary>
+    private sealed class ColumnType : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) => context.Node.GetOrNull("type") switch
+        {
+            "int" => Int,
+            "text" => Text,
+            "bool" => Bool,
+            "date" => Date,
+            "decimal" => Decimal,
+
+            // Unreachable: the model refuses a value outside the enumeration, so the property always names one of
+            // the five. The branch is here because a type rule answers rather than throws - the alternative is a
+            // cast that would fail where a caller least expects it.
+            _ => UnknownType.Instance,
+        };
+    }
+}
