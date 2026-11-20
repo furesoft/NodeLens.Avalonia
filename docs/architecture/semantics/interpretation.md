@@ -69,10 +69,12 @@ for every concept, which is a wrong answer to a question nobody should have been
 The shell's Run command (`Projectional.Workbench/Run/`, `F5`) is the whole of the app's part: `DocumentRun.Of`
 takes the document, its interpreter and the variables the user typed, and answers a `RunReport` - the answer or
 the reason there is none in one line, and the trace as rows that each name the node they came from, so clicking
-one moves the caret there. The variables come from one line of `name=value` pairs (`RunInputs`): a value is read
-as a number, then a flag, then an `yyyy-MM-dd` date, and otherwise as text, and a malformed or repeated name is
-refused as a whole line rather than half-applied. A run is a snapshot, so an edit drops the report, exactly as
-an edit replaces the findings.
+one moves the caret there. The variables come from one line of `name=value` pairs (`VariableInputs`, which the
+shell's `RunInputs` hands the line to): a value is read as a number, then a flag, then an `yyyy-MM-dd` date, and
+otherwise as text, and a malformed or repeated name is refused as a whole line rather than half-applied. The
+parser sits here rather than in the shell because a declared test's `Testing.Evaluates` assertion reads the same
+pairs, and a run in a test and a run in the shell must not disagree about what a value is. A run is a snapshot,
+so an edit drops the report, exactly as an edit replaces the findings.
 
 Still open: stepping (a UI vocabulary, open question 11), value kinds for records and lists (they arrive with
 the first language that evaluates one), and the cross-check against generated code, which needs the generator

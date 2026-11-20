@@ -346,9 +346,11 @@ falling back to another language's rules.
 - **The shell refuses rather than runs**: the Run entry is disabled, the panel's tooltip and the status bar say
   why, and `RunActiveDocument` returns before asking the interpreter.
 - **The app's part is small on purpose**: `DocumentRun.Of` (document + registry + the typed variables) answers a
-  `RunReport`; `RunInputs` reads the variables from one line of `name=value` pairs (number, then flag, then
-  `yyyy-MM-dd`, else text; a malformed or repeated name refuses the whole line instead of half-applying it); a row
-  is `RunRow(Text, Place)`, so clicking a trace line moves the caret to the node that produced it.
+  `RunReport`; `RunInputs` hands the line to `Projectional.Language`'s `VariableInputs`, which reads one line of
+  `name=value` pairs (number, then flag, then `yyyy-MM-dd`, else text; a malformed or repeated name refuses the
+  whole line instead of half-applying it) - it lives in the language layer because a declared test's
+  `Testing.Evaluates` assertion reads the same pairs; a row is `RunRow(Text, Place)`, so clicking a trace line
+  moves the caret to the node that produced it.
 - **A run is a snapshot**: an edit drops the report, exactly as an edit replaces the findings, because a headline
   about a document that no longer exists is worse than none - and a run cannot be repeated on the user's behalf,
   since the variables came from them.

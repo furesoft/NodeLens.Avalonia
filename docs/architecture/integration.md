@@ -74,7 +74,10 @@ value the language supplies, and answer a value the host shows - no window, no p
 | `DocumentFindings.Of(model, fixes, constraints, types, scopes)` | one `FindingSet` - the findings, the marks the control draws, and the repairs a quick-fix list offers |
 
 `RunInputs.TryParse` is the fourth: the `name=value` line the shell offers, so a host that shows
-a run panel reads the user's line the way this one does instead of inventing a second syntax.
+a run panel reads the user's line the way this one does instead of inventing a second syntax. The rules
+themselves live one layer down, in `Projectional.Language`'s `VariableInputs`, because what `1500` means is a
+fact about a language's values rather than about a panel - which is also what lets a declared test's
+`Testing.Evaluates` assertion read the same pairs.
 
 The rule behind them is the one the standalone app already follows: **the app may only use what a
 host can use.** Where a shell concern lived in the app's namespace and a host needed it, the
