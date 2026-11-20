@@ -261,7 +261,7 @@ Tables are a grid of columns, and a key names a column of *another document* of 
 
 ### Tests as data: a language's own test, written in the test language
 
-A language's tests are documents, not C#. A `tests/` folder beside the aspects holds one test per document, written in the test language: it names the document it is about and makes one assertion - `RoundTrips`, `Draws` or `Findings` - and the runner turns each row into a diff when it fails. The picture is a drawing assertion over the pipeline sample, with the table it expects beneath it:
+A language's tests are documents, not C#. A `tests/` folder beside the aspects holds one test per document, written in the test language: it names the document it is about and makes one assertion, and the runner turns each row into a diff when it fails. Five assertions are closed over: `RoundTrips` (write, read back, write again), `Draws` (the notation at a stated width), `Findings` (the findings the language's own constraints report), `Generates` (one named generator's text, line by line) and `Evaluates` (the interpreter's answer, or the message of the failure that stopped it). The picture is a drawing assertion over the pipeline sample, with the table it expects beneath it:
 
 ![A language test written in the test language: a drawing assertion over the pipeline, with the expected table beneath it](docs/images/language-test.png)
 
@@ -273,6 +273,9 @@ if (language is null)
     throw new InvalidOperationException(error);
 }
 
+// A test that evaluates needs its language's evaluation rules as the second argument - a language
+// project carries no evaluation aspect to read them from. The pipeline sample declares none, so its
+// folder needs only itself.
 var report = TestRunner.Run(language);
 
 if (!report.Succeeded)

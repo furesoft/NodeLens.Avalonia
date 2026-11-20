@@ -1,5 +1,3 @@
-using System.Globalization;
-
 using Projectional.Language;
 
 namespace Projectional.Avalonia;
@@ -12,10 +10,10 @@ namespace Projectional.Avalonia;
 /// with typed columns would need a schema, and the document does not declare one.
 /// </para>
 /// <para>
-/// A value is read as an <see cref="int"/>, then a <see cref="bool"/>, then a <c>yyyy-MM-dd</c> date, and otherwise as
-/// text. The order is the only one that keeps <c>1500</c> a number and <c>EUR</c> text, and it is why there is no
-/// quoting syntax: a user who means the word <c>true</c> cannot say so, which is the honest limit of a line rather
-/// than a rule to work around.
+/// The rules are <see cref="VariableInputs"/>'s, one layer down: what <c>1500</c> means is a fact about the
+/// language's values rather than about a panel, and a declared test's <c>Evaluates</c> assertion reads the same
+/// pairs. This type stays as the panel's door, so a run in the editor and a run in a test cannot disagree about what
+/// a value is.
 /// </para>
 /// </remarks>
 public static class RunInputs
@@ -30,51 +28,6 @@ public static class RunInputs
     /// inputs the user typed would fail for a reason that is not in the document, which is the one failure a user
     /// cannot diagnose from the editor.
     /// </remarks>
-    public static bool TryParse(string? text, out Dictionary<string, Value> variables, out string? error)
-    {
-        variables = new Dictionary<string, Value>(StringComparer.Ordinal);
-        error = null;
-
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return true;
-        }
-
-        foreach (var pair in text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-        {
-            var separator = pair.IndexOf('=', StringComparison.Ordinal);
-
-            // The blanks around a pair and around its '=' are the line's, not the name's or the value's: a user types
-            // them for readability, and a name with a trailing space would be a variable no document can read.
-            var name = separator < 0 ? string.Empty : pair[..separator].Trim();
-            var value = separator < 0 ? string.Empty : pair[(separator + 1)..].Trim();
-
-            if (name.Length == 0 || value.Length == 0)
-            {
-                error = $"'{pair}' is not a name=value pair.";
-
-                variables.Clear();
-
-                return false;
-            }
-
-            if (!variables.TryAdd(name, ParseValue(value)))
-            {
-                error = $"'{name}' is given more than once.";
-
-                variables.Clear();
-
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// <summary>What one written value means: a number, a flag, a date, or the text itself.</summary>
-    private static Value ParseValue(string text) =>
-        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? new IntValue(number)
-        : bool.TryParse(text, out var flag) ? new BoolValue(flag)
-        : DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? new DateValue(date)
-        : new StringValue(text);
+    public static bool TryParse(string? text, out Dictionary<string, Value> variables, out string? error) =>
+        VariableInputs.TryParse(text, out variables, out error);
 }

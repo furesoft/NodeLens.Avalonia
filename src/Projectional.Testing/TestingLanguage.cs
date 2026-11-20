@@ -49,6 +49,15 @@ public static class TestingLanguage
     /// <summary>The slot of the node a finding points at, or empty for the node's own text.</summary>
     public const string RoleSlot = "role";
 
+    /// <summary>The name of the generator a generation assertion runs.</summary>
+    public const string GeneratorSlot = "generator";
+
+    /// <summary>The <c>name=value</c> pairs a run is given, as the editor's run box reads them.</summary>
+    public const string VariablesSlot = "variables";
+
+    /// <summary>The answer or the failure an evaluation assertion expects, as text.</summary>
+    public const string OutcomeSlot = "outcome";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// The document is also the name slot, so a test reads as the document it is about in a tree, a reference and
@@ -132,6 +141,33 @@ public static class TestingLanguage
             ],
             nameSlot: CodeSlot,
             description: "One finding a test expects the document to report."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Generates,
+            [
+                new PropertySlot(
+                    GeneratorSlot,
+                    PropertyType.String,
+                    description: "The name of the generator the document is generated with."),
+                new ChildSlot(LinesSlot, TestingConceptKeys.Line, Cardinality.Many),
+            ],
+            [TestingConceptKeys.Assertion],
+            description: "The document generates as the text the test spells out, one line per entry."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Evaluates,
+            [
+                new PropertySlot(
+                    VariablesSlot,
+                    PropertyType.String,
+                    description: "The name=value pairs the run is given, or empty when it needs none."),
+                new PropertySlot(
+                    OutcomeSlot,
+                    PropertyType.String,
+                    description: "The answer the run produces, or the message of the failure that stops it."),
+            ],
+            [TestingConceptKeys.Assertion],
+            description: "The document evaluates to the answer the test spells out, or to the failure it names."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

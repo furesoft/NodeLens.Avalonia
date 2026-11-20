@@ -3,10 +3,10 @@ namespace Projectional.Testing;
 /// <summary>The keys of the test language: the concepts a language's own tests are written in.</summary>
 /// <remarks>
 /// <para>
-/// Three concepts, and the closed set is the point: a test says what document it is about and what it asserts
-/// about it, and the assertion is one of a handful of bodies the framework knows how to run. A test that could
-/// compute would be a program, and a program in the tests folder would be a second way to write code - the
-/// reason the constraint language has four bodies and the template language twelve parts.
+/// The closed set is the point: a test says what document it is about and what it asserts about it, and the
+/// assertion is one of a handful of bodies the framework knows how to run. A test that could compute would be a
+/// program, and a program in the tests folder would be a second way to write code - the reason the constraint
+/// language has four bodies and the template language twelve parts.
 /// </para>
 /// <para>
 /// The tests folder sits beside the aspect folders of a language project, one test per file, so that file-name
@@ -35,4 +35,10 @@ public static class TestingConceptKeys
 
     /// <summary>One expected finding: its code, its severity and the slot it points at.</summary>
     public const string ExpectedFinding = "Testing.ExpectedFinding";
+
+    /// <summary>The document generates as the text the test spells out, one line per entry.</summary>
+    public const string Generates = "Testing.Generates";
+
+    /// <summary>The document evaluates to the answer the test spells out, or to the failure it names.</summary>
+    public const string Evaluates = "Testing.Evaluates";
 }
