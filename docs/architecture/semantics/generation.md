@@ -46,7 +46,8 @@ The template is data in `Projectional.Language/Generation/`: `TextTemplate` is a
 the stand-in its language names), `ChildPart` (the single child's text),
 `ChildrenPart` (every child of a list, joined by a separator *template*), `LoopPart` (a body applied per child),
 `IndentPart` (one level deeper), `LineBreakPart` (a newline plus the current indentation), `ConditionalPart` (a
-property/value choice), `WhenFilledPart` (a choice on whether a slot holds anything) and `SelfPart` (the node's own
+property/value choice), `WhenFilledPart` (a choice on whether a slot holds anything), `ParentPart` (a property of the
+node that holds this one) and `SelfPart` (the node's own
 template, which is what a loop body needs). A generator is a
 `TextGenerator` - a name and a `TemplateRegistry` - and a language declares as many as it has targets.
 
@@ -62,6 +63,16 @@ missing, and a tree, where a node expands its children only once they exist. It 
 overload of `ConditionalPart` because that one compares a property's value with a text and is validated as such,
 while this one is validated as a slot of any kind; merging them would have made one total case stand for two
 questions. A defaulted property counts as filled, exactly as it draws and as `PropertyPart` emits it.
+
+`ParentPart` is the twelfth and the only part that reads a node **other** than the one being expanded: a property of
+the node that holds it. A template that walks into a child loses the child's place, so before this part a fragment
+could not name what it belonged to - the SQL schema example could write the columns a key points at but never the
+table the key hangs on, and its DDL stayed a fragment. The slot is named rather than inferred, like every other part
+(`ParentPart("name")` is how a name is read, because a role is a property the holding concept happens to declare), the
+outermost node emits nothing because nothing holds it, and the emitted characters are recorded as a region of the
+**holding** node - that is where they came from, so that is where "go to source" lands. It is also the one part whose
+slot a load cannot check: the holding concept is not declared anywhere, so the check runs in the engine and names both
+concepts. The declared twin is `TextGen.Parent`, drawn as `^slot`.
 
 The walk is `Generator` in `Projectional.Semantics/Generation/`: it owns the indentation, a depth guard against a
 template that expands itself, and the **traceability map**. Every emitted stretch is recorded as a

@@ -173,10 +173,13 @@ One gap this sample recorded is closed: the DDL used to end a keyless table with
 that was not there, because no part could ask a slot whether it held anything. `WhenFilledPart` is that
 question, and `TheGeneratedDdlNamesTheColumnsItsKeysPointAt` now pins a table without keys ending at `);`.
 
+The second is closed too: a key is a real `alter table <table> add foreign key (...) references ...` now, because
+`ParentPart` reads a property of the node that *holds* the node a template expands - the gap this example recorded as
+"A key is a fragment, not an `alter table`". `AParentPartEmitsThePropertyOfTheNodeThatHolds` and the sample's own
+golden DDL are the tests.
+
 Still open, and recorded rather than worked around:
 
-- **A key is a fragment, not an `alter table`**: a template cannot read the name of the node that *holds* the
-  node it expands, so the table's own name is not available inside the key's template.
 - **A many-valued reference cannot be drawn**, which is still the shape a list of links would take.
 
 ## What the three have to prove
