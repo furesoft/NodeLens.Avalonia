@@ -58,6 +58,23 @@ internal static class ProjectExplorer
     /// <param name="folder">The aspect folder.</param>
     internal static string FolderKey(string directory, string folder) => "folder:" + Path.Combine(directory, folder);
 
+    /// <summary>Every key a project contributes: its own row and one per folder it actually has.</summary>
+    /// <param name="language">The project.</param>
+    /// <remarks>
+    /// A caller that wants the whole tree shut asks this rather than guessing folder names: which folders exist is a
+    /// fact about the folder on disk, and the same walk that builds the rows answers it.
+    /// </remarks>
+    internal static IReadOnlyList<string> KeysOf(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        return
+        [
+            ProjectKey(language),
+            .. FoldersOf(language.Directory).Select(folder => FolderKey(language.Directory, folder.Folder)),
+        ];
+    }
+
     /// <summary>The rows, in the order the explorer draws them.</summary>
     /// <param name="documents">The open documents, in tab order.</param>
     /// <param name="languages">The language projects this window has opened, in the order they joined.</param>

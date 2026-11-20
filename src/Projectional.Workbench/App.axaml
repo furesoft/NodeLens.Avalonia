@@ -1,8 +1,15 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dockFluentTheme="using:Dock.Avalonia.Themes.Fluent"
              x:Class="Projectional.Workbench.App"
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
+    <!--
+      The workbench's chrome - dock tab strips, splitters, tool grips and the close buttons - is the docking
+      library's, so a panel the user drags elsewhere still looks like the rest of the window. It is declared once
+      here rather than in the window, because a floated panel is a window of its own.
+    -->
+    <dockFluentTheme:DockFluentTheme DensityStyle="Compact" />
   </Application.Styles>
 </Application>

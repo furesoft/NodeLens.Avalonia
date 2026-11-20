@@ -63,6 +63,10 @@ internal static class ShellShots
             Click(close);
         }
 
+        // Every node shut: the picture is about the folder icons, which only stay on screen while the files below
+        // them are not listed.
+        window.CollapseAllProjects();
+
         await Task.Delay(250);
     }
 

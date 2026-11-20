@@ -1003,6 +1003,27 @@ public sealed partial class MainWindow : Window, IDisposable
         ProjectList.SelectedItem = rows.FirstOrDefault(row => ReferenceEquals(row.Document, _documents.Active));
     }
 
+    /// <summary>Closes everything the project explorer can close, so only projects and folders are listed.</summary>
+    /// <remarks>
+    /// Internal for the screenshot harness: a picture of the explorer is about the folder icons, and a list of every
+    /// definition document pushes the folders a picture is meant to show out of the window.
+    /// </remarks>
+    internal void CollapseAllProjects()
+    {
+        _collapsed.Clear();
+        _collapsed.Add(ProjectExplorer.DocumentsKey);
+
+        foreach (var language in _language.Opened)
+        {
+            foreach (var key in ProjectExplorer.KeysOf(language))
+            {
+                _collapsed.Add(key);
+            }
+        }
+
+        ShowProject();
+    }
+
     /// <summary>Opens or closes a node of the project explorer.</summary>
     /// <remarks>
     /// The rows are rebuilt rather than mutated: a row is a value, and a collapsed node's children are not part of the
