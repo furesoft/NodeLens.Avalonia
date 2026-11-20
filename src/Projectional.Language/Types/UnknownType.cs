@@ -33,5 +33,13 @@ public sealed class UnknownType : IType
     /// <inheritdoc />
     public bool Accepts(IType actual) => true;
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// An unknown type is comparable with anything, for the same reason it accepts anything: the type is missing,
+    /// so a comparison that involves it is a comparison the language cannot yet judge, and reporting it as
+    /// impossible would blame the wrong node.
+    /// </remarks>
+    public bool IsComparableTo(IType other) => true;
+
     public override string ToString() => Name;
 }

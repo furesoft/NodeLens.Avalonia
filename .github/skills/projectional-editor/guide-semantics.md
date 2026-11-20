@@ -146,6 +146,14 @@
   other, or the unique least/greatest common type. When the edges do not determine one the answer is `UnknownType`,
   never a pick between two incomparable candidates, which is why the relation had to learn to enumerate
   (`SupertypesOf`/`SubtypesOf`) before the reduce could be honest.
+- **A type asks three questions, not two**: `Accepts` is conformance ("may this value stand here", lenient about
+  `unknown`), `ISubtype.IsSubtype` is subtyping ("is this below that", strict, one direction), and
+  `IType.IsComparableTo` is comparison ("may each be used for the other", asked through the relation **both ways**).
+  A one-way edge is a subtype without being a comparison - that is the difference the third question exists for, and
+  it is why `TypeSolver` asks `IsComparableTo` instead of writing two subtype checks. Each type whose acceptance is
+  structural overrides it so its comparison is structural too (list elements, record fields, a name's expansion, a
+  join's either side, a meet's both). `SubtypeRelation.IsComparableTo` is the authority for a language's edges;
+  `IType.IsComparableTo`'s default asks `SubtypeRelation.Primitives`, so a bare type compares only with itself.
 - **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
   a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
   rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.

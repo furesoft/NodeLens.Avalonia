@@ -85,5 +85,38 @@ public sealed class RecordType : IType
         return true;
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// A record is comparable with another record when both hold the same field names and each field's type is
+    /// comparable, so its comparability is as structural as its acceptance. Field order is not part of the
+    /// comparison, for the reason it is not part of acceptance: a record is a set of names.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        var unwrapped = NamedType.Unwrap(other);
+
+        if (unwrapped is UnknownType)
+        {
+            return true;
+        }
+
+        if (unwrapped is not RecordType record || record._fields.Count != _fields.Count)
+        {
+            return false;
+        }
+
+        foreach (var (name, type) in _fields)
+        {
+            if (!record._fields.TryGetValue(name, out var otherType) || !type.IsComparableTo(otherType))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public override string ToString() => Name;
 }

@@ -212,7 +212,7 @@ public sealed class TypeSolver
             default:
                 // Two concrete types are a fact the relation settles; a disagreement is the one thing a solve can
                 // report as a contradiction rather than as an unfinished job.
-                if (!_subtypes.IsSubtype(left, right) || !_subtypes.IsSubtype(right, left))
+                if (!_subtypes.IsComparableTo(left, right))
                 {
                     failure = $"{left.Name} and {right.Name} cannot be one type.";
                 }

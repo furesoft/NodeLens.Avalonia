@@ -57,5 +57,22 @@ public sealed class PrimitiveType : IType
         };
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// A primitive is comparable with another primitive of the same name, and with an unknown type, for the same
+    /// reason it accepts one: a mistake somewhere else must not turn into a comparison that can never be made.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return NamedType.Unwrap(other) switch
+        {
+            UnknownType => true,
+            PrimitiveType primitive => string.Equals(primitive.Name, Name, StringComparison.Ordinal),
+            _ => false,
+        };
+    }
+
     public override string ToString() => Name;
 }

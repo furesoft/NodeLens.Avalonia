@@ -60,5 +60,17 @@ public sealed class NamedType : IType
         return Expansion.Accepts(actual is NamedType named ? named.Expansion : actual);
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// A declared name is comparable with what its expansion is comparable with, so the name is transparent for
+    /// comparison exactly as it is for acceptance. Unwrapping the other side is the same rule read the other way.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return Expansion.IsComparableTo(other is NamedType named ? named.Expansion : other);
+    }
+
     public override string ToString() => Name;
 }

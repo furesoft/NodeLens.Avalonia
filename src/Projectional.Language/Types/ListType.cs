@@ -41,5 +41,22 @@ public sealed class ListType : IType
         };
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// A list is comparable with another list when its elements are, so a list's comparability is as structural as
+    /// its acceptance - and an unknown type is comparable with anything, for the same reason it is accepted.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return NamedType.Unwrap(other) switch
+        {
+            UnknownType => true,
+            ListType list => Element.IsComparableTo(list.Element),
+            _ => false,
+        };
+    }
+
     public override string ToString() => Name;
 }

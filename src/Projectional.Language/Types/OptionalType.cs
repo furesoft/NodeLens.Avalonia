@@ -49,5 +49,22 @@ public sealed class OptionalType : IType
         };
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// An optional is comparable with another optional when its inners are, and with the inner type itself when the
+    /// value is always there - the same shapes its acceptance admits, so the two questions stay in step.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return NamedType.Unwrap(other) switch
+        {
+            UnknownType => true,
+            OptionalType optional => Inner.IsComparableTo(optional.Inner),
+            var unwrapped => Inner.IsComparableTo(unwrapped),
+        };
+    }
+
     public override string ToString() => Name;
 }

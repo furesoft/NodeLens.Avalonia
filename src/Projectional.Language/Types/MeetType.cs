@@ -50,5 +50,17 @@ public sealed class MeetType : IType
         return Left.Accepts(actual) && Right.Accepts(actual);
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Both sides have to be comparable, for the same reason both have to accept: a value of a meet is a value of
+    /// each, so a comparison with it is a comparison with both.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return Left.IsComparableTo(other) && Right.IsComparableTo(other);
+    }
+
     public override string ToString() => Name;
 }

@@ -56,5 +56,17 @@ public sealed class JoinType : IType
         return Left.Accepts(actual) || Right.Accepts(actual);
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Either side being comparable is enough, for the same reason either side accepting is enough: a join is a
+    /// union, so a value from either side may be compared with it.
+    /// </remarks>
+    public bool IsComparableTo(IType other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return Left.IsComparableTo(other) || Right.IsComparableTo(other);
+    }
+
     public override string ToString() => Name;
 }
