@@ -201,7 +201,7 @@ typed in.
 | inference rule, equality (`typeof(x) :==: <T>`) | the node's type *is* this type | `TypeRule.Fixed`, `TypeRule.Child` | `TypeRule.Equation` with an `equals` relation |
 | inference rule, inequality (`infer typeof(a) :<=: <T>`) | the type must be a *subtype* | only `IType.Accepts` (conformance, not subtyping) | a subtype relation as data, `TypeRule.Equation` with `subtype`/`supertype` |
 | `var elementType` + anti-quotation | a variable shared between two statements | nothing - a rule cannot name a second node's type | `TypeRule.TypeVariable`, shared by equations; anti-quotation is unnecessary because a variable is declared once and referenced by name |
-| `join(A, B)` (least upper bound) | the common supertype of two types | `Unknown` is not it | `TypeRule.Join` as a type expression, with `Meet` beside it |
+| `join(A, B)` (least upper bound) | the common supertype of two types | `JoinType`/`MeetType` as types, and **`TypeRule.Join`/`TypeRule.Meet`** as their declared spellings; `TypeLattice.Join` reduces either to one type | - |
 | `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer | a solver pass order (`Settle`), so a rule may read a child's *settled* type and a cyclic read is a finding |
 | `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | a finding has to be a `Check` or a `Constraint`, both of which are separate aspects | `TypeRule.Complain` as a body, lowered into the same `Diagnostic` a check produces |
 | replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
@@ -270,8 +270,11 @@ Each slice is independent and each is only worth starting when a language needs 
   where the value is written: the relation is an enumeration, so the model refuses a spelling the lowering never
   sees, while the lowering refuses an equations body that states nothing, an equation whose two sides are the same
   variable (true of every type and deciding none), and a variable written outside a body that states equations
-  (nothing would constrain it). Deferred: `TypeRule.Join`/`Meet` as type expressions, and the subtyping
-  declaration, which needs a project-level property the language layer does not have.
+  (nothing would constrain it). The type expressions were closed the same way: `TypeRule.Join` and
+  `TypeRule.Meet` are the two types the layer already had but a model could not write, so a slot that accepts
+  "either" or "both" is now spellable and lowers to `JoinType`/`MeetType` - the drawing being the operator the
+  type's `Name` prints (`int|string`, `int&Amount`), the invariant the rest of the family keeps. Deferred: the
+  subtyping declaration, which needs a project-level property the language layer does not have.
 - **T5 - comparison rules.** `TypeRule.Comparable`, and `IType.IsComparableTo` beside `Accepts` - a third question,
   because "interchangeable" is what MPS' weak comparison means and neither accept nor subtype says it.
 - **T6 - the settle pass.** An explicit order so a rule may read a child's settled type (`when concrete`), with a

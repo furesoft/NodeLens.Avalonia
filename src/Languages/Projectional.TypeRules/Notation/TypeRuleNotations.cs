@@ -100,6 +100,18 @@ public static class TypeRuleNotations
             ed.ChildInline(TypeRuleLanguage.InnerSlot),
             ed.Keyword("?")));
 
+        // A join and a meet draw as the operators JoinType.Name and MeetType.Name print, with no spaces, so the
+        // source and the sentence a finding quotes are the same text.
+        notations.Add(TypeRuleConceptKeys.Join, ed => ed.Line(
+            ed.ChildInline(TypeRuleLanguage.LeftSlot),
+            ed.Keyword("|"),
+            ed.ChildInline(TypeRuleLanguage.RightSlot)));
+
+        notations.Add(TypeRuleConceptKeys.Meet, ed => ed.Line(
+            ed.ChildInline(TypeRuleLanguage.LeftSlot),
+            ed.Keyword("&"),
+            ed.ChildInline(TypeRuleLanguage.RightSlot)));
+
         // A name draws as itself; what it expands to is the model's business, not the reader's.
         notations.Add(TypeRuleConceptKeys.Ref, ed => ed.Line(
             ed.Property(TypeRuleLanguage.NameSlot)));

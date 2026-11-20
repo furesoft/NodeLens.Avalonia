@@ -179,6 +179,24 @@ public static class TypeRuleLanguage
             description: "A type expression that names a declared type."),
 
         new ConceptDeclaration(
+            TypeRuleConceptKeys.Join,
+            [
+                new ChildSlot(LeftSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(RightSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            [TypeRuleConceptKeys.TypeExpr],
+            description: "Either of two types: a value of the left or of the right."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Meet,
+            [
+                new ChildSlot(LeftSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(RightSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            [TypeRuleConceptKeys.TypeExpr],
+            description: "Both of two types at once: a value of the left and of the right."),
+
+        new ConceptDeclaration(
             TypeRuleConceptKeys.TypeVariable,
             [new PropertySlot(NameSlot, PropertyType.String)],
             [TypeRuleConceptKeys.TypeExpr],
