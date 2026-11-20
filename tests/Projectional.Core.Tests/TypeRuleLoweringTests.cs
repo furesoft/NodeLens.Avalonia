@@ -488,6 +488,68 @@ public sealed class TypeRuleLoweringTests
         Assert.Contains("==, <:, :>", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AComplaintLowersToAConstraintThatReportsItsMessage()
+    {
+        var set = Complaints(rules =>
+            rules.Rule("Expressions.IntLiteral", rules.Complain("An integer literal is not allowed here.")));
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var literal = model.NewNode(ExpressionsConceptKeys.IntLiteral);
+
+        var finding = Assert.Single(new ConstraintEngine(set).Check(model));
+
+        Assert.Equal(literal.Id, finding.Target);
+        Assert.Equal(DiagnosticSeverity.Error, finding.Severity);
+        Assert.Equal("An integer literal is not allowed here.", finding.Message);
+    }
+
+    [Fact]
+    public void AComplaintCarriesTheSeverityItStates()
+    {
+        var set = Complaints(rules =>
+            rules.Rule("Expressions.IntLiteral", rules.Complain("Only a warning.", "warning")));
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        model.NewNode(ExpressionsConceptKeys.IntLiteral);
+
+        Assert.Equal(DiagnosticSeverity.Warning, Assert.Single(new ConstraintEngine(set).Check(model)).Severity);
+    }
+
+    [Fact]
+    public void AComplaintContributesNoType()
+    {
+        var registry = Lower(rules =>
+            rules.Rule("Expressions.IntLiteral", rules.Complain("Reported, not typed.")));
+
+        Assert.Equal(0, registry.Count);
+        Assert.IsType<UnknownType>(registry.TypeOf(Literal()));
+    }
+
+    [Fact]
+    public void AComplaintWithoutAMessageIsALoadTimeError()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+        model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Complain);
+
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => TypeRuleLowering.CreateComplaints(model.Roots));
+
+        Assert.Contains("'message'", exception.Message, StringComparison.Ordinal);
+    }
+
+    private static ConstraintSet Complaints(Action<RuleBuilder> declare)
+    {
+        var builder = new RuleBuilder();
+
+        declare(builder);
+
+        return TypeRuleLowering.CreateComplaints(builder.Roots);
+    }
+
     private static Node Literal()
     {
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");
@@ -580,6 +642,21 @@ public sealed class TypeRuleLoweringTests
             primitive.Set(TypeRuleLanguage.NameSlot, name);
 
             return primitive;
+        }
+
+        /// <summary>A body that reports instead of typing.</summary>
+        public Node Complain(string message, string? severity = null)
+        {
+            var body = _model.NewNode(TypeRuleConceptKeys.Complain);
+
+            body.Set(TypeRuleLanguage.MessageSlot, message);
+
+            if (severity is not null)
+            {
+                body.Set(TypeRuleLanguage.SeveritySlot, severity);
+            }
+
+            return body;
         }
 
         public Node ListOf(Node element)

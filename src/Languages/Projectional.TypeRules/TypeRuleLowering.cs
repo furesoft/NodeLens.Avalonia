@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Language;
+using Projectional.Semantics;
 
 namespace Projectional.TypeRules;
 
@@ -42,6 +43,13 @@ public static class TypeRuleLowering
             switch (root.Concept.Key)
             {
                 case TypeRuleConceptKeys.Rule:
+                    // A complaint states a diagnostic, not a type, so it contributes nothing to the registry:
+                    // reporting is a separate answer from typing, and a concept's type is not changed by it.
+                    if (IsComplaint(root))
+                    {
+                        break;
+                    }
+
                     var conceptKey = Required(root, TypeRuleLanguage.ConceptKeySlot);
 
                     registry = registry.Add(conceptKey, LowerRule(root, conceptKey, aliases));
@@ -57,6 +65,50 @@ public static class TypeRuleLowering
         }
 
         return registry;
+    }
+
+    /// <summary>The complaints a language's type documents declare, as the constraints that report them.</summary>
+    /// <param name="documents">
+    /// The documents <see cref="CreateRegistry"/> reads: a complaint states a diagnostic rather than a type,
+    /// so it contributes nothing to the registry and everything here.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// A complaint is not a type, so lowering it changes nothing about what a concept evaluates to: it adds a
+    /// finding beside the type. That is why the two products are separate - a language that declares a
+    /// complaint still has the type its other rules answer, and a language that declares none is unaffected.
+    /// </para>
+    /// <para>
+    /// The message and the severity are read here, once, and captured by the constraint: a complaint is a
+    /// sentence about the concept, not about the node, so the same text is reported wherever the concept
+    /// appears. A document that is neither a rule nor a named type is refused by <see cref="CreateRegistry"/>,
+    /// which a language loads first, so this walk skips what it does not handle.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ConceptDefinitionException">A complaint is missing its concept key or its message.</exception>
+    public static ConstraintSet CreateComplaints(IEnumerable<Node> documents)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+
+        var complaints = ConstraintSet.Empty;
+
+        foreach (var root in documents)
+        {
+            if (root.Concept.Key != TypeRuleConceptKeys.Rule || !IsComplaint(root))
+            {
+                continue;
+            }
+
+            var conceptKey = Required(root, TypeRuleLanguage.ConceptKeySlot);
+            var body = RequiredChild(root, TypeRuleLanguage.BodySlot);
+
+            complaints = complaints.Add(
+                conceptKey,
+                new ComplaintConstraint(Required(body, TypeRuleLanguage.MessageSlot), Severity(body)));
+        }
+
+        return complaints;
     }
 
     /// <summary>
@@ -352,6 +404,41 @@ public static class TypeRuleLowering
     private static Node RequiredChild(Node node, string slot) =>
         node.GetChild(slot) ?? throw new ConceptDefinitionException(
             $"A '{node.Concept.Key}' is missing its '{slot}', so it cannot be lowered.");
+
+    /// <summary>Whether <paramref name="rule"/>'s body is a complaint, which states a diagnostic rather than a type.</summary>
+    private static bool IsComplaint(Node rule) =>
+        rule.GetChild(TypeRuleLanguage.BodySlot)?.Concept.Key == TypeRuleConceptKeys.Complain;
+
+    /// <summary>How much a complaint matters, as the severity its spelling names.</summary>
+    private static DiagnosticSeverity Severity(Node body) =>
+        body.GetOrNull(TypeRuleLanguage.SeveritySlot) switch
+        {
+            "warning" => DiagnosticSeverity.Warning,
+            "hint" => DiagnosticSeverity.Hint,
+            _ => DiagnosticSeverity.Error,
+        };
+
+    /// <summary>A complaint: a message with a severity, reported wherever the concept the rule names appears.</summary>
+    private sealed class ComplaintConstraint(string message, DiagnosticSeverity severity) : IConstraint
+    {
+        public void Check(ConstraintContext context)
+        {
+            switch (severity)
+            {
+                case DiagnosticSeverity.Warning:
+                    context.Warning(message);
+                    break;
+
+                case DiagnosticSeverity.Hint:
+                    context.Hint(message);
+                    break;
+
+                default:
+                    context.Error(message);
+                    break;
+            }
+        }
+    }
 
     /// <summary>A type written out, which is the same whatever the node holds.</summary>
     private sealed class FixedRule(IType type) : ITypeRule

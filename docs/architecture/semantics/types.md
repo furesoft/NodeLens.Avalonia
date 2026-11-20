@@ -172,7 +172,7 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1, T2, T3 and T4, which are delivered, and T5's third question, which is delivered while its declared form stays open. This section is the design of record for the next
+**Planned, not built** - except T1, T2, T3 and T4, which are delivered, T5's third question, which is delivered while its declared form stays open, and T7's unconditional form. This section is the design of record for the next
 stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
 MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
@@ -185,8 +185,8 @@ typeof(b)`), which needs variables over types and a solver. `TypeVariable`, `Typ
 exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses to state relations instead of
 answering a type. `TypeRegistry.EquationsFor` is the caller that door was missing (slice T4): it hands a node's
 declared relations to a `TypeSolver`, so a rule table that needs solving is solved without teaching every consumer
-to ask a second question - `TypeFor` stays what everything asks. The remaining slices are T6-T8, with T5's third
-question delivered and its declared form still open.
+to ask a second question - `TypeFor` stays what everything asks. The remaining slices are T6 and T8, with T5's
+third question and T7's unconditional form delivered and their declared halves still open.
 
 The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
 `do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
@@ -204,7 +204,7 @@ typed in.
 | `var elementType` + anti-quotation | a variable shared between two statements | nothing - a rule cannot name a second node's type | `TypeRule.TypeVariable`, shared by equations; anti-quotation is unnecessary because a variable is declared once and referenced by name |
 | `join(A, B)` (least upper bound) | the common supertype of two types | `JoinType`/`MeetType` as types, and **`TypeRule.Join`/`TypeRule.Meet`** as their declared spellings; `TypeLattice.Join` reduces either to one type | - |
 | `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer | a solver pass order (`Settle`), so a rule may read a child's *settled* type and a cyclic read is a finding |
-| `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | a finding has to be a `Check` or a `Constraint`, both of which are separate aspects | `TypeRule.Complain` as a body, lowered into the same `Diagnostic` a check produces |
+| `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | **`TypeRule.Complain`** as a body - a `message` and a `severity` lowered into an `IConstraint` the language's own set carries, so the existing findings path reports it; it states a type for nothing | a *conditional* complaint: the message as a sentence about the concept is unconditional, and "operation is not applicable to these operands" needs a condition vocabulary the body does not have |
 | replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
 | subtyping rule | the direct supertypes of a type | nothing - `NamedType` has an expansion, not supertypes | `TypeRule.Supertypes` declared per type concept, feeding the subtype relation |
 | comparison rule | two types are interchangeable (weak/strong) | **`IType.IsComparableTo`** - the third question, asked both ways through the relation, so "interchangeable" is neither conformance nor a one-way subtype edge; `TypeSolver` asks it instead of comparing two subtype checks by hand | `TypeRule.Comparable` as a declared pair, when a language needs to state a comparison its edges do not express |
@@ -289,7 +289,15 @@ Each slice is independent and each is only worth starting when a language needs 
   `when concrete` blocks unnecessary, and the cookbook uses them to work around statement ordering.
 - **T7 - a type rule that reports.** `TypeRule.Complain`, lowered into `Diagnostic` with a severity, so a
   "operation is not applicable to these operands" message reaches the squiggles and the problems panel through the
-  path that already exists. A complaint names its node, so no new diagnostic kind.
+  path that already exists. A complaint names its node, so no new diagnostic kind. **Delivered for the
+  unconditional form**: `TypeRule.Complain` is a body carrying a `message` and a `severity`, and
+  `TypeRuleLowering.CreateComplaints` lowers it into an `IConstraint` keyed by the concept the rule names, which
+  `LanguageProject` composes into the language's own constraints - so the constraint engine, the findings and the
+  squiggles all carry it without a new path. A complaint states no type, so it is kept out of the registry: a
+  language with only a complaint has `HasTypes` false and `HasConstraints` true, and a concept that also has a
+  type rule keeps that type unchanged. The message is a sentence about the concept, not a condition over the
+  node, so the declared form reports *unconditionally*; "operation is not applicable to these operands" needs a
+  condition vocabulary the body does not have, and that is deferred rather than approximated.
 - **T8 - replacement and substitution.** `TypeRule.Replacement` (rewrite an equation before solving) and
   `TypeRule.Substitute` (configuration-dependent types, which needs a per-model configuration slot the framework does
   not have - open question 113).

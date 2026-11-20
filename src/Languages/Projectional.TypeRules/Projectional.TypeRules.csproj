@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
   </ItemGroup>
 
   <ItemGroup>

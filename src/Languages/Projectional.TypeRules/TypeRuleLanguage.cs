@@ -70,6 +70,12 @@ public static class TypeRuleLanguage
     /// <summary>The right side of an equation.</summary>
     public const string RightSlot = "right";
 
+    /// <summary>The message a complaint reports.</summary>
+    public const string MessageSlot = "message";
+
+    /// <summary>How much a complaint matters.</summary>
+    public const string SeveritySlot = "severity";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// A rule is a document of its own, and so is a named type: the root <em>is</em> the definition, the shape MPS
@@ -220,6 +226,16 @@ public static class TypeRuleLanguage
                 new ChildSlot(RightSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
             ],
             description: "One relation between two type expressions: equal, subtype or supertype."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Complain,
+            [
+                new PropertySlot(MessageSlot, PropertyType.String),
+                new PropertySlot(SeveritySlot, PropertyType.Enum("error", "warning", "hint")),
+            ],
+            [TypeRuleConceptKeys.Body],
+            nameSlot: MessageSlot,
+            description: "A body that reports instead of answering a type: the message and how much it matters."),
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.Named,

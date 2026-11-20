@@ -74,4 +74,7 @@ public static class TypeRuleConceptKeys
 
     /// <summary>A type expression the solver gives a type to.</summary>
     public const string TypeVariable = "TypeRule.TypeVariable";
+
+    /// <summary>A body that reports instead of answering a type.</summary>
+    public const string Complain = "TypeRule.Complain";
 }
