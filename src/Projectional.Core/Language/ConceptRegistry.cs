@@ -443,6 +443,11 @@ public sealed class ConceptRegistry
         var nameRule = declaration.NameRule
             ?? supers.Select(super => super.NameRule).FirstOrDefault(rule => rule is not null);
 
+        // The third designation that inherits the same way, and for the same reason: a concept that computes its
+        // name stays computed below itself, and a language re-declares the function only to override it.
+        var nameFunction = declaration.NameOf
+            ?? supers.Select(super => super.NameFunction).FirstOrDefault(function => function is not null);
+
         return new Concept(
             declaration.Key,
             supers,
@@ -457,7 +462,8 @@ public sealed class ConceptRegistry
             declaration.IsInterface,
             extensions,
             interfaces,
-            nameRule);
+            nameRule,
+            nameFunction);
     }
 
     /// <summary>

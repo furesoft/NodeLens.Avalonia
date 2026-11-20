@@ -25,13 +25,15 @@ public sealed class Concept
         bool isInterface = false,
         IReadOnlyList<Concept>? extensions = null,
         IReadOnlyList<Concept>? interfaces = null,
-        NameRule? nameRule = null)
+        NameRule? nameRule = null,
+        Func<Node, string?>? nameFunction = null)
     {
         Key = key;
         SuperConcepts = superConcepts;
         Slots = slots;
         NameSlot = nameSlot;
         NameRule = nameRule;
+        NameFunction = nameFunction;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         Description = description;
@@ -94,6 +96,40 @@ public sealed class Concept
 
     /// <summary>The string property that references to this concept display, if declared.</summary>
     public PropertySlot? NameSlot { get; }
+
+    /// <summary>
+    /// The function that computes what a node of this concept is called, or <see langword="null"/> when the name is
+    /// the value of <see cref="NameSlot"/>.
+    /// </summary>
+    /// <remarks>
+    /// Already resolved through the super concepts - own declaration first, then the first declaring super in
+    /// declaration order - so no consumer walks the chain. <see cref="NameOf"/> is the answer; this is what it is
+    /// built from, and it is exposed so that a lowering can see the difference between "declared here" and
+    /// "inherited".
+    /// </remarks>
+    public Func<Node, string?>? NameFunction { get; }
+
+    /// <summary>What <paramref name="node"/> is called: the declared function, else the name slot, else nothing.</summary>
+    /// <param name="node">A node of this concept.</param>
+    /// <returns>The name, or <see langword="null"/> when this concept answers neither way.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// The one answer to "what is this node called", which <see cref="Node.Name"/> and therefore nine consumers -
+    /// reference cells, sort by name, the outline, the problems panel, the scope, ambiguity, the stored fallback text,
+    /// rename and the naming checks - read. A function is asked first and a slot second, so a concept that declares
+    /// both keeps its slot readable for a slot declared over <see cref="FrameworkInterfaces.Named"/> while the
+    /// computed word is what the drawing shows.
+    /// </remarks>
+    public string? NameOf(Node node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        return NameFunction is { } name
+            ? name(node)
+            : NameSlot is { } slot
+                ? node.GetOrNull(slot.Name)
+                : null;
+    }
 
     /// <summary>
     /// What a name of this concept has to look like, or <see langword="null"/> when no concept in its chain declared

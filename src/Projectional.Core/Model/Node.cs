@@ -67,13 +67,25 @@ public sealed class Node
 
     public bool IsRoot => Parent is null && IndexInParent >= 0;
 
-    /// <summary>The text a reference to this node displays, if its concept declares a name slot.</summary>
-    public string? Name => Concept.NameSlot is { } slot ? GetOrNull(slot.Name) : null;
-
-    /// <summary>Whether this node has a name at all, which is what makes it something a reference can point at.</summary>
+    /// <summary>The text a reference to this node displays: what its concept computes it is called, or its name slot.</summary>
     /// <remarks>
+    /// The one answer to "what is this node called" - the declared function first, then the name slot - so a language
+    /// can name a node after a child, after a reference's target or after a value without a second lookup path
+    /// (<c>docs/architecture/behaviours.md</c>).
+    /// </remarks>
+    public string? Name => Concept.NameOf(this);
+
+    /// <summary>Whether this node's concept declares a name slot, which is where a name is stored and written.</summary>
+    /// <remarks>
+    /// <para>
     /// A fact of the concept rather than a habit of the language: a concept that implements
     /// <see cref="FrameworkInterfaces.Named"/> has one without declaring it, and so does every concept below it.
+    /// </para>
+    /// <para>
+    /// It is a question about the <em>slot</em>, not about the name: a concept may compute its name instead
+    /// (<c>docs/architecture/behaviours.md</c>), and then there is nothing here to write. A consumer that wants "is
+    /// this something a name could mean" asks <see cref="Name"/>; one that wants "can I edit the name" asks this.
+    /// </para>
     /// </remarks>
     public bool IsNamed => Concept.NameSlot is not null;
 

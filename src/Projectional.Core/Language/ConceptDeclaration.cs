@@ -23,7 +23,8 @@ public sealed class ConceptDeclaration
         IEnumerable<ConceptTrigger>? triggers = null,
         bool isInterface = false,
         IEnumerable<string>? interfaces = null,
-        NameRule? nameRule = null)
+        NameRule? nameRule = null,
+        Func<Node, string?>? nameOf = null)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -121,6 +122,7 @@ public sealed class ConceptDeclaration
         IsInterface = isInterface;
         NameSlot = nameSlot;
         NameRule = nameRule;
+        NameOf = nameOf;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         CollapseSlot = collapseSlot;
@@ -163,6 +165,26 @@ public sealed class ConceptDeclaration
 
     /// <summary>The slot that supplies the text a reference to this concept displays.</summary>
     public string? NameSlot { get; }
+
+    /// <summary>
+    /// The function that computes what a node of this concept is called, or <see langword="null"/> when the name is
+    /// the value of <see cref="NameSlot"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A pure function of the node, passed in the declaration exactly as <see cref="NameSlot"/> is a string passed in
+    /// one, so this layer stays reflection-free and learns only that a concept may name its own nodes. It exists
+    /// because three ordinary shapes have no name slot to read: a name spread over two properties, a name that *is* a
+    /// value, and a name that is a sentence.
+    /// </para>
+    /// <para>
+    /// Inherited the way <see cref="NameSlot"/> and <see cref="CollapseSlot"/> are: the concept's own function wins,
+    /// then the first declaring super in declaration order. A concept that declares both keeps its slot - the slot is
+    /// what a slot declared over <see cref="FrameworkInterfaces.Named"/> reads - and the function is what
+    /// <see cref="Concept.NameOf"/> answers first.
+    /// </para>
+    /// </remarks>
+    public Func<Node, string?>? NameOf { get; }
 
     /// <summary>
     /// What a name of this concept has to look like, or <see langword="null"/> to inherit what the super concept
