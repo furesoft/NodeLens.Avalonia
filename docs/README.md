@@ -68,6 +68,9 @@ records what was actually verified.
 32. [Text import](architecture/import.md) — the intake contract and, under
     [architecture/import/](architecture/import/), one file per reference language (JSON, XML, TOML,
     HOCON, YAML) plus the declared importer (delivered; the parity rule still has one subject).
+33. [Interactive language documentation](architecture/language-docs.md) — a language folder turned
+    into static, searchable HTML that can be read without the editor (planned; the four decisions
+    the implementation has to take are listed there).
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
