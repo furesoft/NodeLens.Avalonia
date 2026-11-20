@@ -261,6 +261,17 @@ because they are what made the node a wrapper. `UnwrapAction` addresses the node
 model's refusal into a rejection with the model's own sentence: the model stays the one authority on a legal
 placement rather than being restated in the edit layer.
 
+**A move that changes parent is a place, not a direction.** `MoveNodeAction` answers the picture (up, down, to the
+front) and never leaves the slot the node stands in; `MoveNodeToAction` names the destination - a parent, a slot and
+an index - which is what a refactoring or a host's own intention has computed from a declaration. The model half
+already existed and needed no change: `Node.InsertChild` detaches the node inside the same mutation, so identity,
+references and caret addresses survive and undo puts it back in the slot it came from rather than rebuilding a copy.
+Two boundaries are worth knowing. **A move stays inside one root**, because a session draws one and `EditContext.NodeOf`
+walks from it: another root of the same model is not in the tree, which is why extract goes into the nearest enclosing
+declaration rather than into a new place. And a stale place is a **rejection with a reason**, never a throw: a program
+computed it earlier, and abandoning the remaining steps with the model half-changed is the one outcome a refactoring
+must not have.
+
 ## How intentions work
 
 An intention is a *way to find* an `EditAction` at the caret, in `Projectional.Editing/Intentions/`, and it
