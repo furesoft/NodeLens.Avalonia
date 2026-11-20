@@ -59,6 +59,7 @@ internal static class DeclaredTestLanguage
             [
                 definition.Property("text", "string", description: "What the step does."),
                 definition.Property("index", "int"),
+                definition.Property("weight", "float"),
                 definition.Property("due", "date"),
                 definition.Property("status", "Test.Status"),
                 definition.Child("detail", TestLanguage.Step),

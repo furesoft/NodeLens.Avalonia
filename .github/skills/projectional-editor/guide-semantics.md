@@ -426,9 +426,11 @@ A language says what its nodes *mean* through one function per concept, and the 
   outcome of the **first** rule that applies; no match is a failure, because inventing `Review` would hide a
   table whose conditions leave a gap. Its `Registry` composes `ExpressionsEvaluation.Registry`, so a condition
   runs without a host bolting two registries together.
-- **Values are content-compared records** (`IntValue`, `BoolValue`, `StringValue`, `DateValue`), with `Display`
-  for the trace. A trace is read by a user, so `Display` is a rendering and never an identity. A record or list
-  value arrives with the first language that evaluates one - do not add kinds speculatively.
+- **Values are content-compared records** (`IntValue`, `FloatValue`, `BoolValue`, `StringValue`, `DateValue`), with
+  `Display` for the trace. A trace is read by a user, so `Display` is a rendering and never an identity. A record or
+  list value arrives with the first language that evaluates one - do not add kinds speculatively. A value kind exists
+  because a property type does: adding one to `PropertyType` means adding the matching `Value` and the case in
+  `EvaluationContext.PropertyValue`, or a generator over that slot reports it "has no value here".
 - **Tests pass the test token.** Any call to `Interpreter.Run` in a test passes
   `cancellationToken: TestContext.Current.CancellationToken`, or xUnit1051 is an error.
 

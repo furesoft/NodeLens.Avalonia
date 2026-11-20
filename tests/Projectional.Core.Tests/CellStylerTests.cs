@@ -45,10 +45,17 @@ public sealed class CellStylerTests
 
     [Theory]
     [InlineData("int")]
+    [InlineData("float")]
     [InlineData("date")]
     public void ALiteralValueIsStyledAsANumber(string propertyType)
     {
-        var type = propertyType == "int" ? PropertyType.Integer : PropertyType.Date;
+        var type = propertyType switch
+        {
+            "int" => PropertyType.Integer,
+            "float" => PropertyType.Float,
+            _ => PropertyType.Date,
+        };
+
         var cell = new PropertyCell(Here, "amount", type, "42", isSet: true);
 
         Assert.Equal(TextStyleKind.Number, CellStyler.Default.StyleOf(cell));

@@ -38,6 +38,24 @@ public sealed class InterpreterTests
     }
 
     [Fact]
+    public void AFloatPropertyIsReadAsAFloatValue()
+    {
+        // A property is read by parsing whatever the model stored, so the value kinds have to cover every property
+        // type - otherwise a generator over a float slot would report that it has "no value here".
+        var rules = EvaluationRegistry.Empty
+            .Add(TestLanguage.Step, new DelegateEvaluationRule(context => context.PropertyValue("weight")));
+        var step = IndexedStep();
+
+        step.Set("weight", 1.5);
+
+        var result = new Interpreter(rules).Run(step, cancellationToken: Token);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(new FloatValue(1.5), result.Value);
+        Assert.Equal("1.5", result.Value!.Display);
+    }
+
+    [Fact]
     public void TheTraceIsPostOrderSoAChildComesBeforeTheNodeThatAskedForIt()
     {
         var (outer, inner) = Nested(outer: 1, inner: 7);

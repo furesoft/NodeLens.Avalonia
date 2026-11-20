@@ -10,8 +10,9 @@ namespace Projectional.Language;
 /// richer input would need a type per variable and the document does not declare one.
 /// </para>
 /// <para>
-/// A value is read as an <see cref="int"/>, then a <see cref="bool"/>, then a <c>yyyy-MM-dd</c> date, and otherwise as
-/// text. The order is the only one that keeps <c>1500</c> a number and <c>EUR</c> text, and it is why there is no
+/// A value is read as an <see cref="int"/>, then a <see cref="double"/>, then a <see cref="bool"/>, then a
+/// <c>yyyy-MM-dd</c> date, and otherwise as text. The order is the only one that keeps <c>1500</c> a whole number,
+/// <c>1.5</c> a fraction and <c>EUR</c> text, and it is why there is no
 /// quoting syntax: a user who means the word <c>true</c> cannot say so, which is the honest limit of a line rather
 /// than a rule to work around.
 /// </para>
@@ -74,9 +75,14 @@ public static class VariableInputs
         return true;
     }
 
-    /// <summary>What one written value means: a number, a flag, a date, or the text itself.</summary>
+    /// <summary>What one written value means: a whole number, a fraction, a flag, a date, or the text itself.</summary>
+    /// <remarks>
+    /// <c>int</c> before <c>float</c>, because a whole number written as <c>1500</c> is a whole number and reading it
+    /// as a fraction would make <c>amount=1500</c> a different value than the model's own <c>int</c> slot holds.
+    /// </remarks>
     private static Value ParseValue(string text) =>
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? new IntValue(number)
+        : double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var fraction) && double.IsFinite(fraction) ? new FloatValue(fraction)
         : bool.TryParse(text, out var flag) ? new BoolValue(flag)
         : DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? new DateValue(date)
         : new StringValue(text);

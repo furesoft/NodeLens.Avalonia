@@ -81,7 +81,7 @@ public sealed class CellStyler : ICellStyler
             ? TextStyleKind.Placeholder
             : cell.Type.Name switch
             {
-                "int" or "date" => TextStyleKind.Number,
+                "int" or "float" or "date" => TextStyleKind.Number,
                 "string" => TextStyleKind.Text,
                 // A bool and every enumeration hold one of a closed set of words the language chose.
                 _ => TextStyleKind.Keyword,

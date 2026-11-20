@@ -670,10 +670,11 @@ public static class TypeRuleLowering
     {
         "string" => PrimitiveType.Of(PropertyType.String),
         "int" => PrimitiveType.Of(PropertyType.Integer),
+        "float" => PrimitiveType.Of(PropertyType.Float),
         "bool" => PrimitiveType.Of(PropertyType.Boolean),
         "date" => PrimitiveType.Of(PropertyType.Date),
         _ => throw new ConceptDefinitionException(
-            $"The type rule for '{conceptKey}' names the type '{name}', which is not one of string, int, bool or date."),
+            $"The type rule for '{conceptKey}' names the type '{name}', which is not one of string, int, float, bool or date."),
     };
 
     private static string Required(Node node, string slot) =>

@@ -51,6 +51,27 @@ public sealed class ModelXmlTests
     }
 
     [Fact]
+    public void AFloatPropertyRoundTripsInItsCanonicalSpelling()
+    {
+        // A property type is stored as text, so what the file holds is what Format wrote. Reading it back and
+        // writing again must not re-spell it - that is the promise every other property type keeps too.
+        var model = TestLanguage.NewProject().NewModel("steps");
+        var step = model.NewNode(TestLanguage.Step);
+
+        model.AddRoot(step);
+
+        step.Set("weight", 0.1);
+        step.Set("index", 3);
+
+        var written = ModelXml.Serialize(model);
+        var reloaded = ModelXml.Deserialize(TestLanguage.NewProject(), written);
+
+        Assert.Contains("<weight>0.1</weight>", written, StringComparison.Ordinal);
+        Assert.Equal(written, ModelXml.Serialize(reloaded));
+        Assert.Equal(0.1, reloaded.Roots[0].GetFloat("weight"));
+    }
+
+    [Fact]
     public void ReadingKeepsIdentityValuesAndReferences()
     {
         var model = ModelXml.Deserialize(TestLanguage.NewProject(), Text);

@@ -204,6 +204,7 @@ internal static class DeclarationWriter
         _ when type.Symbols.Count > 0 => $"PropertyType.Enum({Literals(type.Symbols)})",
         _ when ReferenceEquals(type, PropertyType.String) => "PropertyType.String",
         _ when ReferenceEquals(type, PropertyType.Integer) => "PropertyType.Integer",
+        _ when ReferenceEquals(type, PropertyType.Float) => "PropertyType.Float",
         _ when ReferenceEquals(type, PropertyType.Boolean) => "PropertyType.Boolean",
         _ when ReferenceEquals(type, PropertyType.Date) => "PropertyType.Date",
         _ => throw new NotSupportedException(

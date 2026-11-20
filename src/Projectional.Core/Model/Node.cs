@@ -336,6 +336,8 @@ public sealed class Node
 
     public int GetInt(string name) => GetTyped<int>(name);
 
+    public double GetFloat(string name) => GetTyped<double>(name);
+
     public bool GetBool(string name) => GetTyped<bool>(name);
 
     public DateOnly GetDate(string name) => GetTyped<DateOnly>(name);
@@ -348,6 +350,8 @@ public sealed class Node
     }
 
     public void Set(string name, int value) => SetFormatted(name, PropertyType.Integer, value);
+
+    public void Set(string name, double value) => SetFormatted(name, PropertyType.Float, value);
 
     public void Set(string name, bool value) => SetFormatted(name, PropertyType.Boolean, value);
 

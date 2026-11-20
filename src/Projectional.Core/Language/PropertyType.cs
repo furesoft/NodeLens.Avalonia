@@ -6,7 +6,7 @@ namespace Projectional.Core;
 /// The type of a <see cref="PropertySlot"/>.
 /// </summary>
 /// <remarks>
-/// The set is deliberately closed: <c>string</c>, <c>int</c>, <c>bool</c>, <c>date</c> and
+/// The set is deliberately closed: <c>string</c>, <c>int</c>, <c>float</c>, <c>bool</c>, <c>date</c> and
 /// enumerations of symbols. Anything richer — numbers with units, expressions, structured
 /// values — is modelled as a child node instead, so that it can carry its own slots and be
 /// validated and projected like any other part of the model.
@@ -34,6 +34,13 @@ public abstract class PropertyType : IEquatable<PropertyType>
 
     /// <summary>A truth value.</summary>
     public static PropertyType Boolean { get; } = new BooleanPropertyType();
+
+    /// <summary>A number with a fractional part, held as a <see cref="double"/>.</summary>
+    [SuppressMessage(
+        "Naming",
+        "CA1720:Identifier contains type name",
+        Justification = "These are the type names a DSL author writes in a concept declaration, so mirroring them is clearer than inventing different ones.")]
+    public static PropertyType Float { get; } = new FloatPropertyType();
 
     /// <summary>A calendar date without time or zone.</summary>
     public static PropertyType Date { get; } = new DatePropertyType();
