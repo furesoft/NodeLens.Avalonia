@@ -36,6 +36,8 @@
       <StreamGeometry x:Key="IconPlus">M8,3 V13 M3,8 H13</StreamGeometry>
       <StreamGeometry x:Key="IconChevronRight">M6,4 L10,8 L6,12</StreamGeometry>
       <StreamGeometry x:Key="IconChevronDown">M4,6 L8,10 L12,6</StreamGeometry>
+      <StreamGeometry x:Key="IconEye">M1.6,8 C3.6,4.6 6,3.1 8,3.1 C10,3.1 12.4,4.6 14.4,8 C12.4,11.4 10,12.9 8,12.9 C6,12.9 3.6,11.4 1.6,8 Z M8,6.2 A1.8,1.8 0 1 0 8,9.8 A1.8,1.8 0 1 0 8,6.2</StreamGeometry>
+      <StreamGeometry x:Key="IconKebab">M8,3.4 V3.9 M8,7.8 V8.3 M8,12.2 V12.7</StreamGeometry>
 
       <!--
         A document strip of its own: the stock TabControl theme puts the items presenter straight into a
@@ -191,6 +193,25 @@
       <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="Button.tabPlus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <!-- An action in a tool window's header: a flat icon button, not a chrome-heavy one. -->
+    <Style Selector="Button.toolAction">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="22" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="Button.toolAction:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.toolAction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
     </Style>
 

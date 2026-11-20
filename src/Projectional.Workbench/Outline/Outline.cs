@@ -13,33 +13,92 @@ namespace Projectional.Workbench;
 /// The order is document order, which is the same order every other list in this app uses, and the depth is counted
 /// from the root rather than stored, because depth is a property of a place and a node can be moved.
 /// </para>
+/// <para>
+/// <paramref name="collapsed"/> is the view state the rows are derived from - never mutated here. A node in it is drawn
+/// shut and its children are not built at all, which is why a collapsed subtree is one row rather than a tree that is
+/// merely hidden.
+/// </para>
 /// </remarks>
 internal static class Outline
 {
+    /// <summary>The state of a browser that has never closed a node.</summary>
+    private static readonly HashSet<NodeId> EmptyCollapsed = [];
+
     /// <summary>Every node of <paramref name="model"/>, root first, depth first.</summary>
     /// <param name="model">The model to describe.</param>
-    internal static IReadOnlyList<OutlineEntry> Of(Model model)
+    internal static IReadOnlyList<OutlineEntry> Of(Model model) => Of(model, EmptyCollapsed);
+
+    /// <summary>Every node of <paramref name="model"/> that is not under a node drawn shut.</summary>
+    /// <param name="model">The model to describe.</param>
+    /// <param name="collapsed">The nodes drawn shut.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="model"/> or <paramref name="collapsed"/> is <see langword="null"/>.</exception>
+    internal static IReadOnlyList<OutlineEntry> Of(Model model, IReadOnlySet<NodeId> collapsed)
     {
         ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(collapsed);
 
         List<OutlineEntry> rows = [];
 
         foreach (var root in model.Roots)
         {
-            Add(root, depth: 0, rows);
+            Add(root, depth: 0, collapsed, rows);
         }
 
         return rows;
     }
 
-    /// <summary>One node, then everything under it.</summary>
-    private static void Add(Node node, int depth, List<OutlineEntry> rows)
+    /// <summary>Every node of <paramref name="model"/> that has children, which is what "collapse all" shuts.</summary>
+    /// <param name="model">The model to walk.</param>
+    /// <remarks>
+    /// Asked of the model rather than of the rows, because the rows of a tree that is already collapsed do not name the
+    /// nodes below them - a command that shut only what it could see would leave the rest open.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/>.</exception>
+    internal static HashSet<NodeId> NodesWithChildren(Model model)
     {
-        rows.Add(new OutlineEntry(node.Id, depth, TextOf(node)));
+        ArgumentNullException.ThrowIfNull(model);
+
+        HashSet<NodeId> nodes = [];
+
+        foreach (var root in model.Roots)
+        {
+            Collect(root, nodes);
+        }
+
+        return nodes;
+    }
+
+    private static void Collect(Node node, HashSet<NodeId> nodes)
+    {
+        if (!node.ChildrenInDocumentOrder().Any())
+        {
+            return;
+        }
+
+        nodes.Add(node.Id);
 
         foreach (var child in node.ChildrenInDocumentOrder())
         {
-            Add(child, depth + 1, rows);
+            Collect(child, nodes);
+        }
+    }
+
+    /// <summary>One node, then everything under it unless it was drawn shut.</summary>
+    private static void Add(Node node, int depth, IReadOnlySet<NodeId> collapsed, List<OutlineEntry> rows)
+    {
+        var children = node.ChildrenInDocumentOrder().ToArray();
+        var expanded = children.Length == 0 || !collapsed.Contains(node.Id);
+
+        rows.Add(new OutlineEntry(node.Id, depth, TextOf(node), node.Concept.Key, children.Length > 0, expanded));
+
+        if (!expanded)
+        {
+            return;
+        }
+
+        foreach (var child in children)
+        {
+            Add(child, depth + 1, collapsed, rows);
         }
     }
 
@@ -50,13 +109,12 @@ internal static class Outline
     /// </remarks>
     private static string TextOf(Node node)
     {
-        var concept = node.Concept.Key;
+        var name = ShortNameOf(node.Concept.Key);
 
-        if (concept.LastIndexOf('.') is var dot and >= 0)
-        {
-            concept = concept[(dot + 1)..];
-        }
-
-        return node.Name is { Length: > 0 } name ? $"{concept} \"{name}\"" : concept;
+        return node.Name is { Length: > 0 } nodeName ? $"{name} \"{nodeName}\"" : name;
     }
+
+    /// <summary>A concept key without its namespace, which is the name a reader knows it by.</summary>
+    private static string ShortNameOf(string conceptKey) =>
+        conceptKey[(conceptKey.LastIndexOf('.') + 1)..];
 }
