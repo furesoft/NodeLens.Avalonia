@@ -45,7 +45,8 @@ public sealed record LanguageTest(
     IReadOnlyList<TestStep>? Steps = null,
     string? At = null,
     string? Type = null,
-    string? Scope = null)
+    string? Scope = null,
+    string? Importer = null)
 {
     /// <summary>The assertion as a person reads it.</summary>
     public string AssertionName => Assertion switch
@@ -58,6 +59,7 @@ public sealed record LanguageTest(
         TestingConceptKeys.Script => "replays",
         TestingConceptKeys.TypeOf => "types",
         TestingConceptKeys.ScopeOf => "scopes",
+        TestingConceptKeys.Reads => "reads",
         _ => Assertion,
     };
 }

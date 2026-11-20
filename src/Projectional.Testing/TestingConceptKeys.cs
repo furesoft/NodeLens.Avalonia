@@ -42,6 +42,9 @@ public static class TestingConceptKeys
     /// <summary>The text the document generates reads back to a document that generates the same text.</summary>
     public const string Imports = "Testing.Imports";
 
+    /// <summary>The text file reads, through an importer, into a model that generates as the lines the test spells out.</summary>
+    public const string Reads = "Testing.Reads";
+
     /// <summary>The document evaluates to the answer the test spells out, or to the failure it names.</summary>
     public const string Evaluates = "Testing.Evaluates";
 

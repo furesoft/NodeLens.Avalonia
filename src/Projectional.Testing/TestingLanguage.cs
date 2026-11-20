@@ -52,6 +52,9 @@ public static class TestingLanguage
     /// <summary>The name of the generator a generation assertion runs.</summary>
     public const string GeneratorSlot = "generator";
 
+    /// <summary>The slot naming the importer a reads assertion runs.</summary>
+    public const string ImporterSlot = "importer";
+
     /// <summary>The <c>name=value</c> pairs a run is given, as the editor's run box reads them.</summary>
     public const string VariablesSlot = "variables";
 
@@ -187,6 +190,22 @@ public static class TestingLanguage
             nameSlot: GeneratorSlot,
             description: "The text the document generates reads back, through that generator's inverse, to a document that generates the same text."),
 
+        new ConceptDeclaration(
+            TestingConceptKeys.Reads,
+            [
+                new PropertySlot(
+                    ImporterSlot,
+                    PropertyType.String,
+                    description: "The name of the importer that reads the file."),
+                new PropertySlot(
+                    GeneratorSlot,
+                    PropertyType.String,
+                    description: "The name of the generator the imported model is printed with."),
+                new ChildSlot(LinesSlot, TestingConceptKeys.Line, Cardinality.Many),
+            ],
+            [TestingConceptKeys.Assertion],
+            nameSlot: ImporterSlot,
+            description: "The text file reads, through that importer, into a model that generates as the lines the test spells out."),
         new ConceptDeclaration(
             TestingConceptKeys.Evaluates,
             [
