@@ -260,7 +260,7 @@ public sealed class EditContext
             return false;
         }
 
-        node.SetReference(slot, target.Id, target.Concept.NameSlot is { } nameSlot ? target.GetOrNull(nameSlot.Name) : null);
+        node.SetReference(slot, target.Id, target.Name);
 
         return true;
     }

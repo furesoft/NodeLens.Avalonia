@@ -71,15 +71,16 @@ internal sealed class NameIndex
 
     /// <summary>The name of <paramref name="node"/>, or <see langword="null"/> when it is not a named node.</summary>
     /// <remarks>
-    /// A node whose concept declares no name slot, or whose name is empty, is not something a name could mean.
-    /// Offering it would put an entry in a completion list that cannot be typed, so the test lives here - beside the
-    /// index that uses it - rather than once per caller.
+    /// A node that answers no name, or an empty one, is not something a name could mean: offering it would put an entry
+    /// in a completion list that cannot be typed. The answer is <see cref="Node.Name"/>, so a concept that computes its
+    /// name - after a child, after a reference's target, after a value - is something a name can mean exactly as a
+    /// concept with a name slot is; a second lookup here would let the completion list and the reference cell disagree.
     /// </remarks>
     public static string? NameOf(Node node)
     {
         ArgumentNullException.ThrowIfNull(node);
 
-        return node.Concept.NameSlot is { } slot && node.GetOrNull(slot.Name) is { Length: > 0 } name ? name : null;
+        return node.Name is { Length: > 0 } name ? name : null;
     }
 
     /// <summary>Whether <paramref name="node"/> is a named node of <paramref name="conceptKey"/> or a subtype.</summary>

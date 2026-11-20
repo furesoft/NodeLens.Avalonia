@@ -46,8 +46,7 @@ public sealed class AmbiguousReferenceConstraint : IConstraint
         {
             if (slot is not ReferenceSlot reference
                 || node.GetReferenceTarget(reference.Name) is not { } target
-                || target.Concept.NameSlot is not { } nameSlot
-                || target.GetOrNull(nameSlot.Name) is not { Length: > 0 } name)
+                || target.Name is not { Length: > 0 } name)
             {
                 continue;
             }

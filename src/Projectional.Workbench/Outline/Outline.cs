@@ -57,8 +57,6 @@ internal static class Outline
             concept = concept[(dot + 1)..];
         }
 
-        return node.Concept.NameSlot is { } slot && node.GetOrNull(slot.Name) is { Length: > 0 } name
-            ? $"{concept} \"{name}\""
-            : concept;
+        return node.Name is { Length: > 0 } name ? $"{concept} \"{name}\"" : concept;
     }
 }

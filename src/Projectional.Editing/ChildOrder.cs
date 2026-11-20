@@ -50,7 +50,7 @@ public static class ChildOrder
 
         foreach (var child in children)
         {
-            if (child.Concept.NameSlot is null)
+            if (child.Name is null)
             {
                 return null;
             }
@@ -58,9 +58,7 @@ public static class ChildOrder
 
         return
         [
-            .. children.OrderBy(
-                child => child.GetOrNull(child.Concept.NameSlot!.Name) ?? string.Empty,
-                StringComparer.Ordinal),
+            .. children.OrderBy(child => child.Name ?? string.Empty, StringComparer.Ordinal),
         ];
     }
 

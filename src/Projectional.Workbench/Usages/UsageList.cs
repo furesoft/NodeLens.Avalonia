@@ -57,7 +57,7 @@ internal static class UsageList
     {
         ArgumentNullException.ThrowIfNull(node);
 
-        return node.Concept.NameSlot is { } slot && node.GetOrNull(slot.Name) is { Length: > 0 } name
+        return node.Name is { Length: > 0 } name
             ? $"{node.Concept.Key} \"{name}\""
             : node.Concept.Key;
     }

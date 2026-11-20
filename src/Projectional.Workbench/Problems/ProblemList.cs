@@ -74,8 +74,8 @@ internal static class ProblemList
     private static string TextOf(Model model, Diagnostic finding)
     {
         var about = model.Project.FindNode(finding.Target) is { } node
-            ? node.Concept.NameSlot is { } name && node.GetOrNull(name.Name) is { Length: > 0 } value
-                ? value
+            ? node.Name is { Length: > 0 } name
+                ? name
                 : node.Concept.Key
             : "a node that is gone";
 
