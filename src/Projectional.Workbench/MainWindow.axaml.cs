@@ -1826,6 +1826,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
         if (_language.TryImport(Path.GetFileNameWithoutExtension(path), text, out var reason) is { } imported)
         {
+            _error = ImportSummary.Of(Path.GetFileName(path), imported.Language.Name, imported.Result);
+
             OpenImported(imported);
 
             return;
@@ -1854,6 +1856,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
             return;
         }
+
+        _error = ImportSummary.Of(Path.GetFileName(path), language.Name, outcome.Result);
 
         OpenDocument(
             outcome.Model,

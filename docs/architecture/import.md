@@ -123,8 +123,15 @@ problem. So import has its own small record:
 | `Code` | a stable short string (`json.unexpected-token`, `xml.external-entity-refused`, ...) |
 | `Message` | human text |
 
-A host that wants import errors in the problems panel maps them onto its own list. They are
-**not** diagnostics on the model, because the model is exactly what does not exist yet.
+**The host shows them where the file's place can be shown, and the problems panel is the wrong
+place** ([open question 52](../open-questions.md#text-import), decided). The panel's rows carry a
+`CellAddress` and are re-derived from the model after every edit, while an import diagnostic describes
+the *file* - a refusal has no node at all, which is why this record is deliberately not a
+`Diagnostic`. So the standalone shell reports both outcomes in its status line, in the importer's own
+words: `{language} refused {file} at 3:14 - …` for a refusal, and
+`Imported {file} as a document of {language}, with a warning at 3:14: …` for a success that kept
+something as raw text (`ImportSummary`). Reporting the second one is not optional: a user who picked a
+file and got a document has no other way to learn that part of it is only text.
 
 **One undo step.** The single transaction means `Ctrl+Z` after an import removes the whole
 imported document, which is the only behaviour a user can predict.
