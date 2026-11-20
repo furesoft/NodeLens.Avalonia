@@ -103,6 +103,48 @@ public sealed class DeclaredImporterTests
     }
 
     [Fact]
+    public void ALinePartEndsTheValueAtTheLineBreakWhicheverWayItIsSpelled()
+    {
+        // The break is neither part of the value nor left for the rule to spell, so one rule reads a Unix file and a
+        // Windows file to the same model - and the last line of a file needs no break at all.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+
+        WriteParts(folder.Root, (model, rule) =>
+        {
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal).Set(ImportLanguage.TextSlot, "item ");
+
+            var name = model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Line);
+
+            name.Set(ImportLanguage.SlotSlot, "name");
+        });
+
+        var importer = Import(folder.Root);
+
+        foreach (var ending in new[] { "\n", "\r\n", string.Empty })
+        {
+            var result = importer.Import(NewModel(folder.Root), "item a name" + ending);
+
+            Assert.True(result.Succeeded, Describe(result));
+            Assert.Equal("a name", result.Roots[0].GetOrNull("name"));
+        }
+    }
+
+    [Fact]
+    public void ALinePartNamingAPropertyTheConceptDoesNotHaveIsRefusedAtLoad()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteParts(folder.Root, (model, rule) =>
+            model.NewChild(rule, ImportLanguage.PartsSlot, ImportConceptKeys.Line).Set(ImportLanguage.SlotSlot, "nothing"));
+
+        Assert.Null(LanguageProject.Open(folder.Root, out var error));
+        Assert.Contains("nothing", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ADeclaredImporterReadsASpellingTheGeneratorNeverWrites()
     {
         // The shipped pipeline reads two spellings: its own generator's shell script, and an ini-shaped variant the

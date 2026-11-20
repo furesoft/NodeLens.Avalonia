@@ -43,6 +43,9 @@ public static class ImportNotations
             ed.Keyword("capture"), ed.Space, ed.Property(ImportLanguage.SlotSlot, emptyText: NoProperty),
             ed.Space, ed.Keyword("from"), ed.Space, ed.Property(ImportLanguage.TokenSlot, emptyText: NoClass)));
 
+        notations.Add(ImportConceptKeys.Line, ed => ed.Line(
+            ed.Keyword("line"), ed.Space, ed.Property(ImportLanguage.SlotSlot, emptyText: NoProperty)));
+
         notations.Add(ImportConceptKeys.Nest, ed => ed.Line(
             ed.Keyword("nest"), ed.Space, ed.Property(ImportLanguage.SlotSlot, emptyText: NoProperty)));
 

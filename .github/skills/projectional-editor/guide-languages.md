@@ -208,18 +208,20 @@ record, and `Projectional.Json` is the first reference language behind the contr
   a host composes them with `StandardChecks.All`.
 - **`XmlEscaping` is public on purpose**: the checks package must spell a repaired value exactly as the importer did, and
   a second escaper in a behaviour package would be a second answer to "how is this written".
-- **Planned, not built: a declared importer.** Today `ITextImporter` is C#-only, so a language written as a model can
-  print its files and not read them. The plan (`docs/architecture/import.md` section *Import as a declaration*) is
-  `Projectional.ImportRules` - an `import` folder beside `generator`/`constraints`/..., two layers (tokens, then rules),
-  a closed vocabulary that mirrors the template's verbs, `Import.Raw` for tier 2, and a load-time `ImportLowering` into
-  the same `ITextImporter`. The recommended default is the *inverse of the generator's templates* (literal -> anchor,
-  property -> capture, child -> nest, children -> repeat, when-filled -> optional, conditional -> alternative), with a
-  declared rule only where the inverse does not exist - resolved **per slot** from each candidate's first anchor, so the
-  parser has no state but the model. Six token concepts (`Literal`, `Word`, `Number`, `Quoted`, `Fixed`, `Skipped`),
-  ten rule words including `Bind`/`Matches` (XML's closing tag) and `Fail` (a rule's own message), and
-  `Import.Importer.target`: **an importer inverts one named generator**, because a language may print two formats and
-  their inverses are different readings - so a faithful language's importer is `default inverse` plus its exceptions.
-  Open questions 100-108 hold the decisions.
+- **A declared importer is delivered, in two layers.** `Projectional.ImportRules` reads a language's own files from
+  documents in an `import` folder beside `generator`/`constraints`, and `LanguageProject` offers the result beside the
+  importers its generators derive - `TryCreateImporter` prefers a declared one by format, because a language that wrote
+  a rule for a spelling meant that rule. The layers are tokens (`Import.Word`, `.Number`, `.Quoted`, `.Fixed`,
+  `.Skipped`: a skipped class is the *only* thing stepped over, so an importer written before the layer keeps reading
+  its own exact spelling) and rules (`Import.Literal` an anchor, `.Capture` a run into a property, `.Line` the rest of
+  the line into a property - a newline literal cannot say "the end of the line", it matches one spelling of the break
+  and leaves a CRLF file's carriage return in the value - `.Nest` a child, `.Repeat` a list, `.Raw` tier 2 verbatim,
+  `.Bind`/`.Matches` a run remembered and required again, `.Fail` a rule's own message). **No backtracking**: every
+  choice is decided by the literal at the cursor, so an ambiguity is a *load-time* refusal in `DeclaredImporter`, not a
+  surprise in a file. A document root is a concept no child slot can hold. What is not built is a hand-written twin for
+  each reference format: the parity rule (a declared importer and its C# twin produce one model on the corpus) has one
+  subject only, `samples/declared-pipeline`, whose `tests/reads*.mps` rows pin it. Open questions 100-108 hold the
+  decisions, and `docs/architecture/import/declared-importer.md` the vocabulary's shape.
 - **A reference language may hold a note the format cannot express.** `Json.Comment` is a `Json.Member` beside
   `Json.Property`, drawn as `// why` and mapped to `TextTemplate.Empty`, so generation omits it - and the "an entry that
   emits nothing takes no separator" rule is what keeps a note between two members from producing a stray comma. It is

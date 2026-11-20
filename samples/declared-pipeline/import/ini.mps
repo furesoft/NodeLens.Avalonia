@@ -5,6 +5,15 @@
       <properties>
         <name>ini</name>
       </properties>
+      <children role="tokens">
+        <node id="e4b05366-0741-43a8-a207-f605e69691d4" concept="Import.Skipped" name="Space">
+          <properties>
+            <tokenName>Space</tokenName>
+            <prefix></prefix>
+            <until>\n</until>
+          </properties>
+        </node>
+      </children>
       <children role="rules">
         <node id="40452451-2fa9-449a-b2ed-de0ec4c04a59" concept="Import.Rule" name="Pipeline.Pipeline">
           <properties>
@@ -16,22 +25,15 @@
                 <text>pipeline = </text>
               </properties>
             </node>
-            <node id="65b56afc-f65d-4beb-a0ca-8df2d86afe0b" concept="Import.Capture" name="name">
+            <node id="65b56afc-f65d-4beb-a0ca-8df2d86afe0b" concept="Import.Line" name="name">
               <properties>
                 <slot>name</slot>
-              </properties>
-            </node>
-            <node id="cb6c5407-9e0a-4938-a32e-0a3bded3fe05" concept="Import.Literal" name="&#xA;">
-              <properties>
-                <text>
-</text>
               </properties>
             </node>
             <node id="5c9d426b-4267-45d1-8c16-a9186ae93b2d" concept="Import.Repeat" name="stages">
               <properties>
                 <slot>stages</slot>
-                <separator>
-</separator>
+                <separator></separator>
                 <minimum>0</minimum>
               </properties>
             </node>
@@ -47,7 +49,7 @@
                 <text>stage = </text>
               </properties>
             </node>
-            <node id="9def3faf-ee8e-41d9-9e01-6fe0dd0a690e" concept="Import.Capture" name="command">
+            <node id="9def3faf-ee8e-41d9-9e01-6fe0dd0a690e" concept="Import.Line" name="command">
               <properties>
                 <slot>command</slot>
               </properties>

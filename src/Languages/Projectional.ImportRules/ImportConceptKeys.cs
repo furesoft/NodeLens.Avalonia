@@ -6,7 +6,7 @@ public static class ImportConceptKeys
     /// <summary>One importer: the generator it inverts and the rule per concept.</summary>
     public const string Importer = "Import.Importer";
 
-    /// <summary>A part of a rule, of which there are four.</summary>
+    /// <summary>A part of a rule, of which there are nine.</summary>
     public const string Part = "Import.Part";
 
     /// <summary>What one concept looks like in the text.</summary>
@@ -18,13 +18,16 @@ public static class ImportConceptKeys
     /// <summary>The run up to the next literal, filled into a property.</summary>
     public const string Capture = "Import.Capture";
 
+    /// <summary>The rest of the line, filled into a property.</summary>
+    public const string Line = "Import.Line";
+
     /// <summary>The child in a slot, read by whichever rule the slot allows.</summary>
     public const string Nest = "Import.Nest";
 
     /// <summary>The children of a list, separated by a literal.</summary>
     public const string Repeat = "Import.Repeat";
 
-    /// <summary>A named token class, of which there are four.</summary>
+    /// <summary>A named token class, of which there are five.</summary>
     public const string Token = "Import.Token";
 
     /// <summary>A run of letters, digits and the characters the declaration adds.</summary>

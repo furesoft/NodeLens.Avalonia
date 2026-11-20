@@ -123,6 +123,8 @@ public static class ImportLowering
         ImportConceptKeys.Capture => ImportPart.Capture(
             Required(key, part, ImportLanguage.SlotSlot),
             part.GetOrNull(ImportLanguage.TokenSlot) ?? string.Empty),
+
+        ImportConceptKeys.Line => ImportPart.Line(Required(key, part, ImportLanguage.SlotSlot)),
         ImportConceptKeys.Nest => ImportPart.Nest(Required(key, part, ImportLanguage.SlotSlot)),
         ImportConceptKeys.Raw => ImportPart.Raw(
             Required(key, part, ImportLanguage.SlotSlot),

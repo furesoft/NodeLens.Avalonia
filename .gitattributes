@@ -27,3 +27,7 @@ NOTICE   text eol=lf
 *.ico    binary
 *.snk    binary
 *.pfx    binary
+
+# The CRLF fixture is the subject of a test: the rule under it reads a Windows file, and normalizing
+# the endings would delete the case. Stored byte for byte, so every checkout gets CRLF.
+samples/declared-pipeline/variant-crlf.ini  -text

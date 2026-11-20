@@ -119,6 +119,9 @@ internal sealed class RuleReader
                     case ImportPartKind.Capture when !Capture(node, part.Slot, next):
                         return false;
 
+                    case ImportPartKind.Line when !CaptureLine(node, part.Slot):
+                        return false;
+
                     case ImportPartKind.Nest when !ParseEntry(node, part.Slot, next):
                         return false;
 
@@ -640,6 +643,48 @@ internal sealed class RuleReader
 
         return null;
     }
+
+    /// <summary>Reads the rest of the line into <paramref name="slot"/>, and the line break with it.</summary>
+    /// <remarks>
+    /// <para>
+    /// The break is neither part of the value nor left for the rule to spell, which is the point of the part: a rule
+    /// that reads a line ends the line, so the importer that writes a line break into its own templates can read a
+    /// document without naming one. A terminator literal cannot do this - it matches one spelling of the break, and
+    /// against a file that spells it the other way the run keeps the carriage return in the value.
+    /// </para>
+    /// <para>
+    /// The last line of a file may have no break at all, so the end of the text ends it just as well.
+    /// </para>
+    /// </remarks>
+    private bool CaptureLine(Node node, string slot)
+    {
+        if (node.Concept.FindProperty(slot) is null)
+        {
+            Refusal = Diagnostic(_position, DeclaredImporter.UnexpectedText, $"'{slot}' is not a property of '{node.Concept.Key}'.");
+
+            return false;
+        }
+
+        var end = _position;
+
+        while (end < _text.Length && _text[end] is not ('\r' or '\n'))
+        {
+            end++;
+        }
+
+        node.Set(slot, _text[_position..end]);
+
+        _position = end < _text.Length && _text[end] == '\r' ? end + 1 : end;
+
+        if (_position < _text.Length && _text[_position] == '\n')
+        {
+            _position++;
+        }
+
+        return true;
+    }
+
+    /// <summary>Reads a run into <paramref name="slot"/> up to <paramref name="terminator"/>, as written.</summary>
     private bool Capture(Node node, string slot, string? terminator)
     {
         if (node.Concept.FindProperty(slot) is null)

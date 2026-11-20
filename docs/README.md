@@ -67,7 +67,7 @@ records what was actually verified.
 31. [Open questions](open-questions.md) — what is deliberately still undecided.
 32. [Text import](architecture/import.md) — the intake contract and, under
     [architecture/import/](architecture/import/), one file per reference language (JSON, XML, TOML,
-    HOCON, YAML) plus the planned declared importer (planned; M6).
+    HOCON, YAML) plus the declared importer (delivered; the parity rule still has one subject).
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
