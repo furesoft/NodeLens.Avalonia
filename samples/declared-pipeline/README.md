@@ -51,9 +51,11 @@ template could not say before: `when command is filled` emits the command and ot
 `nightly.mps`, whose `smoke` stage has none, generates `# smoke has no command` rather than an empty
 line. Run it in the app with **Generate â–¸ ShellScript**.
 
-`tests/round-trips.mps` is the language's own test: one document written in the test language, saying
-that `pipeline.mps` saves and reloads to the same text. It is not C# - the repository's suite runs the
-folder through `TestRunner` and fails a named test document if the round trip ever stops holding.
+`tests/` holds the language's own tests: one document per assertion, written in the test language. It
+is not C# - the repository's suite runs the folder through `TestRunner` and fails a named test
+document when its assertion stops holding. `round-trips.mps` says `pipeline.mps` saves and reloads to
+the same text, `draws.mps` says the notation still draws the table it is meant to draw, and
+`reports.mps` says the two constraints in `constraints/` report nothing about it.
 
 ## What it takes from the framework
 
