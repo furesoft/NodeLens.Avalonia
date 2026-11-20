@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:a="using:Avalonia.Automation"
+             x:Class="Projectional.Workbench.ProblemsPanelView">
+  <!-- What the checks last found in the document in front. The rows are the shell's; the view is the list. -->
+  <ListBox
+    x:Name="Rows"
+    Classes="panelList"
+    BorderThickness="0"
+    Background="Transparent"
+    a:AutomationProperties.Name="Problems" />
+</UserControl>

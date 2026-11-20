@@ -124,6 +124,45 @@ public sealed class ProjectExplorerTests
         Assert.All(rows.Where(row => row.Kind == ProjectNode.Project), row => Assert.True(row.IsProject));
     }
 
+    [Fact]
+    public void ARowIsDrawnAsWhatItIsAndInTheColourOfItsAspect()
+    {
+        var language = Language();
+
+        var rows = ProjectExplorer.Of([], [language], NothingCollapsed);
+        var heading = rows[0];
+        var project = rows.Single(row => row.Kind == ProjectNode.Project);
+        var folder = rows.Single(row => row.Kind == ProjectNode.Folder && row.Text == "structure");
+        var file = rows.First(row => row.Kind == ProjectNode.File && row.Folder == "structure");
+
+        // A heading leads and needs no mark; a project is a mark of its own and is drawn heavier than its rows.
+        Assert.Null(heading.Icon);
+        Assert.False(heading.HasIcon);
+        Assert.True(heading.IsBold);
+        Assert.Equal(ProjectIcons.ProjectKey, project.Icon);
+        Assert.True(project.IsBold);
+
+        // A folder is drawn with the mark of its aspect, a file with the letter of what that aspect holds.
+        Assert.Equal("structure", folder.Icon);
+        Assert.True(folder.HasIcon);
+        Assert.False(folder.HasBadge);
+        Assert.Equal("C", file.Badge);
+        Assert.True(file.HasBadge);
+        Assert.Equal("structure", file.Icon);
+        Assert.False(file.IsBold);
+    }
+
+    [Fact]
+    public void AnAspectWhoseLetterIsUnknownIsDrawnAsAPlainPage()
+    {
+        var row = new ProjectEntry("notes.mps", 3, ProjectNode.File, path: "notes.mps", folder: "diagrams");
+
+        // The mark is still the aspect's, so a folder nobody taught the shell about is not silently a concept.
+        Assert.Equal("diagrams", row.Icon);
+        Assert.Null(row.Badge);
+        Assert.True(row.HasIcon);
+    }
+
     private static LanguageProject Language() =>
         LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error)
         ?? throw new InvalidOperationException(error);

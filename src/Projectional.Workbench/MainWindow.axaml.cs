@@ -113,6 +113,20 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _problemsClosed;
     private bool _usagesClosed;
 
+    // A panel is a view of its own, so the shell reaches the list through it rather than through a name the window's
+    // markup used to declare. The view owns what a panel shows; the shell owns what a row means.
+    private ListBox ProjectList => ProjectView.List;
+
+    private ListBox OutlineList => OutlineView.List;
+
+    private ListBox Problems => ProblemsView.List;
+
+    private ListBox Usages => UsagesView.List;
+
+    private ListBox RunOutput => OutputView.List;
+
+    private TextBox RunInputsInput => OutputView.Inputs;
+
     /// <summary>Creates the window with every module - the standalone editor.</summary>
     public MainWindow() : this(ShellCapabilities.Standalone)
     {
@@ -137,6 +151,21 @@ public sealed partial class MainWindow : Window, IDisposable
         _panelHeight = DocumentArea.RowDefinitions[2].Height.Value;
         _splitterHeight = DocumentArea.RowDefinitions[1].Height.Value;
         _sideWidth = SideArea.ColumnDefinitions[0].Width.Value;
+
+        // A panel's view is a list; what a press on a row means is the shell's answer, so the handlers are attached
+        // here rather than written into the view's markup - which is also what lets the same view be docked anywhere.
+        ProjectView.List.DoubleTapped += OnProjectChosen;
+        ProjectView.List.KeyDown += OnProjectKeyDown;
+        ProjectView.List.AddHandler(Button.ClickEvent, OnProjectToggle);
+        OutlineView.List.SelectionChanged += OnOutlineChosen;
+        ProblemsView.List.DoubleTapped += OnProblemChosen;
+        ProblemsView.List.KeyDown += OnProblemKeyDown;
+        UsagesView.List.DoubleTapped += OnUsageChosen;
+        UsagesView.List.KeyDown += OnUsageKeyDown;
+        OutputView.List.DoubleTapped += OnRunRowChosen;
+        OutputView.List.KeyDown += OnRunRowKeyDown;
+        OutputView.Inputs.KeyDown += OnRunInputsKeyDown;
+        OutputView.RunButton.Click += OnRunDocument;
 
         Compose();
 
@@ -1003,22 +1032,34 @@ public sealed partial class MainWindow : Window, IDisposable
         ProjectList.SelectedItem = rows.FirstOrDefault(row => ReferenceEquals(row.Document, _documents.Active));
     }
 
-    /// <summary>Closes everything the project explorer can close, so only projects and folders are listed.</summary>
+    /// <summary>Closes every aspect folder of every opened language, so the tree lists what a language is made of.</summary>
     /// <remarks>
-    /// Internal for the screenshot harness: a picture of the explorer is about the folder icons, and a list of every
-    /// definition document pushes the folders a picture is meant to show out of the window.
+    /// Internal for the screenshot harness: a picture of the explorer is about the aspect icons, and the definition
+    /// files of three projects would push the folders a picture is meant to show out of the window.
     /// </remarks>
-    internal void CollapseAllProjects()
+    internal void CollapseProjectFolders()
     {
         _collapsed.Clear();
         _collapsed.Add(ProjectExplorer.DocumentsKey);
 
         foreach (var language in _language.Opened)
         {
-            foreach (var key in ProjectExplorer.KeysOf(language))
+            foreach (var key in ProjectExplorer.FolderKeysOf(language))
             {
                 _collapsed.Add(key);
             }
+        }
+
+        ShowProject();
+    }
+
+    /// <summary>Opens one aspect folder in every opened language, so the rows below the folders are listed too.</summary>
+    /// <param name="folder">The aspect folder's name on disk.</param>
+    internal void ExpandProjectFolder(string folder)
+    {
+        foreach (var language in _language.Opened)
+        {
+            _collapsed.Remove(ProjectExplorer.FolderKey(language.Directory, folder));
         }
 
         ShowProject();

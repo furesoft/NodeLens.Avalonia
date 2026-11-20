@@ -68,9 +68,21 @@ internal static class ProjectExplorer
     {
         ArgumentNullException.ThrowIfNull(language);
 
+        return [ProjectKey(language), .. FolderKeysOf(language)];
+    }
+
+    /// <summary>The key of each aspect folder a project actually has.</summary>
+    /// <param name="language">The project.</param>
+    /// <remarks>
+    /// Apart from <see cref="KeysOf"/> because the two questions differ: closing a project hides its folders, while
+    /// closing the folders leaves the projects listed as what they consist of.
+    /// </remarks>
+    internal static IReadOnlyList<string> FolderKeysOf(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
         return
         [
-            ProjectKey(language),
             .. FoldersOf(language.Directory).Select(folder => FolderKey(language.Directory, folder.Folder)),
         ];
     }
@@ -150,7 +162,8 @@ internal static class ProjectExplorer
                         3,
                         ProjectNode.File,
                         path: file,
-                        document: OpenDocumentFor(documents, file)));
+                        document: OpenDocumentFor(documents, file),
+                        folder: folder));
                 }
             }
         }

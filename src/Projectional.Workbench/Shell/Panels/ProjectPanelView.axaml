@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:a="using:Avalonia.Automation"
+             xmlns:local="using:Projectional.Workbench"
+             x:Class="Projectional.Workbench.ProjectPanelView">
+  <!--
+    A panel with no chrome of its own: the tab strip above it is the docking layout's, so the tool is the rows and
+    nothing else. Icons are looked up dynamically because this view is built before it is attached, and a resource
+    of the window cannot be resolved statically from a control that has no parent yet.
+  -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <local:ProjectIconConverter x:Key="ProjectIcon" />
+      <local:ProjectIconBrushConverter x:Key="ProjectIconBrush" />
+      <local:BoldWeightConverter x:Key="BoldWeight" />
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <ListBox
+    x:Name="Rows"
+    Classes="panelList"
+    BorderThickness="0"
+    Background="Transparent"
+    a:AutomationProperties.Name="Project">
+    <ListBox.ItemTemplate>
+      <DataTemplate x:DataType="local:ProjectEntry">
+        <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">
+          <Border Width="{Binding Indent}" IsVisible="{Binding HasIndent}" />
+          <Button
+            Classes="chevron"
+            IsVisible="{Binding HasChildren}"
+            a:AutomationProperties.Name="Expand or collapse">
+            <Panel>
+              <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronRight}" IsVisible="{Binding !IsExpanded}" />
+              <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronDown}" IsVisible="{Binding IsExpanded}" />
+            </Panel>
+          </Button>
+          <Border Width="16" IsVisible="{Binding !HasChildren}" />
+          <!--
+            A folder, a project and a document are drawn as the mark of what they are, in the colour of the aspect
+            they belong to; a definition file is drawn as a round badge with the kind of definition in it.
+          -->
+          <Path
+            Classes="treeIcon"
+            Data="{Binding Icon, Converter={StaticResource ProjectIcon}}"
+            Stroke="{Binding Icon, Converter={StaticResource ProjectIconBrush}}"
+            IsVisible="{Binding HasIcon}"
+            Margin="2,0,6,0" />
+          <Border
+            Width="14"
+            Height="14"
+            CornerRadius="7"
+            Background="{Binding Icon, Converter={StaticResource ProjectIconBrush}}"
+            IsVisible="{Binding HasBadge}"
+            VerticalAlignment="Center"
+            Margin="2,0,6,0">
+            <TextBlock
+              Text="{Binding Badge}"
+              FontSize="9"
+              FontWeight="SemiBold"
+              Foreground="White"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center" />
+          </Border>
+          <TextBlock
+            Text="{Binding Text}"
+            VerticalAlignment="Center"
+            FontWeight="{Binding IsBold, Converter={StaticResource BoldWeight}}" />
+          <TextBlock Text="*" VerticalAlignment="Center" Margin="3,0,0,0" IsVisible="{Binding IsDirty}" />
+        </StackPanel>
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+  </ListBox>
+</UserControl>

@@ -63,9 +63,10 @@ internal static class ShellShots
             Click(close);
         }
 
-        // Every node shut: the picture is about the folder icons, which only stay on screen while the files below
-        // them are not listed.
-        window.CollapseAllProjects();
+        // Every folder shut but one: the picture is about the aspect icons, which only stay on screen while the files
+        // below them are not listed - and one folder is open so the badges a file row is drawn with are visible too.
+        window.CollapseProjectFolders();
+        window.ExpandProjectFolder(LanguageProject.StructureFolder);
 
         await Task.Delay(250);
     }
