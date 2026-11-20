@@ -11,9 +11,16 @@ namespace Projectional.TypeRules;
 /// <para>
 /// The lowering is where a declaration becomes behaviour, and it is the only place that knows both. It
 /// validates what a compiler would have validated - a rule names a concept, a fixed body names a type the
-/// framework has, a child body names a slot, a switch names a property - and it deliberately does not
-/// validate the graph: whether the concept exists and whether the slot is a child of it are questions the
-/// language's own registry answers, and a second validator here would drift from it.
+/// framework has, a child body names a slot, a switch names a property.
+/// </para>
+/// <para>
+/// The two questions only the concept registry can answer - whether the concept exists, and whether the slot
+/// a child body names is a child of it - are asked of the registry when the caller hands one over, and
+/// skipped when it does not. Asking is not duplicating: the knowledge stays in the registry, and the
+/// lowering only refuses what the registry already says is wrong. That matters because a child body naming
+/// a slot the concept does not declare as a child is not a slow answer but a crash: the type read asks the
+/// node for a child slot that is not there. Refusing it at load, where the author is looking, is the only
+/// place that failure can be a message instead of a stack trace.
 /// </para>
 /// <para>
 /// A body that cannot be lowered is a <see cref="ConceptDefinitionException"/> at load, not a rule that
@@ -28,13 +35,25 @@ public static class TypeRuleLowering
     /// The roots of those documents: one <see cref="TypeRuleConceptKeys.Rule"/> or one
     /// <see cref="TypeRuleConceptKeys.Named"/> per document, in file order.
     /// </param>
+    /// <param name="concepts">
+    /// The language's concepts, when the caller has them, so a rule naming a concept that does not exist or a
+    /// child body naming a slot the concept does not declare as a child is refused here instead of crashing
+    /// the type read. <see langword="null"/> skips the graph check, which is what a caller that only wants
+    /// the lowering's own validations asks for.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="documents"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ConceptDefinitionException">A root is neither a rule nor a named type, or a rule cannot be lowered.</exception>
-    public static TypeRegistry CreateRegistry(IEnumerable<Node> documents)
+    /// <exception cref="ConceptDefinitionException">A root is neither a rule nor a named type, a rule cannot be lowered, or a rule names a concept or child slot the language does not have.</exception>
+    public static TypeRegistry CreateRegistry(IEnumerable<Node> documents, ConceptRegistry? concepts = null)
     {
         ArgumentNullException.ThrowIfNull(documents);
 
         var roots = documents as IReadOnlyList<Node> ?? [.. documents];
+
+        if (concepts is not null)
+        {
+            ValidateGraph(roots, concepts);
+        }
+
         var aliases = Aliases(roots);
         var registry = TypeRegistry.Empty;
 
@@ -109,6 +128,49 @@ public static class TypeRuleLowering
         }
 
         return complaints;
+    }
+
+    /// <summary>
+    /// Refuses a rule that names a concept the language does not declare, or a child body that names a slot
+    /// the concept does not declare as a child.
+    /// </summary>
+    /// <remarks>
+    /// The knowledge stays in the registry - this asks it and refuses what it says is wrong. A child body
+    /// naming a reference slot, or a slot that does not exist, is not a slow answer: the type read asks the
+    /// node for a child slot that is not there and throws, so the only place to make it a message is here.
+    /// A complaint is checked too: its concept key decides where the diagnostic appears, and a key no concept
+    /// answers would leave the complaint silently never firing.
+    /// </remarks>
+    private static void ValidateGraph(IReadOnlyList<Node> roots, ConceptRegistry concepts)
+    {
+        foreach (var root in roots)
+        {
+            if (root.Concept.Key != TypeRuleConceptKeys.Rule)
+            {
+                continue;
+            }
+
+            var conceptKey = Required(root, TypeRuleLanguage.ConceptKeySlot);
+
+            if (!concepts.TryGet(conceptKey, out var concept))
+            {
+                throw new ConceptDefinitionException(
+                    $"The type rule names the concept '{conceptKey}', which the language does not declare.");
+            }
+
+            if (root.GetChild(TypeRuleLanguage.BodySlot) is not { Concept.Key: TypeRuleConceptKeys.Child } body)
+            {
+                continue;
+            }
+
+            var slot = Required(body, TypeRuleLanguage.SlotSlot);
+
+            if (concept.FindChild(slot) is null)
+            {
+                throw new ConceptDefinitionException(
+                    $"The type rule for '{conceptKey}' names the slot '{slot}', which '{conceptKey}' declares as no child slot.");
+            }
+        }
     }
 
     /// <summary>
