@@ -367,7 +367,7 @@ specification, not a capability.
 
 | Feature | Where it is used today |
 | --- | --- |
-| the declared vocabulary as a whole (`Rule`, `Fixed`, `Child`, `Switch`, `Equations`, `Variable`, `Join`, `Meet`, `Named`, `Ref`, `Supertypes`, `Comparable`, `Replacement`, `Complain`) | **nowhere in a shipped document**: no language project under `src/Languages` or `samples/` ships a `types/` folder. The vocabulary is proved by `TypeRuleLoweringTests` and by its parity test against `ExpressionsLanguage.Types`, not by a document anyone opens |
+| the declared vocabulary as a whole (`Rule`, `Fixed`, `Child`, `Widest`, `Switch`, `Equations`, `Variable`, `Join`, `Meet`, `Named`, `Ref`, `Supertypes`, `Comparable`, `Replacement`, `Complain`) | **`samples/declared-expressions`** - the first language in the repository with a `types/` folder. Four rules (two fixed types, a switch over the operator, a `widest of` its two branches) and one conditional complaint, loaded by `DeclaredExpressionsTests`: the language opens, `1 + 2` is an `int`, `if 1 < 2 then 3 else 4` is an `int`, a conditional with mismatched branches is `unknown`, `1 == true` is a finding and `1 == 2` is not, and the shipped document draws and round-trips. The vocabulary is still *also* proved by the lowering tests and the parity test; a shipped document answers a different question, which is whether an author with only the documentation gets a working language |
 | operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.Comparability`, on the C# authoring path, registered for a binary operator's two operands and for a conditional's two branches: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
 | the join of two child slots - the capability `TypeRule.Widest` states | `TypeRule.Widest` itself, in the declared twin of the expression language's rules that `TypeRuleLoweringTests` compares against `ExpressionsLanguage.Types`: `Expressions.If` is `widest of then and else` on that side and `ExpressionTypes.Branches` on this one, and the parity test compares a *mismatched* conditional, which is the case that had no spelling before |
 | a language's own types aspect, declared in C# | `SqlSchemaLanguage.Types` (`SqlSchemaTypes`): the first shipped language with types of its own. Each column type is a `NamedType` over a primitive, one instance per value, so two columns of one type are one type - which is what lets a key compare them |
@@ -381,8 +381,15 @@ specification, not a capability.
 Two consequences follow, and they are worth stating rather than discovering twice. A declared language gets a
 `types/` folder only when something in it has a type: the pipeline's and the workflow's slots are strings, counts
 and references, so every node would type as `unknown` and the folder would be inventing a need instead of
-recording one. And an unexercised slice is not dead code - each is one `Add` call away from a language that needs
-it, and the tests are what hold them to their meaning until then.
+recording one - which is why the one that has types is its own small language. And an unexercised slice is not dead
+code: each is one `Add` call away from a language that needs it, and the tests are what hold them to their meaning
+until then.
+
+A shipped document answers a question the tests cannot: whether an author who has only the documentation gets a
+working language. `samples/declared-expressions` is that answer for the type vocabulary, and it caught what the tests
+had missed - the declared twin of the expression language's rules had been saying "as wide as the then-branch" for
+several commits after the C# rule started joining the branches, and the parity test only passed because its sample
+document had no mismatched conditional.
 
 The distinction between a **capability** and its **declared form** is what makes the schema's edge worth having and
 still leaves a row saying "no subject": `SqlSchemaTypes.Subtypes` is a `SubtypeRelation` with one edge in it, so the
