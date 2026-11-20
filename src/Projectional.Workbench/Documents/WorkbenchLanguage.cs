@@ -166,6 +166,30 @@ internal sealed class WorkbenchLanguage
     /// <summary>The languages opened from a folder, in the order they joined.</summary>
     internal IReadOnlyList<LanguageProject> Opened => _opened;
 
+    /// <summary>The opened language project <paramref name="model"/> is written in, or <see langword="null"/>.</summary>
+    /// <param name="model">The model, whose first root decides which language it belongs to.</param>
+    /// <remarks>
+    /// <para>
+    /// The question is answered by the root's concept rather than by the command that opened the document, for the
+    /// same reason <see cref="InterpreterFor"/> is: which language a document is written in is a fact about the
+    /// document. A root declared by no opened project - the shell's own sample or definition languages - has no
+    /// project, which is the answer "there is no folder to run tests from".
+    /// </para>
+    /// <para>
+    /// It is the root that decides, not every concept the document borrows: a document may hold concepts of several
+    /// languages, but it was created as one thing, and that thing is what its tests folder belongs to.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/>.</exception>
+    internal LanguageProject? ProjectFor(Model model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        return model.Roots.Count == 0
+            ? null
+            : _opened.FirstOrDefault(project => project.Concepts.TryGet(model.Roots[0].Concept.Key, out _));
+    }
+
     /// <summary>A project every document of this shell can be loaded into.</summary>
     internal Project NewProject() => new(Concepts);
 

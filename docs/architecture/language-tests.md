@@ -1,10 +1,10 @@
 # Tests of a language, as data
 
-Status: **delivered** (M6). Slices T1, T2 and T3 are complete: the `tests/` folder, the test language,
-`TestRunner`, the xunit bridge and the sample's test documents, with five of the six assertions a document
-can make - `Testing.RoundTrips`, `Testing.Draws`, `Testing.Findings`, `Testing.Generates` and
-`Testing.Evaluates` - and the sixth, `Testing.Script`, the editor test. What is left of this document is T4
-(node-addressed assertions) and T5 (the workbench command), both of which are additive.
+Status: **delivered** (M6). Slices T1, T2, T3 and T5 are complete: the `tests/` folder, the test language,
+`TestRunner`, the xunit bridge and the sample's test documents, with all six assertions a document can make -
+`Testing.RoundTrips`, `Testing.Draws`, `Testing.Findings`, `Testing.Generates`, `Testing.Evaluates` and
+`Testing.Script`, the editor test - and the workbench command that runs a language's folder and lists one row
+per test. What is left is T4, node-addressed assertions, which needs a way for a test to name a node.
 
 Before this existed, every test in this repository was C# xunit over `Projectional.Core.Tests`, and a
 language author had no way to test a language at all.
@@ -95,8 +95,11 @@ Three doors onto it:
 1. **xunit**, for CI today: one test method per shipped language project that runs its `tests/` folder and
    fails with the report. The suite therefore covers the samples and the declared pipeline with no new runner
    infrastructure, and every failure names the test document.
-2. **The workbench**, later: a Run tests command whose rows go to the output panel, which already knows how to
-   show a row per line and jump to the node that produced it.
+2. **The workbench**: **Run ▸ Run tests** runs the folder of the language the document in front belongs to -
+   the project it was opened from - and answers one row per test in the output panel, the headline being the
+   run's summary. Choosing a row opens the test document it names. A command rather than a panel of its own,
+   because the panel already shows one line per row and resolves a click, and a test run is a list of things
+   that happened.
 3. **A host**, whenever it wants: the report is a value, not console output.
 
 ## What does not carry over, and why
@@ -158,9 +161,20 @@ The folder, the language, the runner and the bridge, with five of the six assert
   and then comparing what the document draws, exactly as `Testing.Draws` does. A step the editor refuses is a
   failed row naming the step and the reason, because a script that could not be replayed has compared nothing.
 
+- **The workbench command** is **Run ▸ Run tests**: it resolves the project the document in front was opened
+  from (its root's concept decides, exactly as the interpreter and the generators are decided) and runs that
+  folder through the same `TestRunner` CI uses, so a row in the panel and a row in the build are one fact. The
+  rows are the panel's own `RunRow`s - one per test, in the runner's order - and the summary is the headline
+  rather than a row, because a row is what a click resolves. Choosing a row opens the test document: it is
+  written in the test language, so it is opened with that language's project and notations, the way a language's
+  own documents are opened with theirs. A document of one of the shell's compiled-in languages has no project and
+  therefore no tests, which the entry says by being disabled with the reason on its tooltip. The rules the shell
+  hands the runner are the tab's own - the registry it already resolved for Run - so a folder that ships an
+  `evaluates` test reports it as failed while evaluation is not a declarable aspect, with the runner's own sentence
+  saying that no rules were supplied.
+
 **How a script names a place and an offer.** Neither is named by identity, because a test is written as data and
 a node id is a GUID nobody can read:
-
 - a **place** is named by the text the document shows there, found through `Finder` - the same question a user's
   find asks. Matching is ordinal, so a test that says `release` cannot pass by landing on `Release`, and the
   caret goes in front of the occurrence so a step that types prefixes a value.
@@ -188,7 +202,7 @@ declarable, the assertion needs no change - only a sample that ships rules.
 | T2 | `Testing.Generates` and `Testing.Evaluates` (generators by name, variables from one line of `name=value` pairs, the way `RunInputs` already reads them) - **delivered** | 3-4 days |
 | T3 | `Testing.Script`: the action vocabulary, caret placement, and the comparison after the run - the editor test - **delivered** | 1-2 weeks |
 | T4 | node-addressed assertions (`Testing.TypeOf`, `Testing.ScopeOf`), which need a way for a test to name a node: a path syntax, or a reference once a common base concept exists | open |
-| T5 | the workbench command, the report rows, and "run on save" if it is wanted | 3-4 days |
+| T5 | the workbench command (**Run ▸ Run tests**), the report rows, and the click that opens the test - **delivered**. "Run on save" is not part of it: a language's tests are not cheap enough to run on every keystroke, and nothing has asked for it | 3-4 days |
 
 ## Non-goals
 

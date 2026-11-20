@@ -4,6 +4,7 @@ using Projectional.Editing;
 using Projectional.Language;
 using Projectional.Projection;
 using Projectional.Semantics;
+using Projectional.Testing;
 
 namespace Projectional.Workbench;
 
@@ -250,6 +251,18 @@ internal sealed class DocumentTab : IDisposable
     /// been split into lines by then, and rebuilding it from the rows would be a second generator's job.
     /// </remarks>
     internal string? Generated { get; set; }
+
+    /// <summary>
+    /// The run of this document's language tests whose rows <see cref="Output"/> holds, or <see langword="null"/> when
+    /// the output is not a test run.
+    /// </summary>
+    /// <remarks>
+    /// The rows in <see cref="Output"/> are one per test, in the report's own order, which is what lets the window
+    /// resolve a chosen row back to the test it names and open that test's document. It is set and dropped together
+    /// with <see cref="Output"/>, because a list of rows without the report behind them would be a panel whose rows
+    /// open the wrong test.
+    /// </remarks>
+    internal TestReport? Tests { get; set; }
 
     /// <summary>Turns the tab's session off. The model itself belongs to whoever opened it.</summary>
     public void Dispose()

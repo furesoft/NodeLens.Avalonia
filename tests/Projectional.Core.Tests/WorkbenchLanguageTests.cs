@@ -240,6 +240,27 @@ public sealed class WorkbenchLanguageTests
         Assert.Null(WorkbenchLanguage.InterpreterFor(new WorkbenchLanguage().NewProject().NewModel("empty")));
     }
 
+    [Fact]
+    public void AModelOfAnOpenedLanguageBelongsToThatProject()
+    {
+        // Which language a document is written in is a fact about its root, not about the command that opened it -
+        // and a document of the shell's own languages belongs to no folder at all, so there are no tests to run.
+        using var folder = new TemporaryDirectory();
+
+        WriteLanguage(folder.Root, "Payroll.Payslip", ["name"]);
+
+        var language = new WorkbenchLanguage();
+        var opened = LanguageProject.Open(folder.Root, out _)!;
+
+        Assert.Null(language.ProjectFor(language.NewConceptDefinition()));
+
+        Assert.True(language.TryAdd(opened, out var error), error);
+
+        Assert.Same(opened, language.ProjectFor(WorkbenchLanguage.NewDocument(opened)!));
+        Assert.Null(language.ProjectFor(language.NewConceptDefinition()));
+        Assert.Null(language.ProjectFor(language.NewProject().NewModel("empty")));
+    }
+
     /// <summary>Writes a one-concept language project whose notation is the keyword <c>rule</c> and the name.</summary>
     /// <remarks>
     /// One document per definition, so each concept and each notation gets its own file in its aspect folder, and

@@ -15,12 +15,14 @@ using Projectional.Intentions;
 using Projectional.Language;
 using Projectional.LanguageExport;
 using Projectional.Languages;
+using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
 using Projectional.Samples.Intentions;
 using Projectional.Semantics;
 using Projectional.Structures.Intentions;
+using Projectional.Testing;
 
 namespace Projectional.Workbench;
 
@@ -399,9 +401,11 @@ public sealed partial class MainWindow : Window, IDisposable
             PublishFindings(document, editor);
 
             // A run is a snapshot of the document as it was, so an edit drops it. Findings can be derived again
-            // from the new model; a run cannot, because the variables came from the user.
+            // from the new model; a run cannot, because the variables came from the user. A test run is a snapshot
+            // of the same kind: it was true of the document before the edit.
             document.Output = null;
             document.Generated = null;
+            document.Tests = null;
         }
 
         ShowProblems();
@@ -951,6 +955,63 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void OnRunDocument(object? sender, RoutedEventArgs e) => RunActiveDocument();
 
+    private void OnRunTests(object? sender, RoutedEventArgs e) => RunActiveTests();
+
+    /// <summary>Runs the tests folder of the active document's language and shows the rows in the panel.</summary>
+    /// <remarks>
+    /// <para>
+    /// The language is the project whose root concept the document's root is, which is why a document of the shell's
+    /// own languages has no tests to run: those languages are compiled code, and their tests are C# in this
+    /// repository.
+    /// </para>
+    /// <para>
+    /// The runner is the same one CI uses, so a row here and a row in the build are the same fact. The evaluation
+    /// rules come from the document's own tab, because a language project carries no evaluation aspect and the tab
+    /// already resolved which registry belongs to this language.
+    /// </para>
+    /// </remarks>
+    private void RunActiveTests()
+    {
+        _error = null;
+
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        if (_language.ProjectFor(document.Model) is not { } project)
+        {
+            _error = "This document's language is not a project opened from a folder, so it has no tests folder.";
+
+            UpdateStatus();
+
+            return;
+        }
+
+        TestReport tests;
+
+        try
+        {
+            tests = TestRunner.Run(project, document.Evaluation);
+        }
+        catch (Exception exception) when (exception is ConceptDefinitionException or ModelFormatException)
+        {
+            // A tests folder that holds something which is not a test is a broken suite rather than a result, so it
+            // is reported as the command's answer instead of being turned into a row.
+            _error = exception.Message;
+
+            UpdateStatus();
+
+            return;
+        }
+
+        document.Tests = tests;
+        document.Output = TestOutput.Report(tests, project);
+
+        ShowOutput();
+        UpdateStatus();
+    }
+
     private void OnRunInputsKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter)
@@ -1010,9 +1071,11 @@ public sealed partial class MainWindow : Window, IDisposable
         if (_documents.Active is { } document)
         {
             document.Output = null;
+            document.Tests = null;
         }
 
         ShowOutput();
+        UpdateStatus();
     }
 
     /// <summary>Shows the active document's last run, if it has one.</summary>
@@ -1037,8 +1100,19 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void OnRunRowChosen(object? sender, SelectionChangedEventArgs e)
     {
+        if (_documents.Active is not { } document)
+        {
+            return;
+        }
+
+        if (document.Tests is { } tests)
+        {
+            OpenChosenTest(tests);
+
+            return;
+        }
+
         if (RunOutput.SelectedItem is not RunRow { Place: { } place }
-            || _documents.Active is not { } document
             || !_tabs.TryGetValue(document, out var tab)
             || EditorOf(tab) is not { } editor)
         {
@@ -1050,6 +1124,53 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Focus();
 
         RunOutput.SelectedItem = null;
+    }
+
+    /// <summary>Opens the test document whose row the user chose.</summary>
+    /// <remarks>
+    /// <para>
+    /// A test row has no address to jump to: it is about a document, and the document it names is not the one in
+    /// front. What a row is worth clicking for is the failing test itself, which is written in the test language -
+    /// so it is opened with that language's project and notations rather than the shell's, exactly as a language's
+    /// own documents are opened with their project's.
+    /// </para>
+    /// <para>
+    /// The row is resolved by position, which is the contract <see cref="TestOutput"/> keeps: one row per result, in
+    /// the runner's order.
+    /// </para>
+    /// </remarks>
+    private void OpenChosenTest(TestReport tests)
+    {
+        var index = RunOutput.SelectedIndex;
+
+        if (index < 0 || index >= tests.Results.Count)
+        {
+            return;
+        }
+
+        var result = tests.Results[index];
+
+        RunOutput.SelectedItem = null;
+
+        if (_documents.Active is not { } document || _language.ProjectFor(document.Model) is not { } project)
+        {
+            return;
+        }
+
+        var path = Path.Combine(project.Directory, TestRunner.Folder, result.Test + DocumentFile.Extension);
+
+        _error = null;
+
+        if (DocumentFile.TryLoad(path, TestingLanguage.NewProject(), out var error) is not { } model)
+        {
+            _error = error;
+
+            UpdateStatus();
+
+            return;
+        }
+
+        OpenDocument(model, TestingNotations.Registry, path);
     }
 
     /// <summary>Registers the framework's catalogue and the intentions the document's languages ship with.</summary>
@@ -1199,14 +1320,21 @@ public sealed partial class MainWindow : Window, IDisposable
     private void UpdateRunCommand()
     {
         var runnable = _documents.Active?.Evaluation is not null;
+        var project = _documents.Active is { } active ? _language.ProjectFor(active.Model) : null;
 
         RunDocumentItem.IsEnabled = runnable;
+        RunTestsItem.IsEnabled = project is not null;
         ClearOutputItem.IsEnabled = _documents.Active?.Output is not null;
         ToolTip.SetTip(
             RunDocumentItem,
             runnable
                 ? "Runs the document with its language's interpreter."
                 : "This document's language defines no interpreter.");
+        ToolTip.SetTip(
+            RunTestsItem,
+            project is null
+                ? "Only a document of a language opened from a folder can run that language's tests."
+                : $"Runs the tests folder of '{project.Name}' and reports one row per test.");
     }
 
     /// <summary>Fills the generate submenu from the active document's generators, and says whether saving is possible.</summary>
@@ -1516,19 +1644,42 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        if (!_language.TryAdd(language, out error))
+        _error = null;
+
+        OpenLanguage(language);
+
+        UpdateStatus();
+    }
+
+    /// <summary>Takes <paramref name="language"/> into the shell and opens every document that defines it.</summary>
+    /// <param name="language">The project, already loaded from its folder.</param>
+    /// <returns>Whether the shell can now show documents of that language.</returns>
+    /// <remarks>
+    /// <para>
+    /// Every definition document of the folder opens, because that is where the user edits the language: one concept
+    /// or enumeration per file, one notation per file, one rule or named type per file.
+    /// </para>
+    /// <para>
+    /// Internal rather than private because the screenshot harness drives the shell through this seam: a folder
+    /// picker cannot be driven from a harness, and leaving the rest inline would mean a picture of "the tests ran"
+    /// arranged by hand rather than reached through the command. It is not public for the same reason
+    /// <see cref="OpenDocument"/> is not - the shell is a library only once M6 extracts it.
+    /// </para>
+    /// </remarks>
+    internal bool OpenLanguage(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        if (!_language.TryAdd(language, out var error))
         {
             _error = error;
-            UpdateStatus();
 
-            return;
+            return false;
         }
 
-        // Every definition document of the folder opens, because that is where the user edits the language: one
-        // concept or enumeration per file, one notation per file, one rule or named type per file.
         foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.IntentionsFolder })
         {
-            var path = Path.Combine(directory, folder);
+            var path = Path.Combine(language.Directory, folder);
 
             if (!System.IO.Directory.Exists(path))
             {
@@ -1546,7 +1697,7 @@ public sealed partial class MainWindow : Window, IDisposable
             }
         }
 
-        UpdateStatus();
+        return true;
     }
 
     /// <summary>Creates a document of one of the languages this shell knows.</summary>

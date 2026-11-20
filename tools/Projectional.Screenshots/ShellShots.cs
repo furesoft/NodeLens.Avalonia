@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 
 using Projectional.Avalonia;
 using Projectional.Editing;
+using Projectional.Languages;
 using Projectional.Projection;
 using Projectional.Samples.StateMachine;
 using Projectional.Workbench;
@@ -27,8 +28,41 @@ internal static class ShellShots
     [
         new("feature-run-output", ShowRunOutput, Width: 700, Height: 300),
         new("feature-generate-output", ShowGeneratedText, Width: 700, Height: 250),
+        new("feature-run-tests", ShowTestRun, Width: 820, Height: 320),
         new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 520),
     ];
+
+    /// <summary>Runs the declared sample's tests folder and shows the rows the command puts in the panel.</summary>
+    /// <remarks>
+    /// The language project is loaded from the copy of the sample in this tool's output, because a project is loaded
+    /// from a folder and a picture of running a folder's tests has to run that folder. Everything else is the shell's
+    /// own gesture: <see cref="MainWindow.OpenLanguage"/> is what the folder picker calls, and the menu entry is
+    /// clicked rather than the work being redone here - so the picture cannot show a panel state the command does not
+    /// produce.
+    /// </remarks>
+    private static async Task ShowTestRun(MainWindow window)
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "declared-pipeline");
+
+        var language = LanguageProject.Open(directory, out var error)
+            ?? throw new InvalidOperationException(error);
+
+        if (!window.OpenLanguage(language))
+        {
+            throw new InvalidOperationException($"The shell refused '{language.Name}'.");
+        }
+
+        var path = Path.Combine(directory, "pipeline.mps");
+
+        var document = DocumentFile.TryLoad(path, language.NewProject(), out error)
+            ?? throw new InvalidOperationException(error);
+
+        window.OpenDocument(document, language.Notations, path);
+
+        Click(window.FindControl<MenuItem>("RunTestsItem")!);
+
+        await Task.Delay(250);
+    }
 
     /// <summary>Runs the sample ruleset against <c>amount=1500</c>, which accepts and leaves a trace.</summary>
     private static async Task ShowRunOutput(MainWindow window)

@@ -40,6 +40,7 @@
           handler owns F5, so the run cannot be claimed by whichever control happens to have focus.
         -->
         <MenuItem x:Name="RunDocumentItem" Header="_Run document (F5)" Click="OnRunDocument" />
+        <MenuItem x:Name="RunTestsItem" Header="Run _tests" IsEnabled="False" Click="OnRunTests" />
         <MenuItem x:Name="GenerateItem" Header="_Generate text" IsEnabled="False" />
         <Separator />
         <MenuItem x:Name="ClearOutputItem" Header="_Clear output" Click="OnClearOutput" />

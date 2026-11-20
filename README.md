@@ -284,6 +284,10 @@ if (!report.Succeeded)
 }
 ```
 
+A language's tests also run from the app: **Run ▸ Run tests** runs the `tests/` folder of the language the document in front belongs to - the project it was opened from - and puts one row per test in the output panel, so a failing test is a line to look at rather than a build to wait for. Choosing a row opens the test document it names, which is possible because a test is a document of this language like any other.
+
+![The output panel listing one row per test of the pipeline sample, all passed](docs/images/feature-run-tests.png)
+
 ### Feature Gallery
 
 One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, and a feature that lives in the shell is rendered from a real `MainWindow`. Both kinds are produced by the same command:
