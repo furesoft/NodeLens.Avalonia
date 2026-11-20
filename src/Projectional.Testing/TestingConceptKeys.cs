@@ -59,4 +59,10 @@ public static class TestingConceptKeys
 
     /// <summary>The offer whose id the step names is invoked at the caret.</summary>
     public const string Invoke = "Testing.Invoke";
+
+    /// <summary>The node the test names has the type the test spells out.</summary>
+    public const string TypeOf = "Testing.TypeOf";
+
+    /// <summary>The reference slot of the node the test names sees the names the test spells out.</summary>
+    public const string ScopeOf = "Testing.ScopeOf";
 }

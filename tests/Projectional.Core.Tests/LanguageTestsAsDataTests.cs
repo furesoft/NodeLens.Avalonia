@@ -4,6 +4,7 @@ using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Testing;
+using Projectional.TypeRules;
 using Xunit;
 
 using TestResult = Projectional.Testing.TestResult;
@@ -623,6 +624,223 @@ public sealed class LanguageTestsAsDataTests
                 pipeline PreRelease
             """,
             LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
+    }
+
+    [Fact]
+    public void ATypeOfTestPinsTheTypeTheRulesAnswer()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            StepHasAType(folder, "string");
+
+            SaveTest(folder, "build-is-a-string", "release.mps", TestingConceptKeys.TypeOf, (_, type) =>
+            {
+                type.Set(TestingLanguage.AtSlot, "build");
+                type.Set(TestingLanguage.TypeSlot, "string");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "build-is-a-string");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ATypeOfTestThatExpectsAnotherTypeFailsWithBoth()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            StepHasAType(folder, "string");
+
+            SaveTest(folder, "build-is-an-int", "release.mps", TestingConceptKeys.TypeOf, (_, type) =>
+            {
+                type.Set(TestingLanguage.AtSlot, "build");
+                type.Set(TestingLanguage.TypeSlot, "int");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "build-is-an-int");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("int", row.Expected);
+            Assert.Equal("string", row.Actual);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ATypeOfTestOnALanguageWithoutRulesPinsTheFallback()
+    {
+        // A language that declares no type rules answers "unknown" for every node, which is a fact a language author
+        // can state - so the assertion holds, rather than failing for a reason they cannot act on.
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "no-types-declared", "pipeline.mps", TestingConceptKeys.TypeOf, (_, type) =>
+            {
+                type.Set(TestingLanguage.AtSlot, "Release");
+                type.Set(TestingLanguage.TypeSlot, "unknown");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "no-types-declared");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AScopeOfTestPinsWhatTheSlotSees()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "what-onfailure-sees", "release.mps", TestingConceptKeys.ScopeOf, (model, scope) =>
+            {
+                // The second step, because the language's own rule asks the ancestors and the first step has no
+                // step above it - so it sees nothing, which is a fact worth pinning separately.
+                scope.Set(TestingLanguage.AtSlot, "dotnet test");
+                scope.Set(TestingLanguage.ScopeSlot, "onFailure");
+
+                AddLine(model, scope, "build");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "what-onfailure-sees");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AScopeOfTestThatMissesANameFails()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "forgets-a-name", "release.mps", TestingConceptKeys.ScopeOf, (_, scope) =>
+            {
+                scope.Set(TestingLanguage.AtSlot, "dotnet test");
+                scope.Set(TestingLanguage.ScopeSlot, "onFailure");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "forgets-a-name");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal(string.Empty, row.Expected);
+            Assert.Contains("build", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ANodeTheDocumentCannotShowIsAFailedRow()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "no-such-node", "pipeline.mps", TestingConceptKeys.TypeOf, (_, type) =>
+            {
+                type.Set(TestingLanguage.AtSlot, "nowhere");
+                type.Set(TestingLanguage.TypeSlot, "unknown");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "no-such-node");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("nowhere", row.Expected);
+            Assert.Contains("nothing shows 'nowhere'", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TheNodeAddressedAssertionsDrawAsSentences()
+    {
+        var typed = TestingLanguage.NewModel();
+        var typedTest = typed.Roots[0];
+
+        typedTest.Set(TestingLanguage.DocumentSlot, "release.mps");
+
+        var type = typed.NewChild(typedTest, TestingLanguage.AssertionSlot, TestingConceptKeys.TypeOf);
+
+        type.Set(TestingLanguage.AtSlot, "build");
+        type.Set(TestingLanguage.TypeSlot, "string");
+
+        Assert.Equal(
+            """
+            test release.mps
+              the node at build has type string
+            """,
+            LayoutSnapshot.Render(typed, TestingNotations.Registry, width: 80));
+
+        var scoped = TestingLanguage.NewModel();
+        var scopedTest = scoped.Roots[0];
+
+        scopedTest.Set(TestingLanguage.DocumentSlot, "release.mps");
+
+        var scope = scoped.NewChild(scopedTest, TestingLanguage.AssertionSlot, TestingConceptKeys.ScopeOf);
+
+        scope.Set(TestingLanguage.AtSlot, "build");
+        scope.Set(TestingLanguage.ScopeSlot, "onFailure");
+        AddLine(scoped, scope, "Release");
+
+        Assert.Equal(
+            """
+            test release.mps
+              the node at build sees into onFailure
+                Release
+            """,
+            LayoutSnapshot.Render(scoped, TestingNotations.Registry, width: 80));
+    }
+
+    /// <summary>Gives every step of the copied workflow the fixed type <paramref name="type"/>.</summary>
+    /// <remarks>
+    /// The rule is built with the declared type-rule language rather than written as XML, so the fixture cannot drift
+    /// from the language it is written in - and a language project with no <c>types</c> folder is what the sample
+    /// ships, so the folder has to be made for the assertion to have something to ask.
+    /// </remarks>
+    private static void StepHasAType(string folder, string type)
+    {
+        var model = TypeRuleLanguage.NewProject().NewModel("Workflow.Step");
+        var rule = model.NewNode(TypeRuleConceptKeys.Rule);
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Workflow.Step");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Fixed);
+        var primitive = model.NewChild(body, TypeRuleLanguage.TypeSlot, TypeRuleConceptKeys.Primitive);
+
+        primitive.Set(TypeRuleLanguage.NameSlot, type);
+
+        model.AddRoot(rule);
+
+        ModelFile.Save(model, Path.Combine(folder, LanguageProject.TypesFolder, "Workflow.Step.mps"));
     }
 
     /// <summary>Adds one step to a script assertion.</summary>

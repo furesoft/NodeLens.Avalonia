@@ -25,6 +25,10 @@ public static class TestingNotations
     private const string NoTyped = "<< what is typed >>";
     private const string NoKey = "<< which key >>";
     private const string NoIntention = "<< which offer >>";
+    private const string NoNode = "<< which node >>";
+    private const string NoType = "<< which type >>";
+    private const string NoSlot = "<< which slot >>";
+    private const string NoNames = "<< which names it sees >>";
 
     /// <summary>The notation registry of the test language.</summary>
     public static NotationRegistry Registry { get; } = Create(TestingLanguage.Concepts);
@@ -130,5 +134,25 @@ public static class TestingNotations
             ed.Keyword("invoke"),
             ed.Space,
             ed.Property(TestingLanguage.IntentionSlot, emptyText: NoIntention)));
+
+        notations.Add(TestingConceptKeys.TypeOf, ed => ed.Line(
+            ed.Keyword("the node at"),
+            ed.Space,
+            ed.Property(TestingLanguage.AtSlot, emptyText: NoNode),
+            ed.Space,
+            ed.Keyword("has type"),
+            ed.Space,
+            ed.Property(TestingLanguage.TypeSlot, emptyText: NoType)));
+
+        notations.Add(TestingConceptKeys.ScopeOf, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("the node at"),
+                ed.Space,
+                ed.Property(TestingLanguage.AtSlot, emptyText: NoNode),
+                ed.Space,
+                ed.Keyword("sees into"),
+                ed.Space,
+                ed.Property(TestingLanguage.ScopeSlot, emptyText: NoSlot)),
+            ed.Indent(ed.Children(TestingLanguage.LinesSlot, NoNames, stacked: true))));
     }
 }

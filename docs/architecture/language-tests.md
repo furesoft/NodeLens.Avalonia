@@ -1,10 +1,10 @@
 # Tests of a language, as data
 
-Status: **delivered** (M6). Slices T1, T2, T3 and T5 are complete: the `tests/` folder, the test language,
-`TestRunner`, the xunit bridge and the sample's test documents, with all six assertions a document can make -
-`Testing.RoundTrips`, `Testing.Draws`, `Testing.Findings`, `Testing.Generates`, `Testing.Evaluates` and
-`Testing.Script`, the editor test - and the workbench command that runs a language's folder and lists one row
-per test. What is left is T4, node-addressed assertions, which needs a way for a test to name a node.
+Status: **delivered** (M6). All five slices are complete: the `tests/` folder, the test language, `TestRunner`,
+the xunit bridge and the sample's test documents, with all eight assertions a document can make -
+`Testing.RoundTrips`, `Testing.Draws`, `Testing.Findings`, `Testing.Generates`, `Testing.Evaluates`,
+`Testing.Script` (the editor test) and the two node-addressed ones, `Testing.TypeOf` and `Testing.ScopeOf` -
+plus the workbench command that runs a language's folder and lists one row per test.
 
 Before this existed, every test in this repository was C# xunit over `Projectional.Core.Tests`, and a
 language author had no way to test a language at all.
@@ -65,11 +65,19 @@ that a language author writes an assertion, not a program.
 | `Testing.Evaluates` | `Interpreter` over the rules the caller supplies, with the variables a test names | the answer, or the message of the failure that stopped the run; the trace is not pinned yet |
 | `Testing.RoundTrips` | `ModelXml.Serialize` twice | invariant 7 for that document |
 | `Testing.Script` | an `EditorSession` over the document, replaying steps through `KeyRouter` and `Finder` | what a user's keystrokes do: the model after the steps, drawn |
+| `Testing.TypeOf` | `TypeRegistry.TypeOf(node)` over the language's declared type rules | the type a node has, as the framework writes it |
+| `Testing.ScopeOf` | `IScopeProvider.ScopeOf(node, slot)` - the language's own providers over the default chain | which names a reference slot sees, in the order it ranks them |
 
-All six are document-level assertions: they need nothing from the framework that does not exist. `Testing.Script`
-is the one that reaches the editing layer, and it reaches it only through what the layer already publishes for a
-keystroke - `KeyRouter.Type`, `KeyRouter.For`, `Finder`, `IntentionList` and `EditorSession.Apply` - so the runner
-carries no second idea of what input means.
+All eight are document-level assertions: they need nothing from `Editing` but the two that are about input or
+about naming - `Testing.Script`, which replays keystrokes, and the two node-addressed ones, which use `Finder` to
+turn a text into a node. They reach that layer only through what it publishes, so the runner carries no second
+idea of input or of search.
+
+**How a node is named.** By the text the document shows at it, found through `Finder` - the same mechanism the
+editor test's caret step uses, and the same question a user's find asks. Ordinal matching, first occurrence, and
+`TestNodes` is the one implementation, so the caret step and the two assertions cannot drift apart. A test that
+had to spell a node id would be unreadable, could not be reviewed in a diff, and would break the moment a fixture
+was regenerated.
 
 ## The runner is a behaviour package, not a language package
 
@@ -172,10 +180,18 @@ The folder, the language, the runner and the bridge, with five of the six assert
   hands the runner are the tab's own - the registry it already resolved for Run - so a folder that ships an
   `evaluates` test reports it as failed while evaluation is not a declarable aspect, with the runner's own sentence
   saying that no rules were supplied.
+- **`Testing.TypeOf`** pins the type the language's rules answer for the node the test names, written the way the
+  framework writes it (which is also how a diagnostic quotes it). A language that declares no type rules answers
+  `unknown` for everything, and a test that says so holds: it is asserting the framework's fallback, which is
+  behaviour, not a rule the language could have got wrong.
+- **`Testing.ScopeOf`** pins what a reference slot sees, one name per line, in the order the scope ranks them -
+  nearest first, the same order a completion list offers. Pinning the order as well as the contents is deliberate:
+  a language that starts ranking one name first has changed what its users can reference. The scope asked is the
+  language's own registry over the default chain, which is what a session installs, so a language that declares no
+  scopes is still testable.
 
 **How a script names a place and an offer.** Neither is named by identity, because a test is written as data and
-a node id is a GUID nobody can read:
-- a **place** is named by the text the document shows there, found through `Finder` - the same question a user's
+a node id is a GUID nobody can read:- a **place** is named by the text the document shows there, found through `Finder` - the same question a user's
   find asks. Matching is ordinal, so a test that says `release` cannot pass by landing on `Release`, and the
   caret goes in front of the occurrence so a step that types prefixes a value.
 - an **offer** is named by its `Intention.Id`, which `Intention` documents as the stable, untranslated name a test
@@ -201,7 +217,7 @@ declarable, the assertion needs no change - only a sample that ships rules.
 | T1 | the `tests/` folder and the language (`Testing.Draws`, `Testing.Findings`, `Testing.RoundTrips`), `TestRunner`, the xunit bridge, and the sample language's first tests - **delivered** | 1 week |
 | T2 | `Testing.Generates` and `Testing.Evaluates` (generators by name, variables from one line of `name=value` pairs, the way `RunInputs` already reads them) - **delivered** | 3-4 days |
 | T3 | `Testing.Script`: the action vocabulary, caret placement, and the comparison after the run - the editor test - **delivered** | 1-2 weeks |
-| T4 | node-addressed assertions (`Testing.TypeOf`, `Testing.ScopeOf`), which need a way for a test to name a node: a path syntax, or a reference once a common base concept exists | open |
+| T4 | node-addressed assertions (`Testing.TypeOf`, `Testing.ScopeOf`), which need a way for a test to name a node: the text the document shows at it, through the same `Finder` the editor test uses - **delivered** | open |
 | T5 | the workbench command (**Run ▸ Run tests**), the report rows, and the click that opens the test - **delivered**. "Run on save" is not part of it: a language's tests are not cheap enough to run on every keystroke, and nothing has asked for it | 3-4 days |
 
 ## Non-goals
@@ -228,12 +244,14 @@ declarable, the assertion needs no change - only a sample that ships rules.
   runner to keep both the refusal and its reason, so the choice is between a fifth step kind and a flag on each
   of the four.
 - **How a test names its document.** A path relative to the language project is explicit and reviewable, and
-  it is what MPS' `TestInfo` does for the project root. A reference to the model root would be stronger, but a
-  reference slot needs a concept key and a root concept is the language's own - the common base concept this
-  framework deliberately does not have. Take the path now; revisit in slice T4, or once a language can declare
-  a concept that *every* root conforms to (neither the interface plan nor anything else adds one today). A third
-  answer arrives with [smodel.md](smodel.md): a pointer or a query is what MPS uses to name a node in a test,
-  and it would let an assertion name *any* node instead of a whole document.
+  it is what MPS' `TestInfo` does for the project root - it stays. A reference to the model root would be
+  stronger, but a reference slot needs a concept key and a root concept is the language's own - the common base
+  concept this framework deliberately does not have, so it would wait on a language declaring a concept that
+  *every* root conforms to (neither the interface plan nor anything else adds one today). The **node** half of
+  this question is settled: a node is named by the text the document shows at it (see "How a node is named"), so
+  no path syntax was needed after all. A richer answer still arrives with
+  [smodel.md](smodel.md): a pointer or a query is what MPS uses to name a node in a test, and it would name a
+  node the projection does not currently show - which a text-based name cannot.
 - **What a snapshot compares.** Exact text is honest and brittle in one way: a change of measure or width
   rewrites every expectation. Renderer output is the thing being pinned, so exact text is right - but the
   report must show the diff rather than "not equal", or a width change reads as fifty failures.
