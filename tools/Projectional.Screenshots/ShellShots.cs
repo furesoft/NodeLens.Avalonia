@@ -32,7 +32,39 @@ internal static class ShellShots
         new("feature-run-tests", ShowTestRun, Width: 840, Height: 460),
         new("feature-import-file", ShowImportedDocument, Width: 720, Height: 540),
         new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 600),
+        new("feature-project-explorer", ShowProjectExplorer, Width: 900, Height: 900),
     ];
+
+    /// <summary>Opens the three declared sample languages, so every aspect folder a language can have is listed.</summary>
+    /// <remarks>
+    /// One project cannot show all nine folder icons - the pipeline has no types, scopes or intentions, the workflow
+    /// has no constraints, imports or generators - so the picture holds the three projects the repository ships. The
+    /// documents they open are closed again: the picture is the tree, and thirty definition documents listed above it
+    /// would push the folders out of view.
+    /// </remarks>
+    private static async Task ShowProjectExplorer(MainWindow window)
+    {
+        foreach (var name in (string[])["declared-pipeline", "declared-expressions", "declared-workflow"])
+        {
+            var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, name), out var error)
+                ?? throw new InvalidOperationException(error);
+
+            if (!window.OpenLanguage(language))
+            {
+                throw new InvalidOperationException($"The shell refused '{language.Name}'.");
+            }
+        }
+
+        var close = window.FindControl<MenuItem>("CloseDocumentItem")!;
+        var documents = window.FindControl<TabControl>("Documents")!;
+
+        while (documents.Items.Count > 0)
+        {
+            Click(close);
+        }
+
+        await Task.Delay(250);
+    }
 
     /// <summary>Imports an ini-shaped file into a document of the language that declares a rule for it.</summary>
     /// <remarks>

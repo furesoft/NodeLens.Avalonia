@@ -42,6 +42,12 @@
     -->
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-pipeline\**\*.ini" Link="declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      The other two samples are here for one picture: between the three projects every aspect folder a language can
+      have exists at least once, which is the only way a gallery image can show all nine folder icons.
+    -->
+    <None Include="..\..\samples\declared-expressions\**\*.mps" Link="declared-expressions\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\declared-workflow\**\*.mps" Link="declared-workflow\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
