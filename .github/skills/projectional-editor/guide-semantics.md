@@ -140,6 +140,15 @@
   the lowering never sees, and the lowering refuses an equations body that states nothing, an equation whose two
   sides are the same variable, and a variable outside a body that states equations. `TypeRule.Join`/`TypeRule.Meet`
   are type expressions too, so "either" and "both" are spellable in a model.
+- **A body may read the node; a type expression may not, and the difference bites.** `TypeRule.Child` names one child's
+  type and `TypeRule.Join` joins two *written* types, so "the common supertype of these two children" had no spelling
+  until `TypeRule.Widest` - and a conditional needs exactly that. When a rule must ask about the node, the answer is a
+  new **body**, never a wider type expression: a record field whose type depended on the rule's node is a question with
+  no answer. The other way to widen a rule's reach is `TypeContext`: a rule that reduces a join needs the relation
+  (`context.Subtypes`), because being handed one from outside is how a rule comes to see a different relation than the
+  registry carries. `TypeRule.Widest` is what drift looks like when the vocabulary cannot express what the C# path does:
+  the declared twin kept saying "as wide as the then-branch" and the parity test passed only because no sample document
+  had a mismatched `if`.
 - **A subtyping declaration is a document, not a slot on a type**: `TypeRule.Supertypes` states one edge
   (`subtype <: supertype`) and lowers into a `SubtypeRelation` the `TypeRegistry` carries beside its rules, so the
   solver and the lattice a consumer builds are given the language's own edges rather than only the framework's
@@ -191,7 +200,7 @@
   A comparison a language states as data is no longer waiting for a consumer: the solver's fact check and the
   `TypeRule.NotComparable` condition both ask one.
 - **The same question has two authoring paths, and they must answer alike.** "Are these two operands usable one
-  for the other" is `TypeRule.NotComparable` in a types document and `SampleConstraints.OperandsNotComparable` in C#
+  for the other" is `TypeRule.NotComparable` in a types document and `SampleConstraints.Comparability` in C#
   - the expression language's own rule, which is what makes `1 + "x"` a finding instead of a silent `int`. Both ask
   the type first and then `Subtypes` and `Comparisons`, in that order: **if you change one, change the other**, or
   the two paths start answering differently. The C# one lives in `Projectional.Samples` because

@@ -117,6 +117,7 @@ have written ([ADR 0014](../../adr/0014-both-authoring-paths-are-permanent.md)).
 | `TypeRule.Rule` | `conceptKey` and a body |
 | `TypeRule.Fixed` | a type written out, so it is the same whatever the node holds |
 | `TypeRule.Child` | the type of one of the node's children |
+| `TypeRule.Widest` | `left` and `right`: the common supertype of two children's types |
 | `TypeRule.Switch` | a choice between bodies, decided by a property's value, with an `otherwise` |
 | `TypeRule.Case` | one value of a switch and the body it selects |
 | `TypeRule.Complain` | `message`, `severity` and an optional `when`: reports instead of typing |
@@ -138,6 +139,13 @@ depends on the rule's node - a question with no answer, because a field is part 
 node. `TypeRule.Fixed` therefore holds a `TypeExpr` rather than a name, which is also why `type int` reads
 exactly as it did before.
 
+The split has one consequence worth stating, because it is where a rule author gets stuck: `TypeRule.Child`
+names one child's type and `TypeRule.Join` joins two *written* types, so "the common supertype of these two
+children" had no spelling at all - and a conditional needs exactly that, since `if c then 1 else "x"` is neither
+branch's type. `TypeRule.Widest` is the body for it, and it is a body rather than a type expression for the reason
+the split exists: it reads the node. An unfilled slot contributes nothing rather than its `unknown`, so a conditional
+with one branch written keeps that branch's type instead of joining against a hole.
+
 **The drawing of a type expression is exactly what `IType.Name` prints.** `(amount: int, currency:
 string)`, `[int]`, `int?` - so the rule an author reads and the sentence a finding quotes about it are the
 same text. `ATypeExpressionDrawsExactlyWhatTheTypeIsCalled` in `TypeRuleNotationTests` is that invariant as
@@ -146,10 +154,10 @@ empty-list placeholder, because an empty slot has to stay visible and fillable.
 
 **Bodies, not a statement list.** MPS' typesystem is imperative - `do { typeof(node) :== int; }` -
 and copying that would mean shipping an interpreter for a language whose only job is to answer one
-question per node. A fixed type, a child's type and a switch over a property cover what a DSL's rules
-actually say, and each lowers to a delegate the C# path could have written by hand. A complaint is the
-fourth: it answers no type at all but states a message, optionally gated by a condition over two child
-slots, and it lowers into an `IConstraint` rather than a rule.
+question per node. A fixed type, a child's type, the widest of two children's types, a switch over a property, and
+an equations body cover what a DSL's rules actually say, and each lowers to a delegate the C# path could have
+written by hand. A complaint is the kind that answers no type at all: it states a message, optionally gated by a
+condition over two child slots, and it lowers into an `IConstraint` rather than a rule.
 
 **A declared type is a root of the types model, not a second list inside the document.** So a types model
 keeps one shape a reader has to learn: the rules, and the names they may use. `TypeRule.Ref` names one by
@@ -360,7 +368,8 @@ specification, not a capability.
 | Feature | Where it is used today |
 | --- | --- |
 | the declared vocabulary as a whole (`Rule`, `Fixed`, `Child`, `Switch`, `Equations`, `Variable`, `Join`, `Meet`, `Named`, `Ref`, `Supertypes`, `Comparable`, `Replacement`, `Complain`) | **nowhere in a shipped document**: no language project under `src/Languages` or `samples/` ships a `types/` folder. The vocabulary is proved by `TypeRuleLoweringTests` and by its parity test against `ExpressionsLanguage.Types`, not by a document anyone opens |
-| operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.OperandsNotComparable`, on the C# authoring path: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
+| operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.Comparability`, on the C# authoring path, registered for a binary operator's two operands and for a conditional's two branches: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
+| the join of two child slots - the capability `TypeRule.Widest` states | `TypeRule.Widest` itself, in the declared twin of the expression language's rules that `TypeRuleLoweringTests` compares against `ExpressionsLanguage.Types`: `Expressions.If` is `widest of then and else` on that side and `ExpressionTypes.Branches` on this one, and the parity test compares a *mismatched* conditional, which is the case that had no spelling before |
 | a language's own types aspect, declared in C# | `SqlSchemaLanguage.Types` (`SqlSchemaTypes`): the first shipped language with types of its own. Each column type is a `NamedType` over a primitive, one instance per value, so two columns of one type are one type - which is what lets a key compare them |
 | a one-way requirement ("this may stand where that is required") | two consumers now. `KeyTypesConstraint` asks it of a key's two columns, and `SampleConstraints.LogicalOperandMustBeBoolean` asks it of `&&`/`||`'s operands - which is the case that shows why the two questions are different: `1 && 2` is comparable and still wrong |
 | the join (`TypeRule.Join`, `TypeLattice.Join`) | two: the declared `TypeRule.Join`/`Meet` expressions, and the expression language's `if`, whose type is the join of its two branches. Until that rule existed the join had no consumer inside a shipped language, only in the type layer's own tests |
