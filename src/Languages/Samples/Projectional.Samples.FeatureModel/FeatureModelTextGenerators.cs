@@ -13,8 +13,9 @@ namespace Projectional.Samples.FeatureModel;
 /// <para>
 /// The list is separated by <see cref="LineBreakPart"/> and the template opens with nothing, so a model with no
 /// features emits no text at all and one with features emits one clean line each - no leading blank line, which a
-/// leading line break inside an indentation would have produced. That is a shape a nested tree could not have:
-/// see the gap recorded in <c>docs/architecture/worked-examples.md</c>.
+/// leading line break inside an indentation would have produced. The model is a flat list because its language
+/// declares no child slot on a feature; a template that nests is expressible since <see cref="WhenFilledPart"/>
+/// (see <c>docs/architecture/worked-examples.md</c>).
 /// </para>
 /// <para>
 /// The constraints do not appear in the output. They are rules about the selection, and a configuration file is
