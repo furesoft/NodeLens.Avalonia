@@ -179,16 +179,24 @@
   A one-way edge is a subtype without being a comparison - that is the difference the third question exists for, and
   it is why `TypeSolver` asks `IsComparableTo` instead of writing two subtype checks. Each type whose acceptance is
   structural overrides it so its comparison is structural too (list elements, record fields, a name's expansion, a
-  join's either side, a meet's both). `SubtypeRelation.IsComparableTo` is the authority for a language's edges;
-  `IType.IsComparableTo`'s default asks `SubtypeRelation.Primitives`, so a bare type compares only with itself.
+  join's either side, a meet's both). `SubtypeRelation.IsComparableTo` is the authority for a language's edges and
+  `ComparisonRelation` for its declared pairs; `IType.IsComparableTo`'s default asks
+  `SubtypeRelation.Primitives`, so a bare type compares only with itself.
 - **A type read cannot cycle, so there is no settle pass.** A rule is a pure function of the node and reads its
   children, so a type read descends a tree and terminates; the solver's fixpoint is where ordering lives. A cycle
   can only come from a name declared in terms of itself, refused at load with the chain printed. A child body may
   name only a child slot: `TypeRuleLowering.CreateRegistry` asks the concept registry when it is handed one and
   refuses a child body naming a reference slot or an undeclared slot - without that check the type read throws
   where the node has no such child slot.
-  The declared `TypeRule.Comparable` is deferred: nothing in the tree consumes a comparison a language
-  states as data yet.
+  A comparison a language states as data is no longer waiting for a consumer: the solver's fact check and the
+  `TypeRule.NotComparable` condition both ask one.
+- **The same question has two authoring paths, and they must answer alike.** "Are these two operands usable one
+  for the other" is `TypeRule.NotComparable` in a types document and
+  `SampleConstraints.OperandsNotComparable` in C# - the expression language's own rule, which is what makes
+  `1 + "x"` a finding instead of a silent `int`. Both ask the type first and then `Subtypes` and `Comparisons`, in
+  that order: **if you change one, change the other**, or the two paths start answering differently. The C# one
+  lives in `Projectional.Samples` because `Projectional.Expressions` deliberately does not reference the semantics
+  layer, and keying a constraint by concept is what lets one set hold two languages' rules.
 - **A type rule may report instead of typing.** `TypeRule.Complain` is a body carrying a `message`
   and a `severity`; `TypeRuleLowering.CreateComplaints` lowers it into an `IConstraint` keyed by the
   concept the rule names, and `LanguageProject` composes it into the language's own constraints - so

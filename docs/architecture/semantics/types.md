@@ -351,6 +351,32 @@ Each slice is independent and each is only worth starting when a language needs 
   **Not delivered: substitution** (`TypeRule.Substitute`), because configuring a type per model needs a per-model
   configuration slot the framework does not have - open question 113.
 
+#### What the shipped languages use
+
+A feature is delivered when a language uses it, so this is the ledger of which slices the repository's own
+languages exercise - and it is also the answer to "should this be built": a feature with no subject anywhere is a
+specification, not a capability.
+
+| Feature | Where it is used today |
+| --- | --- |
+| the declared vocabulary as a whole (`Rule`, `Fixed`, `Child`, `Switch`, `Equations`, `Variable`, `Join`, `Meet`, `Named`, `Ref`, `Supertypes`, `Comparable`, `Replacement`, `Complain`) | **nowhere in a shipped document**: no language project under `src/Languages` or `samples/` ships a `types/` folder. The vocabulary is proved by `TypeRuleLoweringTests` and by its parity test against `ExpressionsLanguage.Types`, not by a document anyone opens |
+| operand comparability - the capability `TypeRule.NotComparable` states | `Projectional.Samples.Checks.SampleConstraints.OperandsNotComparable`, on the C# authoring path: `1 + "x"` reports "the operands of '+' are not comparable: int and string", where before it was typed as an `int` in silence |
+| `TypeRule.Supertypes` | **no subject.** No shipped language declares a type hierarchy: the expression language's three primitives stand in no relation to each other, and the declared samples have no types aspect at all |
+| `TypeRule.Comparable` | **no subject.** No shipped language has two types interchangeable without one being below the other - and the expression language's three primitives are genuinely incomparable, which is precisely what makes its operand rule fire |
+| `TypeRule.Replacement` | **no subject.** Covariance rewrites a claim about a compound type, and no shipped language has one: the expression language declares no list, record or optional, so there is no part for a claim to be about |
+
+Two consequences follow, and they are worth stating rather than discovering twice. A declared language gets a
+`types/` folder only when something in it has a type: the pipeline's and the workflow's slots are strings, counts
+and references, so every node would type as `unknown` and the folder would be inventing a need instead of
+recording one. And the three unexercised slices are not dead code - each is one `Add` call away from a language
+that needs it, and the tests are what hold them to their meaning until then.
+
+Two gaps the comparison of features exposed, both deliberately left open: a <em>one-way</em> requirement ("this may
+stand where that is required") is not expressible as a condition, so a foreign key whose local column's type does
+not match its target's cannot be reported - that needs a condition kind beside `NotComparable`; and a mismatched
+`if` branch is typed as its `then`-branch with no finding at all, because a three-way question is neither
+comparability nor a relation between two slots.
+
 #### What stays out, and why
 
 - **A statement list, mutation of a type node, and anti-quotation.** `%()%` exists in MPS to move AST fragments in
