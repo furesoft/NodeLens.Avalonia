@@ -58,6 +58,9 @@ public static class IntentionLanguage
     /// <summary>The concept a declared replace puts in the place of the node.</summary>
     public const string WithSlot = "with";
 
+    /// <summary>The reference slot whose target a node is a use of.</summary>
+    public const string ReferenceSlot = "reference";
+
     /// <summary>The property an intention writes on the node.</summary>
     public const string SetSlot = "slot";
 
@@ -153,6 +156,17 @@ public static class IntentionLanguage
             ],
             [IntentionConceptKeys.Action],
             description: "Replaces the node with another concept."),
+
+        new ConceptDeclaration(
+            IntentionConceptKeys.Inline,
+            [
+                new PropertySlot(
+                    ReferenceSlot,
+                    PropertyType.String,
+                    description: "The reference slot on the node whose target stands here instead."),
+            ],
+            [IntentionConceptKeys.Action],
+            description: "Replaces the node with a copy of what its own reference points at."),
 
         new ConceptDeclaration(
             IntentionConceptKeys.Set,
