@@ -786,6 +786,28 @@ public sealed class TypeRuleLoweringTests
     }
 
     [Fact]
+    public void AFloatPrimitiveIsNameable()
+    {
+        // Every property type the framework has must be nameable in a types document, or a slot of that type could
+        // not be described by a rule. `float` is the one that arrived last, so it is the one worth pinning.
+        var registry = Lower(rules => rules.Rule(
+            ExpressionsConceptKeys.IntLiteral,
+            rules.FixedAs(rules.Primitive("float"))));
+
+        Assert.Equal("float", TypeOf(registry, ExpressionsConceptKeys.IntLiteral).Name);
+    }
+
+    [Fact]
+    public void ATypeNameTheFrameworkDoesNotHaveIsALoadTimeError()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => Lower(rules => rules.Rule(ExpressionsConceptKeys.IntLiteral, rules.FixedAs(rules.Primitive("decimal")))));
+
+        Assert.Contains("'decimal'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("float", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ADeclaredComparisonIsCarriedByTheRegistryAndAnswersBothWays()
     {
         var registry = Lower(rules =>
