@@ -166,6 +166,14 @@ Notation is a tree of **editor cells**. A cell is one of:
 | While filled | its inline cells, or nothing at all | as its content |
 | Line, Sequence, Indent, Horizontal, Space | layout modifiers | |
 
+**A reference is single-valued, and the notation says so.** A `ReferenceSlot` stores one target plus the text that
+target was called (`resolveInfo`), which is what the change record describes - one old target, one new target - and what
+makes a reference survive a move and degrade into a readable marker when its target is gone. A relationship with many
+targets is therefore a **list of child nodes, one per element**, each with its own identity, order and change history;
+that is why `NotationEditor` offers `Reference(slot)` and no collection of references. A list of links is drawn as a
+`Children` cell over the concept that holds the link, exactly as the feature model's `requires` is a node with two
+references rather than a slot with many, and as a foreign key is a *thing* rather than a property of a table.
+
 The layout cells are the skeleton, and they come in two shapes that cannot be
 mixed up. A **line** runs its inline cells horizontally and is the unit of vertical
 layout; a **sequence** stacks blocks vertically unchanged; an **indent** stacks
