@@ -272,6 +272,23 @@ declaration rather than into a new place. And a stale place is a **rejection wit
 computed it earlier, and abandoning the remaining steps with the model half-changed is the one outcome a refactoring
 must not have.
 
+**`InsertCopyAction` is the same place-based shape for a copy.** `DuplicateNodeAction` copies a node next to itself -
+that is what "duplicate" means - while a refactoring says "put what that node holds *here*". The copy is a new subtree
+with new identities (`Model.InsertCopy`), which is the difference from `MoveNodeToAction`: the source stays, so a use
+can be given its definition's content without taking it from every other use.
+
+`Projectional.IntentionRules` is the declared half of the intention machinery and is easy to miss because the shipped
+entries (rename, wrap, reset) come from `Projectional.Intentions`: a language writes one `Intent.Rule` document per
+entry with a concept, a label, a description and an `action`, and `IntentionLowering.CreateProvider` turns each into the
+same `Intention` a hand-written package registers - one apply path, no declared-only behaviour. **The bodies are a
+closed set** (`wrap` with presets, `set`, `insert`, `insert sibling`, `delete`, `move`, `replace`, `inline`), because a
+body produces an `EditAction` and an expression over the model would be a program to interpret. Everything a compiler
+could check is checked at load (the concept exists, the slot is of the right kind, a preset names a real property) and
+everything it cannot is the action's refusal. A body that replaces a node is `Destructive`; `inline` is, and it names
+only the reference slot whose target stands for the node's meaning - the framework copies that target into the node's
+own place and deletes the node, but deliberately does **not** delete a definition nothing references any more, which is
+still an open question of the refactoring plan.
+
 ## How intentions work
 
 An intention is a *way to find* an `EditAction` at the caret, in `Projectional.Editing/Intentions/`, and it

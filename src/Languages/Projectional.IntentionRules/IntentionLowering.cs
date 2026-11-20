@@ -68,7 +68,7 @@ public static class IntentionLowering
 
             var action = Single(rule, IntentionLanguage.ActionSlot);
 
-            var safety = action.Concept.Key is IntentionConceptKeys.Delete or IntentionConceptKeys.Replace
+            var safety = action.Concept.Key is IntentionConceptKeys.Delete or IntentionConceptKeys.Replace or IntentionConceptKeys.Inline
                 ? EditSafety.Destructive
                 : EditSafety.Plain;
 
@@ -99,6 +99,7 @@ public static class IntentionLowering
             IntentionConceptKeys.Delete => Delete(),
             IntentionConceptKeys.Move => Move(action),
             IntentionConceptKeys.Replace => Replace(action, subject, concepts),
+            IntentionConceptKeys.Inline => Inline(action, subject),
             IntentionConceptKeys.Insert => Insert(action, concepts),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an intention body; an intention wraps or sets."),
@@ -192,6 +193,49 @@ public static class IntentionLowering
         return context => context.Node is { } node
             ? new ReplaceNodeAction(node.Id, replacement.Key)
             : null;
+    }
+
+    /// <summary>Replaces the node with a copy of what its own reference points at.</summary>
+    /// <remarks>
+    /// <para>
+    /// The declaration names the reference slot, because only the language knows which of a node's slots is the one that
+    /// stands for "the definition of what I mean". The rest is the framework's: the node at the caret is the use, its
+    /// slot names the definition, and the use's own place receives a copy of it - a copy rather than a move, so the
+    /// definition stays for every other use.
+    /// </para>
+    /// <para>
+    /// It does <em>not</em> delete a definition nobody references any more. That is an open question of the refactoring
+    /// plan, not a detail of this body: deleting is destructive, and a body that quietly tidied up would be the one
+    /// place in the framework where an edit removes something the user did not point at.
+    /// </para>
+    /// </remarks>
+    private static Func<IntentionContext, EditAction?> Inline(Node action, Concept? subject)
+    {
+        var slot = Required(
+            action,
+            IntentionLanguage.ReferenceSlot,
+            "An inline has to name the reference slot that points at the definition.");
+
+        if (subject is not null && !subject.Slots.OfType<ReferenceSlot>().Any(reference => reference.Name == slot))
+        {
+            throw new ConceptDefinitionException(
+                $"An inline of '{subject.Key}' names the reference slot '{slot}', which that concept does not declare.");
+        }
+
+        return context =>
+        {
+            if (context.Node is not { } node
+                || node.GetReferenceTarget(slot) is not { } target
+                || node.Parent is not { } parent
+                || node.ParentSlot is not { } place)
+            {
+                return null;
+            }
+
+            return EditProgram.Of(
+                new InsertCopyAction(target.Id, parent.Id, place, node.IndexInParent),
+                new DeleteNodeAction(node.Id));
+        };
     }
 
     private static Func<IntentionContext, EditAction?> Delete() =>

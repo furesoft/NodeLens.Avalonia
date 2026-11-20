@@ -69,6 +69,15 @@ public static class IntentionNotations
                 ed.Space,
                 ed.Property(IntentionLanguage.WithSlot, emptyText: "<concept>")));
 
+        notations.Add(
+            IntentionConceptKeys.Inline,
+            ed => ed.Line(
+                ed.Keyword("inline from"),
+                ed.Space,
+                ed.Property(IntentionLanguage.ReferenceSlot, emptyText: "<no reference>"),
+                ed.Space,
+                ed.Keyword("instead of this node")));
+
         notations.Add(IntentionConceptKeys.Delete, ed => ed.Line(ed.Keyword("delete")));
 
         notations.Add(IntentionConceptKeys.Move, ed => ed.Line(
