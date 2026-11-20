@@ -208,6 +208,27 @@ it is special.
   duplicated. If a second test project ever needs that language, promote it to a
   `Projectional.TestLanguage` library rather than copying it.
 
+## How a node is named
+
+`Node.Name` is the **one** answer to "what is this node called", and it is `Concept.NameOf(this)`: the function a
+declaration passed in (`ConceptDeclaration(nameOf:)`), else the value of `Concept.NameSlot`, else `null`. The
+function is inherited like the name slot and the collapse slot - own declaration first, then the first declaring
+super in declaration order - and it exists because three ordinary shapes have no slot to read: a name that is a
+value, a name spread over a child, a name that is a sentence (`docs/architecture/behaviours.md`).
+
+- **Do not add a second lookup.** Everything that reads a name for display or identity - a reference cell, sort by
+  name, the outline, the problems panel, the usages header, the scope index, ambiguity, the stored `resolveInfo` -
+  reads `node.Name`. A consumer that re-asks `Concept.NameSlot` would let two answers disagree: a document sorted by
+  one name and resolved by another.
+- **Reading the slot is right when the caller *writes* it.** Rename (`RenameNodeAction`), the naming checks
+  (`STD001`/`STD003`/`STD004`) and a diagnostic's `role:` name the slot because they edit or mark it, and a computed
+  name has nothing there to write. That is why `Node.IsNamed` is "can the name be edited", not "does this node have a
+  name" - a question it now documents.
+- **It is reflection-free.** The function is a delegate *passed in a declaration*, exactly as `NameSlot` is a string
+  passed in one, so `Core` learns that a concept may name its own nodes and nothing about language models.
+- **Not cached.** It is asked once per reference cell, sort, browser row and scope entry; invalidating a cache would
+  need a second change-notification path. A language whose name is expensive should store it.
+
 ## How find usages works
 
 `ReferenceIndex` (`Projectional.Core/References/`) is the reverse of a reference: `UsagesOf(node)` answers every
