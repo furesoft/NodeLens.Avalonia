@@ -33,4 +33,22 @@ public interface ITypeRule
     /// </remarks>
     /// <param name="context">The node and the way to ask about its children.</param>
     IType TypeFor(TypeContext context);
+
+    /// <summary>The relations this rule states about its node, or nothing when it simply answers a type.</summary>
+    /// <param name="context">The node and the way to ask about its children.</param>
+    /// <remarks>
+    /// <para>
+    /// A rule whose answer depends on another node's type cannot be written as <see cref="TypeFor"/>: it does not
+    /// have that answer yet, and returning a <see cref="TypeVariable"/> would hand a caller an unresolved name
+    /// with nothing to resolve it. So a rule may instead <em>state</em> relations, which
+    /// <see cref="TypeSolver"/> solves together with every other rule's.
+    /// </para>
+    /// <para>
+    /// The default states nothing, which is what makes this additive: every rule that already answers a type keeps
+    /// doing so, and a consumer asks for equations first and falls back to <see cref="TypeFor"/> when a rule has
+    /// none. A rule that states equations may leave <see cref="TypeFor"/> answering a variable - the solver is
+    /// what gives it a value - and that is the only case where a caller sees a <see cref="TypeVariable"/> at all.
+    /// </para>
+    /// </remarks>
+    IEnumerable<TypeEquation> EquationsFor(TypeContext context) => [];
 }

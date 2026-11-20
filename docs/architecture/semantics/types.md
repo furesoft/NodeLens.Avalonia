@@ -34,6 +34,10 @@ there. The consumers sit above and read the registry the language hands them.
 | `IType` | `Name` and `Accepts(actual)` - assignability, asked in that direction |
 | `ISubtype` | `IsSubtype(actual, expected)` - the language's subtype edges, asked in the same direction and deliberately **stricter** than `Accepts` |
 | `SubtypeRelation` | those edges: a primitive is its own subtype by name, a declared edge is transitive, and `unknown` stands in no edge at all |
+| `TypeVariable` | a type a rule cannot name yet, written `?elementType`; distinct from `UnknownType`, which means nothing more will be known |
+| `TypeEquation` | one relation a rule states - `Equal`, `Subtype` or `Supertype` - whose sides may be variables |
+| `TypeSolver` | the fixpoint over those equations, with a step budget; a bounds solver, not a unification engine |
+| `TypeSolution` | what each variable turned out to be, why the solve stopped, and what it cost |
 | `PrimitiveType` | wraps a `PropertyType`, so a language declares its primitives where it already declares properties |
 | `RecordType` | a fixed set of named fields, compared **by name, not by order** |
 | `ListType` | its element type; a length is a fact about a value, not about its type |
@@ -166,16 +170,19 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1, which is delivered. This section is the design of record for the next stage of
-the type system, and what it records is a *compatibility target*: the rules a language author can write in MPS'
-typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
+**Planned, not built** - except T1 and T2, which are delivered. This section is the design of record for the next
+stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
+MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
 slices, not a specification to copy.
 
 Today the type layer answers **one** question per node - `ITypeRule.TypeFor(node)` returns an `IType` - and a type
 answers one: `expected.Accepts(actual)`. That is enough for a DSL whose types are written down, and it is *not*
 enough for the cookbook's central case: tying the type of one node to the type of another (`infer typeof(a) :<=:
-typeof(b)`), which needs variables over types and a solver.
+typeof(b)`), which needs variables over types and a solver. `TypeVariable`, `TypeEquation` and `TypeSolver` now
+exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses to state relations instead of
+answering a type - but `TypeFor` is still what every consumer asks, so a rule table that needs solving has the
+machinery and no caller yet. That caller is T3 and T4.
 
 The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
 `do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
@@ -229,6 +236,15 @@ Each slice is independent and each is only worth starting when a language needs 
 - **T2 - type variables and equations.** `TypeVariable`, `TypeEquation` (`Equals`, `Subtype`, `Supertype`),
   `TypeSolution` and a fixpoint `TypeSolver` with a step budget. A rule's answer becomes "these equations hold", and
   `ITypeRule` gains an overload that collects them while `TypeFor` keeps working for the rules that need no solving.
+  **Delivered**: `TypeVariable` (`?name`), `TypeEquation` with the three kinds (the third a spelling of the second,
+  read the other way), `TypeSolver` - a *bounds* solver, not a unification engine: an equality pins a variable, a
+  subtyping narrows one, a list against a list decomposes into its elements (an optional into its inner, a record
+  deliberately not), a second equality that disagrees is reported by the branch that compares the two concrete
+  sides, and two variables stated equal stay a relation rather than being given each other's name. `TypeSolution`
+  hands an undetermined variable back as itself, so a consumer sees `?elementType` instead of a type nobody proved.
+  `ITypeRule.EquationsFor` is the overload, defaulting to nothing, so every rule that already answers a type keeps
+  doing so. `TypeSolverTests` proves each of those, including the budget stopping a table that needs more passes
+  than it is given.
 - **T3 - `join` and `meet`.** Computed from the subtype relation, with `Unknown` if the two types share no supertype -
   reported, never guessed.
 - **T4 - the declared forms of T1-T3.** `TypeRule.Equation`, `TypeRule.TypeVariable`, `TypeRule.Join`, and the
