@@ -139,6 +139,13 @@ be written without C#", and the place to extend when the declared path grows. Th
 *writer's* output - `EveryDefinitionDocumentSavesBackByteIdentically` re-saves each one and demands the same bytes -
 so generate them with `ModelFile.Save` rather than by hand.
 
+**`samples/declared-expressions` is the declared language that has types.** The pipeline and the workflow have no
+typed values - their slots are strings, counts and references - so a `types/` folder there would invent a need. This
+one is small for exactly that reason: an abstract `Decl.Expression`, an integer, a truth value, a binary form and a
+conditional, with four rules and one conditional complaint. It is where to look when asking "can a language's types
+really be documents", and `DeclaredExpressionsTests` loads exactly these files, including the
+`EveryDefinitionDocumentSavesBackByteIdentically` guard.
+
 **`WorkbenchLanguage` is per shell, not static** - it grows with **File ▸ Open language…**, and `TryAdd` builds both
 candidate registries first so a clash changes nothing (a half-added language gives documents a concept registry that
 disagrees with the notation registry in force). Growing the set re-declares every concept already in it
