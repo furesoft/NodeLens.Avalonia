@@ -176,6 +176,26 @@ public sealed class ModelCopyTests
     }
 
     [Fact]
+    public void ACopyCannotBeTakenIntoItsOwnSubtree()
+    {
+        // Measured the hard way: `CopyFresh` walks the source subtree, so a copy of an ancestor contains the place it is
+        // going into and the recursion never ends - a hang from a public API, not a wrong answer. `InsertChild` refuses
+        // the same shape for a node, and the copy has to refuse it for its source.
+        var (body, steps) = TestEditor.BodyWithSteps("a", "b");
+        var detail = body.Model.NewChild(steps[0], "detail", TestLanguage.Step);
+
+        var before = body.Model.Nodes.Count();
+
+        var exception = Assert.Throws<ModelInvariantException>(
+            () => body.Model.InsertCopy(steps[0], detail, "detail", 0));
+
+        Assert.Contains("its own subtree", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(before, body.Model.Nodes.Count());
+
+        // A node into itself is the same refusal.
+        Assert.Throws<ModelInvariantException>(() => body.Model.InsertCopy(steps[0], steps[0], "detail", 0));
+    }
+    [Fact]
     public void AnInsertedCopyCarriesTheWholeSubtreeWithNewIdentities()
     {
         var (body, steps) = TestEditor.BodyWithSteps("a", "b");
