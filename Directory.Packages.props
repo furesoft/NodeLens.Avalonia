@@ -8,6 +8,14 @@
     <PackageVersion Include="Avalonia" Version="12.1.6" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <!--
+      The window's areas are dockables: a panel can be dragged to another edge, floated, or closed by the same gesture
+      in every place, and the document area is the layout's document dock. The version tracks Avalonia's - Dock 12.1.5
+      is built against Avalonia 12.1.5, and a patch difference is what NuGet resolves upward.
+    -->
+    <PackageVersion Include="Dock.Avalonia" Version="12.1.5" />
+    <PackageVersion Include="Dock.Avalonia.Themes.Fluent" Version="12.1.5" />
+    <PackageVersion Include="Dock.Model.Avalonia" Version="12.1.5" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

@@ -43,7 +43,7 @@ internal static class ShellShots
     /// </remarks>
     private static async Task ShowOutline(MainWindow window)
     {
-        window.FindControl<TabControl>("SideTabs")!.SelectedIndex = 1;
+        window.ShowOutlineTool();
 
         await Task.Delay(250);
     }
@@ -117,9 +117,8 @@ internal static class ShellShots
         OpenModules(window);
 
         var close = window.FindControl<MenuItem>("CloseDocumentItem")!;
-        var documents = window.FindControl<TabControl>("Documents")!;
 
-        while (documents.Items.Count > 0)
+        while (window.DocumentCount > 0)
         {
             Click(close);
         }
@@ -229,8 +228,7 @@ internal static class ShellShots
 
         await Task.Delay(250);
 
-        var tab = (TabItem)window.FindControl<TabControl>("Documents")!.SelectedItem!;
-        var editor = (ProjectionalEditorControl)((ScrollViewer)tab.Content!).Content!;
+        var editor = window.ActiveEditor()!;
         var session = editor.Session!;
 
         var reference = session.Tree.Cells()

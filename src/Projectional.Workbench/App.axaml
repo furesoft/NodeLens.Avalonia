@@ -1,8 +1,15 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dockFluentTheme="using:Dock.Avalonia.Themes.Fluent"
              x:Class="Projectional.Workbench.App"
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
+    <!--
+      The window's chrome - dock tab strips, splitters, tool grips and their close buttons - is the docking library's.
+      It is declared on the application rather than on the window because a floated panel is a window of its own, and
+      it asks for the compact density so a panel row stays as tight as the panel area it replaces.
+    -->
+    <dockFluentTheme:DockFluentTheme DensityStyle="Compact" />
   </Application.Styles>
 </Application>

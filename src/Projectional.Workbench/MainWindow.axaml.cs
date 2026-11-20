@@ -8,6 +8,9 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 
+using Dock.Model.Avalonia.Controls;
+using Dock.Model.Core;
+
 using Projectional.Avalonia;
 using Projectional.Core;
 using Projectional.Editing;
@@ -59,9 +62,6 @@ public sealed partial class MainWindow : Window, IDisposable
     private const double MaximumFontSize = 48;
     private const double FontSizeStep = 1;
 
-    /// <summary>The least a drag may leave of the panel area, so the splitter cannot lose it.</summary>
-    private const double MinimumPanelHeight = 96;
-
     /// <summary>What the window is called when no document decides it, and the half that stays.</summary>
     private const string WindowTitle = "Projectional Workbench";
 
@@ -70,7 +70,21 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>What this window may offer; the one statement the menus, the panels and the commands read.</summary>
     private readonly ShellCapability _capabilities;
     private readonly WorkbenchLanguage _language = new();
-    private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
+
+    /// <summary>The open documents, each with the docked view that shows it.</summary>
+    private readonly Dictionary<DocumentTab, Document> _tabs = [];
+
+    /// <summary>The window's areas: which tools exist, where they stand, and which document is in front.</summary>
+    private readonly ShellLayout _layout;
+
+    // The panels are views of their own and the layout composes them, so they are built here rather than declared in
+    // markup: a dockable's content is a control the layout owns, and a control declared in the window's xaml would
+    // already have a parent.
+    private readonly ProjectPanelView ProjectView = new();
+    private readonly OutlinePanelView OutlineView = new();
+    private readonly OutputPanelView OutputView = new();
+    private readonly ProblemsPanelView ProblemsView = new();
+    private readonly UsagesPanelView UsagesView = new();
 
     /// <summary>
     /// The one clipboard every tab reads and writes.
@@ -102,10 +116,6 @@ public sealed partial class MainWindow : Window, IDisposable
     // The panel area keeps two things apart: what the content allows and what the user asked for. A panel
     // closed by the user must not come back because the document changed, which is what re-deriving the rows
     // alone would do on every keystroke.
-    private readonly TabItem[] _panelOrder;
-    private readonly double _splitterHeight;
-    private readonly double _sideWidth;
-
     // Which nodes of the project explorer are drawn shut, by key. View state, so it lives here and not in the rows:
     // a rebuilt list asks this set what is open rather than remembering it itself.
     private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
@@ -116,7 +126,6 @@ public sealed partial class MainWindow : Window, IDisposable
     private Model? _outlineModel;
     private bool _outlineRevealing;
     private bool _outlineToggling;
-    private double _panelHeight;
     private bool _outputClosed;
     private bool _problemsClosed;
     private bool _usagesClosed;
@@ -164,12 +173,19 @@ public sealed partial class MainWindow : Window, IDisposable
 
         InitializeComponent();
 
-        // The area's own measurements rather than a second copy of them: the XAML declares the shape, and
-        // the window only has to know what to restore when the last panel leaves and one comes back.
-        _panelOrder = [OutputTab, ProblemsTab, UsagesTab];
-        _panelHeight = DocumentArea.RowDefinitions[2].Height.Value;
-        _splitterHeight = DocumentArea.RowDefinitions[1].Height.Value;
-        _sideWidth = SideArea.ColumnDefinitions[0].Width.Value;
+        // The layout composes only the panels the capabilities grant, so a host's shell cannot end up with half a
+        // module: a tool that is not passed is not built, not merely hidden.
+        _layout = new ShellLayout(
+            new EmptyStateView(),
+            Allows(ShellCapability.ProjectExplorer) ? ProjectView : null,
+            Allows(ShellCapability.Outline) ? OutlineView : null,
+            Allows(ShellCapability.Run) ? OutputView : null,
+            Allows(ShellCapability.Problems) ? ProblemsView : null,
+            Allows(ShellCapability.FindUsages) ? UsagesView : null,
+            OnNewDocumentFromStrip);
+
+        Dock.Factory = _layout.Factory;
+        Dock.Layout = _layout.Root;
 
         // A panel's view is a list; what a press on a row means is the shell's answer, so the handlers are attached
         // here rather than written into the view's markup - which is also what lets the same view be docked anywhere.
@@ -199,6 +215,11 @@ public sealed partial class MainWindow : Window, IDisposable
         OutputView.Inputs.KeyDown += OnRunInputsKeyDown;
         OutputView.RunButton.Click += OnRunDocument;
 
+        // The layout decides which document is in front and which tool the user closed, so it is the notification the
+        // window listens to - one place, instead of a tab strip the window had to watch as well.
+        _layout.Factory.ActiveDockableChanged += OnActiveDockableChanged;
+        _layout.Factory.DockableClosing += OnDockableClosing;
+
         Compose();
 
         // Before the first tab exists: a session takes its clipboard when it is created, and the sample opens
@@ -215,7 +236,6 @@ public sealed partial class MainWindow : Window, IDisposable
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
 
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
-        Documents.SelectionChanged += OnSelectionChanged;
         Opened += (_, _) => FocusActiveDocument();
 
         // A file dragged in from the desktop is the shortest way to open it. The window is the target, so the
@@ -327,20 +347,11 @@ public sealed partial class MainWindow : Window, IDisposable
         ClearOutputItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
         GenerateItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
 
-        // The side column: the tabs a host did not ask for are not in it, and a column nobody wants is not there.
-        ProjectTab.IsVisible = _capabilities.Allows(ShellCapability.ProjectExplorer);
-        OutlineTab.IsVisible = _capabilities.Allows(ShellCapability.Outline);
-        OutlinePanel.IsVisible = ProjectTab.IsVisible || OutlineTab.IsVisible;
-        SideSplitter.IsVisible = OutlinePanel.IsVisible;
-        SideArea.ColumnDefinitions[0].Width = new GridLength(OutlinePanel.IsVisible ? _sideWidth : 0);
-        SideArea.ColumnDefinitions[1].Width = new GridLength(OutlinePanel.IsVisible ? _splitterHeight : 0);
-
-        // The panels, the same way: no problems module, no problems tab and no count.
+        // The panels, the same way: no problems module, no problems tab and no count. A panel the capabilities do not
+        // grant was never handed to the layout, so there is no tab to hide - only the flags the menu reads remain.
         _problemsClosed = !_capabilities.Allows(ShellCapability.Problems);
         _outputClosed = !_capabilities.Allows(ShellCapability.Run);
         _usagesClosed = !_capabilities.Allows(ShellCapability.FindUsages);
-
-        EmptyState.IsVisible = _documents.Active is null;
     }
 
     /// <summary>Whether this shell may offer <paramref name="capability"/>.</summary>
@@ -424,17 +435,10 @@ public sealed partial class MainWindow : Window, IDisposable
         // The status bar says where the caret is, so the control has to say when it moved.
         editor.SelectionChanged += OnCaretMoved;
 
-        var tab = new TabItem { Content = ScrollSurface(editor) };
-
-        // A tab carries its own close button and dirty mark: the gesture alone is not a control.
-        tab.Header = new DocumentTabHeader(document.Title, () => CloseFromTab(document));
+        var tab = _layout.Open(document.Title, ScrollSurface(editor));
 
         _documents.Add(document);
         _tabs.Add(document, tab);
-
-        Documents.Items.Add(tab);
-        Documents.SelectedItem = tab;
-        tab.BringIntoView();
 
         ShowProblems();
         ShowOutput();
@@ -467,14 +471,14 @@ public sealed partial class MainWindow : Window, IDisposable
         Focusable = false,
     };
 
-    /// <summary>The editor inside <paramref name="tab"/>, or nothing when the tab holds something else.</summary>
+    /// <summary>The editor inside <paramref name="document"/>, or nothing when the document holds something else.</summary>
     /// <remarks>
-    /// A tab's content is the scroll wrapper, not the editor, so every one of the six places that need the
-    /// editor goes through this rather than repeating the cast - a second shape of wrapper would otherwise
-    /// have to be found and understood in each of them.
+    /// A document's content is the scroll wrapper, not the editor, so every one of the six places that need the editor
+    /// goes through this rather than repeating the cast - a second shape of wrapper would otherwise have to be found
+    /// and understood in each of them.
     /// </remarks>
-    private static ProjectionalEditorControl? EditorOf(TabItem tab) =>
-        tab.Content is ScrollViewer { Content: ProjectionalEditorControl editor } ? editor : null;
+    private static ProjectionalEditorControl? EditorOf(Document document) =>
+        document.Content is ScrollViewer { Content: ProjectionalEditorControl editor } ? editor : null;
 
     private async void CloseActiveDocument()
     {
@@ -516,7 +520,7 @@ public sealed partial class MainWindow : Window, IDisposable
                 editor.SelectionChanged -= OnCaretMoved;
             }
 
-            Documents.Items.Remove(tab);
+            _layout.Remove(tab);
         }
 
         if (_documents.Active is { } next)
@@ -565,27 +569,92 @@ public sealed partial class MainWindow : Window, IDisposable
 
         if (_tabs.TryGetValue(document, out var tab))
         {
-            Documents.SelectedItem = tab;
-
-            // The strip scrolls now, so a tab that was off the right edge has to be scrolled to.
-            tab.BringIntoView();
+            _layout.Activate(tab);
         }
     }
 
-    private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    /// <summary>Follows the layout's own idea of which dockable is in front.</summary>
+    /// <remarks>
+    /// The layout owns the tab strip, the dragging and the closing, so "which document is in front" is answered there and
+    /// read back here. Only a document moves the shell's active document: activating a tool is not a document switch, and
+    /// treating it as one would re-derive every panel because the user clicked a tool's tab.
+    /// </remarks>
+    private void OnActiveDockableChanged(object? sender, Dock.Model.Core.Events.ActiveDockableChangedEventArgs e)
     {
-        if (Documents.SelectedItem is TabItem selected)
+        if (e.Dockable is not Document activated)
         {
-            foreach (var (document, tab) in _tabs)
+            return;
+        }
+
+        foreach (var (document, tab) in _tabs)
+        {
+            if (ReferenceEquals(tab, activated))
             {
-                if (ReferenceEquals(tab, selected))
-                {
-                    _documents.Activate(document);
-                    break;
-                }
+                _documents.Activate(document);
+                break;
             }
         }
 
+        RefreshPanels();
+    }
+
+    /// <summary>Notes what the user closed, and asks about unsaved changes before a document goes.</summary>
+    /// <remarks>
+    /// The close is cancelled and re-issued after the question, because a prompt cannot be awaited inside a closing
+    /// handler: cancelling is what keeps the tab on screen until the answer is known.
+    /// </remarks>
+    private void OnDockableClosing(object? sender, Dock.Model.Core.Events.DockableClosingEventArgs e)
+    {
+        switch (e.Dockable)
+        {
+            case Document document when DocumentOf(document) is { } tab:
+                e.Cancel = true;
+                Dispatcher.UIThread.Post(() => CloseFromTab(tab));
+                break;
+            case Tool tool:
+                _layout.NoteClosed(tool);
+                MarkClosed(tool);
+                break;
+        }
+    }
+
+    /// <summary>The document a docked view stands for, or <see langword="null"/> when it is not one of ours.</summary>
+    private DocumentTab? DocumentOf(Document document)
+    {
+        foreach (var (candidate, tab) in _tabs)
+        {
+            if (ReferenceEquals(tab, document))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Remembers that the user put a tool away, so a re-derived panel does not bring it back.</summary>
+    private void MarkClosed(Tool tool)
+    {
+        if (ReferenceEquals(tool, _layout.Output))
+        {
+            _outputClosed = true;
+        }
+        else if (ReferenceEquals(tool, _layout.Problems))
+        {
+            _problemsClosed = true;
+        }
+        else if (ReferenceEquals(tool, _layout.Usages))
+        {
+            _usagesClosed = true;
+        }
+
+        UpdatePanelCommands();
+        UpdateStatus();
+    }
+
+    /// <summary>Re-derives everything that describes the document in front.</summary>
+    private void RefreshPanels()
+    {
         ShowProblems();
         ShowOutput();
         ShowOutline();
@@ -1278,7 +1347,7 @@ public sealed partial class MainWindow : Window, IDisposable
         // header that repeated "Outline" would be the same word twice, and one that said nothing would describe a tree
         // nobody knows the owner of.
         OutlineView.Title.Text = _documents.Active is { } active ? active.Title : "Outline";
-        OutlineHeader.Text = "Outline";
+        SetPanelTitle(_layout.Outline, "Outline");
     }
 
     /// <summary>Notes that the press about to arrive is aimed at a row's chevron rather than at the row.</summary>
@@ -1411,8 +1480,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
         Problems.ItemsSource = rows;
         Problems.SelectedItem = null;
-        ProblemsHeader.Text = $"Problems ({rows.Count})";
-        ShowPanel(ProblemsTab, rows.Count > 0 && !_problemsClosed);
+        SetPanelTitle(_layout.Problems, rows.Count > 0 ? $"Problems ({rows.Count})" : "Problems");
+        ShowPanel(_layout.Problems, rows.Count > 0 && !_problemsClosed);
     }
 
     /// <summary>Fills the output tab from the active document's last run, and shows it while there is one.</summary>
@@ -1427,8 +1496,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
         RunOutput.ItemsSource = report?.Rows;
         RunOutput.SelectedItem = null;
-        OutputHeader.Text = report is null ? "Output" : $"Output - {report.Headline}";
-        ShowPanel(OutputTab, report is not null && !_outputClosed);
+        SetPanelTitle(_layout.Output, report is null ? "Output" : $"Output - {report.Headline}");
+        ShowPanel(_layout.Output, report is not null && !_outputClosed);
     }
 
     /// <summary>Puts the caret on what a chosen row is about.</summary>
@@ -1492,7 +1561,12 @@ public sealed partial class MainWindow : Window, IDisposable
         // Asking again is what brings a tab the user closed back: the gesture is the question.
         _usagesClosed = false;
         ShowUsages(report);
-        PanelTabs.SelectedItem = UsagesTab;
+
+        if (_layout.Usages is { } usages)
+        {
+            _layout.Activate(usages);
+        }
+
         UpdateStatus();
     }
 
@@ -1512,8 +1586,8 @@ public sealed partial class MainWindow : Window, IDisposable
 
         Usages.ItemsSource = rows;
         Usages.SelectedItem = null;
-        UsagesHeader.Text = $"Usages of {UsageList.LabelOf(target)} ({rows.Count})";
-        ShowPanel(UsagesTab, true);
+        SetPanelTitle(_layout.Usages, $"Usages of {UsageList.LabelOf(target)} ({rows.Count})");
+        ShowPanel(_layout.Usages, true);
     }
 
     /// <summary>Closes the tab and forgets which node it was answering about.</summary>
@@ -1522,7 +1596,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _usageTarget = null;
         Usages.ItemsSource = null;
         Usages.SelectedItem = null;
-        ShowPanel(UsagesTab, false);
+        ShowPanel(_layout.Usages, false);
     }
 
     /// <summary>
@@ -1531,7 +1605,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private void OnCloseUsages(object? sender, RoutedEventArgs e)
     {
         _usagesClosed = true;
-        ShowPanel(UsagesTab, false);
+        ShowPanel(_layout.Usages, false);
         UpdateStatus();
     }
 
@@ -1570,7 +1644,12 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         _problemsClosed = false;
         ShowProblems();
-        PanelTabs.SelectedItem = ProblemsTab;
+
+        if (_layout.Problems is { } problems)
+        {
+            _layout.Activate(problems);
+        }
+
         UpdateStatus();
     }
 
@@ -1617,7 +1696,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         if (_usagesClosed)
         {
-            ShowPanel(UsagesTab, false);
+            ShowPanel(_layout.Usages, false);
         }
         else
         {
@@ -1639,9 +1718,9 @@ public sealed partial class MainWindow : Window, IDisposable
         if (_usageTarget is not { } id)
         {
             // No question, no tab: the panel is only there while there is an answer to show.
-            if (IsPanelOpen(UsagesTab))
+            if (_layout.IsShown(_layout.Usages))
             {
-                ShowPanel(UsagesTab, false);
+                ShowPanel(_layout.Usages, false);
             }
 
             return;
@@ -1662,103 +1741,54 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowUsages(FindUsages.Of(target));
     }
 
-    /// <summary>Shows or hides one panel tab, and takes the area away when the last one leaves.</summary>
-    /// <param name="tab">The panel's tab.</param>
-    /// <param name="visible">Whether it belongs in the area right now.</param>
-    private void ShowPanel(TabItem tab, bool visible)
-    {
-        var open = IsPanelOpen(tab);
+    /// <summary>Shows or puts away one panel, and the layout decides what that means.</summary>
+    /// <param name="tool">The panel's tool, or <see langword="null"/> when the shell has no such panel.</param>
+    /// <param name="visible">Whether it belongs on screen right now.</param>
+    private void ShowPanel(Tool? tool, bool visible) => _layout.Show(tool, visible);
 
-        if (visible && !open)
-        {
-            PanelTabs.Items.Insert(PanelIndex(tab), tab);
-        }
-        else if (!visible && open)
-        {
-            PanelTabs.Items.Remove(tab);
-        }
-
-        UpdatePanelArea();
-    }
-
-    /// <summary>Where <paramref name="tab"/> belongs among the panel tabs that are open.</summary>
-    /// <param name="tab">The tab to place.</param>
+    /// <summary>Sets what a panel's tab says, or says nothing when the shell has no such panel.</summary>
+    /// <param name="tool">The panel's tool, or <see langword="null"/>.</param>
+    /// <param name="title">What the tab should say.</param>
     /// <remarks>
-    /// The order is the declared one rather than the order the tabs happened to be opened in, so a run that
-    /// produces a second panel does not put Output behind Problems because Problems came first.
+    /// A panel's title is where a count or a headline goes now: the tab strip belongs to the layout, so the shell's
+    /// answer to "which panel is this and what is in it" is the dockable's own title rather than a control beside it.
     /// </remarks>
-    private int PanelIndex(TabItem tab)
+    private static void SetPanelTitle(Tool? tool, string title)
     {
-        var index = 0;
-
-        foreach (var candidate in _panelOrder)
+        if (tool is not null)
         {
-            if (ReferenceEquals(candidate, tab))
-            {
-                break;
-            }
-
-            if (IsPanelOpen(candidate))
-            {
-                index++;
-            }
+            tool.Title = title;
         }
-
-        return index;
     }
 
-    /// <summary>Whether <paramref name="tab"/> is in the panel area.</summary>
-    private bool IsPanelOpen(TabItem tab) => PanelTabs.Items.Contains(tab);
-
-    /// <summary>Shows the output tab with the answer a command just produced, and brings it forward.</summary>
+    /// <summary>Shows the output panel with the answer a command just produced, and brings it forward.</summary>
     /// <remarks>
-    /// A run is a question the user asked, so the answer is shown even if the tab was closed earlier - unlike a
+    /// A run is a question the user asked, so the answer is shown even if the panel was closed earlier - unlike a
     /// re-derived problem list, which must not reopen a panel the user closed.
     /// </remarks>
     private void RevealOutput()
     {
         _outputClosed = false;
         ShowOutput();
-        PanelTabs.SelectedItem = OutputTab;
+
+        if (_layout.Output is { } output)
+        {
+            _layout.Activate(output);
+        }
     }
 
-    /// <summary>Gives the panel area the height it had, or takes it away when nothing is left to show.</summary>
-    private void UpdatePanelArea()
+    /// <summary>Opens a document from the strip's own new-document button.</summary>
+    /// <param name="dock">Where the layout would have put a document it created itself.</param>
+    /// <remarks>
+    /// The button is Dock's, so the document it asks for is created by the shell's own command and the layout is told to
+    /// keep none: <see cref="OnNewDocument"/> is the same command File &#x25B8; New runs, which is what keeps the strip's
+    /// button and the menu from drifting apart.
+    /// </remarks>
+    private IDockable? OnNewDocumentFromStrip()
     {
-        var open = PanelTabs.Items.Count > 0;
-        var panel = DocumentArea.RowDefinitions[2];
+        OnNewDocument(this, new RoutedEventArgs());
 
-        if (open)
-        {
-            panel.MinHeight = MinimumPanelHeight;
-
-            if (panel.Height.Value == 0)
-            {
-                panel.Height = new GridLength(_panelHeight);
-            }
-        }
-        else
-        {
-            // Remembered rather than lost, so reopening the area gives back the height the user dragged out.
-            // Before the first layout there is no height to remember, and the declared one stays.
-            if (PanelArea.Bounds.Height > 0)
-            {
-                _panelHeight = Math.Max(PanelArea.Bounds.Height, MinimumPanelHeight);
-            }
-
-            panel.MinHeight = 0;
-            panel.Height = new GridLength(0);
-        }
-
-        DocumentArea.RowDefinitions[1].Height = new GridLength(open ? _splitterHeight : 0);
-
-        PanelSplitter.IsVisible = open;
-        PanelArea.IsVisible = open;
-
-        if (PanelTabs.SelectedItem is not TabItem selected || !IsPanelOpen(selected))
-        {
-            PanelTabs.SelectedItem = open ? PanelTabs.Items[0] : null;
-        }
+        return null;
     }
 
     /// <summary>Puts the caret on a chosen usage, opening the document that holds it first.</summary>
@@ -2144,16 +2174,12 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void UpdateStatus()
     {
+        // The tab carries the dirty mark, and the layout draws the tab, so the title it draws is what says "modified" -
+        // there is no header control of ours to ask any more.
         foreach (var (document, tab) in _tabs)
         {
-            if (tab.Header is DocumentTabHeader header)
-            {
-                header.SetTitle(document.Title, document.IsDirty);
-            }
+            tab.Title = document.IsDirty ? $"{document.Title} *" : document.Title;
         }
-
-        // A window with nothing open says so in the page rather than leaving a white rectangle behind.
-        EmptyState.IsVisible = _documents.Active is null;
 
         StatusDocument.Text = _documents.Active is not { } active
             ? "No document open"
@@ -2252,23 +2278,42 @@ public sealed partial class MainWindow : Window, IDisposable
         var problems = _documents.Active?.Problems ?? [];
 
         OutputPanelItem.IsEnabled = _documents.Active?.Output is not null;
-        OutputPanelItem.IsChecked = IsPanelOpen(OutputTab);
+        OutputPanelItem.IsChecked = _layout.IsShown(_layout.Output);
 
         ProblemsPanelItem.IsEnabled = problems.Count > 0;
-        ProblemsPanelItem.IsChecked = IsPanelOpen(ProblemsTab);
+        ProblemsPanelItem.IsChecked = _layout.IsShown(_layout.Problems);
 
         UsagesPanelItem.IsEnabled = _usageTarget is not null;
-        UsagesPanelItem.IsChecked = IsPanelOpen(UsagesTab);
+        UsagesPanelItem.IsChecked = _layout.IsShown(_layout.Usages);
 
         // The count is shown while the tab is not: a user who closed it still has to know the document is not
         // clean, and the status bar is where the rest of the document's state lives.
-        StatusProblems.IsVisible = problems.Count > 0 && !IsPanelOpen(ProblemsTab);
+        StatusProblems.IsVisible = problems.Count > 0 && !_layout.IsShown(_layout.Problems);
         StatusProblems.Content = problems.Count == 1 ? "1 problem" : $"{problems.Count} problems";
     }
 
+    /// <summary>How many documents are open, which is what a harness closing them one by one needs.</summary>
+    internal int DocumentCount => _documents.Count;
+
     /// <summary>The editor of the document in front, or <see langword="null"/> when there is none.</summary>
-    private ProjectionalEditorControl? ActiveEditor() =>
+    /// <remarks>
+    /// Internal for the screenshot harness: a picture of a shell feature needs the session behind the tab, and the tab
+    /// strip belongs to the docking layout, so asking the window is the only way in.
+    /// </remarks>
+    internal ProjectionalEditorControl? ActiveEditor() =>
         _documents.Active is { } document && _tabs.TryGetValue(document, out var tab) ? EditorOf(tab) : null;
+
+    /// <summary>Brings the model browser forward, which is how a picture of it is taken.</summary>
+    internal void ShowOutlineTool()
+    {
+        if (_layout.Outline is { } outline)
+        {
+            _layout.Show(outline, true);
+            _layout.Activate(outline);
+        }
+    }
+
+
 
     /// <summary>Says whether the document in front can be run, and why not when it cannot.</summary>
     /// <remarks>

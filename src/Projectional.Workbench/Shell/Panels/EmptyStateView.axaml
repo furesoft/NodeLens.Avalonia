@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Projectional.Workbench.EmptyStateView">
+  <!--
+    What the document area shows while nothing is open, instead of a white page that says nothing. It is the document
+    dock's empty content rather than a control switched on by the shell: the layout knows when it has no document, and
+    a second flag for the same fact could disagree with it.
+  -->
+  <Border Classes="panelSurface">
+    <StackPanel
+      MaxWidth="440"
+      Spacing="10"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Center">
+      <Path
+        Classes="inlineIcon"
+        Data="{DynamicResource IconDocument}"
+        Width="44"
+        Height="44"
+        StrokeThickness="1.1"
+        HorizontalAlignment="Center" />
+      <TextBlock Text="No document open" Classes="emptyTitle" />
+      <TextBlock
+        Classes="emptyHint"
+        Text="File &#x25B8; New opens a document (Ctrl+N). File &#x25B8; Open reads a saved model (Ctrl+O); File &#x25B8; Import reads JSON, XML, TOML, HOCON or YAML as a document of the language that declares it." />
+    </StackPanel>
+  </Border>
+</UserControl>
