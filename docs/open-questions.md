@@ -282,6 +282,16 @@ in front of it.
 | 113 | Does a type rule need a per-model configuration input (MPS' substitute type rules, `int` versus `long` per task)? | Open | Not planned for the framework: a model has properties and no configuration slot, and adding one for a single rule kind would be a new axis on the model for one aspect. The cheap answer a host already has is two languages or two models, and the deliberate one is a `TypeRule.Substitute` whose condition reads a property of the *types model* - which is a decision for when a language actually needs it, not a gap to fill speculatively. | M7 |
 | 114 | Are extract and inline refactorings the framework can offer, or does a language have to declare them? | Leaning: the language declares them, as two more **intention** bodies | Rename and the moves could live in the editing layer because they change *where* a node stands and nothing about its meaning. Extract and inline cannot: a use may be a `ReferenceSlot` on the owner, a free name in an expression, or (in nothing that ships today) a node standing for the reference - and only the last has something to replace. Which node is a *definition* is the language's judgement too, and where an extracted one belongs (which slot of which ancestor) is the same question node-moves slice B has to answer for a move. ADR 0014's rule makes the answer declarable rather than a C# hook, and the intention language already carries a declaration per concept, per-caret availability, a safety class and a preview - so the two bodies reuse machinery instead of adding an aspect. The first slice is not a refactoring at all: it is the cross-parent move the model can already express through `Node.InsertChild`'s detach, which nothing exposes yet ([refactorings.md](architecture/refactorings.md)). | M7 |
 
+## Type-rule complaints
+
+A declared type rule can report instead of answering a type ([types.md](architecture/semantics/types.md)), and a
+language's own tests can pin what it reports (`LanguageProject`'s `tests/` folder). What that reporting still cannot
+say is open.
+
+| # | Question | State | Recommendation | Decide by |
+| --- | --- | --- | --- | --- |
+| 115 | Can a declared complaint state the identifier its finding reports under? | Open | Yes, but not yet: `ConstraintContext.Error` already takes a code and every finding in the check catalogue has one, while `TypeRule.Complain` has slots for the message and the severity only. The blocker is the notation, not the model - a slot written by the author must be drawn, and the notation vocabulary has no "draw this while the property has a value" cell (`WhenFilled` is for children, `Conditional` compares against a value), so adding the slot today would make it writable in XML and unwritable in the editor. The order is therefore the optional-property cell first, with a language that needs one, then the slot. Until then a finding a declared rule reports is uncoded and a language test names it by severity and place. | M5, with a language that asks |
+
 ## Scope honesty
 
 Two things should stay written down, because they are easy to talk oneself out of:
