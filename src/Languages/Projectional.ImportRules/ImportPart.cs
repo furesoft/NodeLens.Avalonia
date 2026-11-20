@@ -23,10 +23,11 @@ public sealed record ImportPart(
     public static ImportPart Literal(string text) =>
         new(ImportPartKind.Literal, text, string.Empty, string.Empty, 0);
 
-    /// <summary>A part that fills <paramref name="slot"/> with the run up to the next literal.</summary>
+    /// <summary>A part that fills <paramref name="slot"/> with one token, or the run up to the next literal.</summary>
     /// <param name="slot">The property to fill.</param>
-    public static ImportPart Capture(string slot) =>
-        new(ImportPartKind.Capture, string.Empty, slot, string.Empty, 0);
+    /// <param name="token">The token class to read, or empty to run to the next literal.</param>
+    public static ImportPart Capture(string slot, string token = "") =>
+        new(ImportPartKind.Capture, token, slot, string.Empty, 0);
 
     /// <summary>A part that reads one child of <paramref name="slot"/>.</summary>
     /// <param name="slot">The child slot to fill.</param>
@@ -39,6 +40,9 @@ public sealed record ImportPart(
     /// <param name="minimum">How many entries the text has to hold at least.</param>
     public static ImportPart Repeat(string slot, string separator, int minimum) =>
         new(ImportPartKind.Repeat, string.Empty, slot, separator, minimum);
+
+    /// <summary>The token class a capture reads, or empty when it runs to the next literal.</summary>
+    public string Token => Kind == ImportPartKind.Capture ? Text : string.Empty;
 
     public override string ToString() => Kind switch
     {

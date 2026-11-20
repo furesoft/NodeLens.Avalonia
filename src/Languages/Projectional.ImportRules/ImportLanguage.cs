@@ -36,6 +36,30 @@ public static class ImportLanguage
     /// <summary>How many entries a repeat needs at least.</summary>
     public const string MinimumSlot = "minimum";
 
+    /// <summary>The name a token class is referred to by.</summary>
+    public const string TokenNameSlot = "tokenName";
+
+    /// <summary>The characters a word accepts beyond letters and digits.</summary>
+    public const string ExtraSlot = "extra";
+
+    /// <summary>The mark a quoted run stands between.</summary>
+    public const string QuoteSlot = "quote";
+
+    /// <summary>The character that makes the next one literal inside a quoted run.</summary>
+    public const string EscapeSlot = "escape";
+
+    /// <summary>The text that starts a comment, or empty to skip whitespace instead.</summary>
+    public const string PrefixSlot = "prefix";
+
+    /// <summary>What ends a comment, or empty to run to the end of the line.</summary>
+    public const string UntilSlot = "until";
+
+    /// <summary>The token class a capture reads, or empty to run to the next literal.</summary>
+    public const string TokenSlot = "token";
+
+    /// <summary>The token classes an importer declares.</summary>
+    public const string TokensSlot = "tokens";
+
     /// <summary>The parts of a rule, in the order the text has them.</summary>
     public const string PartsSlot = "parts";
 
@@ -67,6 +91,7 @@ public static class ImportLanguage
                     NameSlot,
                     PropertyType.String,
                     description: "The name of the format, which is also the generator this importer reads back."),
+                new ChildSlot(TokensSlot, ImportConceptKeys.Token, Cardinality.Many),
                 new ChildSlot(RulesSlot, ImportConceptKeys.Rule, Cardinality.Many),
             ],
             nameSlot: NameSlot,
@@ -105,6 +130,10 @@ public static class ImportLanguage
                     SlotSlot,
                     PropertyType.String,
                     description: "The property the run up to the next literal is written into."),
+                new PropertySlot(
+                    TokenSlot,
+                    PropertyType.String,
+                    description: "The token class to read instead, or empty to run to the next literal."),
             ],
             [ImportConceptKeys.Part],
             nameSlot: SlotSlot,
@@ -142,5 +171,72 @@ public static class ImportLanguage
             [ImportConceptKeys.Part],
             nameSlot: SlotSlot,
             description: "The entries of a list, separated by a literal.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Token,
+            [
+                new PropertySlot(
+                    TokenNameSlot,
+                    PropertyType.String,
+                    description: "The name a rule refers to this class by."),
+            ],
+            isAbstract: true,
+            nameSlot: TokenNameSlot,
+            description: "A lexical class a capture may read: a word, a number, a quoted run, or text that produces no node.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Word,
+            [
+                new PropertySlot(
+                    ExtraSlot,
+                    PropertyType.String,
+                    description: "The characters a word accepts beyond letters, digits and underscore."),
+            ],
+            [ImportConceptKeys.Token],
+            nameSlot: TokenNameSlot,
+            description: "A run of letters, digits and underscore, plus the characters the declaration adds.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Number,
+            [],
+            [ImportConceptKeys.Token],
+            nameSlot: TokenNameSlot,
+            description: "A number: an optional sign, digits, an optional fraction and an optional exponent.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Quoted,
+            [
+                new PropertySlot(
+                    QuoteSlot,
+                    PropertyType.String,
+                    "\"",
+                    "The mark the run stands between."),
+                new PropertySlot(
+                    EscapeSlot,
+                    PropertyType.String,
+                    "\\",
+                    "The character that makes the next one literal, or empty to resolve no escapes."),
+            ],
+            [ImportConceptKeys.Token],
+            nameSlot: TokenNameSlot,
+            description: "A run between two marks, with the escapes the declaration names resolved.");
+
+        yield return new ConceptDeclaration(
+            ImportConceptKeys.Skipped,
+            [
+                new PropertySlot(
+                    PrefixSlot,
+                    PropertyType.String,
+                    "",
+                    "The text that starts a comment, or empty to skip whitespace instead."),
+                new PropertySlot(
+                    UntilSlot,
+                    PropertyType.String,
+                    "\n",
+                    "What ends a comment, or empty to run to the end of the input."),
+            ],
+            [ImportConceptKeys.Token],
+            nameSlot: TokenNameSlot,
+            description: "Text that produces no node: whitespace, or a comment the reader steps over.");
     }
 }

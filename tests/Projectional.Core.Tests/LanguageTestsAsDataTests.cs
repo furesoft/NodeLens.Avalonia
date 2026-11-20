@@ -83,7 +83,7 @@ public sealed class LanguageTestsAsDataTests
             var report = TestRunner.Run(LanguageProject.Open(folder, out var error)!);
 
             Assert.Null(error);
-            Assert.Equal(8, report.Ran);
+            Assert.Equal(9, report.Ran);
             Assert.Equal(1, report.Failed);
 
             var failed = report.Results.Single(result => !result.Succeeded);

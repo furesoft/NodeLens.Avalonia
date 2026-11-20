@@ -59,9 +59,44 @@ public static class ImportLowering
             rules.Add(LowerRule(node));
         }
 
-        return new DeclaredImporter(name, rules, concepts, Roots(concepts, rules));
+        return new DeclaredImporter(name, rules, Tokens(root), concepts, Roots(concepts, rules));
     }
 
+    /// <summary>The token classes the importer declares, or none when it declares none.</summary>
+    private static List<ImportToken> Tokens(Node importer)
+    {
+        List<ImportToken> tokens = [];
+
+        foreach (var node in importer.GetChildren(ImportLanguage.TokensSlot))
+        {
+            var name = node.GetOrNull(ImportLanguage.TokenNameSlot);
+
+            if (name is not { Length: > 0 })
+            {
+                throw new ConceptDefinitionException("A token class names itself, because a rule has to refer to it.");
+            }
+
+            tokens.Add(node.Concept.Key switch
+            {
+                ImportConceptKeys.Word => new ImportToken(name, ImportTokenKind.Word, Extra: node.GetOrNull(ImportLanguage.ExtraSlot) ?? string.Empty),
+                ImportConceptKeys.Number => new ImportToken(name, ImportTokenKind.Number),
+                ImportConceptKeys.Quoted => new ImportToken(
+                    name,
+                    ImportTokenKind.Quoted,
+                    Quote: node.GetOrNull(ImportLanguage.QuoteSlot) ?? "\"",
+                    Escape: node.GetOrNull(ImportLanguage.EscapeSlot) ?? string.Empty),
+                ImportConceptKeys.Skipped => new ImportToken(
+                    name,
+                    ImportTokenKind.Skipped,
+                    Prefix: node.GetOrNull(ImportLanguage.PrefixSlot) ?? string.Empty,
+                    Until: node.GetOrNull(ImportLanguage.UntilSlot) ?? "\n"),
+                var other => throw new ConceptDefinitionException(
+                    $"'{other}' is not a token class an importer can declare."),
+            });
+        }
+
+        return tokens;
+    }
     private static ImportRule LowerRule(Node rule)
     {
         var key = rule.GetOrNull(ImportLanguage.ConceptKeySlot)
@@ -80,7 +115,9 @@ public static class ImportLowering
     private static ImportPart LowerPart(string key, Node part) => part.Concept.Key switch
     {
         ImportConceptKeys.Literal => ImportPart.Literal(Required(key, part, ImportLanguage.TextSlot)),
-        ImportConceptKeys.Capture => ImportPart.Capture(Required(key, part, ImportLanguage.SlotSlot)),
+        ImportConceptKeys.Capture => ImportPart.Capture(
+            Required(key, part, ImportLanguage.SlotSlot),
+            part.GetOrNull(ImportLanguage.TokenSlot) ?? string.Empty),
         ImportConceptKeys.Nest => ImportPart.Nest(Required(key, part, ImportLanguage.SlotSlot)),
         ImportConceptKeys.Repeat => ImportPart.Repeat(
             Required(key, part, ImportLanguage.SlotSlot),
