@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Projectional.Core;
+using Projectional.Language;
 
 namespace Projectional.Testing;
 
@@ -72,6 +73,24 @@ public static class TestingLowering
                 Width: 0,
                 Lines: null,
                 Findings(children[0])),
+            TestingConceptKeys.Generates => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width: 0,
+                Lines(children[0]),
+                Findings: null,
+                Generator: Required(children[0], TestingLanguage.GeneratorSlot)),
+            TestingConceptKeys.Evaluates => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width: 0,
+                Lines: null,
+                Findings: null,
+                Generator: null,
+                Variables: Variables(children[0]),
+                Outcome: Required(children[0], TestingLanguage.OutcomeSlot)),
             _ => throw new ConceptDefinitionException(
                 $"'{assertion}' is not an assertion this framework runs."),
         };
@@ -104,6 +123,20 @@ public static class TestingLowering
             Required(finding, TestingLanguage.CodeSlot),
             Required(finding, TestingLanguage.SeveritySlot),
             finding.GetOrNull(TestingLanguage.RoleSlot)?.Trim() ?? string.Empty))];
+
+    /// <summary>The variables an evaluation assertion is run with.</summary>
+    /// <remarks>
+    /// Read here rather than in the runner for the same reason every other slot is: a line the parser refuses is a
+    /// test that does not say what it means, which is an authoring mistake and not a result to report.
+    /// </remarks>
+    private static string Variables(Node evaluates)
+    {
+        var text = evaluates.GetOrNull(TestingLanguage.VariablesSlot)?.Trim() ?? string.Empty;
+
+        return VariableInputs.TryParse(text, out _, out var error)
+            ? text
+            : throw new ConceptDefinitionException($"'{text}' is not a line of name=value pairs: {error}");
+    }
 
     private static string Required(Node node, string slot)
     {

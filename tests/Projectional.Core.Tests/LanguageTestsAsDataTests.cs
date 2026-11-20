@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
@@ -81,7 +82,7 @@ public sealed class LanguageTestsAsDataTests
             var report = TestRunner.Run(LanguageProject.Open(folder, out var error)!);
 
             Assert.Null(error);
-            Assert.Equal(4, report.Ran);
+            Assert.Equal(5, report.Ran);
             Assert.Equal(1, report.Failed);
 
             var failed = report.Results.Single(result => !result.Succeeded);
@@ -219,6 +220,222 @@ public sealed class LanguageTestsAsDataTests
             Directory.Delete(folder, recursive: true);
         }
     }
+
+    [Fact]
+    public void AGenerationThatDiffersIsAFailedRowWithBothTexts()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "wrong-generation", "pipeline.mps", TestingConceptKeys.Generates, (model, generates) =>
+            {
+                generates.Set(TestingLanguage.GeneratorSlot, "ShellScript");
+                AddLine(model, generates, "# Release");
+                AddLine(model, generates, "dotnet publish");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "wrong-generation");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("# Release\ndotnet publish", row.Expected);
+            Assert.Equal("# Release\ndotnet build\ndotnet test", row.Actual);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AGeneratorTheLanguageDoesNotDeclareIsAFailedRowNamingTheOneItDoes()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "unknown-generator", "pipeline.mps", TestingConceptKeys.Generates, (_, generates) =>
+                generates.Set(TestingLanguage.GeneratorSlot, "Yaml"));
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "unknown-generator");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("Yaml", row.Expected);
+            Assert.Contains("ShellScript", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnEvaluationTestRunsWithTheRulesTheCallerSupplies()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "release-answers", "release.mps", TestingConceptKeys.Evaluates, (_, evaluates) =>
+                evaluates.Set(TestingLanguage.OutcomeSlot, "Release"));
+
+            var row = Row(
+                TestRunner.Run(LanguageProject.Open(folder, out _)!, WorkflowRules()),
+                "release-answers");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnEvaluationTestWithoutRulesIsAFailedRowSayingWhatItNeeded()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "release-answers", "release.mps", TestingConceptKeys.Evaluates, (_, evaluates) =>
+                evaluates.Set(TestingLanguage.OutcomeSlot, "Release"));
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "release-answers");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("Release", row.Expected);
+            Assert.Contains("no evaluation rules", row.Actual, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnEvaluationThatStopsShowsTheFailureInTheDiff()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "release-answers", "release.mps", TestingConceptKeys.Evaluates, (_, evaluates) =>
+                evaluates.Set(TestingLanguage.OutcomeSlot, "Release"));
+
+            // The rules are supplied but declare nothing, which is the language saying it cannot be run.
+            var row = Row(
+                TestRunner.Run(LanguageProject.Open(folder, out _)!, EvaluationRegistry.Empty),
+                "release-answers");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("Release", row.Expected);
+            Assert.Contains("declares no evaluation rule", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnEvaluationTestReadsItsVariablesTheWayTheRunBoxDoes()
+    {
+        var folder = Copy(Open("Workflow"));
+
+        try
+        {
+            SaveTest(folder, "release-answers", "release.mps", TestingConceptKeys.Evaluates, (_, evaluates) =>
+            {
+                evaluates.Set(TestingLanguage.VariablesSlot, "amount=1500, currency=EUR");
+                evaluates.Set(TestingLanguage.OutcomeSlot, "Release");
+            });
+
+            var row = Row(
+                TestRunner.Run(LanguageProject.Open(folder, out _)!, WorkflowRules()),
+                "release-answers");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnEvaluationWithAVariablesLineThatIsNotOneIsRefused()
+    {
+        var model = TestingLanguage.NewModel();
+        var test = model.Roots[0];
+
+        test.Set(TestingLanguage.DocumentSlot, "release.mps");
+
+        var evaluates = model.NewChild(test, TestingLanguage.AssertionSlot, TestingConceptKeys.Evaluates);
+
+        evaluates.Set(TestingLanguage.VariablesSlot, "amount 1500");
+        evaluates.Set(TestingLanguage.OutcomeSlot, "Release");
+
+        var refused = Assert.Throws<ConceptDefinitionException>(() => TestingLowering.Lower(test));
+
+        Assert.Contains("name=value", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheGenerationAndEvaluationAssertionsDrawAsSentences()
+    {
+        var generated = TestingLanguage.NewModel();
+        var generatedTest = generated.Roots[0];
+
+        generatedTest.Set(TestingLanguage.DocumentSlot, "pipeline.mps");
+
+        var generates = generated.NewChild(
+            generatedTest,
+            TestingLanguage.AssertionSlot,
+            TestingConceptKeys.Generates);
+
+        generates.Set(TestingLanguage.GeneratorSlot, "ShellScript");
+        AddLine(generated, generates, "# Release");
+
+        Assert.Equal(
+            """
+            test pipeline.mps
+              generates ShellScript
+                # Release
+            """,
+            LayoutSnapshot.Render(generated, TestingNotations.Registry, width: 80));
+
+        var evaluated = TestingLanguage.NewModel();
+        var evaluatedTest = evaluated.Roots[0];
+
+        evaluatedTest.Set(TestingLanguage.DocumentSlot, "release.mps");
+
+        var evaluates = evaluated.NewChild(
+            evaluatedTest,
+            TestingLanguage.AssertionSlot,
+            TestingConceptKeys.Evaluates);
+
+        evaluates.Set(TestingLanguage.VariablesSlot, "amount=1500");
+        evaluates.Set(TestingLanguage.OutcomeSlot, "Release");
+
+        Assert.Equal(
+            """
+            test release.mps
+              evaluates amount=1500
+                answers Release
+            """,
+            LayoutSnapshot.Render(evaluated, TestingNotations.Registry, width: 80));
+    }
+
+    /// <summary>The declared workflow's rules, as a host of that language would supply them.</summary>
+    /// <remarks>
+    /// A language project carries no evaluation aspect, so a test that evaluates is given its rules by whoever runs
+    /// the folder. One rule is enough here: the workflow's own name is what its document answers.
+    /// </remarks>
+    private static EvaluationRegistry WorkflowRules() =>
+        EvaluationRegistry.Empty.Add(
+            "Workflow.Workflow",
+            new DelegateEvaluationRule(context => context.PropertyValue("name")));
 
     /// <summary>Writes a test document into the copied language's <c>tests</c> folder.</summary>
     private static void SaveTest(

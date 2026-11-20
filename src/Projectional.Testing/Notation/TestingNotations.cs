@@ -15,6 +15,10 @@ public static class TestingNotations
     private const string NoLines = "<< what it draws >>";
     private const string NoFindings = "<< what it reports >>";
     private const string Anywhere = "<< anywhere >>";
+    private const string NoGenerated = "<< what it generates >>";
+    private const string NoGenerator = "<< which generator >>";
+    private const string NoVariables = "<< no variables >>";
+    private const string NoOutcome = "<< what it answers >>";
 
     /// <summary>The notation registry of the test language.</summary>
     public static NotationRegistry Registry { get; } = Create(TestingLanguage.Concepts);
@@ -72,5 +76,22 @@ public static class TestingNotations
             ed.Property(TestingLanguage.SeveritySlot),
             ed.Space,
             ed.Property(TestingLanguage.RoleSlot, emptyText: Anywhere)));
+
+        notations.Add(TestingConceptKeys.Generates, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("generates"),
+                ed.Space,
+                ed.Property(TestingLanguage.GeneratorSlot, emptyText: NoGenerator)),
+            ed.Indent(ed.Children(TestingLanguage.LinesSlot, NoGenerated, stacked: true))));
+
+        notations.Add(TestingConceptKeys.Evaluates, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("evaluates"),
+                ed.Space,
+                ed.Property(TestingLanguage.VariablesSlot, emptyText: NoVariables)),
+            ed.Indent(ed.Line(
+                ed.Keyword("answers"),
+                ed.Space,
+                ed.Property(TestingLanguage.OutcomeSlot, emptyText: NoOutcome)))));
     }
 }
