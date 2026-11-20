@@ -119,6 +119,8 @@ have written ([ADR 0014](../../adr/0014-both-authoring-paths-are-permanent.md)).
 | `TypeRule.Child` | the type of one of the node's children |
 | `TypeRule.Switch` | a choice between bodies, decided by a property's value, with an `otherwise` |
 | `TypeRule.Case` | one value of a switch and the body it selects |
+| `TypeRule.Complain` | `message`, `severity` and an optional `when`: reports instead of typing |
+| `TypeRule.NotComparable` | `left` and `right`: the two child slots whose types are not interchangeable |
 | `TypeRule.TypeExpr` | a type written as data, abstract: one of the four kinds below |
 | `TypeRule.Primitive` | `name`: `string`, `int`, `bool`, `date` |
 | `TypeRule.Record` | `fields`: a fixed set of named fields |
@@ -140,10 +142,12 @@ same text. `ATypeExpressionDrawsExactlyWhatTheTypeIsCalled` in `TypeRuleNotation
 a test. It holds for a *complete* type expression: an empty record draws the shared `<< ... >>`
 empty-list placeholder, because an empty slot has to stay visible and fillable.
 
-**Three bodies, not a statement list.** MPS' typesystem is imperative - `do { typeof(node) :== int; }` -
+**Bodies, not a statement list.** MPS' typesystem is imperative - `do { typeof(node) :== int; }` -
 and copying that would mean shipping an interpreter for a language whose only job is to answer one
 question per node. A fixed type, a child's type and a switch over a property cover what a DSL's rules
-actually say, and each lowers to a delegate the C# path could have written by hand.
+actually say, and each lowers to a delegate the C# path could have written by hand. A complaint is the
+fourth: it answers no type at all but states a message, optionally gated by a condition over two child
+slots, and it lowers into an `IConstraint` rather than a rule.
 
 **A declared type is a root of the types model, not a second list inside the document.** So a types model
 keeps one shape a reader has to learn: the rules, and the names they may use. `TypeRule.Ref` names one by
@@ -172,7 +176,7 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1, T2, T3 and T4, which are delivered, T5's third question, which is delivered while its declared form stays open, and T7's unconditional form. This section is the design of record for the next
+**Planned, not built** - except T1, T2, T3, T4 and T7, which are delivered, and T5's third question, which is delivered while its declared form stays open. This section is the design of record for the next
 stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
 MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
@@ -186,8 +190,8 @@ exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses 
 answering a type. `TypeRegistry.EquationsFor` is the caller that door was missing (slice T4): it hands a node's
 declared relations to a `TypeSolver`, so a rule table that needs solving is solved without teaching every consumer
 to ask a second question - `TypeFor` stays what everything asks. The remaining slice is T8, with T5's third
-question and T7's unconditional form delivered and their declared halves still open, and T6 answered rather than
-built.
+question delivered while its declared form stays open, T6 answered rather than built, and T7 delivered in both
+forms.
 
 The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
 `do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
@@ -205,7 +209,7 @@ typed in.
 | `var elementType` + anti-quotation | a variable shared between two statements | nothing - a rule cannot name a second node's type | `TypeRule.TypeVariable`, shared by equations; anti-quotation is unnecessary because a variable is declared once and referenced by name |
 | `join(A, B)` (least upper bound) | the common supertype of two types | `JoinType`/`MeetType` as types, and **`TypeRule.Join`/`TypeRule.Meet`** as their declared spellings; `TypeLattice.Join` reduces either to one type | - |
 | `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer, and a type read descends a tree so it cannot cycle | - closed: the solver's fixpoint is the ordering, and a self-referential name is refused at load |
-| `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | **`TypeRule.Complain`** as a body - a `message` and a `severity` lowered into an `IConstraint` the language's own set carries, so the existing findings path reports it; it states a type for nothing | a *conditional* complaint: the message as a sentence about the concept is unconditional, and "operation is not applicable to these operands" needs a condition vocabulary the body does not have |
+| `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | **`TypeRule.Complain`** as a body - a `message` and a `severity` lowered into an `IConstraint` the language's own set carries, so the existing findings path reports it; with an optional `when` body it reports only where that condition holds, and **`TypeRule.NotComparable`** is the condition ("the types of two child slots are not interchangeable") | the further condition kinds a language might want beside comparison (an arity, a name shape), each of which is a new body rather than a new path |
 | replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
 | subtyping rule | the direct supertypes of a type | **`TypeRule.Supertypes`** - a document stating one edge (`subtype <: supertype`), lowered into the `SubtypeRelation` the registry carries; a name is one instance per document, so a rule and an edge naming it are given the same type | - |
 | comparison rule | two types are interchangeable (weak/strong) | **`IType.IsComparableTo`** - the third question, asked both ways through the relation, so "interchangeable" is neither conformance nor a one-way subtype edge; `TypeSolver` asks it instead of comparing two subtype checks by hand | `TypeRule.Comparable` as a declared pair, when a language needs to state a comparison its edges do not express |
@@ -303,15 +307,22 @@ Each slice is independent and each is only worth starting when a language needs 
   naming a reference slot crashed the type read instead of failing at load.
 - **T7 - a type rule that reports.** `TypeRule.Complain`, lowered into `Diagnostic` with a severity, so a
   "operation is not applicable to these operands" message reaches the squiggles and the problems panel through the
-  path that already exists. A complaint names its node, so no new diagnostic kind. **Delivered for the
-  unconditional form**: `TypeRule.Complain` is a body carrying a `message` and a `severity`, and
-  `TypeRuleLowering.CreateComplaints` lowers it into an `IConstraint` keyed by the concept the rule names, which
-  `LanguageProject` composes into the language's own constraints - so the constraint engine, the findings and the
-  squiggles all carry it without a new path. A complaint states no type, so it is kept out of the registry: a
-  language with only a complaint has `HasTypes` false and `HasConstraints` true, and a concept that also has a
-  type rule keeps that type unchanged. The message is a sentence about the concept, not a condition over the
-  node, so the declared form reports *unconditionally*; "operation is not applicable to these operands" needs a
-  condition vocabulary the body does not have, and that is deferred rather than approximated.
+  path that already exists. A complaint names its node, so no new diagnostic kind. **Delivered**: `TypeRule.Complain`
+  is a body carrying a `message` and a `severity`, and `TypeRuleLowering.CreateComplaints` lowers it into an
+  `IConstraint` keyed by the concept the rule names, which `LanguageProject` composes into the language's own
+  constraints - so the constraint engine, the findings and the squiggles all carry it without a new path. A complaint
+  states no type, so it is kept out of the registry: a language with only a complaint has `HasTypes` false and
+  `HasConstraints` true, and a concept that also has a type rule keeps that type unchanged. **Delivered for the
+  conditional form too**: `TypeRule.Complain` carries an optional `when` body, and `TypeRule.NotComparable` is the
+  condition it states - the types of two child slots are not interchangeable. Without a condition the complaint is a
+  sentence about the concept and reports unconditionally; with one it reports only where the condition holds, which is
+  how "operation is not applicable to these operands" is written without inventing a second diagnostic path. The
+  condition reads its types at check time from the context's own type layer, so it costs nothing until a check runs
+  and follows whatever the language's rules and declared edges say; comparability is asked of the type first and of
+  `TypeRegistry.Subtypes` second, because `IType.IsComparableTo` only ever consults the primitive relation. An operand
+  slot that is empty makes the condition *hold* rather than fail: there is nothing to compare, and blaming the author
+  for a node that is merely incomplete is the wrong finding. The condition's two slots are checked at load like a
+  child body's, so a reference slot is refused where the author can see it instead of throwing during a check.
 - **T8 - replacement and substitution.** `TypeRule.Replacement` (rewrite an equation before solving) and
   `TypeRule.Substitute` (configuration-dependent types, which needs a per-model configuration slot the framework does
   not have - open question 113).
@@ -330,7 +341,7 @@ Each slice is independent and each is only worth starting when a language needs 
 
 #### How it is proven
 
-The parity rule, exactly as `TypeRuleLoweringTests` proves it for the current three bodies: a **corpus of cookbook
+The parity rule, exactly as `TypeRuleLoweringTests` proves it for the current bodies: a **corpus of cookbook
 rules** written twice - once as a C# `ITypeRule` and once as a `Projectional.TypeRules` model - answered by the same
 `TypeRegistry` over the same documents, compared as `IType.Name` per node. A cookbook rule with no declarative
 spelling is a gap in the vocabulary, which is the same defect ADR 0014 calls it.
