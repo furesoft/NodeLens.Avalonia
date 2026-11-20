@@ -218,10 +218,13 @@ record, and `Projectional.Json` is the first reference language behind the contr
   and leaves a CRLF file's carriage return in the value - `.Nest` a child, `.Repeat` a list, `.Raw` tier 2 verbatim,
   `.Bind`/`.Matches` a run remembered and required again, `.Fail` a rule's own message). **No backtracking**: every
   choice is decided by the literal at the cursor, so an ambiguity is a *load-time* refusal in `DeclaredImporter`, not a
-  surprise in a file. A document root is a concept no child slot can hold. What is not built is a hand-written twin for
-  each reference format: the parity rule (a declared importer and its C# twin produce one model on the corpus) has one
-  subject only, `samples/declared-pipeline`, whose `tests/reads*.mps` rows pin it. Open questions 100-108 hold the
-  decisions, and `docs/architecture/import/declared-importer.md` the vocabulary's shape.
+  surprise in a file. A document root is a concept no child slot can hold. **File ▸ Import…** runs the declaration:
+  `WorkbenchLanguage.TryImport` asks the languages opened in the window before the built-in formats (a TOML shape
+  check claims `key = value` and then refuses it, so the reverse order made a declared rule unreachable), and the first
+  importer that reads the file opens a document with that language's own aspects. What is not built is a hand-written
+  twin for each reference format: the parity rule (a declared importer and its C# twin produce one model on the corpus)
+  has one subject only, `samples/declared-pipeline`, whose `tests/reads*.mps` rows pin it. Open questions 100-108 hold
+  the decisions, and `docs/architecture/import/declared-importer.md` the vocabulary's shape.
 - **A reference language may hold a note the format cannot express.** `Json.Comment` is a `Json.Member` beside
   `Json.Property`, drawn as `// why` and mapped to `TextTemplate.Empty`, so generation omits it - and the "an entry that
   emits nothing takes no separator" rule is what keeps a note between two members from producing a stray comma. It is

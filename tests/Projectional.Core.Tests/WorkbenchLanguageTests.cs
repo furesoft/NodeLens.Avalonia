@@ -57,6 +57,80 @@ public sealed class WorkbenchLanguageTests
     }
 
     [Fact]
+    public void AnOpenedLanguageReadsAFileNoBuiltInFormatClaims()
+    {
+        // File > Import... on a file the five reference languages do not know: the answer is the importers the opened
+        // language declares and the ones its generators derive, and the document that comes out opens with that
+        // language's own aspects.
+        var language = new WorkbenchLanguage();
+        var project = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
+
+        Assert.Null(error);
+        Assert.True(language.TryAdd(project!, out var why), why);
+
+        var imported = language.TryImport("variant", "pipeline = Release\nstage = dotnet build\nstage = dotnet test", out var reason);
+
+        Assert.Null(reason);
+        Assert.NotNull(imported);
+        Assert.Same(project, imported.Language);
+
+        var root = Assert.Single(imported.Model.Roots);
+
+        Assert.Equal("Pipeline.Pipeline", root.Concept.Key);
+        Assert.Equal("Release", root.GetOrNull("name"));
+        Assert.Equal(
+            ["dotnet build", "dotnet test"],
+            root.GetChildren("stages").Select(stage => stage.GetOrNull("command")));
+    }
+
+    [Fact]
+    public void AShapeCheckNarrowsNoCandidate()
+    {
+        // `CanImport` answers "does the text start like a document" - and an importer whose root rule begins with an
+        // anchor says no for a file that opens with a comment it declares as skipped, which is a file it reads. Using
+        // the hint as a gate would refuse it, so the readers decide and the hint only picks which refusal to repeat.
+        var language = new WorkbenchLanguage();
+        var project = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
+
+        Assert.Null(error);
+        Assert.True(language.TryAdd(project!, out var why), why);
+
+        const string Text = "# the nightly pipeline\npipeline = \"Release\"\n\nstage = \"dotnet build\"\nstage = \"dotnet test\"\n";
+
+        var relaxed = Assert.Single(project!.Importers, importer => importer.Format == "relaxed");
+
+        Assert.False(relaxed.CanImport(Text));
+
+        var imported = language.TryImport("relaxed", Text, out var reason);
+
+        Assert.Null(reason);
+        Assert.NotNull(imported);
+        Assert.Equal("Release", imported.Model.Roots[0].GetOrNull("name"));
+    }
+
+    [Fact]
+    public void AFileNoImporterOfTheOpenedLanguagesReadsNamesWhereItStopped()
+    {
+        var language = new WorkbenchLanguage();
+
+        // Nothing to ask is not a failure to explain: the shell has its own sentence for a window that declares no
+        // importer at all, and a reason here would pre-empt it.
+        Assert.Null(language.TryImport("nothing", "item a", out var none));
+        Assert.Null(none);
+
+        var project = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
+
+        Assert.Null(error);
+        Assert.True(language.TryAdd(project!, out var why), why);
+
+        Assert.Null(language.TryImport("nothing", "this is not a pipeline", out var reason));
+
+        // A place and a column are what the user needs, and they come from the importer whose rules the text most
+        // nearly matched - the first one that claimed it, or the first tried when none did.
+        Assert.Contains("stopped at 1:1", reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ANewConceptDocumentOpensInASessionAndCanBeWritten()
     {
         var language = new WorkbenchLanguage();
