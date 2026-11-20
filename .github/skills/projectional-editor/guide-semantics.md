@@ -129,6 +129,11 @@
   `?a == ?b`, it does not give a variable a type nothing demanded, and it stops on a budget instead of hanging.
   `ITypeRule.EquationsFor` states equations and defaults to none, so `TypeFor` keeps working for every rule that
   needs no solve; **no consumer asks for equations yet**, which is what slices T3/T4 add.
+- **Join and meet are questions about the relation, not new kinds of type**: `JoinType`/`MeetType` are what a slot
+  or a rule *writes* ("either", "both"), and `TypeLattice` reduces them from the declared edges - one side below the
+  other, or the unique least/greatest common type. When the edges do not determine one the answer is `UnknownType`,
+  never a pick between two incomparable candidates, which is why the relation had to learn to enumerate
+  (`SupertypesOf`/`SubtypesOf`) before the reduce could be honest.
 - **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
   a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
   rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.

@@ -38,6 +38,8 @@ there. The consumers sit above and read the registry the language hands them.
 | `TypeEquation` | one relation a rule states - `Equal`, `Subtype` or `Supertype` - whose sides may be variables |
 | `TypeSolver` | the fixpoint over those equations, with a step budget; a bounds solver, not a unification engine |
 | `TypeSolution` | what each variable turned out to be, why the solve stopped, and what it cost |
+| `JoinType` / `MeetType` | a type expression: "either of these" / "both of these", named `int|string` and `int&Amount` |
+| `TypeLattice` | reduces a join or a meet to one type from the relation, or answers `unknown` when the edges do not determine one |
 | `PrimitiveType` | wraps a `PropertyType`, so a language declares its primitives where it already declares properties |
 | `RecordType` | a fixed set of named fields, compared **by name, not by order** |
 | `ListType` | its element type; a length is a fact about a value, not about its type |
@@ -170,7 +172,7 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1 and T2, which are delivered. This section is the design of record for the next
+**Planned, not built** - except T1, T2 and T3, which are delivered. This section is the design of record for the next
 stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
 MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
@@ -246,7 +248,15 @@ Each slice is independent and each is only worth starting when a language needs 
   doing so. `TypeSolverTests` proves each of those, including the budget stopping a table that needs more passes
   than it is given.
 - **T3 - `join` and `meet`.** Computed from the subtype relation, with `Unknown` if the two types share no supertype -
-  reported, never guessed.
+  reported, never guessed. **Delivered**: `JoinType` and `MeetType` are the type *expressions* (a slot may say
+  "either of these" or "both of these" before a rule knows which), and `TypeLattice.Join`/`.Meet` reduce them to one
+  type from the relation. The relation gained the enumeration the reduce needed - `SupertypesOf`/`SubtypesOf`, walked
+  transitively with a worklist, because a language may declare two names for one type and recursion would not
+  terminate on that. What the reduce refuses is the point: when nothing is above both, or several things are and
+  none is least, the answer is `UnknownType` - the two cases reported the same way, because the answer a rule needs
+  is "I cannot say" and which of the two it was belongs to a diagnostic about the rule. Two facts the tests found
+  worth stating: a meet of comparable sides is simply the narrower one (the fast path answers first), and a meet is
+  as lenient about `unknown` as its sides are - the strictness a meet adds is over its *sides*.
 - **T4 - the declared forms of T1-T3.** `TypeRule.Equation`, `TypeRule.TypeVariable`, `TypeRule.Join`, and the
   subtyping declaration, with the load-time validations the aspect already has (unique variable names, a relation
   whose sides have the right kinds, a variable used but never constrained).
