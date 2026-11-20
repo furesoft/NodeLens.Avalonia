@@ -53,7 +53,11 @@ public sealed class ExpressionsLanguageTests
             if (concept.Key == ExpressionsConceptKeys.Expression)
             {
                 Assert.True(concept.IsAbstract);
-                Assert.Empty(concept.SuperConcepts);
+
+                // Expression extends nothing of its language's. Its super concepts are not empty, because every
+                // concept implements the framework's base concept - which is an interface, so it is not an
+                // extension.
+                Assert.Empty(concept.Extensions);
             }
             else
             {

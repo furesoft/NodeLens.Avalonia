@@ -629,10 +629,15 @@ public sealed class StructureLoweringTests
         var registry = StructureLowering.CreateRegistry(definition.Roots);
         var rule = registry.Get("Rules.Rule");
 
-        // Two walks, one relation: the interface is conformance, and it is not an extension.
-        Assert.Equal(["Rules.Target"], rule.Interfaces.Select(implemented => implemented.Key));
+        // Two walks, one relation: the interface is conformance, and it is not an extension. The framework's base
+        // concept is the second interface, because every concept implements it without declaring it.
+        Assert.Equal(
+            ["Rules.Target", FrameworkInterfaces.BaseConcept],
+            rule.Interfaces.Select(implemented => implemented.Key));
         Assert.Empty(rule.Extensions);
-        Assert.Equal(["Rules.Target"], rule.SuperConcepts.Select(super => super.Key));
+        Assert.Equal(
+            ["Rules.Target", FrameworkInterfaces.BaseConcept],
+            rule.SuperConcepts.Select(super => super.Key));
         Assert.True(rule.IsKindOf("Rules.Target"));
         Assert.True(registry.Get("Rules.Target").IsInterface);
     }
