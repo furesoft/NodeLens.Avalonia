@@ -43,11 +43,11 @@ shell.
 | Part | Responsibility | Appears |
 | --- | --- | --- |
 | `App` / `Program` | lifetime, service wiring, theme, unhandled exception reporting | M1 |
-| `MainWindow` | layout skeleton, menus, toolbar, status bar | M1 |
+| `MainWindow` | layout skeleton, menus, the panel area and its splitter, status bar | M1 |
 | `DocumentTab` + `DocumentSet` | open documents, active document, per-document session and undo | M1 |
 | `ProjectDriver` | open a project, enumerate models, save, watch files | M1 |
 | `CommandRegistry` | named commands with `CanExecute` and a shortcut table | M1 |
-| model browser | tree of models and their root elements - **delivered** as a left panel listing every node of the active document, clicking a row puts the caret on it (`Outline/`) | M2 |
+| model browser | tree of models and their root elements - **delivered** as a resizable left column (a splitter and a `MinWidth`) listing every node of the active document, its header naming that document, clicking a row puts the caret on it (`Outline/`) | M2 |
 | language browser | declared languages in the project, open their definitions | M5 |
 | problems panel | diagnostics of the active document, in document order, jumping to the cell the finding is about - **delivered** in `MainWindow` + `Problems/` (M2) | M2 |
 | recent files | the last ten opened or saved files, remembered between runs - **delivered** in `Documents/RecentFiles` + `TextRecentFilesStore` | M2 |
@@ -263,15 +263,16 @@ because a button that stays dead until the user has searched is one they cannot 
 
 ### Find usages
 
-**View ▸ Find usages** (`Alt+F7`) answers "who points at this node" and lists the rows in a panel above the
-problems panel. `FindUsages.ReportOf(session)` is the whole question; `UsageList` turns the answer into rows and
+**View ▸ Find usages** (`Alt+F7`) answers "who points at this node" and lists the rows in a tab of the panel area.
+`FindUsages.ReportOf(session)` is the whole question; `UsageList` turns the answer into rows and
 the window only fills a list, moves the caret and says why the panel closed.
 
 - **The gesture is the window's**, like F5: the answer is a shell panel, not something the control can paint over
   the document. A host embedding the control calls the same `FindUsages` entry point and owes its own list.
 - **The panel stays up only while its target exists.** An edit re-asks about the *same node* (the id is kept, not
-  the caret), a deleted target closes it, and switching to a document of another project closes it too. A Close
-  button in the header is the deliberate way to give the page its height back.
+  the caret), a deleted target closes it, and switching to a document of another project closes it too. Its tab's
+  close button is the deliberate way to give the page its height back, and **View ▸ Panels** brings the answer
+  back without asking the caret again.
 - **An empty list is shown.** Unlike the problems panel, "nothing points here" is the answer the user asked for.
 - **A usage in another model says which model**, because a project is several documents; choosing the row opens
   that document's tab when it is open, and says so when it is not. A reference the notation hides has no cell, so
@@ -393,9 +394,26 @@ Both checks answer with fixes rather than with bare diagnostics, and the window 
 from them: a fix carries the finding it repairs, so one list produces both sets and they cannot
 describe different states of the document.
 
+### The panel area
+
+The panels share one area under the document instead of stacking: Output, Problems and Usages are tabs of a strip
+whose height a splitter sets, so three open answers cost one strip and never three.
+
+- **One area, three tabs.** A tab is in the strip only while it has something to show - a run, a finding, a usage -
+  and the strip is hidden when the last one leaves. `MainWindow.ShowPanel` is the one place that decides it, and
+  it keeps two questions apart: the content says whether a panel *may* show, and a flag per panel says whether the
+  user closed it.
+- **A tab can be closed, and the menu is the way back.** Closing one is a deliberate "not now" that a re-derived
+  list must not undo: a problem list that came back on the next keystroke would be a panel the user cannot get rid
+  of. A run, a find-usages gesture or **View ▸ Panels** is what opens it again.
+- **The document keeps a floor.** The splitter moves the strip between the document and the panel area, and the
+  document's row carries a `MinHeight`, so the panel can never be dragged over the page.
+- **The outline is a column with a splitter too**, and its header names the document it lists: a panel called
+  "Models" that lists one document's nodes describes something nobody is looking at.
+
 ### The problems panel
 
-`Problems/ProblemList.cs` turns that same list into rows, and `MainWindow` shows them above the status bar.
+`Problems/ProblemList.cs` turns that same list into rows, and `MainWindow` shows them in a tab of the panel area.
 The panel reads the findings the editor is drawing rather than running the checks again, so a squiggle and a
 row cannot disagree about what was found.
 
@@ -408,8 +426,9 @@ row cannot disagree about what was found.
 - **A finding whose node is gone still gets a row, at the end.** The set is a snapshot taken when the model
   changed; a panel that hid a stale finding would be claiming the document is clean at the moment it is
   least known to be.
-- **An empty list hides the panel.** "No problems" is the state of a document most of the time, and it does
-  not deserve a third of the window; the count is in the header for the one glance that needs it.
+- **An empty list hides the tab.** "No problems" is the state of a document most of the time, and a tab that
+  said so would take a strip of the window to say nothing; the count is in the tab's header for the one glance
+  that needs it.
 
 Three things that follow, and that a host has to do as well:
 

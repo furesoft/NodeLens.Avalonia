@@ -162,6 +162,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     private CellLayout? _rowsOfLayout;
     private ITextMeasure? _rowsOfMeasure;
 
+    // What the last raise described, so a repaint that moved nothing stays silent.
+    private Selection? _published;
+
     private bool _showLineNumbers;
     private IBrush _lineNumberBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x80, 0x80, 0x80));
     private IBrush? _gutterBackground;
@@ -354,6 +357,15 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>Raised when the caret or the selection moved.</summary>
+    /// <remarks>
+    /// A host paints a status line from this: the caret's line and column are the shell's to show and the
+    /// control's to derive. It is raised after every edit and every move lands - <see cref="Show"/> is that
+    /// funnel - and only when the selection really changed, because a repaint that left the caret where it
+    /// was is not a reason to rebuild a status line.
+    /// </remarks>
+    public event EventHandler? SelectionChanged;
+
     /// <summary>The document being edited, or <see langword="null"/> when the control is empty.</summary>
     public EditorSession? Session
     {
@@ -369,6 +381,9 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
             _offsetX = 0;
             _offsetY = 0;
             _blink.Reset();
+
+            // The new session's caret has not been announced, whatever the old one's was.
+            _published = null;
 
             // A preview is a copy of one document, so it goes with the session that document belonged to.
             DropPreview();
@@ -2324,7 +2339,26 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // brought into line after the page has settled rather than before.
         ShowPreview();
 
+        // Every edit and every move lands here, which is why the host hears about the caret from here.
+        if (Session is { } session)
+        {
+            PublishSelection(session);
+        }
+
         InvalidateVisual();
+    }
+
+    /// <summary>Tells the host where the caret went, when it went anywhere.</summary>
+    private void PublishSelection(EditorSession session)
+    {
+        if (_published == session.Selection)
+        {
+            return;
+        }
+
+        _published = session.Selection;
+
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnBlinkTick(object? sender, EventArgs e)
