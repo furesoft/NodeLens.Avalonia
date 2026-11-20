@@ -1,0 +1,197 @@
+using Projectional.Core;
+using Projectional.Editors;
+using Projectional.Language;
+using Projectional.Languages;
+using Projectional.Persistence;
+using Projectional.Projection;
+using Projectional.Semantics;
+using Projectional.Structures;
+using Projectional.TypeRules;
+using Xunit;
+
+namespace Projectional.Core.Tests;
+
+/// <summary>The declared expression language, whose type rules are documents rather than C#.</summary>
+/// <remarks>
+/// This is the first language in the repository whose types live in a <c>types/</c> folder. The declared vocabulary
+/// was proved by tests before this: a lowering test here and a parity test there. What a shipped document adds is the
+/// answer to "does an author who only has the documentation get a working language", and that is a different question
+/// from "does each body lower".
+/// </remarks>
+public sealed class DeclaredExpressionsTests
+{
+    private static LanguageProject Language => Open();
+
+    [Fact]
+    public void TheLanguageOpensAndDeclaresItsTypes()
+    {
+        var language = Language;
+
+        Assert.True(language.HasTypes);
+
+        // Four rules - two fixed types, a switch and a widest - and one complaint. A complaint states a diagnostic
+        // rather than a type, so it is in the constraints and not in the registry.
+        Assert.Equal(4, language.Types.Count);
+        Assert.Equal(1, language.Constraints.Count);
+    }
+
+    [Fact]
+    public void ALiteralIsTheTypeItsRuleNames()
+    {
+        var model = NewModel();
+        var number = model.NewNode("Decl.Int");
+        var flag = model.NewNode("Decl.Bool");
+
+        Assert.Equal("int", Language.Types.TypeOf(number).Name);
+        Assert.Equal("bool", Language.Types.TypeOf(flag).Name);
+    }
+
+    [Fact]
+    public void AComparisonIsATruthValueAndAnUnknownOperatorIsAsWideAsItsLeftOperand()
+    {
+        var model = NewModel();
+
+        var comparison = Binary(model, "<");
+
+        var addition = Binary(model, "+");
+
+        Assert.Equal("bool", Language.Types.TypeOf(comparison).Name);
+        Assert.Equal("int", Language.Types.TypeOf(addition).Name);
+    }
+
+    [Fact]
+    public void AConditionalIsAsWideAsItsTwoBranches()
+    {
+        // The rule the vocabulary could not express until `widest of` existed, in a language that is only documents.
+        var model = NewModel();
+
+        var both = model.NewNode("Decl.If");
+        model.NewChild(both, "then", "Decl.Int");
+        model.NewChild(both, "else", "Decl.Int");
+
+        var mixed = model.NewNode("Decl.If");
+        model.NewChild(mixed, "then", "Decl.Int");
+        model.NewChild(mixed, "else", "Decl.Bool");
+
+        Assert.Equal("int", Language.Types.TypeOf(both).Name);
+        Assert.Same(UnknownType.Instance, Language.Types.TypeOf(mixed));
+    }
+
+    [Fact]
+    public void TheDeclaredComplaintReportsOperandsThatCannotBeOneValue()
+    {
+        // The conditional complaint, written as a document: it fires only where the condition holds, which is what
+        // makes it a rule about operands rather than a sentence about the concept.
+        var model = NewModel();
+        var mixed = model.NewNode("Decl.Binary");
+
+        mixed.Set("operator", "==");
+        model.NewChild(mixed, "left", "Decl.Int");
+        model.NewChild(mixed, "right", "Decl.Bool");
+
+        var finding = Assert.Single(Check(model));
+
+        Assert.Equal(mixed.Id, finding.Target);
+        Assert.Equal(DiagnosticSeverity.Error, finding.Severity);
+        Assert.Contains("not comparable", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheDeclaredComplaintStaysSilentWhenTheOperandsFit()
+    {
+        var model = NewModel();
+        var numbers = model.NewNode("Decl.Binary");
+
+        numbers.Set("operator", "==");
+        model.NewChild(numbers, "left", "Decl.Int");
+        model.NewChild(numbers, "right", "Decl.Int");
+
+        Assert.Empty(Check(model));
+    }
+
+    [Fact]
+    public void TheShippedDocumentDrawsItsNotations()
+    {
+        // The editor documents are part of the language, so a language that opens can still draw nothing useful.
+        var written = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Expressions", "expressions.mps"));
+        var model = ModelXml.Deserialize(Language.NewProject(), written);
+
+        Assert.Equal(
+            "if 1 < 2 then 3 else 4",
+            LayoutSnapshot.Render(model, Language.Notations, width: 60));
+    }
+
+    [Fact]
+    public void TheShippedDocumentIsCleanAndRoundTrips()
+    {
+        // What a user opens first: the document must not greet them with a finding, and saving it back must not
+        // change a byte.
+        var written = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Expressions", "expressions.mps"));
+        var model = ModelXml.Deserialize(Language.NewProject(), written);
+
+        Assert.Empty(Check(model));
+        Assert.Equal(written.Replace("\r\n", "\n", StringComparison.Ordinal), ModelXml.Serialize(model));
+    }
+
+    [Fact]
+    public void EveryDefinitionDocumentSavesBackByteIdentically()
+    {
+        // The same guard the other declared sample has, and the reason a hand-written definition is safe to keep:
+        // the writer is the authority, so a file that is not the writer's own output fails here rather than drifting.
+        var directory = Path.Combine(AppContext.BaseDirectory, "Expressions");
+        var temporary = Directory.CreateTempSubdirectory("declared-expressions-definitions");
+
+        try
+        {
+            AssertRoundTrips(directory, "structure", new Project(StructureLanguage.Concepts));
+            AssertRoundTrips(directory, "editor", new Project(EditorLanguage.Concepts));
+            AssertRoundTrips(directory, "types", new Project(TypeRuleLanguage.Concepts));
+        }
+        finally
+        {
+            temporary.Delete(recursive: true);
+        }
+
+        void AssertRoundTrips(string root, string folder, Project project)
+        {
+            var files = Directory.EnumerateFiles(Path.Combine(root, folder), "*.mps").ToList();
+
+            Assert.NotEmpty(files);
+
+            foreach (var file in files)
+            {
+                var model = ModelFile.Load(project, file);
+                var target = Path.Combine(temporary.FullName, Path.GetFileName(file));
+
+                ModelFile.Save(model, target);
+
+                Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(target));
+            }
+        }
+    }
+
+    private static IReadOnlyList<Diagnostic> Check(Model model) =>
+        new ConstraintEngine(Language.Constraints, types: Language.Types).Check(model);
+
+    private static Model NewModel() => Language.NewProject().NewModel("expressions");
+
+    private static Node Binary(Model model, string op)
+    {
+        var binary = model.NewNode("Decl.Binary");
+
+        binary.Set("operator", op);
+        model.NewChild(binary, "left", "Decl.Int");
+        model.NewChild(binary, "right", "Decl.Int");
+
+        return binary;
+    }
+
+    private static LanguageProject Open()
+    {
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error);
+
+        Assert.Null(error);
+
+        return language!;
+    }
+}
