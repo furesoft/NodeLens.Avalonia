@@ -12,9 +12,15 @@ namespace Projectional.Samples.SqlSchema.Checks;
 /// </para>
 /// <para>
 /// A constraint rather than a check: there is no repair to offer, because which of the two columns is wrong is the
-/// author's decision and either answer is a schema change. Comparability is the question and not sameness: a column
-/// and a column of a type the language declares interchangeable may be joined, and asking for one type would refuse
-/// exactly the widening the type layer can express.
+/// author's decision and either answer is a schema change.
+/// </para>
+/// <para>
+/// The question is **directed**: the local column's type has to be usable where the target's is required, not the
+/// other way round. A whole number may be looked up in a fractional column and a fractional value may not be looked
+/// up in an integer one, which is what widening means; asking whether the two are interchangeable would refuse the
+/// first and accept the second. It is asked of the target type first - <see cref="Projectional.Language.IType.Accepts"/>
+/// is the framework's own answer to "may this value stand here" - and then of the edges the language declared, because
+/// a primitive that does not know about an edge would otherwise answer for the language.
 /// </para>
 /// <para>
 /// A key with an unresolved or unwritten side stays silent. The reference layer already reports what it cannot
@@ -38,8 +44,8 @@ public sealed class KeyTypesConstraint : IConstraint
         var localType = context.TypeOf(local);
         var targetType = context.TypeOf(target);
 
-        if (localType.IsComparableTo(targetType)
-            || context.Types.Subtypes.IsComparableTo(localType, targetType))
+        if (targetType.Accepts(localType)
+            || context.Types.Subtypes.IsSubtype(localType, targetType))
         {
             return;
         }

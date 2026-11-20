@@ -16,10 +16,12 @@ namespace Projectional.Samples.SqlSchema;
 /// underneath, which is what a comparison falls back to.
 /// </para>
 /// <para>
-/// <c>decimal</c> expands to <c>int</c>, and that is a boundary rather than an oversight: the framework has four
-/// primitives and SQL has five column types here, so the fifth leans on the nearest one. What follows is that
-/// <c>int</c> and <c>decimal</c> are interchangeable, which is the direction a key check wants anyway; the other
-/// direction is the price. A fifth primitive is a type-layer decision this sample does not make.
+/// <c>decimal</c> expands to <c>float</c>: a decimal holds a fractional part, so the framework's fractional primitive
+/// is the honest expansion even though SQL's <c>DECIMAL</c> is exact and a <see cref="double"/> is not. That is a
+/// boundary this sample records rather than invents - an exact decimal is a primitive the framework does not have -
+/// and it is why the two numeric column types are related by a declared edge instead of by their expansions:
+/// <c>int</c> may stand where <c>decimal</c> is required, and a <c>decimal</c> may not stand where an <c>int</c> is,
+/// which is what widening means and what a key check needs to know.
 /// </para>
 /// </remarks>
 internal static class SqlSchemaTypes
@@ -36,12 +38,20 @@ internal static class SqlSchemaTypes
     /// <summary>A calendar date.</summary>
     internal static NamedType Date { get; } = new("date", PrimitiveType.Of(PropertyType.Date));
 
-    /// <summary>A fixed-point number, modelled over the nearest primitive the framework has.</summary>
-    internal static NamedType Decimal { get; } = new("decimal", PrimitiveType.Of(PropertyType.Integer));
+    /// <summary>A number with a fractional part, held in the framework's fractional primitive.</summary>
+    internal static NamedType Decimal { get; } = new("decimal", PrimitiveType.Of(PropertyType.Float));
+
+    /// <summary>The one edge the schema declares: a whole number may stand where a fractional one is required.</summary>
+    /// <remarks>
+    /// Declared rather than implied, because the two expand to different primitives and an expansion cannot say what
+    /// a widening is. The other direction is deliberately absent: a fractional value is not an integer, and a key
+    /// between the two columns in that order is a real mistake.
+    /// </remarks>
+    internal static SubtypeRelation Subtypes { get; } = SubtypeRelation.Primitives.Add(Int, Decimal);
 
     /// <summary>The registry <see cref="SqlSchemaLanguage.Types"/> answers with.</summary>
     internal static TypeRegistry Registry { get; } =
-        TypeRegistry.Empty.Add(SqlConceptKeys.Column, new ColumnType());
+        TypeRegistry.Empty.Add(SqlConceptKeys.Column, new ColumnType()).WithSubtypes(Subtypes);
 
     /// <summary>A column is the type its `type` property names, and nothing else.</summary>
     private sealed class ColumnType : ITypeRule

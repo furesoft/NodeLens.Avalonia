@@ -47,10 +47,10 @@ public sealed class KeyTypesConstraintTests
     }
 
     [Fact]
-    public void AKeyToAColumnOfAnInterchangeableTypeIsNotReported()
+    public void AKeyToAColumnOfAWiderTypeIsNotReported()
     {
-        // The language declares `decimal` over the same primitive as `int`, so this direction is the widening the
-        // type layer can express; asking for one *type* would refuse it.
+        // A whole number may be looked up in a fractional column: that is the widening the language declares an
+        // edge for, and asking whether the two types are interchangeable would refuse it.
         var model = Schema(out var numbers, out var words);
 
         var key = model.NewChild(numbers, SqlSchemaLanguage.KeysSlot, SqlConceptKeys.ForeignKey);
@@ -59,6 +59,23 @@ public sealed class KeyTypesConstraintTests
         key.SetReference(SqlSchemaLanguage.TargetSlot, ColumnOf(words, "amount"));
 
         Assert.Empty(Check(model));
+    }
+
+    [Fact]
+    public void AKeyFromAWiderTypeToANarrowerOneIsReported()
+    {
+        // The other direction, which the same rule has to refuse: a fractional value is not an integer, and a key
+        // that says one appears in the other would be wrong. This is what makes the question directed.
+        var model = Schema(out var numbers, out var words);
+
+        var key = model.NewChild(numbers, SqlSchemaLanguage.KeysSlot, SqlConceptKeys.ForeignKey);
+
+        key.SetReference(SqlSchemaLanguage.LocalSlot, ColumnOf(words, "amount"));
+        key.SetReference(SqlSchemaLanguage.TargetSlot, ColumnOf(numbers, "id"));
+
+        var finding = Assert.Single(Check(model));
+
+        Assert.Equal(KeyTypesConstraint.Code, finding.Code);
     }
 
     [Fact]
