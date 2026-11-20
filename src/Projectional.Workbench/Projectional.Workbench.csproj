@@ -26,13 +26,6 @@
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
-    <!--
-      The window is a docking layout: panels are dockables the user can move, float and close, and the document area
-      is the layout's document dock rather than a hand-built tab strip.
-    -->
-    <PackageReference Include="Dock.Avalonia" />
-    <PackageReference Include="Dock.Avalonia.Themes.Fluent" />
-    <PackageReference Include="Dock.Model.Avalonia" />
   </ItemGroup>
 
   <ItemGroup>
