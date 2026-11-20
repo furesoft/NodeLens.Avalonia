@@ -1,10 +1,10 @@
 # Tests of a language, as data
 
-Status: **partly delivered** (M6). Slice T1 is complete: the `tests/` folder, the test language,
-`TestRunner`, the xunit bridge and the sample's test documents, with all three assertions a document
-can make - `Testing.RoundTrips`, `Testing.Draws` and `Testing.Findings`. The remaining assertions
-(`Testing.Generates`, `Testing.Evaluates`, `Testing.Script`) are still planned, and the rest of this
-document is the plan for them as much as for what is delivered.
+Status: **partly delivered** (M6). Slices T1 and T2 are complete: the `tests/` folder, the test language,
+`TestRunner`, the xunit bridge and the sample's test documents, with five of the six assertions a document
+can make - `Testing.RoundTrips`, `Testing.Draws`, `Testing.Findings`, `Testing.Generates` and
+`Testing.Evaluates`. `Testing.Script` is still planned, and the rest of this document is the plan for it as
+much as for what is delivered.
 
 Before this existed, every test in this repository was C# xunit over `Projectional.Core.Tests`, and a
 language author had no way to test a language at all.
@@ -59,10 +59,10 @@ that a language author writes an assertion, not a program.
 
 | Assertion | What it runs | What it pins |
 | --- | --- | --- |
-| `Testing.Draws` | `LayoutSnapshot.Render(document, notations)` (optionally through a variant) | the notation: a projection change that moves a cell fails a named test |
-| `Testing.Findings` | `ConstraintEngine` + the language's `CheckSet` | constraints and checks: which findings, where, and their severities |
-| `Testing.Generates` | the language's `TextGenerator`, by name | generated text and the traceability map's first node per line |
-| `Testing.Evaluates` | the interpreter, with the variables a test names | the answer or the failure, and the trace |
+| `Testing.Draws` | `LayoutSnapshot.Render(document, notations, width)` | the notation: a projection change that moves a cell fails a named test |
+| `Testing.Findings` | `ConstraintEngine` over `LanguageProject.Constraints` | the language's declared constraints: which findings, where, and their severities |
+| `Testing.Generates` | the language's `TextGenerator`, by name | the generated text; the traceability map is not pinned yet |
+| `Testing.Evaluates` | `Interpreter` over the rules the caller supplies, with the variables a test names | the answer, or the message of the failure that stopped the run; the trace is not pinned yet |
 | `Testing.RoundTrips` | `ModelXml.Serialize` twice | invariant 7 for that document |
 | `Testing.Script` | a list of edit steps (type text, press a key, invoke an intention, invoke a fix) and then a `Draws` comparison | the editing behaviour MPS tests with an `EditorTestCase` |
 
@@ -82,8 +82,14 @@ The test *language* travels in the same package, which is a deliberate compromis
 the only thing that can run it would buy a dependency rule and cost every consumer a second reference. If a
 second runner ever appears (an app, a build task), that is the moment to split.
 
-**Running.** `TestRunner.Run(LanguageProject)` answers a `TestReport` - one row per test with the assertion,
-the outcome and the actual-versus-expected text, so a failure reads as a diff. Three doors onto it:
+**Running.** `TestRunner.Run(LanguageProject, EvaluationRegistry?)` answers a `TestReport` - one row per test
+with the assertion, the outcome and the actual-versus-expected text, so a failure reads as a diff. The second
+argument exists because a language project carries no evaluation aspect: which rules belong to which language
+is something the host knows and a `tests/` folder cannot state. An `evaluates` assertion run without them is a
+failed row naming what it needed, so a host that forgets sees every such test fail rather than pass quietly,
+and the other assertions still report.
+
+Three doors onto it:
 
 1. **xunit**, for CI today: one test method per shipped language project that runs its `tests/` folder and
    fails with the report. The suite therefore covers the samples and the declared pipeline with no new runner
@@ -106,13 +112,14 @@ the outcome and the actual-versus-expected text, so a failure reads as a diff. T
 
 ## What is delivered
 
-The folder, the language, the runner and the bridge, with all three assertions:
+The folder, the language, the runner and the bridge, with five of the six assertions:
 
 - **`Projectional.Testing`** is the behaviour package: `TestingLanguage` declares the concepts
   (`Testing.Test`, `Testing.Assertion`, `Testing.RoundTrips`, `Testing.Draws`, `Testing.Line`,
-  `Testing.Findings`, `Testing.ExpectedFinding`), `Notation/TestingNotations` draws one sentence per
-  assertion, and `TestingLowering` turns a written test into a `LanguageTest`.
-- **`TestRunner.Run(language)`** reads the language's `tests/` folder in ordinal file-name order and
+  `Testing.Findings`, `Testing.ExpectedFinding`, `Testing.Generates`, `Testing.Evaluates`),
+  `Notation/TestingNotations` draws one sentence per assertion, and `TestingLowering` turns a written test
+  into a `LanguageTest`.
+- **`TestRunner.Run(language, rules)`** reads the language's `tests/` folder in ordinal file-name order and
   answers a `TestReport` - one `TestResult` per document, carrying the assertion and, on a failure,
   the actual-versus-expected text so the report reads as a diff. A language with no `tests/` folder
   answers an empty report. A document *under* test that is gone is a failed row naming it; a test
@@ -127,21 +134,38 @@ The folder, the language, the runner and the bridge, with all three assertions:
   a code, a severity and optionally the slot it is about. A check catalogue is a C# package and not
   part of a language project, so the assertion covers the language's declared constraints; when checks
   become declarable it widens with them.
+- **`Testing.Generates`** runs the generator the test names - `LanguageProject` may declare several, so
+  "the" generator is a choice a test makes - and compares its text against the expected lines, one child
+  node per line. An empty last line is how a test says the text ends with a line break. A name the
+  language does not declare is a failed row listing the names it could have meant; a run that stopped
+  mid-document reports the failure's message instead of half a file.
+- **`Testing.Evaluates`** runs the interpreter over the rules the caller supplies and compares one text:
+  the value's display when the run succeeded, the failure's message when it did not. One expected text
+  rather than an answer-with-a-failure-flag, because a run produces exactly one of the two and the row
+  shows which. The variables are read by `VariableInputs` - the same parser the editor's run box uses,
+  moved down from `Projectional.Avalonia` into `Projectional.Language` so a run in a test and a run in the
+  shell cannot disagree about what `1500` means - and a variables line that is not a list of
+  `name=value` pairs is refused at lowering, like any other malformed slot.
 - **The xunit bridge** is `LanguageTestsAsDataTests`: it runs the shipped sample's folder, so CI
   covers a language's own tests without new runner infrastructure. The sample's test documents are
-  `samples/declared-pipeline/tests/round-trips.mps`, `draws.mps` and `reports.mps`.
+  `samples/declared-pipeline/tests/round-trips.mps`, `draws.mps`, `reports.mps` and `generates.mps`.
 
-The remaining assertions are additive: each is one more concept in the test language, one more
-notation, and one more branch in the runner. `Testing.Generates` and `Testing.Evaluates` need the
-generator and the interpreter, and `Testing.Script` needs the editing layer - reaching those layers is
-why the package sits in the behaviour band rather than beside a language.
+**No shipped language declares evaluation rules**, because evaluation is not a declarable aspect: rules are
+written in C# against an `EvaluationRegistry`, and nothing in a language project states which registry belongs
+to it. `Testing.Evaluates` is therefore proven where a host supplies one, in the suite's own temp-copied
+`declared-workflow` folder, rather than by a document in a sample's `tests/` folder. When evaluation becomes
+declarable, the assertion needs no change - only a sample that ships rules.
+
+The remaining assertion is additive: one more concept in the test language, one more notation, and one more
+branch in the runner. `Testing.Script` needs the editing layer - reaching that layer is why the package sits
+in the behaviour band rather than beside a language.
 
 ## Slices
 
 | Slice | Content | Effort |
 | --- | --- | --- |
 | T1 | the `tests/` folder and the language (`Testing.Draws`, `Testing.Findings`, `Testing.RoundTrips`), `TestRunner`, the xunit bridge, and the sample language's first tests - **delivered** | 1 week |
-| T2 | `Testing.Generates` and `Testing.Evaluates` (generators by name, variables from one line of `name=value` pairs, the way `RunInputs` already reads them) | 3-4 days |
+| T2 | `Testing.Generates` and `Testing.Evaluates` (generators by name, variables from one line of `name=value` pairs, the way `RunInputs` already reads them) - **delivered** | 3-4 days |
 | T3 | `Testing.Script`: the action vocabulary, caret placement, and the comparison after the run - the editor test | 1-2 weeks |
 | T4 | node-addressed assertions (`Testing.TypeOf`, `Testing.ScopeOf`), which need a way for a test to name a node: a path syntax, or a reference once a common base concept exists | open |
 | T5 | the workbench command, the report rows, and "run on save" if it is wanted | 3-4 days |
@@ -158,6 +182,11 @@ why the package sits in the behaviour band rather than beside a language.
 
 ## What still needs a decision
 
+- **Whether evaluation rules travel with a language project.** They do not, so `TestRunner.Run` takes them as
+  an argument. That is the honest shape while rules are C# and a project cannot state which registry belongs
+  to it; once evaluation joins `structure`, `editor` and the rest as a declarable aspect, the assertion reads
+  them from the project and the parameter goes away. Until then a host that runs tests supplies the same
+  registry it hands to its own Run command, which is also what keeps a test's run and a user's run identical.
 - **How a test names its document.** A path relative to the language project is explicit and reviewable, and
   it is what MPS' `TestInfo` does for the project root. A reference to the model root would be stronger, but a
   reference slot needs a concept key and a root concept is the language's own - the common base concept this
