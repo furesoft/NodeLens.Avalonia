@@ -65,6 +65,9 @@ public sealed partial class MainWindow : Window, IDisposable
     private const string WindowTitle = "Projectional Workbench";
 
     private readonly DocumentSet _documents = new();
+
+    /// <summary>What this window may offer; the one statement the menus, the panels and the commands read.</summary>
+    private readonly ShellCapability _capabilities;
     private readonly WorkbenchLanguage _language = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
 
@@ -100,14 +103,28 @@ public sealed partial class MainWindow : Window, IDisposable
     // alone would do on every keystroke.
     private readonly TabItem[] _panelOrder;
     private readonly double _splitterHeight;
+    private readonly double _sideWidth;
     private double _panelHeight;
     private bool _outputClosed;
     private bool _problemsClosed;
     private bool _usagesClosed;
 
-    /// <summary>Creates the window and opens the sample document in it.</summary>
-    public MainWindow()
+    /// <summary>Creates the window with every module - the standalone editor.</summary>
+    public MainWindow() : this(ShellCapabilities.Standalone)
     {
+    }
+
+    /// <summary>Creates the window over <paramref name="capabilities"/>, which is what a host decides.</summary>
+    /// <param name="capabilities">The modules and actions this shell may offer.</param>
+    /// <remarks>
+    /// Internal rather than public because the shell is not a library yet (ADR 0015 puts that extraction at M6);
+    /// a host today embeds it through this seam, and the seams the screenshots use are internal for the same
+    /// reason. When M6 lands, this parameter moves to <c>ShellView</c> unchanged.
+    /// </remarks>
+    internal MainWindow(ShellCapability capabilities)
+    {
+        _capabilities = capabilities;
+
         InitializeComponent();
 
         // The area's own measurements rather than a second copy of them: the XAML declares the shape, and
@@ -115,6 +132,9 @@ public sealed partial class MainWindow : Window, IDisposable
         _panelOrder = [OutputTab, ProblemsTab, UsagesTab];
         _panelHeight = DocumentArea.RowDefinitions[2].Height.Value;
         _splitterHeight = DocumentArea.RowDefinitions[1].Height.Value;
+        _sideWidth = SideArea.ColumnDefinitions[0].Width.Value;
+
+        Compose();
 
         // Before the first tab exists: a session takes its clipboard when it is created, and the sample opens
         // below.
@@ -201,6 +221,68 @@ public sealed partial class MainWindow : Window, IDisposable
         _documents.Dispose();
         _tabs.Clear();
     }
+
+    /// <summary>Composes the window from the capability set: a module it does not grant is not built at all.</summary>
+    /// <remarks>
+    /// <para>
+    /// Removing a module where it is *composition* - a menu, a tab, a whole column - and refusing it where it is a
+    /// *command*: both halves are needed, because a hidden entry is presentation and a refusal is the guarantee
+    /// (ADR 0015). This is the one place that reads the set for composition, so a host's shell cannot end up with
+    /// half of a module.
+    /// </para>
+    /// <para>
+    /// The side column and the panel area are taken apart by the same code that hides them when they are empty, so a
+    /// shell without the project explorer gets its width back rather than an empty strip.
+    /// </para>
+    /// </remarks>
+    private void Compose()
+    {
+        FileMenu.IsVisible = true;
+        RunMenu.IsVisible = _capabilities.Allows(ShellCapability.Run) || _capabilities.Allows(ShellCapability.Tests);
+
+        OpenDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
+        OpenLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
+        NewDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.CreateModels);
+        ImportDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Import);
+        ExportLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
+        RecentFilesItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
+        SaveDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Save);
+        SaveAsItem.IsVisible = _capabilities.Allows(ShellCapability.Save);
+        SaveGeneratedItem.IsVisible = _capabilities.Allows(ShellCapability.Save);
+
+        EditMenu.IsVisible = _capabilities.Allows(ShellCapability.EditModels);
+        FindItem.IsVisible = _capabilities.Allows(ShellCapability.Find);
+        ReplaceItem.IsVisible = _capabilities.Allows(ShellCapability.Find);
+        FindUsagesItem.IsVisible = _capabilities.Allows(ShellCapability.FindUsages);
+        ViewFindItem.IsVisible = _capabilities.Allows(ShellCapability.Find);
+        ViewFindUsagesItem.IsVisible = _capabilities.Allows(ShellCapability.FindUsages);
+
+        RunDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
+        RunTestsItem.IsVisible = _capabilities.Allows(ShellCapability.Tests);
+        ClearOutputItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
+        GenerateItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
+
+        // The side column: the tabs a host did not ask for are not in it, and a column nobody wants is not there.
+        ProjectTab.IsVisible = _capabilities.Allows(ShellCapability.ProjectExplorer);
+        OutlineTab.IsVisible = _capabilities.Allows(ShellCapability.Outline);
+        OutlinePanel.IsVisible = ProjectTab.IsVisible || OutlineTab.IsVisible;
+        SideSplitter.IsVisible = OutlinePanel.IsVisible;
+        SideArea.ColumnDefinitions[0].Width = new GridLength(OutlinePanel.IsVisible ? _sideWidth : 0);
+        SideArea.ColumnDefinitions[1].Width = new GridLength(OutlinePanel.IsVisible ? _splitterHeight : 0);
+
+        // The panels, the same way: no problems module, no problems tab and no count.
+        _problemsClosed = !_capabilities.Allows(ShellCapability.Problems);
+        _outputClosed = !_capabilities.Allows(ShellCapability.Run);
+        _usagesClosed = !_capabilities.Allows(ShellCapability.FindUsages);
+
+        EmptyState.IsVisible = _documents.Active is null;
+    }
+
+    /// <summary>Whether this shell may offer <paramref name="capability"/>.</summary>
+    private bool Allows(ShellCapability capability) => _capabilities.Allows(capability);
+
+    /// <summary>The document in front is editable, or the shell was declared read-only.</summary>
+    private bool CanEdit => Allows(ShellCapability.EditModels);
 
     private void OpenSample()
     {
@@ -292,6 +374,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        ShowProject();
         SyncUsages();
         SyncRename();
         UpdateStatus();
@@ -379,6 +462,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        ShowProject();
         SyncUsages();
         SyncRename();
         UpdateStatus();
@@ -440,6 +524,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        ShowProject();
         SyncUsages();
         SyncRename();
         UpdateStatus();
@@ -468,6 +553,7 @@ public sealed partial class MainWindow : Window, IDisposable
         ShowProblems();
         ShowOutput();
         ShowOutline();
+        ShowProject();
         SyncUsages();
         SyncRename();
         UpdateStatus();
@@ -587,6 +673,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OpenFindBar(bool withReplace)
     {
+        if (!Allows(ShellCapability.Find))
+        {
+            return;
+        }
+
         FindBar.IsVisible = true;
         ReplaceToggle.IsChecked = withReplace;
         ReplaceRow.IsVisible = withReplace;
@@ -891,6 +982,86 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
+    /// <summary>Fills the project explorer from the open documents and the opened languages.</summary>
+    /// <remarks>
+    /// Rebuilt wherever the outline is, and for the same reason: it describes what is open, so a stale list would
+    /// name a document that was closed. The language half is read from disk per build, which is a handful of small
+    /// folders - a language is a few dozen documents, not a solution.
+    /// </remarks>
+    private void ShowProject()
+    {
+        var rows = ProjectExplorer.Of(_documents.Documents, _language.Opened);
+
+        ProjectList.ItemsSource = rows;
+
+        // The row of the document in front is selected, which is how the panel says which one it is - the tab
+        // strip's own selection is one place, and the two must not be able to disagree.
+        ProjectList.SelectedItem = rows.FirstOrDefault(row => ReferenceEquals(row.Document, _documents.Active));
+    }
+
+    /// <summary>Opens or activates what a project row stands for.</summary>
+    private void OnProjectChosen(object? sender, RoutedEventArgs e)
+    {
+        if (ProjectList.SelectedItem is not ProjectEntry entry)
+        {
+            return;
+        }
+
+        if (entry.Document is { } document)
+        {
+            Select(document);
+
+            return;
+        }
+
+        if (entry.Path is { } path)
+        {
+            OpenProjectFile(path);
+        }
+    }
+
+    private void OnProjectKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        OnProjectChosen(sender, e);
+    }
+
+    /// <summary>Opens a file of an opened language, the way the language itself opens its definitions.</summary>
+    /// <param name="path">The file the row named.</param>
+    /// <remarks>
+    /// A definition document is drawn with the shell's combined notations rather than with the rules language's
+    /// alone - the same registries <see cref="OpenLanguage"/> uses - because a concept file borrows its notation from
+    /// the editor aspects it declares.
+    /// </remarks>
+    private void OpenProjectFile(string path)
+    {
+        if (_documents.Find(path) is { } open)
+        {
+            Select(open);
+
+            return;
+        }
+
+        _error = null;
+
+        if (DocumentFile.TryLoad(path, _language.NewProject(), out var error) is not { } model)
+        {
+            _error = $"Could not open {Path.GetFileName(path)}: {error}";
+            UpdateStatus();
+
+            return;
+        }
+
+        RememberRecent(path);
+        OpenDocument(model, _language.Notations, path, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+    }
+
     /// <summary>Fills the model browser from the active document.</summary>
     /// <remarks>
     /// Rebuilt on every model change, like the findings: the outline describes the document, so a stale one would list
@@ -991,6 +1162,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void ShowActiveUsages()
     {
+        if (!Allows(ShellCapability.FindUsages))
+        {
+            return;
+        }
+
         if (_documents.Active is not { } document)
         {
             return;
@@ -1349,6 +1525,11 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void RunActiveTests()
     {
+        if (!Allows(ShellCapability.Tests))
+        {
+            return;
+        }
+
         _error = null;
 
         if (_documents.Active is not { } document)
@@ -1402,6 +1583,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void RunActiveDocument()
     {
+        if (!Allows(ShellCapability.Run))
+        {
+            return;
+        }
+
         if (_documents.Active is not { } document)
         {
             return;
@@ -1878,6 +2064,11 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private async void ExportLanguage(LanguageProject language)
     {
+        if (!Allows(ShellCapability.Export))
+        {
+            return;
+        }
+
         _error = null;
 
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
@@ -2085,6 +2276,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private void OnNewDocument(object? sender, RoutedEventArgs e)
     {
+        if (!Allows(ShellCapability.CreateModels))
+        {
+            return;
+        }
+
         _error = null;
         OpenDocument(PayrollSample.NewEmptyModel(), _language.Notations, typing: WorkbenchLanguage.Typing);
     }
@@ -2208,6 +2404,10 @@ public sealed partial class MainWindow : Window, IDisposable
             }
         }
 
+        // A language whose folders hold no definition document opens no tab, so the project list is the only
+        // place that learns it joined.
+        ShowProject();
+
         return true;
     }
 
@@ -2237,6 +2437,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)
     {
+        if (!Allows(ShellCapability.OpenFiles))
+        {
+            return;
+        }
+
         _error = null;
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -2270,6 +2475,11 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private async void OnImportDocument(object? sender, RoutedEventArgs e)
     {
+        if (!Allows(ShellCapability.Import))
+        {
+            return;
+        }
+
         _error = null;
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -2480,6 +2690,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void OnSaveDocument(object? sender, RoutedEventArgs e)
     {
+        if (!Allows(ShellCapability.Save))
+        {
+            return;
+        }
+
         _error = null;
 
         if (_documents.Active is { } document)
@@ -2490,6 +2705,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
     private async void OnSaveDocumentAs(object? sender, RoutedEventArgs e)
     {
+        if (!Allows(ShellCapability.Save))
+        {
+            return;
+        }
+
         _error = null;
 
         if (_documents.Active is { } document && await PickSavePathAsync(document) is { } path)
