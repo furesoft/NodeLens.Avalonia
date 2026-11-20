@@ -29,8 +29,33 @@ internal static class ShellShots
         new("feature-run-output", ShowRunOutput, Width: 700, Height: 300),
         new("feature-generate-output", ShowGeneratedText, Width: 700, Height: 250),
         new("feature-run-tests", ShowTestRun, Width: 820, Height: 320),
+        new("feature-import-file", ShowImportedDocument, Width: 700, Height: 470),
         new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 520),
     ];
+
+    /// <summary>Imports an ini-shaped file into a document of the language that declares a rule for it.</summary>
+    /// <remarks>
+    /// The file is the pipeline sample's ini variant, which no built-in format claims and no generator writes: the
+    /// shell asks the opened language, its declared rule reads the text, and the picture is the document that comes
+    /// out. <see cref="MainWindow.ImportPath"/> is the command the picker calls, so the image cannot show a document
+    /// the command does not produce.
+    /// </remarks>
+    private static Task ShowImportedDocument(MainWindow window)
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "declared-pipeline");
+
+        var language = LanguageProject.Open(directory, out var error)
+            ?? throw new InvalidOperationException(error);
+
+        if (!window.OpenLanguage(language))
+        {
+            throw new InvalidOperationException($"The shell refused '{language.Name}'.");
+        }
+
+        window.ImportPath(Path.Combine(directory, "variant.ini"));
+
+        return Task.Delay(250);
+    }
 
     /// <summary>Runs the declared sample's tests folder and shows the rows the command puts in the panel.</summary>
     /// <remarks>

@@ -277,6 +277,13 @@ A finding whose node is gone still gets a row and sorts last; hiding it would cl
 Add the next panel the same way: derive the rows in a non-Avalonia type, assert them, and leave the window as
 wiring.
 
+**One finding, one row.** The shell adds its own pair of checks (`DefaultNames`, `DuplicateRuleNames`) only to a
+document whose language states nothing: `MainWindow.PublishFindings` prefers the language's `Checks`, then its
+`Constraints`, and the shell's pair only when both are absent. The middle case is the one a picture caught - a
+declared language has no check set, so asking only for `Checks` let `SHELL001` run beside the language's own
+"a stage is still called unnamed" rule and every stage reported the same hint twice. A language that declares
+findings has said what it wants a name to be, whichever of the two ways it said it.
+
 The repository ships two front ends and **one** public surface:
 
 - `Projectional.Avalonia` is the embeddable control. Hosts reference it (which brings `Core`).

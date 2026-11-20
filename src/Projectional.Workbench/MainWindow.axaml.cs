@@ -432,12 +432,16 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private static void PublishFindings(DocumentTab document, ProjectionalEditorControl editor)
     {
-        // A document whose language brings checks of its own is checked with them, and with nothing else: the shell's
-        // two rules are about rule names and rule sets, and a JSON document has neither. A document that brings none
-        // keeps the shell's pair, so every document the app has always opened is checked exactly as before.
-        List<DiagnosticFix> fixes = document.Checks is { } checks
-            ? [.. checks.Find(document.Model)]
-            : [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
+        // A document whose language brings checks or constraints of its own is checked with them, and with nothing
+        // else: the shell's two rules are about names, and a language that declares findings of its own has said what
+        // it wants a name to be. A declared language has no check set - what it states are constraints - so asking
+        // only for `Checks` made the pair run beside them, and a stage of the pipeline sample reported the same hint
+        // twice: once from SHELL001 and once from the language's own rule. A document that brings neither keeps the
+        // shell's pair, so every document the app has always opened is checked exactly as before.
+        List<DiagnosticFix> fixes =
+            document.Checks is { } checks ? [.. checks.Find(document.Model)] :
+            document.Constraints is not null ? [] :
+            [.. DefaultNames.Of(document.Model), .. DuplicateRuleNames.Of(document.Model)];
 
         // The join itself lives beside the control, because a host owes its users the same one list. The
         // session's scope provider, not the default one: a language may have replaced a level of the chain,
@@ -1751,7 +1755,7 @@ public sealed partial class MainWindow : Window, IDisposable
         TryOpenPath(path);
     }
 
-    /// <summary>Imports a JSON or XML file as a new document of that language.</summary>
+    /// <summary>Imports a file as a new document, using whichever language in this window can read it.</summary>
     /// <remarks>
     /// Import is not open: the model that comes out is not linked to the file it came from, so it opens as an untitled
     /// document that is already clean - nothing has been edited - and saving writes a <c>.mps</c> document or the
@@ -1763,7 +1767,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import a JSON or XML file",
+            Title = "Import a file",
             AllowMultiple = false,
             FileTypeFilter = [TextFileType()],
         });
@@ -1786,11 +1790,18 @@ public sealed partial class MainWindow : Window, IDisposable
 
     /// <summary>Imports the file at <paramref name="path"/>, reporting the importer's place when it refuses.</summary>
     /// <remarks>
+    /// <para>
     /// A refusal points at a line and a column of the file the user picked, not at a node: there is no model to point
     /// at yet. That is why the message is built from the diagnostic rather than from the model, and why a refused file
     /// leaves no tab behind at all.
+    /// </para>
+    /// <para>
+    /// Internal rather than private because the screenshot harness drives it, the same way it drives
+    /// <see cref="OpenLanguage"/>: a file picker cannot be clicked from a harness, and the alternative would be a
+    /// picture of an imported document arranged by hand rather than reached through the command.
+    /// </para>
     /// </remarks>
-    private void ImportPath(string path)
+    internal void ImportPath(string path)
     {
         _error = null;
 
@@ -1813,9 +1824,19 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        if (_language.TryImport(Path.GetFileNameWithoutExtension(path), text, out var reason) is { } imported)
+        {
+            OpenImported(imported);
+
+            return;
+        }
+
         if (ReferenceLanguages.Detect(path, text) is not { } language)
         {
-            _error = $"{Path.GetFileName(path)} is neither JSON nor XML, so there is no importer for it.";
+            _error = reason is not null
+                ? $"No language in this window could read {Path.GetFileName(path)}: {reason}."
+                : $"{Path.GetFileName(path)} is neither JSON nor XML, so there is no importer for it.";
+
             UpdateStatus();
 
             return;
@@ -1841,6 +1862,29 @@ public sealed partial class MainWindow : Window, IDisposable
             intentions: language.Intentions,
             generators: language.Generators,
             checks: language.Checks);
+    }
+
+    /// <summary>Opens <paramref name="imported"/> with the aspects of the language that read it.</summary>
+    /// <param name="imported">The document, and the opened project whose importer produced it.</param>
+    /// <remarks>
+    /// The aspects are that language's own - its types, constraints, scopes, intentions and generators - because an
+    /// imported document must behave exactly like one created from the menu. The notations are the shell's combined
+    /// registry for the reason a new document of an opened language uses it: a document may draw its own concepts and
+    /// the definitions it borrows.
+    /// </remarks>
+    private void OpenImported(ImportedDocument imported)
+    {
+        ArgumentNullException.ThrowIfNull(imported);
+
+        OpenDocument(
+            imported.Model,
+            _language.Notations,
+            typing: WorkbenchLanguage.Typing,
+            types: imported.Language.Types,
+            constraints: imported.Language.Constraints,
+            scopes: imported.Language.Scopes,
+            intentions: imported.Language.Intentions,
+            generators: imported.Language.Generators);
     }
 
     /// <summary>Opens the model at <paramref name="path"/>, reporting why it could not when it cannot.</summary>
@@ -1997,10 +2041,18 @@ public sealed partial class MainWindow : Window, IDisposable
         Patterns = [$"*{DocumentFile.Extension}"],
     };
 
-    /// <summary>The filter for the reference formats, one pattern per extension the app can import.</summary>
-    private static FilePickerFileType TextFileType() => new("JSON, XML, TOML, HOCON or YAML")
+    /// <summary>The filter for importing: the built-in formats, and then every file.</summary>
+    /// <remarks>
+    /// All files are offered beside the built-in formats, because a declared importer names no extension: the file a
+    /// language can read is decided by its rules, not by three letters a dialog would have to know in advance.
+    /// </remarks>
+    private static FilePickerFileType TextFileType() => new("JSON, XML, TOML, HOCON, YAML or a file a language reads")
     {
-        Patterns = [.. ReferenceLanguages.All.SelectMany(language => language.Extensions.Select(extension => $"*{extension}"))],
+        Patterns =
+        [
+            .. ReferenceLanguages.All.SelectMany(language => language.Extensions.Select(extension => $"*{extension}")),
+            "*",
+        ],
     };
 
     private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();

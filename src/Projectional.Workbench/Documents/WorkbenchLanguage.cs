@@ -166,6 +166,71 @@ internal sealed class WorkbenchLanguage
     /// <summary>The languages opened from a folder, in the order they joined.</summary>
     internal IReadOnlyList<LanguageProject> Opened => _opened;
 
+    /// <summary>Reads <paramref name="text"/> with the importers of the opened languages, in the order they joined.</summary>
+    /// <param name="name">The document name to give the model the text becomes.</param>
+    /// <param name="text">The file's text, as the shell read it.</param>
+    /// <param name="reason">Why nothing read it, or <see langword="null"/> when a language read it or none was asked.</param>
+    /// <returns>The document and the language that read it, or <see langword="null"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Every importer is tried, each into a model of its own, and the first that reads the text keeps it: a failed
+    /// import leaves its model untouched, so nothing is shared between attempts and the order of the list is the
+    /// order of the answer. A declared importer comes before the one a generator derives, because
+    /// <see cref="LanguageProject.Importers"/> builds the list that way - a language that wrote a rule for a
+    /// spelling meant that rule.
+    /// </para>
+    /// <para>
+    /// <see cref="ITextImporter.CanImport"/> narrows nothing here. It is a hint for a file dialog (a cheap shape
+    /// check), and using it as a gate would refuse a file the rules can read: an importer whose root rule begins with
+    /// an anchor answers "no" for a document that starts with a comment it declares as skipped, which is exactly a
+    /// document the importer reads. The hint therefore decides only *which* refusal is worth repeating - the first
+    /// importer that claimed the text, or the first one tried when none did.
+    /// </para>
+    /// </remarks>
+    internal ImportedDocument? TryImport(string name, string text, out string? reason)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        (string Format, string Language, ImportDiagnostic Refusal)? claimed = null;
+        (string Format, string Language, ImportDiagnostic Refusal)? attempted = null;
+
+        foreach (var language in _opened)
+        {
+            foreach (var importer in language.Importers)
+            {
+                var model = language.NewProject().NewModel(name);
+                var result = importer.Import(model, text);
+
+                if (result.Succeeded)
+                {
+                    reason = null;
+
+                    return new ImportedDocument(model, language);
+                }
+
+                if (result.Diagnostics.Count == 0)
+                {
+                    continue;
+                }
+
+                var refusal = (importer.Format, language.Name, result.Diagnostics[0]);
+
+                attempted ??= refusal;
+
+                if (claimed is null && importer.CanImport(text))
+                {
+                    claimed = refusal;
+                }
+            }
+        }
+
+        reason = (claimed ?? attempted) is { } stop
+            ? $"'{stop.Format}' of '{stop.Language}' stopped at {stop.Refusal.Line}:{stop.Refusal.Column} - {stop.Refusal.Message}"
+            : null;
+
+        return null;
+    }
+
     /// <summary>The opened language project <paramref name="model"/> is written in, or <see langword="null"/>.</summary>
     /// <param name="model">The model, whose first root decides which language it belongs to.</param>
     /// <remarks>

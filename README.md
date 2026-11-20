@@ -298,6 +298,10 @@ It needs no second grammar. A generator already says how the language is printed
 
 Writing it as a model is what makes it declarable rather than merely configurable: the rule names a property, the slot decides which concept may stand there, and every ambiguity—two anchors that begin alike, a repeat whose separator its own entry begins with—is refused when the importer is built rather than discovered halfway through a file. `samples/declared-pipeline` uses it to read an ini-shaped variant no generator would write, and its own `tests/` folder asserts that reading it yields the model the generator prints.
 
+**File ▸ Import…** is that rule, run from the app: the file is offered to the languages opened in the window first and to the five built-in formats after, and the first importer that reads it opens a document with that language's own types, constraints, scopes, intentions and generators. The order matters, and finding out why cost a picture: a TOML shape check happily claims `pipeline = Release` and then refuses it, so asking the built-ins first made the declared rule unreachable for the very file this sample ships.
+
+![A file read into a document of its language: the ini-shaped pipeline open in the editor, with the two hints its own constraint reports](docs/images/feature-import-file.png)
+
 ### Feature Gallery
 
 One screenshot per feature, each rendered from the shipping code rather than drawn by hand—so a picture cannot show a state the editor no longer reaches. `tools/Projectional.Screenshots` drives a real session into each state with the public API a host uses and writes the PNGs into `docs/images`: the editor features are rendered from the control, and a feature that lives in the shell is rendered from a real `MainWindow`. Both kinds are produced by the same command:

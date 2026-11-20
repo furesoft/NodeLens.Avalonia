@@ -41,6 +41,7 @@
       the sample a user opens, not a fixture: the picture is therefore of the real documents.
     -->
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\declared-pipeline\**\*.ini" Link="declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
