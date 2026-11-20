@@ -21,6 +21,16 @@ public static class SqlSchemaTextGenerators
     /// <summary>The name of the DDL generator.</summary>
     public const string DdlName = "DDL";
 
+    /// <summary>A table's keys, each on a line of its own, indented under the table.</summary>
+    /// <remarks>
+    /// A template of its own because it is emitted behind a <see cref="WhenFilledPart"/>: the line break in front of
+    /// it belongs to the block, so a table that declares no key ends at its closing bracket and does not leave the
+    /// indentation of a line that is not there.
+    /// </remarks>
+    private static readonly TextTemplate KeysBlock = TextTemplate.Of(new IndentPart(TextTemplate.Of(
+        LineBreakPart.Instance,
+        new ChildrenPart(SqlSchemaLanguage.KeysSlot, TextTemplate.Of(LineBreakPart.Instance)))));
+
     /// <summary>Every table of a schema as <c>create table</c>, followed by its keys.</summary>
     public static TextGenerator Ddl { get; } = new(DdlName, TemplateRegistry.Empty
         .Add(SqlConceptKeys.Schema, TextTemplate.Of(
@@ -38,9 +48,10 @@ public static class SqlSchemaTextGenerators
 
             // The keys follow the table that declares them. Every table's own creates come first, which is what a
             // key needs; the order *between* tables stays the document's, which a single template walk cannot change.
-            new IndentPart(TextTemplate.Of(
-                LineBreakPart.Instance,
-                new ChildrenPart(SqlSchemaLanguage.KeysSlot, TextTemplate.Of(LineBreakPart.Instance))))))
+            // A table without keys emits nothing here, so the line break that separates them is written only when
+            // there is something behind it - a trailing indent on a keyless table would be the template's mistake,
+            // not a fact about the schema.
+            new WhenFilledPart(SqlSchemaLanguage.KeysSlot, KeysBlock)))
 
         .Add(SqlConceptKeys.Column, TextTemplate.Of(
             new PropertyPart("name"),
