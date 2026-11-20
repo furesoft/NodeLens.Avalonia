@@ -58,6 +58,18 @@ public static class TypeRuleLanguage
     /// <summary>The value a case matches.</summary>
     public const string ValueSlot = "value";
 
+    /// <summary>The relations a rule body states.</summary>
+    public const string EquationsSlot = "equations";
+
+    /// <summary>Which relation an equation states.</summary>
+    public const string RelationSlot = "relation";
+
+    /// <summary>The left side of an equation.</summary>
+    public const string LeftSlot = "left";
+
+    /// <summary>The right side of an equation.</summary>
+    public const string RightSlot = "right";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// A rule is a document of its own, and so is a named type: the root <em>is</em> the definition, the shape MPS
@@ -165,6 +177,31 @@ public static class TypeRuleLanguage
             [TypeRuleConceptKeys.TypeExpr],
             nameSlot: NameSlot,
             description: "A type expression that names a declared type."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.TypeVariable,
+            [new PropertySlot(NameSlot, PropertyType.String)],
+            [TypeRuleConceptKeys.TypeExpr],
+            nameSlot: NameSlot,
+            description: "A type expression the solver gives a type to: two variables of one name are one variable.",
+            nameRule: NameRule.Camel),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Equations,
+            [new ChildSlot(EquationsSlot, TypeRuleConceptKeys.Equation, Cardinality.Many)],
+            [TypeRuleConceptKeys.Body],
+            description: "A body that states relations instead of answering a type."),
+
+        new ConceptDeclaration(
+            TypeRuleConceptKeys.Equation,
+            [
+                // The symbols are the spellings TypeEquation.ToString() prints, so a relation in the source and
+                // the sentence a failed solve quotes are the same text.
+                new PropertySlot(RelationSlot, PropertyType.Enum("==", "<:", ":>")),
+                new ChildSlot(LeftSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+                new ChildSlot(RightSlot, TypeRuleConceptKeys.TypeExpr, Cardinality.One),
+            ],
+            description: "One relation between two type expressions: equal, subtype or supertype."),
 
         new ConceptDeclaration(
             TypeRuleConceptKeys.Named,

@@ -172,7 +172,7 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1, T2 and T3, which are delivered. This section is the design of record for the next
+**Planned, not built** - except T1, T2, T3 and T4, which are delivered. This section is the design of record for the next
 stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
 MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
@@ -183,8 +183,9 @@ answers one: `expected.Accepts(actual)`. That is enough for a DSL whose types ar
 enough for the cookbook's central case: tying the type of one node to the type of another (`infer typeof(a) :<=:
 typeof(b)`), which needs variables over types and a solver. `TypeVariable`, `TypeEquation` and `TypeSolver` now
 exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses to state relations instead of
-answering a type - but `TypeFor` is still what every consumer asks, so a rule table that needs solving has the
-machinery and no caller yet. That caller is T3 and T4.
+answering a type. `TypeRegistry.EquationsFor` is the caller that door was missing (slice T4): it hands a node's
+declared relations to a `TypeSolver`, so a rule table that needs solving is solved without teaching every consumer
+to ask a second question - `TypeFor` stays what everything asks. The remaining slices are T5-T8.
 
 The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
 `do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
@@ -259,7 +260,18 @@ Each slice is independent and each is only worth starting when a language needs 
   as lenient about `unknown` as its sides are - the strictness a meet adds is over its *sides*.
 - **T4 - the declared forms of T1-T3.** `TypeRule.Equation`, `TypeRule.TypeVariable`, `TypeRule.Join`, and the
   subtyping declaration, with the load-time validations the aspect already has (unique variable names, a relation
-  whose sides have the right kinds, a variable used but never constrained).
+  whose sides have the right kinds, a variable used but never constrained). **Delivered for the equations**: a
+  `TypeRule.Equations` body states `TypeRule.Equation` children, each a `relation` (`==`, `<:`, `:>`) between two
+  type expressions, and `TypeRule.TypeVariable` is a type expression the solver gives a type to. Three facts the
+  shape forced. The relation's symbols are the ones `TypeEquation.ToString()` prints, so a rule and the sentence a
+  failed solve quotes read the same text - the same invariant the type expressions already keep. A variable is an
+  *identity*, not a name: two nodes writing `?element` in one rule lower to one `TypeVariable`, because relations
+  between unrelated unknowns say nothing; the table lives for one rule's lowering. And the load-time refusals are
+  where the value is written: the relation is an enumeration, so the model refuses a spelling the lowering never
+  sees, while the lowering refuses an equations body that states nothing, an equation whose two sides are the same
+  variable (true of every type and deciding none), and a variable written outside a body that states equations
+  (nothing would constrain it). Deferred: `TypeRule.Join`/`Meet` as type expressions, and the subtyping
+  declaration, which needs a project-level property the language layer does not have.
 - **T5 - comparison rules.** `TypeRule.Comparable`, and `IType.IsComparableTo` beside `Accepts` - a third question,
   because "interchangeable" is what MPS' weak comparison means and neither accept nor subtype says it.
 - **T6 - the settle pass.** An explicit order so a rule may read a child's settled type (`when concrete`), with a

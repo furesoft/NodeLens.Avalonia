@@ -154,4 +154,48 @@ public sealed class TypeRuleNotationTests
         // The name is what the finding quotes, which is the word the author wrote.
         Assert.Equal("Amount", TypeRuleLowering.CreateRegistry([amount, rule]).TypeOf(amount).Name);
     }
+
+    [Fact]
+    public void AnEquationsBodyDrawsItsRelationsTheWayTheEquationReads()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var equations = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Equations);
+
+        var equal = model.NewChild(equations, TypeRuleLanguage.EquationsSlot, TypeRuleConceptKeys.Equation);
+        equal.Set(TypeRuleLanguage.RelationSlot, "==");
+        model.NewChild(equal, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.TypeVariable)
+            .Set(TypeRuleLanguage.NameSlot, "element");
+        model.NewChild(equal, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "int");
+
+        var subtype = model.NewChild(equations, TypeRuleLanguage.EquationsSlot, TypeRuleConceptKeys.Equation);
+        subtype.Set(TypeRuleLanguage.RelationSlot, "<:");
+        model.NewChild(subtype, TypeRuleLanguage.LeftSlot, TypeRuleConceptKeys.TypeVariable)
+            .Set(TypeRuleLanguage.NameSlot, "element");
+        model.NewChild(subtype, TypeRuleLanguage.RightSlot, TypeRuleConceptKeys.Primitive)
+            .Set(TypeRuleLanguage.NameSlot, "string");
+
+        var drawn = LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60);
+
+        // A relation is written with the symbol TypeEquation.ToString() prints, so the rule and the sentence a
+        // failed solve quotes are the same text.
+        Assert.Contains("?element == int", drawn, StringComparison.Ordinal);
+        Assert.Contains("?element <: string", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEquationsBodyWithNoRelationsDrawsTheEmptyPlaceholder()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+        model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Equations);
+
+        Assert.Contains("<< ... >>", LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60), StringComparison.Ordinal);
+    }
 }

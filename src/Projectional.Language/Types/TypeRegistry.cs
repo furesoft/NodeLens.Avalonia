@@ -63,6 +63,26 @@ public sealed class TypeRegistry
             : UnknownType.Instance;
     }
 
+    /// <summary>
+    /// The relations the rule for <paramref name="node"/> states, which a <see cref="TypeSolver"/> satisfies.
+    /// </summary>
+    /// <remarks>
+    /// A rule answers two separate questions - what type this node is, and what must hold for the types around
+    /// it - and this is the second one. It is a method on the registry rather than on the node because the
+    /// equations only exist while a rule is being evaluated against a node, and the registry is what owns both.
+    /// </remarks>
+    /// <param name="node">The node whose rule states the relations.</param>
+    /// <returns>The relations, in the order the rule states them; empty when no rule answers for the node.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    public IEnumerable<TypeEquation> EquationsFor(Node node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        return RuleFor(node.Concept) is { } rule
+            ? rule.EquationsFor(new TypeContext(node, this))
+            : [];
+    }
+
     private ITypeRule? Find(Concept concept, HashSet<string> seen)
     {
         if (!seen.Add(concept.Key))

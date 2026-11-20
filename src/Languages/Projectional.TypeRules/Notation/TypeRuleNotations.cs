@@ -114,5 +114,21 @@ public static class TypeRuleNotations
             ed.Keyword("="),
             ed.Space,
             ed.ChildInline(TypeRuleLanguage.TypeSlot)));
+
+        // A variable draws as the `?` spelling IType.Name prints for it, so an equation in the source and the
+        // sentence a failed solve quotes read the same.
+        notations.Add(TypeRuleConceptKeys.TypeVariable, ed => ed.Line(
+            ed.Keyword("?"),
+            ed.Property(TypeRuleLanguage.NameSlot)));
+
+        notations.Add(TypeRuleConceptKeys.Equations, ed => ed.Sequence(
+            ed.Children(TypeRuleLanguage.EquationsSlot, NoEntries)));
+
+        notations.Add(TypeRuleConceptKeys.Equation, ed => ed.Line(
+            ed.ChildInline(TypeRuleLanguage.LeftSlot),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.RelationSlot),
+            ed.Space,
+            ed.ChildInline(TypeRuleLanguage.RightSlot)));
     }
 }
