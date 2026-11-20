@@ -154,6 +154,12 @@
   structural overrides it so its comparison is structural too (list elements, record fields, a name's expansion, a
   join's either side, a meet's both). `SubtypeRelation.IsComparableTo` is the authority for a language's edges;
   `IType.IsComparableTo`'s default asks `SubtypeRelation.Primitives`, so a bare type compares only with itself.
+- **A type read cannot cycle, so there is no settle pass.** A rule is a pure function of the node and reads its
+  children, so a type read descends a tree and terminates; the solver's fixpoint is where ordering lives. A cycle
+  can only come from a name declared in terms of itself, refused at load with the chain printed. A child body may
+  name only a child slot: `TypeRuleLowering.CreateRegistry` asks the concept registry when it is handed one and
+  refuses a child body naming a reference slot or an undeclared slot - without that check the type read throws
+  where the node has no such child slot.
   The declared `TypeRule.Comparable` is deferred: nothing in the tree consumes a comparison a language
   states as data yet.
 - **A type rule may report instead of typing.** `TypeRule.Complain` is a body carrying a `message`

@@ -185,8 +185,9 @@ typeof(b)`), which needs variables over types and a solver. `TypeVariable`, `Typ
 exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses to state relations instead of
 answering a type. `TypeRegistry.EquationsFor` is the caller that door was missing (slice T4): it hands a node's
 declared relations to a `TypeSolver`, so a rule table that needs solving is solved without teaching every consumer
-to ask a second question - `TypeFor` stays what everything asks. The remaining slices are T6 and T8, with T5's
-third question and T7's unconditional form delivered and their declared halves still open.
+to ask a second question - `TypeFor` stays what everything asks. The remaining slice is T8, with T5's third
+question and T7's unconditional form delivered and their declared halves still open, and T6 answered rather than
+built.
 
 The plan keeps the property that makes the current layer cheap to reason about: **no statement list**. MPS'
 `do { … }` block is imperative and its power comes from mutation plus anti-quotation, which is exactly the
@@ -203,7 +204,7 @@ typed in.
 | inference rule, inequality (`infer typeof(a) :<=: <T>`) | the type must be a *subtype* | only `IType.Accepts` (conformance, not subtyping) | a subtype relation as data, `TypeRule.Equation` with `subtype`/`supertype` |
 | `var elementType` + anti-quotation | a variable shared between two statements | nothing - a rule cannot name a second node's type | `TypeRule.TypeVariable`, shared by equations; anti-quotation is unnecessary because a variable is declared once and referenced by name |
 | `join(A, B)` (least upper bound) | the common supertype of two types | `JoinType`/`MeetType` as types, and **`TypeRule.Join`/`TypeRule.Meet`** as their declared spellings; `TypeLattice.Join` reduces either to one type | - |
-| `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer | a solver pass order (`Settle`), so a rule may read a child's *settled* type and a cyclic read is a finding |
+| `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer, and a type read descends a tree so it cannot cycle | - closed: the solver's fixpoint is the ordering, and a self-referential name is refused at load |
 | `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | **`TypeRule.Complain`** as a body - a `message` and a `severity` lowered into an `IConstraint` the language's own set carries, so the existing findings path reports it; it states a type for nothing | a *conditional* complaint: the message as a sentence about the concept is unconditional, and "operation is not applicable to these operands" needs a condition vocabulary the body does not have |
 | replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
 | subtyping rule | the direct supertypes of a type | nothing - `NamedType` has an expansion, not supertypes | `TypeRule.Supertypes` declared per type concept, feeding the subtype relation |
@@ -286,7 +287,15 @@ Each slice is independent and each is only worth starting when a language needs 
   states as data needs a relation built at load time and nothing in the tree consumes one yet.
 - **T6 - the settle pass.** An explicit order so a rule may read a child's settled type (`when concrete`), with a
   cycle reported as a finding instead of a stack overflow. Deliberately after T2: an equation solver makes most
-  `when concrete` blocks unnecessary, and the cookbook uses them to work around statement ordering.
+  `when concrete` blocks unnecessary, and the cookbook uses them to work around statement ordering. **Answered,
+  not built**: there is nothing to order. A rule is a pure function of the node and reads its children, so a type
+  read descends a tree and terminates - the solver is where the ordering lives, and it already runs to a fixpoint.
+  A cycle can only arise from a name declared in terms of itself, and the lowering refuses that at load with the
+  chain printed; a type read cannot follow a reference, because a child body may only name a child slot, and the
+  lowering now asks the concept registry and refuses a child body naming anything else. So the two failures T6
+  was to prevent - a deferred read and a cyclic read - are precluded by construction rather than reported, and
+  `TypeRule.Settle` is not planned. The registry check is what closed the last hole: without it a child body
+  naming a reference slot crashed the type read instead of failing at load.
 - **T7 - a type rule that reports.** `TypeRule.Complain`, lowered into `Diagnostic` with a severity, so a
   "operation is not applicable to these operands" message reaches the squiggles and the problems panel through the
   path that already exists. A complaint names its node, so no new diagnostic kind. **Delivered for the

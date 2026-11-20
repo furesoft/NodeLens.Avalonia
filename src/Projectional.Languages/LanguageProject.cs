@@ -201,7 +201,7 @@ public sealed class LanguageProject
             var concepts = ConceptRegistry.Create(declarations);
             var scopes = LowerScopeProviders(directory, concepts);
             var intentions = LowerIntentions(directory, concepts);
-            var types = LowerTypes(directory);
+            var types = LowerTypes(directory, concepts);
 
             error = null;
 
@@ -300,12 +300,12 @@ public sealed class LanguageProject
     /// type per concept, and a complaint per concept that reports instead of typing. Reading twice would parse
     /// the same models twice for no gain.
     /// </remarks>
-    private static TypeAspect LowerTypes(string directory)
+    private static TypeAspect LowerTypes(string directory, ConceptRegistry concepts)
     {
         var documents = Read(directory, TypesFolder, new Project(TypeRuleLanguage.Concepts));
 
         return new TypeAspect(
-            TypeRuleLowering.CreateRegistry(documents),
+            TypeRuleLowering.CreateRegistry(documents, concepts),
             TypeRuleLowering.CreateComplaints(documents));
     }
 

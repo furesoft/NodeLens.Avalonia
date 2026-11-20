@@ -3,6 +3,7 @@ using Projectional.Language;
 using Projectional.Expressions;
 using Projectional.Samples;
 using Projectional.Samples.Checks;
+using Projectional.Samples.StateMachine;
 using Projectional.Semantics;
 using Projectional.TypeRules;
 using Xunit;
@@ -539,6 +540,48 @@ public sealed class TypeRuleLoweringTests
             () => TypeRuleLowering.CreateComplaints(model.Roots));
 
         Assert.Contains("'message'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ANamedTypeDeclaredInTermsOfItselfIsALoadTimeError()
+    {
+        // The only cycle a type read can express: a name whose expansion is itself. The lowering refuses it and
+        // prints the chain, so a type read never walks a loop.
+        var exception = Assert.Throws<ConceptDefinitionException>(() => Lower(rules =>
+        {
+            rules.Declare("Amount", rules.Ref("Amount"));
+            rules.Rule("Expressions.IntLiteral", rules.FixedAs(rules.Ref("Amount")));
+        }));
+
+        Assert.Contains("declared in terms of itself", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AChildRuleNamingAReferenceSlotIsRefusedAtLoad()
+    {
+        // A type read follows children only, so a child body naming a reference is not a slow answer: the read
+        // asks the node for a child slot that is not there and throws. The registry is asked at load, where it
+        // can be a message. `Sm.Transition` has a `source` reference and a `guard` child, so it proves both.
+        var builder = new RuleBuilder();
+
+        builder.Rule(SmConceptKeys.Transition, builder.Child("source"));
+
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => TypeRuleLowering.CreateRegistry(builder.Roots, StateMachineLanguage.Concepts));
+
+        Assert.Contains("'source'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AChildRuleNamingAChildSlotIsAcceptedAtLoad()
+    {
+        var builder = new RuleBuilder();
+
+        builder.Rule(SmConceptKeys.Transition, builder.Child("guard"));
+
+        var registry = TypeRuleLowering.CreateRegistry(builder.Roots, StateMachineLanguage.Concepts);
+
+        Assert.Equal(1, registry.Count);
     }
 
     private static ConstraintSet Complaints(Action<RuleBuilder> declare)
