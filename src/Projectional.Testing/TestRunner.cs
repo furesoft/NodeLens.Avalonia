@@ -1,6 +1,8 @@
 using Projectional.Core;
 using Projectional.Languages;
 using Projectional.Persistence;
+using Projectional.Projection;
+using Projectional.Semantics;
 
 namespace Projectional.Testing;
 
@@ -89,6 +91,8 @@ public static class TestRunner
         return test.Assertion switch
         {
             TestingConceptKeys.RoundTrips => RoundTrips(language, test, model),
+            TestingConceptKeys.Draws => Draws(language, test, model),
+            TestingConceptKeys.Findings => Findings(language, test, model),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an assertion this framework runs."),
         };
@@ -109,5 +113,44 @@ public static class TestRunner
         return written == rewritten
             ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
             : TestResult.Failed(test.Test, test.Document, test.AssertionName, written, rewritten);
+    }
+
+    /// <summary>Whether the document draws as the text the test spells out.</summary>
+    /// <remarks>
+    /// Exact text is honest and brittle: a change of measure or width rewrites every expectation. That is why the
+    /// row carries both texts - the report shows the diff rather than "not equal", so a width change reads as the
+    /// lines it moved.
+    /// </remarks>
+    private static TestResult Draws(LanguageProject language, LanguageTest test, Model model)
+    {
+        var expected = string.Join('\n', test.Lines ?? []);
+        var actual = LayoutSnapshot.Render(model, language.Notations, test.Width);
+
+        return expected == actual
+            ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
+            : TestResult.Failed(test.Test, test.Document, test.AssertionName, expected, actual);
+    }
+
+    /// <summary>Whether the document reports exactly the findings the test lists, in order.</summary>
+    /// <remarks>
+    /// The findings are the language's own declared constraints, run through the engine a session runs. A host's
+    /// check catalogue is not part of a language project, so a test that pins those is the host's to write; the
+    /// language's own rules are what a language author can state and this assertion can reach.
+    /// </remarks>
+    private static TestResult Findings(LanguageProject language, LanguageTest test, Model model)
+    {
+        var expected = string.Join('\n', (test.Findings ?? []).Select(finding => finding.ToLine()));
+        var actual = string.Join(
+            '\n',
+            new ConstraintEngine(language.Constraints)
+                .Check(model)
+                .Select(finding => new ExpectedFinding(
+                    finding.Code ?? string.Empty,
+                    finding.Severity.ToString().ToLowerInvariant(),
+                    finding.Role ?? string.Empty).ToLine()));
+
+        return expected == actual
+            ? TestResult.Passed(test.Test, test.Document, test.AssertionName)
+            : TestResult.Failed(test.Test, test.Document, test.AssertionName, expected, actual);
     }
 }

@@ -8,6 +8,12 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Projectional.Core.Tests" />
     <InternalsVisibleTo Include="Projectional.Toolkit" />
+    <!--
+      The test runner draws a document headlessly to pin its notation, which is what LayoutSnapshot is for.
+      Widening Projection's public surface (ADR 0010) so that a test runner could reach it would be the worse
+      trade: the renderer stays internal, and the friend is the behaviour package that runs a language's tests.
+    -->
+    <InternalsVisibleTo Include="Projectional.Testing" />
   </ItemGroup>
 
 </Project>

@@ -1,8 +1,11 @@
 using Projectional.Core;
 using Projectional.Languages;
+using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Testing;
 using Xunit;
+
+using TestResult = Projectional.Testing.TestResult;
 
 namespace Projectional.Core.Tests;
 
@@ -78,7 +81,7 @@ public sealed class LanguageTestsAsDataTests
             var report = TestRunner.Run(LanguageProject.Open(folder, out var error)!);
 
             Assert.Null(error);
-            Assert.Equal(2, report.Ran);
+            Assert.Equal(4, report.Ran);
             Assert.Equal(1, report.Failed);
 
             var failed = report.Results.Single(result => !result.Succeeded);
@@ -102,7 +105,10 @@ public sealed class LanguageTestsAsDataTests
         model.NewChild(test, TestingLanguage.AssertionSlot, TestingConceptKeys.RoundTrips);
 
         Assert.Equal(
-            "test pipeline.mps round trips",
+            """
+            test pipeline.mps
+              round trips
+            """,
             LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
     }
 
@@ -143,6 +149,124 @@ public sealed class LanguageTestsAsDataTests
 
         Assert.Contains("not a test", refused.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void ADrawingThatDiffersIsAFailedRowWithBothTexts()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            SaveTest(folder, "wrong-drawing", "pipeline.mps", TestingConceptKeys.Draws, (model, draws) =>
+            {
+                draws.Set(TestingLanguage.WidthSlot, "60");
+                AddLine(model, draws, "not the table");
+            });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "wrong-drawing");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal("not the table", row.Expected);
+            Assert.Contains("pipeline Release", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AFindingsTestThatListsTheFindingPasses()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            PaddedDocument(folder);
+
+            SaveTest(folder, "padded-reports", "padded.mps", TestingConceptKeys.Findings, (model, findings) =>
+                AddFinding(model, findings, "pipeline.stage.command", "warning", "command"));
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "padded-reports");
+
+            Assert.True(row.Succeeded, $"expected:{Environment.NewLine}{row.Expected}{Environment.NewLine}actual:{Environment.NewLine}{row.Actual}");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AFindingsTestThatMissesTheFindingFails()
+    {
+        var folder = Copy(Open("Declared"));
+
+        try
+        {
+            PaddedDocument(folder);
+
+            SaveTest(folder, "padded-clean", "padded.mps", TestingConceptKeys.Findings, (_, _) => { });
+
+            var row = Row(TestRunner.Run(LanguageProject.Open(folder, out _)!), "padded-clean");
+
+            Assert.False(row.Succeeded);
+            Assert.Equal(string.Empty, row.Expected);
+            Assert.Contains("pipeline.stage.command", row.Actual, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    /// <summary>Writes a test document into the copied language's <c>tests</c> folder.</summary>
+    private static void SaveTest(
+        string folder,
+        string name,
+        string document,
+        string assertion,
+        Action<Model, Node> fill)
+    {
+        var model = TestingLanguage.NewModel();
+
+        model.Rename(name);
+
+        var test = model.Roots[0];
+
+        test.Set(TestingLanguage.DocumentSlot, document);
+
+        fill(model, model.NewChild(test, TestingLanguage.AssertionSlot, assertion));
+
+        ModelFile.Save(model, Path.Combine(folder, "tests", name + ".mps"));
+    }
+
+    private static void AddLine(Model model, Node draws, string text) =>
+        model.NewChild(draws, TestingLanguage.LinesSlot, TestingConceptKeys.Line).Set(TestingLanguage.TextSlot, text);
+
+    private static void AddFinding(Model model, Node findings, string code, string severity, string role)
+    {
+        var finding = model.NewChild(findings, TestingLanguage.ExpectedSlot, TestingConceptKeys.ExpectedFinding);
+
+        finding.Set(TestingLanguage.CodeSlot, code);
+        finding.Set(TestingLanguage.SeveritySlot, severity);
+        finding.Set(TestingLanguage.RoleSlot, role);
+    }
+
+    /// <summary>Adds a document whose first stage's command is padded, which the sample's own rule warns about.</summary>
+    private static void PaddedDocument(string folder)
+    {
+        var language = LanguageProject.Open(folder, out _)!;
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(folder, "pipeline.mps"));
+
+        model.Rename("padded");
+        model.Roots[0].GetChildren("stages")[0].Set("command", " build ");
+
+        ModelFile.Save(model, Path.Combine(folder, "padded.mps"));
+    }
+
+    private static TestResult Row(TestReport report, string name) =>
+        report.Results.Single(result => result.Test == name);
 
     private static string Copy(LanguageProject language)
     {

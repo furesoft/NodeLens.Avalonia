@@ -28,6 +28,27 @@ public static class TestingLanguage
     /// <summary>The single child that says what the test asserts.</summary>
     public const string AssertionSlot = "assertion";
 
+    /// <summary>How many columns a drawing assertion renders into.</summary>
+    public const string WidthSlot = "width";
+
+    /// <summary>The lines a drawing assertion expects, one node per line.</summary>
+    public const string LinesSlot = "lines";
+
+    /// <summary>The text of one expected line.</summary>
+    public const string TextSlot = "text";
+
+    /// <summary>The findings a findings assertion expects, one node per finding.</summary>
+    public const string ExpectedSlot = "expected";
+
+    /// <summary>The identifier a finding reports under.</summary>
+    public const string CodeSlot = "code";
+
+    /// <summary>How much a finding matters.</summary>
+    public const string SeveritySlot = "severity";
+
+    /// <summary>The slot of the node a finding points at, or empty for the node's own text.</summary>
+    public const string RoleSlot = "role";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// The document is also the name slot, so a test reads as the document it is about in a tree, a reference and
@@ -59,6 +80,58 @@ public static class TestingLanguage
             [],
             [TestingConceptKeys.Assertion],
             description: "The document is written and read back to the same text."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Draws,
+            [
+                new PropertySlot(
+                    WidthSlot,
+                    PropertyType.Integer,
+                    "80",
+                    description: "How many columns the drawing has."),
+                new ChildSlot(LinesSlot, TestingConceptKeys.Line, Cardinality.Many),
+            ],
+            [TestingConceptKeys.Assertion],
+            description: "The document draws as the text the test spells out, one line per entry."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Line,
+            [
+                new PropertySlot(
+                    TextSlot,
+                    PropertyType.String,
+                    description: "One line of the drawing, with the indentation the renderer gives it."),
+            ],
+            nameSlot: TextSlot,
+            description: "One line of a drawn expectation."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Findings,
+            [
+                new ChildSlot(ExpectedSlot, TestingConceptKeys.ExpectedFinding, Cardinality.Many),
+            ],
+            [TestingConceptKeys.Assertion],
+            description: "The document reports exactly the findings the test lists, in order."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.ExpectedFinding,
+            [
+                new PropertySlot(
+                    CodeSlot,
+                    PropertyType.String,
+                    description: "The identifier the check reports under, such as pipeline.stage.command."),
+                new PropertySlot(
+                    SeveritySlot,
+                    PropertyType.Enum("error", "warning", "hint"),
+                    "error",
+                    description: "How much it matters: error, warning or hint."),
+                new PropertySlot(
+                    RoleSlot,
+                    PropertyType.String,
+                    description: "The slot the finding points at, or empty for the node's own text."),
+            ],
+            nameSlot: CodeSlot,
+            description: "One finding a test expects the document to report."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

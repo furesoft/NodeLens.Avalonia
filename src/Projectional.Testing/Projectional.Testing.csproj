@@ -5,6 +5,8 @@
     <ProjectReference Include="..\..\src\Projectional.Language\Projectional.Language.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
   </ItemGroup>
 
 </Project>

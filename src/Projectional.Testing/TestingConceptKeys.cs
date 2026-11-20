@@ -23,4 +23,16 @@ public static class TestingConceptKeys
 
     /// <summary>The document is written and read back to the same bytes.</summary>
     public const string RoundTrips = "Testing.RoundTrips";
+
+    /// <summary>The document draws as the text the test spells out, one line per entry.</summary>
+    public const string Draws = "Testing.Draws";
+
+    /// <summary>One line of a drawn expectation, exactly as the renderer writes it.</summary>
+    public const string Line = "Testing.Line";
+
+    /// <summary>The document reports exactly the findings the test lists.</summary>
+    public const string Findings = "Testing.Findings";
+
+    /// <summary>One expected finding: its code, its severity and the slot it points at.</summary>
+    public const string ExpectedFinding = "Testing.ExpectedFinding";
 }

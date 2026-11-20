@@ -5,12 +5,16 @@ namespace Projectional.Testing;
 
 /// <summary>How a declared test is drawn: the document it is about and the assertion it makes.</summary>
 /// <remarks>
-/// One line, because a test is one sentence. The assertion is a child and draws inline, so
-/// <c>test pipeline.mps round trips</c> reads as the claim it is rather than as a small document.
+/// A header line naming the document, then the assertion indented below it. The assertion is a block rather than
+/// an inline child, because a drawing or a list of findings is itself several lines - an inline child would have
+/// to flatten them into one line, which is not what the expectation means.
 /// </remarks>
 public static class TestingNotations
 {
     private const string NoAssertion = "<< what it asserts >>";
+    private const string NoLines = "<< what it draws >>";
+    private const string NoFindings = "<< what it reports >>";
+    private const string Anywhere = "<< anywhere >>";
 
     /// <summary>The notation registry of the test language.</summary>
     public static NotationRegistry Registry { get; } = Create(TestingLanguage.Concepts);
@@ -34,14 +38,39 @@ public static class TestingNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(TestingConceptKeys.Test, ed => ed.Line(
-            ed.Keyword("test", TextEmphasis.Bold),
-            ed.Space,
-            ed.Property(TestingLanguage.DocumentSlot),
-            ed.Space,
-            ed.ChildInline(TestingLanguage.AssertionSlot, NoAssertion)));
+        notations.Add(TestingConceptKeys.Test, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("test", TextEmphasis.Bold),
+                ed.Space,
+                ed.Property(TestingLanguage.DocumentSlot)),
+            ed.Indent(ed.Children(TestingLanguage.AssertionSlot, NoAssertion, stacked: true))));
 
         notations.Add(TestingConceptKeys.RoundTrips, ed => ed.Line(
             ed.Keyword("round trips")));
+
+        notations.Add(TestingConceptKeys.Draws, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("draws"),
+                ed.Space,
+                ed.Keyword("at"),
+                ed.Space,
+                ed.Property(TestingLanguage.WidthSlot),
+                ed.Space,
+                ed.Keyword("columns")),
+            ed.Indent(ed.Children(TestingLanguage.LinesSlot, NoLines, stacked: true))));
+
+        notations.Add(TestingConceptKeys.Line, ed => ed.Line(
+            ed.Property(TestingLanguage.TextSlot)));
+
+        notations.Add(TestingConceptKeys.Findings, ed => ed.Sequence(
+            ed.Line(ed.Keyword("reports")),
+            ed.Indent(ed.Children(TestingLanguage.ExpectedSlot, NoFindings, stacked: true))));
+
+        notations.Add(TestingConceptKeys.ExpectedFinding, ed => ed.Line(
+            ed.Property(TestingLanguage.CodeSlot),
+            ed.Space,
+            ed.Property(TestingLanguage.SeveritySlot),
+            ed.Space,
+            ed.Property(TestingLanguage.RoleSlot, emptyText: Anywhere)));
     }
 }
