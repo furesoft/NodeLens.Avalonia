@@ -87,6 +87,22 @@ Two presets, and no third:
   configurable.
 - **`ShellCapabilities.Standalone`** = everything, which is what the app ships with.
 
+### The first slice, delivered in `MainWindow`
+
+`ShellCapability` (a `[Flags]` set, `Projectional.Workbench/Shell/`) exists today, with
+`ShellCapabilities.Standalone` (every module) and `ShellCapabilities.Embedded` (create, edit, save,
+open, with the outline and the problems) beside the check both are read through. `MainWindow` takes
+the set as an internal constructor argument, composes the window from it - a module it does not grant
+is not built, so a shell without the project explorer gives the width back rather than leaving an
+empty strip - and the command handlers ask the same set before they act, which is the "hiding is
+presentation, refusing is the guarantee" rule of ADR 0015 applied without waiting for the registry.
+
+What is **not** there yet, and why: `ShellView`, `ShellWindow`, `IShellStorage`, `IShellDialogs` and
+the `CommandRegistry` are M6, and this slice deliberately does not invent them. Two consequences are
+worth naming rather than hiding. **Editing is not yet refused** by a capability - `EditModels` hides
+the Edit menu, but a host that passes a set without it still gets a control that types, because the
+editor control has no read-only state; that is the next seam to add. And the count of enforcement
+points is the handlers rather than one registry, so a new command has to remember to ask.
 ### Capabilities are narrowed by facts, never contradicted by them
 
 A capability states what the *user* may do. It is never the only statement of a fact, and it is

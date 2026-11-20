@@ -243,12 +243,12 @@
 
   <DockPanel>
     <Menu DockPanel.Dock="Top" Classes="mainMenu">
-      <MenuItem Header="_File">
+      <MenuItem x:Name="FileMenu" Header="_File">
         <!--
           The five "new ..." commands live one level down: they are how a language is declared, not how a
           session starts, and five flat entries were three quarters of the menu for something rare.
         -->
-        <MenuItem Header="_New">
+        <MenuItem x:Name="NewDocumentItem" Header="_New">
           <MenuItem Header="_Document" HotKey="Ctrl+N" InputGesture="Ctrl+N" Click="OnNewDocument" />
           <MenuItem Header="_Concept" Click="OnNewConcept" />
           <MenuItem Header="_Enumeration" Click="OnNewEnumeration" />
@@ -256,22 +256,22 @@
           <MenuItem Header="Document of an _opened language" Click="OnNewLanguageDocument" />
         </MenuItem>
         <Separator />
-        <MenuItem Header="_Open..." HotKey="Ctrl+O" InputGesture="Ctrl+O" Click="OnOpenDocument">
+        <MenuItem x:Name="OpenDocumentItem" Header="_Open..." HotKey="Ctrl+O" InputGesture="Ctrl+O" Click="OnOpenDocument">
           <MenuItem.Icon>
             <Path Classes="menuIcon" Data="{StaticResource IconFolder}" />
           </MenuItem.Icon>
         </MenuItem>
-        <MenuItem Header="Open _language..." Click="OnOpenLanguage" />
+        <MenuItem x:Name="OpenLanguageItem" Header="Open _language..." Click="OnOpenLanguage" />
         <MenuItem x:Name="ExportLanguageItem" Header="E_xport language to C#..." IsEnabled="False" />
-        <MenuItem Header="_Import..." Click="OnImportDocument" />
+        <MenuItem x:Name="ImportDocumentItem" Header="_Import..." Click="OnImportDocument" />
         <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />
         <Separator />
-        <MenuItem Header="_Save" HotKey="Ctrl+S" InputGesture="Ctrl+S" Click="OnSaveDocument">
+        <MenuItem x:Name="SaveDocumentItem" Header="_Save" HotKey="Ctrl+S" InputGesture="Ctrl+S" Click="OnSaveDocument">
           <MenuItem.Icon>
             <Path Classes="menuIcon" Data="{StaticResource IconSave}" />
           </MenuItem.Icon>
         </MenuItem>
-        <MenuItem Header="Save _as..." HotKey="Ctrl+Shift+S" InputGesture="Ctrl+Shift+S" Click="OnSaveDocumentAs" />
+        <MenuItem x:Name="SaveAsItem" Header="Save _as..." HotKey="Ctrl+Shift+S" InputGesture="Ctrl+Shift+S" Click="OnSaveDocumentAs" />
         <MenuItem x:Name="SaveGeneratedItem" Header="Save _generated text as..." IsEnabled="False" Click="OnSaveGenerated" />
         <Separator />
         <MenuItem x:Name="CloseDocumentItem" Header="_Close document" HotKey="Ctrl+W" InputGesture="Ctrl+W" Click="OnCloseDocument" />
@@ -279,7 +279,7 @@
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
 
-      <MenuItem Header="_Edit">
+      <MenuItem x:Name="EditMenu" Header="_Edit">
         <!--
           The gestures are printed rather than registered as HotKeys: the editor control answers Ctrl+Z,
           Ctrl+A/C/X/V itself while it has the focus, and a window-level binding would be a second owner of
@@ -306,8 +306,8 @@
             <Path Classes="menuIcon" Data="{StaticResource IconFind}" />
           </MenuItem.Icon>
         </MenuItem>
-        <MenuItem Header="_Replace..." InputGesture="Ctrl+H" Click="OnFindReplace" />
-        <MenuItem Header="Find _usages" InputGesture="Alt+F7" Click="OnFindUsages" />
+        <MenuItem x:Name="ReplaceItem" Header="_Replace..." InputGesture="Ctrl+H" Click="OnFindReplace" />
+        <MenuItem x:Name="FindUsagesItem" Header="Find _usages" InputGesture="Alt+F7" Click="OnFindUsages" />
         <Separator />
         <!--
           The project-wide rename lives here rather than in the intention list: an intention produces an edit action
@@ -321,7 +321,7 @@
         </MenuItem>
       </MenuItem>
 
-      <MenuItem Header="_Run">
+      <MenuItem x:Name="RunMenu" Header="_Run">
         <!--
           The gesture is displayed rather than registered: the shell's own tunnelling handler owns F5, so the
           run cannot be claimed by whichever control happens to have focus, and the menu must not claim it a
@@ -335,8 +335,8 @@
       </MenuItem>
 
       <MenuItem Header="_View">
-        <MenuItem Header="_Find..." InputGesture="Ctrl+F" Click="OnFindText" />
-        <MenuItem Header="Find _usages" InputGesture="Alt+F7" Click="OnFindUsages" />
+        <MenuItem x:Name="ViewFindItem" Header="_Find..." InputGesture="Ctrl+F" Click="OnFindText" />
+        <MenuItem x:Name="ViewFindUsagesItem" Header="Find _usages" InputGesture="Alt+F7" Click="OnFindUsages" />
         <Separator />
         <!--
           The panels can be closed from their own headers now, so the menu is the way back: an entry is checked
@@ -522,7 +522,7 @@
       The outline is a column with a splitter and a floor: a browser that is always 220 pixels wide is a
       column that shows fifteen rows of a document with three hundred, and no way to make it wider.
     -->
-    <Grid>
+    <Grid x:Name="SideArea">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="240" MinWidth="160" MaxWidth="560" />
         <ColumnDefinition Width="5" />
@@ -534,21 +534,43 @@
         Grid.Column="0"
         Classes="panelSurface"
         BorderThickness="0,0,1,0">
-        <DockPanel>
-          <Border DockPanel.Dock="Top" Classes="panelHeaderBar">
-            <TextBlock x:Name="OutlineHeader" Classes="panelHeader" Text="Outline" />
-          </Border>
-          <ListBox
-            x:Name="OutlineList"
-            Classes="panelList"
-            BorderThickness="0"
-            Background="Transparent"
-            a:AutomationProperties.Name="Outline"
-            SelectionChanged="OnOutlineChosen" />
-        </DockPanel>
+        <!--
+          Two answers to two different questions, as tabs rather than as a split column: the project is what is
+          open and what the opened languages are made of, the outline is what the document in front consists of.
+          A column with two headers in it would cost the page height for the sake of showing both at once.
+        -->
+        <TabControl x:Name="SideTabs" Classes="panelTabStrip" Padding="0">
+          <TabItem x:Name="ProjectTab">
+            <TabItem.Header>
+              <TextBlock x:Name="ProjectHeader" Classes="panelHeader" Text="Project" Margin="4,0" />
+            </TabItem.Header>
+            <ListBox
+              x:Name="ProjectList"
+              Classes="panelList"
+              BorderThickness="0"
+              Background="Transparent"
+              a:AutomationProperties.Name="Project"
+              DoubleTapped="OnProjectChosen"
+              KeyDown="OnProjectKeyDown" />
+          </TabItem>
+
+          <TabItem x:Name="OutlineTab">
+            <TabItem.Header>
+              <TextBlock x:Name="OutlineHeader" Classes="panelHeader" Text="Outline" Margin="4,0" />
+            </TabItem.Header>
+            <ListBox
+              x:Name="OutlineList"
+              Classes="panelList"
+              BorderThickness="0"
+              Background="Transparent"
+              a:AutomationProperties.Name="Outline"
+              SelectionChanged="OnOutlineChosen" />
+          </TabItem>
+        </TabControl>
       </Border>
 
       <GridSplitter
+        x:Name="SideSplitter"
         Grid.Column="1"
         ResizeDirection="Columns"
         ResizeBehavior="PreviousAndNext"
