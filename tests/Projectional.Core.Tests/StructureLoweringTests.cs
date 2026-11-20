@@ -40,6 +40,26 @@ public sealed class StructureLoweringTests
     }
 
     [Fact]
+    public void ADeclaredFloatPropertyHoldsAValue()
+    {
+        // The fifth built-in type, through the declared path: a language writes `float` in its definition and the
+        // slot it gets is the framework's floating-point property, with the canonical spelling in the model.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Rule", slots: [definition.Property("weight", "float")]);
+
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
+        var model = new Project(registry).NewModel();
+        var rule = model.NewNode("Rules.Rule");
+
+        rule.Set("weight", 1.5);
+
+        Assert.Equal(PropertyType.Float, registry.Get("Rules.Rule").FindProperty("weight")!.Type);
+        Assert.Equal(1.5, rule.GetFloat("weight"));
+        Assert.Equal("1.5", rule.GetOrNull("weight"));
+    }
+
+    [Fact]
     public void InheritanceAndCardinalityAreWhatTheDefinitionSaid()
     {
         var definition = new DefinitionBuilder();

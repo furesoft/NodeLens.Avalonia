@@ -193,7 +193,7 @@ public static class StructureLowering
         return new ChildSlot(name, Required(slot, "childConceptKey", $"slot '{name}'"), kind, minimum);
     }
 
-    /// <summary>The type a declared property names: one of the four built-ins, or a declared enumeration.</summary>
+    /// <summary>The type a declared property names: one of the five built-ins, or a declared enumeration.</summary>
     private static PropertyType TypeNamed(
         string typeName,
         string owner,
@@ -204,12 +204,13 @@ public static class StructureLowering
         {
             "string" => PropertyType.String,
             "int" => PropertyType.Integer,
+            "float" => PropertyType.Float,
             "bool" => PropertyType.Boolean,
             "date" => PropertyType.Date,
             _ => enums.TryGetValue(typeName, out var symbols)
                 ? PropertyType.Enum([.. symbols])
                 : throw new ConceptDefinitionException(
-                    $"Property '{slot}' of concept '{owner}' names the type '{typeName}', which is neither a built-in (string, int, bool, date) nor a declared enumeration."),
+                    $"Property '{slot}' of concept '{owner}' names the type '{typeName}', which is neither a built-in (string, int, float, bool, date) nor a declared enumeration."),
         };
     }
 

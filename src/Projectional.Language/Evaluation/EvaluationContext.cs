@@ -122,6 +122,7 @@ public sealed class EvaluationContext
         return parsed switch
         {
             int number => new IntValue(number),
+            double number => new FloatValue(number),
             bool flag => new BoolValue(flag),
             DateOnly date => new DateValue(date),
             string text => new StringValue(text),

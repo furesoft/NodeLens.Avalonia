@@ -161,7 +161,7 @@ public static class StructureLanguage
                 new PropertySlot(
                     "typeName",
                     PropertyType.String,
-                    description: "The type of the value: string, int, bool, date, or the key of a declared enumeration.",
+                    description: "The type of the value: string, int, float, bool, date, or the key of a declared enumeration.",
                     showDescriptionWhenFilled: true),
                 new PropertySlot(
                     "defaultValue",

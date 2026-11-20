@@ -51,6 +51,7 @@ internal static class TestLanguage
             [
                 new PropertySlot("text", PropertyType.String, description: "What the step does."),
                 new PropertySlot("index", PropertyType.Integer),
+                new PropertySlot("weight", PropertyType.Float),
                 new PropertySlot("due", PropertyType.Date),
                 new PropertySlot("status", PropertyType.Enum("draft", "approved")),
                 new ChildSlot("detail", Step, Cardinality.One),
