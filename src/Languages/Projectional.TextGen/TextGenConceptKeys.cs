@@ -44,6 +44,9 @@ public static class TextGenConceptKeys
     /// <summary>A property's value, emitted as stored.</summary>
     public const string Property = "TextGen.Property";
 
+    /// <summary>A property of the node that holds the node being expanded.</summary>
+    public const string Parent = "TextGen.Parent";
+
     /// <summary>A reference's target name, emitted as the projection would draw it.</summary>
     public const string Reference = "TextGen.Reference";
 

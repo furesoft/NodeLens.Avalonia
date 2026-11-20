@@ -68,6 +68,12 @@ public static class TextGenNotations
             ed.Keyword("$"),
             ed.Property(TextGenLanguage.ConceptKeySlot)));
 
+        // `^slot` with the caret pointing at the node above it: the same glyph `$slot` makes for this node's property,
+        // read one level up. A word instead would cost a line for the part that is often the shortest in a template.
+        notations.Add(TextGenConceptKeys.Parent, ed => ed.Line(
+            ed.Keyword("^"),
+            ed.Property(TextGenLanguage.ConceptKeySlot)));
+
         // `<slot>` says "what this points at", which is the one thing a reference part emits. The two stand-in
         // texts are deliberately not drawn: a conditional cell can say "when this value holds", not "when it
         // differs from the default", and an always-visible `<slot> or <unset>` would bury the part's meaning.
