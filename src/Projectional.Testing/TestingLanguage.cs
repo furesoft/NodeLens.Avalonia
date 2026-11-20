@@ -58,6 +58,21 @@ public static class TestingLanguage
     /// <summary>The answer or the failure an evaluation assertion expects, as text.</summary>
     public const string OutcomeSlot = "outcome";
 
+    /// <summary>The steps a script assertion replays, in order.</summary>
+    public const string StepsSlot = "steps";
+
+    /// <summary>The text a caret step puts the caret in front of.</summary>
+    public const string AtSlot = "at";
+
+    /// <summary>The characters a typing step types at the caret.</summary>
+    public const string TypedSlot = "typed";
+
+    /// <summary>The key a press step presses, named the way the editor names it.</summary>
+    public const string KeySlot = "key";
+
+    /// <summary>The id of the offer an invoke step applies.</summary>
+    public const string IntentionSlot = "intention";
+
     /// <summary>The concept declarations of the language.</summary>
     /// <remarks>
     /// The document is also the name slot, so a test reads as the document it is about in a tree, a reference and
@@ -168,6 +183,75 @@ public static class TestingLanguage
             ],
             [TestingConceptKeys.Assertion],
             description: "The document evaluates to the answer the test spells out, or to the failure it names."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Script,
+            [
+                new PropertySlot(
+                    WidthSlot,
+                    PropertyType.Integer,
+                    "80",
+                    description: "How many columns the drawing after the script has."),
+                new ChildSlot(StepsSlot, TestingConceptKeys.Step, Cardinality.Many),
+                new ChildSlot(LinesSlot, TestingConceptKeys.Line, Cardinality.Many),
+            ],
+            [TestingConceptKeys.Assertion],
+            description: "The document is edited by the steps and then draws as the text the test spells out."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Step,
+            [],
+            isAbstract: true,
+            isOfferedInCompletion: false,
+            description: "One thing a user does to the document, as one of the kinds below."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Caret,
+            [
+                new PropertySlot(
+                    AtSlot,
+                    PropertyType.String,
+                    description: "The text whose first occurrence the caret goes in front of."),
+            ],
+            [TestingConceptKeys.Step],
+            nameSlot: AtSlot,
+            description: "Puts the caret in front of the text the step names."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Type,
+            [
+                new PropertySlot(
+                    TypedSlot,
+                    PropertyType.String,
+                    description: "The characters typed at the caret, as one keystroke each."),
+            ],
+            [TestingConceptKeys.Step],
+            nameSlot: TypedSlot,
+            description: "Types the characters the step names at the caret."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Press,
+            [
+                new PropertySlot(
+                    KeySlot,
+                    PropertyType.String,
+                    description: "The key, named the way the editor's routing table names it - Enter, Tab, Delete."),
+            ],
+            [TestingConceptKeys.Step],
+            nameSlot: KeySlot,
+            description: "Presses the key the step names at the caret."),
+
+        new ConceptDeclaration(
+            TestingConceptKeys.Invoke,
+            [
+                new PropertySlot(
+                    IntentionSlot,
+                    PropertyType.String,
+                    description: "The stable id of the offer to apply, such as workflow.add-first-step."),
+            ],
+            [TestingConceptKeys.Step],
+            nameSlot: IntentionSlot,
+            description: "Applies the offer whose id the step names, at the caret."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

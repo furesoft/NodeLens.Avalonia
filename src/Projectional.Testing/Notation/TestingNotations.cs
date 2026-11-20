@@ -19,6 +19,12 @@ public static class TestingNotations
     private const string NoGenerator = "<< which generator >>";
     private const string NoVariables = "<< no variables >>";
     private const string NoOutcome = "<< what it answers >>";
+    private const string NoSteps = "<< what a user does >>";
+    private const string NoScriptedLines = "<< what it draws afterwards >>";
+    private const string NoAt = "<< where the caret goes >>";
+    private const string NoTyped = "<< what is typed >>";
+    private const string NoKey = "<< which key >>";
+    private const string NoIntention = "<< which offer >>";
 
     /// <summary>The notation registry of the test language.</summary>
     public static NotationRegistry Registry { get; } = Create(TestingLanguage.Concepts);
@@ -93,5 +99,36 @@ public static class TestingNotations
                 ed.Keyword("answers"),
                 ed.Space,
                 ed.Property(TestingLanguage.OutcomeSlot, emptyText: NoOutcome)))));
+
+        notations.Add(TestingConceptKeys.Script, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("script"),
+                ed.Space,
+                ed.Property(TestingLanguage.WidthSlot),
+                ed.Space,
+                ed.Keyword("columns")),
+            ed.Indent(ed.Children(TestingLanguage.StepsSlot, NoSteps, stacked: true)),
+            ed.Line(ed.Keyword("then draws")),
+            ed.Indent(ed.Children(TestingLanguage.LinesSlot, NoScriptedLines, stacked: true))));
+
+        notations.Add(TestingConceptKeys.Caret, ed => ed.Line(
+            ed.Keyword("caret at"),
+            ed.Space,
+            ed.Property(TestingLanguage.AtSlot, emptyText: NoAt)));
+
+        notations.Add(TestingConceptKeys.Type, ed => ed.Line(
+            ed.Keyword("type"),
+            ed.Space,
+            ed.Property(TestingLanguage.TypedSlot, emptyText: NoTyped)));
+
+        notations.Add(TestingConceptKeys.Press, ed => ed.Line(
+            ed.Keyword("press"),
+            ed.Space,
+            ed.Property(TestingLanguage.KeySlot, emptyText: NoKey)));
+
+        notations.Add(TestingConceptKeys.Invoke, ed => ed.Line(
+            ed.Keyword("invoke"),
+            ed.Space,
+            ed.Property(TestingLanguage.IntentionSlot, emptyText: NoIntention)));
     }
 }

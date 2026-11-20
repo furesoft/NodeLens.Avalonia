@@ -108,6 +108,7 @@ public static class TestRunner
             TestingConceptKeys.Findings => Findings(language, test, model),
             TestingConceptKeys.Generates => Generates(language, test, model),
             TestingConceptKeys.Evaluates => Evaluates(test, model, rules),
+            TestingConceptKeys.Script => Script(language, test, model),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an assertion this framework runs."),
         };
@@ -258,10 +259,21 @@ public static class TestRunner
             : TestResult.Failed(test.Test, test.Document, test.AssertionName, test.Outcome, actual);
     }
 
-    /// <summary>The one root a generation or an evaluation starts at, or <see langword="null"/>.</summary>
+    /// <summary>Replays an editor test's steps against the document and compares the drawing afterwards.</summary>
     /// <remarks>
-    /// Both assertions ask a document one question, so both need the document to be one thing: a model holding
-    /// several roots has no single answer, and the row says so rather than running the first and hiding the rest.
+    /// The steps belong to <see cref="ScriptRunner"/>, which needs a session rather than a model; this branch only
+    /// holds the rule every run shares - a run starts at exactly one root.
+    /// </remarks>
+    private static TestResult Script(LanguageProject language, LanguageTest test, Model model) =>
+        SingleRoot(model) is { } root
+            ? ScriptRunner.Run(language, test, root)
+            : NotASingleRoot(test, model);
+
+    /// <summary>The one root a generation, an evaluation or a script starts at, or <see langword="null"/>.</summary>
+    /// <remarks>
+    /// These three assertions ask a document one question, so they need the document to be one thing: a model
+    /// holding several roots has no single answer, and the row says so rather than running the first and hiding
+    /// the rest.
     /// </remarks>
     private static Node? SingleRoot(Model model) => model.Roots.Count == 1 ? model.Roots[0] : null;
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Language;
 
 namespace Projectional.Testing;
@@ -91,6 +92,17 @@ public static class TestingLowering
                 Generator: null,
                 Variables: Variables(children[0]),
                 Outcome: Required(children[0], TestingLanguage.OutcomeSlot)),
+            TestingConceptKeys.Script => new LanguageTest(
+                name,
+                target,
+                assertion,
+                Width(children[0]),
+                Lines(children[0]),
+                Findings: null,
+                Generator: null,
+                Variables: null,
+                Outcome: null,
+                Steps: Steps(children[0])),
             _ => throw new ConceptDefinitionException(
                 $"'{assertion}' is not an assertion this framework runs."),
         };
@@ -137,6 +149,40 @@ public static class TestingLowering
             ? text
             : throw new ConceptDefinitionException($"'{text}' is not a line of name=value pairs: {error}");
     }
+
+    /// <summary>The steps a script assertion replays, in order.</summary>
+    /// <remarks>
+    /// Each step is checked against the one property its kind needs, and a key is checked against the routing
+    /// table's own names - so a script that names a key the editor does not route is refused when the suite is
+    /// read, rather than reporting a failed row for a mistake in the test.
+    /// </remarks>
+    private static IReadOnlyList<TestStep> Steps(Node script) =>
+        [.. script.GetChildren(TestingLanguage.StepsSlot).Select(Step)];
+
+    /// <summary>One step, as the kind and the value it names.</summary>
+    private static TestStep Step(Node step) => step.Concept.Key switch
+    {
+        TestingConceptKeys.Caret => new TestStep(step.Concept.Key, Required(step, TestingLanguage.AtSlot)),
+        TestingConceptKeys.Type => new TestStep(step.Concept.Key, Required(step, TestingLanguage.TypedSlot)),
+        TestingConceptKeys.Press => new TestStep(step.Concept.Key, Key(step)),
+        TestingConceptKeys.Invoke => new TestStep(step.Concept.Key, Required(step, TestingLanguage.IntentionSlot)),
+        var other => throw new ConceptDefinitionException(
+            $"'{other}' is not a step this framework replays."),
+    };
+
+    /// <summary>The key a press step presses, refused when the routing table has no such name.</summary>
+    private static string Key(Node press)
+    {
+        var name = Required(press, TestingLanguage.KeySlot);
+
+        return EditorKeyNames.Contains(name)
+            ? name
+            : throw new ConceptDefinitionException(
+                $"'{name}' is not a key the editor routes. It handles {string.Join(", ", EditorKeyNames)}.");
+    }
+
+    /// <summary>The keys the editor routes, in the order the routing table names them.</summary>
+    private static IReadOnlyList<string> EditorKeyNames { get; } = [.. Enum.GetNames<EditorKey>()];
 
     private static string Required(Node node, string slot)
     {

@@ -41,4 +41,22 @@ public static class TestingConceptKeys
 
     /// <summary>The document evaluates to the answer the test spells out, or to the failure it names.</summary>
     public const string Evaluates = "Testing.Evaluates";
+
+    /// <summary>The document is edited by a script of steps and then drawn as the text the test spells out.</summary>
+    public const string Script = "Testing.Script";
+
+    /// <summary>One step of a script, abstract because the kinds are the closed set below.</summary>
+    public const string Step = "Testing.Step";
+
+    /// <summary>The caret goes to the text the step names.</summary>
+    public const string Caret = "Testing.Caret";
+
+    /// <summary>The step's characters are typed at the caret.</summary>
+    public const string Type = "Testing.Type";
+
+    /// <summary>The step's key is pressed at the caret.</summary>
+    public const string Press = "Testing.Press";
+
+    /// <summary>The offer whose id the step names is invoked at the caret.</summary>
+    public const string Invoke = "Testing.Invoke";
 }
