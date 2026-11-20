@@ -458,23 +458,37 @@ Both checks answer with fixes rather than with bare diagnostics, and the window 
 from them: a fix carries the finding it repairs, so one list produces both sets and they cannot
 describe different states of the document.
 
-### The panel area
+### The docked window
 
-The panels share one area under the document instead of stacking: Output, Problems and Usages are tabs of a strip
-whose height a splitter sets, so three open answers cost one strip and never three.
+The window's work area is a docking layout rather than a grid of splitters: the project explorer and the model browser
+are tools of a left dock, Output, Problems and Usages are tools of a bottom dock, and the open documents are the
+layout's document dock. `Shell/ShellLayout.cs` builds that tree, and the window's markup holds the docking control and
+nothing else - a tree of dockables is a model, so it is built where a model belongs.
 
-- **One area, three tabs.** A tab is in the strip only while it has something to show - a run, a finding, a usage -
-  and the strip is hidden when the last one leaves. `MainWindow.ShowPanel` is the one place that decides it, and
-  it keeps two questions apart: the content says whether a panel *may* show, and a flag per panel says whether the
-  user closed it.
-- **A tab can be closed, and the menu is the way back.** Closing one is a deliberate "not now" that a re-derived
-  list must not undo: a problem list that came back on the next keystroke would be a panel the user cannot get rid
-  of. A run, a find-usages gesture or **View ▸ Panels** is what opens it again.
-- **The document keeps a floor.** The splitter moves the strip between the document and the panel area, and the
-  document's row carries a `MinHeight`, so the panel can never be dragged over the page.
-- **The outline is a column with a splitter too**, and its header names the document it lists: a panel called
-  "Models" that lists one document's nodes describes something nobody is looking at.
+- **The panels are not a special case any more.** Dragging a tool to another edge, floating it as its own window and
+  closing it are the library's gestures, so a panel behaves the way every other panel behaves rather than the way its
+  own tab strip was written to. The three bottom answers still share one strip, because that is a *default*, not a
+  constraint.
+- **A closed tool is hidden by the layout.** Dock keeps what a user closed in the root's hidden list and restores it
+  where it was, so View ▸ Panels is a restore rather than a rebuild - and the flags the window keeps (`_outputClosed`,
+  `_problemsClosed`, `_usagesClosed`) are the content's opinion, not the presentation's. That split is the one the
+  previous tab strip needed and this one still needs: a re-derived list must not reopen a panel the user put away.
+- **The document area never collapses.** A dock that may collapse is removed from the layout when its last document
+  closes, and the empty state it was given never shows - the area simply disappears and the neighbouring tool takes its
+  width. The document dock therefore keeps its place, and `EmptyContent` is the "no document open" page instead of a
+  control the window switches on and off.
+- **Which panels exist is decided once.** The layout is composed from the capability set: a module a host did not grant
+  is not built, not merely hidden, and a dock with no tools takes no width because it is not in the tree at all. That is
+  the same rule the menus follow - hiding is presentation, refusing is the guarantee (ADR 0015).
+- **The window reads the layout instead of a tab strip.** Which document is in front and which tool the user closed are
+  notifications from the docking model (`ActiveDockableChanged`, `DockableClosing`), so the window no longer keeps a
+  parallel idea of either. A close that would lose work is *cancelled* and re-issued after the prompt, because a
+  question cannot be awaited inside a closing handler.
+- **The theme is declared on the application**, not on the window: a floated panel is a window of its own, and the
+  screenshot harness has to load it too - a dock control with no dock theme has no template at all and renders as an
+  empty rectangle, which is exactly what the first picture of this layout was.
 
+### The problems panel
 ### The problems panel
 
 `Problems/ProblemList.cs` turns that same list into rows, and `MainWindow` shows them in a tab of the panel area.

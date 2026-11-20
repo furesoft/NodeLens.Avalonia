@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:a="using:Avalonia.Automation"
+        xmlns:dock="using:Dock.Avalonia.Controls"
         xmlns:local="using:Projectional.Workbench"
         x:Class="Projectional.Workbench.MainWindow"
         Title="Projectional Workbench"
@@ -194,6 +195,32 @@
     </Style>
     <Style Selector="Button.tabPlus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <!--
+      The docking layout draws the strips, so their surfaces are named here: Dock's own theme is a window background
+      lighter than the page, and a tab strip that disappears into the document is a tab strip nobody can find.
+    -->
+    <Style Selector="DocumentTabStrip">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+    <Style Selector="DocumentTabStripItem">
+      <Setter Property="FontSize" Value="{DynamicResource WorkbenchChromeFontSize}" />
+    </Style>
+    <Style Selector="DocumentTabStripItem TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchIconBrush}" />
+    </Style>
+    <Style Selector="ToolTabStrip">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+    <Style Selector="ToolTabStripItem">
+      <Setter Property="FontSize" Value="{DynamicResource WorkbenchChromeFontSize}" />
+    </Style>
+    <Style Selector="ToolTabStripItem TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchIconBrush}" />
+    </Style>
+    <Style Selector="ToolChromeControl">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
     </Style>
 
     <!-- An action in a tool window's header: a flat icon button, not a chrome-heavy one. -->
@@ -562,168 +589,10 @@
     </Border>
 
     <!--
-      The outline is a column with a splitter and a floor: a browser that is always 220 pixels wide is a
-      column that shows fifteen rows of a document with three hundred, and no way to make it wider.
+      The window's work area is a docking layout rather than a grid: every panel is a dockable the user can drag to
+      another edge, float as its own window, or close, and the documents are the layout's document dock. The tree of
+      areas is built in ShellLayout, because a tree of dockables is a model and not markup.
     -->
-    <Grid x:Name="SideArea">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="240" MinWidth="160" MaxWidth="560" />
-        <ColumnDefinition Width="5" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-
-      <Border
-        x:Name="OutlinePanel"
-        Grid.Column="0"
-        Classes="panelSurface"
-        BorderThickness="0,0,1,0">
-        <!--
-          Two answers to two different questions, as tabs rather than as a split column: the project is what is
-          open and what the opened languages are made of, the outline is what the document in front consists of.
-          A column with two headers in it would cost the page height for the sake of showing both at once.
-        -->
-        <TabControl x:Name="SideTabs" Classes="panelTabStrip" Padding="0">
-          <TabItem x:Name="ProjectTab">
-            <TabItem.Header>
-              <TextBlock x:Name="ProjectHeader" Classes="panelHeader" Text="Project" Margin="4,0" />
-            </TabItem.Header>
-            <local:ProjectPanelView x:Name="ProjectView" />
-          </TabItem>
-
-          <TabItem x:Name="OutlineTab">
-            <TabItem.Header>
-              <TextBlock x:Name="OutlineHeader" Classes="panelHeader" Text="Outline" Margin="4,0" />
-            </TabItem.Header>
-            <local:OutlinePanelView x:Name="OutlineView" />
-          </TabItem>
-        </TabControl>
-      </Border>
-
-      <GridSplitter
-        x:Name="SideSplitter"
-        Grid.Column="1"
-        ResizeDirection="Columns"
-        ResizeBehavior="PreviousAndNext"
-        a:AutomationProperties.Name="Resize the outline" />
-
-      <Grid Grid.Column="2" x:Name="DocumentArea">
-        <Grid.RowDefinitions>
-          <!--
-            The document keeps a floor: a drag or a small window must not be able to squeeze the page down to
-            nothing while the panel keeps its rows.
-          -->
-          <RowDefinition Height="*" MinHeight="120" />
-          <RowDefinition Height="5" />
-          <RowDefinition Height="180" />
-        </Grid.RowDefinitions>
-        <Grid Grid.Row="0" x:Name="EditorArea">
-          <TabControl x:Name="Documents" Classes="documentsTabStrip" Padding="0" FontSize="14" Theme="{StaticResource DocumentTabStripTheme}">
-            <TabControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" />
-              </ItemsPanelTemplate>
-            </TabControl.ItemsPanel>
-          </TabControl>
-
-          <!-- The gap the strip leaves at its right end, so a new document is one press away. -->
-          <Button
-            x:Name="NewTabButton"
-            Classes="tabPlus"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            Click="OnNewDocument"
-            a:AutomationProperties.Name="New document"
-            a:AutomationProperties.HelpText="Opens an empty document (Ctrl+N)">
-            <Path Classes="closeIcon" Data="{StaticResource IconPlus}" Width="10" Height="10" />
-          </Button>
-
-          <!-- What a fresh window shows while nothing is open, instead of a white page that says nothing. -->
-          <Border x:Name="EmptyState" Classes="panelSurface" IsVisible="False">
-            <StackPanel
-              MaxWidth="440"
-              Spacing="10"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center">
-              <Path
-                Classes="inlineIcon"
-                Data="{StaticResource IconDocument}"
-                Width="44"
-                Height="44"
-                StrokeThickness="1.1"
-                HorizontalAlignment="Center" />
-              <TextBlock Text="No document open" Classes="emptyTitle" />
-              <TextBlock
-                Classes="emptyHint"
-                Text="File &#x25B8; New opens a document (Ctrl+N). File &#x25B8; Open reads a saved model (Ctrl+O); File &#x25B8; Import reads JSON, XML, TOML, HOCON or YAML as a document of the language that declares it." />
-            </StackPanel>
-          </Border>
-        </Grid>
-
-        <!--
-          The bottom of the window is one area with three tabs rather than three stacked borders: the document
-          keeps its room, the area can be dragged to the height the reader wants, and a panel is gone when its
-          tab is closed instead of costing a third of the window forever.
-        -->
-        <GridSplitter
-          x:Name="PanelSplitter"
-          Grid.Row="1"
-          ResizeDirection="Rows"
-          ResizeBehavior="PreviousAndNext"
-          a:AutomationProperties.Name="Resize the panel area" />
-
-        <Border
-          x:Name="PanelArea"
-          Grid.Row="2"
-          Classes="panelSurface"
-          BorderThickness="0,1,0,0">
-          <TabControl x:Name="PanelTabs" Classes="panelTabStrip" Padding="0">
-            <TabItem x:Name="OutputTab">
-              <TabItem.Header>
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock x:Name="OutputHeader" Classes="panelHeader" Text="Output" />
-                  <Button
-                    Classes="tabClose"
-                    Click="OnCloseOutput"
-                    a:AutomationProperties.Name="Close the output panel">
-                    <Path Classes="closeIcon" Data="{StaticResource IconClose}" />
-                  </Button>
-                </StackPanel>
-              </TabItem.Header>
-              <local:OutputPanelView x:Name="OutputView" />
-            </TabItem>
-
-            <TabItem x:Name="ProblemsTab">
-              <TabItem.Header>
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock x:Name="ProblemsHeader" Classes="panelHeader" Text="Problems" />
-                  <Button
-                    Classes="tabClose"
-                    Click="OnCloseProblems"
-                    a:AutomationProperties.Name="Close the problems panel">
-                    <Path Classes="closeIcon" Data="{StaticResource IconClose}" />
-                  </Button>
-                </StackPanel>
-              </TabItem.Header>
-              <local:ProblemsPanelView x:Name="ProblemsView" />
-            </TabItem>
-
-            <TabItem x:Name="UsagesTab">
-              <TabItem.Header>
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock x:Name="UsagesHeader" Classes="panelHeader" Text="Usages" />
-                  <Button
-                    Classes="tabClose"
-                    Click="OnCloseUsages"
-                    a:AutomationProperties.Name="Close the usages panel">
-                    <Path Classes="closeIcon" Data="{StaticResource IconClose}" />
-                  </Button>
-                </StackPanel>
-              </TabItem.Header>
-              <local:UsagesPanelView x:Name="UsagesView" />
-            </TabItem>
-          </TabControl>
-        </Border>
-      </Grid>
-    </Grid>
+    <dock:DockControl x:Name="Dock" a:AutomationProperties.Name="Workspace" />
   </DockPanel>
 </Window>
