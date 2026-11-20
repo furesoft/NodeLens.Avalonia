@@ -71,12 +71,14 @@ cd "dotnet projectional editor"
 dotnet run --project src/Projectional.Workbench
 ```
 
-The workbench opens with the sample rules language. Tabs hold documents, the status bar tracks the active one, and closing a modified tab asks before it discards anything.
+The workbench opens with the sample rules language. Tabs hold documents and each one closes from the button in its header, the outline beside them lists the active document's nodes and is as wide as you drag it, and the status bar tracks the active one - the caret's line and column, the language, the theme and the font size. Output, Problems and Usages are tabs of one strip under the document: drag the splitter to size it, close a tab to give the page its room back, and **View ▸ Panels** brings it back. Closing a modified tab asks before it discards anything.
 
 | Menu | Entries |
 | --- | --- |
-| **File** | New (`Ctrl+N`), Open… (`Ctrl+O`), Save (`Ctrl+S`), Save as… (`Ctrl+Shift+S`), Close document (`Ctrl+W`), Exit |
-| **View** | Representation (one submenu per concept with more than one variant), Line numbers, Increase font size (`Ctrl+=`), Decrease font size (`Ctrl+-`), Reset font size (`Ctrl+0`), Follow system theme, Light theme, Dark theme |
+| **File** | New (a submenu: document `Ctrl+N`, concept, enumeration, notation, document of an opened language), Open… (`Ctrl+O`), Open language…, Export language to C#…, Import…, Recent, Save (`Ctrl+S`), Save as… (`Ctrl+Shift+S`), Save generated text as…, Close document (`Ctrl+W`), Exit |
+| **Edit** | Undo (`Ctrl+Z`), Redo (`Ctrl+Shift+Z`), Cut (`Ctrl+X`), Copy (`Ctrl+C`), Paste (`Ctrl+V`), Select all (`Ctrl+A`), Find… (`Ctrl+F`), Replace… (`Ctrl+H`), Find usages (`Alt+F7`), Rename… (`Shift+F6`) |
+| **Run** | Run document (`F5`), Run tests, Generate text (a submenu per generator the language declares), Clear output |
+| **View** | Find… (`Ctrl+F`), Find usages (`Alt+F7`), Panels (Output, Problems, Usages), Representation (one submenu per concept with more than one variant), Reset column widths, Line numbers, Increase font size (`Ctrl+=`), Decrease font size (`Ctrl+-`), Reset font size (`Ctrl+0`), Follow system theme, Light theme, Dark theme |
 
 ### 2. Define a language
 
