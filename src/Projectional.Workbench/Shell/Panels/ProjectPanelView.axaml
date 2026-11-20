@@ -22,6 +22,16 @@
     BorderThickness="0"
     Background="Transparent"
     a:AutomationProperties.Name="Project">
+    <!--
+      The panel's own menu, not a row's: a module is what the whole tree is about, so the entry belongs to the panel the
+      way a project's settings belong to the project in the IDE this shell follows. The shell fills in what a command
+      means - the view only says which command exists.
+    -->
+    <ListBox.ContextMenu>
+      <ContextMenu x:Name="PanelMenu" a:AutomationProperties.Name="Project explorer menu">
+        <MenuItem x:Name="ModuleSettingsItem" Header="Module settings…" a:AutomationProperties.Name="Module settings" />
+      </ContextMenu>
+    </ListBox.ContextMenu>
     <ListBox.ItemTemplate>
       <DataTemplate x:DataType="local:ProjectEntry">
         <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">

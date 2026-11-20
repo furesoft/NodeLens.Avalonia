@@ -36,7 +36,71 @@ internal static class ShellCapture
             }
         }
 
+        foreach (var shot in ShellShots.Dialogs)
+        {
+            try
+            {
+                var size = await CaptureDialogAsync(shot, output);
+
+                log.Add($"{shot.FileName}.png {size.Width}x{size.Height}");
+            }
+            catch (Exception exception)
+            {
+                succeeded = false;
+                log.Add($"{shot.FileName}: {exception}");
+            }
+        }
+
         return succeeded;
+    }
+
+    /// <summary>Shows the workbench, opens one of its dialogs over it and writes the image of the dialog.</summary>
+    /// <remarks>
+    /// The dialog is opened rather than waited for: a modal one returns only when it closes, so the picture has to be
+    /// taken between the two. The workbench behind it is shown because a dialog takes the theme variant of the window it
+    /// belongs to, and a picture taken over nothing would be of a dialog in whichever variant it defaulted to.
+    /// </remarks>
+    private static async Task<PixelSize> CaptureDialogAsync(DialogShot shot, string output)
+    {
+        var window = new MainWindow
+        {
+            Width = 900,
+            Height = 700,
+            Position = new PixelPoint(0, 0),
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+        };
+
+        Window? dialog = null;
+
+        try
+        {
+            window.Show();
+            await SettleAsync();
+
+            Click(window.FindControl<MenuItem>("LightThemeItem")!);
+            await SettleAsync();
+
+            dialog = await shot.Open(window);
+
+            dialog.Width = shot.Width;
+            dialog.Height = shot.Height;
+            await SettleAsync();
+
+            // Focus would start the caret's blink timer in the page behind the dialog, which the next run's picture would
+            // not have.
+            dialog.FocusManager?.Focus(null);
+            await SettleAsync();
+
+            using var bitmap = ImageWriter.Render(dialog);
+
+            return ImageWriter.Write(bitmap, Path.Combine(output, $"{shot.FileName}.png"));
+        }
+        finally
+        {
+            dialog?.Close();
+            window.Close();
+        }
     }
 
     /// <summary>Shows one window, drives it into the shot's state and writes the image.</summary>

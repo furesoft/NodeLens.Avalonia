@@ -1,3 +1,5 @@
+using Projectional.Languages;
+
 namespace Projectional.Workbench;
 
 /// <summary>One row of the project explorer: a heading, a project, a folder, or a file.</summary>
@@ -20,6 +22,10 @@ internal sealed record ProjectEntry
     /// <param name="isExpanded">Whether the row was drawn open.</param>
     /// <param name="document">The open document the row stands for, if any.</param>
     /// <param name="path">The file the row stands for, if any.</param>
+    /// <param name="document">The open document the row stands for, if any.</param>
+    /// <param name="path">The file the row stands for, if any.</param>
+    /// <param name="folder">The aspect the row belongs to, if any.</param>
+    /// <param name="module">The language module the row belongs to, if any.</param>
     internal ProjectEntry(
         string text,
         int depth,
@@ -28,7 +34,8 @@ internal sealed record ProjectEntry
         bool isExpanded = true,
         DocumentTab? document = null,
         string? path = null,
-        string? folder = null)
+        string? folder = null,
+        LanguageProject? module = null)
     {
         Text = text;
         Depth = depth;
@@ -38,6 +45,7 @@ internal sealed record ProjectEntry
         Document = document;
         Path = path;
         Folder = folder;
+        Module = module;
     }
 
     /// <summary>What the row says.</summary>
@@ -72,6 +80,14 @@ internal sealed record ProjectEntry
     /// can answer it without a rendering platform.
     /// </remarks>
     internal string? Folder { get; }
+
+    /// <summary>The language module the row belongs to, or <see langword="null"/> for a heading and for a document whose language has no folder.</summary>
+    /// <remarks>
+    /// The row carries it because "which module is this" is a fact the tree already had in hand when it built the row,
+    /// and a shell that had to work it out again would answer from the selection - which is a different question the
+    /// moment the user right-clicks a row that is not the selected one.
+    /// </remarks>
+    internal LanguageProject? Module { get; }
 
     /// <summary>What the row is drawn with, or <see langword="null"/> when it is drawn with nothing.</summary>
     /// <remarks>

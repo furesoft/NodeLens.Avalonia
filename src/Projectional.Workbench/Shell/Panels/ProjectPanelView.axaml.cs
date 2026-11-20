@@ -15,4 +15,7 @@ internal sealed partial class ProjectPanelView : UserControl
 
     /// <summary>The rows, in the order the explorer derived them.</summary>
     internal ListBox List => Rows;
+
+    /// <summary>The panel's menu, whose one entry the shell answers.</summary>
+    internal MenuItem ModuleSettings => ModuleSettingsItem;
 }

@@ -136,7 +136,7 @@ internal static class ProjectExplorer
             var projectKey = ProjectKey(language);
             var projectOpen = !collapsed.Contains(projectKey);
 
-            rows.Add(new ProjectEntry(language.Name, 1, ProjectNode.Project, projectKey, projectOpen));
+            rows.Add(new ProjectEntry(language.Name, 1, ProjectNode.Project, projectKey, projectOpen, module: language));
 
             if (!projectOpen)
             {
@@ -148,7 +148,7 @@ internal static class ProjectExplorer
                 var folderKey = FolderKey(language.Directory, folder);
                 var folderOpen = !collapsed.Contains(folderKey);
 
-                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen, folder: folder));
+                rows.Add(new ProjectEntry(folder, 2, ProjectNode.Folder, folderKey, folderOpen, folder: folder, module: language));
 
                 if (!folderOpen)
                 {
@@ -163,7 +163,8 @@ internal static class ProjectExplorer
                         ProjectNode.File,
                         path: file,
                         document: OpenDocumentFor(documents, file),
-                        folder: folder));
+                        folder: folder,
+                        module: language));
                 }
             }
         }

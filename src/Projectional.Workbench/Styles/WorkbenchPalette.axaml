@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!--
+    The shell's surfaces, in one place because there are two windows that draw them: the workbench and the module
+    settings dialog. The brushes live in theme dictionaries, so a window that follows the system gets the variant it
+    asked for without knowing these colours exist.
+
+    A panel has a face (#FCFCFC) and a header has a different one, which is what makes a column of the window read as
+    chrome rather than as page.
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="WorkbenchPanelBrush" Color="#FCFCFC" />
+      <SolidColorBrush x:Key="WorkbenchHeaderBrush" Color="#EFEFEF" />
+      <SolidColorBrush x:Key="WorkbenchDividerBrush" Color="#CFCFCF" />
+      <SolidColorBrush x:Key="WorkbenchHoverBrush" Color="#1F000000" />
+      <SolidColorBrush x:Key="WorkbenchQuietTextBrush" Color="#5C5C5C" />
+      <SolidColorBrush x:Key="WorkbenchIconBrush" Color="#4C4C4C" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="WorkbenchPanelBrush" Color="#232323" />
+      <SolidColorBrush x:Key="WorkbenchHeaderBrush" Color="#2E2E2E" />
+      <SolidColorBrush x:Key="WorkbenchDividerBrush" Color="#3E3E3E" />
+      <SolidColorBrush x:Key="WorkbenchHoverBrush" Color="#33FFFFFF" />
+      <SolidColorBrush x:Key="WorkbenchQuietTextBrush" Color="#B0B0B0" />
+      <SolidColorBrush x:Key="WorkbenchIconBrush" Color="#C4C4C4" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- The chrome's type size. A document has its own, because a document is zoomed and the chrome is not. -->
+  <sys:Double x:Key="WorkbenchChromeFontSize">12</sys:Double>
+</ResourceDictionary>
