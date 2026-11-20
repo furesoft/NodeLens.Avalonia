@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
     <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples.SqlSchema\Projectional.Samples.SqlSchema.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+    <ProjectReference Include="..\..\src\Projectional.Testing\Projectional.Testing.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />

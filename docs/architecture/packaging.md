@@ -23,16 +23,16 @@ declared, because a package is a thing to depend on and these are not:
 
 Everything else ships. That includes the three assemblies ADR 0019 names as public API (`Core`, `Avalonia`,
 `Toolkit`) **and** the internal-plus-`InternalsVisibleTo` band beneath them (`Language`, `Projection`,
-`Persistence`, `Semantics`, `Editing`, `Checks`, `Intentions`, `Languages`, `LanguageExport`), because a
+`Persistence`, `Semantics`, `Editing`, `Checks`, `Intentions`, `Testing`, `Languages`, `LanguageExport`), because a
 language package's dependencies reach into that band and a dependency that cannot be referenced is not a
 dependency. It also includes `Projectional.Workbench`: it is an application, but it is under `src/`, it is a
 product, and its `--self-check` entry point makes it usable as a tool. A host that wants the shell as a
 library takes the package and ignores the executable.
 
-`dotnet pack Projectional.slnx` therefore produces **30 packages**:
+`dotnet pack Projectional.slnx` therefore produces **31 packages**:
 
-- **13 framework assemblies** - `Core`, `Language`, `Persistence`, `Projection`, `Semantics`, `Editing`,
-  `Checks`, `Intentions`, `Toolkit`, `Avalonia`, `Workbench`, `Languages`, `LanguageExport`
+- **14 framework assemblies** - `Core`, `Language`, `Persistence`, `Projection`, `Semantics`, `Editing`,
+  `Checks`, `Intentions`, `Testing`, `Toolkit`, `Avalonia`, `Workbench`, `Languages`, `LanguageExport`
 - **12 languages** - `Expressions`, `Json`, `Xml`, `Toml`, `Hocon`, `Yaml`, `Structures`, `Editors`,
   `TypeRules`, `TextGen`, `ConstraintRules`, `ScopeRules`, `IntentionRules`
 - **4 sample languages** - `Samples`, `Samples.StateMachine`, `Samples.FeatureModel`, `Samples.SqlSchema`
@@ -122,7 +122,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-That pushes the tag, which triggers `ci`; the `pack` job produces the 30 packages and uploads them as an
+That pushes the tag, which triggers `ci`; the `pack` job produces the 31 packages and uploads them as an
 artifact, and `publish-nuget` downloads that artifact and pushes both `.nupkg` and `.snupkg` to nuget.org.
 
 Two properties of the job are deliberate:
@@ -154,7 +154,7 @@ it, so switching is a change to one job rather than a change to this document's 
 | --- | --- |
 | `build-and-test` | Builds and tests on Windows and Ubuntu with full history. |
 | `byte-stability` | The saved form of the corpus is still byte-identical (ADR 0005). |
-| `pack` | `dotnet pack` succeeds and produces exactly 30 packages; uploads them as an artifact. |
+| `pack` | `dotnet pack` succeeds and produces exactly 31 packages; uploads them as an artifact. |
 | `publish-nuget` | Tag-gated; pushes the artifact to nuget.org. |
 
 `single-file` publishes the standalone app and asserts the single-file shape; it is unrelated to packaging

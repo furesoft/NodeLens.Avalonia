@@ -11,6 +11,7 @@
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
     <Project Path="src/Projectional.Projection/Projectional.Projection.csproj" />
     <Project Path="src/Projectional.Semantics/Projectional.Semantics.csproj" />
+    <Project Path="src/Projectional.Testing/Projectional.Testing.csproj" />
     <Project Path="src/Projectional.Toolkit/Projectional.Toolkit.csproj" />
     <Project Path="src/Projectional.Workbench/Projectional.Workbench.csproj" />
   </Folder>

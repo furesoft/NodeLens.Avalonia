@@ -1,7 +1,12 @@
 # Tests of a language, as data
 
-Status: **planned** (M6). Nothing of this exists: every test in this repository is C# xunit over
-`Projectional.Core.Tests`, and a language author has no way to test a language at all.
+Status: **partly delivered** (M6). Slice T1's round trip is in: the `tests/` folder, the test
+language, `TestRunner`, the xunit bridge and the sample's first test document. The other assertions
+(`Testing.Draws`, `Testing.Findings`, `Testing.Generates`, `Testing.Evaluates`, `Testing.Script`) are
+still planned, and the rest of this document is the plan for them as much as for what is delivered.
+
+Before this existed, every test in this repository was C# xunit over `Projectional.Core.Tests`, and a
+language author had no way to test a language at all.
 
 ## Why
 
@@ -97,6 +102,31 @@ the outcome and the actual-versus-expected text, so a failure reads as a diff. T
 | BaseLanguage code in a test, labels, utility methods | not applicable: the vocabulary is closed, so there is no code in a test |
 | migration tests | no migration tooling exists yet (M6) - the assertion arrives with it |
 | two-phase deletion, editor-state introspection | MPS-specific: they test the IDE's own furniture, and this editor owns its session |
+
+## What is delivered
+
+The folder, the language, the runner and the bridge, with one assertion:
+
+- **`Projectional.Testing`** is the behaviour package: `TestingLanguage` declares the concepts
+  (`Testing.Test`, `Testing.Assertion`, `Testing.RoundTrips`), `Notation/TestingNotations` draws one
+  sentence (`test pipeline round trips`), and `TestingLowering` turns a written test into a
+  `LanguageTest`.
+- **`TestRunner.Run(language)`** reads the language's `tests/` folder in ordinal file-name order and
+  answers a `TestReport` - one `TestResult` per document, carrying the assertion and, on a failure,
+  the actual-versus-expected text so the report reads as a diff. A language with no `tests/` folder
+  answers an empty report. A document *under* test that is gone is a failed row naming it; a test
+  document that does not lower is a broken suite and throws.
+- **`Testing.RoundTrips`** asserts invariant 7 for the document it names: serialise, read back,
+  serialise again, compare the text. A projection or persistence change that moves a byte fails the
+  test that names the document.
+- **The xunit bridge** is `LanguageTestsAsDataTests`: it runs the shipped sample's folder, so CI
+  covers a language's own tests without new runner infrastructure. The sample's first test document
+  is `samples/declared-pipeline/tests/round-trips.mps`.
+
+The remaining assertions are additive: each is one more concept in the test language, one more
+notation, and one more branch in the runner. `Testing.Draws` and `Testing.Findings` are the ones that
+need the runner to reach the projection and the semantics layer, which is why the package sits in the
+behaviour band rather than beside a language.
 
 ## Slices
 
