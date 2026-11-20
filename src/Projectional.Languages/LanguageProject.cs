@@ -3,6 +3,7 @@ using Projectional.ConstraintRules;
 using Projectional.Editing;
 using Projectional.IntentionRules;
 using Projectional.Editors;
+using Projectional.ImportRules;
 using Projectional.Language;
 using Projectional.Persistence;
 using Projectional.ScopeRules;
@@ -52,6 +53,10 @@ public sealed class LanguageProject
     public const string ScopesFolder = "scopes";
 
     /// <summary>The folder holding the language's own intentions, which a language may leave out.</summary>
+    /// <summary>The folder holding the language's declared importers, which a language may leave out.</summary>
+    public const string ImportFolder = "import";
+
+    /// <summary>The folder holding the language's intentions, which a language may leave out.</summary>
     public const string IntentionsFolder = "intentions";
 
     private LanguageProject(
@@ -65,7 +70,8 @@ public sealed class LanguageProject
         ConstraintSet constraints,
         ScopeProviderRegistry scopes,
         IIntentionProvider intentions,
-        bool hasIntentions)
+        bool hasIntentions,
+        IReadOnlyList<ITextImporter> importers)
     {
         Name = name;
         Directory = directory;
@@ -78,7 +84,11 @@ public sealed class LanguageProject
         Scopes = scopes;
         Intentions = intentions;
         HasIntentions = hasIntentions;
+        DeclaredImporters = importers;
     }
+
+    /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
+    private IReadOnlyList<ITextImporter> DeclaredImporters { get; }
 
     /// <summary>The language's name, which is the name of the folder it lives in.</summary>
     public string Name { get; }
@@ -120,7 +130,7 @@ public sealed class LanguageProject
     {
         get
         {
-            List<ITextImporter> importers = [];
+            List<ITextImporter> importers = [.. DeclaredImporters];
 
             foreach (var generator in Generators)
             {
@@ -301,7 +311,8 @@ public sealed class LanguageProject
                 LowerConstraints(directory, concepts).With(types.Complaints),
                 scopes.Registry,
                 intentions.Provider,
-                intentions.HasAny);
+                intentions.HasAny,
+                LowerImporters(directory, concepts));
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -409,6 +420,12 @@ public sealed class LanguageProject
     /// this language does not have is refused here - the same "earliest moment both halves exist" rule the notation
     /// follows.
     /// </remarks>
+    /// <summary>The importers the project declares in its <c>import</c> folder, or none when it has no such folder.</summary>
+    private static IReadOnlyList<ITextImporter> LowerImporters(string directory, ConceptRegistry concepts) =>
+        ImportLowering.CreateImporters(
+            Read(directory, ImportFolder, new Project(ImportLanguage.Concepts)),
+            concepts);
+
     private static IReadOnlyList<TextGenerator> LowerGenerators(string directory, ConceptRegistry concepts) =>
         TextGenLowering.CreateGenerators(
             Read(directory, GeneratorFolder, new Project(TextGenLanguage.Concepts)),

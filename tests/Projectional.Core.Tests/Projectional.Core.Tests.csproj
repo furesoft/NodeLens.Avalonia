@@ -34,6 +34,7 @@
     <ProjectReference Include="..\..\src\Projectional.Testing\Projectional.Testing.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.ImportRules\Projectional.ImportRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TextGen\Projectional.TextGen.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Toml\Projectional.Toml.csproj" />

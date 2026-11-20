@@ -92,8 +92,8 @@ jobs:
           count=$(find artifacts -maxdepth 1 -name '*.nupkg' | wc -l)
           echo "artifacts/ holds $count package(s):"
           find artifacts -maxdepth 1 -name '*.nupkg' -printf '  %f\n' | sort
-          # 31 projects are packable today; a drop means one silently stopped being packed.
-          test "$count" -eq 31
+          # 32 projects are packable today; a drop means one silently stopped being packed.
+          test "$count" -eq 32
 
       - name: Upload the packages
         uses: actions/upload-artifact@v4
