@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -57,6 +58,9 @@ public sealed partial class MainWindow : Window, IDisposable
     private const double MaximumFontSize = 48;
     private const double FontSizeStep = 1;
 
+    /// <summary>The least a drag may leave of the panel area, so the splitter cannot lose it.</summary>
+    private const double MinimumPanelHeight = 96;
+
     private readonly DocumentSet _documents = new();
     private readonly WorkbenchLanguage _language = new();
     private readonly Dictionary<DocumentTab, TabItem> _tabs = [];
@@ -88,10 +92,26 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _closeConfirmed;
     private bool _disposed;
 
+    // The panel area keeps two things apart: what the content allows and what the user asked for. A panel
+    // closed by the user must not come back because the document changed, which is what re-deriving the rows
+    // alone would do on every keystroke.
+    private readonly TabItem[] _panelOrder;
+    private readonly double _splitterHeight;
+    private double _panelHeight;
+    private bool _outputClosed;
+    private bool _problemsClosed;
+    private bool _usagesClosed;
+
     /// <summary>Creates the window and opens the sample document in it.</summary>
     public MainWindow()
     {
         InitializeComponent();
+
+        // The area's own measurements rather than a second copy of them: the XAML declares the shape, and
+        // the window only has to know what to restore when the last panel leaves and one comes back.
+        _panelOrder = [OutputTab, ProblemsTab, UsagesTab];
+        _panelHeight = DocumentArea.RowDefinitions[2].Height.Value;
+        _splitterHeight = DocumentArea.RowDefinitions[1].Height.Value;
 
         // Before the first tab exists: a session takes its clipboard when it is created, and the sample opens
         // below.
@@ -245,7 +265,14 @@ public sealed partial class MainWindow : Window, IDisposable
         // is the notification: an edit anywhere in it changes the dirty state.
         model.Changed += OnDocumentChanged;
 
-        var tab = new TabItem { Header = document.Title, Content = ScrollSurface(editor) };
+        // The status bar says where the caret is, so the control has to say when it moved.
+        editor.SelectionChanged += OnCaretMoved;
+
+        var tab = new TabItem { Content = ScrollSurface(editor) };
+
+        // A tab carries its own close button and dirty mark: the gesture alone is not a control.
+        tab.Header = new DocumentTabHeader(document.Title, () => CloseFromTab(document));
+
         _documents.Add(document);
         _tabs.Add(document, tab);
 
@@ -306,6 +333,18 @@ public sealed partial class MainWindow : Window, IDisposable
         Close(document);
     }
 
+    /// <summary>Closes the document a tab's own close button belongs to, asking about unsaved changes first.</summary>
+    /// <param name="document">The document whose tab was clicked shut.</param>
+    private async void CloseFromTab(DocumentTab document)
+    {
+        if (!await ResolveUnsavedAsync(document))
+        {
+            return;
+        }
+
+        Close(document);
+    }
+
     private void Close(DocumentTab document)
     {
         document.Model.Changed -= OnDocumentChanged;
@@ -314,6 +353,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
         if (tab is not null)
         {
+            if (EditorOf(tab) is { } editor)
+            {
+                editor.SelectionChanged -= OnCaretMoved;
+            }
+
             Documents.Items.Remove(tab);
         }
 
@@ -465,14 +509,92 @@ public sealed partial class MainWindow : Window, IDisposable
         document.Problems = ProblemList.Of(document.Model, findings.Diagnostics);
     }
 
+    /// <summary>Undoes one step of the document in front.</summary>
+    private void OnUndo(object? sender, RoutedEventArgs e) => RunShellEdit(session => session.Undo());
+
+    /// <summary>Redoes one step of the document in front.</summary>
+    private void OnRedo(object? sender, RoutedEventArgs e) => RunShellEdit(session => session.Redo());
+
+    private void OnCut(object? sender, RoutedEventArgs e) =>
+        RunShellEdit(session => session.Apply(new CutAction()).Changed);
+
+    private void OnCopy(object? sender, RoutedEventArgs e) =>
+        RunShellEdit(session => session.Apply(new CopyAction()).Changed);
+
+    private void OnSelectAll(object? sender, RoutedEventArgs e) =>
+        RunShellEdit(session => session.Apply(new SelectAllAction()).Changed);
+
+    /// <summary>Pastes what the platform clipboard holds into the document in front.</summary>
+    /// <remarks>
+    /// The clipboard is read first: another application may have filled it since this one last wrote, and
+    /// the session's cache would otherwise paste what the user no longer has.
+    /// </remarks>
+    private async void OnPaste(object? sender, RoutedEventArgs e)
+    {
+        if (ActiveEditor() is not { } editor || editor.Session is not { } session)
+        {
+            return;
+        }
+
+        await _clipboard.RefreshAsync();
+
+        if (session.Apply(new PasteAction()).Outcome == EditOutcome.Rejected)
+        {
+            _error = "The clipboard's text does not fit the place the caret is in.";
+            UpdateStatus();
+        }
+
+        editor.Refresh();
+        editor.ScrollToCaret();
+    }
+
+    /// <summary>Runs one editing command against the document in front and repaints it.</summary>
+    /// <remarks>
+    /// An undo, a copy and a selection move change nothing the control can observe on its own - none of them is
+    /// a model change - so the host repaints, the same rule the representation menu follows.
+    /// </remarks>
+    private void RunShellEdit(Func<EditorSession, bool> edit)
+    {
+        if (ActiveEditor() is not { } editor || editor.Session is not { } session)
+        {
+            return;
+        }
+
+        edit(session);
+
+        editor.Refresh();
+        editor.ScrollToCaret();
+    }
+
     /// <summary>Opens the find bar and puts the caret in it.</summary>
-    private void OnFindText(object? sender, RoutedEventArgs e)
+    private void OnFindText(object? sender, RoutedEventArgs e) => OpenFindBar(withReplace: false);
+
+    /// <summary>Opens the find bar with the replace row, for a user who came to replace.</summary>
+    private void OnFindReplace(object? sender, RoutedEventArgs e) => OpenFindBar(withReplace: true);
+
+    private void OpenFindBar(bool withReplace)
     {
         FindBar.IsVisible = true;
-        FindInput.Focus();
-        FindInput.SelectAll();
+        ReplaceToggle.IsChecked = withReplace;
+        ReplaceRow.IsVisible = withReplace;
+
+        if (withReplace)
+        {
+            ReplaceInput.Focus();
+            ReplaceInput.SelectAll();
+        }
+        else
+        {
+            FindInput.Focus();
+            FindInput.SelectAll();
+        }
+
         UpdateFindCount();
     }
+
+    /// <summary>Shows the replace row while the toggle is on, and hides it again when it is off.</summary>
+    private void OnReplaceToggle(object? sender, RoutedEventArgs e) =>
+        ReplaceRow.IsVisible = ReplaceToggle.IsChecked == true;
 
     /// <summary>Re-counts the matches as the query changes.</summary>
     /// <remarks>
@@ -767,6 +889,10 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         OutlineList.ItemsSource = _documents.Active is { } document ? Outline.Of(document.Model) : [];
         OutlineList.SelectedItem = null;
+
+        // The header names the document the rows belong to: a panel called "Models" that lists one document's
+        // nodes is a header describing something nobody is looking at.
+        OutlineHeader.Text = _documents.Active is { } active ? $"Outline - {active.Title}" : "Outline";
     }
 
     /// <summary>Puts the caret on the node a browser row stands for.</summary>
@@ -790,15 +916,31 @@ public sealed partial class MainWindow : Window, IDisposable
         editor.Focus();
     }
 
-    /// <summary>Fills the problems panel from the active document, and hides it when there is nothing to report.</summary>
+    /// <summary>Fills the problems tab from the active document, and shows it while there is something to report.</summary>
     private void ShowProblems()
     {
         var rows = _documents.Active?.Problems ?? [];
 
         Problems.ItemsSource = rows;
         Problems.SelectedItem = null;
-        ProblemsPanel.IsVisible = rows.Count > 0;
         ProblemsHeader.Text = $"Problems ({rows.Count})";
+        ShowPanel(ProblemsTab, rows.Count > 0 && !_problemsClosed);
+    }
+
+    /// <summary>Fills the output tab from the active document's last run, and shows it while there is one.</summary>
+    /// <remarks>
+    /// The headline is the answer, so it goes in the header rather than in a row: a first row that says
+    /// <c>Accept</c> would read as one more step of the trace, and the trace is exactly what must stay
+    /// comparable across runs.
+    /// </remarks>
+    private void ShowOutput()
+    {
+        var report = _documents.Active?.Output;
+
+        RunOutput.ItemsSource = report?.Rows;
+        RunOutput.SelectedItem = null;
+        OutputHeader.Text = report is null ? "Output" : $"Output - {report.Headline}";
+        ShowPanel(OutputTab, report is not null && !_outputClosed);
     }
 
     /// <summary>Puts the caret on what a chosen row is about.</summary>
@@ -842,6 +984,8 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
+        _error = null;
+
         var report = FindUsages.ReportOf(document.Session);
 
         if (report.Target is null)
@@ -853,12 +997,14 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        _error = null;
+        // Asking again is what brings a tab the user closed back: the gesture is the question.
+        _usagesClosed = false;
         ShowUsages(report);
+        PanelTabs.SelectedItem = UsagesTab;
         UpdateStatus();
     }
 
-    /// <summary>Fills the usages panel from a report and opens it.</summary>
+    /// <summary>Fills the usages tab from a report and opens it.</summary>
     private void ShowUsages(UsageReport report)
     {
         if (report.Target is not { } target)
@@ -874,46 +1020,200 @@ public sealed partial class MainWindow : Window, IDisposable
 
         Usages.ItemsSource = rows;
         Usages.SelectedItem = null;
-        UsagesPanel.IsVisible = true;
         UsagesHeader.Text = $"Usages of {UsageList.LabelOf(target)} ({rows.Count})";
+        ShowPanel(UsagesTab, true);
     }
 
-    /// <summary>Closes the panel and forgets which node it was answering about.</summary>
+    /// <summary>Closes the tab and forgets which node it was answering about.</summary>
     private void HideUsages()
     {
         _usageTarget = null;
         Usages.ItemsSource = null;
         Usages.SelectedItem = null;
-        UsagesPanel.IsVisible = false;
+        ShowPanel(UsagesTab, false);
     }
 
-    /// <summary>Closes the usages panel without touching the model or the caret.</summary>
-    private void OnCloseUsages(object? sender, RoutedEventArgs e) => HideUsages();
+    /// <summary>
+    /// Closes the usages tab without forgetting the question, so View ▸ Panels can bring the answer back.
+    /// </summary>
+    private void OnCloseUsages(object? sender, RoutedEventArgs e)
+    {
+        _usagesClosed = true;
+        ShowPanel(UsagesTab, false);
+    }
 
-    /// <summary>Re-asks the open question, or closes the panel when it can no longer be answered.</summary>
+    /// <summary>Closes the output tab; the next run is what brings it back.</summary>
+    private void OnCloseOutput(object? sender, RoutedEventArgs e)
+    {
+        _outputClosed = true;
+        ShowOutput();
+    }
+
+    /// <summary>Closes the problems tab; View ▸ Panels is what brings it back.</summary>
+    private void OnCloseProblems(object? sender, RoutedEventArgs e)
+    {
+        _problemsClosed = true;
+        ShowProblems();
+    }
+
+    private void OnToggleOutputPanel(object? sender, RoutedEventArgs e)
+    {
+        _outputClosed = !_outputClosed;
+        ShowOutput();
+    }
+
+    private void OnToggleProblemsPanel(object? sender, RoutedEventArgs e)
+    {
+        _problemsClosed = !_problemsClosed;
+        ShowProblems();
+    }
+
+    private void OnToggleUsagesPanel(object? sender, RoutedEventArgs e)
+    {
+        _usagesClosed = !_usagesClosed;
+
+        if (_usagesClosed)
+        {
+            ShowPanel(UsagesTab, false);
+        }
+        else
+        {
+            SyncUsages();
+        }
+    }
+
+    /// <summary>Re-asks the open question, or closes the tab when it can no longer be answered.</summary>
     /// <remarks>
     /// The node id is what keeps the question the one the user asked: re-deriving from the caret would silently turn
-    /// a keystroke somewhere else into a new search. The panel closes when its target is gone or belongs to a
+    /// a keystroke somewhere else into a new search. The tab closes when its target is gone or belongs to a
     /// document that is no longer in front, because a list of usages of a node the user can no longer see is a list
-    /// they cannot act on.
+    /// they cannot act on - and a question the user closed stays closed until it is asked again.
     /// </remarks>
     private void SyncUsages()
     {
-        if (!UsagesPanel.IsVisible)
+        if (_usageTarget is not { } id)
         {
+            // No question, no tab: the panel is only there while there is an answer to show.
+            if (IsPanelOpen(UsagesTab))
+            {
+                ShowPanel(UsagesTab, false);
+            }
+
             return;
         }
 
-        if (_usageTarget is not { } id
-            || _documents.Active is not { } document
-            || document.Model.Project.FindNode(id) is not { } target)
+        if (_documents.Active is not { } document || document.Model.Project.FindNode(id) is not { } target)
         {
             HideUsages();
 
             return;
         }
 
+        if (_usagesClosed)
+        {
+            return;
+        }
+
         ShowUsages(FindUsages.Of(target));
+    }
+
+    /// <summary>Shows or hides one panel tab, and takes the area away when the last one leaves.</summary>
+    /// <param name="tab">The panel's tab.</param>
+    /// <param name="visible">Whether it belongs in the area right now.</param>
+    private void ShowPanel(TabItem tab, bool visible)
+    {
+        var open = IsPanelOpen(tab);
+
+        if (visible && !open)
+        {
+            PanelTabs.Items.Insert(PanelIndex(tab), tab);
+        }
+        else if (!visible && open)
+        {
+            PanelTabs.Items.Remove(tab);
+        }
+
+        UpdatePanelArea();
+    }
+
+    /// <summary>Where <paramref name="tab"/> belongs among the panel tabs that are open.</summary>
+    /// <param name="tab">The tab to place.</param>
+    /// <remarks>
+    /// The order is the declared one rather than the order the tabs happened to be opened in, so a run that
+    /// produces a second panel does not put Output behind Problems because Problems came first.
+    /// </remarks>
+    private int PanelIndex(TabItem tab)
+    {
+        var index = 0;
+
+        foreach (var candidate in _panelOrder)
+        {
+            if (ReferenceEquals(candidate, tab))
+            {
+                break;
+            }
+
+            if (IsPanelOpen(candidate))
+            {
+                index++;
+            }
+        }
+
+        return index;
+    }
+
+    /// <summary>Whether <paramref name="tab"/> is in the panel area.</summary>
+    private bool IsPanelOpen(TabItem tab) => PanelTabs.Items.Contains(tab);
+
+    /// <summary>Shows the output tab with the answer a command just produced, and brings it forward.</summary>
+    /// <remarks>
+    /// A run is a question the user asked, so the answer is shown even if the tab was closed earlier - unlike a
+    /// re-derived problem list, which must not reopen a panel the user closed.
+    /// </remarks>
+    private void RevealOutput()
+    {
+        _outputClosed = false;
+        ShowOutput();
+        PanelTabs.SelectedItem = OutputTab;
+    }
+
+    /// <summary>Gives the panel area the height it had, or takes it away when nothing is left to show.</summary>
+    private void UpdatePanelArea()
+    {
+        var open = PanelTabs.Items.Count > 0;
+        var panel = DocumentArea.RowDefinitions[2];
+
+        if (open)
+        {
+            panel.MinHeight = MinimumPanelHeight;
+
+            if (panel.Height.Value == 0)
+            {
+                panel.Height = new GridLength(_panelHeight);
+            }
+        }
+        else
+        {
+            // Remembered rather than lost, so reopening the area gives back the height the user dragged out.
+            // Before the first layout there is no height to remember, and the declared one stays.
+            if (PanelArea.Bounds.Height > 0)
+            {
+                _panelHeight = Math.Max(PanelArea.Bounds.Height, MinimumPanelHeight);
+            }
+
+            panel.MinHeight = 0;
+            panel.Height = new GridLength(0);
+        }
+
+        DocumentArea.RowDefinitions[1].Height = new GridLength(open ? _splitterHeight : 0);
+
+        PanelSplitter.IsVisible = open;
+        PanelArea.IsVisible = open;
+
+        if (PanelTabs.SelectedItem is not TabItem selected || !IsPanelOpen(selected))
+        {
+            PanelTabs.SelectedItem = open ? PanelTabs.Items[0] : null;
+        }
     }
 
     /// <summary>Puts the caret on a chosen usage, opening the document that holds it first.</summary>
@@ -1020,7 +1320,7 @@ public sealed partial class MainWindow : Window, IDisposable
         document.Tests = tests;
         document.Output = TestOutput.Report(tests, project);
 
-        ShowOutput();
+        RevealOutput();
         UpdateStatus();
     }
 
@@ -1055,7 +1355,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _error = null;
         document.Output = DocumentRun.Of(document.Root, rules, RunInputsInput.Text);
 
-        ShowOutput();
+        RevealOutput();
         UpdateStatus();
     }
 
@@ -1074,7 +1374,7 @@ public sealed partial class MainWindow : Window, IDisposable
         document.Generated = generated.Text;
         document.Output = DocumentGenerate.Report(generated, generator);
 
-        ShowOutput();
+        RevealOutput();
         UpdateStatus();
     }
 
@@ -1088,21 +1388,6 @@ public sealed partial class MainWindow : Window, IDisposable
 
         ShowOutput();
         UpdateStatus();
-    }
-
-    /// <summary>Shows the active document's last run, if it has one.</summary>
-    /// <remarks>
-    /// The headline is the answer, so it goes in the header rather than in a row: a first row that says <c>Accept</c>
-    /// would read as one more step of the trace, and the trace is exactly what must stay comparable across runs.
-    /// </remarks>
-    private void ShowOutput()
-    {
-        var report = _documents.Active?.Output;
-
-        RunOutput.ItemsSource = report?.Rows;
-        RunOutput.SelectedItem = null;
-        OutputPanel.IsVisible = report is not null;
-        OutputHeader.Text = report is null ? "Output" : $"Output - {report.Headline}";
     }
 
     /// <summary>Puts the caret on the node a trace line came from.</summary>
@@ -1306,22 +1591,114 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         foreach (var (document, tab) in _tabs)
         {
-            tab.Header = document.IsDirty ? $"{document.Title} *" : document.Title;
+            if (tab.Header is DocumentTabHeader header)
+            {
+                header.SetTitle(document.Title, document.IsDirty);
+            }
         }
 
-        var position = _documents.Active is not { } active
+        // A window with nothing open says so in the page rather than leaving a white rectangle behind.
+        EmptyState.IsVisible = _documents.Active is null;
+
+        StatusDocument.Text = _documents.Active is not { } active
             ? "No document open"
-            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")} | {ThemeText()} | {_fontSize:0} px";
+            : $"{active.Title}{FormatFile(active.FilePath)} | {(_documents.AnyUnsaved ? "unsaved changes" : "saved")}";
 
         // The message goes last and is not cleared here: it is the answer to the command the user just
         // ran, and the next command clears it, so it cannot go stale while the user reads it.
-        StatusText.Text = _error is null ? position : $"{position} | {_error}";
+        StatusText.Text = _error ?? string.Empty;
 
+        UpdateStatusDetail();
+
+        UpdateCommands();
+        UpdatePanelCommands();
         UpdateRepresentations();
         UpdateRunCommand();
         UpdateGenerators();
         UpdateExportCommand();
     }
+
+    /// <summary>
+    /// Fills the right-hand end of the status line: where the caret stands, which language this is, the theme
+    /// and the size - each part only when it has something to say.
+    /// </summary>
+    private void UpdateStatusDetail()
+    {
+        var parts = new List<string>(4);
+
+        if (_documents.Active is { } document)
+        {
+            if (CaretSpot.Of(document.Session) is { } spot)
+            {
+                parts.Add(spot.ToString());
+            }
+
+            parts.Add(LanguageNameOf(document));
+        }
+
+        parts.Add(ThemeText());
+        parts.Add($"{_fontSize:0} px");
+
+        StatusDetail.Text = string.Join("  |  ", parts);
+    }
+
+    /// <summary>Says where the caret went, as the control of the document in front reported it.</summary>
+    private void OnCaretMoved(object? sender, EventArgs e) => UpdateStatusDetail();
+
+    /// <summary>What language the document in front is written in, as the status bar names it.</summary>
+    /// <param name="document">The document in front.</param>
+    /// <remarks>
+    /// An opened language project answers with its own name. The shell's built-in languages have no project to
+    /// ask, so the root concept's key prefix stands in - <c>Rules</c> for the sample ruleset, <c>Json</c> for an
+    /// imported file - which is the key the language declared its concepts under, not a guess.
+    /// </remarks>
+    private string LanguageNameOf(DocumentTab document)
+    {
+        if (_language.ProjectFor(document.Model) is { } project)
+        {
+            return project.Name;
+        }
+
+        var key = document.Root.Concept.Key;
+        var dot = key.IndexOf('.', StringComparison.Ordinal);
+
+        return dot > 0 ? key[..dot] : key;
+    }
+
+    /// <summary>Says which editing commands the document in front can carry out.</summary>
+    /// <remarks>
+    /// Undo and redo are facts of the history rather than of the document, so they follow it: an entry that is
+    /// always enabled teaches the user that pressing it does nothing.
+    /// </remarks>
+    private void UpdateCommands()
+    {
+        var session = _documents.Active?.Session;
+
+        UndoItem.IsEnabled = session?.History.CanUndo == true;
+        RedoItem.IsEnabled = session?.History.CanRedo == true;
+        CutItem.IsEnabled = session is not null;
+        CopyItem.IsEnabled = session is not null;
+        PasteItem.IsEnabled = session is not null;
+        SelectAllItem.IsEnabled = session is not null;
+        RenameDocumentItem.IsEnabled = session is not null;
+    }
+
+    /// <summary>Says which panels are in the area, and which ones could be.</summary>
+    private void UpdatePanelCommands()
+    {
+        OutputPanelItem.IsEnabled = _documents.Active?.Output is not null;
+        OutputPanelItem.IsChecked = IsPanelOpen(OutputTab);
+
+        ProblemsPanelItem.IsEnabled = _documents.Active?.Problems is { Count: > 0 };
+        ProblemsPanelItem.IsChecked = IsPanelOpen(ProblemsTab);
+
+        UsagesPanelItem.IsEnabled = _usageTarget is not null;
+        UsagesPanelItem.IsChecked = IsPanelOpen(UsagesTab);
+    }
+
+    /// <summary>The editor of the document in front, or <see langword="null"/> when there is none.</summary>
+    private ProjectionalEditorControl? ActiveEditor() =>
+        _documents.Active is { } document && _tabs.TryGetValue(document, out var tab) ? EditorOf(tab) : null;
 
     /// <summary>Says whether the document in front can be run, and why not when it cannot.</summary>
     /// <remarks>
@@ -2173,6 +2550,12 @@ public sealed partial class MainWindow : Window, IDisposable
                 break;
             case Key.D0 or Key.NumPad0:
                 ApplyFontSize(DefaultFontSize);
+                break;
+
+            // Ctrl+H is the replace gesture every desk editor has, and the menu prints it. It is answered here
+            // rather than declared as a HotKey for the same reason the zoom keys are: one place decides.
+            case Key.H:
+                OpenFindBar(withReplace: true);
                 break;
             default:
                 return;
