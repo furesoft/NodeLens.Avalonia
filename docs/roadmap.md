@@ -39,8 +39,10 @@ What is next, in order:
    snapshot tests, so the demonstrators rot with a failing test rather than with the documentation
    ([worked-examples.md](architecture/worked-examples.md)). **All three are delivered.** Between them they
    found and closed four gaps - a table column naming a reference, a reference crossing a model boundary, a
-   template part for a reference, and the four a sample may not work around - and left one recorded: a
-   **many-valued reference cannot be drawn**.
+   template part for a reference, and the four a sample may not work around - and left two records closed since: a
+   template cannot read the name of a node's parent (closed by `ParentPart`) and "a many-valued reference cannot be
+   drawn", which was the model's rule rather than a gap - a reference is single-valued, and a list of links is a
+   child node per element ([language.md](architecture/language.md#notation)).
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
