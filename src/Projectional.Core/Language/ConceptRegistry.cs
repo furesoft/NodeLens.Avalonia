@@ -88,13 +88,25 @@ public sealed class ConceptRegistry
                 supers[i] = Resolve(declaration.SuperConcepts[i]);
             }
 
-            var interfaces = new Concept[declaration.Interfaces.Count];
-            for (var i = 0; i < interfaces.Length; i++)
+            var interfaces = new Concept[declaration.Interfaces.Count + 1];
+            var count = declaration.Interfaces.Count;
+
+            for (var i = 0; i < count; i++)
             {
                 interfaces[i] = Resolve(declaration.Interfaces[i]);
             }
 
-            var concept = Build(declaration, [.. supers, .. interfaces], supers, interfaces);
+            // Every concept conforms to the framework's base concept without declaring it - that is what makes a slot
+            // over "anything" a thing a declaration can say. It is skipped for the base concept itself, and skipped
+            // for a declaration that already lists it, because a composition may spell it out and two entries for one
+            // interface would be two answers to "what does this implement".
+            if (declaration.Key != FrameworkInterfaces.BaseConcept
+                && !declaration.Interfaces.Contains(FrameworkInterfaces.BaseConcept, StringComparer.Ordinal))
+            {
+                interfaces[count++] = Resolve(FrameworkInterfaces.BaseConcept);
+            }
+
+            var concept = Build(declaration, [.. supers, .. interfaces[..count]], supers, interfaces[..count]);
             inProgress.Remove(key);
             resolved.Add(key, concept);
             return concept;

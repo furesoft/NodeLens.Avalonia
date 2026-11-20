@@ -129,8 +129,10 @@ even if the build stays green.
     `implements` it. Conformance is still `IsKindOf` and storage is still one flat slot map, so no layer
     learned a second relation; `Concept.SuperConcepts` is the ordered union (extensions first, then
     interfaces), and `Concept.Extensions`/`.Interfaces` give a tool the difference back. `ConceptRegistry.Create`
-    injects `Framework.Named` into every registry, so a language cannot ship without it and a host can rely on
-    that key meaning the same thing in every document (`docs/architecture/interfaces.md`).
+    injects `Framework.Named` and `Framework.BaseConcept` into every registry, so a language cannot ship without them
+    and a host can rely on those keys meaning the same thing in every document
+    (`docs/architecture/interfaces.md`). Every concept implements `Framework.BaseConcept`, which is what lets a slot be
+    declared over "any node".
     A separate flag, `ConceptDeclaration(..., isOfferedInCompletion: false)`, keeps a concept out
     of the completion **list only**. `DefaultInstantiableFor` must keep ignoring it: a hidden
     concept stays a legal child reachable with Enter, which is exactly how `Expressions` keeps

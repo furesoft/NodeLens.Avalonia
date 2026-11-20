@@ -1,8 +1,33 @@
 # Interfaces: the framework's structural vocabulary
 
-Status: **delivered**, slices I1 to I4. The concept kind, the member merge, the validation table, `Framework.Named` in
-every registry, `Node.IsNamed`, the declared path, the adoption by the shipped languages, and the records:
+Status: **delivered**, slices I1 to I4, plus the framework's base concept. The concept kind, the member merge, the
+validation table, `Framework.Named` and `Framework.BaseConcept` in every registry, `Node.IsNamed`, the declared path,
+the adoption by the shipped languages, and the records:
 [ADR 0020](../adr/0020-framework-vocabulary-is-injected.md) with questions 92-96 settled.
+
+## The framework's base concept
+
+`Framework.BaseConcept` is the second piece of injected vocabulary and the answer to a question the first one did not
+ask: **"any node"**. Before it, a declaration could not say that, so a concept that wanted to hold one of anything had
+to name a concept of its own language and hope - and a language that composes borrowed declarations had no answer at
+all. Every concept now conforms to it without declaring anything, so a slot may be declared over it and every node of
+every language may stand there.
+
+Three decisions make it what it is:
+
+- **It carries no slot.** A base concept that declared `name` would give every concept a second name slot, and the
+  whole point of this one is to be the type of "anything" without changing what anything *is*. The name role stays
+  with `Framework.Named`, which a language opts into.
+- **It is an interface, not an abstract concept a language extends.** An interface is this framework's one mechanism
+  for "every concept conforms without declaring it" - `ConceptRegistry.Create` injects it into each declaration's
+  implemented interfaces, exactly as it injects `Framework.Named`. A base concept that languages had to extend would
+  be opt-in, which is the opposite of what a base type is for.
+- **It is injected once.** A declaration that spells out `interfaces: [Framework.BaseConcept]` gets one entry, not
+  two, and the base concept does not implement itself.
+
+What it does *not* do is give a language a root. A document's root still belongs to the language that declares it,
+`DefaultInstantiableFor(BaseConcept)` still answers the language's first concrete concept, and nothing about the model,
+the notation or the saved bytes changes - a base concept is a supertype, not a place.
 
 ## The problem
 

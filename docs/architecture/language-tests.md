@@ -114,7 +114,7 @@ Three doors onto it:
 
 | MPS | Ours |
 | --- | --- |
-| assertions are annotated onto the sample code (`@check`) | not possible without a common base concept: a slot must be declared over a concept key, and languages here share no root (the interface plan adds `Framework.Named`, not `BaseConcept`). A test names a document instead |
+| assertions are annotated onto the sample code (`@check`) | a slot can now be declared over `Framework.BaseConcept`, so a slot holding "any node" is possible - but an annotation still needs a place to *live* in the declarative test language, and a test document holds a path rather than a reference. Naming a document stayed the simpler answer; naming a node is what the `Script`, `TypeOf` and `ScopeOf` assertions do, by the text the document shows |
 | a test model holds many tests | one test per document, like every other definition |
 | caret markup inside the sample code | not possible for the same reason: a document under test stays a plain document, so a `Testing.Caret` step names the text to stand in front of instead |
 | `TestInfo` with a project path, in-process versus out-of-process | not applicable: the runner is handed the project, and there is no second process to start |

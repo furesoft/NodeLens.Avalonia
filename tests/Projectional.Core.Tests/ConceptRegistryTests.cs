@@ -264,10 +264,11 @@ public sealed class ConceptRegistryTests
             new ConceptDeclaration("Alpha"),
             new ConceptDeclaration("Mid"));
 
-        // The framework's own interface comes first because Create injects it - see
-        // FrameworkInterfaces, and the declaration order below it is untouched.
+        // The framework's own vocabulary comes first because Create injects it - see FrameworkInterfaces, and the
+        // declaration order below it is untouched. The base concept is first of the two: it is what everything
+        // conforms to, so a reader meets it before the vocabulary that builds on it.
         Assert.Equal(
-            [FrameworkInterfaces.Named, "Zeta", "Alpha", "Mid"],
+            [FrameworkInterfaces.BaseConcept, FrameworkInterfaces.Named, "Zeta", "Alpha", "Mid"],
             registry.Concepts.Select(concept => concept.Key));
     }
 
@@ -436,7 +437,68 @@ public sealed class ConceptRegistryTests
         Assert.True(named.IsInterface);
         Assert.True(named.IsAbstract);
         Assert.Equal("name", named.NameSlot?.Name);
-        Assert.Empty(named.SuperConcepts);
+
+        // It extends nothing; it implements the framework's base concept, as every concept does.
+        Assert.Empty(named.Extensions);
+        Assert.True(named.IsKindOf(FrameworkInterfaces.BaseConcept));
+    }
+
+    [Fact]
+    public void EveryConceptImplementsTheFrameworksBaseConcept()
+    {
+        // The injection is what makes "a slot over anything" a thing a declaration can say, so it is pinned for a
+        // concept that declares nothing, one that extends, and one that is the framework's own interface.
+        var registry = Create(
+            new ConceptDeclaration("Plain"),
+            new ConceptDeclaration("Abstract", isAbstract: true),
+            new ConceptDeclaration("Child", superConcepts: ["Plain"]));
+
+        Assert.All(registry.Concepts, concept => Assert.True(
+            concept.IsKindOf(FrameworkInterfaces.BaseConcept),
+            concept.Key));
+
+        // And it is one interface, not two entries for one.
+        Assert.Equal(1, registry.Get("Child").Interfaces.Count(each => each.Key == FrameworkInterfaces.BaseConcept));
+
+        // A concept the language declares may say it implements the base concept; it is not listed twice.
+        var explicitBase = Create(new ConceptDeclaration(
+            "Explicit",
+            interfaces: [FrameworkInterfaces.BaseConcept]));
+
+        Assert.Equal(1, explicitBase.Get("Explicit").Interfaces.Count(each => each.Key == FrameworkInterfaces.BaseConcept));
+    }
+
+    [Fact]
+    public void ASlotDeclaredOverTheBaseConceptAcceptsAnyNode()
+    {
+        // The capability the base concept exists for: before it, a declaration could not say "any node".
+        var registry = Create(
+            new ConceptDeclaration(
+                "Holder",
+                [new ChildSlot("anything", FrameworkInterfaces.BaseConcept, Cardinality.One)]),
+            new ConceptDeclaration("Alpha"),
+            new ConceptDeclaration("Beta", superConcepts: ["Alpha"]));
+
+        var holder = registry.Get("Holder");
+
+        Assert.True(registry.Get("Alpha").IsKindOf(FrameworkInterfaces.BaseConcept));
+        Assert.True(registry.Get("Beta").IsKindOf(FrameworkInterfaces.BaseConcept));
+
+        // The slot really is declared over the base concept, which is what makes any node acceptable in it.
+        Assert.Equal(FrameworkInterfaces.BaseConcept, holder.FindChild("anything")!.ChildConceptKey);
+
+        // An abstract base concept is not a node anybody can create, so the slot's default fill is the first
+        // concrete concept in declaration order - the language author's answer to "what does the user most likely
+        // want here", the same rule every abstract slot follows.
+        Assert.Equal("Holder", registry.DefaultInstantiableFor(FrameworkInterfaces.BaseConcept)!.Key);
+
+        var other = Create(
+            new ConceptDeclaration("Alpha"),
+            new ConceptDeclaration(
+                "Holder",
+                [new ChildSlot("anything", FrameworkInterfaces.BaseConcept, Cardinality.One)]));
+
+        Assert.Equal("Alpha", other.DefaultInstantiableFor(FrameworkInterfaces.BaseConcept)!.Key);
     }
 
     [Fact]
