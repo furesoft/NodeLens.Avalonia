@@ -124,8 +124,9 @@
   `Accepts` is lenient about `Unknown` so one mistake is not fifty findings, and a type rule must never be told a
   guess satisfies `int`. Collapsing the two is how `Unknown` leaks.
 - **Equations are how a rule ties two nodes' types**, and `TypeSolver` is the fixpoint over them: a bounds solver
-  where an equality pins, a subtyping narrows, and a list-against-list decomposes into its elements (an optional
-  into its inner, a record never). It refuses three temptations - it does not invent the missing side of
+  where an equality pins, a subtyping narrows, and a claim about a compound type is rewritten by a
+  `TypeReplacement` before it is judged (a list against a list becomes a claim about their elements, an optional
+  about their inners, a record never). It refuses three temptations - it does not invent the missing side of
   `?a == ?b`, it does not give a variable a type nothing demanded, and it stops on a budget instead of hanging.
   `ITypeRule.EquationsFor` states equations and defaults to none, so `TypeFor` keeps working for every rule that
   needs no solve. `TypeRegistry.EquationsFor(node)` is the consumer: it hands a node's declared relations to a
@@ -145,6 +146,18 @@
   primitives. The relation compares a named type by **identity** - "are two declarations of one name one type?" is
   the language's question - so the language answers it by handing out one instance per name: a rule writing
   `Ref Amount` and an edge naming `Amount` receive the same type, which is what makes the edge join anything.
+- **A replacement states what a claim about two types really means.** `TypeRule.Replacement` is a document of its
+  own: a claim (`<:` or `==`) between two type **patterns**, and the relations to prove instead. A pattern is a type
+  whose leaves may be `TypeVariable`s, so there is no second syntax for "a type with a hole in it", and one variable
+  table is shared by both patterns and every relation - which is what makes a relation a statement about what the
+  patterns bound. It lowers into a `TypeReplacement` the registry carries beside its rules and its edges. Three
+  things to keep true: the framework's own covariance for a list and an optional is **stated as replacements too**
+  (`TypeReplacements.Covariance`), so there is one mechanism and not two - never re-add a `case (ListType, ListType)`
+  to the solver; a replacement that states **no** relations *discharges* its claim rather than being unfinished, drawn
+  as `nothing` and not as the fill-me-in placeholder; and a pattern may not be a join or a meet, because "either of
+  these" is not one shape a claim can be about. Refused at load: a join or meet pattern, a relation naming a variable
+  no pattern binds, and (through the enumeration) a claim that is not `<:` or `==` - `:>` is `<:` with the sides
+  swapped, so it is not a second claim.
 - **Join and meet are questions about the relation, not new kinds of type**: `JoinType`/`MeetType` are what a slot
   or a rule *writes* ("either", "both") - `TypeRule.Join`/`TypeRule.Meet` in a model - and `TypeLattice` reduces
   them from the declared edges - one side below the
