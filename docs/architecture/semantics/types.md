@@ -121,6 +121,7 @@ have written ([ADR 0014](../../adr/0014-both-authoring-paths-are-permanent.md)).
 | `TypeRule.Case` | one value of a switch and the body it selects |
 | `TypeRule.Complain` | `message`, `severity` and an optional `when`: reports instead of typing |
 | `TypeRule.NotComparable` | `left` and `right`: the two child slots whose types are not interchangeable |
+| `TypeRule.Replacement` | `claim`, `left`, `right` and `instead`: a claim between two patterns, and what to prove in its place |
 | `TypeRule.TypeExpr` | a type written as data, abstract: one of the four kinds below |
 | `TypeRule.Primitive` | `name`: `string`, `int`, `bool`, `date` |
 | `TypeRule.Record` | `fields`: a fixed set of named fields |
@@ -176,7 +177,7 @@ every node of the sample document - the same "two authoring paths, one answer" c
 
 ### Planned: parity with MPS' typesystem
 
-**Planned, not built** - except T1, T2, T3, T4 and T7, which are delivered, and T5's third question, which is delivered while its declared form stays open. This section is the design of record for the next
+**Planned, not built** - except T1, T2, T3, T4, T7 and T8's replacement, which are delivered, and T5's third question, which is delivered while its declared form stays open. This section is the design of record for the next
 stage of the type system, and what it records is a *compatibility target*: the rules a language author can write in
 MPS' typesystem cookbook should be expressible here, in this repository's vocabulary, without falling back to C#. The
 cookbook is <https://www.jetbrains.com/help/mps/cookbook-type-system.html>; it is the acceptance list for these
@@ -189,7 +190,7 @@ typeof(b)`), which needs variables over types and a solver. `TypeVariable`, `Typ
 exist for that (slice T2), and `ITypeRule.EquationsFor` is the door a rule uses to state relations instead of
 answering a type. `TypeRegistry.EquationsFor` is the caller that door was missing (slice T4): it hands a node's
 declared relations to a `TypeSolver`, so a rule table that needs solving is solved without teaching every consumer
-to ask a second question - `TypeFor` stays what everything asks. The remaining slice is T8, with T5's third
+to ask a second question - `TypeFor` stays what everything asks. What is left is T8's other half, with T5's third
 question delivered while its declared form stays open, T6 answered rather than built, and T7 delivered in both
 forms.
 
@@ -210,7 +211,7 @@ typed in.
 | `join(A, B)` (least upper bound) | the common supertype of two types | `JoinType`/`MeetType` as types, and **`TypeRule.Join`/`TypeRule.Meet`** as their declared spellings; `TypeLattice.Join` reduces either to one type | - |
 | `when concrete (typeof(x) as t)` | proceed only once the child's type is settled | every rule is already a pure function of the node, so there is nothing to defer, and a type read descends a tree so it cannot cycle | - closed: the solver's fixpoint is the ordering, and a self-referential name is refused at load |
 | `error`/`warning`/`info "…" -> node` | a diagnostic from the typechecker | **`TypeRule.Complain`** as a body - a `message` and a `severity` lowered into an `IConstraint` the language's own set carries, so the existing findings path reports it; with an optional `when` body it reports only where that condition holds, and **`TypeRule.NotComparable`** is the condition ("the types of two child slots are not interchangeable") | the further condition kinds a language might want beside comparison (an arity, a name shape), each of which is a new body rather than a new path |
-| replacement rule | rewrite one equation before solving (covariance, `NullType`) | nothing | `TypeRule.Replacement` declared over a pair of type concepts |
+| replacement rule | rewrite one equation before solving (covariance, `NullType`) | **`TypeRule.Replacement`** - a document stating a claim (`<:` or `==`) between two type *patterns*, and the relations to prove instead with those patterns' variables filled in, or none at all when the claim holds outright. Lowered into a `TypeReplacement` the registry carries, so a solver built from the registry rewrites a claim the language has a rule for; the framework's own covariance for a list and an optional is stated in the same vocabulary (`TypeReplacements.Covariance`) rather than hard-coded in the solver | - |
 | subtyping rule | the direct supertypes of a type | **`TypeRule.Supertypes`** - a document stating one edge (`subtype <: supertype`), lowered into the `SubtypeRelation` the registry carries; a name is one instance per document, so a rule and an edge naming it are given the same type | - |
 | comparison rule | two types are interchangeable (weak/strong) | **`IType.IsComparableTo`** - the third question, asked both ways through the relation, so "interchangeable" is neither conformance nor a one-way subtype edge; `TypeSolver` asks it instead of comparing two subtype checks by hand | `TypeRule.Comparable` as a declared pair, when a language needs to state a comparison its edges do not express |
 | substitute type rule | swap the node representing a type (configuration-dependent `int`/`long`) | nothing | `TypeRule.Substitute`; last, because it needs a per-model configuration input the framework does not have |
@@ -247,8 +248,9 @@ Each slice is independent and each is only worth starting when a language needs 
   `ITypeRule` gains an overload that collects them while `TypeFor` keeps working for the rules that need no solving.
   **Delivered**: `TypeVariable` (`?name`), `TypeEquation` with the three kinds (the third a spelling of the second,
   read the other way), `TypeSolver` - a *bounds* solver, not a unification engine: an equality pins a variable, a
-  subtyping narrows one, a list against a list decomposes into its elements (an optional into its inner, a record
-  deliberately not), a second equality that disagrees is reported by the branch that compares the two concrete
+  subtyping narrows one, a claim about a compound type is rewritten by a `TypeReplacement` before it is judged (a
+  list against a list decomposes into its elements, an optional into its inner, a record deliberately not), a second
+  equality that disagrees is reported by the branch that compares the two concrete
   sides, and two variables stated equal stay a relation rather than being given each other's name. `TypeSolution`
   hands an undetermined variable back as itself, so a consumer sees `?elementType` instead of a type nobody proved.
   `ITypeRule.EquationsFor` is the overload, defaulting to nothing, so every rule that already answers a type keeps
@@ -323,9 +325,24 @@ Each slice is independent and each is only worth starting when a language needs 
   slot that is empty makes the condition *hold* rather than fail: there is nothing to compare, and blaming the author
   for a node that is merely incomplete is the wrong finding. The condition's two slots are checked at load like a
   child body's, so a reference slot is refused where the author can see it instead of throwing during a check.
-- **T8 - replacement and substitution.** `TypeRule.Replacement` (rewrite an equation before solving) and
-  `TypeRule.Substitute` (configuration-dependent types, which needs a per-model configuration slot the framework does
-  not have - open question 113).
+- **T8 - replacement and substitution.** `TypeRule.Replacement` and `TypeRule.Substitute`. **Delivered for
+  replacement**: a replacement is a document of its own that states a claim - `<:` or `==` - between two type
+  *patterns*, and the relations to prove in its place, written in exactly the vocabulary a relation is because a
+  pattern is a type whose leaves may be variables. It is lowered into a `TypeReplacement`, which the registry carries
+  beside its rules and its edges, and a `TypeSolver` built from the registry rewrites a claim it has a rule for
+  before judging it - which is what a covariance rule needs, since "a sequence of one element type is a subtype of a
+  sequence of another" is not an edge between two types but an edge between *any* two sequences. Three decisions
+  shaped it. The framework's own covariance for a list and an optional is now stated as replacements too
+  (`TypeReplacements.Covariance`), so what the solver knows about a list is written in the same vocabulary a language
+  uses and there is one mechanism rather than two. A replacement that states no relations *discharges* its claim
+  rather than being an unfinished rule - MPS' null type is the example, and the drawing says `nothing` instead of the
+  placeholder that means "waiting to be filled". And a pattern may not be a join or a meet ("either of these", "both
+  of these at once"): neither is one shape a claim can be about, so both are refused at load where the author is
+  looking rather than owned as a rule that never fires. Two further refusals live at load: a relation naming a
+  variable no pattern binds, and (through the enumeration) a claim that is not one of the two. `:>` is deliberately
+  not a claim, because it is `<:` with the sides swapped and would be one claim with two spellings.
+  **Not delivered: substitution** (`TypeRule.Substitute`), because configuring a type per model needs a per-model
+  configuration slot the framework does not have - open question 113.
 
 #### What stays out, and why
 

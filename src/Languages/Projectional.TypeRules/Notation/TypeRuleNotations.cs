@@ -17,6 +17,9 @@ public static class TypeRuleNotations
 {
     private const string NoEntries = "<< ... >>";
 
+    /// <summary>What a replacement shows when it states no relations, which is a finished rule and not an empty one.</summary>
+    private const string NothingToProve = "nothing";
+
     /// <summary>The notation registry of the type-rule language.</summary>
     public static NotationRegistry Registry { get; } = Create(TypeRuleLanguage.Concepts);
 
@@ -151,6 +154,22 @@ public static class TypeRuleNotations
             ed.Property(TypeRuleLanguage.RelationSlot),
             ed.Space,
             ed.ChildInline(TypeRuleLanguage.RightSlot)));
+
+        // A replacement draws as the claim it rewrites - the two patterns with the relation's own symbol between
+        // them, as an equation and a declared edge draw - followed by what it says instead. An empty `instead` is
+        // not a slot waiting to be filled but the statement that the claim holds outright, so it says so.
+        notations.Add(TypeRuleConceptKeys.Replacement, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("replace"),
+                ed.Space,
+                ed.ChildInline(TypeRuleLanguage.LeftSlot),
+                ed.Space,
+                ed.Property(TypeRuleLanguage.ClaimSlot),
+                ed.Space,
+                ed.ChildInline(TypeRuleLanguage.RightSlot),
+                ed.Space,
+                ed.Keyword("by")),
+            ed.Indent(ed.Children(TypeRuleLanguage.InsteadSlot, NothingToProve))));
 
         // A complaint draws as the sentence a finding quotes, so the author reads the diagnostic before it is
         // reported: the severity first, then the message the user will see. A condition draws only when it is

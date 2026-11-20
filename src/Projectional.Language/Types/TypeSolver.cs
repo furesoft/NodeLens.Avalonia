@@ -17,10 +17,13 @@ namespace Projectional.Language;
 /// <c>?a == ?b</c> relates two unknowns and stays a relation, which is honest rather than solved by guessing.
 /// </para>
 /// <para>
-/// One equality is decomposed: a list against a list equates the elements, and an optional against an optional
-/// equates the inners, because those are the two shapes whose parts are named by a slot that holds one type. A
-/// record is not descended into: its fields are compared by name, and decomposing two records would first need
-/// the answer to "do these two shapes correspond", which is the same question the solve is running.
+/// A claim about a compound type is rewritten before it is judged, by a <see cref="TypeReplacement"/>: a list
+/// against a list becomes a claim about their elements, and an optional against an optional a claim about their
+/// inners, because those are the two shapes whose part is a single named type. The rules are the framework's own
+/// (<see cref="TypeReplacements.Covariance"/>) plus whatever the language declares, so what the solver knows about
+/// a list is stated in the same vocabulary a language uses to add a rule of its own. A record is not descended
+/// into: its fields are compared by name, and decomposing two records would first need the answer to "do these two
+/// shapes correspond", which is the same question the solve is running.
 /// </para>
 /// </remarks>
 public sealed class TypeSolver
@@ -33,19 +36,30 @@ public sealed class TypeSolver
     public const int DefaultBudget = 1_000;
 
     private readonly ISubtype _subtypes;
+    private readonly IReadOnlyList<TypeReplacement> _replacements;
 
     /// <summary>Creates a solver that decides concrete edges with <paramref name="subtypes"/>.</summary>
     /// <param name="subtypes">
     /// The subtype relation the language declared, or <see langword="null"/> for
     /// <see cref="SubtypeRelation.Primitives"/> - which answers "a type is itself" and nothing more.
     /// </param>
+    /// <param name="replacements">
+    /// The replacements the language declared, which are tried after the framework's own
+    /// (<see cref="TypeReplacements.Covariance"/>) - or <see langword="null"/> for just those.
+    /// </param>
     /// <param name="budget">How many narrowing steps one solve may spend.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="budget"/> is not positive.</exception>
-    public TypeSolver(ISubtype? subtypes = null, int budget = DefaultBudget)
+    public TypeSolver(
+        ISubtype? subtypes = null,
+        IReadOnlyList<TypeReplacement>? replacements = null,
+        int budget = DefaultBudget)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(budget);
 
         _subtypes = subtypes ?? SubtypeRelation.Primitives;
+        _replacements = replacements is null or { Count: 0 }
+            ? TypeReplacements.Covariance
+            : [.. TypeReplacements.Covariance, .. replacements];
         Budget = budget;
     }
 
@@ -199,14 +213,7 @@ public sealed class TypeSolver
             case (var type, TypeVariable variable):
                 return Bind(variable, type, must);
 
-            case (ListType a, ListType b):
-                next.Add(TypeEquation.Equal(a.Element, b.Element));
-
-                return true;
-
-            case (OptionalType a, OptionalType b):
-                next.Add(TypeEquation.Equal(a.Inner, b.Inner));
-
+            case var _ when Replace(TypeEquationKind.Equal, left, right, next):
                 return true;
 
             default:
@@ -260,14 +267,7 @@ public sealed class TypeSolver
                 // "the variable <: something", so whatever it turns out to be must be at most this.
                 return Add(lower, variable, subtype);
 
-            case (ListType a, ListType b):
-                next.Add(TypeEquation.Subtype(a.Element, b.Element));
-
-                return true;
-
-            case (OptionalType a, OptionalType b):
-                next.Add(TypeEquation.Subtype(a.Inner, b.Inner));
-
+            case var _ when Replace(TypeEquationKind.Subtype, left, right, next):
                 return true;
 
             default:
@@ -278,6 +278,30 @@ public sealed class TypeSolver
 
                 return false;
         }
+    }
+
+    /// <summary>Rewrites a claim the language has a replacement for, stating what to prove instead.</summary>
+    /// <remarks>
+    /// Consulted between the cases that <em>constrain</em> a side and the one that decides a fact, which is the only
+    /// place it can stand: a variable has to be bound before a pattern could match it, and a claim is a fact only
+    /// once no rule says what it really means. The first match wins, in the order the language declared, so a
+    /// rule table that says two things about one pair means the one written first.
+    /// </remarks>
+    private bool Replace(TypeEquationKind claim, IType left, IType right, List<TypeEquation> next)
+    {
+        foreach (var replacement in _replacements)
+        {
+            if (replacement.Claim != claim || !replacement.TryApply(left, right, out var instead))
+            {
+                continue;
+            }
+
+            next.AddRange(instead);
+
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>Adds <paramref name="type"/> to one side of <paramref name="variable"/>'s bounds.</summary>
