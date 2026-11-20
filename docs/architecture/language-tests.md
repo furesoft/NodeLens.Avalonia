@@ -1,10 +1,10 @@
 # Tests of a language, as data
 
-Status: **partly delivered** (M6). Slices T1 and T2 are complete: the `tests/` folder, the test language,
+Status: **delivered** (M6). Slices T1, T2 and T3 are complete: the `tests/` folder, the test language,
 `TestRunner`, the xunit bridge and the sample's test documents, with five of the six assertions a document
 can make - `Testing.RoundTrips`, `Testing.Draws`, `Testing.Findings`, `Testing.Generates` and
-`Testing.Evaluates`. `Testing.Script` is still planned, and the rest of this document is the plan for it as
-much as for what is delivered.
+`Testing.Evaluates` - and the sixth, `Testing.Script`, the editor test. What is left of this document is T4
+(node-addressed assertions) and T5 (the workbench command), both of which are additive.
 
 Before this existed, every test in this repository was C# xunit over `Projectional.Core.Tests`, and a
 language author had no way to test a language at all.
@@ -54,7 +54,7 @@ A test declares three things and nothing else:
 - the **expectation** - text, a list of findings, a value, or nothing at all.
 
 The assertion vocabulary is closed on purpose, for the same reason the constraint language has four bodies and
-a template nine parts: a test framework that can compute would be a programming language, and the point is
+a template twelve parts: a test framework that can compute would be a programming language, and the point is
 that a language author writes an assertion, not a program.
 
 | Assertion | What it runs | What it pins |
@@ -64,11 +64,12 @@ that a language author writes an assertion, not a program.
 | `Testing.Generates` | the language's `TextGenerator`, by name | the generated text; the traceability map is not pinned yet |
 | `Testing.Evaluates` | `Interpreter` over the rules the caller supplies, with the variables a test names | the answer, or the message of the failure that stopped the run; the trace is not pinned yet |
 | `Testing.RoundTrips` | `ModelXml.Serialize` twice | invariant 7 for that document |
-| `Testing.Script` | a list of edit steps (type text, press a key, invoke an intention, invoke a fix) and then a `Draws` comparison | the editing behaviour MPS tests with an `EditorTestCase` |
+| `Testing.Script` | an `EditorSession` over the document, replaying steps through `KeyRouter` and `Finder` | what a user's keystrokes do: the model after the steps, drawn |
 
-The first five are document-level assertions: they need nothing from the framework that does not exist. The
-sixth is the editor test, and it is the one that needs the most care, because it must name a caret place and
-an intention without holding live objects.
+All six are document-level assertions: they need nothing from the framework that does not exist. `Testing.Script`
+is the one that reaches the editing layer, and it reaches it only through what the layer already publishes for a
+keystroke - `KeyRouter.Type`, `KeyRouter.For`, `Finder`, `IntentionList` and `EditorSession.Apply` - so the runner
+carries no second idea of what input means.
 
 ## The runner is a behaviour package, not a language package
 
@@ -104,7 +105,7 @@ Three doors onto it:
 | --- | --- |
 | assertions are annotated onto the sample code (`@check`) | not possible without a common base concept: a slot must be declared over a concept key, and languages here share no root (the interface plan adds `Framework.Named`, not `BaseConcept`). A test names a document instead |
 | a test model holds many tests | one test per document, like every other definition |
-| caret markup inside the sample code | the action script places the caret, because a document under test stays a plain document |
+| caret markup inside the sample code | not possible for the same reason: a document under test stays a plain document, so a `Testing.Caret` step names the text to stand in front of instead |
 | `TestInfo` with a project path, in-process versus out-of-process | not applicable: the runner is handed the project, and there is no second process to start |
 | BaseLanguage code in a test, labels, utility methods | not applicable: the vocabulary is closed, so there is no code in a test |
 | migration tests | no migration tooling exists yet (M6) - the assertion arrives with it |
@@ -148,7 +149,30 @@ The folder, the language, the runner and the bridge, with five of the six assert
   `name=value` pairs is refused at lowering, like any other malformed slot.
 - **The xunit bridge** is `LanguageTestsAsDataTests`: it runs the shipped sample's folder, so CI
   covers a language's own tests without new runner infrastructure. The sample's test documents are
-  `samples/declared-pipeline/tests/round-trips.mps`, `draws.mps`, `reports.mps` and `generates.mps`.
+  `samples/declared-pipeline/tests/round-trips.mps`, `draws.mps`, `reports.mps`, `generates.mps` and
+  `script.mps`.
+- **`Testing.Script`** is the editor test: an `EditorSession` over the document, with the language's own
+  intentions registered, replaying a closed vocabulary of four steps - `Testing.Caret` (the caret goes in front of
+  the first occurrence of a text), `Testing.Type` (the characters are typed at the caret), `Testing.Press` (a key
+  is routed the way the control routes it) and `Testing.Invoke` (the offer whose id the step names is applied) -
+  and then comparing what the document draws, exactly as `Testing.Draws` does. A step the editor refuses is a
+  failed row naming the step and the reason, because a script that could not be replayed has compared nothing.
+
+**How a script names a place and an offer.** Neither is named by identity, because a test is written as data and
+a node id is a GUID nobody can read:
+
+- a **place** is named by the text the document shows there, found through `Finder` - the same question a user's
+  find asks. Matching is ordinal, so a test that says `release` cannot pass by landing on `Release`, and the
+  caret goes in front of the occurrence so a step that types prefixes a value.
+- an **offer** is named by its `Intention.Id`, which `Intention` documents as the stable, untranslated name a test
+  can use without matching a label that may be localised or computed per caret.
+
+Two consequences are worth stating because they are properties of the editor rather than of this framework's
+tests. A place that shows **no text** - an empty slot, whose `<empty>` is notation rather than document - cannot be
+named, exactly as a user cannot find it; a script reaches it with a key (`ControlEnd`, `Tab`), which is what a user
+does too. And a language project carries **no typing rules aspect**, so a script cannot type into an empty slot to
+create a concept there; filling a slot is `press Enter` or `invoke`, which is the path a user takes when the
+language declares no rules either.
 
 **No shipped language declares evaluation rules**, because evaluation is not a declarable aspect: rules are
 written in C# against an `EvaluationRegistry`, and nothing in a language project states which registry belongs
@@ -156,17 +180,13 @@ to it. `Testing.Evaluates` is therefore proven where a host supplies one, in the
 `declared-workflow` folder, rather than by a document in a sample's `tests/` folder. When evaluation becomes
 declarable, the assertion needs no change - only a sample that ships rules.
 
-The remaining assertion is additive: one more concept in the test language, one more notation, and one more
-branch in the runner. `Testing.Script` needs the editing layer - reaching that layer is why the package sits
-in the behaviour band rather than beside a language.
-
 ## Slices
 
 | Slice | Content | Effort |
 | --- | --- | --- |
 | T1 | the `tests/` folder and the language (`Testing.Draws`, `Testing.Findings`, `Testing.RoundTrips`), `TestRunner`, the xunit bridge, and the sample language's first tests - **delivered** | 1 week |
 | T2 | `Testing.Generates` and `Testing.Evaluates` (generators by name, variables from one line of `name=value` pairs, the way `RunInputs` already reads them) - **delivered** | 3-4 days |
-| T3 | `Testing.Script`: the action vocabulary, caret placement, and the comparison after the run - the editor test | 1-2 weeks |
+| T3 | `Testing.Script`: the action vocabulary, caret placement, and the comparison after the run - the editor test - **delivered** | 1-2 weeks |
 | T4 | node-addressed assertions (`Testing.TypeOf`, `Testing.ScopeOf`), which need a way for a test to name a node: a path syntax, or a reference once a common base concept exists | open |
 | T5 | the workbench command, the report rows, and "run on save" if it is wanted | 3-4 days |
 
@@ -187,6 +207,12 @@ in the behaviour band rather than beside a language.
   to it; once evaluation joins `structure`, `editor` and the rest as a declarable aspect, the assertion reads
   them from the project and the parameter goes away. Until then a host that runs tests supplies the same
   registry it hands to its own Run command, which is also what keeps a test's run and a user's run identical.
+- **Whether a script can assert that an edit was refused.** Today a refused step fails the row, because a script
+  that could not be replayed has not compared anything - which means "this keystroke must be rejected, and the
+  document must be unchanged" cannot be written. It is the editor test's version of a negative test, and the
+  vocabulary has no word for it yet: an `Testing.Refused` step that names what must not happen would need the
+  runner to keep both the refusal and its reason, so the choice is between a fifth step kind and a flag on each
+  of the four.
 - **How a test names its document.** A path relative to the language project is explicit and reviewable, and
   it is what MPS' `TestInfo` does for the project root. A reference to the model root would be stronger, but a
   reference slot needs a concept key and a root concept is the language's own - the common base concept this
