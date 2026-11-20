@@ -110,8 +110,11 @@ pilot's JSON and C# fragment.
 - **The selection is a property, not a variable.** `Fm.Feature.isSelected` is saved with the document and
   undone with it; the state machine's `attempts` is a value a reader supplies for one run. A configuration
   belongs to the document, which is why it is model state and why the notation can draw it.
-- **A many-valued reference cannot be drawn.** A real gap rather than a choice: `NotationEditor` has
-  `Reference(slot)` and no collection of references, so `requires` became two single-valued slots.
+- **A reference is single-valued, so a many-valued link is a child node per element.** Not a gap but the model's own
+  rule ([language.md](language.md#notation)): a `ReferenceSlot` holds one target and its `resolveInfo`, which is what
+  the one-old-one-new change record describes, and a relationship with many targets is a list of nodes with their own
+  identity and order. `requires` is a node with two references because of that, and the notation of a list of links is
+  a `Children` cell over the link concept.
 - **A template can lay out a tree, and this sample still does not nest.** `WhenFilledPart` - the eleventh part,
   delivered after this sample was written - asks whether a slot holds anything, so a node expands its children
   only once they exist and a leaf leaves no stray break behind it
@@ -178,9 +181,10 @@ The second is closed too: a key is a real `alter table <table> add foreign key (
 "A key is a fragment, not an `alter table`". `AParentPartEmitsThePropertyOfTheNodeThatHolds` and the sample's own
 golden DDL are the tests.
 
-Still open, and recorded rather than worked around:
-
-- **A many-valued reference cannot be drawn**, which is still the shape a list of links would take.
+The third record is not a gap either, and this file said it was: a many-valued reference is not something the notation
+is missing, because a reference is **single-valued by design** - the model's answer to "a list of links" is a list of
+link nodes, each with its own identity and order ([language.md](language.md#notation)). Nothing of this sample is
+still open.
 
 ## What the three have to prove
 
