@@ -19,7 +19,7 @@ public sealed class TemplateImporterTests
     {
         var language = Open();
         var generator = Assert.Single(language.Generators);
-        var importer = Assert.Single(language.Importers);
+        var importer = language.Importers.Single(candidate => candidate.Format == generator.Name);
 
         Assert.True(language.TryCreateImporter(generator.Name, out var named, out var error), error);
         Assert.NotNull(named);
@@ -47,7 +47,7 @@ public sealed class TemplateImporterTests
     public void ReadingTheSameTextTwiceGivesOneUndoStepEachTime()
     {
         var language = Open();
-        var importer = Assert.Single(language.Importers);
+        var importer = language.Importers.Single(candidate => candidate.Format == "ShellScript");
         var model = language.NewProject().NewModel("imported");
 
         var first = importer.Import(model, "# Release\ndotnet build");
@@ -63,7 +63,7 @@ public sealed class TemplateImporterTests
     public void TextThatIsNotTheGeneratorsOutputNamesThePlaceItStopped()
     {
         var language = Open();
-        var importer = Assert.Single(language.Importers);
+        var importer = language.Importers.Single(candidate => candidate.Format == "ShellScript");
         var model = language.NewProject().NewModel("imported");
 
         var result = importer.Import(model, "deploy everything\n");

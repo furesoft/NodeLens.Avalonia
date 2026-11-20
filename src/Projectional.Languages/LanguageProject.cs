@@ -156,6 +156,16 @@ public sealed class LanguageProject
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
 
+        // A declared importer is asked for by its own format name, and it wins over a generator of the same name: a
+        // language that wrote a rule for a spelling meant that rule, not the inverse of a template.
+        if (DeclaredImporters.FirstOrDefault(importer => string.Equals(importer.Format, name, StringComparison.Ordinal)) is { } declared)
+        {
+            importer = declared;
+            error = null;
+
+            return true;
+        }
+
         if (Generators.FirstOrDefault(generator => string.Equals(generator.Name, name, StringComparison.Ordinal)) is not { } found)
         {
             importer = null;

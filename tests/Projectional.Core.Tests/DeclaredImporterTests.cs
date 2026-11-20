@@ -3,6 +3,7 @@ using Projectional.ImportRules;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
+using Projectional.Semantics;
 using Projectional.Structures;
 using Xunit;
 
@@ -99,6 +100,37 @@ public sealed class DeclaredImporterTests
 
         Assert.Null(LanguageProject.Open(folder.Root, out var error));
         Assert.Contains("nothing", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredImporterReadsASpellingTheGeneratorNeverWrites()
+    {
+        // The shipped pipeline reads two spellings: its own generator's shell script, and an ini-shaped variant the
+        // generator cannot produce. That difference is the whole reason a rule exists beside a template - the inverse
+        // of the generator could only ever read back what it wrote.
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
+
+        Assert.Null(error);
+        Assert.True(language!.TryCreateImporter("ini", out var importer, out var why), why);
+        Assert.IsType<DeclaredImporter>(importer);
+
+        var model = language.NewProject().NewModel("imported");
+        var result = importer!.Import(model, "pipeline = Release\nstage = dotnet build\nstage = dotnet test");
+
+        Assert.True(result.Succeeded, Describe(result));
+
+        var root = Assert.Single(result.Roots);
+
+        Assert.Equal("Release", root.GetOrNull("name"));
+        Assert.Equal(
+            ["dotnet build", "dotnet test"],
+            root.GetChildren("stages").Select(stage => stage.GetOrNull("command")));
+
+        // And the model it read is the same model the generator prints, which is what "a second spelling of one
+        // model" means.
+        var generator = language.Generators.Single(candidate => candidate.Name == "ShellScript");
+
+        Assert.Equal("# Release\ndotnet build\ndotnet test", new Generator().Generate(root, generator).Text);
     }
 
     private static DeclaredImporter Import(string directory) =>
