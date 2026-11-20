@@ -201,6 +201,7 @@ public sealed class LanguageProject
             var concepts = ConceptRegistry.Create(declarations);
             var scopes = LowerScopeProviders(directory, concepts);
             var intentions = LowerIntentions(directory, concepts);
+            var types = LowerTypes(directory);
 
             error = null;
 
@@ -210,9 +211,9 @@ public sealed class LanguageProject
                 declarations,
                 concepts,
                 LowerNotation(directory, concepts),
-                LowerTypes(directory),
+                types.Registry,
                 LowerGenerators(directory, concepts),
-                LowerConstraints(directory, concepts),
+                LowerConstraints(directory, concepts).With(types.Complaints),
                 scopes.Registry,
                 intentions.Provider,
                 intentions.HasAny);
@@ -291,8 +292,22 @@ public sealed class LanguageProject
     /// <param name="name">The model's name, which is also the file name it is saved under.</param>
     public Model NewModel(string name = "model") => NewProject().NewModel(name);
 
-    private static TypeRegistry LowerTypes(string directory) =>
-        TypeRuleLowering.CreateRegistry(Read(directory, TypesFolder, new Project(TypeRuleLanguage.Concepts)));
+    /// <summary>The two products of a language's types aspect: what its concepts evaluate to, and what they report.</summary>
+    private readonly record struct TypeAspect(TypeRegistry Registry, ConstraintSet Complaints);
+
+    /// <remarks>
+    /// The documents are read once and lowered twice, because a types document states two separate things: a
+    /// type per concept, and a complaint per concept that reports instead of typing. Reading twice would parse
+    /// the same models twice for no gain.
+    /// </remarks>
+    private static TypeAspect LowerTypes(string directory)
+    {
+        var documents = Read(directory, TypesFolder, new Project(TypeRuleLanguage.Concepts));
+
+        return new TypeAspect(
+            TypeRuleLowering.CreateRegistry(documents),
+            TypeRuleLowering.CreateComplaints(documents));
+    }
 
     private static NotationRegistry LowerNotation(string directory, ConceptRegistry concepts)
     {

@@ -154,6 +154,17 @@
   structural overrides it so its comparison is structural too (list elements, record fields, a name's expansion, a
   join's either side, a meet's both). `SubtypeRelation.IsComparableTo` is the authority for a language's edges;
   `IType.IsComparableTo`'s default asks `SubtypeRelation.Primitives`, so a bare type compares only with itself.
+  The declared `TypeRule.Comparable` is deferred: nothing in the tree consumes a comparison a language
+  states as data yet.
+- **A type rule may report instead of typing.** `TypeRule.Complain` is a body carrying a `message`
+  and a `severity`; `TypeRuleLowering.CreateComplaints` lowers it into an `IConstraint` keyed by the
+  concept the rule names, and `LanguageProject` composes it into the language's own constraints - so
+  the existing engine, findings and squiggles carry it with no new path. A complaint states no type,
+  so it stays out of the registry: a language with only a complaint has `HasTypes` false and
+  `HasConstraints` true, and a concept that also has a type rule keeps that type. The declared form
+  reports *unconditionally* - the message is a sentence about the concept, not a condition on the
+  node - so a conditional "operation is not applicable to these operands" is deferred rather than
+  approximated.
 - **`UnknownType` accepts and is accepted**, which is what suppresses follow-on errors - one mistake in
   a condition must not produce a finding on every expression that reads it. It is **not** a wildcard to
   rely on: a caller that must not proceed on a guess (a generator) asks `type is UnknownType` explicitly.
@@ -183,7 +194,7 @@
   `Editing`). Do not move the types back into `Semantics` - it looked tidier and it is wrong.
 - **`Projectional.TypeRules` is the declared form** - the first declared aspect: a rule is a model
   (`TypeRule.Rule` with a `Fixed`/`Child`/`Switch` body) and `TypeRuleLowering` turns it into the
-  same `ITypeRule` a C# author writes. **Four bodies, not a statement list**: MPS' typesystem is
+  same `ITypeRule` a C# author writes. **Five bodies, not a statement list**: MPS' typesystem is
   imperative, and copying that would mean shipping an interpreter for a language whose only job is to
   answer one question per node. A body that cannot be lowered (no body, an unknown type name, a value
   declared twice, a switch with no `otherwise`) is a `ConceptDefinitionException` at load, not a rule

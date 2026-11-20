@@ -246,4 +246,24 @@ public sealed class TypeRuleNotationTests
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
+
+    [Fact]
+    public void AComplaintDrawsItsSeverityAndItsMessage()
+    {
+        var model = TypeRuleLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, "Expressions.IntLiteral");
+
+        var body = model.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Complain);
+        body.Set(TypeRuleLanguage.SeveritySlot, "error");
+        body.Set(TypeRuleLanguage.MessageSlot, "An integer literal is not allowed here.");
+
+        Assert.Equal(
+            """
+            rule Expressions.IntLiteral is
+              report error "An integer literal is not allowed here."
+            """,
+            LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 80));
+    }
 }

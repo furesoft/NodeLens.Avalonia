@@ -142,5 +142,16 @@ public static class TypeRuleNotations
             ed.Property(TypeRuleLanguage.RelationSlot),
             ed.Space,
             ed.ChildInline(TypeRuleLanguage.RightSlot)));
+
+        // A complaint draws as the sentence a finding quotes, so the author reads the diagnostic before it is
+        // reported: the severity first, then the message the user will see.
+        notations.Add(TypeRuleConceptKeys.Complain, ed => ed.Line(
+            ed.Keyword("report"),
+            ed.Space,
+            ed.Property(TypeRuleLanguage.SeveritySlot),
+            ed.Space,
+            ed.Keyword("\""),
+            ed.Property(TypeRuleLanguage.MessageSlot),
+            ed.Keyword("\"")));
     }
 }

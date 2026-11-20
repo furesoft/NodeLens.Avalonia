@@ -82,6 +82,57 @@ public sealed class LanguageProjectTypesTests
         Assert.Contains("decimal", error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AComplaintReachesTheLanguagesConstraints()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteComplaint(folder.Root, "Pipeline.Stage", "a stage is not typed", "warning");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        // A complaint is a diagnostic, not a type: the language has a constraint and still no type.
+        Assert.True(language.HasConstraints);
+        Assert.False(language.HasTypes);
+
+        var model = language.NewModel("document");
+
+        model.NewNode("Pipeline.Stage");
+
+        var finding = Assert.Single(new ConstraintEngine(language.Constraints).Check(model));
+
+        Assert.Equal("a stage is not typed", finding.Message);
+        Assert.Equal(DiagnosticSeverity.Warning, finding.Severity);
+    }
+
+    [Fact]
+    public void AComplaintAndATypeLiveSideBySide()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteTypes(folder.Root);
+        WriteComplaint(folder.Root, "Pipeline.Stage", "a stage is not typed", "error");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+        Assert.True(language.HasTypes);
+        Assert.True(language.HasConstraints);
+
+        var model = language.NewModel("document");
+        var node = model.NewNode("Pipeline.Stage");
+
+        // The type the rule answers is unchanged by the complaint, which only adds a finding beside it.
+        Assert.Equal("int", language.Types.TypeOf(node).Name);
+        Assert.Equal("a stage is not typed", Assert.Single(new ConstraintEngine(language.Constraints).Check(model)).Message);
+    }
+
     private static void WriteStructure(string directory)
     {
         var definition = new DefinitionBuilder();
@@ -113,5 +164,24 @@ public sealed class LanguageProjectTypesTests
 
         Directory.CreateDirectory(rules);
         ModelFile.Save(types, Path.Combine(rules, "Pipeline.Stage.mps"));
+    }
+
+    /// <summary>One complaint, as its own document, the way a language project stores it.</summary>
+    private static void WriteComplaint(string directory, string conceptKey, string message, string severity)
+    {
+        var types = TypeRuleLanguage.NewModel();
+        var rule = types.Roots[0];
+
+        rule.Set(TypeRuleLanguage.ConceptKeySlot, conceptKey);
+
+        var body = types.NewChild(rule, TypeRuleLanguage.BodySlot, TypeRuleConceptKeys.Complain);
+
+        body.Set(TypeRuleLanguage.MessageSlot, message);
+        body.Set(TypeRuleLanguage.SeveritySlot, severity);
+
+        var rules = Path.Combine(directory, LanguageProject.TypesFolder);
+
+        Directory.CreateDirectory(rules);
+        ModelFile.Save(types, Path.Combine(rules, "stage-complaint.mps"));
     }
 }
