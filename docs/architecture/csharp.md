@@ -149,6 +149,32 @@ flag:
   instead and `CellLayouter` advances the cursor by one line height at each, which keeps the caret on the
   members and the blank row out of the tree.
 
+**Where the lists differ.** The rule is the same everywhere; the *set* is not, and that difference is the
+convention rather than an accident:
+
+| List | Between groups | Before the first child |
+| --- | --- | --- |
+| A class's members | tight set `{Field}` - a run of fields stays together, everything else is separated | no gap, because the brace above already separates it |
+| A namespace's types | empty set - every type is separated from the next, two classes as much as a class from an interface | no gap in the block form, for the same reason as the brace; a gap in the file-scoped form, where the header is the row above |
+
+Members of one kind belong together; types of any kind never do. That is why the two lists carry different
+sets instead of one shared "same concept is tight" rule - that rule would glue two methods together as
+well.
+
+The file-scoped form is the one place a group boundary cannot describe the gap, because a boundary
+separates two *neighbours* and there is no neighbour above the first type - only the row the notation put
+it under. So `ChildrenPart.BlankLineBeforeFirst` and `ChildNotationCell.BlankLineBeforeFirst` state it
+directly, and the projection puts position `0` in the same index set the boundaries use. Only the
+file-scoped branch sets it: the same concept's `ClassesSlot` appears in two conditional blocks, so the two
+forms can declare different gaps for the same list.
+
+**Still missing: the gap under the `using` block.** A file with directives wants a blank line between the
+last one and the namespace declaration, and no current knob says "this list is followed by a gap" -
+`BlankLineBetweenGroups` and `BlankLineBeforeFirst` are the two positions *inside* a list, and this one is
+after its last child. It needs a third position (`BlankLineAfterLast`, or one flags enum replacing all
+three) before the `using` block's list can ask for it. Until then the generated file is correct C# and one
+blank line short of the convention.
+
 The rules a style checker cannot state in a model at all - line length, brace placement, trailing
 whitespace, `var` versus an explicit type - are projection choices here, not model facts, and belong to
 the notation's own conventions rather than to a constraint.

@@ -41,8 +41,14 @@ public static class CSharpTextGenerators
     private static ChildrenPart Members(
         string slot,
         bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null) =>
-        new(slot, TextTemplate.Of(LineBreakPart.Instance), blankLineBetweenGroups, tightConcepts);
+        IReadOnlySet<string>? tightConcepts = null,
+        bool blankLineBeforeFirst = false) =>
+        new(
+            slot,
+            TextTemplate.Of(LineBreakPart.Instance),
+            blankLineBetweenGroups,
+            tightConcepts,
+            blankLineBeforeFirst);
 
     private static TemplateRegistry Templates() => TemplateRegistry.Empty
         .Add(CSharpConceptKeys.File, TextTemplate.Of(
@@ -67,8 +73,10 @@ public static class CSharpTextGenerators
                     new TextPart("namespace "),
                     new PropertyPart(CSharpLanguage.NameSlot),
                     new TextPart(";"),
-                    LineBreakPart.Instance,
-                    Members(CSharpConceptKeys.ClassesSlot)),
+                    Members(
+                        CSharpConceptKeys.ClassesSlot,
+                        blankLineBetweenGroups: true,
+                        blankLineBeforeFirst: true)),
                 TextTemplate.Of(
                     new TextPart("namespace "),
                     new PropertyPart(CSharpLanguage.NameSlot),
@@ -76,7 +84,7 @@ public static class CSharpTextGenerators
                     new TextPart("{"),
                     new IndentPart(TextTemplate.Of(
                         LineBreakPart.Instance,
-                        Members(CSharpConceptKeys.ClassesSlot))),
+                        Members(CSharpConceptKeys.ClassesSlot, blankLineBetweenGroups: true))),
                     LineBreakPart.Instance,
                     new TextPart("}")))))
 

@@ -346,10 +346,12 @@ public sealed class CSharpLanguageTests
               public class Shape
               {
               }
+
               public interface INamed
               {
                 public string Describe();
               }
+
               public class Circle : Shape, INamed
               {
               }
@@ -367,10 +369,12 @@ public sealed class CSharpLanguageTests
               {
                 <no members>
               }
+
               public interface INamed
               {
                 public string Describe();
               }
+
               public class Circle : Shape, INamed
               {
                 <no members>
@@ -1049,13 +1053,14 @@ public sealed class CSharpLanguageTests
         var generated = new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text;
 
         // The header ends the declaration, the class stands at the file's own level instead of one in, and the
-        // closing brace that only the block form has is gone.
-        Assert.StartsWith("namespace Sample;\npublic class Greeter\n{\n  private string message", scoped, StringComparison.Ordinal);
+        // closing brace that only the block form has is gone. The empty line under the header is the convention's
+        // own: a file-scoped namespace declaration is followed by a blank line before the first type.
+        Assert.StartsWith("namespace Sample;\n\npublic class Greeter\n{\n  private string message", scoped, StringComparison.Ordinal);
         Assert.DoesNotContain("namespace Sample\n{", scoped, StringComparison.Ordinal);
         Assert.EndsWith("  }\n}", scoped, StringComparison.Ordinal);
 
         // And the generator says the same thing as the notation, which is the property the whole language rests on.
-        Assert.StartsWith("namespace Sample;\npublic class Greeter\n{\n  private string message", generated, StringComparison.Ordinal);
+        Assert.StartsWith("namespace Sample;\n\npublic class Greeter\n{\n  private string message", generated, StringComparison.Ordinal);
         Assert.DoesNotContain("namespace Sample\n{", generated, StringComparison.Ordinal);
     }
 
@@ -1366,6 +1371,98 @@ public sealed class CSharpLanguageTests
 
         Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
         Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
+    public void ABlankLineSeparatesTwoTypesInANamespace()
+    {
+        // The member list's tight set has fields in it, because members of one kind belong together. The type list
+        // has nothing in its set, because types never do - two classes are as separate from each other as a class is
+        // from an interface. That is what makes this an empty set rather than a second entry in the same one.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("types");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+
+        foreach (var name in new[] { "First", "Second" })
+        {
+            var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+            cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+            cls.Set(CSharpLanguage.NameSlot, name);
+        }
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class First
+              {
+                <no members>
+              }
+
+              public class Second
+              {
+                <no members>
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+    }
+
+    [Fact]
+    public void ABlankLineSeparatesTwoTypesUnderAFileScopedNamespace()
+    {
+        // The file-scoped form puts the types at the same level as the header, so the gap it draws is the same one -
+        // and the generated text has it too, which is the pair that would drift if the two read different rules.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("file-scoped");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        ns.Set(CSharpLanguage.IsFileScopedSlot, true);
+
+        foreach (var name in new[] { "First", "Second" })
+        {
+            var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+            cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+            cls.Set(CSharpLanguage.NameSlot, name);
+        }
+
+        const string Drawn =
+            """
+            namespace Sample;
+
+            public class First
+            {
+              <no members>
+            }
+
+            public class Second
+            {
+              <no members>
+            }
+            """;
+
+        const string Generated =
+            """
+            namespace Sample;
+
+            public class First
+            {
+            }
+
+            public class Second
+            {
+            }
+
+            """;
+
+        Assert.Equal(Drawn, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Generated, new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
     }
 
     private static Model Sample()
