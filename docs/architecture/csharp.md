@@ -131,8 +131,8 @@ the projection is what puts the line where the block ends. That split is the hon
 claimed to see a blank line would be reading the projection's output, not the model.
 
 **Delivered: the projection half.** The blank line itself is a projection fact, and it now has a
-declaration of its own rather than an engine convention: `ChildNotationCell.BlankLineBetweenGroups` draws
-it and `ChildrenPart.BlankLineBetweenGroups` writes it, and both read `ChildGroups` for *where* a group
+declaration of its own rather than an engine convention: `ChildNotationCell.Gaps` draws
+it and `ChildrenPart.Gaps` writes it, and both read `ChildGroups` for *where* a group
 ends so the drawing and the generated text cannot disagree. Three details were what made it more than a
 flag:
 
@@ -149,31 +149,33 @@ flag:
   instead and `CellLayouter` advances the cursor by one line height at each, which keeps the caret on the
   members and the blank row out of the tree.
 
-**Where the lists differ.** The rule is the same everywhere; the *set* is not, and that difference is the
-convention rather than an accident:
+**Where the lists differ.** The rule is the same everywhere; the *value* is not, and that difference is the
+convention rather than an accident. `ListGap` names the three positions a list can breathe at, and a list
+takes the flags it wants:
 
-| List | Between groups | Before the first child |
+| List | Gaps | Why |
 | --- | --- | --- |
-| A class's members | tight set `{Field}` - a run of fields stays together, everything else is separated | no gap, because the brace above already separates it |
-| A namespace's types | empty set - every type is separated from the next, two classes as much as a class from an interface | no gap in the block form, for the same reason as the brace; a gap in the file-scoped form, where the header is the row above |
+| A class's members | `BetweenGroups`, tight set `{Field}` | a run of fields stays together, every other member is separated |
+| A namespace's types | `BetweenGroups`, empty tight set | every type is separated from the next, two classes as much as a class from an interface |
+| A file's imports | `AfterLast` | the blank line separates the last directive from the namespace declaration, not two directives from each other |
 
-Members of one kind belong together; types of any kind never do. That is why the two lists carry different
-sets instead of one shared "same concept is tight" rule - that rule would glue two methods together as
-well.
+Members of one kind belong together; types of any kind never do. That is why the two *group* lists carry
+different sets instead of one shared "same concept is tight" rule - that rule would glue two methods
+together as well.
 
-The file-scoped form is the one place a group boundary cannot describe the gap, because a boundary
-separates two *neighbours* and there is no neighbour above the first type - only the row the notation put
-it under. So `ChildrenPart.BlankLineBeforeFirst` and `ChildNotationCell.BlankLineBeforeFirst` state it
-directly, and the projection puts position `0` in the same index set the boundaries use. Only the
-file-scoped branch sets it: the same concept's `ClassesSlot` appears in two conditional blocks, so the two
-forms can declare different gaps for the same list.
+Two of the three positions are ones a group boundary structurally cannot describe, because a boundary
+separates two *neighbours*: there is nothing above the first child, and nothing below the last. So
+`ListGap.BeforeFirst` and `ListGap.AfterLast` say it directly, and the projection keeps one mechanism -
+a gap always sits *above* a position, so the index set is a range and position `Count` means the row
+after the last child. A class's members take no gap before the first because the brace above already
+separates it; a namespace's types take one in the file-scoped form only, where the header is the row
+above. That asymmetry is expressible because the same concept's `ClassesSlot` appears in two conditional
+blocks, so the two forms declare different gaps for one list.
 
-**Still missing: the gap under the `using` block.** A file with directives wants a blank line between the
-last one and the namespace declaration, and no current knob says "this list is followed by a gap" -
-`BlankLineBetweenGroups` and `BlankLineBeforeFirst` are the two positions *inside* a list, and this one is
-after its last child. It needs a third position (`BlankLineAfterLast`, or one flags enum replacing all
-three) before the `using` block's list can ask for it. Until then the generated file is correct C# and one
-blank line short of the convention.
+The imports' trailing gap lives *inside* the `WhenFilledBlock` that wraps them, which is what keeps a
+file without directives from opening with a blank row. Its position is also why the generator's `File`
+template lost the `LineBreakPart` it used to carry after the imports: the list writes that break now, so
+the notation and the template cannot disagree about one newline or two.
 
 The rules a style checker cannot state in a model at all - line length, brace placement, trailing
 whitespace, `var` versus an explicit type - are projection choices here, not model facts, and belong to

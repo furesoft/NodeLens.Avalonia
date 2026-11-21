@@ -34,12 +34,21 @@ public static class CSharpNotations
         // A file is its imports, each on its own row, then the namespace. The imports are wrapped in a when-filled
         // block so a file without them draws nothing where they would be - an empty row would push the namespace
         // down for no reason.
+        //
+        // The imports take a trailing gap, which is the one position a group boundary cannot describe: the blank line
+        // the convention wants separates the last directive from the namespace declaration rather than two of the
+        // directives from each other. It sits inside the when-filled block, so a file with no imports gets no blank
+        // row in front of its namespace.
         notations.Add(
             CSharpConceptKeys.File,
             ed => ed.Sequence(
                 ed.WhenFilledBlock(
                     CSharpConceptKeys.UsingsSlot,
-                    ed.Children(CSharpConceptKeys.UsingsSlot, string.Empty, stacked: true)),
+                    ed.Children(
+                        CSharpConceptKeys.UsingsSlot,
+                        string.Empty,
+                        stacked: true,
+                        gaps: ListGap.AfterLast)),
                 ed.Line(ed.ChildInline(CSharpConceptKeys.NamespaceSlot, "<no namespace>"))));
 
         notations.Add(CSharpConceptKeys.Using, ed => ed.Line(

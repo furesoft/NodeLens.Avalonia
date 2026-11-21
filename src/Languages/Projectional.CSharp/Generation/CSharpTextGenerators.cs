@@ -46,11 +46,14 @@ public static class CSharpTextGenerators
 
     private static TemplateRegistry Templates() => TemplateRegistry.Empty
         .Add(CSharpConceptKeys.File, TextTemplate.Of(
+            // The trailing break used to be written here; the list's own gap writes it now, so the two cannot
+            // disagree about whether a file's imports are followed by one newline or two.
             new WhenFilledPart(
                 CSharpConceptKeys.UsingsSlot,
-                TextTemplate.Of(
-                    new ChildrenPart(CSharpConceptKeys.UsingsSlot, TextTemplate.Of(LineBreakPart.Instance)),
-                    LineBreakPart.Instance)),
+                TextTemplate.Of(new ChildrenPart(
+                    CSharpConceptKeys.UsingsSlot,
+                    TextTemplate.Of(LineBreakPart.Instance),
+                    ListGap.AfterLast))),
             new ChildPart(CSharpConceptKeys.NamespaceSlot),
             LineBreakPart.Instance))
 

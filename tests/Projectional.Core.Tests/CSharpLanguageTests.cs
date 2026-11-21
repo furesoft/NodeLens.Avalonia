@@ -735,6 +735,7 @@ public sealed class CSharpLanguageTests
             """
             using System;
             using System.Collections.Generic;
+
             namespace Sample
             {
               public class Greeter
@@ -746,6 +747,78 @@ public sealed class CSharpLanguageTests
 
         Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
         Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
+    public void ABlankLineSeparatesTheImportsFromTheNamespace()
+    {
+        // The one gap a group boundary cannot describe: the blank line separates the last directive from the namespace
+        // declaration, not two directives from each other. It belongs to the when-filled block around the imports, so
+        // a file without them must not open with a blank row - which is the half that would break if the gap hung off
+        // the file instead of off the list. A class is in the model so nothing here is drawn as a placeholder, which
+        // keeps the comparison against the generated text exact.
+        const string Imported =
+            """
+            using System;
+            using System.Text;
+
+            namespace Sample;
+
+            public class Greeter
+            {
+              private string message;
+            }
+            """;
+
+        const string Bare =
+            """
+            namespace Sample;
+
+            public class Greeter
+            {
+              private string message;
+            }
+            """;
+
+        Assert.Equal(Imported, Document(withImports: true));
+        Assert.Equal(Bare, Document(withImports: false));
+
+        static string Document(bool withImports)
+        {
+            var model = new Project(CSharpLanguage.Concepts).NewModel("imports");
+            var file = model.NewNode(CSharpConceptKeys.File);
+
+            if (withImports)
+            {
+                foreach (var name in new[] { "System", "System.Text" })
+                {
+                    model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using)
+                        .Set(CSharpLanguage.NameSlot, name);
+                }
+            }
+
+            var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+            var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+            var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+            var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+
+            ns.Set(CSharpLanguage.NameSlot, "Sample");
+            ns.Set(CSharpLanguage.IsFileScopedSlot, true);
+            cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+            cls.Set(CSharpLanguage.NameSlot, "Greeter");
+            field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+            field.Set(CSharpLanguage.NameSlot, "message");
+            fieldType.Set(CSharpLanguage.NameSlot, "string");
+
+            var drawn = LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120);
+            var generated = new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text;
+
+            // The notation and the generator declare the gap separately, so agreeing here is what keeps the two from
+            // drifting into a file that draws one blank line and writes another.
+            Assert.Equal(drawn + "\n", generated);
+
+            return drawn;
+        }
     }
 
     [Fact]

@@ -125,17 +125,18 @@ the tree, in abstract **layout units** rather than pixels.
   written into the separator notation itself (`Punct(",")` beside `Line(Space, Keyword("and"))`).
   There is no trailing gap after the last item. A gap is real cells, not padding applied by
   the layout, so a wide gap is several `SpaceCell`s and every one of them is a caret stop.
-- **A stacked child slot can leave a blank row between groups.** `ChildNotationCell.BlankLineBetweenGroups`
-  asks for one, and `ChildCell.BlankLineBefore` carries the positions it applies to: the stack advances the
+- **A stacked child slot can leave a blank row between groups.** `ChildNotationCell.Gaps` asks for one, and
+  `ChildCell.BlankLineBefore` carries the positions it applies to: the stack advances the
   cursor by one line height before each of them. The gap is *space*, not a cell, because a childless cell is a
   leaf and every leaf is a caret target - a spacer would be a caret stop on a row nobody drew. The positions
   come from `ChildGroups.IsBoundary`, the same rule the generator applies, so the drawing and the generated
-  text put the blank line in the same place. A group boundary is vertical space, so only a stacked slot can
-  draw one; the flag on a single-line slot does nothing. `BlankLineBeforeFirst` asks for the gap above the
-  *first* child, which no boundary can describe because there is no neighbour above it - a list the notation
-  puts under a header of its own, like the types below a file-scoped namespace declaration. It is the same
-  index set and the same line height; position `0` is simply a member of it, which is why `CellLayouter`
-  needed no second rule and the caret still has nowhere new to stand.
+  text put the blank line in the same place. A gap is vertical space, so only a stacked slot can
+  draw one; the value on a single-line slot does nothing. `ListGap` names the three positions a list can
+  breathe at, and they are all one mechanism: a gap always sits *above* a position, so the index set is a
+  range - `0` is the gap above the first child, which no boundary can describe because there is no
+  neighbour above it, and `Count` is the row after the last child, which no child occupies and which is
+  how a list asks for a trailing empty line. The layouter asks about each child and then once about the
+  position after the end, so the caret still has nowhere new to stand.
 - **Where a list may stand is a type, not a flag.** `CollectionNotationCell` is a block cell and
   starts its own line; `InlineCollectionNotationCell` stays inside the line it is drawn on, with the
   same `Separator`/`Spacing`/`EmptyText` and the same runtime `CollectionCell` (which arranges its
