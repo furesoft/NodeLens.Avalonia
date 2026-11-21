@@ -1749,6 +1749,103 @@ public sealed class CSharpLanguageTests
         Assert.Equal(UnknownType.Instance.Name, CSharpTypes.Registry.TypeOf(self).Name);
     }
 
+    [Fact]
+    public void ABehaviourClassHoldsTheMethodsOfOneConcept()
+    {
+        // The behaviour aspect in the only form this framework can honour: the model declares the methods that belong
+        // to one concept and the generator emits them into a partial class, whose other half the host writes by hand.
+        // That partial is the escape hatch for what a notation cannot express - an attribute, an unsafe block - which
+        // is why "attributes are metadata, not logic" does not mean "attributes have no home".
+        //
+        // It is a type in a namespace rather than a document of its own: a partial class merges with the hand-written
+        // half by name *and* namespace, and the language keeps its one root - the document.
+        //
+        // The concept key is drawn and generated as a comment, because the hand-written half says nothing about the
+        // model and the generated half is where "which concept is this for" has to survive.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("behaviour");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var behaviour = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        var method = model.NewChild(behaviour, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var value = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.BoolLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Rules.Runtime");
+        behaviour.Set(CSharpConceptKeys.ConceptKeySlot, "Rules.Rule");
+        behaviour.Set(CSharpLanguage.NameSlot, "RuleBehaviour");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "IsSatisfied");
+        returnType.Set(CSharpLanguage.NameSlot, "bool");
+        value.Set(CSharpLanguage.ValueProperty, "true");
+
+        const string Expected =
+            """
+            namespace Rules.Runtime
+            {
+              // behaviour Rules.Rule
+              partial class RuleBehaviour
+              {
+                public bool IsSatisfied()
+                {
+                  return true;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
+    public void AFreshBehaviourDrawsItsPlaceholdersAndNoTrailingSpace()
+    {
+        // A new behaviour has no concept and no name yet, and both slots carry a placeholder rather than starting empty.
+        // That is the framework's own answer to "draw the gap only while there is something to put in it": there is no
+        // conditional for "this property is filled" - the conditional compares a value, and WhenFilled is a child slot's
+        // cell, not a property's - so the value is never empty and the space before it is always earned. An empty
+        // property would have generated trailing whitespace inside a comment, the defect the empty member block fix
+        // removed.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("unattached");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+
+        _ = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+
+        const string Drawn =
+            """
+            namespace Sample
+            {
+              // behaviour Concept.Key
+              partial class ConceptBehaviour
+              {
+                <no methods>
+              }
+            }
+            """;
+
+        Assert.Equal(Drawn, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+
+        // The placeholder is drawn but is not code to be generated: the class keeps its braces and emits no method.
+        const string Generated =
+            """
+            namespace Sample
+            {
+              // behaviour Concept.Key
+              partial class ConceptBehaviour
+              {
+              }
+            }
+
+            """;
+
+        Assert.Equal(Generated, new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");

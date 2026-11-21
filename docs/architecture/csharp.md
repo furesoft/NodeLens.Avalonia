@@ -54,6 +54,7 @@ behaviour or a generator body need" rather than by C# grammar order.
 and `TypeReference`, `Method`, `Constructor`,
 `Property` (an auto-property, or one whose accessors have bodies, with `get` and `set`), `Indexer` (a member named `this`, so its own concept rather than a property with an empty name slot), `Signature` (a bodiless interface member),
 `Parameter`, `Field`, `Class`, `Interface` with its inheritance list, `Enum` with its `EnumMember` values,
+`Behaviour` (a concept's behaviour class, a `TypeDeclaration` holding methods),
 `Using` (a file's imports, whose name is a property because a namespace is not a type), `Namespace` and `File`. It has no
 importer, so a document is written in the editor and the text is a derived artefact. Read the rest of
 this section as the target, and the package as the evidence that the notation, constraint, intention
@@ -257,6 +258,29 @@ concept declares methods that belong to it, the generator emits them into
 `partial class <Concept>Behaviour`, and the host writes the other half of the partial by hand
 when it needs something the model cannot express. That is what makes attributes, `unsafe` or a
 hand-tuned method possible without adding a concept for each.
+
+**Delivered: the concept and its two halves.** `CSharp.Behaviour` is a `TypeDeclaration` holding
+`Method` children, so a behaviour class is declared in a namespace beside the classes it serves. Three
+decisions are worth the words:
+
+- **It is a type, not a second root.** The language has exactly one root - the document - and that is what
+  makes "new document" one question. A behaviour class is not a document; it is a type, and being one is
+  also what lets its `partial` merge with the half the host writes, since C# merges by name *and*
+  namespace. It is declared after `Class`, `Interface` and `Enum` so it is never the concept a fresh
+  namespace slot is filled with, because `DefaultInstantiableFor` answers with the first concrete concept
+  below the slot's.
+- **The concept key is a property, and it is generated as a comment.** C# has nothing a concept could be
+  referenced by, so the attachment is text. It is emitted as `// behaviour Rules.Rule` above the class,
+  because the host's hand-written half says nothing about the model - the generated half is where "which
+  concept is this for" survives once the file stands alone. That also settles open question 12 for this
+  slice: a behaviour is generated into the document it is declared in, not into a file of its own.
+- **The key and the class name both carry placeholders.** `Concept.Key` and `ConceptBehaviour` keep the
+  slots non-empty, because there is no cell for "draw this while the property is filled" - `WhenFilled` is
+  a child slot's cell and the conditional compares a *value*. An empty property would have generated
+  trailing whitespace inside the comment, the defect the empty member block fix removed.
+
+What is still planned: the traceability map from a generated line back to the node that produced it, the
+"go to source" test that needs it, and a sample that writes the other half of a partial by hand.
 
 The part of the behaviour aspect that needs **no** code is planned separately and comes first:
 a node's `Name` and `Describe` as pure functions declared as data ([behaviours.md](behaviours.md)).
