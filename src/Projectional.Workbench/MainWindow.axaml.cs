@@ -1147,7 +1147,6 @@ public sealed partial class MainWindow : Window, IDisposable
     internal void CollapseProjectFolders()
     {
         _collapsed.Clear();
-        _collapsed.Add(ProjectExplorer.DocumentsKey);
 
         foreach (var language in _language.Opened)
         {
