@@ -136,6 +136,26 @@ public static class CSharpLanguage
             isRoot: false,
             description: "A whole number, as written."),
 
+        // The suffix is part of the notation rather than part of the property, so the value stays a number the model
+        // can reason about and the `L` is what says which spelling of it this node is. `10` and `10L` are one number
+        // and two literals in C#, and only the second is this concept.
+        new ConceptDeclaration(
+            CSharpConceptKeys.LongLiteral,
+            [new PropertySlot(ValueProperty, PropertyType.Integer, "0")],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "A whole number too wide for an int, written with its L suffix."),
+
+        // A number, not text: the property type is what keeps `3.1.4` from being stored at all. An integral value is
+        // allowed and is not a mistake - `double ratio = 3;` is legal C#, because the int widens on assignment - so
+        // the notation adds no suffix and the generator writes what the author wrote.
+        new ConceptDeclaration(
+            CSharpConceptKeys.DoubleLiteral,
+            [new PropertySlot(ValueProperty, PropertyType.Float, "0")],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "A number with a fractional part, as written."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.StringLiteral,
             [new PropertySlot(ValueProperty, PropertyType.String, description: "The text inside the quotes.")],

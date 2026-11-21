@@ -61,6 +61,13 @@ public static class CSharpNotations
         notations.Add(CSharpConceptKeys.IntLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
         notations.Add(CSharpConceptKeys.BoolLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
 
+        // The long's `L` is drawn beside the value rather than stored in it, so the number stays a number. A double
+        // needs nothing: `3.14` already says what it is, and an integral value is legal there.
+        notations.Add(CSharpConceptKeys.LongLiteral, ed => ed.Line(
+            ed.Property(CSharpLanguage.ValueProperty),
+            ed.Punct("L")));
+        notations.Add(CSharpConceptKeys.DoubleLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
+
         // `null` has no slot to draw, so the notation is the word and nothing else.
         notations.Add(CSharpConceptKeys.NullLiteral, ed => ed.Line(ed.Keyword("null")));
         // A reference cell: it draws what the name means, and falls back to the text the user typed while nothing

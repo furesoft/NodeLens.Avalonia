@@ -26,6 +26,12 @@ public static class CSharpConceptKeys
     /// <summary>A whole number, as written.</summary>
     public const string IntLiteral = "CSharp.IntLiteral";
 
+    /// <summary>A whole number written with the long suffix: <c>10L</c>.</summary>
+    public const string LongLiteral = "CSharp.LongLiteral";
+
+    /// <summary>A number with a fractional part, as written: <c>3.14</c>.</summary>
+    public const string DoubleLiteral = "CSharp.DoubleLiteral";
+
     /// <summary>A string literal, without its quotes.</summary>
     public const string StringLiteral = "CSharp.StringLiteral";
 

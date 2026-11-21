@@ -31,7 +31,9 @@ namespace Projectional.CSharp.Types;
 /// </remarks>
 public static class CSharpTypes
 {
-    private static readonly PrimitiveType Int = PrimitiveType.Of(PropertyType.Integer);
+    private static readonly PrimitiveType Whole = PrimitiveType.Of(PropertyType.Integer);
+
+    private static readonly PrimitiveType Fractional = PrimitiveType.Of(PropertyType.Float);
 
     private static readonly PrimitiveType Bool = PrimitiveType.Of(PropertyType.Boolean);
 
@@ -39,7 +41,9 @@ public static class CSharpTypes
 
     /// <summary>The type rules the base language states.</summary>
     public static TypeRegistry Registry { get; } = TypeRegistry.Empty
-        .Add(CSharpConceptKeys.IntLiteral, new Constant(Int))
+        .Add(CSharpConceptKeys.IntLiteral, new Constant(Whole))
+        .Add(CSharpConceptKeys.LongLiteral, new Constant(Whole))
+        .Add(CSharpConceptKeys.DoubleLiteral, new Constant(Fractional))
         .Add(CSharpConceptKeys.StringLiteral, new Constant(Text))
         .Add(CSharpConceptKeys.BoolLiteral, new Constant(Bool))
         .Add(CSharpConceptKeys.TypeReference, new TypeReferenceType())
@@ -61,9 +65,11 @@ public static class CSharpTypes
     /// </summary>
     /// <remarks>
     /// <para>
-    /// `int`, `string` and `bool` are the three the language's literals produce, so mapping them keeps a declaration
-    /// and a literal in one vocabulary: `int count = 0` is then an <c>int</c> on both sides, which is what lets a
-    /// comparison of the two be checked at all.
+    /// `int`, `long`, `double`, `string` and `bool` are the five the language's literals produce, so mapping them keeps
+    /// a declaration and a literal in one vocabulary: `int count = 0` is then an <c>int</c> on both sides, which is
+    /// what lets a comparison of the two be checked at all. `long` shares the whole-number primitive with `int`,
+    /// because the framework's closed property-type set has one integer - the two are told apart by the literal's
+    /// suffix, not by a type the model can hold.
     /// </para>
     /// <para>
     /// Anything else is <see cref="UnknownType"/> on purpose. `Greeter` or `System.Date` names a type this language
@@ -75,7 +81,8 @@ public static class CSharpTypes
     {
         public IType TypeFor(TypeContext context) => context.Node.GetOrNull(CSharpLanguage.NameSlot) switch
         {
-            "int" => Int,
+            "int" or "long" => Whole,
+            "double" => Fractional,
             "string" => Text,
             "bool" => Bool,
             _ => UnknownType.Instance,

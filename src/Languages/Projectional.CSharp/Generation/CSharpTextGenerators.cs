@@ -413,6 +413,10 @@ public static class CSharpTextGenerators
         .Add(CSharpConceptKeys.TypeReference, TextTemplate.Of(new PropertyPart(CSharpLanguage.NameSlot)))
         .Add(CSharpConceptKeys.IntLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))
         .Add(CSharpConceptKeys.BoolLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))
+        .Add(CSharpConceptKeys.LongLiteral, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.ValueProperty),
+            new TextPart("L")))
+        .Add(CSharpConceptKeys.DoubleLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))
         // The target's name, or the text the reference kept while it resolved to nothing.
         .Add(CSharpConceptKeys.Name, TextTemplate.Of(
             new ReferencePart(CSharpConceptKeys.TargetSlot, unsetText: "<name>", unresolvedText: "<name>")))

@@ -1575,6 +1575,59 @@ public sealed class CSharpLanguageTests
         Assert.Equal(Generated, new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
     }
 
+    [Fact]
+    public void ALongAndADoubleLiteralDrawAndGenerateTheSameShape()
+    {
+        // The two literals the subset was missing, and the two spellings are not the same. A long carries a suffix -
+        // `10` alone is an int, so the suffix is what makes the node the concept it claims to be - and the value stays
+        // a number, because the suffix is notation rather than data. A double needs nothing: `1.5` already says what it
+        // is, and its property type refuses anything that is not a number.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("numbers");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var ratio = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var ratioType = model.NewChild(ratio, "type", CSharpConceptKeys.TypeReference);
+        var fraction = model.NewChild(ratio, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.DoubleLiteral);
+        var total = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var totalType = model.NewChild(total, "type", CSharpConceptKeys.TypeReference);
+        var amount = model.NewChild(total, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.LongLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Numbers");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Show");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        ratio.Set(CSharpLanguage.NameSlot, "ratio");
+        ratioType.Set(CSharpLanguage.NameSlot, "double");
+        fraction.Set(CSharpLanguage.ValueProperty, "1.5");
+        total.Set(CSharpLanguage.NameSlot, "total");
+        totalType.Set(CSharpLanguage.NameSlot, "long");
+        amount.Set(CSharpLanguage.ValueProperty, "10");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Numbers
+              {
+                public void Show()
+                {
+                  double ratio = 1.5;
+                  long total = 10L;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");
