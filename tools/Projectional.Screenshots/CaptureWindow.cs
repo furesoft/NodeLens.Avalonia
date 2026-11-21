@@ -102,7 +102,8 @@ internal sealed class CaptureWindow : Window
             surface.Notations,
             editor.TextMeasure,
             surface.Emphasis,
-            typing: surface.Typing);
+            typing: surface.Typing,
+            types: surface.Types);
 
         editor.Session = session;
         Content = editor;

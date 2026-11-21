@@ -1,4 +1,5 @@
 using Projectional.Language;
+using Projectional.Languages;
 using Projectional.Samples;
 
 namespace Projectional.Screenshots;
@@ -12,10 +13,15 @@ namespace Projectional.Screenshots;
 /// <param name="Notations">The notation registry the document is projected with.</param>
 /// <param name="Emphasis">What the language decorates, if anything.</param>
 /// <param name="Typing">What the language says a keystroke claims.</param>
+/// <param name="Types">
+/// The language's type rules, which a notation's <c>typeof</c> cell draws; nothing when the language declares no
+/// types, and the annotation then reads <c>unknown</c>.
+/// </param>
 internal sealed record LanguageSurface(
     NotationRegistry Notations,
     ICellEmphasis Emphasis,
-    ITypingRules Typing)
+    ITypingRules Typing,
+    TypeRegistry? Types = null)
 {
     /// <summary>The sample rules language, which the feature shots are drawn with.</summary>
     internal static LanguageSurface Sample { get; } = new(
@@ -30,5 +36,19 @@ internal sealed record LanguageSurface(
         ArgumentNullException.ThrowIfNull(notations);
 
         return new LanguageSurface(notations, NoEmphasis.Instance, NoTyping.Instance);
+    }
+
+    /// <summary>A language written as a project, with everything a document it opens is drawn and typed by.</summary>
+    /// <remarks>
+    /// Read off the opened project instead of being handed in one member at a time: a declared language's notations,
+    /// typing rules and types are all lowered from the same folder, so a picture that named two of them and forgot the
+    /// third would draw a document the language cannot produce.
+    /// </remarks>
+    /// <param name="language">The project that was opened.</param>
+    internal static LanguageSurface Of(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        return new LanguageSurface(language.Notations, NoEmphasis.Instance, language.Typing, language.Types);
     }
 }
