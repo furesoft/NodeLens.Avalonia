@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.CSharp;
 using Projectional.Expressions;
 using Projectional.ImportRules;
 using Projectional.Languages;
@@ -196,6 +197,116 @@ internal static class LanguageDocuments
         key.SetReference(SqlSchemaLanguage.TargetSlot, target);
     }
 
+    /// <summary>
+    /// The C# base language, in one picture: a file-scoped namespace, two fields, a method with an <c>if</c>/<c>else</c>
+    /// and a collection expression.
+    /// </summary>
+    /// <remarks>
+    /// Built through the model API like the sample languages above, and every name in it is a reference that resolves:
+    /// the arguments point at the fields, so the picture shows a language that knows what its names mean rather than
+    /// one that only draws them. The namespace is file-scoped because that is the form this language exists to show -
+    /// one concept, two shapes, and this is the modern one.
+    /// </remarks>
+    internal static Model CSharp()
+    {
+        var model = new Project(CSharpLanguage.Concepts).NewModel("Greeter");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+        model.AddRoot(file);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        ns.Set(CSharpLanguage.IsFileScopedSlot, "true");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Greeter");
+
+        var message = Field(model, cls, "private", "string", "message", CSharpConceptKeys.StringLiteral, "Hello");
+        var count = Field(model, cls, "private", "int", "count", CSharpConceptKeys.IntLiteral, "0");
+
+        // public static void Greet() { if (count == 0) { ... } else { ... } }
+        var greet = Method(model, cls, "public", isStatic: true, "void", "Greet", out var body);
+        var branch = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.If);
+        var condition = model.NewChild(branch, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
+        var guard = model.NewChild(condition, "left", CSharpConceptKeys.Name);
+        var zero = model.NewChild(condition, "right", CSharpConceptKeys.IntLiteral);
+        var then = model.NewChild(branch, CSharpConceptKeys.ThenSlot, CSharpConceptKeys.Block);
+        var otherwise = model.NewChild(branch, CSharpConceptKeys.OtherwiseSlot, CSharpConceptKeys.Block);
+
+        condition.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.Equal);
+        guard.SetReference(CSharpConceptKeys.TargetSlot, count);
+        zero.Set(CSharpLanguage.ValueProperty, "0");
+
+        var write = model.NewChild(then, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var call = model.NewChild(write, "expression", CSharpConceptKeys.Call);
+        var callee = model.NewChild(call, "callee", CSharpConceptKeys.MemberAccess);
+        var console = model.NewChild(callee, "target", CSharpConceptKeys.Name);
+        var argument = model.NewChild(call, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Name);
+
+        callee.Set(CSharpLanguage.MemberSlot, "WriteLine");
+        console.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "Console");
+        argument.SetReference(CSharpConceptKeys.TargetSlot, message);
+
+        var bump = model.NewChild(otherwise, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Assignment);
+        var target = model.NewChild(bump, "target", CSharpConceptKeys.Name);
+        var increment = model.NewChild(bump, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Binary);
+        var incremented = model.NewChild(increment, "left", CSharpConceptKeys.Name);
+        var one = model.NewChild(increment, "right", CSharpConceptKeys.IntLiteral);
+
+        target.SetReference(CSharpConceptKeys.TargetSlot, count);
+        increment.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.Add);
+        incremented.SetReference(CSharpConceptKeys.TargetSlot, count);
+        one.Set(CSharpLanguage.ValueProperty, "1");
+
+        // public int[] Levels() { return [0, 1, 2]; } - the collection expression, which is the newer syntax in one line.
+        var levels = Method(model, cls, "public", isStatic: false, "int[]", "Levels", out var levelsBody);
+        var ret = model.NewChild(levelsBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var collection = model.NewChild(ret, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.CollectionExpression);
+
+        foreach (var value in new[] { "0", "1", "2" })
+        {
+            model.NewChild(collection, CSharpConceptKeys.ElementsSlot, CSharpConceptKeys.IntLiteral)
+                .Set(CSharpLanguage.ValueProperty, value);
+        }
+
+        _ = greet;
+        _ = levels;
+
+        return model;
+
+        static Node Field(Model model, Node cls, string visibility, string type, string name, string literal, string value)
+        {
+            var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+            var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+            var initializer = model.NewChild(field, CSharpConceptKeys.ValueSlot, literal);
+
+            field.Set(CSharpLanguage.VisibilitySlot, visibility);
+            field.Set(CSharpLanguage.NameSlot, name);
+            fieldType.Set(CSharpLanguage.NameSlot, type);
+            initializer.Set(CSharpLanguage.ValueProperty, value);
+
+            return field;
+        }
+
+        static Node Method(Model model, Node cls, string visibility, bool isStatic, string type, string name, out Node body)
+        {
+            var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+            var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+
+            method.Set(CSharpLanguage.VisibilitySlot, visibility);
+            method.Set(CSharpLanguage.NameSlot, name);
+
+            if (isStatic)
+            {
+                method.Set(CSharpLanguage.IsStaticSlot, "true");
+            }
+
+            returnType.Set(CSharpLanguage.NameSlot, type);
+            body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+
+            return method;
+        }
+    }
     /// <summary>A declared importer, which is how a language written as a project reads a file back.</summary>
     /// <remarks>
     /// Built through the import language's own API rather than loaded from the sample folder, for the reason this class
