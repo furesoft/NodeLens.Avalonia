@@ -55,13 +55,13 @@ the survey, the deliberate differences and the open decisions are in
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
 `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and the app is still `MainWindow`
 alone. ADR 0015 puts that extraction at M6, so the M2 features were added to `MainWindow`; whoever does M6
-moves them. **Slice 1 is delivered**: `ShellCapability`/`ShellCapabilities` moved into the library and became
-public, `ShellOptions` carries a host's decisions, and `IShellStorage` with `FileShellStorage` is the seam the
-recent list now goes through - so a host can keep that state somewhere else today. What is left, in order:
-`IShellDialogs` (the file pickers and the unsaved prompt, which are Avalonia-shaped and need the interface to
-speak paths), `CommandRegistry` (the one enforcement point), then `ShellView`/`ShellWindow` with
-`ProjectDriver` - the last of which moves the whole Workbench minus `Program`/`App`/`SelfCheck` into the
-library, which is why it is its own slice.
+moves them. **Slice 1 and 2 are delivered**: `ShellCapability`/`ShellCapabilities` moved into the library and became
+public, `ShellOptions` carries a host's decisions, `IShellStorage` with `FileShellStorage` is the seam the
+recent list goes through, and `IShellDialogs` with `ShellFileType` and `UnsavedChoice` now carries every
+picker and the unsaved prompt - `MainWindow` has no direct dialog call left. What is left, in order:
+`CommandRegistry` (the one enforcement point), then `ShellView`/`ShellWindow` with `ProjectDriver` - the last
+of which moves the whole Workbench minus `Program`/`App`/`SelfCheck` into the library, which is why it is its
+own slice.
 
 The dependency-set incrementality that lets the constraint engine produce diagnostics in volume stays
 where it is, in M4.

@@ -49,11 +49,69 @@ public sealed class ShellOptionsTests
         Assert.Equal(ShellCapabilities.Standalone, defaults.Capabilities);
         Assert.Null(defaults.InitialModel);
         Assert.Same(FileShellStorage.Default, defaults.Storage);
+        Assert.Null(defaults.Dialogs);
+    }
+
+    [Fact]
+    public async Task AHostThatSuppliesItsOwnDialogsAnswersTheShellsQuestions()
+    {
+        // The dialogs are the other half of the environment seam: a host whose files live somewhere else still has to
+        // be able to say which one the user picked. The contract speaks paths and a choice enum, never a toolkit type,
+        // which is what makes this implementation - one that answers from a script instead of a window - possible.
+        var dialogs = new ScriptedDialogs
+        {
+            Folder = "/chosen/folder",
+            Open = "/chosen/model.mps",
+            Save = "/chosen/out.txt",
+            Unsaved = UnsavedChoice.Discard,
+        };
+
+        var options = new ShellOptions { Dialogs = dialogs };
+
+        Assert.Same(dialogs, options.Dialogs);
+        Assert.Equal("/chosen/folder", await dialogs.ChooseFolderAsync("Pick one"));
+        Assert.Equal("/chosen/model.mps", await dialogs.ChooseFileToOpenAsync(
+            "Open",
+            new ShellFileType("Model", ["*.mps"])));
+        Assert.Equal("/chosen/out.txt", await dialogs.ChooseFileToSaveAsync(
+            "Save",
+            "out",
+            new ShellFileType("Text", ["*.txt"]),
+            "txt"));
+        Assert.Equal(UnsavedChoice.Discard, await dialogs.AskUnsavedAsync("Rules"));
+
+        // Declining is one answer, not two: null means the user went away, whichever way they did it.
+        dialogs.Folder = null;
+
+        Assert.Null(await dialogs.ChooseFolderAsync("Pick one"));
+    }
+
+    /// <summary>A host's dialogs: answers from a script instead of a window.</summary>
+    private sealed class ScriptedDialogs : IShellDialogs
+    {
+        public string? Folder { get; set; }
+
+        public string? Open { get; set; }
+
+        public string? Save { get; set; }
+
+        public UnsavedChoice Unsaved { get; set; } = UnsavedChoice.Cancel;
+
+        public Task<string?> ChooseFolderAsync(string title) => Task.FromResult(Folder);
+
+        public Task<string?> ChooseFileToOpenAsync(string title, ShellFileType type) => Task.FromResult(Open);
+
+        public Task<string?> ChooseFileToSaveAsync(
+            string title,
+            string suggestedName,
+            ShellFileType type,
+            string? defaultExtension = null) => Task.FromResult(Save);
+
+        public Task<UnsavedChoice> AskUnsavedAsync(string title) => Task.FromResult(Unsaved);
     }
 
     /// <summary>A host's storage: a dictionary instead of a file, which is the whole point of the seam.</summary>
-    private sealed class InMemoryStorage : IShellStorage
-    {
+    private sealed class InMemoryStorage : IShellStorage    {
         private readonly Dictionary<string, IReadOnlyList<string>> _files = new(StringComparer.Ordinal);
 
         public IReadOnlyList<string> ReadLines(string path) =>

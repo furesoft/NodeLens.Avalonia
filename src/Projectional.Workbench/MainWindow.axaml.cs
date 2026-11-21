@@ -99,6 +99,7 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private readonly AvaloniaClipboard _clipboard;
     private readonly IShellStorage _storage;
+    private readonly IShellDialogs _dialogs;
     private readonly TextRecentFilesStore _recentStore;
 
     private RecentFiles _recent = RecentFiles.Empty;
@@ -179,6 +180,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _capabilities = options.Capabilities;
         _storage = options.Storage;
+        _dialogs = options.Dialogs ?? new WindowShellDialogs(this);
         _recentStore = new TextRecentFilesStore(
             _storage,
             Path.Combine(
@@ -586,7 +588,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         Select(document);
 
-        return await UnsavedChangesPrompt.AskAsync(this, document.Title) switch
+        return await _dialogs.AskUnsavedAsync(document.Title) switch
         {
             UnsavedChoice.Save => await SaveAsync(document),
             UnsavedChoice.Discard => true,
@@ -2590,13 +2592,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _error = null;
 
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = $"Choose where to write {language.Name}",
-            AllowMultiple = false,
-        });
+        var directory = await _dialogs.ChooseFolderAsync($"Choose where to write {language.Name}");
 
-        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } directory)
+        if (directory is null)
         {
             return;
         }
@@ -2656,22 +2654,20 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Save generated text",
-            SuggestedFileName = $"{document.Title}.txt",
-            FileTypeChoices = [new FilePickerFileType("Text") { Patterns = ["*.txt"] }],
-        });
+        var path = await _dialogs.ChooseFileToSaveAsync(
+            "Save generated text",
+            $"{document.Title}.txt",
+            new ShellFileType("Text", ["*.txt"]));
 
-        if (file is null)
+        if (path is null)
         {
             return;
         }
 
         try
         {
-            await File.WriteAllTextAsync(file.Path.LocalPath, text);
-            _error = $"Generated text written to {file.Name}.";
+            await File.WriteAllTextAsync(path, text);
+            _error = $"Generated text written to {Path.GetFileName(path)}.";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -2917,13 +2913,9 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         _error = null;
 
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Open a language project",
-            AllowMultiple = false,
-        });
+        var directory = await _dialogs.ChooseFolderAsync("Open a language project");
 
-        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } directory)
+        if (directory is null)
         {
             return;
         }
@@ -3032,23 +3024,10 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _error = null;
 
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open a model",
-            AllowMultiple = false,
-            FileTypeFilter = [ModelFileType()],
-        });
+        var path = await _dialogs.ChooseFileToOpenAsync("Open a model", ModelFileType());
 
-        if (files.Count == 0)
+        if (path is null)
         {
-            return;
-        }
-
-        if (files[0].TryGetLocalPath() is not { } path)
-        {
-            _error = "That file has no path this app can read.";
-            UpdateStatus();
-
             return;
         }
 
@@ -3070,23 +3049,10 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _error = null;
 
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Import a file",
-            AllowMultiple = false,
-            FileTypeFilter = [TextFileType()],
-        });
+        var path = await _dialogs.ChooseFileToOpenAsync("Import a file", TextFileType());
 
-        if (files.Count == 0)
+        if (path is null)
         {
-            return;
-        }
-
-        if (files[0].TryGetLocalPath() is not { } path)
-        {
-            _error = "That file has no path this app can read.";
-            UpdateStatus();
-
             return;
         }
 
@@ -3341,38 +3307,26 @@ public sealed partial class MainWindow : Window, IDisposable
         return false;
     }
 
-    private async Task<string?> PickSavePathAsync(DocumentTab document)
-    {
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Save the model",
-            SuggestedFileName = document.Title,
-            DefaultExtension = DocumentFile.Extension.TrimStart('.'),
-            FileTypeChoices = [ModelFileType()],
-            ShowOverwritePrompt = true,
-        });
+    private Task<string?> PickSavePathAsync(DocumentTab document) =>
+        _dialogs.ChooseFileToSaveAsync(
+            "Save the model",
+            document.Title,
+            ModelFileType(),
+            DocumentFile.Extension.TrimStart('.'));
 
-        return file?.TryGetLocalPath();
-    }
-
-    private static FilePickerFileType ModelFileType() => new("Projectional model")
-    {
-        Patterns = [$"*{DocumentFile.Extension}"],
-    };
+    private static ShellFileType ModelFileType() => new("Projectional model", [$"*{DocumentFile.Extension}"]);
 
     /// <summary>The filter for importing: the built-in formats, and then every file.</summary>
     /// <remarks>
     /// All files are offered beside the built-in formats, because a declared importer names no extension: the file a
     /// language can read is decided by its rules, not by three letters a dialog would have to know in advance.
     /// </remarks>
-    private static FilePickerFileType TextFileType() => new("JSON, XML, TOML, HOCON, YAML or a file a language reads")
-    {
-        Patterns =
+    private static ShellFileType TextFileType() => new(
+        "JSON, XML, TOML, HOCON, YAML or a file a language reads",
         [
             .. ReferenceLanguages.All.SelectMany(language => language.Extensions.Select(extension => $"*{extension}")),
             "*",
-        ],
-    };
+        ]);
 
     private void OnCloseDocument(object? sender, RoutedEventArgs e) => CloseActiveDocument();
 

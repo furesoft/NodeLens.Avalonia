@@ -37,4 +37,14 @@ public sealed record ShellOptions
     /// Where the shell keeps the little it persists; <see cref="FileShellStorage.Default"/> unless a host supplies one.
     /// </summary>
     public IShellStorage Storage { get; init; } = FileShellStorage.Default;
+
+    /// <summary>
+    /// What the shell asks the user with, or <see langword="null"/> for the desktop dialogs of the window it is in.
+    /// </summary>
+    /// <remarks>
+    /// Nullable rather than defaulted, unlike <see cref="Storage"/>: the desktop implementation needs the window it
+    /// belongs to, which does not exist when the options are written. A host that composes the shell in its own window
+    /// supplies its own; the app supplies nothing and gets the pickers and the unsaved prompt.
+    /// </remarks>
+    public IShellDialogs? Dialogs { get; init; }
 }
