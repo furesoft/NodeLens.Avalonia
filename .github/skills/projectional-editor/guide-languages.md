@@ -157,10 +157,13 @@ really be documents", and `DeclaredExpressionsTests` loads exactly these files, 
 
 **`WorkbenchLanguage` is per shell, not static** - it grows with **File ▸ Open language…**, and `TryAdd` builds both
 candidate registries first so a clash changes nothing (a half-added language gives documents a concept registry that
-disagrees with the notation registry in force). Growing the set re-declares every concept already in it
-(`Redeclare`), because `ConceptRegistry` is immutable; the parity harness's dump comparison covers that path. A
-document of an opened language starts at the first **rootable** concept: concrete and `Applicability.IsAnywhere` - a
-concept that names places can never be a root.
+disagrees with the notation registry in force). Growing the set **rebuilds** it, because `ConceptRegistry` is
+immutable: the set is built again from `WorkbenchLanguage.ShellDeclarations` plus every folder the shell still holds
+(read once, before the first registry is built, so nothing is counted twice or lost). That is also why re-opening a
+folder *replaces* a language instead of adding a second copy - and why an edited `import/` document takes effect
+without a restart. The parity harness's dump comparison covers the rebuild. A document of an opened language starts
+at the first **rootable** concept: concrete and `Applicability.IsAnywhere` - a concept that names places can never be
+a root.
 
 ## How text import works
 

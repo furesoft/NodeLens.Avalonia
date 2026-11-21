@@ -114,9 +114,11 @@ M2's gate in its smallest complete form.
 - **A refused language changes nothing.** `TryAdd` builds both candidate registries first and adopts them only if
   both succeed, because a half-added language would give a document a concept registry that disagrees with the
   notation registry in force - the one state that produces files nobody can open.
-- **Growing the set rebuilds it.** `ConceptRegistry` is immutable and takes declarations, so every concept already
-  in the set is written down again (`Redeclare`). That path is covered by the parity harness's dump comparison, so a
-  re-declaration that loses a flag or an order fails a test rather than a file.
+- **Growing the set rebuilds it.** `ConceptRegistry` is immutable and takes declarations, so the set is not extended
+  in place: it is built again from `WorkbenchLanguage.ShellDeclarations` plus every folder the shell still holds -
+  that list is read once, before the first registry is built, so a language can neither be counted twice nor
+  disappear. This is also what makes re-opening a folder a *replacement* rather than a second copy, and the parity
+  harness's dump comparison covers it, so a rebuild that loses a flag or an order fails a test rather than a file.
 
 ## What is still missing
 
