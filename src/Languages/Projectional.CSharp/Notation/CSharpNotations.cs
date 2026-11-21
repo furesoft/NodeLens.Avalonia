@@ -31,9 +31,22 @@ public static class CSharpNotations
         var ed = NotationEditor.Create();
 
         // A file is its namespace, drawn the way the namespace draws itself.
+        // A file is its imports, each on its own row, then the namespace. The imports are wrapped in a when-filled
+        // block so a file without them draws nothing where they would be - an empty row would push the namespace
+        // down for no reason.
         notations.Add(
             CSharpConceptKeys.File,
-            ed => ed.Line(ed.ChildInline(CSharpConceptKeys.NamespaceSlot, "<no namespace>")));
+            ed => ed.Sequence(
+                ed.WhenFilledBlock(
+                    CSharpConceptKeys.UsingsSlot,
+                    ed.Children(CSharpConceptKeys.UsingsSlot, string.Empty, stacked: true)),
+                ed.Line(ed.ChildInline(CSharpConceptKeys.NamespaceSlot, "<no namespace>"))));
+
+        notations.Add(CSharpConceptKeys.Using, ed => ed.Line(
+            ed.Keyword("using"),
+            ed.Space,
+            ed.Property(CSharpLanguage.NameSlot),
+            ed.Punct(";")));
 
         notations.Add(CSharpConceptKeys.TypeReference, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
         notations.Add(CSharpConceptKeys.IntLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));

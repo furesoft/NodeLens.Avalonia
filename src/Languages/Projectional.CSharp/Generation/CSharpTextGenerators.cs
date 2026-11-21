@@ -38,8 +38,18 @@ public static class CSharpTextGenerators
 
     private static TemplateRegistry Templates() => TemplateRegistry.Empty
         .Add(CSharpConceptKeys.File, TextTemplate.Of(
+            new WhenFilledPart(
+                CSharpConceptKeys.UsingsSlot,
+                TextTemplate.Of(
+                    new ChildrenPart(CSharpConceptKeys.UsingsSlot, TextTemplate.Of(LineBreakPart.Instance)),
+                    LineBreakPart.Instance)),
             new ChildPart(CSharpConceptKeys.NamespaceSlot),
             LineBreakPart.Instance))
+
+        .Add(CSharpConceptKeys.Using, TextTemplate.Of(
+            new TextPart("using "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart(";")))
 
         .Add(CSharpConceptKeys.Namespace, TextTemplate.Of(
             new ConditionalPart(

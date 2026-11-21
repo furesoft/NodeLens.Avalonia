@@ -71,6 +71,9 @@ public static class CSharpConceptKeys
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 
+    /// <summary><c>using Name;</c>: a namespace the file can name without qualifying it.</summary>
+    public const string Using = "CSharp.Using";
+
     /// <summary><c>namespace Name { ... }</c>.</summary>
     public const string Namespace = "CSharp.Namespace";
 
@@ -160,6 +163,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding the namespace a file declares.</summary>
     public const string NamespaceSlot = "namespace";
+
+    /// <summary>The slot holding the namespaces a file imports.</summary>
+    public const string UsingsSlot = "usings";
 
     /// <summary>The slot holding a namespace's classes.</summary>
     public const string ClassesSlot = "classes";

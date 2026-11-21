@@ -276,10 +276,25 @@ public static class CSharpLanguage
             isRoot: false,
             description: "target[index]"),
 
+        // A file is the namespaces it imports and the namespace it declares. The imports come first because that is
+        // where C# 10's file-scoped form puts them, and they are a list because a file usually needs more than one.
+        // A using names a namespace, not a type, so its name is a property rather than a type reference: there is no
+        // declaration for it to resolve to, and pretending otherwise would offer a scope that does not exist.
         new ConceptDeclaration(
             CSharpConceptKeys.File,
-            [new ChildSlot(CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace, Cardinality.One)],
-            description: "One document: a namespace and what it holds."),
+            [
+                new ChildSlot(CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace, Cardinality.One),
+            ],
+            description: "One document: its imports and the namespace it declares."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.Using,
+            [new PropertySlot(NameSlot, PropertyType.String, "System", "The namespace, with dots if it is nested.")],
+            nameSlot: NameSlot,
+            nameRule: NameRule.PascalDot,
+            isRoot: false,
+            description: "using Name;"),
 
         // C# 10's file-scoped form is the same declaration with one boolean: `namespace A;` puts everything after it
         // in `A`, and `namespace A { ... }` puts what is between the braces there. One concept rather than two, so

@@ -198,8 +198,8 @@ internal static class LanguageDocuments
     }
 
     /// <summary>
-    /// The C# base language, in one picture: a file-scoped namespace, two fields, a method with an <c>if</c>/<c>else</c>,
-    /// a collection expression and a counted <c>for</c> loop.
+    /// The C# base language, in one picture: an import, a file-scoped namespace, two fields, a method with an
+    /// <c>if</c>/<c>else</c>, a collection expression and a counted <c>for</c> loop.
     /// </summary>
     /// <remarks>
     /// Built through the model API like the sample languages above, and every name in it is a reference that resolves:
@@ -211,10 +211,15 @@ internal static class LanguageDocuments
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("Greeter");
         var file = model.NewNode(CSharpConceptKeys.File);
+        var system = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
         var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
         var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
 
         model.AddRoot(file);
+
+        // The import the picture needs to be honest: `Console` is not in scope without it, so the code below only
+        // compiles because this line is here.
+        system.Set(CSharpLanguage.NameSlot, "System");
 
         ns.Set(CSharpLanguage.NameSlot, "Sample");
         ns.Set(CSharpLanguage.IsFileScopedSlot, "true");
