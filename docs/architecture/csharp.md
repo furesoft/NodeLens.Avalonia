@@ -279,14 +279,27 @@ decisions are worth the words:
   a child slot's cell and the conditional compares a *value*. An empty property would have generated
   trailing whitespace inside the comment, the defect the empty member block fix removed.
 
-What is still planned: a sample that writes the other half of a partial by hand. The traceability the slice
-was grouped with is **already delivered and is not this feature's work**: `GeneratedText.Regions` records,
-per emitted stretch, the node and slot it came from, `RegionAt(offset)` answers which node wrote a position,
-and `DocumentGenerate.RowsOf` turns that into the shell's one-row-per-generated-line report whose rows carry
-the node to jump to. Two things were wrong with it before this slice looked: nothing tested the consumer, and
-it asked about each line's *first* offset - which is the indentation the parent's separator wrote, so every
-indented line answered "nobody". `DocumentGenerateTests` now pins both, and the row asks about the first
-visible character instead.
+**The traceability this slice was grouped with was already delivered, and had a defect.** `GeneratedText.Regions`
+records, per emitted stretch, the node and slot it came from; `RegionAt(offset)` answers which node wrote a
+position; `DocumentGenerate.RowsOf` turns that into the shell's one-row-per-generated-line report whose rows
+carry the node to jump to. Two things were wrong with it before this slice looked: nothing tested the
+consumer, and it asked about each line's *first* offset - which is the indentation the parent's separator
+wrote, so every indented line answered "nobody" and had nothing to jump to. The row now asks about the first
+visible character, and `DocumentGenerateTests` pins the whole answer.
+
+**The other half is proven, not assumed.** `CSharpBehaviourCompilationTests` generates a behaviour, adds a
+hand-written partial beside it and compiles both with the repository's own `AssemblyCompiler` - the same one
+the language export uses, which reports warnings as errors. The test then loads the assembly and asks the
+type for both methods, so the claim being checked is the C# contract itself (two `partial` declarations
+merging into one class) rather than the spelling of the generated text. Comparing strings would have pinned
+the text without ever asking whether the two halves are one class.
+
+That closes the slice. What is *not* closed is the next question it exposes: a behaviour method cannot yet
+name the node it is about. `Name` is a reference to a declaration in the model, and the node has no such
+declaration - in MPS the generated class holds it as `this`, and here the hand-written half would hold it in
+a field the model cannot point at. A behaviour method is therefore useful today for what its parameters
+carry, and reaching the node needs a decision (a declared node field, or a `This`-like concept for a
+behaviour) that this slice deliberately left open.
 
 The part of the behaviour aspect that needs **no** code is planned separately and comes first:
 a node's `Name` and `Describe` as pure functions declared as data ([behaviours.md](behaviours.md)).
@@ -414,8 +427,9 @@ against.
   mapping, and the first corpus that CI compiles.
 - **C3 - behaviour methods and traceability.** One partial class per concept, the hand-written
   other half in a sample, the traceability map, and the "go to source" test. **Landed:** the
-  behaviour class and the "go to source" test (the map itself was already in the generator). **Left:**
-  the hand-written sample.
+  behaviour class, the "go to source" test (the map was already in the generator), and the
+  hand-written half as a compilation test rather than a checked-in sample - a test proves the merge
+  on every run, where a sample proves it once.
 
 **The gate:** the compiled generated code and the M4 interpreter produce identical results on
 the shared corpus. Two independent implementations agreeing is the only evidence that either is
