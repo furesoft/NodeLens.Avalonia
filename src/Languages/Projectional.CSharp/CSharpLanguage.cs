@@ -249,6 +249,43 @@ public static class CSharpLanguage
             isRoot: false,
             description: "A field, with an initializer when it has one."),
 
+        // A constructor is a member without a return type, and its name is the class's - the language does not enforce
+        // that, because a name is the author's and a check that refused a mismatch would report a half-typed class.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Constructor,
+            [
+                new PropertySlot(VisibilitySlot, PropertyType.String, CSharpVisibility.Public),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The name, which a constructor shares with its class."),
+                new ChildSlot(CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Member],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "A constructor: the parameters and the body that make an instance."),
+
+        // An auto-property, which is the one form that needs no accessor body: `{ get; set; }`, or `{ get; }` when the
+        // setter is withheld. A property with written accessors is a later decision - it needs a third shape and the
+        // boolean that chooses between the three, and that is a design of its own.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Property,
+            [
+                new PropertySlot(VisibilitySlot, PropertyType.String, CSharpVisibility.Public),
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The property's name."),
+                new PropertySlot(
+                    CSharpConceptKeys.HasSetterSlot,
+                    PropertyType.Boolean,
+                    "true",
+                    "Whether the property offers a setter; without one it is `{ get; }`."),
+            ],
+            superConcepts: [CSharpConceptKeys.Member],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "An auto-property: { get; set; }"),
         new ConceptDeclaration(
             CSharpConceptKeys.Method,
             [

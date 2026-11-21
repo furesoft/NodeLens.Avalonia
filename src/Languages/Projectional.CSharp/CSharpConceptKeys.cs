@@ -62,6 +62,12 @@ public static class CSharpConceptKeys
     /// <summary>A class: its fields and its methods, in the order they were written.</summary>
     public const string Class = "CSharp.Class";
 
+    /// <summary>A constructor: the parameters and the body that make an instance.</summary>
+    public const string Constructor = "CSharp.Constructor";
+
+    /// <summary>An auto-property: a getter, and a setter when it has one.</summary>
+    public const string Property = "CSharp.Property";
+
     /// <summary>A field, with an initializer when it has one.</summary>
     public const string Field = "CSharp.Field";
 
@@ -130,6 +136,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding an optional initializer or return value.</summary>
     public const string ValueSlot = "value";
+
+    /// <summary>The property holding whether a property has a setter.</summary>
+    public const string HasSetterSlot = "hasSetter";
 
     /// <summary>The slot holding what a foreach iterates.</summary>
     public const string SourceSlot = "source";

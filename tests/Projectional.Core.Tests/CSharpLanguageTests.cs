@@ -149,6 +149,67 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AConstructorAndAnAutoPropertyDrawAndGenerateTheSameShape()
+    {
+        // What makes a class one you can instantiate: a constructor, and a property that keeps a value. The two forms
+        // of the property are one boolean apart, which is the same bargain the file-scoped namespace makes.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("shape");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var ctor = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Constructor);
+        var parameter = model.NewChild(ctor, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var parameterType = model.NewChild(parameter, "type", CSharpConceptKeys.TypeReference);
+        var ctorBody = model.NewChild(ctor, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var assign = model.NewChild(ctorBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Assignment);
+        var target = model.NewChild(assign, "target", CSharpConceptKeys.Name);
+        var value = model.NewChild(assign, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+        var readWrite = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Property);
+        var propertyType = model.NewChild(readWrite, "type", CSharpConceptKeys.TypeReference);
+        var readOnly = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Property);
+        var otherType = model.NewChild(readOnly, "type", CSharpConceptKeys.TypeReference);
+        var name = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var nameType = model.NewChild(name, "type", CSharpConceptKeys.TypeReference);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Greeter");
+        ctor.Set(CSharpLanguage.NameSlot, "Greeter");
+        parameter.Set(CSharpLanguage.NameSlot, "message");
+        parameterType.Set(CSharpLanguage.NameSlot, "string");
+        target.SetReference(CSharpConceptKeys.TargetSlot, name);
+        value.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+        readWrite.Set(CSharpLanguage.NameSlot, "Message");
+        propertyType.Set(CSharpLanguage.NameSlot, "string");
+        readOnly.Set(CSharpLanguage.NameSlot, "Created");
+        readOnly.Set(CSharpConceptKeys.HasSetterSlot, "false");
+        otherType.Set(CSharpLanguage.NameSlot, "int");
+        name.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+        name.Set(CSharpLanguage.NameSlot, "message");
+        nameType.Set(CSharpLanguage.NameSlot, "string");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Greeter
+              {
+                public Greeter(string message)
+                {
+                  message = message;
+                }
+                public string Message { get; set; }
+                public int Created { get; }
+                private string message;
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

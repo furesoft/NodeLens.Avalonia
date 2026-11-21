@@ -102,6 +102,25 @@ public static class CSharpTextGenerators
                 TextTemplate.Of(LineBreakPart.Instance, new ChildPart(CSharpConceptKeys.BodySlot)),
                 TextTemplate.Of(new TextPart(";")))))
 
+        .Add(CSharpConceptKeys.Constructor, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart("("),
+            new ChildrenPart(CSharpConceptKeys.ParametersSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart(")"),
+            LineBreakPart.Instance,
+            new ChildPart(CSharpConceptKeys.BodySlot)))
+
+        .Add(CSharpConceptKeys.Property, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" "),
+            new ChildPart("type"),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart(" { get;"),
+            new ConditionalPart(CSharpConceptKeys.HasSetterSlot, "true", TextTemplate.Of(new TextPart(" set;"))),
+            new TextPart(" }")))
         .Add(CSharpConceptKeys.Parameter, TextTemplate.Of(
             new ChildPart("type"),
             new TextPart(" "),
