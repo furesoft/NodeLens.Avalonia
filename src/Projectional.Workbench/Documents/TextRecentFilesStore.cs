@@ -1,4 +1,4 @@
-using System.Text;
+using Projectional.Avalonia;
 
 namespace Projectional.Workbench;
 
@@ -17,58 +17,31 @@ namespace Projectional.Workbench;
 /// </remarks>
 internal sealed class TextRecentFilesStore
 {
+    private readonly IShellStorage _storage;
     private readonly string _path;
 
-    /// <summary>Stores the list in <paramref name="path"/>.</summary>
+    /// <summary>Stores the list in <paramref name="path"/>, through the shell's storage seam.</summary>
+    /// <param name="storage">Where the bytes go, which a host may answer differently.</param>
     /// <param name="path">The file to read and write, usually under the user's local application data.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="path"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="path"/> is empty.</exception>
-    public TextRecentFilesStore(string path)
+    public TextRecentFilesStore(IShellStorage storage, string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(storage);
 
+        _storage = storage;
         _path = path;
     }
 
     /// <summary>The stored paths, in the order they were written.</summary>
-    public IReadOnlyList<string> Read()
-    {
-        try
-        {
-            return File.Exists(_path)
-                ? [.. File.ReadAllLines(_path, Encoding.UTF8)]
-                : [];
-        }
-        catch (IOException)
-        {
-            return [];
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return [];
-        }
-    }
+    public IReadOnlyList<string> Read() => _storage.ReadLines(_path);
 
     /// <summary>Replaces what is stored.</summary>
-    public void Write(IReadOnlyList<string> paths)
-    {
-        ArgumentNullException.ThrowIfNull(paths);
-
-        try
-        {
-            if (Path.GetDirectoryName(_path) is { Length: > 0 } directory)
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            File.WriteAllLines(_path, paths, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        }
-        catch (IOException)
-        {
-            // A list of recent files is a convenience; losing it must not take the window with it.
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-    }
+    /// <remarks>
+    /// The answer is dropped on purpose: a recent list that could not be written is a menu that is shorter than the
+    /// user expected, not a failure worth interrupting them for. <see cref="IShellStorage"/> already answers "what is
+    /// still true" rather than throwing, so there is nothing here to catch.
+    /// </remarks>
+    public void Write(IReadOnlyList<string> paths) => _ = _storage.WriteLines(_path, paths);
 }
