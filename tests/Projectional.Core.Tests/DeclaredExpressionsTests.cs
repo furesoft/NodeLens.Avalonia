@@ -116,13 +116,15 @@ public sealed class DeclaredExpressionsTests
     [Fact]
     public void TheShippedDocumentDrawsItsNotations()
     {
-        // The editor documents are part of the language, so a language that opens can still draw nothing useful.
+        // The editor documents are part of the language, so a language that opens can still draw nothing useful. The
+        // type rules go in because the sample's editors now end their lines with a `typeof` cell, so what this pins is
+        // the drawing a reader actually sees - including the annotation each literal and the conditional carry.
         var written = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Expressions", "expressions.mps"));
         var model = ModelXml.Deserialize(Language.NewProject(), written);
 
         Assert.Equal(
-            "if 1 < 2 then 3 else 4",
-            LayoutSnapshot.Render(model, Language.Notations, width: 60));
+            "if 1 : int < 2 : int then 3 : int else 4 : int",
+            LayoutSnapshot.Render(model, Language.Notations, width: 60, types: Language.Types));
     }
 
     [Fact]

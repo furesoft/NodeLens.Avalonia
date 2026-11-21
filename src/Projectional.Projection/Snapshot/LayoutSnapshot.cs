@@ -27,13 +27,22 @@ internal static class LayoutSnapshot
     /// <param name="notations">The notation that projects it.</param>
     /// <param name="width">How many columns the snapshot has.</param>
     /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
-    internal static string Render(Node node, NotationRegistry notations, int width, INotationChoice? choice = null)
+    /// <param name="types">
+    /// The language's type rules, which a <see cref="TypeOfNotationCell"/> draws. Omitting them renders the annotation
+    /// as <c>unknown</c>, which is what a language without rules shows.
+    /// </param>
+    internal static string Render(
+        Node node,
+        NotationRegistry notations,
+        int width,
+        INotationChoice? choice = null,
+        TypeRegistry? types = null)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        return Render([LayoutOf(node, notations, choice)], width);
+        return Render([LayoutOf(node, notations, choice, types)], width);
     }
 
     /// <summary>
@@ -44,18 +53,28 @@ internal static class LayoutSnapshot
     /// <param name="notations">The notation that projects it.</param>
     /// <param name="width">How many columns the snapshot has.</param>
     /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
-    internal static string Render(Model model, NotationRegistry notations, int width, INotationChoice? choice = null)
+    /// <param name="types">The language's type rules, which a <see cref="TypeOfNotationCell"/> draws.</param>
+    internal static string Render(
+        Model model,
+        NotationRegistry notations,
+        int width,
+        INotationChoice? choice = null,
+        TypeRegistry? types = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        return Render([.. model.Roots.Select(root => LayoutOf(root, notations, choice))], width);
+        return Render([.. model.Roots.Select(root => LayoutOf(root, notations, choice, types))], width);
     }
 
-    private static CellLayout LayoutOf(Node node, NotationRegistry notations, INotationChoice? choice) =>
+    private static CellLayout LayoutOf(
+        Node node,
+        NotationRegistry notations,
+        INotationChoice? choice,
+        TypeRegistry? types) =>
         new CellLayouter(MonospaceTextMeasure.Instance).Layout(
-            new EditorTreeBuilder(notations, choice: choice).Build(node));
+            new EditorTreeBuilder(notations, choice: choice, types: types).Build(node));
 
     /// <summary>Renders a layout that has already been produced, e.g. the one an edit session holds.</summary>
     /// <param name="layout">The layout to draw.</param>

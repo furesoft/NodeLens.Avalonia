@@ -1314,7 +1314,18 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         RememberRecent(path);
-        OpenDocument(model, _language.Notations, path, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+
+        // A document of an opened language is typed and annotated by that language, exactly like one created from
+        // the menu: opening a file was the one path that still handed the shell's own rules to everything.
+        var language = _language.ProjectFor(model);
+
+        OpenDocument(
+            model,
+            _language.Notations,
+            path,
+            WorkbenchLanguage.Emphasis,
+            language is null ? WorkbenchLanguage.Typing : WorkbenchLanguage.TypingFor(language),
+            types: language?.Types);
     }
 
     /// <summary>Fills the model browser from the active document.</summary>

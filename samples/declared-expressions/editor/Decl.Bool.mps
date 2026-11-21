@@ -14,6 +14,14 @@
                 <slot>value</slot>
               </properties>
             </node>
+            <node id="d0000000-0000-4000-8001-000000002003" concept="Editor.Space" />
+            <node id="d0000000-0000-4000-8001-000000002103" concept="Editor.Punct" name=":">
+              <properties>
+                <text>:</text>
+              </properties>
+            </node>
+            <node id="d0000000-0000-4000-8001-000000002203" concept="Editor.Space" />
+            <node id="d0000000-0000-4000-8001-000000002303" concept="Editor.TypeOf" />
           </children>
         </node>
       </children>
