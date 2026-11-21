@@ -211,20 +211,29 @@ one, the way MPS does.
 - **The gap belongs inside the conditional.** `ed.Conditional(..., ed.Keyword("abstract"), ed.Space)`, not
   `ed.Conditional(...), ed.Space` - a space outside it stays behind as a leading blank in every drawing
   where the word is gone.
-- Inline only, for now. A block conditional is the same idea one level up and arrives when a notation needs
-  to hide a whole line rather than a word.
+- Inline only, for now. The property conditional has no block form; the slot conditional gained one
+  (`ed.WhenFilledBlock`) when the concept notation needed a row that disappears, and the same idea for a
+  property arrives when a notation needs it.
 
 **The same question asked of a slot is `ed.WhenFilled`.** `ed.WhenFilled("supertypes", ed.Space,
 ed.Keyword("extends"), ed.Space, ed.InlineCollection("supertypes", ed.Punct(",")))` draws that run only while
-the slot holds a child, so a header reads `concept Rule extends Condition {` when there is one and
-`concept Rule {` when there is not. It follows every rule of the conditional - nothing rather than an empty
-cell, the gap inside, inline only - and adds the one consequence the conditional does not have:
+the slot holds a child, so a header reads `concept Rule extends Condition` when there is one and `concept Rule`
+when there is not. It follows every rule of the conditional - nothing rather than an empty cell, the gap inside -
+and adds the one consequence the conditional does not have:
 
 - **Hiding an empty slot removes the place its first child is written.** A conditional hides a word the user
   changes somewhere else; this cell hides a slot the user has to fill, so a language that uses it owes a
   second way in - an intention that creates the first child, the same answer `abstract` has because its word
   has no cell either. The structure language ships `Inherit from…` and `Implement interface…` for exactly
   that (P4); they also append beside the last entry, because Enter does not extend an inline list.
+
+**`ed.WhenFilledBlock` is the same question about a whole row.** The inline cell can hide words but not the line
+they stand on - layout gives every vertical cell at least one line, which is also what makes an empty `ed.Line()`
+a blank line - so a block that should vanish has to leave the tree instead. `EditorTreeBuilder.BuildBlocks` skips it
+while its slot is empty. The concept notation draws its `implements` list this way: the keyword and the stacked
+entries are two blocks in one horizontal run, so the entries line up under `implements`, and a concept with nothing
+to implement shows no row at all. The price is the same as the inline form's - no cell while the slot is empty - and
+the same intentions pay it. The block form is C# only for now; the editor language has no declared twin of it yet.
 
 ```csharp
 notation.Add("Sample.Ruleset", ed => ed.Sequence(

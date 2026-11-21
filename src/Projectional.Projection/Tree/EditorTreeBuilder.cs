@@ -125,6 +125,13 @@ public sealed class EditorTreeBuilder
                 collection.Slot, collection.Separator, collection.EmptyText, collection.Spacing, node, emphasis, rootAddress),
 
             TableNotationCell table => BuildTable(table, node, emphasis, rootAddress),
+
+            // A block that is not filled draws nothing here; `BuildBlocks` is what removes it from the tree, and
+            // this case is for a notation whose root is the conditional itself.
+            WhenFilledBlockNotationCell block => new ContainerCell(
+                address,
+                CellOrientation.Vertical,
+                BuildBlocks(block.Content, node, emphasis)),
             _ => throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' uses a block cell of unknown kind '{cell.GetType().Name}'."),
         };
@@ -132,15 +139,29 @@ public sealed class EditorTreeBuilder
 
     private EditorCell[] BuildBlocks(IReadOnlyList<BlockNotationCell> cells, Node node, TextEmphasis emphasis)
     {
-        var built = new EditorCell[cells.Count];
+        var built = new List<EditorCell>(cells.Count);
 
-        for (var i = 0; i < cells.Count; i++)
+        foreach (var cell in cells)
         {
-            built[i] = BuildBlock(cells[i], node, emphasis);
+            // An unfilled block leaves no row: layout gives every vertical cell at least one line, so a notation
+            // that wants nothing at all where the block would be has to keep it out of the tree.
+            if (cell is WhenFilledBlockNotationCell block && ChildrenOf(node, block).Count == 0)
+            {
+                continue;
+            }
+
+            built.Add(BuildBlock(cell, node, emphasis));
         }
 
-        return built;
+        return [.. built];
     }
+
+    /// <summary>The children a when-filled block reads, or a projection error naming a slot that is no child slot.</summary>
+    private static IReadOnlyList<Node> ChildrenOf(Node node, WhenFilledBlockNotationCell cell) =>
+        node.Concept.FindChild(cell.Slot) is not null
+            ? node.GetChildren(cell.Slot)
+            : throw new ProjectionException(
+                $"The notation of '{node.Concept.Key}' draws blocks while '{cell.Slot}' holds a child, but the concept declares no such child.");
 
     /// <summary>
     /// Builds a run of inline cells. A cell may answer more than one cell or none at all, which is what a

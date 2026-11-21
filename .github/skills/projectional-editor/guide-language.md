@@ -26,6 +26,7 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 - **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
   (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
   `ChildNotationCell`, `CollectionNotationCell`, `ConditionalNotationCell`, `WhenFilledNotationCell`,
+  `WhenFilledBlockNotationCell`,
   `LineNotationCell`, `SequenceNotationCell`, `IndentNotationCell`, `HorizontalNotationCell`,
   `SpaceNotationCell`) precisely so they cannot be
   confused with the runtime cells `docs/architecture/projection.md` names (`ConstantCell`,
@@ -38,7 +39,10 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   model, so the declared path would become weaker than C#), and **the gap belongs inside the conditional**
   (`ed.Conditional(..., ed.Keyword("abstract"), ed.Space)`, or every drawing without the word starts with a
   blank). `NotationRegistry` validates the slot is a property and the value is one its type accepts.
-  Inline only - a block conditional is the same idea one level up, when something needs it.
+  Inline only for the property conditional - its block form is the same idea one level up, when something needs
+  it. The *slot* conditional has one (`ed.WhenFilledBlock`): an inline cell can hide words but not the line they
+  stand on, because layout gives every vertical cell at least one line, so `BuildBlocks` drops an unfilled block
+  from the tree instead of drawing an empty one. The structure language's `implements` row is the case.
 - **A property cell is therefore never hidden; what a conditional or a when-filled cell hides is a
   constant or a child slot.** Hiding a property would hide the only place its value can be typed, so an
   optional property is drawn with its `EmptyText` instead (`ed.Property("code", emptyText: "<none>")` -

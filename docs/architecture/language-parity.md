@@ -53,6 +53,7 @@ features, which is exactly what a parity rule is for.
 | Not expressible as data yet | Why it is acceptable now |
 | --- | --- |
 | concept triggers | they are behaviour-adjacent and land with the aspect models of P3 |
+| a block-level while-filled cell (`WhenFilledBlockNotationCell`) | C# only: the concept notation needed a row that disappears, and the editor language has no `Editor.WhileFilledBlock` yet. ADR 0014 rule 2 forbids the reverse - a capability only the workbench can express - so this direction is a recorded debt, not a violation |
 | `Applicability` (conditional concepts) | same: an aspect, and M6 owns aspects |
 | `isOfferedInCompletion`, `isAbstract` | expressible - the twin uses neither, and the dump covers both flags |
 | notation variants beyond `variant` | the property exists; nothing needs a second drawing yet |

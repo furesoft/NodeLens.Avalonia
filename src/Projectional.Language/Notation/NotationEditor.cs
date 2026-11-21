@@ -65,6 +65,14 @@ public sealed class NotationEditor
     public WhenFilledNotationCell WhenFilled(string slot, params ReadOnlySpan<InlineNotationCell> content) =>
         new(slot, content);
 
+    /// <summary>
+    /// Whole blocks drawn only while <paramref name="slot"/> holds a child, and no row at all while it holds none.
+    /// </summary>
+    /// <param name="slot">The child slot the condition reads.</param>
+    /// <param name="content">What to draw while it holds one.</param>
+    public WhenFilledBlockNotationCell WhenFilledBlock(string slot, params ReadOnlySpan<BlockNotationCell> content) =>
+        new(slot, content);
+
     public LineNotationCell Line(params ReadOnlySpan<InlineNotationCell> content) => new(content);
 
     public SequenceNotationCell Sequence(params ReadOnlySpan<BlockNotationCell> content) => new(content);

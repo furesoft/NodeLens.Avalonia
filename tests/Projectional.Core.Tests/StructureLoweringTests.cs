@@ -232,22 +232,27 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "concept Rules.Rule {",
-                "  offered in completion: true",
-                "  named by:",
-                "  collapsed by:",
-                "  named by rule:",
-                "  described as:",
-                "  properties:",
-                "    <<property name : string",
-                "      default:",
-                "      described as:",
-                "      described when filled: false>>",
-                "  children:",
-                "    <<child>>",
-                "  references:",
-                "    <<reference>>",
-                "}"),
+                "concept Rules.Rule",
+                string.Empty,
+                "instance can be root: true",
+                "alias: <no alias>",
+                "short description: <no short description>",
+                "offered in completion: true",
+                "named by:",
+                "collapsed by:",
+                "named by rule:",
+                string.Empty,
+                "properties:",
+                "  <<property name : string",
+                "    default:",
+                "    described as:",
+                "    described when filled: false>>",
+                string.Empty,
+                "children:",
+                "  << ... >>",
+                string.Empty,
+                "references:",
+                "  << ... >>"),
             LayoutSnapshot.Render(rule, notations, width: 120));
     }
 
@@ -301,9 +306,10 @@ public sealed class StructureLoweringTests
     [Fact]
     public void TheHeaderCarriesTheInheritanceAndTheBodyIsABlock()
     {
-        // MPS' reading of a concept: what it extends and implements in the header, what it allows and holds inside
-        // braces. A list that holds nothing is not drawn at all, so the header says only what is true of this
-        // concept - which is why the language ships the two intentions that create a first entry.
+        // MPS' reading of a concept: what it extends in the header and implements on the row below it, then what it
+        // allows and holds in three sections separated by blank lines. A list that holds nothing is not drawn at all,
+        // so the header says only what is true of this concept - which is why the language ships the two intentions
+        // that create a first entry.
         var definition = new DefinitionBuilder();
 
         var empty = definition.Concept("Rules.Element");
@@ -318,23 +324,34 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "concept Rules.Element {",
-                "  offered in completion: true",
-                "  named by:",
-                "  collapsed by:",
-                "  named by rule:",
-                "  described as:",
-                "  properties:",
-                "    <<property>>",
-                "  children:",
-                "    <<child>>",
-                "  references:",
-                "    <<reference>>",
-                "}"),
+                "concept Rules.Element",
+                string.Empty,
+                "instance can be root: true",
+                "alias: <no alias>",
+                "short description: <no short description>",
+                "offered in completion: true",
+                "named by:",
+                "collapsed by:",
+                "named by rule:",
+                string.Empty,
+                "properties:",
+                "  << ... >>",
+                string.Empty,
+                "children:",
+                "  << ... >>",
+                string.Empty,
+                "references:",
+                "  << ... >>"),
             LayoutSnapshot.Render(empty, notations, width: 120));
 
+        // The entries of `implements` line up under its word, because the keyword and the stacked list are two
+        // blocks in one horizontal run - which is what makes the row read as a list rather than as prose.
         Assert.StartsWith(
-            "concept Rules.Comparison extends Rules.Element, Framework.Base, implements Framework.Named {",
+            string.Join(
+                '\n',
+                "concept Rules.Comparison extends Rules.Element, Framework.Base",
+                "  implements Framework.Named",
+                string.Empty),
             LayoutSnapshot.Render(comparison, notations, width: 120),
             StringComparison.Ordinal);
     }
@@ -361,13 +378,13 @@ public sealed class StructureLoweringTests
 
         var lines = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 160).Split('\n');
 
-        Assert.Contains("    <<property name : string", lines);
-        Assert.Contains("    <<property outcome : Rules.Outcome", lines);
-        Assert.Contains("    <<child steps : Rules.Step[1]>>", lines);
-        Assert.Contains("    <<child body : Rules.Body[1]>>", lines);
-        Assert.Contains("    <<reference condition : Rules.Condition", lines);
-        Assert.Contains("    <<reference other : Rules.Condition", lines);
-        Assert.Contains("      own subtree: false>>", lines);
+        Assert.Contains("  <<property name : string", lines);
+        Assert.Contains("  <<property outcome : Rules.Outcome", lines);
+        Assert.Contains("  <<child steps : Rules.Step[1]>>", lines);
+        Assert.Contains("  <<child body : Rules.Body[1]>>", lines);
+        Assert.Contains("  <<reference condition : Rules.Condition", lines);
+        Assert.Contains("  <<reference other : Rules.Condition", lines);
+        Assert.Contains("    own subtree: false>>", lines);
     }
 
     [Fact]
@@ -383,7 +400,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(concept, notations, width: 120);
 
-        Assert.StartsWith("concept Rules.Rule {", drawn, StringComparison.Ordinal);
+        Assert.StartsWith("concept Rules.Rule", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("extends", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("implements", drawn, StringComparison.Ordinal);
 
