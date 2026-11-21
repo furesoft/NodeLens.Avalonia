@@ -26,5 +26,12 @@ public sealed class ConstantCell : TextCell
     /// <summary>What the text is made of, which is what styles key off.</summary>
     public ConstantKind Kind { get; }
 
+    /// <summary>
+    /// Whether the caret stops in this text. An annotation is drawn but is not a caret stop: it is an inlay hint the
+    /// projection computed, not text the author wrote, so stepping into it would leave the caret in something the
+    /// model does not hold. A keyword or a punctuation mark is a stop as before.
+    /// </summary>
+    public override bool IsCaretTarget => Kind != ConstantKind.Annotation;
+
     internal override string Describe() => $"'{Text}'";
 }

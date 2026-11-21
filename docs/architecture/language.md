@@ -199,6 +199,13 @@ not mention it shows no type, and one that does says after which word it stands,
 no type rules draws `unknown` rather than nothing, because "no rule said what this is" is an answer. In a declared
 editor the same cell is `@type@` (`Editor.TypeOf`).
 
+**The caret steps over it.** Every leaf is a caret stop, but an annotation is a leaf that is not one: it reads as text
+on the line without being part of the document, so the caret walks the value and the space beside it and never lands
+in the type. That is a caret fact and not a projection one - the cell is still drawn and still painted - and it is
+what `EditorCell.IsCaretTarget` states, which a `ConstantCell` answers `false` for when its kind is
+`ConstantKind.Annotation`. A keyword or a punctuation mark is a constant of a different kind and stays a stop, because
+it is text the author's notation wrote.
+
 Empty slots are never invisible: a slot-bearing cell carries the text it shows while
 it is empty (`<empty>`, `<none>`, or for a property `<<operator>>`). The caret always needs something visible to
 attach to, and an empty list still has to be fillable.

@@ -11,7 +11,9 @@ namespace Projectional.Editing;
 /// lets the caret rest in empty space, so clicking the gap between two words has to land on a cell,
 /// and the neighbouring cells are what left and right step through. Cells that are not leaves - the
 /// containers the notation nests - are never targets, because a caret inside them would have no text
-/// to be in.
+/// to be in. An annotation is a leaf that is not a target either: it is a type hint the projection drew
+/// rather than text the author wrote, so the caret steps over it and its neighbours are what left and
+/// right reach.
 /// </para>
 /// <para>
 /// Document order is the order in which the builder produced the cells, which is the order in which
