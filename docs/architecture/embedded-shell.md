@@ -111,13 +111,20 @@ that speaks paths, ids and enums, and the toolkit-shaped implementation left in 
   the window does not exist when the options are written. All seven picker and prompt sites in
   `MainWindow` go through it; no direct `StorageProvider` call is left.
 
-What is **not** there yet, and why: `CommandRegistry`, `ProjectDriver`, `ShellView` and `ShellWindow`
-are the rest of the extraction, and each slice has to keep the app working rather than land
-half-moved. Two consequences are still worth naming rather than hiding. **Editing is not yet refused**
-by a capability - `EditModels` hides the Edit menu, but a host that passes a set without it still
-gets a control that types, because the editor control has no read-only state; that is the next seam
-to add. And the count of enforcement points is the handlers rather than one registry, so a new command
-has to remember to ask.
+- **`CommandRegistry`** and **`ShellCommand`**, the one enforcement point. A command declares its name,
+  its label, the capability it needs and its body; the registry checks the capability on the way in, so
+  the menu, the shortcut table and a host's own button cannot disagree about what the shell may do.
+  `MainWindow` declares its whole action surface in one `RegisterCommands` method and its handlers are
+  now thin: `OnSaveDocument` runs `"save"`, and the body carries no capability check of its own. Three
+  paths used to arrive without a dialog and are gated by the same registry as the pickers - a file
+  dropped on the window, a row in File ▸ Recent, and the per-language rows of the Export and Generate
+  menus, which pass their subject as the command's target.
+
+What is **not** there yet, and why: `ProjectDriver`, `ShellView` and `ShellWindow` are the rest of the
+extraction, and each slice has to keep the app working rather than land half-moved. One consequence is
+still worth naming rather than hiding: **editing is not yet refused** by a capability - `EditModels`
+hides the Edit menu, but a host that passes a set without it still gets a control that types, because
+the editor control has no read-only state; that is the next seam to add.
 ### Capabilities are narrowed by facts, never contradicted by them
 
 A capability states what the *user* may do. It is never the only statement of a fact, and it is
@@ -268,7 +275,7 @@ belong to the host, or to `IShellStorage` when the host has nowhere else to put 
 
 | Slice | Branch | M | Delivers |
 | --- | --- | --- | --- |
-| E1 | `feat/shell-commands` | M2 | `ShellCommand` and `ShellCommandRegistry` with capabilities and `BlockedReason`; the app's existing commands routed through it with no behaviour change |
+| E1 | `feat/shell-commands` | M2 | `ShellCommand` and `CommandRegistry` with capabilities and `BlockedReason` (**delivered**); the app's existing commands routed through it with no behaviour change (**delivered**) |
 | E2 | `feat/shell-view` | M2 | `ShellView` extracted from `MainWindow`, `ShellWindow` around it, `MainWindow` reduced to wiring; the app behaves identically |
 | E3 | `feat/shell-storage` | M3 | `IShellStorage` and `IShellDialogs` in the library with the file-system and window implementations left in the app (**interfaces delivered**; `DocumentFile` still calls `File` directly) |
 | E4 | `feat/shell-language-lock` | M6 | `ShellOptions.Language`, the project guard, creation without a picker, and every capability-driven UI difference |

@@ -79,12 +79,13 @@ public sealed class CommandRegistry
 
     /// <summary>Runs <paramref name="name"/>, or says why it did not.</summary>
     /// <param name="name">The identifier to run.</param>
+    /// <param name="target">What the command acts on, for the commands that take a subject; otherwise ignored.</param>
     /// <returns>Whether it ran, and the reason when it did not.</returns>
-    public ValueTask<CommandResult> ExecuteAsync(string name)
+    public ValueTask<CommandResult> ExecuteAsync(string name, object? target = null)
     {
         var permission = Check(name);
 
-        return permission.Executed ? RunAsync(_commands[name]) : ValueTask.FromResult(permission);
+        return permission.Executed ? RunAsync(_commands[name], target) : ValueTask.FromResult(permission);
     }
 
     /// <summary>Whether the command may run, decided by its capability first and its own condition second.</summary>
@@ -108,9 +109,9 @@ public sealed class CommandRegistry
         return CommandResult.Success;
     }
 
-    private static async ValueTask<CommandResult> RunAsync(ShellCommand command)
+    private static async ValueTask<CommandResult> RunAsync(ShellCommand command, object? target)
     {
-        await command.Execute();
+        await command.Execute(target);
 
         return CommandResult.Success;
     }

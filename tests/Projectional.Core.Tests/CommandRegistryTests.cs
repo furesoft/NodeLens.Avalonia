@@ -60,7 +60,7 @@ public sealed class CommandRegistryTests
             Capability = ShellCapability.Save,
             CanExecute = () => open,
             BlockedReason = () => "There is no document to save.",
-            Execute = () => ValueTask.CompletedTask,
+            Execute = _ => ValueTask.CompletedTask,
         });
 
         Assert.Equal("There is no document to save.", registry.BlockedReason("save"));
@@ -82,7 +82,7 @@ public sealed class CommandRegistryTests
             Name = "undo",
             Label = "Undo",
             CanExecute = () => false,
-            Execute = () => ValueTask.CompletedTask,
+            Execute = _ => ValueTask.CompletedTask,
         });
 
         // A shell should not invent an explanation - but it must not answer with silence either.
@@ -127,13 +127,35 @@ public sealed class CommandRegistryTests
             Label = "Run",
             Capability = ShellCapability.Run,
             Gesture = gesture,
-            Execute = () => ValueTask.CompletedTask,
+            Execute = _ => ValueTask.CompletedTask,
         });
 
         registry.Add(Command("save", ShellCapability.Save, () => { }));
 
         Assert.Equal("run", registry.FindByGesture(gesture)?.Name);
         Assert.Null(registry.FindByGesture(new KeyGesture(Key.F9)));
+    }
+
+    [Fact]
+    public void AModifiedGestureIsDistinctFromTheBareKey()
+    {
+        var registry = Registry(ShellCapabilities.Standalone);
+        var findUsages = new KeyGesture(Key.F7, KeyModifiers.Alt);
+
+        registry.Add(new ShellCommand
+        {
+            Name = "find-usages",
+            Label = "Find Usages",
+            Capability = ShellCapability.FindUsages,
+            Gesture = findUsages,
+            Execute = _ => ValueTask.CompletedTask,
+        });
+
+        Assert.Equal("find-usages", registry.FindByGesture(findUsages)?.Name);
+
+        // F7 alone is a different shortcut and must not resolve to the same command: the modifier is part of the
+        // gesture, which is why the key path asks the registry instead of comparing key codes.
+        Assert.Null(registry.FindByGesture(new KeyGesture(Key.F7)));
     }
 
     [Fact]
@@ -157,11 +179,57 @@ public sealed class CommandRegistryTests
         Name = name,
         Label = char.ToUpperInvariant(name[0]) + name[1..],
         Capability = capability,
-        Execute = () =>
+        Execute = _ =>
         {
             execute();
 
             return ValueTask.CompletedTask;
         },
     };
+
+    [Fact]
+    public async Task ACommandThatTakesASubjectIsGivenTheOneTheMenuRowHad()
+    {
+        // The Export menu is one row per opened language, so the command is one and the subject comes from the row.
+        // Passing it through is what keeps "export" behind the same gate as every parameterless command instead of
+        // making the per-language rows a second enforcement point.
+        var exported = new List<string>();
+        var registry = Registry(ShellCapabilities.Standalone);
+
+        registry.Add(new ShellCommand
+        {
+            Name = "export",
+            Label = "Export",
+            Capability = ShellCapability.Export,
+            Execute = target =>
+            {
+                exported.Add((string)target!);
+
+                return ValueTask.CompletedTask;
+            },
+        });
+
+        Assert.True((await registry.ExecuteAsync("export", "Rules")).Executed);
+        Assert.Equal(["Rules"], exported);
+
+        // A shell that was not granted the capability refuses the subject too, which is the whole point of routing the
+        // data-driven menu through here.
+        var restricted = Registry(ShellCapabilities.Embedded);
+
+        restricted.Add(new ShellCommand
+        {
+            Name = "export",
+            Label = "Export",
+            Capability = ShellCapability.Export,
+            Execute = target =>
+            {
+                exported.Add((string)target!);
+
+                return ValueTask.CompletedTask;
+            },
+        });
+
+        Assert.False((await restricted.ExecuteAsync("export", "Other")).Executed);
+        Assert.Equal(["Rules"], exported);
+    }
 }

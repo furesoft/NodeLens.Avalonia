@@ -51,6 +51,18 @@ public sealed class ShellCommand
     /// </remarks>
     public Func<string?>? BlockedReason { get; init; }
 
-    /// <summary>What running the command does.</summary>
-    public required Func<ValueTask> Execute { get; init; }
+    /// <summary>What running the command does, given the target the caller had in mind.</summary>
+    /// <remarks>
+    /// <para>
+    /// The target is what a data-driven menu supplies: the Export menu is one row per opened language, so "export"
+    /// is one command whose subject the row already knows. A command that is about whatever is in front ignores it
+    /// and receives <see langword="null"/>.
+    /// </para>
+    /// <para>
+    /// It is a parameter here rather than a captured field on purpose. A closure over a field would make the
+    /// command's meaning depend on what the last menu rebuild happened to assign, which is the "who ran me" bug
+    /// that a registry exists to prevent.
+    /// </para>
+    /// </remarks>
+    public required Func<object?, ValueTask> Execute { get; init; }
 }
