@@ -54,6 +54,19 @@ public sealed class DeclaredSampleLanguageTests
     }
 
     [Fact]
+    public void TheFolderNamesItsLanguageInItsRootDocument()
+    {
+        // `language.mps` beside the aspect folders is what makes the project a noun of its own: without it the name
+        // would be whatever the folder is called on this machine.
+        var language = Language();
+
+        Assert.Equal("Pipeline", language.Name);
+        Assert.Equal("1.0.0", language.Version);
+        Assert.Empty(language.Dependencies);
+        Assert.Empty(language.Extends);
+    }
+
+    [Fact]
     public void BothConceptsAreNamedThroughTheFrameworkInterface()
     {
         // Adoption in the declared path: the structure documents say `implements Framework.Named` instead of
@@ -284,6 +297,10 @@ public sealed class DeclaredSampleLanguageTests
             {
                 AssertRoundTrips(file, new Project(TextGenLanguage.Concepts));
             }
+
+            // The language root is a document of the structure language too, and the one file whose re-save would be
+            // most tempting to skip: it sits beside the folders, not inside one.
+            AssertRoundTrips(Path.Combine(directory, LanguageProject.LanguageFile), new Project(StructureLanguage.Concepts));
         }
         finally
         {

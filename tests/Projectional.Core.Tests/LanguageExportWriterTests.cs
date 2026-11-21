@@ -29,9 +29,9 @@ public sealed class LanguageExportWriterTests
         Assert.Equal(3, written.Count);
         Assert.All(written, path => Assert.True(File.Exists(path), path));
 
-        Assert.Equal(result.Files[0].Text, File.ReadAllText(Path.Combine(target, "DeclaredLanguage.cs")));
+        Assert.Equal(result.Files[0].Text, File.ReadAllText(Path.Combine(target, "PipelineLanguage.cs")));
         Assert.Equal(result.Files[1].Text, File.ReadAllText(Path.Combine(target, "README.md")));
-        Assert.Equal(result.Assembly!.Bytes, File.ReadAllBytes(Path.Combine(target, "DeclaredLanguage.dll")));
+        Assert.Equal(result.Assembly!.Bytes, File.ReadAllBytes(Path.Combine(target, "PipelineLanguage.dll")));
     }
 
     [Fact]

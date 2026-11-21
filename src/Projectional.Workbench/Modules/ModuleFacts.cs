@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Projectional.Languages;
+using Projectional.Structures;
 using Projectional.Testing;
 
 namespace Projectional.Workbench;
@@ -95,9 +96,18 @@ internal sealed record ModuleFacts(
     /// Counts of what a document can use rather than counts of documents: a language with two hundred declarations and
     /// no notation cannot be drawn, and seeing <c>Notations 0</c> is how an author finds that out without opening a
     /// document and wondering why the page is empty.
+    /// <para>
+    /// The first three rows are what the module <em>declares</em> in <c>language.mps</c> rather than what the shell made
+    /// of it. They are here because the identity page carries the author's own two version numbers and nothing about
+    /// where the language says it belongs - and a declared version that never shows up anywhere is a claim nobody
+    /// reads. The lists are named rather than counted, because "Pipeline 1.0" is the fact and "1" is not.
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<ModuleFact> Summary(LanguageProject module) =>
     [
+        new("Declared version", module.Version ?? "not declared"),
+        new("Dependencies", Listing(module.Dependencies)),
+        new("Extends", Listing(module.Extends)),
         new("Declared concepts", Number(module.Declarations.Count)),
         new("Notations", Number(module.Notations.Notations.Count)),
         new("Type rules", Number(module.Types.Count)),
@@ -107,6 +117,14 @@ internal sealed record ModuleFacts(
         new("Generators", Number(module.Generators.Count)),
         new("Importers", Number(module.Importers.Count)),
     ];
+
+    /// <summary>One of the two declared lists as one row, or <c>none</c> when it is empty.</summary>
+    private static string Listing(IReadOnlyList<LanguageDependency> languages) =>
+        languages.Count == 0 ? "none" : string.Join(", ", languages.Select(Verbose));
+
+    /// <summary>A declared dependency as <c>Name version</c>, or just the name when it asks for no version.</summary>
+    private static string Verbose(LanguageDependency language) =>
+        language.Version is { } version ? $"{language.Name} {version}" : language.Name;
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
 }

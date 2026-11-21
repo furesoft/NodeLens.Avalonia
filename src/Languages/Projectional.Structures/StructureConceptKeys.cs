@@ -8,8 +8,15 @@ namespace Projectional.Structures;
 /// </remarks>
 public static class StructureConceptKeys
 {
-    /// <summary>The document: the enumerations and concepts of one language.</summary>
+    /// <summary>The language root: what a language is called, which version it carries and what it stands on.</summary>
+    /// <remarks>
+    /// The one concept that is not a definition. It is the root of <c>language.mps</c> at the project root - the
+    /// file every other document of the project is a part of - and no document under an aspect folder may hold it.
+    /// </remarks>
     public const string Language = "Structure.Language";
+
+    /// <summary>One language this one depends on or extends, named and optionally versioned.</summary>
+    public const string Dependency = "Structure.Dependency";
 
     /// <summary>One concept: its key, its flags, what it extends and what it holds.</summary>
     public const string Concept = "Structure.Concept";

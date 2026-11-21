@@ -6,6 +6,7 @@ sees" is not a claim to check - there is nothing to delete.
 
 | File | What it is |
 | --- | --- |
+| `language.mps` | the language itself: what it is called, its version and the languages it stands on |
 | `structure/` | the language: one document per concept, with its slots and defaults |
 | `editor/` | how those concepts are drawn - one document per notation, a header line and a table |
 | `constraints/` | the rules the language states about itself - one document per rule |

@@ -752,4 +752,128 @@ public sealed class StructureLoweringTests
         Assert.Equal("Rule", registry.Get("Rules.Rule").Alias);
         Assert.Null(registry.Get("Rules.Condition").Alias);
     }
+
+    [Fact]
+    public void ALanguageRootSaysWhatItsLanguageIsCalledAndWhatItStandsOn()
+    {
+        // The one document that is not a definition: its root describes the project, so it is read by its own entry
+        // point rather than lowered into declarations.
+        var root = LanguageRoot(
+            name: "Pipeline",
+            version: "1.2.0",
+            dependencies: [("Expressions", "1.0.0"), ("Core", null)],
+            extends: [("Base", null)]);
+
+        var language = StructureLowering.ReadLanguage(root);
+
+        Assert.Equal("Pipeline", language.Name);
+        Assert.Equal("1.2.0", language.Version);
+        Assert.Equal(
+            [new LanguageDependency("Expressions", "1.0.0"), new LanguageDependency("Core", null)],
+            language.Dependencies);
+        Assert.Equal([new LanguageDependency("Base", null)], language.Extends);
+    }
+
+    [Fact]
+    public void ALanguageRootWithoutANameIsRefused()
+    {
+        var root = LanguageRoot(name: "  ");
+
+        var refusal = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.ReadLanguage(root));
+
+        Assert.Contains("name", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageRootThatNamesADependencyTwiceIsRefused()
+    {
+        // A dependency is how a language says where it belongs; naming one twice makes that statement ambiguous, and
+        // resolving it later would have to pick one of the two.
+        var root = LanguageRoot(dependencies: [("Core", null), ("Core", "1.0.0")]);
+
+        var refusal = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.ReadLanguage(root));
+
+        Assert.Contains("Core", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("twice", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConceptIsNotALanguageRoot()
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Rule");
+
+        var refusal = Assert.Throws<ConceptDefinitionException>(
+            () => StructureLowering.ReadLanguage(definition.Root));
+
+        Assert.Contains(StructureConceptKeys.Language, refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageRootInAStructureDocumentIsRefusedAndSentToTheProjectRoot()
+    {
+        // `structure/` holds definitions only. Silently ignoring a root dropped there would leave an author wondering
+        // why their language is still named after its folder.
+        var root = LanguageRoot();
+
+        var refusal = Assert.Throws<ConceptDefinitionException>(() => StructureLowering.Lower([root]));
+
+        Assert.Contains("language.mps", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheLanguageRootIsDrawnAsAHeaderAndItsFacts()
+    {
+        var root = LanguageRoot(name: "Pipeline", version: "1.2.0", dependencies: [("Core", null)]);
+
+        Assert.Equal(
+            """
+                language Pipeline
+                  version: 1.2.0
+                  depends on:
+                    Core <any version>
+                  extends:
+                    << ... >>
+            """,
+            LayoutSnapshot.Render(root, StructureNotations.Create(), width: 120));
+    }
+
+    /// <summary>A <c>language.mps</c> root, built the way a user would create one.</summary>
+    private static Node LanguageRoot(
+        string name = "Pipeline",
+        string? version = null,
+        IReadOnlyList<(string Name, string? Version)>? dependencies = null,
+        IReadOnlyList<(string Name, string? Version)>? extends = null)
+    {
+        var model = StructureLanguage.NewModel("language");
+        var root = model.NewNode(StructureConceptKeys.Language);
+
+        root.Set("name", name);
+
+        if (version is not null)
+        {
+            root.Set(StructureLanguage.VersionSlot, version);
+        }
+
+        Add(StructureLanguage.DependenciesSlot, dependencies);
+        Add(StructureLanguage.ExtendsSlot, extends);
+
+        return root;
+
+        void Add(string slot, IReadOnlyList<(string Name, string? Version)>? entries)
+        {
+            foreach (var (entryName, entryVersion) in entries ?? [])
+            {
+                var dependency = model.NewChild(root, slot, StructureConceptKeys.Dependency);
+
+                dependency.Set("name", entryName);
+
+                if (entryVersion is not null)
+                {
+                    dependency.Set(StructureLanguage.VersionSlot, entryVersion);
+                }
+            }
+        }
+    }
 }

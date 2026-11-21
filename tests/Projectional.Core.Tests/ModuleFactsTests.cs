@@ -56,6 +56,18 @@ public sealed class ModuleFactsTests
         Assert.Equal("none", Value(facts, "Intentions"));
     }
 
+    [Fact]
+    public void TheContentsShowWhatTheLanguageDeclaresAboutItself()
+    {
+        // The identity page carries the author's two version numbers; these rows carry what `language.mps` says, so a
+        // declared version that nothing else reads is still a statement a reader can see.
+        var facts = ModuleFacts.Of(Language());
+
+        Assert.Equal("1.0.0", Value(facts, "Declared version"));
+        Assert.Equal("none", Value(facts, "Dependencies"));
+        Assert.Equal("none", Value(facts, "Extends"));
+    }
+
     private static int Number(ModuleFacts facts, string name) => int.Parse(Value(facts, name), CultureInfo.InvariantCulture);
 
     private static string Value(ModuleFacts facts, string name) =>

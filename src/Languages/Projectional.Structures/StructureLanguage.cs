@@ -77,11 +77,28 @@ public static class StructureLanguage
     /// </remarks>
     public const string AliasProperty = "alias";
 
+    /// <summary>
+    /// The version a language root declares for itself, as the author spells it.
+    /// </summary>
+    /// <remarks>
+    /// Text rather than a number, because a version is a claim like <c>1.2.0-preview.3</c> and not an integer the
+    /// framework can count with. It is declared here and reported by a host; nothing resolves it.
+    /// </remarks>
+    public const string VersionSlot = "version";
+
+    /// <summary>The languages a language root says it builds on.</summary>
+    public const string DependenciesSlot = "dependencies";
+
+    /// <summary>The languages a language root says it extends.</summary>
+    public const string ExtendsSlot = "extends";
+
     /// <summary>The concepts of the structure language itself.</summary>
     /// <remarks>
-    /// There is no container concept: a document's root <em>is</em> the definition it holds - one concept, or one
-    /// enumeration - the way MPS stores one root per file. A language is the set of its documents, which is why
-    /// nothing here knows how many definitions a project has.
+    /// A definition document's root <em>is</em> the definition it holds - one concept, or one enumeration - the way
+    /// MPS stores one root per file, and nothing here knows how many definitions a project has. The one document
+    /// that is not a definition is <c>language.mps</c> at the project root: it is a <see cref="StructureConceptKeys.Language"/>
+    /// whose job is to say what the language is called, which version it carries and what it stands on, and its
+    /// root is the only place that concept is legal.
     /// </remarks>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =
     [
@@ -275,6 +292,45 @@ public static class StructureLanguage
             ],
             nameSlot: "symbol",
             description: "One symbol of an enumeration."),
+
+        // The root of `language.mps`. It is declared last so that the default fill of an empty root stays what it
+        // always was - a `Structure.Concept`, which is what a definition document holds - and the one document
+        // that is not a definition is named explicitly by whoever reads it, never guessed.
+        new ConceptDeclaration(
+            StructureConceptKeys.Language,
+            [
+                new PropertySlot(
+                    "name",
+                    PropertyType.String,
+                    description: "What the language is called. A folder without this document falls back to its own name.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    VersionSlot,
+                    PropertyType.String,
+                    description: "The version the language declares for itself, as the author spells it.",
+                    showDescriptionWhenFilled: true),
+                new ChildSlot(DependenciesSlot, StructureConceptKeys.Dependency, Cardinality.Many),
+                new ChildSlot(ExtendsSlot, StructureConceptKeys.Dependency, Cardinality.Many),
+            ],
+            nameSlot: "name",
+            description: "The language itself: its name, its version, the languages it builds on and the ones it extends."),
+
+        new ConceptDeclaration(
+            StructureConceptKeys.Dependency,
+            [
+                new PropertySlot(
+                    "name",
+                    PropertyType.String,
+                    description: "The name of the language this one refers to.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    VersionSlot,
+                    PropertyType.String,
+                    description: "The version it asks for. Empty means any version, which is also the only promise the framework keeps today.",
+                    showDescriptionWhenFilled: true),
+            ],
+            nameSlot: "name",
+            description: "A language this one depends on or extends, named and optionally versioned."),
     ];
 
     /// <summary>The registry those declarations build, validated once.</summary>

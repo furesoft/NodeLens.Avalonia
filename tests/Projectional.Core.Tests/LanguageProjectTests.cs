@@ -191,6 +191,113 @@ public sealed class LanguageProjectTests
             LanguageProject.Open(folder.Root, out _)!.Name);
     }
 
+    [Fact]
+    public void ALanguageRootNamesTheLanguageAndSaysWhatItStandsOn()
+    {
+        // `language.mps` is the one document beside the aspect folders: it says what the project is, while every
+        // other document says what a part of it is.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteRoot(folder.Root, "Pipeline", version: "1.2.0", dependencies: ["Core"], extends: ["Base"]);
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+        Assert.Equal("Pipeline", language.Name);
+        Assert.Equal("1.2.0", language.Version);
+        Assert.Equal([new LanguageDependency("Core", null)], language.Dependencies);
+        Assert.Equal([new LanguageDependency("Base", null)], language.Extends);
+
+        // The definitions are still read: a root describes the project, it does not replace the structure.
+        Assert.Equal("Rules.Rule", language.Declarations[0].Key);
+    }
+
+    [Fact]
+    public void ALanguageRootWithoutAVersionLeavesItUnsaid()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteRoot(folder.Root, "Rules");
+
+        var language = LanguageProject.Open(folder.Root, out _)!;
+
+        Assert.Null(language.Version);
+        Assert.Empty(language.Dependencies);
+        Assert.Empty(language.Extends);
+    }
+
+    [Fact]
+    public void ALanguageRootWithTwoRootsIsRefused()
+    {
+        // One root per document holds for the language root too: two of them are two languages in one file, and
+        // taking the first would hide the second.
+        using var folder = new TemporaryDirectory();
+        var model = StructureLanguage.NewModel("language");
+        var first = model.NewNode(StructureConceptKeys.Language);
+        var second = model.NewNode(StructureConceptKeys.Language);
+
+        // `NewNode` already makes each node a root, which is what gives this file the two it must refuse.
+        first.Set("name", "First");
+        second.Set("name", "Second");
+
+        WriteStructure(folder.Root);
+        ModelFile.Save(model, Path.Combine(folder.Root, LanguageProject.LanguageFile));
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains(LanguageProject.LanguageFile, error!, StringComparison.Ordinal);
+        Assert.Contains("2", error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageRootWithoutANameIsAMessageAndNotAnException()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteRoot(folder.Root, name: " ");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains("name", error!, StringComparison.Ordinal);
+    }
+
+    /// <summary>Writes a <c>language.mps</c> root, the way the app would save one.</summary>
+    private static void WriteRoot(
+        string directory,
+        string name,
+        string? version = null,
+        IReadOnlyList<string>? dependencies = null,
+        IReadOnlyList<string>? extends = null)
+    {
+        var model = StructureLanguage.NewModel("language");
+        var root = model.NewNode(StructureConceptKeys.Language);
+
+        root.Set("name", name);
+
+        if (version is not null)
+        {
+            root.Set(StructureLanguage.VersionSlot, version);
+        }
+
+        foreach (var dependency in dependencies ?? [])
+        {
+            model.NewChild(root, StructureLanguage.DependenciesSlot, StructureConceptKeys.Dependency).Set("name", dependency);
+        }
+
+        foreach (var extension in extends ?? [])
+        {
+            model.NewChild(root, StructureLanguage.ExtendsSlot, StructureConceptKeys.Dependency).Set("name", extension);
+        }
+
+        ModelFile.Save(model, Path.Combine(directory, LanguageProject.LanguageFile));
+    }
+
     /// <summary>Writes a notation for a concept the structure does not declare, into its own editor document.</summary>
     private static void WriteNotationFor(string directory, string conceptKey)
     {

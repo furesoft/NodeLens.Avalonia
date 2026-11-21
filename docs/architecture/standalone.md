@@ -288,6 +288,8 @@ what the shell lowered out of the definitions, and where its documentation goes.
 - **Almost all of it is derived, and that is the point.** `Modules/ModuleFacts.cs` reads the folder and asks the
   `LanguageProject` what it built: a language with two hundred declarations and no notation cannot be drawn, and
   `Notations 0` is how an author finds that out without opening a document and wondering why the page is empty.
+  The contents page opens with what the module *declares* about itself - the version in `language.mps` and the two
+  lists it stands on - because a declared version that nothing enforces still has to be visible somewhere.
 - **Every aspect is listed, empty ones included.** The explorer hides an absent folder because a tree is about what is
   there; settings are about what could be, and "no constraints" is a fact worth reading.
 - **Three settings are the author's**: the language version, the module version and the documentation target. They are

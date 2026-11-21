@@ -5,10 +5,10 @@ lowering step that turns them into the `ConceptDeclaration`s every other layer a
 
 Status: **delivered** as slices P1 and P4 of [language-authoring.md](language-authoring.md): the surface reads the
 way MPS writes a structure document - a header, a block of options, one section per kind of slot, and every
-declaration marked with its own kind and drawn on a line of its own. What is still provisional is the *file* layout
-(`language.mps` as one model per aspect, dependencies): the loader reads the folder
-([language-projects.md](language-projects.md)), and a descriptor document has no consumer until a language can
-extend another one.
+declaration marked with its own kind and drawn on a line of its own. The file layout is delivered as well:
+`language.mps` at the project root is the language itself - a `Structure.Language` node naming it, carrying its
+version and listing the languages it stands on ([language-projects.md](language-projects.md)). Those two lists are
+declared and not resolved, which stays ahead: merging another language's concepts in crosses a project boundary.
 
 ## Why this and not a config file
 
@@ -23,7 +23,7 @@ registry and no declared-only node kind.
 
 ## The language
 
-Nine concepts, and the small number is the design: a definition says what a concept **is**, never how it looks.
+Ten concepts, and the small number is the design: a definition says what a concept **is**, never how it looks.
 Presentation is the editor language (P2), which is a separate model for the same reason MPS splits
 a structure document from an editor document - a definition that mixes the two cannot be reviewed.
 
@@ -193,7 +193,6 @@ classes keep their names (`StructureLanguage`, `StructureLowering`, `StructureCo
 | Missing | Arrives with |
 | --- | --- |
 | notation as data (one editor document per notation) | P2 |
-| `language.mps` as one model per aspect, with dependencies | when a language can extend another, which is what a dependency list is for |
 | a declared block conditional (`Editor.WhileFilledBlock`) | when a declared language needs to hide a whole row |
 | toggling the flag from the header rather than from a menu | it is an [intention](context-actions.md), by design |
 | triggers, applicability and collapse slots as declared data | after P2, when an aspect model exists to hold them |
