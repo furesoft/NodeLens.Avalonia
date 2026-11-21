@@ -38,7 +38,13 @@ public abstract class EditorCell
     public bool IsLeaf => Children.Count == 0;
 
     /// <summary>Whether the caret can stop on this cell, which is everything that shows something.</summary>
-    public bool IsCaretTarget => IsLeaf;
+    /// <remarks>
+    /// Every leaf is a stop, because the caret has to be able to step through what the reader sees - a keyword and a
+    /// space are leaves too. A cell that is drawn but is not part of the document answers <see langword="false"/>:
+    /// an annotation such as a type hint reads as text on the line but cannot be edited, so stopping in it would let
+    /// the caret rest in something the author never wrote.
+    /// </remarks>
+    public virtual bool IsCaretTarget => IsLeaf;
 
     /// <summary>One line of text describing the cell, used by snapshots and test output.</summary>
     public sealed override string ToString() => Describe();

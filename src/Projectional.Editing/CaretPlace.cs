@@ -10,9 +10,11 @@ namespace Projectional.Editing;
 /// <para>
 /// Every leaf cell is a caret stop, because that is what <see cref="EditorCell.IsCaretTarget"/> says:
 /// keywords and spaces are leaves too, and a caret that skipped them would not be able to step through
-/// what the reader sees. What differs between stops is only what can be done at them - a property can
-/// be typed into, an empty child slot can be filled, a constant can merely be passed through - which is
-/// what <see cref="IsEditable"/> and <see cref="IsEmptySlot"/> report.
+/// what the reader sees. The one exception is an annotation - a type hint the projection computed and drew
+/// as an inlay - which is a leaf that answers no: it reads as text but is not part of the document, so the
+/// caret steps over it rather than into it. What differs between stops is only what can be done at them - a
+/// property can be typed into, an empty child slot can be filled, a constant can merely be passed through -
+/// which is what <see cref="IsEditable"/> and <see cref="IsEmptySlot"/> report.
 /// </para>
 /// <para>
 /// The text is copied alongside the cell rather than read through it because the cell kind decides how
