@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Editors;
+using Projectional.ImportRules;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
@@ -147,6 +148,10 @@ public sealed class DeclaredExpressionsTests
             AssertByteIdentical(temporary.FullName, directory, "structure", new Project(StructureLanguage.Concepts));
             AssertByteIdentical(temporary.FullName, directory, "editor", new Project(EditorLanguage.Concepts));
             AssertByteIdentical(temporary.FullName, directory, "types", new Project(TypeRuleLanguage.Concepts));
+
+            // The importer is a definition like the rest: a file that would change on its first save is drift the author
+            // would meet the moment they opened it.
+            AssertByteIdentical(temporary.FullName, directory, LanguageProject.ImportFolder, ImportLanguage.NewProject());
         }
         finally
         {
@@ -225,6 +230,36 @@ public sealed class DeclaredExpressionsTests
 
         Assert.Equal(4, report.Ran);
         Assert.True(report.Succeeded, report.ToString());
+    }
+
+    [Fact]
+    public void TheSampleImporterReadsTheSpellingItDeclares()
+    {
+        // The sample ships one declared importer, so the vocabulary is exercised by a language an author can open
+        // rather than only by the test suite. Its spelling is a second one on purpose: the notation draws
+        // `if 1 < 2 then 3 else 4`, and this reads `(if (binary < (int 1) (int 2)) (int 3) (int 4))` - a form no
+        // generator writes, which is why it is a rule and not the inverse of a template.
+        var language = Language;
+
+        Assert.True(language.TryCreateImporter("sexp", out var importer, out var why), why);
+        Assert.IsType<DeclaredImporter>(importer);
+
+        var model = language.NewProject().NewModel("imported");
+        var result = importer!.Import(model, "(if (binary < (int 1) (int 2)) (int 3) (int 4))");
+
+        Assert.True(result.Succeeded, string.Join("; ", result.Diagnostics.Select(diagnostic => diagnostic.Message)));
+
+        var root = Assert.Single(result.Roots);
+
+        Assert.Equal("Decl.If", root.Concept.Key);
+        Assert.Equal("3", root.GetChildren("then").Single().GetOrNull("value"));
+
+        var condition = root.GetChildren("condition").Single();
+
+        Assert.Equal("Decl.Binary", condition.Concept.Key);
+        Assert.Equal("<", condition.GetOrNull("operator"));
+        Assert.Equal("1", condition.GetChildren("left").Single().GetOrNull("value"));
+        Assert.Equal("4", root.GetChildren("else").Single().GetOrNull("value"));
     }
 
     private static IReadOnlyList<Diagnostic> Check(Model model) =>

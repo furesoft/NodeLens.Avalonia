@@ -10,6 +10,7 @@ document someone can open rather than only by the test suite.
 | `structure/` | five concepts: an abstract `Decl.Expression`, an integer and a truth value, a binary form and a conditional |
 | `editor/` | one line each - `1`, `true`, `1 + 2`, `if 1 < 2 then 3 else 4` |
 | `types/` | the rules: two fixed types, a switch over the operator, a `widest of` and one complaint |
+| `import/` | one declared importer: a second spelling of the same expressions, read by `import/sexp.mps` |
 | `tests/` | four assertions the language states about itself |
 | `expressions.mps` | a document of the language |
 | `uncomparable.mps` | a document the complaint reports on |
@@ -52,6 +53,22 @@ A row names the node by the text the document *shows and the user can change*, s
 literal `3` or the operator `<`. A keyword is drawn from the notation, not from the document, so no row can name the
 conditional itself by the `if` it draws; the `widest of` rule is therefore pinned by
 `DeclaredExpressionsTests.AConditionalIsAsWideAsItsTwoBranches` rather than from here.
+
+## What the import folder says
+
+`import/sexp.mps` is one importer, written in the importer language, that reads a *second* spelling of the same
+model - which is the case a declared rule exists for, because inverting a generator only reads what the generator
+writes and this language ships no generator at all:
+
+    (if (binary < (int 1) (int 2)) (int 3) (int 4))
+
+Four rules, one per concrete concept, all of them anchored by their keyword - `(int `, `(bool `, `(binary `, `(if ` -
+which is what makes the choice decidable without backtracking: the reader looks at the text and takes the one rule
+whose anchor stands there. The operator is a declared token class (`Word` plus `+-*/<>=!`), the numbers use the
+built-in `Number` class, and `Space` is declared as *skipped*, so whitespace costs no rule.
+
+Open the folder in the app and the importer appears as an **import** node in the project explorer; **File ▸ Import…**
+offers it for any file that starts like one of those four rules.
 
 ## Open it
 

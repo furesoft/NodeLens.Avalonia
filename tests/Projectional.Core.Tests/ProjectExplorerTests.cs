@@ -155,6 +155,31 @@ public sealed class ProjectExplorerTests
         Assert.True(row.HasIcon);
     }
 
+    [Fact]
+    public void AnImporterHasItsOwnNodeAndTheLetterOfTheImportAspect()
+    {
+        // The importer is an aspect like any other, so the tree gives it a folder node of its own and its documents a
+        // row under it - which is how an author finds the file that teaches the shell a format.
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error)
+            ?? throw new InvalidOperationException(error);
+
+        var rows = ProjectExplorer.Of([], [language], NothingCollapsed);
+
+        var import = Assert.Single(rows, row => row.Kind == ProjectNode.Folder && row.Text == LanguageProject.ImportFolder);
+
+        Assert.True(import.HasChildren);
+        Assert.Equal(LanguageProject.ImportFolder, import.Icon);
+        Assert.False(import.HasBadge);
+
+        var importer = Assert.Single(rows, row => row.Kind == ProjectNode.File && row.Folder == LanguageProject.ImportFolder);
+
+        Assert.Equal("sexp.mps", importer.Text);
+        Assert.Equal(3, importer.Depth);
+        Assert.True(importer.HasBadge);
+        Assert.Equal(ProjectIcons.BadgeOf(LanguageProject.ImportFolder), importer.Badge);
+        Assert.False(importer.HasChildren);
+    }
+
     private static LanguageProject Language() =>
         LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error)
         ?? throw new InvalidOperationException(error);
