@@ -81,6 +81,13 @@ public sealed class NotationEditor
     public WhenFilledBlockNotationCell WhenFilledBlock(string slot, params ReadOnlySpan<BlockNotationCell> content) =>
         new(slot, content);
 
+    /// <summary>Blocks drawn only while <paramref name="slot"/> holds <paramref name="value"/>.</summary>
+    /// <param name="slot">The property the condition reads.</param>
+    /// <param name="value">The value it has to hold.</param>
+    /// <param name="content">What to draw while it does.</param>
+    public ConditionalBlockNotationCell ConditionalBlock(string slot, string value, params ReadOnlySpan<BlockNotationCell> content) =>
+        new(slot, value, content);
+
     public LineNotationCell Line(params ReadOnlySpan<InlineNotationCell> content) => new(content);
 
     public SequenceNotationCell Sequence(params ReadOnlySpan<BlockNotationCell> content) => new(content);

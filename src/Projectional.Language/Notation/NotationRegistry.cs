@@ -248,7 +248,7 @@ public sealed class NotationRegistry
                 break;
 
             case ConditionalNotationCell conditional:
-                ValidateConditional(concept, conditional);
+                ValidateConditional(concept, conditional.Slot, conditional.Value);
                 break;
 
             case WhenFilledNotationCell whenFilled:
@@ -258,6 +258,10 @@ public sealed class NotationRegistry
             case WhenFilledBlockNotationCell whenFilledBlock:
                 RequireChildSlotExists(concept, whenFilledBlock.Slot);
                 break;
+
+            case ConditionalBlockNotationCell conditionalBlock:
+                ValidateConditional(concept, conditionalBlock.Slot, conditionalBlock.Value);
+                break;
         }
     }
 
@@ -265,16 +269,16 @@ public sealed class NotationRegistry
     /// Checks a condition against the property it reads. A value the type would refuse can never hold, so the
     /// conditional would never draw - a mistake that is invisible at run time and cheap to refuse here.
     /// </summary>
-    private static void ValidateConditional(Concept concept, ConditionalNotationCell conditional)
+    private static void ValidateConditional(Concept concept, string slot, string value)
     {
-        var property = concept.FindProperty(conditional.Slot)
+        var property = concept.FindProperty(slot)
             ?? throw new NotationException(
-                $"The notation of '{concept.Key}' draws cells when '{conditional.Slot}' holds a value, but the concept declares no such property.");
+                $"The notation of '{concept.Key}' draws cells when '{slot}' holds a value, but the concept declares no such property.");
 
-        if (!property.Type.IsValid(conditional.Value))
+        if (!property.Type.IsValid(value))
         {
             throw new NotationException(
-                $"The notation of '{concept.Key}' draws cells when '{conditional.Slot}' is \"{conditional.Value}\", which is not a value of '{property.Type.Name}'.");
+                $"The notation of '{concept.Key}' draws cells when '{slot}' is \"{value}\", which is not a value of '{property.Type.Name}'.");
         }
     }
 

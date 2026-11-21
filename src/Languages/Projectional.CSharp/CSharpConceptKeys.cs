@@ -46,6 +46,9 @@ public static class CSharpConceptKeys
     /// <summary><c>new Type(args)</c>.</summary>
     public const string New = "CSharp.New";
 
+    /// <summary>A collection expression: the elements between two brackets.</summary>
+    public const string CollectionExpression = "CSharp.CollectionExpression";
+
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 
@@ -99,6 +102,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding a method's parameters.</summary>
     public const string ParametersSlot = "parameters";
+
+    /// <summary>The slot holding a collection expression's elements.</summary>
+    public const string ElementsSlot = "elements";
 
     /// <summary>The slot holding a call's arguments.</summary>
     public const string ArgumentsSlot = "arguments";

@@ -42,15 +42,25 @@ public static class CSharpTextGenerators
             LineBreakPart.Instance))
 
         .Add(CSharpConceptKeys.Namespace, TextTemplate.Of(
-            new TextPart("namespace "),
-            new PropertyPart(CSharpLanguage.NameSlot),
-            LineBreakPart.Instance,
-            new TextPart("{"),
-            new IndentPart(TextTemplate.Of(
-                LineBreakPart.Instance,
-                Members(CSharpConceptKeys.ClassesSlot))),
-            LineBreakPart.Instance,
-            new TextPart("}")))
+            new ConditionalPart(
+                CSharpLanguage.IsFileScopedSlot,
+                "true",
+                TextTemplate.Of(
+                    new TextPart("namespace "),
+                    new PropertyPart(CSharpLanguage.NameSlot),
+                    new TextPart(";"),
+                    LineBreakPart.Instance,
+                    Members(CSharpConceptKeys.ClassesSlot)),
+                TextTemplate.Of(
+                    new TextPart("namespace "),
+                    new PropertyPart(CSharpLanguage.NameSlot),
+                    LineBreakPart.Instance,
+                    new TextPart("{"),
+                    new IndentPart(TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        Members(CSharpConceptKeys.ClassesSlot))),
+                    LineBreakPart.Instance,
+                    new TextPart("}")))))
 
         .Add(CSharpConceptKeys.Class, TextTemplate.Of(
             new PropertyPart(CSharpLanguage.VisibilitySlot),
@@ -188,5 +198,10 @@ public static class CSharpTextGenerators
             new ChildPart("type"),
             new TextPart("("),
             new ChildrenPart(CSharpConceptKeys.ArgumentsSlot, TextTemplate.Of(new TextPart(", "))),
-            new TextPart(")")));
+            new TextPart(")")))
+
+        .Add(CSharpConceptKeys.CollectionExpression, TextTemplate.Of(
+            new TextPart("["),
+            new ChildrenPart(CSharpConceptKeys.ElementsSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart("]")));
 }

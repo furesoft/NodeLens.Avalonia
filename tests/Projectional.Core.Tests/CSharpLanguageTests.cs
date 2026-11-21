@@ -145,6 +145,72 @@ public sealed class CSharpLanguageTests
         Assert.Equal(CSharpConceptKeys.Parameter, parameter.Concept.Key);
     }
 
+    [Fact]
+    public void ANamespaceIsDrawnInTheFormTheModelChose()
+    {
+        // C# 10's file-scoped form, as one property rather than a second concept: the same node, drawn with a
+        // semicolon and everything after it in the namespace, or with a brace and everything between them in it.
+        var model = Sample();
+
+        var braced = LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120);
+
+        Assert.StartsWith("namespace Sample\n{\n", braced, StringComparison.Ordinal);
+        Assert.EndsWith("}\n}", braced, StringComparison.Ordinal);
+
+        var ns = model.Roots[0].GetChild(CSharpConceptKeys.NamespaceSlot)!;
+
+        ns.Set(CSharpLanguage.IsFileScopedSlot, "true");
+
+        var scoped = LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120);
+        var generated = new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text;
+
+        // The header ends the declaration, the class stands at the file's own level instead of one in, and the
+        // closing brace that only the block form has is gone.
+        Assert.StartsWith("namespace Sample;\npublic class Greeter\n{\n  private string message", scoped, StringComparison.Ordinal);
+        Assert.DoesNotContain("namespace Sample\n{", scoped, StringComparison.Ordinal);
+        Assert.EndsWith("  }\n}", scoped, StringComparison.Ordinal);
+
+        // And the generator says the same thing as the notation, which is the property the whole language rests on.
+        Assert.StartsWith("namespace Sample;\npublic class Greeter\n{\n  private string message", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("namespace Sample\n{", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACollectionExpressionDrawsAndGeneratesItsElements()
+    {
+        // C# 12 syntax, and the one construct whose empty form is a value rather than an unfinished node: `[]` is a
+        // collection of nothing, so the brackets stand alone instead of showing a placeholder.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("collections");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+        var empty = model.NewChild(field, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.CollectionExpression);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Collections");
+        field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+        field.Set(CSharpLanguage.NameSlot, "none");
+        fieldType.Set(CSharpLanguage.NameSlot, "int[]");
+
+        var notations = CSharpNotations.CreateNotations(CSharpLanguage.Concepts);
+        var generator = CSharpTextGenerators.Generator;
+
+        Assert.Contains("private int[] none = [];", LayoutSnapshot.Render(model, notations, width: 120), StringComparison.Ordinal);
+        Assert.Equal("[]", new Projectional.Semantics.Generator().Generate(empty, generator).Text);
+
+        var one = model.NewChild(empty, CSharpConceptKeys.ElementsSlot, CSharpConceptKeys.IntLiteral);
+        var two = model.NewChild(empty, CSharpConceptKeys.ElementsSlot, CSharpConceptKeys.IntLiteral);
+
+        one.Set(CSharpLanguage.ValueProperty, "1");
+        two.Set(CSharpLanguage.ValueProperty, "2");
+
+        Assert.Contains("private int[] none = [1, 2];", LayoutSnapshot.Render(model, notations, width: 120), StringComparison.Ordinal);
+        Assert.Equal("[1, 2]", new Projectional.Semantics.Generator().Generate(empty, generator).Text);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");

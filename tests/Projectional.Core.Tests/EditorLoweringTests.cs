@@ -326,6 +326,63 @@ public sealed class EditorLoweringTests
         Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Roots, concepts));
     }
 
+    [Fact]
+    public void ADeclaredConditionalBlockLeavesNoRowWhileThePropertyDoesNotHold()
+    {
+        // The declared twin of the runtime cell, and the pair a language needs to draw one concept in two shapes:
+        // C# 10's file-scoped namespace is one concept with one boolean, drawn with a semicolon or with braces.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "C.Rule",
+                [new PropertySlot("kind", PropertyType.String, "block")]),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+
+        notation.Cell(notation.Line(root), EditorConceptKeys.Property, ("slot", "kind"));
+
+        var scoped = notation.Cell(root, EditorConceptKeys.ConditionalBlock, ("slot", "kind"), ("value", "scoped"));
+        var block = notation.Cell(root, EditorConceptKeys.ConditionalBlock, ("slot", "kind"), ("value", "block"));
+
+        notation.Cell(notation.Line(scoped), EditorConceptKeys.Keyword, ("text", "scoped"));
+        notation.Cell(notation.Line(block), EditorConceptKeys.Keyword, ("text", "block"));
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("C.Rule");
+
+        rule.Set("kind", "scoped");
+
+        Assert.Equal("scoped\nscoped", LayoutSnapshot.Render(rule, notations, width: 40));
+
+        rule.Set("kind", "block");
+
+        Assert.Equal("block\nblock", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
+    public void ADeclaredConditionalBlockIsValidatedByTheRegistry()
+    {
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "C.Rule",
+                [new PropertySlot("kind", PropertyType.Boolean, "false")]),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+
+        notation.Cell(root, EditorConceptKeys.ConditionalBlock, ("slot", "kind"), ("value", "maybe"));
+
+        // A value the type would refuse can never hold, so the group could never be drawn.
+        Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Roots, concepts));
+    }
+
     /// <summary>A language with one concept holding a list of arguments, which is what a call looks like.</summary>
     private static ConceptRegistry CallConcepts() =>
         ConceptRegistry.Create(

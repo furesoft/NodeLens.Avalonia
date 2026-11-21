@@ -76,15 +76,37 @@ public static class CSharpNotations
             ed.WhenFilled(CSharpConceptKeys.ArgumentsSlot, ed.InlineCollection(CSharpConceptKeys.ArgumentsSlot, ed.Punct(","), string.Empty)),
             ed.Punct(")")));
 
-        // A namespace: the header, the brace on a line of its own, the classes one level in, the closing brace back out.
+        // A collection expression: `[1, 2, 3]`, and `[]` when it holds nothing, which is a real value in C# rather
+        // than an unfinished one - so the list is hidden while empty and the brackets stand alone.
+        notations.Add(CSharpConceptKeys.CollectionExpression, ed => ed.Line(
+            ed.Punct("["),
+            ed.WhenFilled(CSharpConceptKeys.ElementsSlot, ed.InlineCollection(CSharpConceptKeys.ElementsSlot, ed.Punct(","), string.Empty)),
+            ed.Punct("]")));
+
+        // A namespace, in either of C# 10's two forms, each spelled out in its own group of rows: the file-scoped one
+        // ends the header with a semicolon and puts the classes at the same level, the block one opens a brace, moves
+        // them in and closes it. The group the model did not choose leaves no row at all, which is what a conditional
+        // block is for - an empty group would still take the line layout reserves for it.
         notations.Add(CSharpConceptKeys.Namespace, ed => ed.Sequence(
-            ed.Line(
-                ed.Keyword("namespace"),
-                ed.Space,
-                ed.Property(CSharpLanguage.NameSlot)),
-            ed.Line(ed.Punct("{")),
-            ed.Indent(ed.Children(CSharpConceptKeys.ClassesSlot, "<no classes>", stacked: true)),
-            ed.Line(ed.Punct("}"))));
+            ed.ConditionalBlock(
+                CSharpLanguage.IsFileScopedSlot,
+                "true",
+                ed.Line(
+                    ed.Keyword("namespace"),
+                    ed.Space,
+                    ed.Property(CSharpLanguage.NameSlot),
+                    ed.Punct(";")),
+                ed.Children(CSharpConceptKeys.ClassesSlot, "<no classes>", stacked: true)),
+            ed.ConditionalBlock(
+                CSharpLanguage.IsFileScopedSlot,
+                "false",
+                ed.Line(
+                    ed.Keyword("namespace"),
+                    ed.Space,
+                    ed.Property(CSharpLanguage.NameSlot)),
+                ed.Line(ed.Punct("{")),
+                ed.Indent(ed.Children(CSharpConceptKeys.ClassesSlot, "<no classes>", stacked: true)),
+                ed.Line(ed.Punct("}")))));
 
         // A class: the same shape, with its members between the braces.
         notations.Add(CSharpConceptKeys.Class, ed => ed.Sequence(
