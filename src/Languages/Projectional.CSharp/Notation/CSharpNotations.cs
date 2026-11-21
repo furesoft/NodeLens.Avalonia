@@ -70,6 +70,7 @@ public static class CSharpNotations
 
         // `null` has no slot to draw, so the notation is the word and nothing else.
         notations.Add(CSharpConceptKeys.NullLiteral, ed => ed.Line(ed.Keyword("null")));
+        notations.Add(CSharpConceptKeys.This, ed => ed.Line(ed.Keyword("this")));
         // A reference cell: it draws what the name means, and falls back to the text the user typed while nothing
         // resolves - so an unresolved name is a dangling reference rather than a second kind of name.
         notations.Add(CSharpConceptKeys.Name, ed => ed.Line(ed.Reference(CSharpConceptKeys.TargetSlot, unsetText: "<name>")));
