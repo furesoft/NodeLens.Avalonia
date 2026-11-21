@@ -134,6 +134,25 @@ public sealed class EditorKeyMapTests
         Assert.Null(EditorKeyMap.Map(Key.Up, KeyModifiers.Alt | KeyModifiers.Control));
     }
 
+    [Fact]
+    public void CtrlDDuplicatesAndBareInsertInsertsBefore()
+    {
+        // Both are edits of a model the host cannot see, and both are the gestures a structural editor is expected
+        // to spend on them.
+        Assert.Equal(EditorKey.Duplicate, EditorKeyMap.Map(Key.D, KeyModifiers.Control));
+        Assert.Equal(EditorKey.Duplicate, EditorKeyMap.Map(Key.D, KeyModifiers.Control | KeyModifiers.Shift));
+
+        Assert.Equal(EditorKey.InsertBefore, EditorKeyMap.Map(Key.Insert, KeyModifiers.None));
+
+        // A bare letter is text input, so it never reaches the editor as a key.
+        Assert.Null(EditorKeyMap.Map(Key.D, KeyModifiers.None));
+        Assert.Null(EditorKeyMap.Map(Key.D, KeyModifiers.Alt));
+
+        // Shift+Insert is paste where that gesture exists, and Ctrl+Insert is copy - both stay with the host.
+        Assert.Null(EditorKeyMap.Map(Key.Insert, KeyModifiers.Shift));
+        Assert.Null(EditorKeyMap.Map(Key.Insert, KeyModifiers.Control));
+    }
+
     [Theory]
     [InlineData(Key.A)]
     [InlineData(Key.Space)]

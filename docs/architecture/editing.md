@@ -153,6 +153,8 @@ produced it, and the editing layer never has to remember anything for undo.
 | `TypeTextAction` | printable character | insert into the property cell, reject when the type refuses the value, or create the concept that claims the text in an empty slot |
 | `DeleteTextAction` | Backspace, Delete | shrink the cell's text, using `DeleteDirection` to say which side |
 | `InsertNodeAction` | Enter, outside a value of text | fill the empty slot the caret is on with a new child |
+| `InsertBeforeAtCaretAction` | Insert | insert an empty sibling of the caret's node *before* it - the side Enter cannot reach, since Enter inserts after |
+| `DuplicateAtCaretAction` | Ctrl+D | copy the caret's node and everything below it right after it, with new identities |
 | `InsertLineBreakAction` | Enter, inside a value of text | open a line at the caret, which is a `TypeTextAction` of `"\n"` |
 | `TabAction` | Tab, Shift+Tab | move the caret to the next / previous slot |
 | `MoveCaretAction` | the arrow keys, Home, End, PageUp, PageDown, Ctrl+Home, Ctrl+End | move the caret, never the model |

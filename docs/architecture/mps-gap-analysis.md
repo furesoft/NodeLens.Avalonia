@@ -55,7 +55,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | Surround with | `Ctrl+Alt+T` on a selection | the capability exists (the range form of `Wrap selection in "X"`); the gesture does not |
 | Completion fine points: CamelHumps, a second `Ctrl+Space` that resets the filter, grouped and flattened hierarchical menus | `Ctrl+Space` | partial: proposals are filtered by prefix only, and there is no reset gesture |
 | Paste from history | `Ctrl+Shift+V` | missing: a clipboard holds one payload |
-| Duplicate, insert before | `Ctrl+D`, `Insert` | the operations exist as intentions; the keys do not |
+| Duplicate, insert before | `Ctrl+D`, `Insert` | **shipped**: `EditorKey.Duplicate`/`.InsertBefore` route to `DuplicateAtCaretAction` and `InsertBeforeAtCaretAction`, which resolve the node from the caret and delegate to the action the menu already used. Insert means *before*, because Enter is the after; Shift+Insert stays the host's, since that is paste where it exists |
 | Error message at the keyboard | `Ctrl+F1` | partial: the marker tooltip is hover-only |
 | Show the type of the expression | `Alt+Shift+F10` | missing, although the type registry already holds the answer |
 | Postfix transformations | `expr.if`, `.var`, `.not` | missing; our triggers are prefix and infix. It belongs to the C# base language (M6) |
