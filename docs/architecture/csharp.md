@@ -44,7 +44,7 @@ A base language is useful long before it is complete, so the subset is chosen by
 behaviour or a generator body need" rather than by C# grammar order.
 
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
-`Long`, `Double`, `String`, `Bool` and `Null` literals (not `Char`), `Name`, `MemberAccess`, `Call`,
+`Long`, `Double`, `String`, `Bool` and `Null` literals (not `Char`), `Name`, `This`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
 `Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New` and **collection expressions**; namespaces are
 **file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
@@ -85,6 +85,21 @@ One hole comes with it and is recorded rather than hidden: C# requires an initia
 `var` local without one still generates `var name;`, which no compiler accepts. The type rule answers
 *unknown* there, which is truthful, but nothing warns - the check for "a `var` needs an initializer" is a
 rule for the constraint layer, not a projection fact.
+
+**`this` is a concept, not a reference.** `Name` is a reference because a name *is* the declaration it
+resolves to, which is what makes rename and go-to-definition work. `this` resolves to nothing of the
+kind: it is the instance the code runs in, not a declaration anyone can point at, so it is a slotless
+concept drawn as one keyword. What forced it is not idiom but a real hole: C# resolves a bare `message`
+inside a constructor to the *parameter*, so `message = message` assigns the parameter to itself, and
+`this.message = message` is the only spelling that reaches the field. Without the node the language could
+not write the most ordinary constructor body there is, while constructors, parameters and fields were all
+already present.
+
+Its type is deliberately not claimed. `this` is the enclosing class, and a class is not a type this
+language can describe - a `TypeReference` naming it is unknown too, for the same reason. Claiming one
+here would invent a type system the rest of the layer does not have. `base` is left out for the plainer
+reason: nothing in the subset needs it, and a node nobody can use is a row in the completion list nobody
+should pick.
 
 **`Char` is still absent, and deliberately.** A `char` literal needs a guarantee the property-type set
 cannot express: "exactly one character". A `String` property would accept `'ab'` and generate it, which

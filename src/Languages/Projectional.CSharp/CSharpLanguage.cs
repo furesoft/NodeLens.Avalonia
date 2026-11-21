@@ -183,6 +183,21 @@ public static class CSharpLanguage
             isRoot: false,
             description: "null"),
 
+        // `this` is a word and nothing else, like `null`: it names the instance the code is running in, which is not a
+        // declaration anything could resolve to, so it is a concept rather than a reference. It is what makes a
+        // constructor able to store a parameter into the field of the same name - `this.message = message` is the only
+        // spelling of that, and without this node the language could not write it at all.
+        //
+        // Its type is deliberately not claimed. `this` is the enclosing class, and a class is not a type this language
+        // can describe: a `TypeReference` naming it is unknown too, because there is no declaration to read. Answering
+        // something here would be inventing a type system the rest of the layer does not have.
+        new ConceptDeclaration(
+            CSharpConceptKeys.This,
+            [],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "this"),
+
         // A reference, not a property: the name *is* the declaration it points at, which is what lets a rename follow
         // it, go-to-definition find it, and a scope provider answer which declarations are visible here. The text a
         // user typed while nothing resolved is the reference's own resolveInfo, so there is one truth and not two.

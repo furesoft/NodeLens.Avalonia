@@ -483,6 +483,7 @@ public static class CSharpTextGenerators
             new ChildPart("type")))
 
         .Add(CSharpConceptKeys.NullLiteral, TextTemplate.Of(new TextPart("null")))
+        .Add(CSharpConceptKeys.This, TextTemplate.Of(new TextPart("this")))
         .Add(CSharpConceptKeys.Index, TextTemplate.Of(
             new ChildPart(CSharpConceptKeys.TargetSlot),
             new TextPart("["),

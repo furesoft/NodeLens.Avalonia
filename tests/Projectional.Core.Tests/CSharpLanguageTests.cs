@@ -1691,6 +1691,64 @@ public sealed class CSharpLanguageTests
         Assert.Equal(UnknownType.Instance.Name, CSharpTypes.Registry.TypeOf(empty).Name);
     }
 
+    [Fact]
+    public void ThisLetsAConstructorStoreAParameterIntoTheFieldOfTheSameName()
+    {
+        // The reason `this` has to exist rather than being a nicety: C# resolves the bare name `message` to the
+        // parameter, so `message = message` assigns the parameter to itself. `this.message = message` is the only
+        // spelling that reaches the field, and without this node the language could not write the most ordinary
+        // constructor body there is - even though constructors, parameters and fields were all already here.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("ctor");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+        var ctor = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Constructor);
+        var parameter = model.NewChild(ctor, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var parameterType = model.NewChild(parameter, "type", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(ctor, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var assign = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Assignment);
+        var target = model.NewChild(assign, "target", CSharpConceptKeys.MemberAccess);
+        var self = model.NewChild(target, "target", CSharpConceptKeys.This);
+        var value = model.NewChild(assign, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Greeter");
+        field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+        field.Set(CSharpLanguage.NameSlot, "message");
+        fieldType.Set(CSharpLanguage.NameSlot, "string");
+        ctor.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        ctor.Set(CSharpLanguage.NameSlot, "Greeter");
+        parameter.Set(CSharpLanguage.NameSlot, "message");
+        parameterType.Set(CSharpLanguage.NameSlot, "string");
+        target.Set(CSharpLanguage.MemberSlot, "message");
+        value.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Greeter
+              {
+                private string message;
+
+                public Greeter(string message)
+                {
+                  this.message = message;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // `this` claims no type, because it is the enclosing class and a class is not a type this language describes.
+        Assert.Equal(UnknownType.Instance.Name, CSharpTypes.Registry.TypeOf(self).Name);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");

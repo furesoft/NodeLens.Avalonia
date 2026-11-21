@@ -44,6 +44,9 @@ public static class CSharpConceptKeys
     /// <summary>A name, resolved by the compiler and never by us.</summary>
     public const string Name = "CSharp.Name";
 
+    /// <summary><c>this</c>: the instance whose member an expression reads or assigns.</summary>
+    public const string This = "CSharp.This";
+
     /// <summary><c>target.member</c>.</summary>
     public const string MemberAccess = "CSharp.MemberAccess";
 
