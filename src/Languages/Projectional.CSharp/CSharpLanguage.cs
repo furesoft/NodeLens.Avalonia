@@ -41,6 +41,9 @@ public static class CSharpLanguage
     /// <summary>The property holding whether a class or a method is static.</summary>
     public const string IsStaticSlot = "isStatic";
 
+    /// <summary>The property holding whether a namespace is declared for the rest of the file.</summary>
+    public const string IsFileScopedSlot = "isFileScoped";
+
     /// <summary>The property holding an operator symbol.</summary>
     public const string OperatorSlot = "operator";
 
@@ -173,15 +176,33 @@ public static class CSharpLanguage
             isRoot: false,
             description: "new Type(args)"),
 
+        // C# 12's collection expression. It is a concept rather than a call to a list constructor because the target
+        // type decides what it becomes, and a projection has no target type to ask - so the tree says "these
+        // elements, in this order" and the compiler is the one that names the collection.
+        new ConceptDeclaration(
+            CSharpConceptKeys.CollectionExpression,
+            [new ChildSlot(CSharpConceptKeys.ElementsSlot, CSharpConceptKeys.Expression, Cardinality.Many)],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "A collection expression: [1, 2, 3]."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.File,
             [new ChildSlot(CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace, Cardinality.One)],
             description: "One document: a namespace and what it holds."),
 
+        // C# 10's file-scoped form is the same declaration with one boolean: `namespace A;` puts everything after it
+        // in `A`, and `namespace A { ... }` puts what is between the braces there. One concept rather than two, so
+        // switching forms is a keystroke instead of a re-creation of the node.
         new ConceptDeclaration(
             CSharpConceptKeys.Namespace,
             [
                 new PropertySlot(NameSlot, PropertyType.String, description: "The namespace, with dots if it is nested."),
+                new PropertySlot(
+                    IsFileScopedSlot,
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether the namespace is declared for the rest of the file rather than for a block."),
                 new ChildSlot(CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class, Cardinality.Many),
             ],
             nameSlot: NameSlot,
