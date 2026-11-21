@@ -75,7 +75,7 @@ public sealed class CellLayouter
             ContainerCell { Orientation: CellOrientation.Horizontal } line => ArrangeInline(line.Content, x, y, placed, text),
             ContainerCell stack => ArrangeStacked(stack, x, y, placed, text),
             ChildCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
-            ChildCell { IsStacked: true } stacked => ArrangeVertical(stacked.Content, x, x, y, placed, text),
+            ChildCell { IsStacked: true } stacked => ArrangeVertical(stacked.Content, x, x, y, placed, text, stacked.BlankLineBefore),
             ChildCell child => ArrangeInline(child.Content, x, y, placed, text),
             CollectionCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
             CollectionCell collection => ArrangeInline(collection.Content, x, y, placed, text),
@@ -135,6 +135,10 @@ public sealed class CellLayouter
     /// <param name="y">The top of the box.</param>
     /// <param name="placed">The placement list being filled, in document order.</param>
     /// <param name="text">The laid-out text being filled.</param>
+    /// <param name="blankLineBefore">
+    /// The positions that start a group and therefore get one empty line above them, or <see langword="null"/> for
+    /// none.
+    /// </param>
     /// <remarks>
     /// One implementation for both a vertical container and a stacked child slot: an indented container
     /// and a slot told to stack differ in where the box starts, not in how the stack behaves, and a
@@ -146,14 +150,22 @@ public sealed class CellLayouter
         double x,
         double y,
         List<PlacedCell> placed,
-        Dictionary<EditorCell, LaidOutText> text)
+        Dictionary<EditorCell, LaidOutText> text,
+        IReadOnlySet<int>? blankLineBefore = null)
     {
         var cursorY = y;
         var right = x;
 
-        foreach (var child in cells)
+        for (var index = 0; index < cells.Count; index++)
         {
-            var size = Arrange(child, left, cursorY, placed, text);
+            // A group boundary is one empty row, and it is space rather than a cell: nothing is drawn there, so
+            // there is nothing to hit-test and no caret to stop on.
+            if (blankLineBefore is { } starts && starts.Contains(index))
+            {
+                cursorY += _measure.LineHeight;
+            }
+
+            var size = Arrange(cells[index], left, cursorY, placed, text);
 
             cursorY += size.Height;
             right = Math.Max(right, left + size.Width);

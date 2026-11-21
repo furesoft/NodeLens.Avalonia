@@ -131,7 +131,9 @@ public sealed class EditorTreeBuilder
                 emphasis,
                 rootAddress,
                 children.Spacing,
-                children.Stacked),
+                children.Stacked,
+                children.BlankLineBetweenGroups,
+                children.TightConcepts),
             CollectionNotationCell collection => BuildCollection(
                 collection.Slot, collection.Separator, collection.EmptyText, collection.Spacing, node, emphasis, rootAddress),
 
@@ -376,7 +378,9 @@ public sealed class EditorTreeBuilder
         TextEmphasis emphasis,
         CellAddress? rootAddress,
         int spacing,
-        bool stacked = false)
+        bool stacked = false,
+        bool blankLineBetweenGroups = false,
+        IReadOnlySet<string>? tightConcepts = null)
     {
         if (node.Concept.FindChild(slot) is null)
         {
@@ -408,7 +412,37 @@ public sealed class EditorTreeBuilder
             content[next++] = BuildNode(children[i], CellAddress.OfElement(node.Id, slot, i), emphasis);
         }
 
-        return new ChildCell(address, slot, emptyText, content) { IsStacked = stacked };
+        return new ChildCell(address, slot, emptyText, content)
+        {
+            IsStacked = stacked,
+            BlankLineBefore = stacked && blankLineBetweenGroups
+                ? GroupStarts(children, tightConcepts ?? ChildGroups.Empty)
+                : new HashSet<int>(),
+        };
+    }
+
+    /// <summary>
+    /// The positions whose child starts a new group, so that a blank line goes above it.
+    /// </summary>
+    /// <remarks>
+    /// The first child never starts a group - there is nothing above it to separate it from - so the result is a set
+    /// of positions and not a predicate, which is what keeps a blank line out of the tree and away from the caret.
+    /// The decision itself is <see cref="ChildGroups"/>'s, the same one the generator asks, so the drawing and the
+    /// generated text cannot disagree about where a group ends.
+    /// </remarks>
+    private static HashSet<int> GroupStarts(IReadOnlyList<Node> children, IReadOnlySet<string> tight)
+    {
+        var starts = new HashSet<int>();
+
+        for (var index = 1; index < children.Count; index++)
+        {
+            if (ChildGroups.IsBoundary(children[index - 1].Concept.Key, children[index].Concept.Key, tight))
+            {
+                starts.Add(index);
+            }
+        }
+
+        return starts;
     }
 
     private CollectionCell BuildCollection(

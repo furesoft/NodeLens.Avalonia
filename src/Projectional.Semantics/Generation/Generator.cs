@@ -165,7 +165,13 @@ public sealed class Generator
                     break;
 
                 case ChildrenPart children:
-                    EmitChildren(node, children.Slot, children.Separator, generator);
+                    EmitChildren(
+                        node,
+                        children.Slot,
+                        children.Separator,
+                        generator,
+                        children.BlankLineBetweenGroups,
+                        children.TightConcepts);
                     break;
 
                 case LoopPart loop:
@@ -239,10 +245,13 @@ public sealed class Generator
         string slot,
         TextTemplate separator,
         TextGenerator generator,
-        Action<Node> emit)
+        Action<Node> emit,
+        bool blankLineBetweenGroups = false,
+        IReadOnlySet<string>? tightConcepts = null)
     {
         var entries = ChildrenOf(owner, slot);
         var written = 0;
+        var previousConcept = string.Empty;
 
         foreach (var entry in entries)
         {
@@ -269,8 +278,19 @@ public sealed class Generator
 
             if (written++ > 0)
             {
+                // A group boundary is one empty line, and it is a bare newline rather than a second separator:
+                // the separator indents the line it starts, so two of them would leave the row's indentation
+                // standing on an otherwise empty line.
+                if (blankLineBetweenGroups
+                    && ChildGroups.IsBoundary(previousConcept, entry.Concept.Key, tightConcepts ?? ChildGroups.Empty))
+                {
+                    _text.Append('\n');
+                }
+
                 EmitTemplate(separator, owner, generator);
             }
+
+            previousConcept = entry.Concept.Key;
 
             var start = _text.Length;
             _text.Append(text);
@@ -283,8 +303,21 @@ public sealed class Generator
     }
 
     /// <summary>Expands <paramref name="slot"/> as one entry per child, separated by <paramref name="separator"/>.</summary>
-    private void EmitChildren(Node node, string slot, TextTemplate separator, TextGenerator generator) =>
-        EmitEntries(node, slot, separator, generator, child => EmitNode(child, generator));
+    private void EmitChildren(
+        Node node,
+        string slot,
+        TextTemplate separator,
+        TextGenerator generator,
+        bool blankLineBetweenGroups,
+        IReadOnlySet<string> tightConcepts) =>
+        EmitEntries(
+            node,
+            slot,
+            separator,
+            generator,
+            child => EmitNode(child, generator),
+            blankLineBetweenGroups,
+            tightConcepts);
 
 
     /// <summary>Expands a loop body per child, with the body applied to the child rather than to the list's owner.</summary>

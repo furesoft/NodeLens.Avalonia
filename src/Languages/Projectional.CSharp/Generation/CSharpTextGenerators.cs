@@ -33,8 +33,16 @@ public static class CSharpTextGenerators
     public static TextGenerator Generator { get; } = new(Name, Templates());
 
     /// <summary>A member list: one entry per line, through the separator rather than a trailing break.</summary>
-    private static ChildrenPart Members(string slot) =>
-        new(slot, TextTemplate.Of(LineBreakPart.Instance));
+    /// <param name="slot">The list slot to expand.</param>
+    /// <param name="blankLineBetweenGroups">
+    /// Whether a boundary between two groups gets a blank line, as the .NET conventions ask of a class's members.
+    /// </param>
+    /// <param name="tightConcepts">The concepts whose neighbours share a group.</param>
+    private static ChildrenPart Members(
+        string slot,
+        bool blankLineBetweenGroups = false,
+        IReadOnlySet<string>? tightConcepts = null) =>
+        new(slot, TextTemplate.Of(LineBreakPart.Instance), blankLineBetweenGroups, tightConcepts);
 
     private static TemplateRegistry Templates() => TemplateRegistry.Empty
         .Add(CSharpConceptKeys.File, TextTemplate.Of(
@@ -84,7 +92,14 @@ public static class CSharpTextGenerators
             LineBreakPart.Instance,
             new TextPart("{"),
             new IndentPart(TextTemplate.Of(
-                new WhenFilledPart(CSharpConceptKeys.MembersSlot, TextTemplate.Of(LineBreakPart.Instance, Members(CSharpConceptKeys.MembersSlot))))),
+                new WhenFilledPart(
+                    CSharpConceptKeys.MembersSlot,
+                    TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        Members(
+                            CSharpConceptKeys.MembersSlot,
+                            blankLineBetweenGroups: true,
+                            tightConcepts: CSharpMemberGroups.Tight))))),
             LineBreakPart.Instance,
             new TextPart("}")))
 

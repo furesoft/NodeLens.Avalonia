@@ -88,6 +88,14 @@ let a click on a generated line move the caret to the node that wrote it.
   stands: nothing at all at a single-child slot, and a stray comma in a list - a syntax error dressed up as a feature.
   A region written into a buffer learns where the buffer ended up, so "go to source" still points at the right
   character.
+- **A separator can depend on the pair, not just the list.** `ChildrenPart.BlankLineBetweenGroups` puts a blank line
+  between *groups*: a boundary is a group boundary unless both neighbours are in the part's `TightConcepts` set, and
+  `ChildGroups.IsBoundary` is the one rule, so the drawing and the generated text cannot disagree about where a group
+  ends. The set is concept keys rather than "same concept" because C# wants fields tight and every other member to
+  start its own group - "same concept" would keep two methods tight as well. The blank line is a **bare newline**
+  written before the ordinary separator, never a doubled separator: a separator indents the line it starts, so two of
+  them would leave the next row's indentation standing as trailing whitespace. That is the same defect the empty
+  member block fix removed, and the reason the gap is written by the engine rather than spelled as a part.
 - **The decision to emit nothing is declarable.** `TextGen.Ignore` is a mapping body beside `TextGen.Template` (both
   conform to the abstract `TextGen.Body` the mapping's `template` slot is declared over), and it lowers to the empty
   template. A separate concept rather than an empty template node because an empty box reads as unfinished work: an

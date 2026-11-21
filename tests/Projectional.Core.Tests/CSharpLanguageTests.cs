@@ -439,6 +439,7 @@ public sealed class CSharpLanguageTests
                   int next = !ready ? 0 : count;
                   count += next;
                 }
+
                 private int count;
               }
             }
@@ -498,8 +499,11 @@ public sealed class CSharpLanguageTests
                 {
                   message = message;
                 }
+
                 public string Message { get; set; }
+
                 public int Created { get; }
+
                 private string message;
               }
             }
@@ -552,6 +556,7 @@ public sealed class CSharpLanguageTests
               public class Person
               {
                 private int age;
+
                 public int Age
                 {
                   get
@@ -678,6 +683,7 @@ public sealed class CSharpLanguageTests
               public class Choices
               {
                 public int count;
+
                 public void Choose()
                 {
                   switch (count)
@@ -1297,6 +1303,71 @@ public sealed class CSharpLanguageTests
         Assert.Contains("error", scope.Entries.Select(entry => entry.Name));
     }
 
+    [Fact]
+    public void ABlankLineSeparatesAMemberKindFromTheNext()
+    {
+        // The "blank line after the block of fields" convention, in the two places it can go wrong: a run of fields
+        // stays tight, and every other member starts a group. Fields are the one tight kind, so two fields and two
+        // methods draw as four rows and three blank lines - and the generator agrees, because both ask the same set
+        // where a group ends.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("groups");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Groups");
+
+        foreach (var name in new[] { "first", "second" })
+        {
+            var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+            var type = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+
+            field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+            field.Set(CSharpLanguage.NameSlot, name);
+            type.Set(CSharpLanguage.NameSlot, "int");
+        }
+
+        foreach (var name in new[] { "One", "Two" })
+        {
+            var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+            var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+            var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+
+            _ = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+
+            method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+            method.Set(CSharpLanguage.NameSlot, name);
+            returnType.Set(CSharpLanguage.NameSlot, "void");
+        }
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Groups
+              {
+                private int first;
+                private int second;
+
+                public void One()
+                {
+                  return;
+                }
+
+                public void Two()
+                {
+                  return;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");
@@ -1348,6 +1419,7 @@ public sealed class CSharpLanguageTests
           public class Greeter
           {
             private string message = "Hello";
+
             public static void Greet()
             {
               Console.WriteLine(message);

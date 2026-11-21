@@ -45,5 +45,18 @@ public sealed class ChildCell : StructureCell
     /// <summary>Whether the slot points at nothing and is showing <see cref="EmptyText"/> instead.</summary>
     public bool IsEmpty => Content.Count == 0;
 
+    /// <summary>
+    /// The positions in <see cref="EditorCell.Children"/> that start a group and therefore get a blank line above
+    /// them.
+    /// </summary>
+    /// <remarks>
+    /// A set of indices rather than a cell, because a blank line is not a model element: a spacer in the tree would
+    /// become a caret stop and a hit-test target, and there is nothing there to put a caret in. Only a stacked child
+    /// cell reads it, because a group boundary is vertical space.
+    /// </remarks>
+    public IReadOnlySet<int> BlankLineBefore { get; init; } = NoBlankLines;
+
+    private static IReadOnlySet<int> NoBlankLines { get; } = new HashSet<int>();
+
     internal override string Describe() => $"child {Slot}";
 }

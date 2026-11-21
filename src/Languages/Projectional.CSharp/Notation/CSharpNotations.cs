@@ -156,7 +156,10 @@ public static class CSharpNotations
                 ed.Indent(ed.Children(CSharpConceptKeys.ClassesSlot, "<no classes>", stacked: true)),
                 ed.Line(ed.Punct("}")))));
 
-        // A class: the same shape, with its members between the braces.
+        // A class: the same shape, with its members between the braces. Fields are the tight kind, so a run of fields
+        // stays together and every other member is separated by a blank line - the .NET convention's "a blank line
+        // between members, except inside a block of fields". The drawing and the generator read the same set, so the
+        // two cannot disagree about where a group ends.
         notations.Add(CSharpConceptKeys.Class, ed => ed.Sequence(
             ed.Line(
                 ed.Property(CSharpLanguage.VisibilitySlot),
@@ -167,7 +170,12 @@ public static class CSharpNotations
                 ed.Property(CSharpLanguage.NameSlot),
                 ed.WhenFilled(CSharpConceptKeys.InheritanceSlot, ed.Space, ed.ChildInline(CSharpConceptKeys.InheritanceSlot))),
             ed.Line(ed.Punct("{")),
-            ed.Indent(ed.Children(CSharpConceptKeys.MembersSlot, "<no members>", stacked: true)),
+            ed.Indent(ed.Children(
+                CSharpConceptKeys.MembersSlot,
+                "<no members>",
+                stacked: true,
+                blankLineBetweenGroups: true,
+                tightConcepts: CSharpMemberGroups.Tight)),
             ed.Line(ed.Punct("}"))));
 
         // `: Base, IFoo` - the colon belongs to the list, so a class that inherits nothing draws no colon.
