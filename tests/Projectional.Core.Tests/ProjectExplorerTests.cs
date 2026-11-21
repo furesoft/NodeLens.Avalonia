@@ -180,6 +180,30 @@ public sealed class ProjectExplorerTests
         Assert.False(importer.HasChildren);
     }
 
+    [Fact]
+    public void ATypingRuleHasItsOwnNodeAndTheLetterOfTheTypingAspect()
+    {
+        // A typing rule is an aspect like the importer: the author edits it in the app, so the tree has to lead there.
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error)
+            ?? throw new InvalidOperationException(error);
+
+        Assert.True(language.HasTyping);
+
+        var rows = ProjectExplorer.Of([], [language], NothingCollapsed);
+
+        var typing = Assert.Single(rows, row => row.Kind == ProjectNode.Folder && row.Text == LanguageProject.TypingFolder);
+
+        Assert.True(typing.HasChildren);
+        Assert.Equal(LanguageProject.TypingFolder, typing.Icon);
+        Assert.False(typing.HasBadge);
+
+        var rules = rows.Where(row => row.Kind == ProjectNode.File && row.Folder == LanguageProject.TypingFolder).ToList();
+
+        Assert.Equal(2, rules.Count);
+        Assert.All(rules, rule => Assert.Equal(ProjectIcons.BadgeOf(LanguageProject.TypingFolder), rule.Badge));
+        Assert.Contains(rules, rule => rule.Text == "Decl.Int.mps");
+    }
+
     private static LanguageProject Language() =>
         LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error)
         ?? throw new InvalidOperationException(error);
