@@ -12,6 +12,7 @@ using Projectional.ScopeRules;
 using Projectional.ScopeRules.Notation;
 using Projectional.Structures;
 using Projectional.Structures.Notation;
+using Projectional.Testing;
 using Projectional.TextGen;
 using Projectional.TypeRules;
 
@@ -57,6 +58,11 @@ internal sealed class WorkbenchLanguage
             .. ConstraintLanguage.ConceptDeclarations,
             .. ScopeLanguage.ConceptDeclarations,
             .. IntentionLanguage.ConceptDeclarations,
+
+            // The test language too: a language project's tests/ folder holds documents of it, and a shell that cannot
+            // load them refuses the very files the tests command runs - the failure read "Testing.Test, which the
+            // language does not declare".
+            .. TestingLanguage.ConceptDeclarations,
         ]);
 
         Notations = CreateNotations(Concepts);
@@ -366,6 +372,7 @@ internal sealed class WorkbenchLanguage
         ConstraintNotations.AddTo(notations);
         ScopeNotations.AddTo(notations);
         IntentionNotations.AddTo(notations);
+        TestingNotations.AddTo(notations);
 
         return notations;
     }
