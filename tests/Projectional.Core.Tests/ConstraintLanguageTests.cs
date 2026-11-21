@@ -40,7 +40,23 @@ public sealed class ConstraintLanguageTests
 
         var drawn = LayoutSnapshot.Render(model.Roots[0], ConstraintNotations.Registry, width: 80);
 
-        Assert.Contains("constraint on every node", drawn, StringComparison.Ordinal);
+        Assert.Contains("rule for every node", drawn, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnUnwrittenRuleStillDrawsACellForEachAnswer()
+    {
+        // Every cell a rule can hold is a caret stop, so none of them hides when it is empty: the severity shows the
+        // default its concept declares, and the rest carry the placeholder that says what to write there.
+        var model = ConstraintLanguage.NewModel();
+
+        Assert.Equal(
+            """
+            rule for every node
+              when << what it checks >>
+              then error "<< what is wrong >>" as <<no code>>
+            """,
+            LayoutSnapshot.Render(model, ConstraintNotations.Registry, width: 80));
     }
 
     [Fact]
@@ -57,12 +73,38 @@ public sealed class ConstraintLanguageTests
         model.NewChild(rule, ConstraintLanguage.BodySlot, ConstraintConceptKeys.EmptySlot)
             .Set(ConstraintLanguage.TargetSlot, "condition");
 
-        var drawn = LayoutSnapshot.Render(rule, ConstraintNotations.Registry, width: 80);
+        Assert.Equal(
+            """
+            rule for Rules.Rule
+              when the slot condition is empty
+              then warning "a rule needs a condition" as rules.condition.required
+            """,
+            LayoutSnapshot.Render(rule, ConstraintNotations.Registry, width: 80));
+    }
 
-        Assert.Contains("constraint on Rules.Rule", drawn, StringComparison.Ordinal);
-        Assert.Contains("the slot condition is empty", drawn, StringComparison.Ordinal);
-        Assert.Contains("report warning", drawn, StringComparison.Ordinal);
-        Assert.Contains("a rule needs a condition", drawn, StringComparison.Ordinal);
+    [Fact]
+    public void AMessageThatHoldsQuotesDrawsAsItIsWritten()
+    {
+        // The message is quoted so its end is visible, and a quote inside it is not escaped: the cell holds the
+        // sentence a finding will quote, so an author reads exactly what the user will.
+        var model = ConstraintLanguage.NewModel();
+        var rule = model.Roots[0];
+
+        rule.Set(ConstraintLanguage.ConceptKeySlot, "Pipeline.Stage");
+        rule.Set(ConstraintLanguage.SeveritySlot, ConstraintSeverities.Hint);
+        rule.Set(ConstraintLanguage.MessageSlot, "a stage is still called \"unnamed\"; give it a name.");
+        rule.Set(ConstraintLanguage.CodeSlot, "pipeline.stage.name");
+
+        model.NewChild(rule, ConstraintLanguage.BodySlot, ConstraintConceptKeys.DefaultValue)
+            .Set(ConstraintLanguage.TargetSlot, "name");
+
+        Assert.Equal(
+            """
+            rule for Pipeline.Stage
+              when the value of name is still the default
+              then hint "a stage is still called "unnamed"; give it a name." as pipeline.stage.name
+            """,
+            LayoutSnapshot.Render(rule, ConstraintNotations.Registry, width: 200));
     }
 
     [Fact]

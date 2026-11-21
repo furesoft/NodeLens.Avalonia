@@ -262,13 +262,15 @@ public sealed class TypeRuleNotationTests
         Assert.Equal(
             """
             rule Expressions.IntLiteral is
-              report error "An integer literal is not allowed here." code <none>
+              report error
+                "An integer literal is not allowed here."
+                code <none>
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 80));
     }
 
     [Fact]
-    public void AConditionalComplaintDrawsTheConditionAfterTheMessage()
+    public void AConditionalComplaintDrawsItsConditionAfterTheCode()
     {
         var model = TypeRuleLanguage.NewModel();
         var rule = model.Roots[0];
@@ -286,7 +288,9 @@ public sealed class TypeRuleNotationTests
         Assert.Equal(
             """
             rule Expressions.Binary is
-              report error "The operands are not comparable." code <none> type of left is not comparable with type of right
+              report error
+                "The operands are not comparable."
+                code <none> when type of left is not comparable with type of right
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 120));
     }
@@ -313,7 +317,9 @@ public sealed class TypeRuleNotationTests
         Assert.Equal(
             """
             rule Expressions.Binary is
-              report error "The operands are not comparable." code expr.operands type of left is not comparable with type of right
+              report error
+                "The operands are not comparable."
+                code expr.operands when type of left is not comparable with type of right
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 160));
     }

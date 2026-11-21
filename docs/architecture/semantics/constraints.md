@@ -142,9 +142,11 @@ layouter that made the table worse would be visible the same day.
 C# and **written rules**, since the constraint language landed ([language-projects.md](../language-projects.md)): a
 `constraints` folder holds one document per rule, and `ConstraintLowering` turns each into the same `IConstraint` a
 C# language writes, so nothing downstream changes. A rule names the concept it is about (or names none, which makes
-it a rule about every node), says what is wrong, how much it matters, and asks one of a closed set of questions: is
-this single-child slot empty, is this property still the default its concept declares, has this value whitespace
-around it, does this reference point at nothing.
+it a rule about every node), then asks one of a closed set of questions - is this single-child slot empty, is this
+property still the default its concept declares, has this value whitespace around it, does this reference point at
+nothing - and states the finding the answer produces: what is wrong, how much it matters, and the code a host groups
+it under. That order is the order it draws in: `rule for <concept>`, then `when <the question>` and
+`then <severity> "<what is wrong>" as <code>`.
 
 The set is closed on purpose. A general expression body would mean shipping an interpreter for a language whose only
 job is to say what is wrong - the same line the type rules draw by having three bodies instead of a statement list
