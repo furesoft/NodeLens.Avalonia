@@ -43,12 +43,14 @@ standalone shell (tabs, menu bar, status bar, a problems panel) is being deliver
 
 **The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
 library (`ShellView`, `ShellWindow`, `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`).
-Two of those now exist: `IShellStorage` and `IShellDialogs` are public in
-`Projectional.Avalonia/Shell/` with `ShellCapability`, `ShellFileType`, `UnsavedChoice` and `ShellOptions`,
-while their file-system and window implementations stay in the app. `ShellView`, `ShellWindow`,
-`ProjectDriver` and `CommandRegistry` do not exist yet - ADR 0015 puts that extraction at M6. Read those
-documents as the target shape, and add M2 features to `MainWindow` rather than inventing a `ShellView` on
-the way.
+Four of those now exist: `ShellCapability`, `ShellFileType`, `UnsavedChoice`, `ShellOptions`,
+`IShellStorage`, `IShellDialogs`, `ShellCommand` and `CommandRegistry` are public in
+`Projectional.Avalonia/Shell/`, while the file-system and window implementations stay in the app.
+`ShellView`, `ShellWindow` and `ProjectDriver` do not exist yet - ADR 0015 puts that extraction at M6. Read
+those documents as the target shape, and add M2 features to `MainWindow` rather than inventing a
+`ShellView` on the way. **A new command goes in `MainWindow.RegisterCommands`** and its handler dispatches
+through the registry (`RunCommand("name")`); do not add a capability check to the handler body, because
+the registry is the one enforcement point.
 
 ## Status and where the truth lives
 

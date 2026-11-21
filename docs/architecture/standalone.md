@@ -60,10 +60,12 @@ window is wiring.
 
 **Where the extraction stands.** `ShellCapability`/`ShellCapabilities` and `ShellOptions` with its
 `Capabilities`, `InitialModel`, `Storage` and `Dialogs` are public in `Projectional.Avalonia/Shell/`,
-together with `IShellStorage`, `IShellDialogs`, `ShellFileType` and `UnsavedChoice`; the
-file-system and window implementations stay in the app. `CommandRegistry`, `ProjectDriver`,
-`ShellView` and `ShellWindow` still do not exist - the window is still the shell
-([embedded-shell.md](embedded-shell.md#delivered-so-far-the-environment-seams),
+together with `IShellStorage`, `IShellDialogs`, `ShellFileType`, `UnsavedChoice`, `ShellCommand` and
+`CommandRegistry`; the file-system and window implementations stay in the app. `CommandRegistry` is the
+shell's **one enforcement point**: `MainWindow` declares its action surface in `RegisterCommands` and its
+handlers dispatch through the registry, so a menu entry, a shortcut and a host's own button agree by
+construction. `ProjectDriver`, `ShellView` and `ShellWindow` still do not exist - the window is still the
+shell ([embedded-shell.md](embedded-shell.md#delivered-so-far-the-environment-seams),
 [ADR 0015](../adr/0015-shell-is-a-library.md)).
 
 ## Composition rules
@@ -190,7 +192,7 @@ command object, so a command cannot be enabled in one place and dead in another.
 | Save / Save all | `Ctrl+S` / `Ctrl+Shift+S` | active document dirty |
 | Close document | `Ctrl+W` | a document is open |
 | Undo / Redo | `Ctrl+Z` / `Ctrl+Y` | session reports availability |
-| Find | `Ctrl+F` - **delivered** as View ▸ Find..., a menu `HotKey` in the app rather than a registry entry (no `CommandRegistry` exists yet) | a document is open |
+| Find | `Ctrl+F` - **delivered** as View ▸ Find..., a menu `HotKey` in the app; the command it runs (`"find"`) is a registry entry | a document is open |
 | Validate project | `F5` | a project is open |
 | Generate | `Ctrl+G` | language provides a generator |
 | Next / previous problem | `F8` / `Shift+F8` | diagnostics exist |

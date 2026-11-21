@@ -102,6 +102,14 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly IShellDialogs _dialogs;
     private readonly TextRecentFilesStore _recentStore;
 
+    /// <summary>Every command this shell can run, and the one place its capabilities are enforced.</summary>
+    /// <remarks>
+    /// The window's own code goes through this as well as its menus: ADR 0015 names a shortcut that still fires as
+    /// the symptom of a capability that only hid a menu entry, so "the shell always calls its own handlers" is the
+    /// habit that has to be broken rather than one extra check to remember.
+    /// </remarks>
+    private readonly CommandRegistry _commands;
+
     private RecentFiles _recent = RecentFiles.Empty;
 
     private SyntaxTheme _theme = SyntaxTheme.Light;
@@ -181,6 +189,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _capabilities = options.Capabilities;
         _storage = options.Storage;
         _dialogs = options.Dialogs ?? new WindowShellDialogs(this);
+        _commands = new CommandRegistry(_capabilities);
         _recentStore = new TextRecentFilesStore(
             _storage,
             Path.Combine(
@@ -239,6 +248,7 @@ public sealed partial class MainWindow : Window, IDisposable
         _layout.Factory.DockableClosing += OnDockableClosing;
 
         Compose();
+        RegisterCommands();
 
         // Before the first tab exists: a session takes its clipboard when it is created, and the sample opens
         // below.
@@ -392,6 +402,145 @@ public sealed partial class MainWindow : Window, IDisposable
 
     /// <summary>The document in front is editable, or the shell was declared read-only.</summary>
     private bool CanEdit => Allows(ShellCapability.EditModels);
+
+    /// <summary>Declares every action this shell has, with the capability that decides whether it may run.</summary>
+    /// <remarks>
+    /// <para>
+    /// The list is the shell's action surface rather than its whole menu: a menu entry that opens a bar or toggles a
+    /// theme is one of these, while a selection-changed notification is not a command and must not become one. What
+    /// the split buys is that every entry which can be refused by a capability appears here once, so the answer to
+    /// "what can this shell not do" is this method rather than a grep for <c>Allows</c>.
+    /// </para>
+    /// <para>
+    /// The bodies deliberately carry no capability check of their own. One check, in the registry, is what makes a
+    /// keyboard path and a menu entry agree; a second check in the body would be harmless today and would rot into a
+    /// disagreement the first time a capability is renamed.
+    /// </para>
+    /// </remarks>
+    private void RegisterCommands()
+    {
+        AddAction("new", "New", ShellCapability.CreateModels, () =>
+        {
+            NewDocument();
+
+            return ValueTask.CompletedTask;
+        });
+        AddAsync("open", "Open", ShellCapability.OpenFiles, OpenDocumentAsync);
+        AddAsync("open-language", "Open Language", ShellCapability.OpenFiles, OpenLanguageAsync);
+        AddAsync("import", "Import", ShellCapability.Import, ImportDocumentAsync);
+
+        // Opening a path is its own command because the picker is not the only way in: a file dropped on the window
+        // and a row in File > Recent both reach a path without a dialog, and both used to arrive after the entry that
+        // hides the menu had already been consulted. Declaring the path itself is what makes the drop and the menu
+        // agree with the picker instead of trusting that each one remembered to ask.
+        AddCommand("open-path", "Open", ShellCapability.OpenFiles, target =>
+        {
+            TryOpenPath((string)target!);
+
+            return ValueTask.CompletedTask;
+        });
+        AddCommand("import-path", "Import", ShellCapability.Import, target =>
+        {
+            ImportPathCore((string)target!);
+
+            return ValueTask.CompletedTask;
+        });
+        AddCommand("generate", "Generate", ShellCapability.Run, target =>
+        {
+            RunGenerator((Projectional.Language.TextGenerator)target!);
+
+            return ValueTask.CompletedTask;
+        });
+        AddCommand("export", "Export Language", ShellCapability.Export, async target => await ExportLanguageAsync((LanguageProject)target!));
+        AddAsync("save", "Save", ShellCapability.Save, SaveActiveAsync);
+        AddAsync("save-as", "Save As", ShellCapability.Save, SaveActiveAsAsync);
+        AddAsync("save-generated", "Save Generated Text", ShellCapability.Save, SaveGeneratedTextAsync);
+        AddAction("find", "Find", ShellCapability.Find, () =>
+        {
+            OpenFindBar(withReplace: false);
+
+            return ValueTask.CompletedTask;
+        });
+        AddAction("replace", "Replace", ShellCapability.Find, () =>
+        {
+            OpenFindBar(withReplace: true);
+
+            return ValueTask.CompletedTask;
+        }, new KeyGesture(Key.H, KeyModifiers.Control));
+        AddAction("find-usages", "Find Usages", ShellCapability.FindUsages, () =>
+        {
+            ShowActiveUsages();
+
+            return ValueTask.CompletedTask;
+        }, new KeyGesture(Key.F7, KeyModifiers.Alt));
+        AddAction("run", "Run", ShellCapability.Run, () =>
+        {
+            RunActiveDocument();
+
+            return ValueTask.CompletedTask;
+        }, new KeyGesture(Key.F5));
+        AddAction("run-tests", "Run Tests", ShellCapability.Tests, () =>
+        {
+            RunActiveTests();
+
+            return ValueTask.CompletedTask;
+        });
+        AddAction("clear-output", "Clear Output", ShellCapability.Run, () =>
+        {
+            ClearOutput();
+
+            return ValueTask.CompletedTask;
+        });
+        AddAction("step", "Step", ShellCapability.Run, () =>
+        {
+            Step(forward: true);
+
+            return ValueTask.CompletedTask;
+        }, new KeyGesture(Key.F10));
+        AddAction("step-back", "Step Back", ShellCapability.Run, () =>
+        {
+            Step(forward: false);
+
+            return ValueTask.CompletedTask;
+        });
+
+        void AddAction(
+            string name,
+            string label,
+            ShellCapability capability,
+            Func<ValueTask> execute,
+            KeyGesture? gesture = null) =>
+            AddCommand(name, label, capability, _ => execute(), gesture);
+
+        void AddAsync(string name, string label, ShellCapability capability, Func<Task> execute) =>
+            AddCommand(name, label, capability, async _ => await execute());
+
+        void AddCommand(
+            string name,
+            string label,
+            ShellCapability capability,
+            Func<object?, ValueTask> execute,
+            KeyGesture? gesture = null) =>
+            _commands.Add(new ShellCommand
+            {
+                Name = name,
+                Label = label,
+                Capability = capability,
+                Gesture = gesture,
+                Execute = execute,
+            });
+    }
+
+    /// <summary>Runs a command by name, the way the shell's own code and its menus both do.</summary>
+    /// <param name="name">The identifier declared in <see cref="RegisterCommands"/>.</param>
+    /// <param name="target">What the command acts on, for the one that takes a subject.</param>
+    /// <remarks>
+    /// A refusal is not reported here: a menu entry the capability removed was never shown, so the only way to reach
+    /// this with a refusal is a path that should not exist, and the outcome is a no-op rather than a message about a
+    /// module the user cannot see. <c>async void</c> on purpose - an exception inside a command has to surface the way
+    /// it did when the handler was the entry point.
+    /// </remarks>
+    private async void RunCommand(string name, object? target = null) => await _commands.ExecuteAsync(name, target);
 
     private void OpenSample()
     {
@@ -839,18 +988,13 @@ public sealed partial class MainWindow : Window, IDisposable
     }
 
     /// <summary>Opens the find bar and puts the caret in it.</summary>
-    private void OnFindText(object? sender, RoutedEventArgs e) => OpenFindBar(withReplace: false);
+    private void OnFindText(object? sender, RoutedEventArgs e) => RunCommand("find");
 
     /// <summary>Opens the find bar with the replace row, for a user who came to replace.</summary>
-    private void OnFindReplace(object? sender, RoutedEventArgs e) => OpenFindBar(withReplace: true);
+    private void OnFindReplace(object? sender, RoutedEventArgs e) => RunCommand("replace");
 
     private void OpenFindBar(bool withReplace)
     {
-        if (!Allows(ShellCapability.Find))
-        {
-            return;
-        }
-
         FindBar.IsVisible = true;
         ReplaceToggle.IsChecked = withReplace;
         ReplaceRow.IsVisible = withReplace;
@@ -1587,15 +1731,10 @@ public sealed partial class MainWindow : Window, IDisposable
     }
 
     /// <summary>Finds what points at the node the caret names, or at the reference it stands on.</summary>
-    private void OnFindUsages(object? sender, RoutedEventArgs e) => ShowActiveUsages();
+    private void OnFindUsages(object? sender, RoutedEventArgs e) => RunCommand("find-usages");
 
     private void ShowActiveUsages()
     {
-        if (!Allows(ShellCapability.FindUsages))
-        {
-            return;
-        }
-
         if (_documents.Active is not { } document)
         {
             return;
@@ -1916,9 +2055,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// The variables are read from the panel's line at the moment of the run, so a keystroke in that box is not a
     /// command: a user who is half way through typing <c>amount=1500</c> must not see a failure about <c>amoun</c>.
     /// </remarks>
-    private void OnRunDocument(object? sender, RoutedEventArgs e) => RunActiveDocument();
+    private void OnRunDocument(object? sender, RoutedEventArgs e) => RunCommand("run");
 
-    private void OnRunTests(object? sender, RoutedEventArgs e) => RunActiveTests();
+    private void OnRunTests(object? sender, RoutedEventArgs e) => RunCommand("run-tests");
 
     /// <summary>Runs the tests folder of the active document's language and shows the rows in the panel.</summary>
     /// <remarks>
@@ -1935,11 +2074,6 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void RunActiveTests()
     {
-        if (!Allows(ShellCapability.Tests))
-        {
-            return;
-        }
-
         _error = null;
 
         if (_documents.Active is not { } document)
@@ -1988,16 +2122,11 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         e.Handled = true;
-        RunActiveDocument();
+        RunCommand("run");
     }
 
     private void RunActiveDocument()
     {
-        if (!Allows(ShellCapability.Run))
-        {
-            return;
-        }
-
         if (_documents.Active is not { } document)
         {
             return;
@@ -2039,7 +2168,9 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
-    private void OnClearOutput(object? sender, RoutedEventArgs e)
+    private void OnClearOutput(object? sender, RoutedEventArgs e) => RunCommand("clear-output");
+
+    private void ClearOutput()
     {
         if (_documents.Active is { } document)
         {
@@ -2052,10 +2183,10 @@ public sealed partial class MainWindow : Window, IDisposable
     }
 
     /// <summary>Moves one step forward through the run's trace and shows where that landed.</summary>
-    private void OnStepForward(object? sender, RoutedEventArgs e) => Step(forward: true);
+    private void OnStepForward(object? sender, RoutedEventArgs e) => RunCommand("step");
 
     /// <summary>Moves one step back through the run's trace and shows where that landed.</summary>
-    private void OnStepBack(object? sender, RoutedEventArgs e) => Step(forward: false);
+    private void OnStepBack(object? sender, RoutedEventArgs e) => RunCommand("step-back");
 
     /// <summary>Takes one step in <paramref name="forward"/>'s direction and marks the row it landed on.</summary>
     /// <remarks>
@@ -2066,7 +2197,7 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void Step(bool forward)
     {
-        if (!Allows(ShellCapability.Run) || _documents.Active is not { } document)
+        if (_documents.Active is not { } document)
         {
             return;
         }
@@ -2573,7 +2704,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         public bool CanExecute(object? parameter) => true;
 
-        public void Execute(object? parameter) => _window.ExportLanguage(_language);
+        public void Execute(object? parameter) => _window.RunCommand("export", _language);
     }
 
     /// <summary>Writes one opened language as the C# a package is made of, compiling it on the way.</summary>
@@ -2583,13 +2714,8 @@ public sealed partial class MainWindow : Window, IDisposable
     /// failure is a message rather than a crash - it means the export cannot spell something this language declares,
     /// which is exactly what the user has to read.
     /// </remarks>
-    private async void ExportLanguage(LanguageProject language)
+    private async Task ExportLanguageAsync(LanguageProject language)
     {
-        if (!Allows(ShellCapability.Export))
-        {
-            return;
-        }
-
         _error = null;
 
         var directory = await _dialogs.ChooseFolderAsync($"Choose where to write {language.Name}");
@@ -2638,7 +2764,7 @@ public sealed partial class MainWindow : Window, IDisposable
 
         public bool CanExecute(object? parameter) => true;
 
-        public void Execute(object? parameter) => _window.RunGenerator(_generator);
+        public void Execute(object? parameter) => _window.RunCommand("generate", _generator);
     }
 
     /// <summary>Writes the last generated text to a file the user picks.</summary>
@@ -2647,7 +2773,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// shell's job and not the generator's: a language component that wrote files would have to guess a path, an
     /// encoding and a newline convention, and a host that embeds it could not decline.
     /// </remarks>
-    private async void OnSaveGenerated(object? sender, RoutedEventArgs e)
+    private void OnSaveGenerated(object? sender, RoutedEventArgs e) => RunCommand("save-generated");
+
+    private async Task SaveGeneratedTextAsync()
     {
         if (_documents.Active is not { Generated: { } text } document)
         {
@@ -2761,11 +2889,11 @@ public sealed partial class MainWindow : Window, IDisposable
 
             if (path.EndsWith(DocumentFile.Extension, StringComparison.OrdinalIgnoreCase))
             {
-                TryOpenPath(path);
+                RunCommand("open-path", path);
             }
             else
             {
-                ImportPath(path);
+                RunCommand("import-path", path);
             }
         }
 
@@ -2801,15 +2929,14 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>Opens a new document of the language this window is working in, or the sample's when none is open.</summary>
     /// <remarks>
     /// Internal for the screenshot harness, which presses this the way the menu does: a command that opens the wrong
-    /// language still opens a document, so the picture cannot show it and the gesture has to be checked.
+    /// language still opens a document, so the picture cannot show it and the gesture has to be checked. It goes
+    /// through the registry rather than around it, so the harness exercises the same refusal the menu does.
     /// </remarks>
-    internal void NewDocumentCommand()
-    {
-        if (!Allows(ShellCapability.CreateModels))
-        {
-            return;
-        }
+    internal void NewDocumentCommand() => RunCommand("new");
 
+    /// <summary>Opens a new document, having already been found allowed.</summary>
+    private void NewDocument()
+    {
         _error = null;
 
         if (CommandModule() is { } module)
@@ -2909,7 +3036,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// documents of the language can then be created from the same registries. A refused language leaves the shell
     /// exactly as it was and says why, because a folder is user input.
     /// </remarks>
-    private async void OnOpenLanguage(object? sender, RoutedEventArgs e)
+    private void OnOpenLanguage(object? sender, RoutedEventArgs e) => RunCommand("open-language");
+
+    private async Task OpenLanguageAsync()
     {
         _error = null;
 
@@ -3015,13 +3144,10 @@ public sealed partial class MainWindow : Window, IDisposable
         OpenNewDocumentOf(opened);
     }
 
-    private async void OnOpenDocument(object? sender, RoutedEventArgs e)
-    {
-        if (!Allows(ShellCapability.OpenFiles))
-        {
-            return;
-        }
+    private void OnOpenDocument(object? sender, RoutedEventArgs e) => RunCommand("open");
 
+    private async Task OpenDocumentAsync()
+    {
         _error = null;
 
         var path = await _dialogs.ChooseFileToOpenAsync("Open a model", ModelFileType());
@@ -3031,7 +3157,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        TryOpenPath(path);
+        RunCommand("open-path", path);
     }
 
     /// <summary>Imports a file as a new document, using whichever language in this window can read it.</summary>
@@ -3040,13 +3166,10 @@ public sealed partial class MainWindow : Window, IDisposable
     /// document that is already clean - nothing has been edited - and saving writes a <c>.mps</c> document or the
     /// generated text, never the original.
     /// </remarks>
-    private async void OnImportDocument(object? sender, RoutedEventArgs e)
-    {
-        if (!Allows(ShellCapability.Import))
-        {
-            return;
-        }
+    private void OnImportDocument(object? sender, RoutedEventArgs e) => RunCommand("import");
 
+    private async Task ImportDocumentAsync()
+    {
         _error = null;
 
         var path = await _dialogs.ChooseFileToOpenAsync("Import a file", TextFileType());
@@ -3056,7 +3179,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        ImportPath(path);
+        RunCommand("import-path", path);
     }
 
     /// <summary>Imports the file at <paramref name="path"/>, reporting the importer's place when it refuses.</summary>
@@ -3069,10 +3192,14 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <para>
     /// Internal rather than private because the screenshot harness drives it, the same way it drives
     /// <see cref="OpenLanguage"/>: a file picker cannot be clicked from a harness, and the alternative would be a
-    /// picture of an imported document arranged by hand rather than reached through the command.
+    /// picture of an imported document arranged by hand rather than reached through the command. It goes through the
+    /// registry rather than around it, so the harness exercises the same refusal the menu does.
     /// </para>
     /// </remarks>
-    internal void ImportPath(string path)
+    internal void ImportPath(string path) => RunCommand("import-path", path);
+
+    /// <summary>Imports the file at <paramref name="path"/>, having already been found allowed.</summary>
+    private void ImportPathCore(string path)
     {
         _error = null;
 
@@ -3236,19 +3363,18 @@ public sealed partial class MainWindow : Window, IDisposable
             // The header is the file name, so the full path is what the tooltip is for.
             ToolTip.SetTip(item, path);
 
-            item.Click += (_, _) => TryOpenPath(path);
+            item.Click += (_, _) => RunCommand("open-path", path);
 
             RecentFilesItem.Items.Add(item);
         }
     }
 
-    private async void OnSaveDocument(object? sender, RoutedEventArgs e)
-    {
-        if (!Allows(ShellCapability.Save))
-        {
-            return;
-        }
+    private void OnSaveDocument(object? sender, RoutedEventArgs e) => RunCommand("save");
 
+    private void OnSaveDocumentAs(object? sender, RoutedEventArgs e) => RunCommand("save-as");
+
+    private async Task SaveActiveAsync()
+    {
         _error = null;
 
         if (_documents.Active is { } document)
@@ -3257,13 +3383,8 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private async void OnSaveDocumentAs(object? sender, RoutedEventArgs e)
+    private async Task SaveActiveAsAsync()
     {
-        if (!Allows(ShellCapability.Save))
-        {
-            return;
-        }
-
         _error = null;
 
         if (_documents.Active is { } document && await PickSavePathAsync(document) is { } path)
@@ -3389,44 +3510,27 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
-        // F5 is the run gesture and carries no modifier, so it is answered before the zoom block below - which
-        // deliberately ignores every key that is not Ctrl.
-        if (e.Key == Key.F5 && e.KeyModifiers == KeyModifiers.None)
+        // A gesture the registry declares is answered from the registry, so a shortcut cannot run a command the menu
+        // would have refused, and a renamed capability cannot leave a key path behind. F5 (run), F10 (step), Alt+F7
+        // (find usages) and Ctrl+H (replace) come from there. Step *back* declares no gesture on purpose: Shift+F10
+        // is the Windows context-menu key, and claiming it globally would take the context menu away from every
+        // control in the application, so going back is a menu entry.
+        if (e.Key is not Key.None
+            && _commands.FindByGesture(new KeyGesture(e.Key, e.KeyModifiers)) is { } command)
         {
             e.Handled = true;
-            RunActiveDocument();
-
-            return;
-        }
-
-        // F10 is the step gesture, and it belongs to the window for the same reason F5 does: the answer is the caret
-        // in the document and a row in a panel the shell owns. Step *back* has no gesture on purpose - Shift+F10 is
-        // the Windows context-menu key, and claiming it globally would take the context menu away from every control
-        // in the application, so going back is a menu entry.
-        if (e.Key == Key.F10 && e.KeyModifiers == KeyModifiers.None)
-        {
-            e.Handled = true;
-            Step(forward: true);
+            RunCommand(command.Name);
 
             return;
         }
 
         // Shift+F6 is the rename gesture, MPS' own. It opens the bar because the new name is the user's to type -
-        // the intention that jumps into the name cell stays what it was.
+        // the intention that jumps into the name cell stays what it was. It is not a registry command because it is
+        // not a capability: renaming is part of editing, which the editor control already refuses as a whole.
         if (e.Key == Key.F6 && e.KeyModifiers == KeyModifiers.Shift)
         {
             e.Handled = true;
             OpenRenameBar();
-
-            return;
-        }
-
-        // Alt+F7 is the find-usages gesture. It belongs to the window for the same reason F5 does: the answer is a
-        // panel the shell owns, not a list the editor control can paint over the document.
-        if (e.Key == Key.F7 && e.KeyModifiers == KeyModifiers.Alt)
-        {
-            e.Handled = true;
-            ShowActiveUsages();
 
             return;
         }
@@ -3446,12 +3550,6 @@ public sealed partial class MainWindow : Window, IDisposable
                 break;
             case Key.D0 or Key.NumPad0:
                 ApplyFontSize(DefaultFontSize);
-                break;
-
-            // Ctrl+H is the replace gesture every desk editor has, and the menu prints it. It is answered here
-            // rather than declared as a HotKey for the same reason the zoom keys are: one place decides.
-            case Key.H:
-                OpenFindBar(withReplace: true);
                 break;
             default:
                 return;
