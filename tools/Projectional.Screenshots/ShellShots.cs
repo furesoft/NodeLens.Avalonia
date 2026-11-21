@@ -34,7 +34,27 @@ internal static class ShellShots
         new("feature-find-usages", ShowFindUsagesAndDefinition, Width: 1000, Height: 600),
         new("feature-project-explorer", ShowProjectExplorer, Width: 900, Height: 900),
         new("feature-outline", ShowOutline, Width: 720, Height: 560),
+        new("feature-terminal", ShowTerminal, Width: 880, Height: 760),
     ];
+
+    /// <summary>Shows the terminal tool running a program, which is the whole of what it is for.</summary>
+    /// <remarks>
+    /// The command is <c>dotnet --version</c> because the picture has to be reproducible: the repository pins the SDK in
+    /// <c>global.json</c>, so the line it prints is a fact about this checkout rather than about the machine. Everything
+    /// else in the image - the command echo, the exit notice - is what the panel itself writes when a program runs.
+    /// The panel is shown and given a moment before the command starts, because a screen that is resized after it has
+    /// content reflows that content, and a real user sees the panel before they type into it.
+    /// </remarks>
+    private static async Task ShowTerminal(MainWindow window)
+    {
+        window.ShowTerminalTool();
+
+        await Task.Delay(250);
+
+        window.RunInTerminal("dotnet --version");
+
+        await Task.Delay(750);
+    }
 
     /// <summary>Shows the outline of the sample document, which is a ruleset of several nested rules.</summary>
     /// <remarks>

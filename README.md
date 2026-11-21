@@ -450,6 +450,17 @@ collapses the whole tree at once.
 
 *One colour per concept, not one icon per row: five rules and their outcome read as two families at a glance.*
 
+#### The terminal: a program of your choosing
+
+`View` ▸ `Panels` ▸ `Terminal` opens a dockable tool that runs any program: the output is painted by a real
+terminal emulator - VtNetCore's VT100/xterm engine, behind a control of our own ([ADR 0023](docs/adr/0023-terminal-is-vtnetcore-behind-our-control.md)) -
+and the keyboard goes back into the program's input. It is the shell's first way to watch something it did not itself run.
+
+![The terminal tool docked under a document, running dotnet --version: the echoed command, the SDK version it printed, and the exit notice](docs/images/feature-terminal.png)
+
+The honest limit is that there is no pseudo-terminal yet: the child's streams are pipes, so it does not echo and does not
+do line editing, and the panel shows the visible part of what it sends instead ([terminal.md](docs/architecture/terminal.md)).
+
 #### Module settings: what a language says about itself
 
 A right press in the explorer offers `Module settings…` for the module under the pointer: its identity and versions,

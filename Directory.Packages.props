@@ -18,6 +18,16 @@
     <PackageVersion Include="Dock.Model.Avalonia" Version="12.1.5" />
   </ItemGroup>
 
+  <ItemGroup Label="Terminal">
+    <!--
+      The emulator behind the shell's terminal tool: a VT100/xterm state machine by the author of VtNetCore, MIT, and a
+      netstandard2.0 library with no Avalonia in it. Only the engine is taken - the Avalonia control that lives beside
+      it on GitHub is Avalonia 0.10 code from 2021 and exists on no feed, while the shell's own control is thirty lines
+      of painting per row and can follow the framework's theme (ADR 0023).
+    -->
+    <PackageVersion Include="VtNetCore" Version="1.0.30" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>

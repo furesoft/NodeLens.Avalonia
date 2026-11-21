@@ -33,6 +33,11 @@
     <PackageReference Include="Dock.Avalonia" />
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" />
     <PackageReference Include="Dock.Model.Avalonia" />
+    <!--
+      The terminal tool's emulator. The window is the only thing that has one: the engine is a dependency of the app
+      rather than of the framework, so an embedder of the editor control pays for no terminal.
+    -->
+    <PackageReference Include="VtNetCore" />
   </ItemGroup>
 
   <ItemGroup>
