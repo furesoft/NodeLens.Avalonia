@@ -130,6 +130,15 @@ All times in milliseconds. Three consequences, and they decide the order of the 
   without walking, and the same document now costs 2.3 ms. The seam was never the problem: one
   node alone cost 0.9 ms before and 0.001 ms after.
 
+**Re-measured on 2026-11-21, including against the commit that recorded these tables.** The conclusion is
+unchanged; the absolute layout figures are not. The same benchmark run on `b138a2d` - the commit this table was
+written in - answers **157.2 ms** for the 40 001-node rules layout rather than the 123.1 recorded here, and a run
+on `main` answers 171.4 ms with 7.8 ms of constraints (features: 6.3 ms layout, 2.9 ms constraints). So the layout
+column is a load-dependent wall-clock number that was recorded while the machine was quieter; what reproduces is the
+*ratio*, and it reproduced twice: constraints are about 5 % of what one keystroke's rebuild costs, so dependency sets
+would still optimise the smaller of two costs. A change that made the table worse is therefore visible as a change in
+the *shape* of a column - its growth against node count - which is what this table is for.
+
 So what is left is not the dependency sets. A full recheck now costs 6.6 ms (rules) and 3.3 ms
 (features) against a rebuild of 123 ms and 15.1 ms on the same keystroke, so incremental
 *validation* would optimise the smaller of two costs; what that rebuild is spent on is the tree and
