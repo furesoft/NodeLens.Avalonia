@@ -110,16 +110,20 @@ public static class EditorLowering
             EditorConceptKeys.Horizontal => new HorizontalNotationCell([.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
             EditorConceptKeys.Children => ed.Children(
                 Required(cell, "slot"),
-                Optional(cell, "emptyText") ?? "<empty>",
-                Spacing(cell)),
+                EmptyText(cell),
+                Spacing(cell),
+                IsTrue(cell, "stacked")),
             EditorConceptKeys.Collection => ed.Collection(
                 Required(cell, "slot"),
                 cell.GetChild("separator") is { } separator ? LowerInline(separator, conceptKey) : null,
-                Optional(cell, "emptyText") ?? "<empty>"),
+                EmptyText(cell)),
             EditorConceptKeys.Table => ed.Table(
                 Required(cell, "slot"),
-                Optional(cell, "emptyText") ?? "<empty>",
+                EmptyText(cell),
                 [.. cell.GetChildren(EditorLanguage.ColumnSlot).Select(column => LowerColumn(column, conceptKey))]),
+            EditorConceptKeys.WhileFilledBlock => ed.WhenFilledBlock(
+                Required(cell, "slot"),
+                [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
             _ => throw NotACell(cell, conceptKey, "not a block"),
         };
     }
@@ -161,7 +165,10 @@ public static class EditorLowering
                 Required(cell, "slot"),
                 emptyText: Optional(cell, "emptyText") ?? string.Empty),
             EditorConceptKeys.Reference => ed.Reference(Required(cell, "slot")),
-            EditorConceptKeys.ChildInline => new SingleChildNotationCell(Required(cell, "slot")),
+            EditorConceptKeys.ChildInline => new SingleChildNotationCell(Required(cell, "slot"))
+            {
+                EmptyText = EmptyText(cell),
+            },
             EditorConceptKeys.Conditional => ed.Conditional(
                 Required(cell, "slot"),
                 Optional(cell, "value") ?? string.Empty,
@@ -169,12 +176,21 @@ public static class EditorLowering
             EditorConceptKeys.WhileFilled => ed.WhenFilled(
                 Required(cell, "slot"),
                 [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerInline(child, conceptKey))]),
+            EditorConceptKeys.InlineCollection => ed.InlineCollection(
+                Required(cell, "slot"),
+                cell.GetChild("separator") is { } inlineSeparator ? LowerInline(inlineSeparator, conceptKey) : null,
+                EmptyText(cell),
+                Spacing(cell)),
             _ => throw NotACell(cell, conceptKey, "not inline"),
         };
     }
 
     private static int Spacing(Node cell) =>
         int.TryParse(cell.GetOrNull("spacing"), out var spacing) ? spacing : 1;
+
+    /// <summary>Whether a boolean property of <paramref name="cell"/> is on, which an unset one never is.</summary>
+    private static bool IsTrue(Node cell, string slot) =>
+        string.Equals(cell.GetOrNull(slot), "true", StringComparison.Ordinal);
 
     private static ConceptDefinitionException NotACell(Node cell, string conceptKey, string reason) =>
         new($"The notation of '{conceptKey}' holds a '{cell.Concept.Key}', which is {reason}.");
@@ -187,4 +203,13 @@ public static class EditorLowering
 
     private static string? Optional(Node node, string slot) =>
         node.GetOrNull(slot) is { Length: > 0 } value ? value : null;
+
+    /// <summary>What a slot-bearing cell shows while its slot holds nothing.</summary>
+    /// <remarks>
+    /// Not <see cref="Optional"/>: "draw nothing" is a real answer - <c>f()</c> is a call with no arguments - and it
+    /// has to stay distinguishable from "the author said nothing", which takes the default. Reading an empty string as
+    /// unset would make the placeholder the only thing a declared language could ever show.
+    /// </remarks>
+    private static string EmptyText(Node cell) =>
+        cell.GetOrNull("emptyText") is { } text ? text : "<empty>";
 }

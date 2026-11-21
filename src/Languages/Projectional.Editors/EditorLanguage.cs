@@ -214,6 +214,12 @@ public static class EditorLanguage
                     "1",
                     "How many spaces separate one child from the next.",
                     showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "stacked",
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether every child starts on a line of its own instead of beside its neighbours.",
+                    showDescriptionWhenFilled: true),
             ],
             [EditorConceptKeys.BlockCell],
             nameSlot: "slot",
@@ -273,6 +279,53 @@ public static class EditorLanguage
             [EditorConceptKeys.BlockCell],
             nameSlot: "slot",
             description: "Many children with a separator between them, drawn as blocks."),
+
+        // The inline sibling of the collection above, and the reason it is a second concept rather than a flag on the
+        // first: a list belongs inside a line - a call's arguments, a record's fields - and the block/inline split is
+        // this language's type hierarchy, not a setting. Without it a declared language could not write `f(a, b)`.
+        new ConceptDeclaration(
+            EditorConceptKeys.InlineCollection,
+            [
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the child slot whose children this cell lists.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "emptyText",
+                    PropertyType.String,
+                    "<empty>",
+                    "What the cell shows while the slot holds no children.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "spacing",
+                    PropertyType.Integer,
+                    "1",
+                    "How many spaces follow the separator.",
+                    showDescriptionWhenFilled: true),
+                new ChildSlot("separator", EditorConceptKeys.InlineCell, Cardinality.One),
+            ],
+            [EditorConceptKeys.InlineCell],
+            nameSlot: "slot",
+            description: "Many children with a separator between them, drawn inside a line."),
+
+        // The block sibling of the while-filled cell above, and it exists for the same reason the inline one does: a
+        // group of lines that should leave no row at all cannot be an empty block, because layout gives every
+        // vertical cell at least one line. Without it a declared language could say `if (...) { }` but not `if (...)
+        // { } else { }` - the asymmetry ADR 0014 refuses, since the hand-written languages do have it.
+        new ConceptDeclaration(
+            EditorConceptKeys.WhileFilledBlock,
+            [
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the child slot the condition reads.",
+                    showDescriptionWhenFilled: true),
+                new ChildSlot(CellSlot, EditorConceptKeys.BlockCell, Cardinality.Many),
+            ],
+            [EditorConceptKeys.BlockCell],
+            nameSlot: "slot",
+            description: "Blocks drawn only while a child slot holds a child."),
 
         new ConceptDeclaration(
             EditorConceptKeys.Table,

@@ -266,6 +266,107 @@ public sealed class EditorLoweringTests
         Assert.Throws<NotationException>(() => WhileFilled(concepts, "nope"));
     }
 
+    [Fact]
+    public void ADeclaredWhileFilledBlockLeavesNoRowWhileTheSlotIsEmpty()
+    {
+        // The block sibling of the inline cell, and the reason it is a separate concept: an empty block would still
+        // occupy a row, so "draw nothing" has to remove the group from the tree instead of emptying it.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "C.Rule",
+                [
+                    new ChildSlot("body", "C.Body", Cardinality.One),
+                    new ChildSlot("otherwise", "C.Body", Cardinality.One),
+                ]),
+            new ConceptDeclaration("C.Body", [new PropertySlot("name", PropertyType.String)], nameSlot: "name"),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+
+        notation.Cell(notation.Line(root), EditorConceptKeys.ChildInline, ("slot", "body"));
+
+        var branch = notation.Cell(root, EditorConceptKeys.WhileFilledBlock, ("slot", "otherwise"));
+
+        notation.Cell(notation.Line(branch), EditorConceptKeys.Keyword, ("text", "else"));
+        notation.Cell(notation.Line(branch), EditorConceptKeys.ChildInline, ("slot", "otherwise"));
+
+        var body = notation.Notation("C.Body");
+        var bodyLine = notation.SetRoot(body, EditorConceptKeys.Line);
+
+        notation.Slot(bodyLine, EditorConceptKeys.Property, "name");
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("C.Rule");
+
+        model.NewChild(rule, "body", "C.Body").Set("name", "then");
+
+        // Not an empty line where the branch would be - nothing at all.
+        Assert.Equal("then", LayoutSnapshot.Render(rule, notations, width: 40));
+
+        model.NewChild(rule, "otherwise", "C.Body").Set("name", "otherwise");
+
+        Assert.Equal("then\nelse\notherwise", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
+    public void ADeclaredWhileFilledBlockIsValidatedByTheRegistry()
+    {
+        var concepts = ConceptRegistry.Create([new ConceptDeclaration("C.Rule")]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+
+        notation.Cell(root, EditorConceptKeys.WhileFilledBlock, ("slot", "missing"));
+
+        Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Roots, concepts));
+    }
+
+    /// <summary>A language with one concept holding a list of arguments, which is what a call looks like.</summary>
+    private static ConceptRegistry CallConcepts() =>
+        ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "C.Call",
+                [
+                    new ChildSlot("arguments", "C.Argument", Cardinality.Many),
+                ]),
+            new ConceptDeclaration("C.Argument", [new PropertySlot("name", PropertyType.String)], nameSlot: "name"),
+        ]);
+
+    /// <summary>
+    /// The notation of <c>C.Call</c> as <c>(list)</c>, with the list either drawn always or only while it holds
+    /// something.
+    /// </summary>
+    private static NotationRegistry CallNotation(ConceptRegistry concepts, bool hideEmptyList)
+    {
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Call");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.Punct, ("text", "("));
+
+        var owner = hideEmptyList
+            ? notation.Cell(line, EditorConceptKeys.WhileFilled, ("slot", "arguments"))
+            : line;
+
+        var list = notation.Cell(owner, EditorConceptKeys.InlineCollection, ("slot", "arguments"), ("emptyText", ""));
+
+        notation.Cell(line, EditorConceptKeys.Punct, ("text", ")"));
+        notation.Separator(list, ",");
+
+        var argument = notation.Notation("C.Argument");
+        var argumentLine = notation.SetRoot(argument, EditorConceptKeys.Line);
+
+        notation.Slot(argumentLine, EditorConceptKeys.Property, "name");
+
+        return EditorLowering.CreateRegistry(notation.Roots, concepts);
+    }
+
     /// <summary>A one-line notation whose only cell is a "while filled" cell over <paramref name="slot"/>.</summary>
     private static NotationRegistry WhileFilled(ConceptRegistry concepts, string slot)
     {
@@ -277,6 +378,69 @@ public sealed class EditorLoweringTests
         cell.Set("slot", slot);
 
         return EditorLowering.CreateRegistry(notation.Roots, concepts);
+    }
+
+    [Fact]
+    public void ADeclaredInlineCollectionKeepsItsListOnTheLine()
+    {
+        // The block collection cannot be used for a call's arguments: it would put every argument on a line of its
+        // own. This is the cell that says `f(a, b)`, and it is declared as an inline cell so a notation that puts it
+        // in a sequence fails to lower instead of laying out wrongly.
+        var concepts = CallConcepts();
+        var notations = CallNotation(concepts, hideEmptyList: false);
+        var model = new Project(concepts).NewModel();
+        var call = model.NewNode("C.Call");
+
+        // An empty slot keeps one space, because a slot the user has to fill has to be a place the caret can stand on
+        // (see CellLayouter.SingleLineSize). An author who wants `f()` rather than `f( )` puts the list in a
+        // while-filled cell, which is the next test.
+        Assert.Equal("( )", LayoutSnapshot.Render(call, notations, width: 40));
+
+        model.NewChild(call, "arguments", "C.Argument").Set("name", "a");
+        model.NewChild(call, "arguments", "C.Argument").Set("name", "b");
+
+        Assert.Equal("(a, b)", LayoutSnapshot.Render(call, notations, width: 40));
+    }
+
+    [Fact]
+    public void ADeclaredInlineCollectionInAWhileFilledCellDrawsNothingWhileTheSlotIsEmpty()
+    {
+        // The pair a language needs for `f()`: the while-filled cell is what makes an optional list disappear, and it
+        // is inline, so it can wrap a list that stays on the line.
+        var concepts = CallConcepts();
+        var notations = CallNotation(concepts, hideEmptyList: true);
+        var model = new Project(concepts).NewModel();
+        var call = model.NewNode("C.Call");
+
+        Assert.Equal("()", LayoutSnapshot.Render(call, notations, width: 40));
+
+        model.NewChild(call, "arguments", "C.Argument").Set("name", "a");
+        model.NewChild(call, "arguments", "C.Argument").Set("name", "b");
+
+        Assert.Equal("(a, b)", LayoutSnapshot.Render(call, notations, width: 40));
+    }
+
+    [Fact]
+    public void ADeclaredInlineCollectionIsValidatedByTheRegistry()
+    {
+        // Lowered through the same builder as the hand-written cell, so the slot check is the notation layer's.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "C.Call",
+                [
+                    new ChildSlot("arguments", "C.Argument", Cardinality.Many),
+                ]),
+            new ConceptDeclaration("C.Argument", [new PropertySlot("name", PropertyType.String)], nameSlot: "name"),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Call");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.InlineCollection, ("slot", "missing"));
+
+        Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Roots, concepts));
     }
 
     [Fact]

@@ -122,7 +122,11 @@ public static class EditorNotations
             ed.Space,
             ed.Keyword("spacing:"),
             ed.Space,
-            ed.Property("spacing")));
+            ed.Property("spacing"),
+            ed.Space,
+            ed.Keyword("stacked:"),
+            ed.Space,
+            ed.Property("stacked")));
 
         // `[> if {slot} = "value"` reads as the question the cell asks, and the cells below it are what is drawn
         // while the answer is yes.
@@ -150,6 +154,18 @@ public static class EditorNotations
                 ed.Keyword("is filled")),
             ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
 
+        // The block sibling, bracketed like a block: `[/` opens it, and the whole group is absent from the drawing
+        // while the slot is empty rather than drawn as an empty row.
+        notations.Add(EditorConceptKeys.WhileFilledBlock, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[/ while"),
+                ed.Space,
+                ed.Property("slot"),
+                ed.Space,
+                ed.Keyword("is filled")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries, stacked: true)),
+            ed.Line(ed.Keyword("/]"))));
+
         notations.Add(EditorConceptKeys.Collection, ed => ed.Line(
             ed.Punct("{"),
             ed.Property("slot"),
@@ -158,6 +174,25 @@ public static class EditorNotations
             ed.Keyword("empty:"),
             ed.Space,
             ed.Property("emptyText"),
+            ed.Space,
+            ed.Keyword("separator:"),
+            ed.Space,
+            ed.ChildInline("separator")));
+
+        // `[> {slot}` opens the inline form, the bracket a reader already knows from every other inline cell.
+        notations.Add(EditorConceptKeys.InlineCollection, ed => ed.Line(
+            ed.Punct("[>"),
+            ed.Punct("{"),
+            ed.Property("slot"),
+            ed.Punct("}"),
+            ed.Space,
+            ed.Keyword("empty:"),
+            ed.Space,
+            ed.Property("emptyText"),
+            ed.Space,
+            ed.Keyword("spacing:"),
+            ed.Space,
+            ed.Property("spacing"),
             ed.Space,
             ed.Keyword("separator:"),
             ed.Space,

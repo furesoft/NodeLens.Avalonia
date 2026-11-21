@@ -249,6 +249,25 @@ public sealed class TextGenLoweringTests
 
     /// <summary>Names the one generator a fresh generator document holds.</summary>
     [Fact]
+    public void ATextPartMayBeNothingButWhitespace()
+    {
+        // The blank between two parts is a part of its own in this language - there is no "insert a space" property -
+        // so a whitespace-only text has to survive lowering. Reading it as "no text" made the space between a
+        // visibility and a type inexpressible.
+        var model = TextGenLanguage.NewModel();
+        var generator = Generator(model, "Spaced");
+        var rule = Mapping(model, generator, RulesConceptKeys.Rule);
+
+        Text(model, rule, " ");
+        Text(model, rule, "x");
+
+        var lowered = TextGenLowering.CreateGenerators(model.Roots, PayrollSample.NewSampleModel().Concepts).Single();
+        var template = lowered.Templates.TemplateFor(PayrollSample.NewSampleModel().Concepts.Get(RulesConceptKeys.Rule))!;
+
+        Assert.Equal([" ", "x"], template.Parts.Cast<TextPart>().Select(part => part.Text));
+    }
+
+    [Fact]
     public void AnIgnoreMappingIsTheWayToSayAConceptEmitsNothing()
     {
         // The counterpart of a template: an author has to be able to leave a concept out on purpose, and an empty box
