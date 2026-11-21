@@ -164,6 +164,43 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AConstructorIsNamedAfterTheClassThatHoldsIt()
+    {
+        // C# names a constructor after its type, and here the name is a property of the constructor, so the two can
+        // disagree - and the generator writes the constructor's own name, which turns the disagreement into
+        // `public Grete()` inside `class Greeter`. Nothing else reports it: "Grete" is a legal identifier, it is
+        // PascalCase as the concept asks, and no sibling shares it. An empty name is the same fault with the other
+        // spelling, and the likelier one, because a new constructor starts empty and the concept declares no
+        // placeholder for the language's own placeholder rule to see.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("ctors");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.NameSlot, "Greeter");
+
+        var named = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Constructor);
+        named.Set(CSharpLanguage.NameSlot, "Greeter");
+
+        var renamed = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Constructor);
+        renamed.Set(CSharpLanguage.NameSlot, "Grete");
+
+        _ = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Constructor);
+
+        var findings = new ConstraintEngine(CSharpConstraints.All)
+            .Check(model)
+            .Where(finding => string.Equals(finding.Code, CSharpConstraints.ConstructorNameCode, StringComparison.Ordinal))
+            .ToList();
+
+        Assert.Equal(2, findings.Count);
+
+        // Both messages name the class, because "the name is wrong" without saying what it should be is a puzzle.
+        Assert.All(findings, finding => Assert.Contains("\"Greeter\"", finding.Message, StringComparison.Ordinal));
+        Assert.Contains(findings, finding => finding.Message.Contains("\"Grete\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void AnIntentionIsOfferedOnlyOnTheConceptItEdits()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("intentions");

@@ -51,6 +51,9 @@ public static class CSharpConstraints
     /// <summary>The identifier the interface-name rule reports under.</summary>
     public const string InterfaceNameCode = "csharp.interface.name";
 
+    /// <summary>The identifier the constructor-name rule reports under.</summary>
+    public const string ConstructorNameCode = "csharp.constructor.name";
+
     /// <summary>Every rule the base language states.</summary>
     public static ConstraintSet All { get; } = ConstraintSet.Empty
         .Add(CSharpConceptKeys.Method, new MethodNeedsABody())
@@ -59,7 +62,8 @@ public static class CSharpConstraints
         .Add(CSharpConceptKeys.If, new ConditionMustBeBoolean())
         .Add(CSharpConceptKeys.File, new UsingsAreSorted())
         .Add(CSharpConceptKeys.Class, new MembersAreGroupedByKind())
-        .Add(CSharpConceptKeys.Interface, new InterfaceNameStartsWithI());
+        .Add(CSharpConceptKeys.Interface, new InterfaceNameStartsWithI())
+        .Add(CSharpConceptKeys.Constructor, new ConstructorIsNamedAfterItsClass());
 
     /// <summary>A method with no body generates as a signature only, which is almost never what was meant.</summary>
     private sealed class MethodNeedsABody : IConstraint
@@ -294,6 +298,56 @@ public static class CSharpConstraints
                 $"the interface \"{name}\" does not start with \"I\", which is how the .NET style guide names one.",
                 role: CSharpLanguage.NameSlot,
                 code: InterfaceNameCode);
+        }
+    }
+
+    /// <summary>
+    /// A constructor that is not called what the class holding it is called, which nothing else reports and which
+    /// generates code no compiler accepts.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// C# names a constructor after its type, and this model cannot: the name is a property of the constructor, so the
+    /// two are free to disagree. The generator writes the constructor's own name - it has to, because the model is the
+    /// only source of truth, and reading the parent instead would leave a property standing in the notation that
+    /// nothing generates - which turns the disagreement into <c>public Grete()</c> inside <c>class Greeter</c>. No
+    /// other rule sees it: the name is a legal identifier, it is spelled PascalCase, and no sibling shares it.
+    /// </para>
+    /// <para>
+    /// An empty name is the same fault spelled the other way, and the likelier one: a new constructor starts empty and
+    /// its concept declares no placeholder, so the catalogue's placeholder rule has nothing to report and the empty
+    /// name reaches the generated text as <c>public ()</c>. Both are one rule because both are answered by the same
+    /// sentence, "a constructor is named after its class".
+    /// </para>
+    /// <para>
+    /// A constructor in a class that has no name yet is not reported: the missing word belongs to the class, and
+    /// telling the user twice about one unnamed declaration is what the language's placeholder rules exist to avoid.
+    /// Only a class counts as a holder, because it is the only thing a constructor can belong to.
+    /// </para>
+    /// </remarks>
+    private sealed class ConstructorIsNamedAfterItsClass : IConstraint
+    {
+        public void Check(ConstraintContext context)
+        {
+            if (context.Node.Parent is not { Concept.Key: CSharpConceptKeys.Class } holder)
+            {
+                return;
+            }
+
+            var expected = NameOf(holder);
+            var actual = NameOf(context.Node);
+
+            if (expected is not { Length: > 0 } || string.Equals(actual, expected, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            context.Warning(
+                actual is { Length: > 0 }
+                    ? $"the constructor is called \"{actual}\" but the class that holds it is called \"{expected}\"; a constructor is named after its class."
+                    : $"the constructor has no name; a constructor is named after the class that holds it, which is \"{expected}\".",
+                role: CSharpLanguage.NameSlot,
+                code: ConstructorNameCode);
         }
     }
 

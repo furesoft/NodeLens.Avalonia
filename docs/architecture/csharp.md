@@ -111,17 +111,34 @@ A checker that "checks C# code style" is a set of `IConstraint`s on the language
 place and told apart by severity: a correctness rule may `Error`, a style rule `Warning`s or `Hint`s,
 because the order of two imports changes nothing about what the code does.
 
-**Delivered.** Seven rules, four of them correctness and three of them style:
+**Delivered.** Eight rules, five of them correctness and three of them style:
 
 | Rule | Code | Severity | What it says |
 | --- | --- | --- | --- |
 | A method needs a body | `csharp.method.body` | Warning | a body-less method generates a signature nobody calls |
 | A method is still called its default | `csharp.method.name` | Hint | the name is the placeholder, so the author has not named it yet |
 | A field's name carries whitespace | `csharp.field.name` | Warning | the padding is invisible in the drawing and part of the generated identifier |
+| A constructor is named after its class | `csharp.constructor.name` | Warning | the generator writes the constructor's own name, so a mismatch is `public Grete()` inside `class Greeter` |
 | An `if` condition must be a boolean | `csharp.if.condition.not-boolean` | Error | the first rule that needed types; a condition of unknown type is allowed, because the editor is not the compiler |
 | Imports are in the conventional order | `csharp.using.order` | Warning | `System` first, then ordinal by name, the order the .NET style guide asks for |
 | Members are in the conventional order | `csharp.member.order` | Warning | fields, then constructors, then properties and indexers, then methods |
 | An interface's name starts with `I` | `csharp.interface.name` | Warning | the one naming convention the style guide states for a declaration |
+
+**What is deliberately *not* here: naming, in general.** The concepts already declare it - every
+`ConceptDeclaration` in `CSharpLanguage` carries a `nameSlot` and a `nameRule` (`Pascal` for a type, a
+member and a namespace, `Camel` for a field, a parameter and a local, `PascalDot` for a dotted
+namespace), and the standard catalogue's `IdentifierNameCheck` (STD004) reads that declaration and
+respells a name that breaks it, with a repair. So a rule here that restated "a method is PascalCase" would
+be the second answer to one question, and the two would drift. The same holds for two adjacent
+temptations: a duplicated `using` is already `DuplicateNameCheck` (STD002), because the imports are
+children of one slot and two of them share a name. What is left for this file is what the declared rule
+cannot say - the conventions about *arrangement* (order, grouping) and about a name that has to agree
+with a node that is not itself, like the constructor above.
+
+**What is deliberately absent: an unused `using`.** It is not undecidable in principle, but it is
+undecidable here: the language models a name as text the compiler resolves, so nothing in the model
+knows that `Console` came from the `using System;` line. A rule that guessed from the text would be
+wrong about every name that arrives some other way.
 
 **The one thing the model cannot see.** "A blank line after a block of fields" is a *whitespace*
 convention, and a projectional model holds no whitespace: the projection draws the line breaks and the
