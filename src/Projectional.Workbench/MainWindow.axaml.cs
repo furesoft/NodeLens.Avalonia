@@ -2041,6 +2041,66 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
+    /// <summary>Moves one step forward through the run's trace and shows where that landed.</summary>
+    private void OnStepForward(object? sender, RoutedEventArgs e) => Step(forward: true);
+
+    /// <summary>Moves one step back through the run's trace and shows where that landed.</summary>
+    private void OnStepBack(object? sender, RoutedEventArgs e) => Step(forward: false);
+
+    /// <summary>Takes one step in <paramref name="forward"/>'s direction and marks the row it landed on.</summary>
+    /// <remarks>
+    /// A step is a <em>replay</em>, so nothing is executed: the cursor moves over a trace a finished run left behind,
+    /// and the shell's whole job is to put the caret where that step happened. The selection is the mark, which is why
+    /// it is not cleared here - unlike a chosen row, which is cleared as soon as the caret has moved, a stepped row is
+    /// a place the user is standing and the next step reads as a move from it.
+    /// </remarks>
+    private void Step(bool forward)
+    {
+        if (!Allows(ShellCapability.Run) || _documents.Active is not { } document)
+        {
+            return;
+        }
+
+        if (document.Output?.Steps is not { } cursor)
+        {
+            _error = "There is no run to step through; run the document first.";
+            UpdateStatus();
+
+            return;
+        }
+
+        if (!(forward ? cursor.Step() : cursor.Back()))
+        {
+            // Nothing to say: a step at either end is a no-op rather than a mistake, which is why the cursor answers
+            // instead of throwing. Only the caret and the mark are already where the user wanted them.
+            return;
+        }
+
+        ShowStep(document, cursor);
+    }
+
+    /// <summary>Puts the caret on the current step's node and marks its row in the panel.</summary>
+    private void ShowStep(DocumentTab document, TraceCursor cursor)
+    {
+        if (cursor.Current is not { } step
+            || !_tabs.TryGetValue(document, out var tab)
+            || EditorOf(tab) is not { } editor)
+        {
+            return;
+        }
+
+        document.Session.Select(Selection.At(new CellAddress(step.Node)));
+        editor.ScrollToCaret();
+
+        // The rows are the trace rendered, index for index, so the cursor's position is the row to mark. Selecting it
+        // is also what scrolls the panel, which matters because a long trace does not fit beside the document.
+        RunOutput.SelectedIndex = cursor.Position;
+        RunOutput.ScrollIntoView(cursor.Position);
+
+        _error = null;
+        UpdateStatus();
+    }
+
     /// <summary>Puts the caret on the node a trace line came from.</summary>
     /// <remarks>
     /// The pick is cleared afterwards, so the same row is clickable twice: a trace is something a user reads back
@@ -2424,6 +2484,13 @@ public sealed partial class MainWindow : Window, IDisposable
         RunDocumentItem.IsEnabled = runnable;
         RunTestsItem.IsEnabled = project is not null;
         ClearOutputItem.IsEnabled = _documents.Active?.Output is not null;
+
+        // Stepping is offered exactly when the report in front is a run's: a generated text arrives as a report too,
+        // and there is no order of evaluation in it to replay.
+        var cursor = _documents.Active?.Output?.Steps;
+
+        StepItem.IsEnabled = cursor is { IsAtEnd: false };
+        StepBackItem.IsEnabled = cursor is { IsAtStart: false };
         ToolTip.SetTip(
             RunDocumentItem,
             runnable
@@ -3366,6 +3433,18 @@ public sealed partial class MainWindow : Window, IDisposable
         {
             e.Handled = true;
             RunActiveDocument();
+
+            return;
+        }
+
+        // F10 is the step gesture, and it belongs to the window for the same reason F5 does: the answer is the caret
+        // in the document and a row in a panel the shell owns. Step *back* has no gesture on purpose - Shift+F10 is
+        // the Windows context-menu key, and claiming it globally would take the context menu away from every control
+        // in the application, so going back is a menu entry.
+        if (e.Key == Key.F10 && e.KeyModifiers == KeyModifiers.None)
+        {
+            e.Handled = true;
+            Step(forward: true);
 
             return;
         }
