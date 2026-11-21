@@ -50,10 +50,22 @@ public static class DocumentGenerate
             var end = generated.Text.IndexOf('\n', start);
             var line = end < 0 ? generated.Text[start..] : generated.Text[start..end];
 
-            // The row points at whatever wrote the beginning of this line; a line of pure whitespace has no owner.
+            // The row points at whatever wrote the first *visible* character of the line. Asking about the line's first
+            // offset would answer "nobody" for every indented line, because the indentation before a child is written
+            // by the separator that started the line - the parent's, not the child's - and that is most lines in a
+            // block language. A line with nothing visible on it has no owner at all.
+            var visible = 0;
+
+            while (visible < line.Length && char.IsWhiteSpace(line[visible]))
+            {
+                visible++;
+            }
+
             rows.Add(new RunRow(
                 line.Replace("\r", string.Empty, StringComparison.Ordinal),
-                generated.RegionAt(start) is { } region ? new CellAddress(region.Node) : null));
+                visible < line.Length && generated.RegionAt(start + visible) is { } region
+                    ? new CellAddress(region.Node)
+                    : null));
 
             if (end < 0)
             {

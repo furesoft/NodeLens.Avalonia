@@ -279,8 +279,14 @@ decisions are worth the words:
   a child slot's cell and the conditional compares a *value*. An empty property would have generated
   trailing whitespace inside the comment, the defect the empty member block fix removed.
 
-What is still planned: the traceability map from a generated line back to the node that produced it, the
-"go to source" test that needs it, and a sample that writes the other half of a partial by hand.
+What is still planned: a sample that writes the other half of a partial by hand. The traceability the slice
+was grouped with is **already delivered and is not this feature's work**: `GeneratedText.Regions` records,
+per emitted stretch, the node and slot it came from, `RegionAt(offset)` answers which node wrote a position,
+and `DocumentGenerate.RowsOf` turns that into the shell's one-row-per-generated-line report whose rows carry
+the node to jump to. Two things were wrong with it before this slice looked: nothing tested the consumer, and
+it asked about each line's *first* offset - which is the indentation the parent's separator wrote, so every
+indented line answered "nobody". `DocumentGenerateTests` now pins both, and the row asks about the first
+visible character instead.
 
 The part of the behaviour aspect that needs **no** code is planned separately and comes first:
 a node's `Name` and `Describe` as pure functions declared as data ([behaviours.md](behaviours.md)).
@@ -407,7 +413,9 @@ against.
 - **C2 - statements and declarations.** Blocks, `if`/loops, methods, classes, identifier
   mapping, and the first corpus that CI compiles.
 - **C3 - behaviour methods and traceability.** One partial class per concept, the hand-written
-  other half in a sample, the traceability map, and the "go to source" test.
+  other half in a sample, the traceability map, and the "go to source" test. **Landed:** the
+  behaviour class and the "go to source" test (the map itself was already in the generator). **Left:**
+  the hand-written sample.
 
 **The gate:** the compiled generated code and the M4 interpreter produce identical results on
 the shared corpus. Two independent implementations agreeing is the only evidence that either is
