@@ -124,7 +124,7 @@ public static class StructureNotations
                     ed.Line(ed.Keyword("implements"), ed.Space),
                     ed.Children(StructureLanguage.ImplementsSlot, NoSection, stacked: true)))),
             ed.Line(),
-            ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
+            ed.Indent(ed.Indent(ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
             ed.Line(ed.Keyword("alias:"), ed.Space, ed.Property(StructureLanguage.AliasProperty, emptyText: NoAlias)),
             ed.Line(
                 ed.Keyword("short description:"),
@@ -142,7 +142,7 @@ public static class StructureNotations
             ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
             ed.Line(),
             ed.Line(ed.Keyword("references:")),
-            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))));
+            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
