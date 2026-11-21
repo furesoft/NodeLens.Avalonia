@@ -435,9 +435,10 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     /// <summary>A document of <paramref name="language"/>, or <see langword="null"/> when it has no root concept.</summary>
     /// <param name="language">The language to create a document of.</param>
     /// <remarks>
-    /// A concept can be a root when it is concrete and names no applicability places: a concept that names places
-    /// can never be a root, because it needs a parent and a slot to exist. The first such concept in declaration
-    /// order is the language author's answer to "what is this language about", the same order that ranks completion.
+    /// A concept can be a root when it is concrete, names no applicability places and does not refuse to start a
+    /// document: a concept that names places can never be a root, because it needs a parent and a slot to exist, and
+    /// one that declared <c>isRoot: false</c> said so itself. The first such concept in declaration order is the
+    /// language author's answer to "what is this language about", the same order that ranks completion.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="language"/> is <see langword="null"/>.</exception>
     internal static Model? NewDocument(LanguageProject language)
@@ -458,11 +459,26 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     }
 
     /// <summary>The concept a document of <paramref name="language"/> could start with, or <see langword="null"/>.</summary>
+    /// <remarks>
+    /// <para>
+    /// Three conditions, and the third one is the one that matters: the concept must be concrete, must name no
+    /// applicability places (so it needs no parent), and must not have refused to start a document. Without the third
+    /// this method and <see cref="Model.NewNode(Concept)"/> disagree, and the disagreement is not a wrong answer but a
+    /// crash: the chooser offers a concept the model then refuses to make a root.
+    /// </para>
+    /// <para>
+    /// The C# base language is where that was found. It declares <c>isRoot: false</c> on 44 of its 45 concepts, so
+    /// "the first concrete one that names no places" was <c>CSharp.TypeReference</c> - and opening a new C# document
+    /// threw <see cref="ModelInvariantException"/> instead of starting a file. Only <c>CSharp.File</c> means "a
+    /// document", and only asking about the flag says so.
+    /// </para>
+    /// </remarks>
     internal static Concept? Rootable(LanguageProject language)
     {
         ArgumentNullException.ThrowIfNull(language);
 
-        return language.Concepts.Concepts.FirstOrDefault(concept => !concept.IsAbstract && concept.Applicability.IsAnywhere);
+        return language.Concepts.Concepts.FirstOrDefault(
+            concept => !concept.IsAbstract && concept.Applicability.IsAnywhere && concept.IsRoot);
     }
 
     /// <summary>The notation of the base languages plus everything opened, against <paramref name="concepts"/>.</summary>

@@ -279,13 +279,15 @@ public sealed class WorkbenchLanguageTests
     }
 
     [Fact]
-    public void TheRootConceptIsTheFirstConcreteOneTheLanguageDeclares()
+    public void TheRootConceptIsTheFirstConcreteOneThatMayStartADocument()
     {
         // Declaration order is the language author's answer to "what is this language about", the same order that
-        // ranks completion.
+        // ranks completion - and a concept that refused to start a document is skipped, because the model would
+        // refuse the node the chooser picked. The refused concept is declared first on purpose: that is the shape
+        // the C# base language had, where "the first concrete one" was a type reference and a new document threw.
         using var folder = new TemporaryDirectory();
 
-        WriteLanguage(folder.Root, "Rules.Thing", ["name"], alsoAbstract: "Rules.Element");
+        WriteLanguage(folder.Root, "Rules.Thing", ["name"], alsoAbstract: "Rules.Element", refused: "Rules.Fragment");
 
         var opened = LanguageProject.Open(folder.Root, out _)!;
 
@@ -470,13 +472,24 @@ public sealed class WorkbenchLanguageTests
     /// the file names are the concept keys - which is also what orders them, because the project reads a folder in
     /// ordinal file-name order.
     /// </remarks>
-    private static void WriteLanguage(string directory, string conceptKey, string[] properties, string? alsoAbstract = null)
+    private static void WriteLanguage(
+        string directory,
+        string conceptKey,
+        string[] properties,
+        string? alsoAbstract = null,
+        string? refused = null)
     {
         var definition = new DefinitionBuilder();
 
         if (alsoAbstract is not null)
         {
             definition.Concept(alsoAbstract, isAbstract: true);
+        }
+
+        // A concept that says it may not start a document, declared before the one that may.
+        if (refused is not null)
+        {
+            definition.Concept(refused, isRoot: false);
         }
 
         definition.Concept(

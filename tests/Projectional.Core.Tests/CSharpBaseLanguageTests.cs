@@ -176,4 +176,32 @@ public sealed class CSharpBaseLanguageTests
 
         ModelFile.Save(languageRoot, Path.Combine(root, LanguageProject.LanguageFile));
     }
+
+    [Fact]
+    public void ANewDocumentOfTheBaseLanguageStartsAsAFile()
+    {
+        // The path from "new document" to the first keystroke: the shell asks the language which concept may start a
+        // document. For C# the answer has to be `File`, because a document that began as a type reference or a
+        // literal would be a fragment of C# rather than a file of it.
+        var shell = new WorkbenchLanguage();
+        var language = shell.Find(CSharpLanguage.Name);
+
+        Assert.NotNull(language);
+
+        var model = WorkbenchLanguage.NewDocument(language);
+
+        Assert.NotNull(model);
+        Assert.Equal(CSharpConceptKeys.File, Assert.Single(model.Roots).Concept.Key);
+
+        // The document is drawable the moment it exists: the namespace slot is a placeholder the user fills, so the
+        // first keystroke lands in a document rather than in an error.
+        Assert.Equal("<no namespace>", LayoutSnapshot.Render(model, shell.Notations, width: 80));
+
+        // And filling it is one child, which is where "new document, type a class" begins.
+        var ns = model.NewChild(model.Roots[0], CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+
+        Assert.DoesNotContain("<no namespace>", LayoutSnapshot.Render(model, shell.Notations, width: 80), StringComparison.Ordinal);
+    }
 }
