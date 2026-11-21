@@ -578,5 +578,36 @@ public static class CSharpLanguage
             superConcepts: [CSharpConceptKeys.Statement],
             isRoot: false,
             description: "throw value;"),
+
+        // A try is one statement with a block, the handlers that follow it and a block that runs whatever happened.
+        // The handler is a concept of its own rather than a second block slot, because a try may have several and each
+        // declares the exception it catches - which is a declaration a name in its body can point at, so it carries
+        // the interface the scope provider resolves against.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Try,
+            [
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.CatchesSlot, CSharpConceptKeys.Catch, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.FinallySlot, CSharpConceptKeys.Block, Cardinality.One, minimum: 0),
+            ],
+            superConcepts: [CSharpConceptKeys.Statement],
+            isRoot: false,
+            description: "try { ... } catch (Type name) { ... } finally { ... }"),
+
+        // `catch (Exception e) { ... }`: the type it catches, the name it binds, and what it does. The name is a
+        // property on the declaration, so the catch is what a name in its body resolves to - the same arrangement a
+        // parameter has, and the reason a handler body can refer to the exception it caught.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Catch,
+            [
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+                new PropertySlot(NameSlot, PropertyType.String, "e", "The name the caught exception is bound to."),
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),
+            ],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Camel,
+            isRoot: false,
+            description: "catch (Type name) { ... }"),
     ];
 }

@@ -252,6 +252,33 @@ public static class CSharpTextGenerators
             new ChildPart(CSharpConceptKeys.ValueSlot),
             new TextPart(";")))
 
+        // A try: the block, then each handler separated by a line break and the final block when there is one. The
+        // handler list is wrapped in WhenFilled so a try without a catch leaves no blank line - the same guard the
+        // class's member list needs.
+        .Add(CSharpConceptKeys.Try, TextTemplate.Of(
+            new TextPart("try"),
+            LineBreakPart.Instance,
+            new ChildPart(CSharpConceptKeys.BodySlot),
+            new WhenFilledPart(
+                CSharpConceptKeys.CatchesSlot,
+                TextTemplate.Of(LineBreakPart.Instance, Members(CSharpConceptKeys.CatchesSlot))),
+            new WhenFilledPart(
+                CSharpConceptKeys.FinallySlot,
+                TextTemplate.Of(
+                    LineBreakPart.Instance,
+                    new TextPart("finally"),
+                    LineBreakPart.Instance,
+                    new ChildPart(CSharpConceptKeys.FinallySlot)))))
+
+        .Add(CSharpConceptKeys.Catch, TextTemplate.Of(
+            new TextPart("catch ("),
+            new ChildPart("type"),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart(")"),
+            LineBreakPart.Instance,
+            new ChildPart(CSharpConceptKeys.BodySlot)))
+
         .Add(CSharpConceptKeys.TypeReference, TextTemplate.Of(new PropertyPart(CSharpLanguage.NameSlot)))
         .Add(CSharpConceptKeys.IntLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))
         .Add(CSharpConceptKeys.BoolLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))

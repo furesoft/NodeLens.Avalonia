@@ -359,6 +359,29 @@ public static class CSharpNotations
             ed.Space,
             ed.ChildInline(CSharpConceptKeys.ValueSlot),
             ed.Punct(";")));
+
+        // A try: its block, then the handlers one per line and the final block if there is one. No indent around the
+        // handlers - `catch` and `finally` stand at the same column as `try`, which is how C# reads, and the blocks
+        // below them draw their own braces.
+        notations.Add(CSharpConceptKeys.Try, ed => ed.Sequence(
+            ed.Line(ed.Keyword("try")),
+            ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot)),
+            ed.Children(CSharpConceptKeys.CatchesSlot, "<no catch>", stacked: true),
+            ed.WhenFilledBlock(
+                CSharpConceptKeys.FinallySlot,
+                ed.Line(ed.Keyword("finally")),
+                ed.Line(ed.ChildInline(CSharpConceptKeys.FinallySlot)))));
+
+        notations.Add(CSharpConceptKeys.Catch, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("catch"),
+                ed.Space,
+                ed.Punct("("),
+                ed.ChildInline("type"),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot),
+                ed.Punct(")")),
+            ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot))));
     }
 
     /// <summary>A registry holding only the base language, built over <paramref name="concepts"/>.</summary>

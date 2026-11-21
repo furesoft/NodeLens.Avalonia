@@ -818,6 +818,86 @@ public sealed class CSharpLanguageTests
         Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
     }
 
+    [Fact]
+    public void ATryWithACatchAndAFinallyDrawsAndGeneratesTheSameShape()
+    {
+        // The statement the subset was missing: what a body does when something goes wrong. The handler is a concept
+        // of its own rather than a second block slot, so a try may have several and each binds the exception it
+        // catches - and because a handler is a declaration, a name in its body resolves to it.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("errors");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+
+        var attempt = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Try);
+        var tryBody = model.NewChild(attempt, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var handler = model.NewChild(attempt, CSharpConceptKeys.CatchesSlot, CSharpConceptKeys.Catch);
+        var handlerType = model.NewChild(handler, "type", CSharpConceptKeys.TypeReference);
+        var handlerBody = model.NewChild(handler, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var closing = model.NewChild(attempt, CSharpConceptKeys.FinallySlot, CSharpConceptKeys.Block);
+
+        // The try and the final block give up; the handler writes what it caught.
+        model.NewChild(tryBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        model.NewChild(closing, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+
+        var statement = model.NewChild(handlerBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var call = model.NewChild(statement, "expression", CSharpConceptKeys.Call);
+        var callee = model.NewChild(call, "callee", CSharpConceptKeys.MemberAccess);
+        var console = model.NewChild(callee, "target", CSharpConceptKeys.Name);
+        var argument = model.NewChild(call, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Attempts");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Run");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        handlerType.Set(CSharpLanguage.NameSlot, "Exception");
+        handler.Set(CSharpLanguage.NameSlot, "error");
+        callee.Set(CSharpLanguage.MemberSlot, "WriteLine");
+        console.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "Console");
+
+        // The argument means the caught exception, so it is a reference that resolves - which is what the handler
+        // being a declaration buys.
+        argument.SetReference(CSharpConceptKeys.TargetSlot, handler);
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Attempts
+              {
+                public void Run()
+                {
+                  try
+                  {
+                    return;
+                  }
+                  catch (Exception error)
+                  {
+                    Console.WriteLine(error);
+                  }
+                  finally
+                  {
+                    return;
+                  }
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // The handler's name is what the argument resolves to, so the scope provider sees the catch.
+        var scope = CSharpScopes.Registry.ScopeOf(argument, CSharpConceptKeys.TargetSlot);
+
+        Assert.Contains("error", scope.Entries.Select(entry => entry.Name));
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");
