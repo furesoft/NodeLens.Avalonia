@@ -93,8 +93,32 @@ internal sealed class WorkbenchLanguage
     /// <summary>The sample language's emphasis rules, which are the only ones the shell ships.</summary>
     internal static ICellEmphasis? Emphasis => RulesLanguage.Emphasis;
 
-    /// <summary>The sample language's typing rules, which are the only ones the shell ships.</summary>
+    /// <summary>The typing rules the shell ships, which are what a language without a <c>typing</c> aspect gets.</summary>
     internal static ITypingRules? Typing => RulesLanguage.TypingRules;
+
+    /// <summary>The typing rules a document of <paramref name="language"/> claims typed text with.</summary>
+    /// <param name="language">The language the document is written in.</param>
+    /// <returns>That language's own rules, or the shell's when it declares none.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="language"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// The <c>typing</c> aspect of a language project is where a declared language says what a burst of typing creates,
+    /// so a document of an opened language asks <em>that</em> language - the aspect is part of the language for the
+    /// same reason its types and constraints are, and a document that claimed text by the shell's rules would be a
+    /// document of a language nobody wrote.
+    /// <para>
+    /// A language that declares none keeps the shell's set, which is what every language without the aspect has always
+    /// been given. That is deliberately a fallback and not <see cref="TypingRuleRegistry.Empty"/>: the two answer the
+    /// same text the same way for a declared language (the shell's rules name <c>Expressions</c> concepts no declared
+    /// language has), but a language that composes those concepts still gets them, exactly as it did before the aspect
+    /// existed.
+    /// </para>
+    /// </remarks>
+    internal static ITypingRules? TypingFor(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        return language.HasTyping ? language.Typing : Typing;
+    }
 
     /// <summary>The text generators of the language <paramref name="model"/> is written in.</summary>
     /// <param name="model">The model, whose first root decides which language it belongs to.</param>

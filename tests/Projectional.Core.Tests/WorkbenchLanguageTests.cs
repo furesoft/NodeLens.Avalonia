@@ -507,4 +507,48 @@ public sealed class WorkbenchLanguageTests
         Directory.CreateDirectory(editor);
         ModelFile.Save(notation.Documents[0], Path.Combine(editor, $"{conceptKey}.mps"));
     }
+
+    [Fact]
+    public void ADocumentOfAnOpenedLanguageIsTypedByThatLanguage()
+    {
+        var expressions = Sample("Expressions");
+
+        Assert.True(expressions.HasTyping);
+
+        // The same registry, not an equal one: the aspect is the language's own, which is the point of asking it.
+        Assert.Same(expressions.Typing, WorkbenchLanguage.TypingFor(expressions));
+    }
+
+    [Fact]
+    public void ALanguageWithoutATypingAspectKeepsTheShellsRules()
+    {
+        var pipeline = Sample("Declared");
+
+        Assert.False(pipeline.HasTyping);
+        Assert.Same(WorkbenchLanguage.Typing, WorkbenchLanguage.TypingFor(pipeline));
+    }
+
+    [Fact]
+    public void TheDeclaredSampleSaysWhichNodeATypedTextCreates()
+    {
+        var expressions = Sample("Expressions");
+
+        // The rules are the shape the C# twin writes: a digit makes an int literal into its value property, and the two
+        // words make a bool - which is what makes typing into an empty slot produce a node at all.
+        Assert.Equal("value", expressions.Typing.ClaimFor("Decl.Int", "42")?.PropertySlot);
+        Assert.Equal("value", expressions.Typing.ClaimFor("Decl.Bool", "true")?.PropertySlot);
+
+        Assert.Null(expressions.Typing.ClaimFor("Decl.Bool", "42"));
+    }
+
+    /// <summary>One of the sample folders, copied beside the test binary by the project file.</summary>
+    /// <param name="name">The folder's link name: <c>Expressions</c> or <c>Declared</c>.</param>
+    private static LanguageProject Sample(string name)
+    {
+        var project = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, name), out var error);
+
+        Assert.Null(error);
+
+        return Assert.IsType<LanguageProject>(project);
+    }
 }
