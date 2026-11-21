@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.CSharp\Projectional.CSharp.csproj" />
     <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples\Projectional.Samples.csproj" />
     <!--
       The three worked examples are languages of their own, and a picture of one has to be drawn by that language's

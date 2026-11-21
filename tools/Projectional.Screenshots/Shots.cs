@@ -1,5 +1,7 @@
 using Projectional.Avalonia;
 using Projectional.Core;
+using Projectional.CSharp;
+using Projectional.CSharp.Notation;
 using Projectional.Editing;
 using Projectional.Expressions.Intentions;
 using Projectional.ImportRules;
@@ -172,6 +174,14 @@ internal static class Shots
             LineNumbers: true,
             Surface: SqlSchema),
 
+        // The base language rather than a sample: what a DSL gets when it declares a slot over CSharp.Expression.
+        new(
+            "language-csharp",
+            LanguageDocuments.CSharp,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "name")),
+            LineNumbers: true,
+            Surface: CSharp),
+
         // The state machine's second notation, which is the sample proving ADR 0012 rather than a feature of the
         // control: the same document as a table of its transitions.
         new(
@@ -218,6 +228,10 @@ internal static class Shots
 
     /// <summary>The declared expressions language, whose literals annotate the type they have.</summary>
     private static LanguageSurface DeclaredExpressions => LanguageSurface.Of(LanguageDocuments.DeclaredExpressions);
+
+    /// <summary>The C# base language, drawn by the notation its own package ships.</summary>
+    private static LanguageSurface CSharp =>
+        LanguageSurface.Plain(CSharpNotations.CreateNotations(CSharpLanguage.Concepts));
 
     /// <summary>Switches the machine to the table of its transitions, which is a view state and not a model change.</summary>
     private static void StateMachineTable(ProjectionalEditorControl editor, EditorSession session)

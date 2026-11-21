@@ -5,6 +5,7 @@ using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.CSharp.Scopes;
+using Projectional.CSharp.Types;
 using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
@@ -120,6 +121,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 CSharpIntentions.Provider,
                 [CSharpTextGenerators.Generator],
                 scopes: CSharpScopes.Registry,
+                types: CSharpTypes.Registry,
                 hasIntentions: true),
         };
 

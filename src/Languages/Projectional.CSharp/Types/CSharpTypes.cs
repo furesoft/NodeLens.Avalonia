@@ -1,0 +1,121 @@
+using Projectional.Core;
+using Projectional.Language;
+
+namespace Projectional.CSharp.Types;
+
+/// <summary>What a C# node evaluates to, which is what turns the rules into findings.</summary>
+/// <remarks>
+/// <para>
+/// The subset is what a projection can know without a compiler: a literal's type, the type a name borrows from the
+/// declaration it resolves to, and the type an operator produces from its operands. Nothing here infers further than
+/// local propagation - a call's return type and a member's type need a declaration to read, and C# looks those up in
+/// assemblies this language does not model.
+/// </para>
+/// <para>
+/// The honest answer where nothing is known is <see cref="UnknownType"/> rather than a guess, and the rules that
+/// report findings have to treat it as "no news": a member access whose type is unknown must not become a finding on
+/// every expression that reads it, which is the mistake that makes a checker unusable.
+/// </para>
+/// <para>
+/// A collection expression is deliberately unknown as well. C# 12's <c>[1, 2, 3]</c> is target-typed - the variable it
+/// is assigned to decides what it becomes - so a rule that answered <c>int[]</c> would be right only for the
+/// assignment it happened to see.
+/// </para>
+/// </remarks>
+public static class CSharpTypes
+{
+    private static readonly PrimitiveType Int = PrimitiveType.Of(PropertyType.Integer);
+
+    private static readonly PrimitiveType Bool = PrimitiveType.Of(PropertyType.Boolean);
+
+    private static readonly PrimitiveType Text = PrimitiveType.Of(PropertyType.String);
+
+    /// <summary>The type rules the base language states.</summary>
+    public static TypeRegistry Registry { get; } = TypeRegistry.Empty
+        .Add(CSharpConceptKeys.IntLiteral, new Constant(Int))
+        .Add(CSharpConceptKeys.StringLiteral, new Constant(Text))
+        .Add(CSharpConceptKeys.BoolLiteral, new Constant(Bool))
+        .Add(CSharpConceptKeys.TypeReference, new TypeReferenceType())
+        .Add(CSharpConceptKeys.Field, new SameAs("type"))
+        .Add(CSharpConceptKeys.Parameter, new SameAs("type"))
+        .Add(CSharpConceptKeys.LocalDeclaration, new SameAs("type"))
+        .Add(CSharpConceptKeys.Name, new NameType())
+        .Add(CSharpConceptKeys.Parenthesized, new SameAs("inner"))
+        .Add(CSharpConceptKeys.Binary, new BinaryType());
+
+    /// <summary>
+    /// A written type, mapped to the primitive it names.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// `int`, `string` and `bool` are the three the language's literals produce, so mapping them keeps a declaration
+    /// and a literal in one vocabulary: `int count = 0` is then an <c>int</c> on both sides, which is what lets a
+    /// comparison of the two be checked at all.
+    /// </para>
+    /// <para>
+    /// Anything else is <see cref="UnknownType"/> on purpose. `Greeter` or `System.Date` names a type this language
+    /// cannot describe - it has no declaration to read - and inventing one would make every rule that reads it wrong
+    /// in the same direction. The name is still drawn and still generates; only the type is not claimed.
+    /// </para>
+    /// </remarks>
+    private sealed class TypeReferenceType : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) => context.Node.GetOrNull(CSharpLanguage.NameSlot) switch
+        {
+            "int" => Int,
+            "string" => Text,
+            "bool" => Bool,
+            _ => UnknownType.Instance,
+        };
+    }
+    /// <summary>A literal has the type its property type names.</summary>
+    private sealed class Constant(PrimitiveType type) : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) => type;
+    }
+
+    /// <summary>An expression that is as wide as the child it wraps.</summary>
+    private sealed class SameAs(string slot) : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) => context.TypeOfChild(slot);
+    }
+
+    /// <summary>
+    /// A name has the type of the declaration it refers to, and an unresolved one has none.
+    /// </summary>
+    /// <remarks>
+    /// This is why <see cref="CSharpConceptKeys.Name"/> is a reference and not a property: the type of a name is not a
+    /// fact about the name, it is a fact about the declaration, and a reference is what gets there. A name that points
+    /// at nothing is <see cref="UnknownType"/> rather than an error - the missing target is what is wrong with it, and
+    /// reporting a type as well would be a second finding for one mistake.
+    /// </remarks>
+    private sealed class NameType : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) =>
+            context.Node.GetReferenceTarget(CSharpConceptKeys.TargetSlot) is { } declaration
+                ? context.TypeOf(declaration)
+                : UnknownType.Instance;
+    }
+
+    /// <summary>
+    /// The operator decides: a comparison or a logical operator is a truth value whatever its operands are, and
+    /// arithmetic is as wide as its left operand.
+    /// </summary>
+    /// <remarks>
+    /// An operator the language does not know answers <see cref="UnknownType"/> instead of guessing, and so does an
+    /// operand this language cannot type - a rule that invented an <c>int</c> for an unknown operand would then
+    /// report the comparison as fine.
+    /// </remarks>
+    private sealed class BinaryType : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) => context.Node.GetOrNull(CSharpLanguage.OperatorSlot) switch
+        {
+            CSharpBinaryOperator.Equal or CSharpBinaryOperator.NotEqual
+                or CSharpBinaryOperator.LessThan or CSharpBinaryOperator.GreaterThan
+                or CSharpBinaryOperator.And or CSharpBinaryOperator.Or => Bool,
+            CSharpBinaryOperator.Add or CSharpBinaryOperator.Subtract
+                or CSharpBinaryOperator.Multiply or CSharpBinaryOperator.Divide => context.TypeOfChild("left"),
+            _ => UnknownType.Instance,
+        };
+    }
+}

@@ -4,6 +4,8 @@ using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.CSharp.Scopes;
+using Projectional.CSharp.Types;
+using Projectional.Language;
 using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Projection;
@@ -144,6 +146,102 @@ public sealed class CSharpLanguageTests
         var parameter = Assert.Single(method.GetChildren(CSharpConceptKeys.ParametersSlot));
 
         Assert.Equal(CSharpConceptKeys.Parameter, parameter.Concept.Key);
+    }
+
+    [Fact]
+    public void ATypesAreWhatTheOperandsAndTheDeclarationSay()
+    {
+        // Local propagation and nothing further: a literal knows its own type, a name borrows the type of the
+        // declaration it resolves to, and the operator decides what its result is.
+        var model = Sample();
+        var file = model.Roots[0];
+        var ns = file.GetChild(CSharpConceptKeys.NamespaceSlot)!;
+        var cls = ns.GetChild(CSharpConceptKeys.ClassesSlot)!;
+        var method = cls.GetChildren(CSharpConceptKeys.MembersSlot)
+            .First(member => member.Concept.Key == CSharpConceptKeys.Method);
+        var body = method.GetChild(CSharpConceptKeys.BodySlot)!;
+        var statement = body.GetChild(CSharpConceptKeys.StatementsSlot)!;
+        var call = statement.GetChild("expression")!;
+        var argument = call.GetChild(CSharpConceptKeys.ArgumentsSlot)!;
+
+        Assert.Equal("string", CSharpTypes.Registry.TypeOf(argument).Name);
+        // A comparison is a truth value whatever its operands are, and arithmetic is as wide as its left operand - the
+        // operator decides, which is what makes a condition checkable at all.
+        var extra = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var comparison = model.NewChild(extra, "expression", CSharpConceptKeys.Binary);
+        var left = model.NewChild(comparison, "left", CSharpConceptKeys.IntLiteral);
+        var right = model.NewChild(comparison, "right", CSharpConceptKeys.IntLiteral);
+
+        comparison.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.LessThan);
+        left.Set(CSharpLanguage.ValueProperty, "1");
+        right.Set(CSharpLanguage.ValueProperty, "2");
+
+        Assert.Equal("bool", CSharpTypes.Registry.TypeOf(comparison).Name);
+
+        comparison.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.Add);
+
+        Assert.Equal("int", CSharpTypes.Registry.TypeOf(comparison).Name);
+
+        // A call's return type is not modelled, and the honest answer is that it is not known - not a guess that
+        // would make every expression around it look fine.
+        Assert.IsType<UnknownType>(CSharpTypes.Registry.TypeOf(call));
+    }
+
+    [Fact]
+    public void AnIfOverSomethingThatIsNotABooleanIsReported()
+    {
+        // The first rule the language could not state before it had types: `count` is an int, so `if (count)` is a
+        // mistake the model can see. A condition whose type is unknown is *not* reported - that discipline is what
+        // keeps a checker usable.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("guarded");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var branch = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.If);
+        var condition = model.NewChild(branch, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.NameSlot, "Guarded");
+        field.Set(CSharpLanguage.NameSlot, "count");
+        fieldType.Set(CSharpLanguage.NameSlot, "int");
+        method.Set(CSharpLanguage.NameSlot, "Run");
+        condition.SetReference(CSharpConceptKeys.TargetSlot, field);
+
+        var engine = new ConstraintEngine(CSharpConstraints.All, scopes: CSharpScopes.Registry, types: CSharpTypes.Registry);
+
+        Assert.Contains(engine.Check(model), finding => finding.Code == CSharpConstraints.ConditionNotBooleanCode);
+
+        // The same condition as a comparison is a bool, so the finding goes away - which is the rule reading the type
+        // the operator gives rather than the type of the name.
+        var guarded = new Project(CSharpLanguage.Concepts).NewModel("comparison");
+        var root = guarded.NewNode(CSharpConceptKeys.File);
+        var space = guarded.NewChild(root, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var type = guarded.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var number = guarded.NewChild(type, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var numberType = guarded.NewChild(number, "type", CSharpConceptKeys.TypeReference);
+        var run = guarded.NewChild(type, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var runBody = guarded.NewChild(run, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var comparison = guarded.NewChild(runBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.If);
+        var binary = guarded.NewChild(comparison, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
+        var left = guarded.NewChild(binary, "left", CSharpConceptKeys.Name);
+        var right = guarded.NewChild(binary, "right", CSharpConceptKeys.IntLiteral);
+
+        space.Set(CSharpLanguage.NameSlot, "Sample");
+        type.Set(CSharpLanguage.NameSlot, "Guarded");
+        number.Set(CSharpLanguage.NameSlot, "count");
+        numberType.Set(CSharpLanguage.NameSlot, "int");
+        run.Set(CSharpLanguage.NameSlot, "Run");
+        binary.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.Equal);
+        left.SetReference(CSharpConceptKeys.TargetSlot, number);
+        right.Set(CSharpLanguage.ValueProperty, "0");
+
+        Assert.DoesNotContain(
+            engine.Check(guarded),
+            finding => finding.Code == CSharpConstraints.ConditionNotBooleanCode);
     }
 
     [Fact]
