@@ -44,6 +44,9 @@ public static class CSharpLanguage
     /// <summary>The property holding whether a namespace is declared for the rest of the file.</summary>
     public const string IsFileScopedSlot = "isFileScoped";
 
+    /// <summary>The property holding whether a local declaration lets the initializer decide its type.</summary>
+    public const string IsVarSlot = "isVar";
+
     /// <summary>The property holding an operator symbol.</summary>
     public const string OperatorSlot = "operator";
 
@@ -588,7 +591,12 @@ public static class CSharpLanguage
         new ConceptDeclaration(
             CSharpConceptKeys.LocalDeclaration,
             [
-                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+                // The flag first, because it is what decides how the slot below it is read: `var` is not a type, it is
+                // the decision not to write one. The type slot is therefore optional - a local that says `var` holds no
+                // type node at all - and a type left behind by switching to `var` is kept rather than deleted, so
+                // switching back shows the author the type they wrote instead of an empty slot.
+                new PropertySlot(IsVarSlot, PropertyType.Boolean, "false"),
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One, minimum: 0),
                 new PropertySlot(NameSlot, PropertyType.String, description: "The local's name."),
                 new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0),
             ],
