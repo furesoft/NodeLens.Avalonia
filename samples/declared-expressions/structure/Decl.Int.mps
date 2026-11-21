@@ -6,6 +6,8 @@
         <key>Decl.Int</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>An integer literal.</description>
         <nameSlot></nameSlot>

@@ -475,7 +475,9 @@ public sealed class ConceptRegistry
             extensions,
             interfaces,
             nameRule,
-            nameFunction);
+            nameFunction,
+            declaration.Alias,
+            declaration.IsRoot);
     }
 
     /// <summary>

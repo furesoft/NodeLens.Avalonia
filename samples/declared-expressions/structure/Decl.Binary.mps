@@ -6,6 +6,8 @@
         <key>Decl.Binary</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>Two expressions and an operator between them.</description>
         <nameSlot></nameSlot>

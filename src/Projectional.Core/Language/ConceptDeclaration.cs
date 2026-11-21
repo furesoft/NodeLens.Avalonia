@@ -24,7 +24,9 @@ public sealed class ConceptDeclaration
         bool isInterface = false,
         IEnumerable<string>? interfaces = null,
         NameRule? nameRule = null,
-        Func<Node, string?>? nameOf = null)
+        Func<Node, string?>? nameOf = null,
+        string? alias = null,
+        bool isRoot = true)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -132,6 +134,11 @@ public sealed class ConceptDeclaration
         // Trimmed, and an empty one is no description at all: "declared nothing" and "declared a blank"
         // have to be one state, or a language ships a tooltip that shows nothing.
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+        // The same normalisation for the same reason: an alias that is only whitespace would be offered as an
+        // entry with no word in it.
+        Alias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
+        IsRoot = isRoot;
     }
 
     public string Key { get; }
@@ -290,6 +297,42 @@ public sealed class ConceptDeclaration
     /// </para>
     /// </remarks>
     public IReadOnlyList<ConceptTrigger> Triggers { get; }
+
+    /// <summary>
+    /// The short word completion offers for this concept instead of the concept's own name, or
+    /// <see langword="null"/> when it offers the name.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A key is namespaced and a name may be long, while a list of proposals is read and filtered by what the user
+    /// types. The alias is that other word: <c>RS</c> for a rule set, <c>If</c> for a conditional. It is a display
+    /// word only - accepting the entry still inserts the concept this declaration names - so a language can offer a
+    /// short word without renaming anything.
+    /// </para>
+    /// <para>
+    /// Not inherited: an alias belongs to the concept it was written on, and a subtype that wanted the super
+    /// concept's word would offer the wrong concept.
+    /// </para>
+    /// </remarks>
+    public string? Alias { get; }
+
+    /// <summary>
+    /// Whether a node of this concept may start a document, or <see langword="true"/> when the language says nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A concept that refuses is one that only exists inside another: a rule's condition, an operator, an XML
+    /// attribute. Without the flag a document can be opened on a concept that has nothing to say on its own, and
+    /// the mistake is found by reading the file.
+    /// </para>
+    /// <para>
+    /// <see langword="true"/> by default because that is what every concept meant before the flag existed - a
+    /// language opts out, it never opts in. Refusing is also the model's answer to "may this be a root"
+    /// (<see cref="Model.NewNode(Concept)"/>); loading a document never consults it, because a file this app can
+    /// read is not refused for what its language has since said ([persistence](../architecture/persistence.md)).
+    /// </para>
+    /// </remarks>
+    public bool IsRoot { get; }
 
     public override string ToString() => Key;
 }

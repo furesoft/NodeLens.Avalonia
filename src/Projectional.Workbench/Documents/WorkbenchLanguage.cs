@@ -406,7 +406,9 @@ internal sealed class WorkbenchLanguage
         concept.Applicability,
         concept.Triggers,
         concept.IsInterface,
-        concept.Interfaces.Select(implemented => implemented.Key).ToArray());
+        concept.Interfaces.Select(implemented => implemented.Key).ToArray(),
+        alias: concept.Alias,
+        isRoot: concept.IsRoot);
 
     private static SlotDeclaration Redeclare(SlotDeclaration slot) => slot switch
     {

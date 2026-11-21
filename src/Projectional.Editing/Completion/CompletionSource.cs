@@ -60,7 +60,7 @@ internal static class CompletionSource
                 && concept.IsKindOf(declared)
                 && concept.Applicability.Allows(owner.Concept, slot))
             {
-                items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description));
+                items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description, concept.Alias));
             }
         }
 
@@ -126,7 +126,7 @@ internal static class CompletionSource
 
         foreach (var concept in ReplacementConcepts.Of(node, context.Concepts))
         {
-            items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description));
+            items.Add(new CompletionItem(concept.Key, CompletionKind.Node, concept.Description, concept.Alias));
         }
 
         return items.Count == 0 ? null : new CompletionList(items);

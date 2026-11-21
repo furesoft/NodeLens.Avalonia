@@ -129,6 +129,16 @@ internal static class DeclarationWriter
             lines.Add("isOfferedInCompletion: false,");
         }
 
+        if (declaration.Alias is not null)
+        {
+            lines.Add($"alias: {SourceWriter.Literal(declaration.Alias)},");
+        }
+
+        if (!declaration.IsRoot)
+        {
+            lines.Add("isRoot: false,");
+        }
+
         return lines;
     }
 

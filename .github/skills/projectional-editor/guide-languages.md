@@ -77,8 +77,12 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   concept draws *nothing* there, not an empty cell, so the flag has no cell to type into - which is why toggling it
   is an intention (`Projectional.Structures.Intentions`, `Make abstract`/`Make concrete`) and why the action behind
   it is `SetNodePropertyAction` (node + slot) rather than the cell-addressed `SetPropertyAction`.
-- **One part of MPS' look is still out of reach and must not be faked**: `instance can be root` and `alias` exist
-  in MPS but lower nowhere here, so ADR 0014's "nothing declared-only" keeps them out.
+- **`instance can be root` and `alias` are concept facts, not drawing.** Both are `ConceptDeclaration` members
+  (`isRoot`, `alias`), lowered from the definition and carried by the workbench when it re-declares an opened
+  language. `isRoot` is asked where a root is made (`Model.NewNode`), `alias` where a concept is offered
+  (`CompletionItem`), and neither is inherited: an alias belongs to the concept it was written on. A definition
+  that says nothing keeps every concept rootable and every list showing the concept's own name, which is what both
+  meant before the flags existed.
 
 ### The parity rule is executed by three tests
 

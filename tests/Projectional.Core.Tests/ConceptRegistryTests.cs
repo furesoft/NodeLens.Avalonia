@@ -598,4 +598,23 @@ public sealed class ConceptRegistryTests
 
         Assert.Equal("isInterface", error.ParamName);
     }
+
+    [Fact]
+    public void AnAliasOfOnlySpacesIsNoAlias()
+    {
+        // The rule the description already follows: "declared nothing" and "declared a blank" have to be one state,
+        // or a list offers an entry with no word in it.
+        Assert.Null(new ConceptDeclaration("Rules.Rule", alias: "   ").Alias);
+        Assert.Null(new ConceptDeclaration("Rules.Rule").Alias);
+        Assert.Equal("Rule", new ConceptDeclaration("Rules.Rule", alias: " Rule ").Alias);
+    }
+
+    [Fact]
+    public void AConceptMayStartADocumentUnlessItSaysOtherwise()
+    {
+        // Opting out, never in: every concept could start a document before the flag existed, and a language
+        // written then keeps meaning what it said.
+        Assert.True(new ConceptDeclaration("Rules.Rule").IsRoot);
+        Assert.False(new ConceptDeclaration("Rules.Rule", isRoot: false).IsRoot);
+    }
 }

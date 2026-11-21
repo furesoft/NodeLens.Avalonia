@@ -6,6 +6,8 @@
         <key>Pipeline.Pipeline</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>A named sequence of stages.</description>
         <nameSlot></nameSlot>

@@ -26,4 +26,19 @@ public sealed class CompletionItemTests
         Assert.Equal(CompletionKind.Value, item.Kind);
         Assert.Equal("Review", item.ConceptKey);
     }
+
+    [Fact]
+    public void AnItemWithALabelIsShownByThatWord()
+    {
+        // The label is what the list shows and filters by, while the payload stays the concept the language
+        // declared - which is what accepting the entry writes.
+        var item = new CompletionItem("Rules.RuleSet", CompletionKind.Node, label: "RS");
+
+        Assert.Equal("RS", item.Label);
+        Assert.Equal("Rules.RuleSet", item.ConceptKey);
+    }
+
+    [Fact]
+    public void AnItemWithoutALabelIsShownByTheConceptName() =>
+        Assert.Equal("RuleSet", new CompletionItem("Rules.RuleSet", CompletionKind.Node).Label);
 }

@@ -45,8 +45,8 @@ What is next, in order:
    child node per element ([language.md](architecture/language.md#notation)).
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
-editor" reference turned up aspects and gestures this framework does not have - accessory models, concept
-aliases, data flow, comments, an inspector, block-selection shrink and a
+editor" reference turned up aspects and gestures this framework does not have - accessory models, an instance
+created from a typed alias, data flow, comments, an inspector, block-selection shrink and a
 handful of completion fine points. The milestone tables below name the ones that have a home;
 the survey, the deliberate differences and the open decisions are in
 [mps-gap-analysis.md](architecture/mps-gap-analysis.md).
@@ -96,7 +96,7 @@ application and in the standalone app, proving the two front ends share the beha
 | Live preview | edit a language definition, see the effect on a model next to it |
 | Bootstrap | versioned bootstrap XML, migrated with user data; the C# declarations stay as the oracle and the fail-safe |
 | Workbench shell | the standalone app grows into the workbench: language browser, live preview, output panel, language project creation |
-| Language-definition parity | accessory models (the library nodes a language ships, such as a colour palette), a concept's alias (the word completion offers and typing creates), and an explicit "may be a root" flag ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
+| Language-definition parity | accessory models (the library nodes a language ships, such as a colour palette) and an instance created from a typed alias are what is left; the concept's alias as the word completion offers, and an explicit "may be a root" flag, are delivered ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 
 By the end of this milestone the definition languages are written in themselves: the same
 project folder, the same `<<property>>` blocks, the same cell glyphs, loaded from the bootstrap

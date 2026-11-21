@@ -106,6 +106,14 @@ public sealed class Model
         ArgumentNullException.ThrowIfNull(concept);
         RequireKnownConcept(concept);
 
+        // Asked here and nowhere else: this is the one call that makes a node a root, while a child, a restored
+        // root or a pasted subtree says where an existing node goes rather than what a document may begin with.
+        if (!concept.IsRoot)
+        {
+            throw new ModelInvariantException(
+                $"Concept '{concept.Key}' may not start a document, so no node of it can be a root.");
+        }
+
         using var transaction = BeginTransaction();
         var node = CreateDetached(concept);
         InsertRootAt(_roots.Count, node);

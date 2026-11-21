@@ -168,6 +168,8 @@ The vocabulary, and what each piece lowers to:
 | `<<child steps : Step[0..n]>>` | a child slot plus its cardinality | `<<child>>` |
 | `<<reference target : Rule[0..1] ... >>` | a reference slot plus its cardinality | `<<reference>>` |
 | `described as: ...` | the concept's documentation ([concept-descriptions.md](concept-descriptions.md); lowered to `ConceptDeclaration(description:)`) | `<<shortDescription>>` |
+| `instance can be root: false` | `ConceptDeclaration(isRoot: false)`, and the model then refuses to make one a document root; absent means true, because that is what every concept meant before the flag existed | `instance can be root` |
+| `alias: RS` | `ConceptDeclaration(alias:)`: the word a proposal list shows and filters by, while the entry still inserts the declared key | `aliases` |
 | `named by: name`, `collapsed by: visible` | a designated slot ([language.md](language.md#the-two-designated-slots)) | none - MPS has no analogue |
 | `offered in completion: false` | `isOfferedInCompletion` | `<<hideInEditor>>`-style flags |
 

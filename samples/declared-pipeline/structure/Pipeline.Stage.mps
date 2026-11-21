@@ -6,6 +6,8 @@
         <key>Pipeline.Stage</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One step of a pipeline.</description>
         <nameSlot></nameSlot>
