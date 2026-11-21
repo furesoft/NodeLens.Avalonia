@@ -361,9 +361,13 @@ typing Decl.Group claims starts with (
 ```
 
 A model cannot hold a `Func<string, bool>`, so a rule says *which* predicate instead of writing one, and the four
-symbols are exactly the predicates the shipped languages write by hand: `digits`, `name`, `starts with` and
-`any of`. `text` carries the prefix or the words those two read; `digits` and `name` read none, and a rule that
-carries one anyway is refused rather than ignored. The property is named the way a scope rule names its reference
+symbols are exactly the predicates the shipped languages write by hand: `digits`, `name`, `starts with`,
+`any of` and `alias`. `text` carries the prefix or the words the middle two read; `digits`, `name` and `alias` read
+none, and a rule that carries one anyway is refused rather than ignored. **`alias` is the one that names no word at
+all**: it means the concept's own alias, which is the word the completion list offers and therefore the word a user
+types - MPS' "an instance created from a typed alias". The declaration is the single place the word lives, so a
+concept with no alias cannot be claimed this way and a rule that spells its own is refused; the lowered rule records
+the resolved word, which is what lets an export write the predicate without the structure documents in hand. The property is named the way a scope rule names its reference
 slot, and it is optional for the same reason: a parenthesis creates a node and stores nothing. Two rules for one
 concept are refused here as they are in the registry, so the two paths cannot disagree about what a language means.
 

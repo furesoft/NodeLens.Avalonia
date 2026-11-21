@@ -162,6 +162,32 @@ public sealed class TypingLoweringTests
         Assert.Same(TypingRuleRegistry.Empty, rules);
     }
 
+    [Fact]
+    public void AnAliasRuleClaimsTheWordTheConceptDeclares()
+    {
+        var rules = Lower(Rule(conceptKey: "Doc.Number", claims: TypingClaims.Alias));
+
+        Assert.NotNull(rules.ClaimFor("Doc.Number", "num"));
+        Assert.Null(rules.ClaimFor("Doc.Number", "number"));
+    }
+
+    [Fact]
+    public void AnAliasRuleOnAConceptWithoutOneIsRefused()
+    {
+        var refusal = Refuse(Rule(conceptKey: "Doc.Name", claims: TypingClaims.Alias));
+
+        Assert.Contains("declares none", refusal, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAliasRuleThatSpellsItsOwnWordIsRefused()
+    {
+        // Two places to say the word would drift the moment the concept's alias is renamed.
+        var refusal = Refuse(Rule(conceptKey: "Doc.Number", claims: TypingClaims.Alias, text: "num"));
+
+        Assert.Contains("reads no text", refusal, StringComparison.Ordinal);
+    }
+
     /// <summary>One rule document, written the way an author would.</summary>
     private static Node Rule(string conceptKey, string claims, string? text = null, string? property = null)
     {
@@ -200,6 +226,7 @@ public sealed class TypingLoweringTests
             new ConceptDeclaration(
                 "Doc.Number",
                 [new PropertySlot("value", PropertyType.String), new ChildSlot("children", "Doc.Number", Cardinality.Many)],
+                alias: "num",
                 description: "A number."),
             new ConceptDeclaration("Doc.Name", [new PropertySlot("name", PropertyType.String)], description: "A name."),
             new ConceptDeclaration("Doc.Quoted", [new PropertySlot("value", PropertyType.String)], description: "A quoted value."),

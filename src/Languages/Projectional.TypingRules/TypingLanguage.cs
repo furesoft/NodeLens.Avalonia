@@ -43,7 +43,7 @@ public static class TypingLanguage
                     description: "The concept the typed text creates."),
                 new PropertySlot(
                     ClaimsSlot,
-                    PropertyType.Enum(TypingClaims.Digits, TypingClaims.Name, TypingClaims.Prefix, TypingClaims.AnyOf),
+                    PropertyType.Enum(TypingClaims.Digits, TypingClaims.Name, TypingClaims.Prefix, TypingClaims.AnyOf, TypingClaims.Alias),
                     TypingClaims.Digits,
                     "How the text is recognised.",
                     showDescriptionWhenFilled: true),

@@ -28,4 +28,15 @@ public static class TypingClaims
 
     /// <summary>The text is one of the words in <c>text</c>, separated by spaces - how a boolean claims its keyword.</summary>
     public const string AnyOf = "any of";
+
+    /// <summary>
+    /// The text is the concept's own <c>alias</c>, which is the word completion offers and a user therefore types.
+    /// </summary>
+    /// <remarks>
+    /// The one claim that names no text of its own: the word lives on the concept declaration, so the rule says "the
+    /// alias" and the concept says which. That is MPS' "an instance created from a typed alias" - the proposal list and
+    /// the keystroke agree because both read the same declaration, instead of the author spelling the word twice and
+    /// one of the two going stale.
+    /// </remarks>
+    public const string Alias = "alias";
 }

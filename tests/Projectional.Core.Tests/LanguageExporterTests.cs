@@ -7,6 +7,7 @@ using Projectional.Core;
 using Projectional.Language;
 using Projectional.LanguageExport;
 using Projectional.Languages;
+using Projectional.TypingRules;
 using Projectional.Projection;
 using Projectional.Persistence;
 using Xunit;
@@ -264,6 +265,23 @@ public sealed class LanguageExporterTests
         Assert.Contains("| `import/` |", readme, StringComparison.Ordinal);
         Assert.DoesNotContain("| `typing/` |", readme, StringComparison.Ordinal);
         Assert.Contains("CreateTypingRules", readme, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAliasClaimIsWrittenAsTheWordItResolvedTo()
+    {
+        // The rule says "the concept's alias"; the file a package ships has to say the word, because a generated
+        // language has no structure document to look it up in.
+        var result = LanguageExporter.Export(
+            "Declared",
+            [new ConceptDeclaration("Doc.Number", [new PropertySlot("value", PropertyType.String)], alias: "num")],
+            [],
+            typingRules: [new DeclaredTypingRule("Doc.Number", TypingClaims.Alias, "num", "value")]);
+
+        Assert.Contains(
+            ".Add(\"Doc.Number\", text => text is \"num\", \"value\")",
+            result.Files[0].Text,
+            StringComparison.Ordinal);
     }
 
     [Fact]
