@@ -71,6 +71,9 @@ records what was actually verified.
 33. [Interactive language documentation](architecture/language-docs.md) — a language folder turned
     into static, searchable HTML that can be read without the editor (planned; the four decisions
     the implementation has to take are listed there).
+34. [The terminal tool](architecture/terminal.md) - a program of your choosing, watched and answered.
+35. [Distribution and updates](architecture/distribution.md) - installing the app and updating it, with Velopack.
+36. [The onboarding tour](architecture/onboarding-tour.md) - explaining the IDE inside the IDE.
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
@@ -120,3 +123,6 @@ This directory stays authoritative whenever the two disagree.
 | [0020](adr/0020-framework-vocabulary-is-injected.md) | The framework's vocabulary is injected into every registry |
 | [0021](adr/0021-one-project-per-language.md) | One project per language: checks and intentions are folders in the language |
 | [0022](adr/0022-every-project-is-a-package.md) | Every project is a package, versioned by GitVersion and published from a tag |
+| [0023](adr/0023-terminal-is-vtnetcore-behind-our-control.md) | The terminal is VtNetCore's engine behind a control of our own |
+| [0024](adr/0024-distribution-and-updates-are-velopack.md) | Distribution and updates are Velopack's job |
+| [0025](adr/0025-the-tour-is-a-guide-overlay.md) | The guided tour is a guide overlay of our own, in GuideControl's model |

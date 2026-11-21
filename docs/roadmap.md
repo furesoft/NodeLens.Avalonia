@@ -181,7 +181,8 @@ the gate (compiled output and the interpreter must agree on the corpus):
 | Docs and samples | tutorial DSL, embedding guide, language-author guide |
 | Editor experience | comments, block-selection shrink, inspector and hierarchy view, completion filter reset and camel humps, show type, paste history, and the keys the intentions already have ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 | Packaging | **NuGet, the CI matrix and the tag-driven publish are delivered** ([packaging.md](architecture/packaging.md), [ADR 0022](adr/0022-every-project-is-a-package.md)); what is left is a public API baseline (so a breaking change fails a build) and AOT/trimming validation |
-| App distribution | self-contained installers per OS, file association for `.prj`, winget/Homebrew manifests |
+| App distribution | self-contained installers per OS, file association for `.prj`, winget/Homebrew manifests. **Decided and planned**: distribution and updates are Velopack's ([ADR 0024](adr/0024-distribution-and-updates-are-velopack.md)), with what must be verified first and what is deliberately out of it in [distribution.md](architecture/distribution.md) |
+| Onboarding | an interactive tour of the shell, its tools and its gestures. **Decided and planned**: a guide overlay in Avalonia.GuideControl's model ([ADR 0025](adr/0025-the-tour-is-a-guide-overlay.md)), with the seven steps that ship first in [onboarding-tour.md](architecture/onboarding-tour.md) |
 
 **Gate:** a developer unfamiliar with the project builds a small DSL by following the
 tutorial, without asking questions — and a user who does not write C# can install the
