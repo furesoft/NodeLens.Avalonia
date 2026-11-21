@@ -86,8 +86,14 @@ public static class CSharpConceptKeys
     /// <summary>A class: its fields and its methods, in the order they were written.</summary>
     public const string Class = "CSharp.Class";
 
-    /// <summary>A type a namespace holds: a class or an interface. Abstract.</summary>
+    /// <summary>A type a namespace holds: a class, an interface or an enum. Abstract.</summary>
     public const string TypeDeclaration = "CSharp.TypeDeclaration";
+
+    /// <summary>An enum: a type whose values are a closed set of names.</summary>
+    public const string Enum = "CSharp.Enum";
+
+    /// <summary>One value of an enum: a name the enum's type offers.</summary>
+    public const string EnumMember = "CSharp.EnumMember";
 
     /// <summary>The base a class names, and the interfaces it implements: the list after the colon.</summary>
     public const string Inheritance = "CSharp.Inheritance";

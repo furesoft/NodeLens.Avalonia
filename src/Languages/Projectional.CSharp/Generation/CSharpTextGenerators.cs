@@ -104,6 +104,25 @@ public static class CSharpTextGenerators
                 new WhenFilledPart(CSharpConceptKeys.MembersSlot, TextTemplate.Of(LineBreakPart.Instance, Members(CSharpConceptKeys.MembersSlot))))),
             LineBreakPart.Instance,
             new TextPart("}")))
+        .Add(CSharpConceptKeys.Enum, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" enum "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            LineBreakPart.Instance,
+            new TextPart("{"),
+            new IndentPart(TextTemplate.Of(
+                new WhenFilledPart(
+                    CSharpConceptKeys.MembersSlot,
+                    TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        new ChildrenPart(
+                            CSharpConceptKeys.MembersSlot,
+                            TextTemplate.Of(new TextPart(", "))))))),
+            LineBreakPart.Instance,
+            new TextPart("}")))
+
+        .Add(CSharpConceptKeys.EnumMember, TextTemplate.Of(new PropertyPart(CSharpLanguage.NameSlot)))
+
         .Add(CSharpConceptKeys.Field, TextTemplate.Of(
             new PropertyPart(CSharpLanguage.VisibilitySlot),
             new TextPart(" "),
