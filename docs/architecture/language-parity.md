@@ -53,13 +53,21 @@ features, which is exactly what a parity rule is for.
 | Not expressible as data yet | Why it is acceptable now |
 | --- | --- |
 | concept triggers | they are behaviour-adjacent and land with the aspect models of P3 |
-| a block-level while-filled cell (`WhenFilledBlockNotationCell`) | C# only: the concept notation needed a row that disappears, and the editor language has no `Editor.WhileFilledBlock` yet. ADR 0014 rule 2 forbids the reverse - a capability only the workbench can express - so this direction is a recorded debt, not a violation |
+
 | `Applicability` (conditional concepts) | same: an aspect, and M6 owns aspects |
 | `isOfferedInCompletion`, `isAbstract` | expressible - the twin uses neither, and the dump covers both flags |
 | notation variants beyond `variant` | the property exists; nothing needs a second drawing yet |
 
 Each row is a capability C# has and data does not, so each is a violation of ADR 0014 rule 2 the day a declared
 language needs it. They are listed here rather than discovered later.
+
+**One row has been paid since this table was written.** The block-level while-filled cell was the debt this table
+was built to catch, and writing a C#-shaped language as a declared language called it in: `Editor.WhileFilledBlock`
+now exists and lowers to `WhenFilledBlockNotationCell`, so `if (...) { } else { }` can draw its `else` only while
+there is one. The same exercise paid two more the table had not listed - `Editor.InlineCollection`, because a call's
+arguments belong inside the line that holds the call, and `Editor.Children.stacked`, which the runtime cell had and
+the editor language did not, so every declared block list came out side by side. That is three cells found by *using*
+the second path rather than by comparing the two, which is worth remembering when the remaining rows are judged.
 
 ## Testing this
 

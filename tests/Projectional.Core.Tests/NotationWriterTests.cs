@@ -1,3 +1,5 @@
+using Projectional.Core;
+using Projectional.Language;
 using Projectional.LanguageExport;
 using Projectional.Languages;
 using Xunit;
@@ -34,6 +36,49 @@ public sealed class NotationWriterTests
                 )
             ));
             notations.Add("Pipeline.Stage", ed => ed.Line(ed.Property("name"), ed.Space, ed.Property("command"), ed.Space, ed.Property("retries")));
+
+            """,
+            source.ToString(),
+            ignoreLineEndingDifferences: true);
+    }
+
+    [Fact]
+    public void TheCellsACSharpShapedLanguageNeedsAreWrittenBackOut()
+    {
+        // The three cells that only a declared language can reach through the editor models: a stacked child list, a
+        // list that stays inside the line, and a group of rows that leaves no row while its slot is empty. A cell the
+        // writer has no spelling for throws instead of dropping the notation, so this is the check that the export
+        // keeps up with the editor language.
+        var ed = NotationEditor.Create();
+        var notations = new NotationRegistry(
+            ConceptRegistry.Create(
+            [
+                new ConceptDeclaration(
+                    "Export.Rule",
+                    [
+                        new ChildSlot("body", "Export.Body", Cardinality.Many),
+                        new ChildSlot("arguments", "Export.Body", Cardinality.Many),
+                        new ChildSlot("otherwise", "Export.Body", Cardinality.One),
+                    ]),
+                new ConceptDeclaration("Export.Body", [new PropertySlot("name", PropertyType.String)], nameSlot: "name"),
+            ]));
+
+        notations.Add("Export.Rule", ed => ed.Sequence(
+            ed.Children("body", "<no body>", stacked: true),
+            ed.Line(ed.Punct("("), ed.InlineCollection("arguments", ed.Punct(",")), ed.Punct(")")),
+            ed.WhenFilledBlock("otherwise", ed.Line(ed.Keyword("else")))));
+
+        var source = new SourceWriter();
+
+        NotationWriter.Write(source, notations.Notations);
+
+        Assert.Equal(
+            """
+            notations.Add("Export.Rule", ed => ed.Sequence(
+                ed.Children("body", "<no body>", spacing: 1, stacked: true),
+                ed.Line(ed.Punct("("), ed.InlineCollection("arguments", separator: ed.Punct(",")), ed.Punct(")")),
+                ed.WhenFilledBlock("otherwise", ed.Line(ed.Keyword("else")))
+            ));
 
             """,
             source.ToString(),

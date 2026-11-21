@@ -425,6 +425,85 @@ public sealed class LanguageProject
     /// </remarks>
     public static LanguageProject? Open(string directory, out string? error) => Open(directory, null, out error);
 
+    /// <summary>
+    /// A language that ships with a host rather than living in a folder, so a declared project can name it as a
+    /// dependency.
+    /// </summary>
+    /// <param name="name">The name a <c>language.mps</c> writes in <c>depends on</c> or <c>extends</c>.</param>
+    /// <param name="version">The version the language declares for itself, or <see langword="null"/> for none.</param>
+    /// <param name="declarations">Its concepts, which is what a dependent's registry is built over.</param>
+    /// <param name="concepts">Its own registry, built from <paramref name="declarations"/>.</param>
+    /// <param name="notations">How it draws itself.</param>
+    /// <param name="constraints">The rules it states about itself.</param>
+    /// <param name="intentions">The edits it offers.</param>
+    /// <param name="generators">The generators it ships.</param>
+    /// <param name="types">Its type rules, or <see cref="TypeRegistry.Empty"/> for none.</param>
+    /// <param name="scopes">Its scope providers, or <see cref="ScopeProviderRegistry.Empty"/> for none.</param>
+    /// <returns>A project that resolves and inherits like a loaded one, with no folder behind it.</returns>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is blank.</exception>
+    /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// <para>
+    /// This is what makes a base language a base language: MPS' <c>baseLanguage</c> is always there, and a DSL that
+    /// needs an expression declares a slot over it instead of growing one of its own. A host therefore has two kinds
+    /// of language to answer a declared name with - the folders the user opened, and the packages it ships - and
+    /// this is the second kind expressed as the first, so <see cref="Open"/> needs no second code path.
+    /// </para>
+    /// <para>
+    /// There is no folder, so <see cref="Directory"/> is empty and the project can never be saved back. The name is
+    /// what identifies it, which is why <see cref="Name"/> comes from the root this factory writes rather than from a
+    /// directory - and why the cycle check compares the name as well as the directory.
+    /// </para>
+    /// <para>
+    /// Typing and intentions are asked for rather than derived: a shipped language has no <c>typing</c> or
+    /// <c>intentions</c> folder to read, so what it offers is whatever its package built, and
+    /// <see cref="HasTyping"/> and <see cref="HasIntentions"/> say whether it declared any.
+    /// </para>
+    /// </remarks>
+    public static LanguageProject Shipped(
+        string name,
+        string? version,
+        IReadOnlyList<ConceptDeclaration> declarations,
+        ConceptRegistry concepts,
+        NotationRegistry notations,
+        ConstraintSet constraints,
+        IIntentionProvider intentions,
+        IReadOnlyList<TextGenerator> generators,
+        TypeRegistry? types = null,
+        ScopeProviderRegistry? scopes = null,
+        ITypingRules? typing = null,
+        bool hasTyping = false,
+        bool hasIntentions = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(declarations);
+        ArgumentNullException.ThrowIfNull(concepts);
+        ArgumentNullException.ThrowIfNull(notations);
+        ArgumentNullException.ThrowIfNull(constraints);
+        ArgumentNullException.ThrowIfNull(intentions);
+        ArgumentNullException.ThrowIfNull(generators);
+
+        return new LanguageProject(
+            directory: string.Empty,
+            new LanguageRoot(name, version, [], []),
+            resolved: [],
+            inherited: [],
+            declarations,
+            concepts,
+            notations,
+            types ?? TypeRegistry.Empty,
+            generators,
+            constraints,
+            scopes ?? ScopeProviderRegistry.Empty,
+            typing ?? TypingRuleRegistry.Empty,
+            typingRules: [],
+            hasTyping,
+            accessory: [],
+            intentions,
+            hasIntentions,
+            importers: []);
+    }
+
     /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
     /// <param name="directory">The language's folder.</param>
     /// <param name="resolver">What answers a declared dependency's name, or <see langword="null"/> for none.</param>
@@ -623,7 +702,8 @@ public sealed class LanguageProject
         }
 
         static bool Same(LanguageProject left, LanguageProject right) =>
-            string.Equals(left.Directory, right.Directory, StringComparison.OrdinalIgnoreCase);
+            string.Equals(left.Directory, right.Directory, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(left.Name, right.Name, StringComparison.Ordinal);
 
         ConceptDefinitionException Cycle(IReadOnlyList<string> chain, string declared) =>
             new($"The language '{Path.GetFileName(directory)}' cannot resolve '{declared}': {string.Join(" -> ", chain)} is a cycle, and a language cannot be built on itself.");

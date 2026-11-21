@@ -67,6 +67,7 @@ internal static class NotationWriter
             HorizontalNotationCell horizontal => ("ed.Horizontal(", horizontal.Content, ")"),
             ConditionalNotationCell conditional => ($"ed.Conditional({SourceWriter.Literal(conditional.Slot)}, {SourceWriter.Literal(conditional.Value)}, ", conditional.Content, ")"),
             WhenFilledNotationCell whenFilled => ($"ed.WhenFilled({SourceWriter.Literal(whenFilled.Slot)}, ", whenFilled.Content, ")"),
+            WhenFilledBlockNotationCell whenFilledBlock => ($"ed.WhenFilledBlock({SourceWriter.Literal(whenFilledBlock.Slot)}, ", whenFilledBlock.Content, ")"),
             _ => null,
         };
 
@@ -121,6 +122,7 @@ internal static class NotationWriter
         TableNotationCell table => Table(table),
         ConditionalNotationCell conditional => $"ed.Conditional({SourceWriter.Literal(conditional.Slot)}, {SourceWriter.Literal(conditional.Value)}, {Join(conditional.Content)})",
         WhenFilledNotationCell whenFilled => $"ed.WhenFilled({SourceWriter.Literal(whenFilled.Slot)}, {Join(whenFilled.Content)})",
+        WhenFilledBlockNotationCell whenFilledBlock => $"ed.WhenFilledBlock({SourceWriter.Literal(whenFilledBlock.Slot)}, {Join(whenFilledBlock.Content)})",
         LineNotationCell line => $"ed.Line({Join(line.Content)})",
         SequenceNotationCell sequence => $"ed.Sequence({Join(sequence.Content)})",
         IndentNotationCell indent => $"ed.Indent({Join(indent.Content)})",

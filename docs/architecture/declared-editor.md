@@ -38,10 +38,12 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Property` | `slot` | a property's text |
 | `Editor.Reference` | `slot` | a reference's target name |
 | `Editor.ChildInline` | `slot`, `emptyText` | one child, inline |
-| `Editor.Children` | `slot`, `emptyText`, `spacing` | many children, as blocks |
+| `Editor.Children` | `slot`, `emptyText`, `spacing`, `stacked` | many children, as blocks |
 | `Editor.Collection` | `slot`, `separator`, `emptyText`, `spacing` | many children between separators |
+| `Editor.InlineCollection` | `slot`, `separator`, `emptyText`, `spacing` | many children between separators, inside the line |
 | `Editor.Conditional` | `slot`, `value`, `cells` over `Editor.InlineCell` | drawn only while `slot` holds `value` |
 | `Editor.WhileFilled` | `slot`, `cells` over `Editor.InlineCell` | drawn only while the child slot `slot` holds a child |
+| `Editor.WhileFilledBlock` | `slot`, `cells` over `Editor.BlockCell` | the same, for a group of lines that leaves no row |
 | `Editor.Table` | `slot`, `emptyText`, `columns` over `Editor.Column` | many children as a grid |
 | `Editor.Column` | `slot`, `header` over `Editor.InlineCell`, `emptyText` | one column of a table |
 
@@ -60,11 +62,16 @@ exists for the same reason - a notation that can be written in C# and not as a m
 paths different languages (ADR 0014) - and it is what lets the structure language's header be declared rather than
 built when P7 defines the definition languages in themselves.
 
-**The block form of the while-filled cell has no declared twin yet.** `WhenFilledBlockNotationCell` was added when
-the concept notation needed a row that disappears - the `implements` list - and the editor language has no
-`Editor.WhileFilledBlock` to go with it. ADR 0014 rule 2 is not broken by that direction, since it forbids a
-capability only the workbench can express, but the two paths are unequal here and P7 would meet it when the
-definition languages are written in themselves.
+`Editor.WhileFilledBlock` is the block twin of `Editor.WhileFilled`, and it exists because the two cases are not the
+same: an empty *block* still occupies a row, so "draw nothing" has to remove the group from the tree instead of
+emptying it. It lowers to `WhenFilledBlockNotationCell`, the cell the concept notation uses for its `implements`
+list - which is what an `if` needs to draw its `else` branch only while there is one.
+
+`Editor.InlineCollection` is the inline twin of `Editor.Collection` for the same reason in the other direction: a
+call's arguments belong inside the line that holds the call, and a block list there would put every argument on a
+line of its own. Both twins were found by writing a C#-shaped language as a declared language, which is the exercise
+ADR 0014 rule 2 asks for: the moment a declared language has to look different from the hand-written one, the
+declared layer is missing a cell.
 
 ## The shape: MPS' brackets
 

@@ -5,9 +5,17 @@ or a constraint is written in the same editor as the DSL, not in a text file nex
 document plans the .NET equivalent - projected C# - and is deliberately a plan for **M6**, not
 for M1.
 
-Status: **planned**, M6. Generation itself is planned in
-[semantics.md](semantics.md#generation); the trust boundary that makes this safe is in
-"Execution" below.
+Status: **partly delivered, and shipped as the base language**. A subset of C# - the concepts below,
+their notation, three rules, five intentions and a generator, and no importer - is the package
+`Projectional.CSharp` (`src/Languages/Projectional.CSharp`) and is proved by `CSharpLanguageTests`. It
+is registered in the shell's own registry rather than opened from a folder, so it is available in every
+document the way `jetbrains.mps.baseLanguage` is: a DSL declares a slot over `CSharp.Expression` and the
+user writes code there. A *declared* DSL reaches it by writing `depends on CSharp` in its `language.mps` -
+the shell answers a declared name from the folders it opened and then from the packages it ships, which
+is what `LanguageProject.Shipped` is for. What is still planned is the rest of this document: the remaining constructs,
+the behaviour-method attachment, and execution. Generation itself is planned in
+[semantics.md](semantics.md#generation); the trust boundary that makes this safe is in "Execution"
+below.
 
 ## What projecting the logic buys, and what it does not
 
@@ -31,6 +39,19 @@ What it does **not** buy, and must not pretend to:
   otherwise would put a Roslyn-shaped dependency at the centre of the model layer.
 
 ## The subset
+
+A base language is useful long before it is complete, so the subset is chosen by "what does a
+behaviour or a generator body need" rather than by C# grammar order.
+
+**What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
+`String` and `Bool` literals (not `Long`, `Double`, `Null` or `Char`), `Name`, `MemberAccess`, `Call`,
+`Binary` with ten operators, `Parenthesized` and `New` (not `Unary`, `Conditional`, `Cast`, `Is` or
+`Index`); `Block`, `ExpressionStatement`, `LocalDeclaration`, `Assignment`, `If`, `Return` and `Throw`
+(not `While`, `For`, `ForEach`, `Break`, `Continue` or `Try`); and `TypeReference`, `Method`,
+`Parameter`, `Field`, `Class`, `Namespace` and `File`. It has no importer, so a document is written in
+the editor and the text is a derived artefact. Read the rest of this section as the target, and the
+package as the evidence that the notation, constraint, intention and generator machinery can carry a
+C#-shaped base language at all.
 
 A base language is useful long before it is complete, so the subset is chosen by "what does a
 behaviour or a generator body need" rather than by C# grammar order.

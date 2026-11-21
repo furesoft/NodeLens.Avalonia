@@ -108,7 +108,7 @@ public static class TextGenLowering
 
     private static TemplatePart CreatePart(Node part, Concept target) => part.Concept.Key switch
     {
-        TextGenConceptKeys.Text => new TextPart(Required(part, TextGenLanguage.TextSlot, "A literal needs its text.")),
+        TextGenConceptKeys.Text => new TextPart(Literal(part)),
 
         TextGenConceptKeys.Property => new PropertyPart(
             PropertyOf(part, target, Required(part, TextGenLanguage.ConceptKeySlot, "A property part names the property."))),
@@ -206,6 +206,17 @@ public static class TextGenLowering
 
     private static string Required(Node node, string slot, string message) =>
         string.IsNullOrWhiteSpace(node.GetOrNull(slot)) ? throw new ConceptDefinitionException(message) : node.GetOrNull(slot)!;
+
+    /// <summary>The text a <c>TextGen.Text</c> part carries, whitespace included.</summary>
+    /// <remarks>
+    /// A space is text like any other: the generator has no gap cell, so a template that joins two properties - a
+    /// visibility and the type after it - says so with a text part that is one space. Only a part with no text at all
+    /// is a mistake, and that is what this refuses.
+    /// </remarks>
+    private static string Literal(Node part) =>
+        part.GetOrNull(TextGenLanguage.TextSlot) is { Length: > 0 } text
+            ? text
+            : throw new ConceptDefinitionException("A text part needs its text; a space is text.");
 
     private static Node Single(Node node, string slot)
     {

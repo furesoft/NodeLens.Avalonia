@@ -53,6 +53,7 @@
                     <slot>library</slot>
                     <emptyText>&lt;none&gt;</emptyText>
                     <spacing>1</spacing>
+                    <stacked>false</stacked>
                   </properties>
                 </node>
               </children>
