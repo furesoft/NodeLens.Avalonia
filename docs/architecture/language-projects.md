@@ -33,6 +33,8 @@ MyRules/
     Pipeline.Stage.retries.mps    one scope rule
   typing/                         which node a burst of typing creates (Projectional.TypingRules)
     Pipeline.Stage.mps            one typing rule
+  accessory/                      the library nodes the language ships for its users
+    palette.mps                   one ordinary model of the language's own concepts
   intentions/                     what a language offers at a caret (Projectional.IntentionRules)
     Pipeline.Stage.mps            one intention
   tests/                          what the language asserts about its own documents (Projectional.Testing)
@@ -121,6 +123,12 @@ M2's gate in its smallest complete form.
   intentions and generators travel with the tab, so a digit typed into an empty slot creates the node the language's
   `typing/` folder names rather than the node the shell would have guessed. A language without the aspect keeps the
   shell's rules, which is what every language was given before the aspect existed.
+- **A language ships library nodes in `accessory/`.** The folder holds ordinary models *of the language*, in one
+  document each, and `LanguageProject.NewProject` copies them into every project a document is loaded into - with
+  their own identities, because a reference stores its target's id and a library node has to answer to the same id in
+  every project. That is what lets a document point at a palette entry, a standard unit or a ready-made type instead
+  of restating it, and it is the MPS feature the gap analysis called accessory models. The documents open like any
+  other language content, because they are: editing the palette changes what the language offers.
 - **A refused language changes nothing.** `TryAdd` builds both candidate registries first and adopts them only if
   both succeed, because a half-added language would give a document a concept registry that disagrees with the
   notation registry in force - the one state that produces files nobody can open.

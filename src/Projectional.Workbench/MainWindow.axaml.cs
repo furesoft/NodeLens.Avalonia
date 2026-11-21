@@ -2816,7 +2816,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return false;
         }
 
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.TypingFolder, LanguageProject.IntentionsFolder, LanguageProject.ImportFolder })
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.TypingFolder, LanguageProject.AccessoryFolder, LanguageProject.IntentionsFolder, LanguageProject.ImportFolder })
         {
             var path = Path.Combine(language.Directory, folder);
 
