@@ -86,6 +86,9 @@ public static class CSharpConceptKeys
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 
+    /// <summary>A behaviour class: the methods one concept's nodes answer with.</summary>
+    public const string Behaviour = "CSharp.Behaviour";
+
     /// <summary><c>using Name;</c>: a namespace the file can name without qualifying it.</summary>
     public const string Using = "CSharp.Using";
 
@@ -193,6 +196,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding a class's members.</summary>
     public const string MembersSlot = "members";
+
+    /// <summary>The property holding the concept key a behaviour class belongs to.</summary>
+    public const string ConceptKeySlot = "conceptKey";
 
     /// <summary>The slot holding a block's statements.</summary>
     public const string StatementsSlot = "statements";

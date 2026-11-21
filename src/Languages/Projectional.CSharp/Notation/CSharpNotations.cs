@@ -57,6 +57,30 @@ public static class CSharpNotations
             ed.Property(CSharpLanguage.NameSlot),
             ed.Punct(";")));
 
+        // A behaviour class draws what it generates, the attachment comment included: the header line is the model's
+        // statement about *which* concept this class is for, and the generated file has to carry that too, because the
+        // host's hand-written partial beside it says nothing about the model it belongs to.
+        notations.Add(CSharpConceptKeys.Behaviour, ed => ed.Sequence(
+            ed.Line(
+                ed.Punct("//"),
+                ed.Space,
+                ed.Keyword("behaviour"),
+                ed.Space,
+                ed.Property(CSharpConceptKeys.ConceptKeySlot)),
+            ed.Line(
+                ed.Keyword("partial"),
+                ed.Space,
+                ed.Keyword("class"),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot)),
+            ed.Line(ed.Punct("{")),
+            ed.Indent(ed.Children(
+                CSharpConceptKeys.MembersSlot,
+                "<no methods>",
+                stacked: true,
+                gaps: ListGap.BetweenGroups)),
+            ed.Line(ed.Punct("}"))));
+
         notations.Add(CSharpConceptKeys.TypeReference, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
         notations.Add(CSharpConceptKeys.IntLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
         notations.Add(CSharpConceptKeys.BoolLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));

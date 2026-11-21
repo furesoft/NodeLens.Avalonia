@@ -62,6 +62,26 @@ public static class CSharpTextGenerators
             new PropertyPart(CSharpLanguage.NameSlot),
             new TextPart(";")))
 
+        // The attachment comment is generated, not only drawn: a behaviour file ends up in the host's build beside a
+        // hand-written partial that says nothing about the model, so the generated half is where the "which concept"
+        // fact has to survive.
+        .Add(CSharpConceptKeys.Behaviour, TextTemplate.Of(
+            new TextPart("// behaviour "),
+            new PropertyPart(CSharpConceptKeys.ConceptKeySlot),
+            LineBreakPart.Instance,
+            new TextPart("partial class "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            LineBreakPart.Instance,
+            new TextPart("{"),
+            new IndentPart(TextTemplate.Of(
+                new WhenFilledPart(
+                    CSharpConceptKeys.MembersSlot,
+                    TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        Members(CSharpConceptKeys.MembersSlot, ListGap.BetweenGroups))))),
+            LineBreakPart.Instance,
+            new TextPart("}")))
+
         .Add(CSharpConceptKeys.Namespace, TextTemplate.Of(
             new ConditionalPart(
                 CSharpLanguage.IsFileScopedSlot,

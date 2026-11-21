@@ -452,6 +452,43 @@ public static class CSharpLanguage
             isRoot: false,
             description: "An enum: a type whose values are a closed set of names."),
 
+        // The MPS behaviour aspect in the only form this framework can honour: the model declares the methods that
+        // belong to one concept, the generator emits them into a partial class, and the host writes the other half of
+        // that partial by hand when it needs something a notation cannot express - an attribute, an `unsafe` block, a
+        // method tuned by hand. That is what keeps "attributes are metadata, not logic" honest: the escape hatch is a
+        // partial class rather than a concept per attribute.
+        //
+        // It is a TypeDeclaration rather than a second root, and that is the load-bearing decision. The language has
+        // exactly one root - the document - which is what makes "new document" one question, and a behaviour class is
+        // not a document: it is a type in a namespace, which is also what makes its `partial` half merge with the one
+        // the host writes. Declared after Class, Interface and Enum so that it is never the concept a fresh slot is
+        // filled with, since `DefaultInstantiableFor` answers with the first concrete concept below the slot's.
+        //
+        // The concept key is a property because C# has nothing a concept could be referenced by, and the class name is
+        // a property because the notation may only draw properties and keywords - it cannot derive `RuleBehaviour` from
+        // `Rules.Rule`. The key is also generated, as a comment: the host's hand-written half says nothing about the
+        // model, so the generated half is where "which concept is this for" survives.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Behaviour,
+            [
+                new PropertySlot(
+                    CSharpConceptKeys.ConceptKeySlot,
+                    PropertyType.String,
+                    "Concept.Key",
+                    "The concept this class is the behaviour of."),
+                new PropertySlot(
+                    NameSlot,
+                    PropertyType.String,
+                    "ConceptBehaviour",
+                    "The class name, which the hand-written half has to match."),
+                new ChildSlot(CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method, Cardinality.Many),
+            ],
+            superConcepts: [CSharpConceptKeys.TypeDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "A behaviour class: the methods one concept's nodes answer with."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.EnumMember,
             [new PropertySlot(NameSlot, PropertyType.String, description: "The value's name.")],
