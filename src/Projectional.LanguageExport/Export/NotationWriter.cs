@@ -105,6 +105,7 @@ internal static class NotationWriter
     {
         ConstantNotationCell constant => Constant(constant),
         SpaceNotationCell => "ed.Space",
+        TypeOfNotationCell => "ed.TypeOf()",
         PropertyNotationCell property => property.EmptyText.Length == 0
             ? $"ed.Property({SourceWriter.Literal(property.Slot)})"
             : $"ed.Property({SourceWriter.Literal(property.Slot)}, emptyText: {SourceWriter.Literal(property.EmptyText)})",

@@ -1100,10 +1100,18 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
     /// the node it belongs to. Omitting it leaves such a keystroke ignored, which is the behaviour a
     /// language that declares no rules keeps.
     /// </param>
+    /// <param name="types">
+    /// The language's type rules, which is what a notation's <c>typeof</c> cell draws. Omitting them draws
+    /// <c>unknown</c>, the honest answer for a language that declared none.
+    /// </param>
     /// <returns>The session, which the caller owns and must dispose.</returns>
-    public EditorSession OpenSession(Node document, NotationRegistry notations, ITypingRules? typing = null)
+    public EditorSession OpenSession(
+        Node document,
+        NotationRegistry notations,
+        ITypingRules? typing = null,
+        TypeRegistry? types = null)
     {
-        var session = new EditorSession(document, notations, TextMeasure, clipboard: Clipboard, typing: typing);
+        var session = new EditorSession(document, notations, TextMeasure, clipboard: Clipboard, typing: typing, types: types);
         Session = session;
 
         return session;

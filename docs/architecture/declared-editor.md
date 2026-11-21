@@ -32,6 +32,7 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Indent` | `cells` over `Editor.BlockCell` | stacked deeper |
 | `Editor.Horizontal` | `cells` over `Editor.BlockCell` | the same blocks, in one row |
 | `Editor.Space` | - | a gap |
+| `Editor.TypeOf` | - | the node's type, as an annotation |
 | `Editor.Keyword` | `text` | a word the notation provides |
 | `Editor.Punct` | `text` | a symbol the notation provides |
 | `Editor.Property` | `slot` | a property's text |
@@ -85,7 +86,8 @@ node cell layout:
 
 The brackets say what a reviewer needs to know before running anything: `[/ ... /]` stacks, `[> ... <]` stacks one
 level deeper, `[ ... ]` is one row, and each cell carries its own glyph - `-word-` for a keyword, `%slot%` for a
-property, `( slot )` for a single child, `{ slot }` for a list, `< slot >` for a reference, `;` for a gap. A
+property, `( slot )` for a single child, `{ slot }` for a list, `< slot >` for a reference, `;` for a gap, and
+`@type@` for the cell that shows the node's type. A
 structure that deep reads top to bottom, and the definition of a language looks like the language it defines.
 
 **One compromise, and P5 removed it.** In MPS the inline cells of a line sit *on* the line. Here a line's

@@ -49,6 +49,14 @@ public sealed class NotationEditor
     public SingleChildNotationCell ChildInline(string slot, string emptyText = "<empty>") =>
         new(slot) { EmptyText = emptyText };
 
+    /// <summary>The type of the node this notation draws, as a non-editable annotation.</summary>
+    /// <remarks>
+    /// Placed like any other cell, which is how a language says whether and where a type appears - after the value
+    /// it belongs to, in a bracket of its own, or not at all. The text comes from the language's type rules every
+    /// time the tree is built, so an edit that changes a type changes the annotation with no second declaration.
+    /// </remarks>
+    public TypeOfNotationCell TypeOf() => TypeOfNotationCell.Instance;
+
     /// <summary>Inline cells that are drawn only while <paramref name="slot"/> holds <paramref name="value"/>.</summary>
     /// <param name="slot">The property the condition reads.</param>
     /// <param name="value">The text it has to equal, in the type's stored spelling.</param>

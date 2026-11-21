@@ -43,6 +43,11 @@ public sealed class EditorSession : IDisposable
     // rebuild and an undo that moves nodes around.
     private CollapsedNodeSet _collapsed = CollapsedNodeSet.Empty;
 
+    // What the language's type rules say, which a notation's typeof cell draws. Held here rather than asked of the
+    // host at render time, because the annotation's text is part of the tree the caret and the hit test are computed
+    // from - a renderer that measured a different string than the layout did would place the caret off the glyphs.
+    private readonly TypeRegistry _types;
+
     // The characters typed at one edge that did nothing yet, and where they were typed. Kept here rather than in
     // the action because an action is a value that runs once: spelling a keyword spans several of them.
     private (CellAddress Address, string Text)? _pending;
@@ -70,6 +75,10 @@ public sealed class EditorSession : IDisposable
     /// What the language says about text typed into an empty slot; nothing when omitted, which leaves
     /// typing there refused.
     /// </param>
+    /// <param name="types">
+    /// The language's type rules; nothing when omitted, and a notation's <c>typeof</c> cell then draws
+    /// <c>unknown</c>.
+    /// </param>
 
     /// <exception cref="EditingException">The notation produces no cell a caret can stand in.</exception>
     public EditorSession(
@@ -79,13 +88,15 @@ public sealed class EditorSession : IDisposable
         ICellEmphasis? emphasis = null,
         INotationChoice? choice = null,
         IEditorClipboard? clipboard = null,
-        ITypingRules? typing = null)
+        ITypingRules? typing = null,
+        TypeRegistry? types = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(notations);
 
         Document = document;
         _measure = measure ?? MonospaceTextMeasure.Instance;
+        _types = types ?? TypeRegistry.Empty;
         History = new UndoHistory(document.Model);
 
         _notations = notations;
@@ -472,7 +483,7 @@ public sealed class EditorSession : IDisposable
     /// the folds or a fold setter that forgets the variant.
     /// </remarks>
     private EditorTreeBuilder RebuildBuilder() =>
-        new(_notations, _emphasis, Choice, _collapsed);
+        new(_notations, _emphasis, Choice, _collapsed, _types);
 
     /// <summary>
     /// The layouter for the current measure, wrap width and column widths.

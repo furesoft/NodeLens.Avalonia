@@ -192,6 +192,13 @@ keeps the row readable), which is what a notation needs when each of its cells i
 diagram of its own - an editor model's `[`, its cells and its `]`. It implies no gap: where a
 blank belongs is the notation's business, exactly as a collection's separator is.
 
+**`ed.TypeOf()` draws what the node means, not what it says.** The cell is an annotation - an inlay hint, painted
+quieter than the document and never editable - whose text is the type the language's rules answer for the node the
+notation draws, read while the tree is built. *The notation decides whether and where it appears*: a concept that does
+not mention it shows no type, and one that does says after which word it stands, like any other cell. A language with
+no type rules draws `unknown` rather than nothing, because "no rule said what this is" is an answer. In a declared
+editor the same cell is `@type@` (`Editor.TypeOf`).
+
 Empty slots are never invisible: a slot-bearing cell carries the text it shows while
 it is empty (`<empty>`, `<none>`, or for a property `<<operator>>`). The caret always needs something visible to
 attach to, and an empty list still has to be fillable.

@@ -117,7 +117,7 @@ internal sealed class DocumentTab : IDisposable
         Evaluation = evaluation;
         Generators = generators ?? [];
         Checks = checks;
-        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, clipboard: clipboard);
+        Session = new EditorSession(model.Roots[0], notations, measure, emphasis, typing: typing, types: types, clipboard: clipboard);
 
         // A language that declares scopes replaces the chain for the references it names; every other slot still
         // falls through to the default, which is what makes installing it harmless.

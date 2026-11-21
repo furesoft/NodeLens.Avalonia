@@ -8,4 +8,10 @@ public enum ConstantKind
 
     /// <summary>Punctuation that only groups or separates, such as <c>{</c> or <c>;</c>.</summary>
     Punctuation,
+
+    /// <summary>
+    /// Text the projection computed rather than the notation wrote - a type drawn beside its node - which a host
+    /// paints as an inlay hint instead of as part of the document.
+    /// </summary>
+    Annotation,
 }
