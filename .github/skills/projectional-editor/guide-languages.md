@@ -61,12 +61,15 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   unless the notation asks otherwise, so this is `stacked: true` on every collection here, not a renderer default; a
   section with four slots used to be drawn side by side. The marker is what makes a property's three option lines
   readable: without a visible end nobody can tell where one declaration stops.
-- **An empty section says `<< ... >>` in the structure language**, because the heading above it already names the
-  kind; a declaration inside one still says its own kind (`<<property name : string ... >>`),
-  `<<symbol>>`. Three empty sections that shared one glyph could not tell an author which slot Enter would fill -
-  do not collapse them back into a single `<< ... >>`. The two header lists are the exception: `extends` and
-  `implements` already say which list they are, so an empty one is hidden rather than given a glyph. The editor
-  language keeps `<< ... >>` for its empty cell lists.
+- **An empty section says `<< ... >>` in the structure language**: the heading above it already names the kind, so
+  the placeholder only has to say "nothing here yet". A declaration inside one still says its own kind
+  (`<<property name : string ... >>`, `<<symbol>>`). The two header lists are hidden rather than given a glyph,
+  because `extends` and `implements` already say which list they are. The editor language keeps `<< ... >>` for its
+  empty cell lists.
+- **The page keeps a margin, and the header stands one step further in than the options.** Two `Indent`s: one around
+  the whole body and one around the header line, which the `implements` row inherits with it. Without them the
+  document starts on the border and reads as clipped; with them, "what the concept is" and "how the framework treats
+  it" are apart without a brace. Do not flatten it back to flush-left.
 - **`Structure.Concept` holds `properties`, `children` and `references` as three `Many` slots, not one `slots`
   list.** The kind of a slot is a fact of the model, not something the renderer infers from the child's concept -
   which is why MPS splits the sections too. The consequence is a **fixed rank**: lowering concatenates properties,
