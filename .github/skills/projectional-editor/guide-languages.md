@@ -227,7 +227,10 @@ record, and `Projectional.Json` is the first reference language behind the contr
   and leaves a CRLF file's carriage return in the value - `.Nest` a child, `.Repeat` a list, `.Raw` tier 2 verbatim,
   `.Bind`/`.Matches` a run remembered and required again, `.Fail` a rule's own message). **No backtracking**: every
   choice is decided by the literal at the cursor, so an ambiguity is a *load-time* refusal in `DeclaredImporter`, not a
-  surprise in a file. A document root is a concept no child slot can hold. **The shell declares the language**, so an
+  surprise in a file. A document root is a concept no child slot can hold - and in a *recursive* language, where every
+  expression concept is both a document and a child, the model's own answer is used instead: the concepts a language
+  says may start a document (`isRoot`), with the distinct-anchor check keeping a file from reading as the wrong
+  expression. **The shell declares the language**, so an
   author writes an importer in the app rather than in a text editor: `WorkbenchLanguage.ShellDeclarations` holds
   `ImportLanguage.ConceptDeclarations` and `Notations` holds `ImportNotations`, `import/` documents open with the
   folder, **File ▸ New ▸ Importer** starts one, and re-opening the folder **replaces** the language

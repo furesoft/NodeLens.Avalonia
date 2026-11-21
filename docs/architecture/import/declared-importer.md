@@ -72,6 +72,13 @@ else either: a container with one child is a second place to say which definitio
 per concept, the way a generator holds one mapping per concept - the concept key identifies the rule, which is what
 gives the inverse an owner.
 
+**Which rules may start a document** is asked of the language, not declared in the importer: a rule whose concept no
+other concept's child slot can hold is a document root, because nothing else could have produced it. A *recursive*
+language has no such concept - `Decl.Expression` is both what a document starts with and what its own slots hold - so
+for that case the model's own answer is used, the concepts a language says may start a document (`isRoot`). Two roots
+whose anchors are the same are refused when the importer is built, which is what keeps a file from reading as the
+wrong kind of expression.
+
 ```text
 importer Ini                                        // Import.Importer
   target   Ini                                      // the generator whose templates this importer inverts

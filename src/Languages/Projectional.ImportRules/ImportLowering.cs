@@ -162,8 +162,17 @@ public static class ImportLowering
 
     /// <summary>The concepts whose rule may stand at the top of a document.</summary>
     /// <remarks>
+    /// <para>
     /// A concept with a rule that no other concept's child slot can hold. Without that condition every rule would be a
     /// document, and a stray line would import as whatever happened to have an anchor.
+    /// </para>
+    /// <para>
+    /// A <em>recursive</em> language has no such concept: its one expression concept is both what a document starts
+    /// with and what a slot holds, so every rule is held by some slot and the first pass answers nothing. For it the
+    /// model's own answer is used instead - the concepts the language says may start a document
+    /// (<see cref="Concept.IsRoot"/>) - and the distinct-anchor check is what keeps a file from reading as the wrong
+    /// kind of expression.
+    /// </para>
     /// </remarks>
     private static List<string> Roots(ConceptRegistry concepts, IReadOnlyList<ImportRule> rules)
     {
@@ -179,6 +188,19 @@ public static class ImportLowering
             }
 
             roots.Add(rule.ConceptKey);
+        }
+
+        if (roots.Count > 0)
+        {
+            return roots;
+        }
+
+        foreach (var rule in rules)
+        {
+            if (concepts.Get(rule.ConceptKey).IsRoot)
+            {
+                roots.Add(rule.ConceptKey);
+            }
         }
 
         return roots;
