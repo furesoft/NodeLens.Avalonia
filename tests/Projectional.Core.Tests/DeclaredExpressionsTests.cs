@@ -9,6 +9,7 @@ using Projectional.Projection;
 using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.Testing;
+using Projectional.TextGen;
 using Projectional.TypingRules;
 using Projectional.TypeRules;
 using Xunit;
@@ -140,6 +141,33 @@ public sealed class DeclaredExpressionsTests
     }
 
     [Fact]
+    public void TheDeclaredGeneratorPrintsTheDocumentAsAnSExpression()
+    {
+        // The fifth declared aspect, and the one this sample used to say it lacked: a generator is a model too. It
+        // prints the S-expression the declared importer reads, so the two are inverses of each other - the generator
+        // writes what the importer parses, which is the claim the README used to make in the negative.
+        var language = Language;
+        var generator = Assert.Single(language.Generators);
+
+        Assert.True(language.HasGenerators);
+        Assert.Equal("Sexpr", generator.Name);
+
+        var written = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Expressions", "expressions.mps"));
+        var model = ModelXml.Deserialize(language.NewProject(), written);
+
+        Assert.Equal(
+            "(if (binary < (int 1) (int 2)) (int 3) (int 4))",
+            new Generator().Generate(Assert.Single(model.Roots), generator).Text);
+
+        // The generator cannot be read back, and the reason is the language's own shape: every concrete concept is a
+        // child of another, so no concept stands as a document root and the framework refuses to invert the templates.
+        // That is precisely why the sample ships a declared importer instead of relying on the generator's inverse -
+        // a recursive grammar has no root to start from, and the rule spells the root out.
+        Assert.False(language.TryCreateImporter("Sexpr", out _, out var why));
+        Assert.Contains("document root", why, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EveryDefinitionDocumentSavesBackByteIdentically()
     {
         // The same guard the other declared sample has, and the reason a hand-written definition is safe to keep:
@@ -152,6 +180,10 @@ public sealed class DeclaredExpressionsTests
             AssertByteIdentical(temporary.FullName, directory, "structure", new Project(StructureLanguage.Concepts));
             AssertByteIdentical(temporary.FullName, directory, "editor", new Project(EditorLanguage.Concepts));
             AssertByteIdentical(temporary.FullName, directory, "types", new Project(TypeRuleLanguage.Concepts));
+
+            // The generator is a definition like the rest, and the one whose templates are behaviour rather than
+            // data: a file that re-worded itself on its first save would be a template the author never wrote.
+            AssertByteIdentical(temporary.FullName, directory, "generator", new Project(TextGenLanguage.Concepts));
 
             // The importer is a definition like the rest: a file that would change on its first save is drift the author
             // would meet the moment they opened it.
@@ -236,7 +268,7 @@ public sealed class DeclaredExpressionsTests
     {
         var report = TestRunner.Run(Language);
 
-        Assert.Equal(4, report.Ran);
+        Assert.Equal(5, report.Ran);
         Assert.True(report.Succeeded, report.ToString());
     }
 

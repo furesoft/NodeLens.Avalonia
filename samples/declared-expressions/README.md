@@ -3,7 +3,9 @@
 The other two declared samples show scopes, intentions and a generator. Neither has a type: their slots are strings,
 counts and references, so every node would type as `unknown` and a `types/` folder would be inventing a need instead
 of recording one. This folder is the small language that does have types, so the type vocabulary is exercised by a
-document someone can open rather than only by the test suite.
+document someone can open rather than only by the test suite. It also carries a generator, so its printed form is a
+document like the rest - and that generator prints the same S-expression its importer reads, so the two spellings meet
+even though the generator cannot be inverted into one.
 
 | File | What it is |
 | --- | --- |
@@ -12,6 +14,7 @@ document someone can open rather than only by the test suite.
 | `types/` | the rules: two fixed types, a switch over the operator, a `widest of` and one complaint |
 | `typing/` | which node a burst of typing creates: a digit makes an `int`, `true`/`false` make a `bool`, and the aliases `binary` and `if` make those two |
 | `import/` | one declared importer: a second spelling of the same expressions, read by `import/sexp.mps` |
+| `generator/` | one text generator: the same S-expression spelling, written by `generator/sexpr.mps` |
 | `tests/` | four assertions the language states about itself |
 | `expressions.mps` | a document of the language |
 | `uncomparable.mps` | a document the complaint reports on |
@@ -60,7 +63,7 @@ way into an empty slot.
 
 ## What the tests folder says
 
-Four rows, one assertion per file because a test names one assertion:
+Five rows, one assertion per file because a test names one assertion:
 
 | File | Assertion |
 | --- | --- |
@@ -68,6 +71,7 @@ Four rows, one assertion per file because a test names one assertion:
 | `operator-type.mps` | the operator `<` of `expressions.mps` is `bool`, which is the switch over the operator |
 | `clean.mps` | `expressions.mps` reports nothing |
 | `reports.mps` | `uncomparable.mps` reports exactly one finding, `decl.type.operands` as an error |
+| `generates.mps` | `expressions.mps` generates `(if (binary < (int 1) (int 2)) (int 3) (int 4))` with `Sexpr` |
 
 **Run > Run tests** runs them, and so does `TestRunner.Run(language)`. They are the reason the runner hands the
 constraint engine the language's own scopes and types: a complaint that asks a slot for its type reads `unknown`
@@ -83,8 +87,7 @@ conditional itself by the `if` it draws; the `widest of` rule is therefore pinne
 ## What the import folder says
 
 `import/sexp.mps` is one importer, written in the importer language, that reads a *second* spelling of the same
-model - which is the case a declared rule exists for, because inverting a generator only reads what the generator
-writes and this language ships no generator at all:
+model - the S-expression the generator in `generator/` writes:
 
     (if (binary < (int 1) (int 2)) (int 3) (int 4))
 
@@ -95,6 +98,27 @@ built-in `Number` class, and `Space` is declared as *skipped*, so whitespace cos
 
 Open the folder in the app and the importer appears as an **import** node in the project explorer; **File ▸ Import…**
 offers it for any file that starts like one of those four rules.
+
+## What the generator folder says
+
+`generator/sexpr.mps` is one text generator, written in the generator language, that prints the same S-expression the
+importer reads. Four mappings, one per concrete concept, each a template over the concept's own slots - so the two
+spellings are inverses rather than two hand-written formats that happen to agree:
+
+    (if (binary < (int 1) (int 2)) (int 3) (int 4))
+
+`Decl.Int` and `Decl.Bool` wrap a literal in its own brackets; `Decl.Binary` prints its operator between its two
+operands; `Decl.If` prints its three children in order.
+
+The generator is **not** invertible, and that is why the sample keeps a declared importer: the framework derives an
+importer from a generator's templates, but only when a concept stands as a document root. Here every concrete concept
+is a child of another - `Decl.Expression` is a child of both `Decl.Binary` and `Decl.If` - so no concept qualifies and
+the framework refuses to invert the templates. A recursive grammar has no root to start from, so the rule in
+`import/sexp.mps` spells the root out instead. The two spellings agree because the author wrote both to agree, not
+because one was derived from the other.
+
+A language declares as many generators as it has targets, and the host picks one by name: **Generate ▸ Sexpr** in the
+document window shows the generated text.
 
 ## Open it
 
@@ -110,6 +134,7 @@ var model = ModelFile.Load(language!.NewProject(), "samples/declared-expressions
 // language.Types      the four rules
 // language.Typing     what a burst of typing creates
 // language.Constraints the one complaint
+// language.Generators the one text generator, `Sexpr`
 ```
 
 `DeclaredExpressionsTests` loads exactly these files, so the sample cannot drift from what the code accepts without a
