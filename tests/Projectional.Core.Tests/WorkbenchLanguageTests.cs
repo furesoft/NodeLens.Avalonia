@@ -7,6 +7,7 @@ using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Samples;
 using Projectional.Structures;
+using Projectional.Testing;
 using Projectional.TextGen;
 using Projectional.TypeRules;
 using Projectional.Workbench;
@@ -333,6 +334,27 @@ public sealed class WorkbenchLanguageTests
         Assert.Same(opened, language.ProjectFor(WorkbenchLanguage.NewDocument(opened)!));
         Assert.Null(language.ProjectFor(language.NewConceptDefinition()));
         Assert.Null(language.ProjectFor(language.NewProject().NewModel("empty")));
+    }
+
+    [Fact]
+    public void ATestsDocumentOfTheSampleOpensInTheShell()
+    {
+        // A document in a language project's tests/ folder is written in the testing language, which no sample project
+        // declares - so the shell's own registry has to, or opening one fails while loading it.
+        var language = new WorkbenchLanguage();
+        var files = Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "Expressions", TestRunner.Folder), "*.mps").ToList();
+
+        Assert.NotEmpty(files);
+
+        foreach (var file in files)
+        {
+            var model = DocumentFile.TryLoad(file, language.NewProject(), out var error);
+
+            Assert.Null(error);
+            Assert.NotNull(model);
+            Assert.Single(model.Roots);
+            Assert.Equal(TestingConceptKeys.Test, model.Roots[0].Concept.Key);
+        }
     }
 
     /// <summary>Writes a one-concept language project whose notation is the keyword <c>rule</c> and the name.</summary>
