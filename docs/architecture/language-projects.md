@@ -179,7 +179,7 @@ The decision is [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.m
 - **Resolution builds the language's own registry over its bases.** `Concepts` is the union of the bases'
   declarations - base before dependent, the same order every time - followed by the language's own; `Accessory` is
   the union of the same chain, with their identities, so a reference to a base's library node still resolves. This is
-  what lets a slot name a base's concept; today such a definition cannot load at all.
+  what lets a slot name a base's concept; without a resolved base such a definition cannot load at all.
 - **Everything the language says stays its own, except through `extends`.** `Declarations` and `Notations` are never
   absorbed: presentation is composed by the host, exactly as `WorkbenchLanguage` and the export's README prescribe.
 - **Behaviour is inherited through `extends`, not through `depends on`.** An extended language's constraints, scope
@@ -190,6 +190,10 @@ The decision is [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.m
 - **What cannot be resolved refuses the open**, with a message naming the dependency, and a cycle is refused with its
   chain. A declared version is a label: read, reported and shown, never compared - nothing here parses a version, and
   refusing on free text would be a rule nobody can satisfy.
+- **`samples/declared-units` and `samples/declared-invoice` are the worked example.** The first is a base with one
+  concept and one rule; the second declares `extends Units`, a child slot over `Units.Quantity` and nothing else, and
+  its document is reported by the rule that lives in the base folder. `WorkbenchLanguageTests` opens them the way a
+  user does - base first - and asserts both halves, so the other order has to say which language is missing.
 
 ## What is still missing
 

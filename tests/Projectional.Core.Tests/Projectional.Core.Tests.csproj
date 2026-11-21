@@ -61,6 +61,8 @@
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-pipeline\**\*.ini" Link="Declared\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-workflow\**\*.mps" Link="Workflow\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\declared-units\**\*.mps" Link="Units\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\declared-invoice\**\*.mps" Link="Invoice\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\samples\declared-expressions\**\*.mps" Link="Expressions\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Languages\Samples\Projectional.Samples.StateMachine\Corpus\**\*.mps" Link="StateMachine\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\Languages\Samples\Projectional.Samples.FeatureModel\Corpus\**\*.mps" Link="FeatureModel\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
