@@ -1,6 +1,8 @@
 using Projectional.Avalonia;
 using Projectional.Expressions;
+using Projectional.Projection;
 using Projectional.Samples;
+using Projectional.Semantics;
 using Projectional.Workbench;
 using Xunit;
 
@@ -95,5 +97,27 @@ public sealed class DocumentRunTests
 
         Assert.False(report.Succeeded);
         Assert.Contains("budget allows", report.Headline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ARunReportCarriesTheCursorThatStepsThroughItsRows()
+    {
+        // The rows and the cursor are the same trace, index for index - which is what lets one step both mark a row in
+        // the panel and put the caret on the node that row came from. The panel enables its step command from this, so
+        // "there is nothing to step" is said by the cursor being absent rather than by a flag beside it.
+        var model = PayrollSample.NewSampleModel();
+
+        var report = DocumentRun.Of(model.Roots[0], RulesEvaluation.Registry, "amount=1500");
+
+        var cursor = Assert.IsType<TraceCursor>(report.Steps);
+
+        Assert.Equal(report.Rows.Count, cursor.Count);
+        Assert.True(cursor.IsAtStart);
+
+        Assert.True(cursor.Step());
+
+        // Step zero is the first row: one place, two views of it.
+        Assert.Equal(0, cursor.Position);
+        Assert.Equal(report.Rows[0].Place, new CellAddress(cursor.Current!.Value.Node));
     }
 }

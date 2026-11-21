@@ -89,7 +89,9 @@ as well would need the interpreter to record a second event, and that is a diffe
 `NodeId` and not a caret address, because `Projectional.Semantics` references only `Core` and `Language`; the shell
 maps it to a `CellAddress`, exactly as the existing "click a trace row to move the caret" already does.
 
-Still open: the shell's step commands (the panel can already jump to a row; stepping needs buttons and a current-row
-mark), value kinds for records and lists (they arrive with the first language that evaluates one), and the
-cross-check against generated code, which needs the generator first.
+Still open: value kinds for records and lists (they arrive with the first language that evaluates one), and the
+cross-check against generated code, which needs the generator first. The shell's side of stepping is delivered: the
+menu's **Step** (F10) and **Step back** mark the row and put the caret on the node, enabled from whether the report in
+front carries a cursor. Step back has no gesture on purpose - Shift+F10 is the Windows context-menu key, and claiming it
+globally would take the context menu away from every control in the application.
 

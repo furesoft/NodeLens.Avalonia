@@ -399,6 +399,8 @@
           second time.
         -->
         <MenuItem x:Name="RunDocumentItem" Header="_Run document" InputGesture="F5" Click="OnRunDocument" />
+        <MenuItem x:Name="StepItem" Header="_Step" InputGesture="F10" IsEnabled="False" Click="OnStepForward" />
+        <MenuItem x:Name="StepBackItem" Header="Step _back" IsEnabled="False" Click="OnStepBack" />
         <MenuItem x:Name="RunTestsItem" Header="Run _tests" IsEnabled="False" Click="OnRunTests" />
         <MenuItem x:Name="GenerateItem" Header="_Generate text" IsEnabled="False" />
         <Separator />

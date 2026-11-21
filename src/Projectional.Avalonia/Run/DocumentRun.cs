@@ -47,7 +47,13 @@ public static class DocumentRun
         return new RunReport(
             result.Succeeded,
             result.Succeeded ? $"{result.Value!.Display} in {result.Steps} step(s)" : result.Failure!.Message,
-            RowsOf(result));
+            RowsOf(result))
+        {
+            // The cursor and the rows are the same trace: a step marks a row and moves the caret to the node that wrote
+            // it. A run that stopped before evaluating anything has an empty trace, so the cursor stands at the end of
+            // nothing and every step answers "no" - which is the truth rather than a special case.
+            Steps = new TraceCursor(result),
+        };
     }
 
     /// <summary>The trace as rows, each pointing at the node whose value it records.</summary>
