@@ -52,7 +52,7 @@ mutates it, so a host may build one options object and give two shells the same 
 | --- | --- | --- |
 | `Language` | the language this shell is for, or `null` for "all registered languages" | required |
 | `Storage` | `IShellStorage`: where models are read from and written to | required for saving; `null` means in-memory |
-| `Dialogs` | `IShellDialogs`: confirmations and questions | required; `ShellDialogs.Silent` refuses destructive answers instead of guessing |
+| `Dialogs` | `IShellDialogs`: choose a folder, a file to open, a file to save, and the answer to "discard unsaved changes?" | `null` means the desktop dialogs the window supplies |
 | `Capabilities` | what the user may do (`ShellCapabilities`) | `ShellCapabilities.Embedded` |
 | `Title`, `Icon` | window caption and icon; unused as a pane | language name |
 | `InitialModel` | open this model, or start with an empty tab | empty tab |
@@ -87,22 +87,37 @@ Two presets, and no third:
   configurable.
 - **`ShellCapabilities.Standalone`** = everything, which is what the app ships with.
 
-### The first slice, delivered in `MainWindow`
+### Delivered so far: the environment seams
 
-`ShellCapability` (a `[Flags]` set, `Projectional.Workbench/Shell/`) exists today, with
+`ShellCapability` (a `[Flags]` set) lives in `Projectional.Avalonia/Shell/`, beside
 `ShellCapabilities.Standalone` (every module) and `ShellCapabilities.Embedded` (create, edit, save,
-open, with the outline and the problems) beside the check both are read through. `MainWindow` takes
-the set as an internal constructor argument, composes the window from it - a module it does not grant
-is not built, so a shell without the project explorer gives the width back rather than leaving an
-empty strip - and the command handlers ask the same set before they act, which is the "hiding is
-presentation, refusing is the guarantee" rule of ADR 0015 applied without waiting for the registry.
+open, with the outline and the problems) and the `Allows` check both are read through - it is public,
+because a host has to be able to name the preset it wants. `MainWindow` composes the window from the
+set: a module it does not grant is not built, so a shell without the project explorer gives the width
+back rather than leaving an empty strip. The command handlers ask the same set before they act, which
+is the "hiding is presentation, refusing is the guarantee" rule of ADR 0015 applied without waiting
+for the registry.
 
-What is **not** there yet, and why: `ShellView`, `ShellWindow`, `IShellStorage`, `IShellDialogs` and
-the `CommandRegistry` are M6, and this slice deliberately does not invent them. Two consequences are
-worth naming rather than hiding. **Editing is not yet refused** by a capability - `EditModels` hides
-the Edit menu, but a host that passes a set without it still gets a control that types, because the
-editor control has no read-only state; that is the next seam to add. And the count of enforcement
-points is the handlers rather than one registry, so a new command has to remember to ask.
+`ShellOptions` exists and carries three of the members in the table above: `Capabilities`,
+`InitialModel` and `Storage`. The other two seams follow the same pattern - a contract in the library
+that speaks paths, ids and enums, and the toolkit-shaped implementation left in the app:
+
+- **`IShellStorage`** with `FileShellStorage.Default` as the file-system default, so the recent-files
+  list already goes through it rather than through `File` directly.
+- **`IShellDialogs`**, whose four methods take a `ShellFileType` (a name plus glob patterns) rather
+  than a `FilePickerFileType`, and return `UnsavedChoice`. `WindowShellDialogs` in
+  `Projectional.Workbench/Shell/` is the single place that turns one into the other, which is why
+  `ShellOptions.Dialogs` is nullable while `Storage` has a default: the adapter needs the window, and
+  the window does not exist when the options are written. All seven picker and prompt sites in
+  `MainWindow` go through it; no direct `StorageProvider` call is left.
+
+What is **not** there yet, and why: `CommandRegistry`, `ProjectDriver`, `ShellView` and `ShellWindow`
+are the rest of the extraction, and each slice has to keep the app working rather than land
+half-moved. Two consequences are still worth naming rather than hiding. **Editing is not yet refused**
+by a capability - `EditModels` hides the Edit menu, but a host that passes a set without it still
+gets a control that types, because the editor control has no read-only state; that is the next seam
+to add. And the count of enforcement points is the handlers rather than one registry, so a new command
+has to remember to ask.
 ### Capabilities are narrowed by facts, never contradicted by them
 
 A capability states what the *user* may do. It is never the only statement of a fact, and it is
@@ -185,7 +200,8 @@ also means the lock can be checked on the way in, before a `Model` exists to be 
 `ShellDialogs.Silent` is the default for an embedded shell because the alternative default - a
 modal box the host did not ask for - is the classic embedding surprise. Silent refuses
 destructive answers: a close of a dirty document returns "cannot close", which the host then
-resolves its own way.
+resolves its own way. It arrives with the embedding sample (E5); until then `Dialogs` null means
+the desktop dialogs the window supplies, which is the only implementation that exists.
 
 ## One place where "may not" is true
 
@@ -254,7 +270,7 @@ belong to the host, or to `IShellStorage` when the host has nowhere else to put 
 | --- | --- | --- | --- |
 | E1 | `feat/shell-commands` | M2 | `ShellCommand` and `ShellCommandRegistry` with capabilities and `BlockedReason`; the app's existing commands routed through it with no behaviour change |
 | E2 | `feat/shell-view` | M2 | `ShellView` extracted from `MainWindow`, `ShellWindow` around it, `MainWindow` reduced to wiring; the app behaves identically |
-| E3 | `feat/shell-storage` | M3 | `IShellStorage` and `IShellDialogs`, the file-system pair moved out of the app, and `DocumentFile` calling the seam instead of `File` |
+| E3 | `feat/shell-storage` | M3 | `IShellStorage` and `IShellDialogs` in the library with the file-system and window implementations left in the app (**interfaces delivered**; `DocumentFile` still calls `File` directly) |
 | E4 | `feat/shell-language-lock` | M6 | `ShellOptions.Language`, the project guard, creation without a picker, and every capability-driven UI difference |
 | E5 | `feat/shell-embedding-sample` | M6 | a sample host that embeds the shell locked to `Projectional.Samples`' rules language, as a pane and as a window |
 | E6 | `test/shell-embedding` | M6 | the headless capability matrix, the foreign-model refusal, the two-shells test, and one `Avalonia.Headless.XUnit` window test |

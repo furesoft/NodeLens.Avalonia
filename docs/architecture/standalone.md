@@ -58,6 +58,14 @@ Everything in that table is a plain class with no Avalonia dependency except the
 window and the two controls, so the shell's behaviour is testable headlessly. The
 window is wiring.
 
+**Where the extraction stands.** `ShellCapability`/`ShellCapabilities` and `ShellOptions` with its
+`Capabilities`, `InitialModel`, `Storage` and `Dialogs` are public in `Projectional.Avalonia/Shell/`,
+together with `IShellStorage`, `IShellDialogs`, `ShellFileType` and `UnsavedChoice`; the
+file-system and window implementations stay in the app. `CommandRegistry`, `ProjectDriver`,
+`ShellView` and `ShellWindow` still do not exist - the window is still the shell
+([embedded-shell.md](embedded-shell.md#delivered-so-far-the-environment-seams),
+[ADR 0015](../adr/0015-shell-is-a-library.md)).
+
 ## Composition rules
 
 1. **The app never mutates a model directly.** It goes through `EditorSession` and the

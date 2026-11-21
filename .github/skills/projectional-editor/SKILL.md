@@ -42,9 +42,13 @@ reference fallback in one undo step, with **Edit ▸ Rename...** in the shell), 
 standalone shell (tabs, menu bar, status bar, a problems panel) is being delivered.
 
 **The app is `MainWindow`, not a `ShellView`.** `standalone.md` and ADR 0015 describe a shell that is a
-library (`ShellView`, `ShellWindow`, `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`);
-**none of those types exist yet** - ADR 0015 puts that extraction at M6. Read those documents as the target
-shape, not as the tree, and add M2 features to `MainWindow` rather than inventing a `ShellView` on the way.
+library (`ShellView`, `ShellWindow`, `IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`).
+Two of those now exist: `IShellStorage` and `IShellDialogs` are public in
+`Projectional.Avalonia/Shell/` with `ShellCapability`, `ShellFileType`, `UnsavedChoice` and `ShellOptions`,
+while their file-system and window implementations stay in the app. `ShellView`, `ShellWindow`,
+`ProjectDriver` and `CommandRegistry` do not exist yet - ADR 0015 puts that extraction at M6. Read those
+documents as the target shape, and add M2 features to `MainWindow` rather than inventing a `ShellView` on
+the way.
 
 ## Status and where the truth lives
 
