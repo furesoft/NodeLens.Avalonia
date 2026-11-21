@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    One project per language (ADR 0021): the C# base language and the behaviour that belongs to it - its three
-    rules (`Checks/`), its five intentions (`Intentions/`) and its generator (`Generation/`). It is a base language
+    One project per language (ADR 0021): the C# base language and the behaviour that belongs to it - its rules
+    (`Checks/`), its five intentions (`Intentions/`) and its generator (`Generation/`). It is a base language
     in the MPS sense: always available in the shell, so a DSL can hold C# logic in the places where a plain value is
     not enough, and the generator turns it back into code a compiler accepts.
   -->
