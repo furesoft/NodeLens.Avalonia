@@ -6,7 +6,7 @@ document plans the .NET equivalent - projected C# - and is deliberately a plan f
 for M1.
 
 Status: **partly delivered, and shipped as the base language**. A subset of C# - the concepts below,
-their notation, three rules, five intentions and a generator, and no importer - is the package
+their notation, four rules, five intentions and a generator, and no importer - is the package
 `Projectional.CSharp` (`src/Languages/Projectional.CSharp`) and is proved by `CSharpLanguageTests`. It
 is registered in the shell's own registry rather than opened from a folder, so it is available in every
 document the way `jetbrains.mps.baseLanguage` is: a DSL declares a slot over `CSharp.Expression` and the
