@@ -41,7 +41,9 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.LocalDeclaration, new SameAs("type"))
         .Add(CSharpConceptKeys.Name, new NameType())
         .Add(CSharpConceptKeys.Parenthesized, new SameAs("inner"))
-        .Add(CSharpConceptKeys.Binary, new BinaryType());
+        .Add(CSharpConceptKeys.Binary, new BinaryType())
+        .Add(CSharpConceptKeys.Unary, new UnaryType())
+        .Add(CSharpConceptKeys.Conditional, new SameAs(CSharpLanguage.WhenTrueSlot));
 
     /// <summary>
     /// A written type, mapped to the primitive it names.
@@ -97,6 +99,21 @@ public static class CSharpTypes
                 : UnknownType.Instance;
     }
 
+    /// <summary>
+    /// A negation is a truth value, and every other unary operator is as wide as the operand it applies to.
+    /// </summary>
+    /// <remarks>
+    /// The same division the binary operators make, one operand shorter: `!ready` is a `bool` whatever `ready` is,
+    /// while `-count` has the type `count` has. A ternary takes the type of the branch it would choose, which is the
+    /// honest answer while the language has no join of two branches - `true ? 1 : "x"` is a mistake this cannot see.
+    /// </remarks>
+    private sealed class UnaryType : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) =>
+            context.Node.GetOrNull(CSharpLanguage.UnaryOperatorSlot) == CSharpUnaryOperator.Not
+                ? Bool
+                : context.TypeOfChild(CSharpConceptKeys.OperandSlot);
+    }
     /// <summary>
     /// The operator decides: a comparison or a logical operator is a truth value whatever its operands are, and
     /// arithmetic is as wide as its left operand.

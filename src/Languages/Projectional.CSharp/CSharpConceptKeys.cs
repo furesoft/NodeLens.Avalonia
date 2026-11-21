@@ -50,6 +50,12 @@ public static class CSharpConceptKeys
     /// <summary><c>new Type(args)</c>.</summary>
     public const string New = "CSharp.New";
 
+    /// <summary>One operator in front of one operand: <c>!ready</c>.</summary>
+    public const string Unary = "CSharp.Unary";
+
+    /// <summary><c>condition ? whenTrue : whenFalse</c>.</summary>
+    public const string Conditional = "CSharp.Conditional";
+
     /// <summary>A collection expression: the elements between two brackets.</summary>
     public const string CollectionExpression = "CSharp.CollectionExpression";
 
@@ -139,6 +145,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The property holding whether a property has a setter.</summary>
     public const string HasSetterSlot = "hasSetter";
+
+    /// <summary>The slot holding the value an operator is applied to, or the one a ternary chooses.</summary>
+    public const string OperandSlot = "operand";
 
     /// <summary>The slot holding what a foreach iterates.</summary>
     public const string SourceSlot = "source";

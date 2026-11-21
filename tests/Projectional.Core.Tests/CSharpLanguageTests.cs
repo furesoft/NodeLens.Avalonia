@@ -149,6 +149,72 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void TheNewerExpressionFormsDrawAndGenerateTheSameShape()
+    {
+        // The three that make a condition out of a value: a negation, a choice and an accumulating assignment. Each is
+        // one concept with one property, so the drawing and the generator stay one step apart rather than two.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("expressions");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+
+        // int next = !ready ? 0 : count;  - a negation inside the condition of a ternary.
+        var local = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var localType = model.NewChild(local, "type", CSharpConceptKeys.TypeReference);
+        var choice = model.NewChild(local, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Conditional);
+        var condition = model.NewChild(choice, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Unary);
+        var ready = model.NewChild(condition, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+        var zero = model.NewChild(choice, CSharpLanguage.WhenTrueSlot, CSharpConceptKeys.IntLiteral);
+        var other = model.NewChild(choice, CSharpLanguage.WhenFalseSlot, CSharpConceptKeys.Name);
+
+        // count += next;
+        var accumulate = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Assignment);
+        var target = model.NewChild(accumulate, "target", CSharpConceptKeys.Name);
+        var increment = model.NewChild(accumulate, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Forms");
+        method.Set(CSharpLanguage.NameSlot, "Pick");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        field.Set(CSharpLanguage.NameSlot, "count");
+        fieldType.Set(CSharpLanguage.NameSlot, "int");
+        local.Set(CSharpLanguage.NameSlot, "next");
+        localType.Set(CSharpLanguage.NameSlot, "int");
+        condition.Set(CSharpLanguage.UnaryOperatorSlot, CSharpUnaryOperator.Not);
+        ready.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "ready");
+        zero.Set(CSharpLanguage.ValueProperty, "0");
+        other.SetReference(CSharpConceptKeys.TargetSlot, field);
+        target.SetReference(CSharpConceptKeys.TargetSlot, field);
+        accumulate.Set(CSharpLanguage.AssignmentOperatorSlot, CSharpAssignmentOperator.Add);
+        increment.SetReference(CSharpConceptKeys.TargetSlot, local);
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Forms
+              {
+                public void Pick()
+                {
+                  int next = !ready ? 0 : count;
+                  count += next;
+                }
+                private int count;
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void AConstructorAndAnAutoPropertyDrawAndGenerateTheSameShape()
     {
         // What makes a class one you can instantiate: a constructor, and a property that keeps a value. The two forms

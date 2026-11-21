@@ -53,6 +53,24 @@ public static class CSharpLanguage
     /// <summary>The property holding the member a <c>MemberAccess</c> reads.</summary>
     public const string MemberSlot = "member";
 
+    /// <summary>The property holding a unary operator.</summary>
+    public const string UnaryOperatorSlot = "operator";
+
+    /// <summary>The property holding which assignment an <c>Assignment</c> is.</summary>
+    public const string AssignmentOperatorSlot = "operator";
+
+    /// <summary>The slot holding what a ternary takes when its condition holds.</summary>
+    public const string WhenTrueSlot = "whenTrue";
+
+    /// <summary>The slot holding what a ternary takes when it does not.</summary>
+    public const string WhenFalseSlot = "whenFalse";
+
+    /// <summary>The unary operators, as an enumeration for the same reason the binary ones are.</summary>
+    private static PropertyType UnaryType { get; } = PropertyType.Enum([.. CSharpUnaryOperator.All]);
+
+    /// <summary>The assignment forms, as an enumeration.</summary>
+    private static PropertyType AssignmentType { get; } = PropertyType.Enum([.. CSharpAssignmentOperator.All]);
+
     /// <summary>The visibility values, as an enumeration so the completion list offers them on arrival.</summary>
     private static PropertyType VisibilityType { get; } = PropertyType.Enum([.. CSharpVisibility.All]);
 
@@ -187,6 +205,29 @@ public static class CSharpLanguage
             isRoot: false,
             description: "new Type(args)"),
 
+        // One operator in front of one operand. The operator is an enumeration so the completion list offers the four
+        // the language knows, and so a symbol the language cannot generate is not a value the property can hold.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Unary,
+            [
+                new PropertySlot(UnaryOperatorSlot, UnaryType, CSharpUnaryOperator.Not),
+                new ChildSlot(CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Expression, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "One operator in front of one operand: !ready."),
+
+        // A ternary is three expressions and two symbols, which is why it is a concept and not a property on Binary.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Conditional,
+            [
+                new ChildSlot(CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(WhenTrueSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(WhenFalseSlot, CSharpConceptKeys.Expression, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "condition ? whenTrue : whenFalse"),
         // C# 12's collection expression. It is a concept rather than a call to a list constructor because the target
         // type decides what it becomes, and a projection has no target type to ask - so the tree says "these
         // elements, in this order" and the compiler is the one that names the collection.
@@ -339,6 +380,9 @@ public static class CSharpLanguage
                 new PropertySlot(NameSlot, PropertyType.String, description: "The local's name."),
                 new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0),
             ],
+            // A local declaration is a statement: without this it could not stand in a block, which is the only place a
+            // local is ever written.
+            superConcepts: [CSharpConceptKeys.Statement],
             interfaces: [CSharpConceptKeys.NamedDeclaration],
             nameSlot: NameSlot,
             nameRule: NameRule.Camel,
@@ -349,6 +393,7 @@ public static class CSharpLanguage
             CSharpConceptKeys.Assignment,
             [
                 new ChildSlot("target", CSharpConceptKeys.Expression, Cardinality.One),
+                new PropertySlot(AssignmentOperatorSlot, AssignmentType, CSharpAssignmentOperator.Assign),
                 new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One),
             ],
             superConcepts: [CSharpConceptKeys.Statement],
