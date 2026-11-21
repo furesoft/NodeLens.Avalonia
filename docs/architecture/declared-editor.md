@@ -59,6 +59,12 @@ exists for the same reason - a notation that can be written in C# and not as a m
 paths different languages (ADR 0014) - and it is what lets the structure language's header be declared rather than
 built when P7 defines the definition languages in themselves.
 
+**The block form of the while-filled cell has no declared twin yet.** `WhenFilledBlockNotationCell` was added when
+the concept notation needed a row that disappears - the `implements` list - and the editor language has no
+`Editor.WhileFilledBlock` to go with it. ADR 0014 rule 2 is not broken by that direction, since it forbids a
+capability only the workbench can express, but the two paths are unequal here and P7 would meet it when the
+definition languages are written in themselves.
+
 ## The shape: MPS' brackets
 
 A notation is drawn with MPS' own markers, because they are a reading aid that costs nothing to copy: `[/ ... /]`

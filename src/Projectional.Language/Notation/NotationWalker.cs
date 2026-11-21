@@ -19,6 +19,7 @@ internal static class NotationWalker
             HorizontalNotationCell horizontal => horizontal.Content,
             ConditionalNotationCell conditional => conditional.Content,
             WhenFilledNotationCell whenFilled => whenFilled.Content,
+            WhenFilledBlockNotationCell whenFilledBlock => whenFilledBlock.Content,
             _ => [],
         };
     }

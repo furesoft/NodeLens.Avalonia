@@ -254,6 +254,10 @@ public sealed class NotationRegistry
             case WhenFilledNotationCell whenFilled:
                 RequireChildSlotExists(concept, whenFilled.Slot);
                 break;
+
+            case WhenFilledBlockNotationCell whenFilledBlock:
+                RequireChildSlotExists(concept, whenFilledBlock.Slot);
+                break;
         }
     }
 

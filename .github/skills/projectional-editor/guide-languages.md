@@ -61,7 +61,8 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   unless the notation asks otherwise, so this is `stacked: true` on every collection here, not a renderer default; a
   section with four slots used to be drawn side by side. The marker is what makes a property's three option lines
   readable: without a visible end nobody can tell where one declaration stops.
-- **An empty list names its kind in the structure language**: `<<property>>`, `<<child>>`, `<<reference>>`,
+- **An empty section says `<< ... >>` in the structure language**, because the heading above it already names the
+  kind; a declaration inside one still says its own kind (`<<property name : string ... >>`),
   `<<symbol>>`. Three empty sections that shared one glyph could not tell an author which slot Enter would fill -
   do not collapse them back into a single `<< ... >>`. The two header lists are the exception: `extends` and
   `implements` already say which list they are, so an empty one is hidden rather than given a glyph. The editor

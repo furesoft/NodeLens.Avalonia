@@ -112,38 +112,50 @@ language because it is the same three ideas: a header that says what the concept
 extends, angle bracket blocks that say what it *holds*, and nothing else.
 
 ```text
-concept RuleSet implements Framework.Named {
-  offered in completion: true
-  named by: name
-  collapsed by:
-  named by rule:
-  described as:
-  properties:
-    <<property name : string
-      default:
-      described as:
-      described when filled: false>>
-  children:
-    <<child rules : Rules.Rule[0..n]>>
-  references:
-    <<reference>>
+concept RuleSet
+  implements Framework.Named
 
-abstract concept Condition {
-  offered in completion: true
-  named by:
-  collapsed by:
-  named by rule:
-  described as:
-  properties:
-    <<property negated : boolean
-      default:
-      described as:
-      described when filled: false>>
-  children:
-    <<child>>
-  references:
-    <<reference>>
-}
+instance can be root: true
+alias: <no alias>
+short description: <no short description>
+offered in completion: true
+named by: name
+collapsed by:
+named by rule:
+
+properties:
+  <<property name : string
+    default:
+    described as:
+    described when filled: false>>
+
+children:
+  <<child rules : Rules.Rule[0..n]>>
+
+references:
+  << ... >>
+
+abstract concept Condition
+
+instance can be root: true
+alias: <no alias>
+short description: <no short description>
+offered in completion: true
+named by:
+collapsed by:
+named by rule:
+
+properties:
+  <<property negated : boolean
+    default:
+    described as:
+    described when filled: false>>
+
+children:
+  << ... >>
+
+references:
+  << ... >>
 
 enum Operator
   Less
@@ -163,7 +175,7 @@ The vocabulary, and what each piece lowers to:
 | `concept X`, `abstract concept X` | `ConceptDeclaration(key, isAbstract)` | `concept` / `abstract concept` |
 | `interface concept X` | `ConceptDeclaration(key, isAbstract: true, isInterface: true)` - a concept kind whose members implementers inherit, not a second conformance relation ([interfaces.md](interfaces.md)) | `interface concept` |
 | `... extends A, B, ...` | `superConcepts`, in written order | `extends` |
-| `... implements I, J {` | `interfaces`, in written order; the same `IsKindOf` conformance, resolved after the extensions | `implements` |
+| `... implements I, J` | `interfaces`, in written order; the same `IsKindOf` conformance, resolved after the extensions | `implements` |
 | `<<property name : string ... >>` | a property slot plus its `PropertyType` | `<<property>>` |
 | `<<child steps : Step[0..n]>>` | a child slot plus its cardinality | `<<child>>` |
 | `<<reference target : Rule[0..1] ... >>` | a reference slot plus its cardinality | `<<reference>>` |
@@ -181,7 +193,7 @@ Four details are deliberate:
 - **The cardinality is written in brackets, always.** `[1]` for required single, `[0..1]` for
   optional, `[0..n]` and `[1..n]` for lists. A default of "you did not say" would be a fourth
   meaning the reader has to learn.
-- **Inheritance is in the header; designated slots are in the body.** The header answers "what is
+- **Inheritance is in the header; designated slots are below it.** The header answers "what is
   this" - and a list that holds nothing is not drawn, so the header says only what is true of the
   concept. Because that leaves the empty list without a cell, the two ways in are intentions:
   `Inherit from…` and `Implement interface…` create the first entry and put the caret on its key. The

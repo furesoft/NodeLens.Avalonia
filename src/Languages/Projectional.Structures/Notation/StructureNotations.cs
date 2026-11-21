@@ -4,7 +4,8 @@ namespace Projectional.Structures.Notation;
 
 /// <summary>
 /// How a language definition is drawn, in the shape MPS writes a structure model: a header that says what the
-/// concept is and what it inherits, and a body in braces with a block of options and one section per kind of slot.
+/// concept is and what it inherits, then a block of options and one section per kind of slot, the four groups
+/// separated by blank lines.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -14,17 +15,23 @@ namespace Projectional.Structures.Notation;
 /// rather than a grouping the renderer invents.
 /// </para>
 /// <para>
-/// The two lists in the header are inline collections inside a <see cref="WhenFilledNotationCell"/>, so an empty one
-/// is not drawn at all: <c>concept Rule extends Condition {</c> says what is true of this concept, and a concept
-/// that extends nothing does not mention extends. The price is paid in the same file - an empty slot has no caret
+/// There are no braces. A concept is a document, and a document does not need a bracket to say where it ends; what it
+/// needs is the grouping, which the blank lines between the header, the options and each section give. Indentation
+/// is then only used for what is <em>under</em> something - the entries of <c>implements</c>, and the declarations of
+/// a section - so a reader sees at a glance which lines belong to which group.
+/// </para>
+/// <para>
+/// The two lists of the header are drawn only while they hold something. <c>extends</c> stays inline, because its
+/// entries are a sentence: <c>concept Rule extends Condition</c>. <c>implements</c> gets a row of its own with its
+/// entries stacked under it, which needs the <em>block</em> form of the conditional
+/// (<see cref="WhenFilledBlockNotationCell"/>): a row that drew nothing would still occupy a line, and a concept
+/// that implements nothing has no such row at all. The price is paid in the same file - an empty slot has no caret
 /// stop, so the first entry is written with <c>StructureIntentions.InheritFrom</c>/<c>ImplementInterface</c> instead
 /// of with the caret.
 /// </para>
 /// <para>
-/// An empty section names the kind it will create - <c>&lt;&lt;property&gt;&gt;</c>, <c>&lt;&lt;child&gt;&gt;</c>,
-/// <c>&lt;&lt;reference&gt;&gt;</c>, and <c>&lt;&lt;symbol&gt;&gt;</c> for an enumeration. A section nobody has
-/// filled is a state to see, and a heading with nothing under it reads as a mistake; one shared placeholder for all
-/// three would say nothing about which slot Enter is about to fill.
+/// An empty section says <c>&lt;&lt; ... &gt;&gt;</c>: something belongs here, and the heading above it already says
+/// which kind of thing. The per-kind placeholder said it twice, and the one shared form is what MPS draws.
 /// </para>
 /// <para>
 /// A slot declaration carries its own kind and closes where it ends - <c>&lt;&lt;property name : string ...
@@ -54,9 +61,10 @@ public static class StructureNotations
     /// </summary>
     private const string NoInheritance = "<<>>";
 
-    private const string NoProperties = "<<property>>";
-    private const string NoChildren = "<<child>>";
-    private const string NoReferences = "<<reference>>";
+    private const string NoAlias = "<no alias>";
+    private const string NoShortDescription = "<no short description>";
+
+    private const string NoSection = "<< ... >>";
     private const string NoSymbols = "<<symbol>>";
 
     /// <summary>Registers the notation of every concept of the structure language.</summary>
@@ -77,13 +85,15 @@ public static class StructureNotations
         // two of them. Drawing both would say the same thing twice, because an interface is abstract by
         // definition.
         // The two lists are drawn only while they hold something, which is what makes a header read as a sentence
-        // about this concept: `concept Rule extends Condition {` says what it extends, and a concept that extends
+        // about this concept: `concept Rule extends Condition` says what it extends, and a concept that extends
         // nothing does not mention extends at all. The price is that the first entry has nowhere to be typed -
         // `StructureIntentions.InheritFrom`/`ImplementInterface` are the way in, exactly as "make abstract" is for
         // the word that has no cell either.
         //
-        // The comma between the two lists sits inside the second one and is conditioned on the first: `extends A
-        // implements B` has none, and a comma that stayed behind while its list vanished would dangle.
+        // `implements` has a row of its own rather than a word in the header, because the entries then line up under
+        // it and a reader sees a list instead of a comma-separated run. That needs the block form of `WhenFilled`:
+        // an unfilled row would leave the blank line it drew, and a concept that implements nothing has no such row
+        // at all.
         notations.Add(StructureConceptKeys.Concept, ed => ed.Sequence(
             ed.Line(
                 ed.Conditional(StructureLanguage.IsInterfaceProperty, "true", ed.Keyword("interface"), ed.Space),
@@ -99,29 +109,32 @@ public static class StructureNotations
                     ed.Space,
                     ed.Keyword("extends"),
                     ed.Space,
-                    ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance)),
-                ed.WhenFilled(
-                    StructureLanguage.ImplementsSlot,
-                    ed.WhenFilled(StructureLanguage.SuperTypeSlot, ed.Punct(",")),
-                    ed.Space,
-                    ed.Keyword("implements"),
-                    ed.Space,
-                    ed.InlineCollection(StructureLanguage.ImplementsSlot, ed.Punct(","), NoInheritance)),
+                    ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance))),
+            ed.WhenFilledBlock(
+                StructureLanguage.ImplementsSlot,
+                ed.Indent(ed.Horizontal(
+                    ed.Line(ed.Keyword("implements"), ed.Space),
+                    ed.Children(StructureLanguage.ImplementsSlot, NoSection, stacked: true)))),
+            ed.Line(),
+            ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
+            ed.Line(ed.Keyword("alias:"), ed.Space, ed.Property(StructureLanguage.AliasProperty, emptyText: NoAlias)),
+            ed.Line(
+                ed.Keyword("short description:"),
                 ed.Space,
-                ed.Punct("{")),
-            ed.Indent(ed.Sequence(
-                ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
-                ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
-                ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
-                ed.Line(ed.Keyword("named by rule:"), ed.Space, ed.Property("nameRule")),
-                ed.Line(ed.Keyword("described as:"), ed.Space, ed.Property("description")),
-                ed.Line(ed.Keyword("properties:")),
-                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoProperties, stacked: true)),
-                ed.Line(ed.Keyword("children:")),
-                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoChildren, stacked: true)),
-                ed.Line(ed.Keyword("references:")),
-                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoReferences, stacked: true)))),
-            ed.Line(ed.Punct("}"))));
+                ed.Property("description", emptyText: NoShortDescription)),
+            ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
+            ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
+            ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
+            ed.Line(ed.Keyword("named by rule:"), ed.Space, ed.Property("nameRule")),
+            ed.Line(),
+            ed.Line(ed.Keyword("properties:")),
+            ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoSection, stacked: true)),
+            ed.Line(),
+            ed.Line(ed.Keyword("children:")),
+            ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
+            ed.Line(),
+            ed.Line(ed.Keyword("references:")),
+            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 

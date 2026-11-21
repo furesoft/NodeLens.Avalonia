@@ -8,7 +8,7 @@ namespace Projectional.Core.Tests;
 
 /// <summary>
 /// A "while this slot is filled" cell draws its cells only while a child slot of the node holds a child, and
-/// otherwise draws nothing at all.
+/// otherwise draws nothing at all - inline inside a line, or as a block that leaves no row behind.
 /// </summary>
 /// <remarks>
 /// Same negative half as the property conditional, for a different reason: a slot that is empty is usually a slot
@@ -101,6 +101,50 @@ public sealed class WhenFilledNotationTests
         model.NewChild(rule, "body", Rule);
 
         Assert.Throws<ProjectionException>(() => LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
+    public void ABlockIsDrawnWhileTheSlotHoldsAChild()
+    {
+        var drawn = Render(
+            ed => ed.Sequence(
+                ed.Line(ed.Keyword("rule")),
+                ed.WhenFilledBlock("body", ed.Line(ed.Keyword("has")))),
+            filled: true);
+
+        Assert.Equal("rule\nhas", drawn);
+    }
+
+    [Fact]
+    public void AnEmptyBlockLeavesNoRowAtAll()
+    {
+        // The difference to the inline cell, and the whole reason the block form exists: an empty line would still
+        // take the row layout reserves for it, so an emptied block has to leave the tree instead.
+        var drawn = Render(
+            ed => ed.Sequence(
+                ed.Line(ed.Keyword("rule")),
+                ed.WhenFilledBlock("body", ed.Line(ed.Keyword("has")))),
+            filled: false);
+
+        Assert.Equal("rule", drawn);
+    }
+
+    [Fact]
+    public void AWhenFilledBlockOnASlotTheConceptDoesNotDeclareIsRefused()
+    {
+        var error = Refuses(ed => ed.Sequence(ed.WhenFilledBlock("missing", ed.Line(ed.Keyword("has")))));
+
+        Assert.Contains("'missing'", error.Message, StringComparison.Ordinal);
+        Assert.Contains("declares no such child", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AWhenFilledBlockOnAPropertyIsRefused()
+    {
+        var error = Refuses(ed => ed.Sequence(ed.WhenFilledBlock("name", ed.Line(ed.Keyword("has")))));
+
+        Assert.Contains("'name'", error.Message, StringComparison.Ordinal);
+        Assert.Contains("declares no such child", error.Message, StringComparison.Ordinal);
     }
 
     private static string Render(Func<NotationEditor, BlockNotationCell> build, bool filled)

@@ -99,7 +99,7 @@ application and in the standalone app, proving the two front ends share the beha
 | Language-definition parity | accessory models (the library nodes a language ships, such as a colour palette) and an instance created from a typed alias are what is left; the concept's alias as the word completion offers, and an explicit "may be a root" flag, are delivered ([mps-gap-analysis.md](architecture/mps-gap-analysis.md)) |
 
 By the end of this milestone the definition languages are written in themselves: the same
-project folder, the same `<<property>>` blocks, the same cell glyphs, loaded from the bootstrap
+project folder, the same `<<property … >>` blocks, the same cell glyphs, loaded from the bootstrap
 corpus and checked by the parity harness against their C# twins.
 
 **Gate:** a new DSL is created from an empty project inside the workbench, including

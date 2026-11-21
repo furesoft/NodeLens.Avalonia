@@ -34,42 +34,50 @@ enum Rules.Outcome
 ```
 
 ```text
-concept Rules.Element {
-  offered in completion: true
-  named by:
-  collapsed by:
-  named by rule:
-  described as:
-  properties:
-    <<property name : string
-      default:
-      described as:
-      described when filled: false>>
-  children:
-    <<child>>
-  references:
-    <<reference>>
-}
+concept Rules.Element
+
+instance can be root: true
+alias: <no alias>
+short description: <no short description>
+offered in completion: true
+named by:
+collapsed by:
+named by rule:
+
+properties:
+  << ... >>
+
+children:
+  << ... >>
+
+references:
+  << ... >>
 ```
 
 ```text
-abstract concept Rules.Rule extends Rules.Element, implements Framework.Named {
-  offered in completion: true
-  named by: name
-  collapsed by:
-  named by rule:
-  described as: One rule of a ruleset.
-  properties:
-    <<property name : string
-      default:
-      described as: What the rule is called.
-      described when filled: false>>
-  children:
-    <<child steps : Rules.Step[0..n]>>
-  references:
-    <<reference condition : Rules.Condition
-      own subtree: false>>
-}
+abstract concept Rules.Rule extends Rules.Element
+  implements Framework.Named
+
+instance can be root: true
+alias: Rule
+short description: One rule of a ruleset.
+offered in completion: true
+named by: name
+collapsed by:
+named by rule:
+
+properties:
+  <<property name : string
+    default:
+    described as: What the rule is called.
+    described when filled: false>>
+
+children:
+  <<child steps : Rules.Step[0..n]>>
+
+references:
+  <<reference condition : Rules.Condition
+    own subtree: false>>
 ```
 
 `abstract` is a word of the header and not an option, which is MPS' spelling and the better reading of the same
@@ -110,43 +118,48 @@ statement a check can read instead of a flag the model has to interpret.
 ## What MPS's look the engine can and cannot do
 
 `StructureNotations` draws the definition in MPS's shape: a header that says what the concept *is* and what it
-extends and implements, then a body in braces with a block of options and one section per kind of slot. Copying the
-shape is worth it for the reason MPS has it: a reviewer reads the inheritance and the kind of the concept in the
-header, what it allows in the options, and what it holds in three named sections.
+extends, then the `implements` list on a row of its own, then a block of options and one section per kind of slot,
+the groups separated by blank lines. Copying the shape is worth it for the reason MPS has it: a reviewer reads the
+inheritance and the kind of the concept in the header, what it allows in the options, and what it holds in three
+named sections. There are no braces: a concept is a document, and the grouping says where each part ends.
 
 Three decisions make that readable, and all three are P4:
 
-- **The header carries the inheritance, and only what is true** - `concept Rules.Rule extends Rules.Element,
-  implements Framework.Named {`, and `concept Rules.Rule {` when there is neither. Both lists are inline
-  collections wrapped in a [while-filled cell](language.md#notation), so an empty one draws nothing at all rather
-  than a placeholder nobody wants to read. The price is stated in the same place as the feature: an empty list has
-  no caret stop, so `Inherit from…` and `Implement interface…` (`Projectional.Structures.Intentions`) are the way
-  to write the first entry - and to append a second, because Enter does not extend a list inside a line.
+- **The header carries the inheritance, and only what is true** - `concept Rules.Rule extends Rules.Element` and the
+  `implements` row under it, or just `concept Rules.Rule` when there is neither. `extends` is an
+  [inline while-filled cell](language.md#notation) and `implements` the block form of the same idea, so an empty
+  list draws nothing at all rather than a placeholder nobody wants to read. The price is stated in the same place as
+  the feature: an empty list has no caret stop, so `Inherit from…` and `Implement interface…`
+  (`Projectional.Structures.Intentions`) are the way to write the first entry - and to append a second, because
+  Enter does not extend a list inside a line.
 - **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`, `<<child steps :
   Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>`. A property carries three option lines under
   it, so without a visible end the reader cannot tell where one declaration stops and the next begins. The word
   inside the marker is MPS' word for the same three things.
-- **Every collection stacks, and an empty one names its kind.** Layout draws a collection inline unless the
+- **Every collection stacks, and an empty section says `<< ... >>`.** Layout draws a collection inline unless the
   notation asks it to ([projection.md](projection.md) §Layout), so two properties of one concept used to be drawn
   side by side and an enumeration's symbols shared a line. A definition is read one declaration per line. The empty
-  state of a *slot* section is `<<property>>`, `<<child>>`, `<<reference>>` and `<<symbol>>` rather than one shared
-  placeholder, because the section heading groups declarations and the placeholder has to say which kind stands in
-  the slot it will create - a placeholder that said nothing would offer Enter a slot it could not name. The two
-  header lists are the exception that proves it: their words are `extends` and `implements`, so they need no
-  placeholder and are simply not drawn.
+  state of a section is the one shared placeholder because the heading above it already names the kind, and saying
+  it twice is what MPS does not do. The two header lists are the exception: their words are `extends` and
+  `implements`, so they need no placeholder and are simply not drawn.
 
-What that look needs is a cell that can disappear, and the notation layer has one: a
-[conditional cell](language.md#notation) draws its inline cells only while a property holds a value. `abstract` is
-the case it was added for - a concrete concept draws `concept ...`, an abstract one `abstract concept ...`.
+What that look needs is a cell that can disappear, and the notation layer has two: a
+[conditional cell](language.md#notation) draws its inline cells only while a property holds a value, and the
+while-filled cell does the same for a child slot - inline for a word, as a block when a whole row has to go, which
+is what puts `implements` on its own line without leaving the blank row an emptied line would keep. `abstract` is
+the case the conditional was added for - a concrete concept draws `concept ...`, an abstract one
+`abstract concept ...`.
 
 The remaining gap is not the notation's:
 
-- **`instance can be root` and `alias`.** MPS offers both; neither has anywhere to land here. Applicability is a
-  `ConceptDeclaration` argument with `Anywhere`/`AsChild`/`AsRoot` places, and an alias would be a second name for a
-  concept that no layer below reads. ADR 0014's rule - nothing declared-only - keeps them out until something
-  consumes them.
-- **A block conditional** - hiding a whole option line rather than a word - would be the same mechanism one level up,
-  and it is not here because nothing needs it yet.
+- **Neither `instance can be root` nor `alias` is a gap any more.** Both are `ConceptDeclaration` arguments
+  (`isRoot`, `alias`) and both have a consumer: the model refuses to make a non-root concept a document root, and
+  the proposal list shows an alias instead of the concept's own name. That is the form ADR 0014 asks for - a
+  declared fact is only worth adding once something below reads it.
+- **A declared block conditional.** The C# cell exists (`WhenFilledBlockNotationCell`) because the concept notation
+  needed it; the editor language has no `Editor.WhileFilledBlock` yet, so a language written as a model cannot use
+  the block form. ADR 0014's rule is not broken by that - it forbids a capability only the *workbench* can express -
+  but the two paths are unequal here until the declared twin arrives.
 
 ## The lowering, and what it refuses to check
 
@@ -176,7 +189,7 @@ classes keep their names (`StructureLanguage`, `StructureLowering`, `StructureCo
 | --- | --- |
 | notation as data (one editor document per notation) | P2 |
 | `language.mps` as one model per aspect, with dependencies | when a language can extend another, which is what a dependency list is for |
-| a block conditional, which would let a whole option line disappear | when a notation needs it |
+| a declared block conditional (`Editor.WhileFilledBlock`) | when a declared language needs to hide a whole row |
 | toggling the flag from the header rather than from a menu | it is an [intention](context-actions.md), by design |
 | triggers, applicability and collapse slots as declared data | after P2, when an aspect model exists to hold them |
 | constraints, types, generators as declared data | M6 |
