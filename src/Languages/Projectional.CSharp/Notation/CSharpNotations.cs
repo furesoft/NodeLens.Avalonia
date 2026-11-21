@@ -135,6 +135,10 @@ public static class CSharpNotations
         // ends the header with a semicolon and puts the classes at the same level, the block one opens a brace, moves
         // them in and closes it. The group the model did not choose leaves no row at all, which is what a conditional
         // block is for - an empty group would still take the line layout reserves for it.
+        //
+        // The type list is groups with no tight concept at all, so every type is separated from the next by a blank
+        // line - unlike the class's member list, where a run of fields stays together. That is the difference between
+        // the two conventions: members of one kind belong together, types of any kind never do.
         notations.Add(CSharpConceptKeys.Namespace, ed => ed.Sequence(
             ed.ConditionalBlock(
                 CSharpLanguage.IsFileScopedSlot,
@@ -144,7 +148,12 @@ public static class CSharpNotations
                     ed.Space,
                     ed.Property(CSharpLanguage.NameSlot),
                     ed.Punct(";")),
-                ed.Children(CSharpConceptKeys.ClassesSlot, "<no classes>", stacked: true)),
+                ed.Children(
+                    CSharpConceptKeys.ClassesSlot,
+                    "<no classes>",
+                    stacked: true,
+                    blankLineBetweenGroups: true,
+                    blankLineBeforeFirst: true)),
             ed.ConditionalBlock(
                 CSharpLanguage.IsFileScopedSlot,
                 "false",
@@ -153,7 +162,11 @@ public static class CSharpNotations
                     ed.Space,
                     ed.Property(CSharpLanguage.NameSlot)),
                 ed.Line(ed.Punct("{")),
-                ed.Indent(ed.Children(CSharpConceptKeys.ClassesSlot, "<no classes>", stacked: true)),
+                ed.Indent(ed.Children(
+                    CSharpConceptKeys.ClassesSlot,
+                    "<no classes>",
+                    stacked: true,
+                    blankLineBetweenGroups: true)),
                 ed.Line(ed.Punct("}")))));
 
         // A class: the same shape, with its members between the braces. Fields are the tight kind, so a run of fields

@@ -109,13 +109,17 @@ public sealed class NotationEditor
     /// <param name="tightConcepts">
     /// The concepts whose neighbours share a group, so no blank line separates them.
     /// </param>
+    /// <param name="blankLineBeforeFirst">
+    /// Whether the list opens with a blank line above its first child.
+    /// </param>
     public ChildNotationCell Children(
         string slot,
         string emptyText = "<empty>",
         int spacing = 1,
         bool stacked = false,
         bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null) =>
+        IReadOnlySet<string>? tightConcepts = null,
+        bool blankLineBeforeFirst = false) =>
         new(slot)
         {
             EmptyText = emptyText,
@@ -123,6 +127,7 @@ public sealed class NotationEditor
             Stacked = stacked,
             BlankLineBetweenGroups = blankLineBetweenGroups,
             TightConcepts = tightConcepts ?? ChildGroups.Empty,
+            BlankLineBeforeFirst = blankLineBeforeFirst,
         };
 
     public CollectionNotationCell Collection(

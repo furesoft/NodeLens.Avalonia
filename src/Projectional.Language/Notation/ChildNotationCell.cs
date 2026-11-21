@@ -66,5 +66,13 @@ public sealed class ChildNotationCell : BlockNotationCell
     /// </remarks>
     public IReadOnlySet<string> TightConcepts { get; init; } = ChildGroups.Empty;
 
+    /// <summary>Whether the list opens with a blank line above its first child.</summary>
+    /// <remarks>
+    /// Only a stacked child cell can draw one, for the same reason a group boundary needs one. The generator's
+    /// <c>ChildrenPart</c> carries the same flag, so a list that opens with a gap does so in the drawn document and in
+    /// the generated text alike.
+    /// </remarks>
+    public bool BlankLineBeforeFirst { get; init; }
+
     public override string ToString() => Stacked ? $"children {Slot} (stacked)" : $"children {Slot}";
 }

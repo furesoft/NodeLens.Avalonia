@@ -133,7 +133,8 @@ public sealed class EditorTreeBuilder
                 children.Spacing,
                 children.Stacked,
                 children.BlankLineBetweenGroups,
-                children.TightConcepts),
+                children.TightConcepts,
+                children.BlankLineBeforeFirst),
             CollectionNotationCell collection => BuildCollection(
                 collection.Slot, collection.Separator, collection.EmptyText, collection.Spacing, node, emphasis, rootAddress),
 
@@ -380,7 +381,8 @@ public sealed class EditorTreeBuilder
         int spacing,
         bool stacked = false,
         bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null)
+        IReadOnlySet<string>? tightConcepts = null,
+        bool blankLineBeforeFirst = false)
     {
         if (node.Concept.FindChild(slot) is null)
         {
@@ -415,8 +417,8 @@ public sealed class EditorTreeBuilder
         return new ChildCell(address, slot, emptyText, content)
         {
             IsStacked = stacked,
-            BlankLineBefore = stacked && blankLineBetweenGroups
-                ? GroupStarts(children, tightConcepts ?? ChildGroups.Empty)
+            BlankLineBefore = stacked
+                ? GroupStarts(children, tightConcepts ?? ChildGroups.Empty, blankLineBetweenGroups, blankLineBeforeFirst)
                 : new HashSet<int>(),
         };
     }
@@ -425,14 +427,30 @@ public sealed class EditorTreeBuilder
     /// The positions whose child starts a new group, so that a blank line goes above it.
     /// </summary>
     /// <remarks>
-    /// The first child never starts a group - there is nothing above it to separate it from - so the result is a set
-    /// of positions and not a predicate, which is what keeps a blank line out of the tree and away from the caret.
-    /// The decision itself is <see cref="ChildGroups"/>'s, the same one the generator asks, so the drawing and the
-    /// generated text cannot disagree about where a group ends.
+    /// The first child starts no group <em>because of the child before it</em> - there is none - so it is in the set
+    /// only when the notation says the list itself opens with a gap, which is the one case where the row above the
+    /// first child is not the thing it belongs to. The result is a set of positions and not a predicate, which is what
+    /// keeps a blank line out of the tree and away from the caret. The decision itself is <see cref="ChildGroups"/>'s,
+    /// the same one the generator asks, so the drawing and the generated text cannot disagree about where a group
+    /// ends.
     /// </remarks>
-    private static HashSet<int> GroupStarts(IReadOnlyList<Node> children, IReadOnlySet<string> tight)
+    private static HashSet<int> GroupStarts(
+        IReadOnlyList<Node> children,
+        IReadOnlySet<string> tight,
+        bool blankLineBetweenGroups,
+        bool blankLineBeforeFirst)
     {
         var starts = new HashSet<int>();
+
+        if (blankLineBeforeFirst && children.Count > 0)
+        {
+            starts.Add(0);
+        }
+
+        if (!blankLineBetweenGroups)
+        {
+            return starts;
+        }
 
         for (var index = 1; index < children.Count; index++)
         {

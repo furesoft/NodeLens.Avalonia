@@ -131,7 +131,11 @@ the tree, in abstract **layout units** rather than pixels.
   leaf and every leaf is a caret target - a spacer would be a caret stop on a row nobody drew. The positions
   come from `ChildGroups.IsBoundary`, the same rule the generator applies, so the drawing and the generated
   text put the blank line in the same place. A group boundary is vertical space, so only a stacked slot can
-  draw one; the flag on a single-line slot does nothing.
+  draw one; the flag on a single-line slot does nothing. `BlankLineBeforeFirst` asks for the gap above the
+  *first* child, which no boundary can describe because there is no neighbour above it - a list the notation
+  puts under a header of its own, like the types below a file-scoped namespace declaration. It is the same
+  index set and the same line height; position `0` is simply a member of it, which is why `CellLayouter`
+  needed no second rule and the caret still has nowhere new to stand.
 - **Where a list may stand is a type, not a flag.** `CollectionNotationCell` is a block cell and
   starts its own line; `InlineCollectionNotationCell` stays inside the line it is drawn on, with the
   same `Separator`/`Spacing`/`EmptyText` and the same runtime `CollectionCell` (which arranges its
