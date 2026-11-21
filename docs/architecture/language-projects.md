@@ -138,11 +138,43 @@ M2's gate in its smallest complete form.
   disappear. This is also what makes re-opening a folder a *replacement* rather than a second copy, and the parity
   harness's dump comparison covers it, so a rebuild that loses a flag or an order fails a test rather than a file.
 
+## The language root
+
+`language.mps` at the project root is the one document of a project that is not a definition: it *is* the
+language. It is drawn like any other document of the structure language, so it can be opened, edited and saved in
+the editor:
+
+```text
+    language Pipeline
+      version: 1.0.0
+      depends on:
+        << ... >>
+      extends:
+        << ... >>
+```
+
+- **It is optional, and a folder without one is unchanged.** The name falls back to the folder's own and no version
+  or dependency is declared, which is what every language project meant before the file existed - the samples that
+  predate it keep loading as they did.
+- **It is read beside the folders, not inside one.** `LanguageProject.Open` loads it with the structure language and
+  exposes `Name`, `Version`, `Dependencies` and `Extends`. A root dropped into `structure/` is refused with a message
+  saying where it belongs, because a silently ignored one would leave its author wondering why the language is still
+  named after its folder.
+- **One root per document holds here too.** Two roots in `language.mps` is two languages in one file, the same error
+  an aspect folder refuses; and a root that says no name is a message naming the file, not an exception at the
+  moment the user picks a folder.
+- **The two lists are declared, not resolved.** Reading them is what lets a host report where a language says it
+  belongs and where it extends another. Merging that language's concepts in crosses a project boundary, so it is a
+  decision of its own before it is a feature.
+- **What it declares is shown, not enforced.** Module settings lists the declared version and the two lists beside
+  the author's own two version numbers, which stay in `module.settings`: what the folder *declares* and what its
+  author *sets* are two different statements, and only the second one is written by the dialog.
+
 ## What is still missing
 
 | Missing | Why it is not in this slice |
 | --- | --- |
-| `language.mps` (name, version, dependencies, extended languages) | P3 proper: it needs the aspect models it names |
+| Resolving a declared dependency or extension (merging the other language's concepts, references across the project boundary) | Declaring is what `language.mps` was for; acting on the declaration changes what a project *is*, so it needs its own decision first |
 
 Exporting a loaded language back to C# is delivered - see
 [language-authoring.md](language-authoring.md#export-declared-to-c) - and so is the shell entry that writes it
