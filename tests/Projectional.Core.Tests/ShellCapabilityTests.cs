@@ -1,4 +1,4 @@
-using Projectional.Workbench;
+using Projectional.Avalonia;
 using Xunit;
 
 namespace Projectional.Core.Tests;

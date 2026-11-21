@@ -98,11 +98,8 @@ public sealed partial class MainWindow : Window, IDisposable
     /// so a session on a different one would paste text the platform has already replaced.
     /// </remarks>
     private readonly AvaloniaClipboard _clipboard;
-    private readonly TextRecentFilesStore _recentStore = new(
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Projectional",
-            "recent.txt"));
+    private readonly IShellStorage _storage;
+    private readonly TextRecentFilesStore _recentStore;
 
     private RecentFiles _recent = RecentFiles.Empty;
 
@@ -163,20 +160,31 @@ public sealed partial class MainWindow : Window, IDisposable
     }
 
     /// <summary>Creates the window with every module - the standalone editor.</summary>
-    public MainWindow() : this(ShellCapabilities.Standalone)
+    public MainWindow() : this(new ShellOptions())
     {
     }
 
-    /// <summary>Creates the window over <paramref name="capabilities"/>, which is what a host decides.</summary>
-    /// <param name="capabilities">The modules and actions this shell may offer.</param>
+    /// <summary>Creates the window over <paramref name="options"/>, which is what a host decides.</summary>
+    /// <param name="options">The modules this shell may offer and where it keeps what it persists.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <remarks>
     /// Internal rather than public because the shell is not a library yet (ADR 0015 puts that extraction at M6);
-    /// a host today embeds it through this seam, and the seams the screenshots use are internal for the same
-    /// reason. When M6 lands, this parameter moves to <c>ShellView</c> unchanged.
+    /// a host today reaches it through the sample's own seam, and the seams the screenshots use are internal for the
+    /// same reason. When M6 lands, this parameter passes to <c>ShellView</c> unchanged - the options travel as one
+    /// value rather than as three arguments, which is what makes that step a move instead of a rewrite.
     /// </remarks>
-    internal MainWindow(ShellCapability capabilities)
+    internal MainWindow(ShellOptions options)
     {
-        _capabilities = capabilities;
+        ArgumentNullException.ThrowIfNull(options);
+
+        _capabilities = options.Capabilities;
+        _storage = options.Storage;
+        _recentStore = new TextRecentFilesStore(
+            _storage,
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Projectional",
+                "recent.txt"));
 
         InitializeComponent();
 

@@ -1,4 +1,5 @@
 using System.Text;
+using Projectional.Avalonia;
 using Projectional.Workbench;
 using Xunit;
 
@@ -17,7 +18,7 @@ public sealed class TextRecentFilesStoreTests
     {
         using var directory = new TemporaryDirectory();
 
-        var store = new TextRecentFilesStore(directory.Combine("recent.txt"));
+        var store = new TextRecentFilesStore(FileShellStorage.Default, directory.Combine("recent.txt"));
 
         store.Write([@"C:\a.mps", @"C:\b.mps"]);
 
@@ -29,7 +30,7 @@ public sealed class TextRecentFilesStoreTests
     {
         using var directory = new TemporaryDirectory();
 
-        var store = new TextRecentFilesStore(directory.Combine("never-written.txt"));
+        var store = new TextRecentFilesStore(FileShellStorage.Default, directory.Combine("never-written.txt"));
 
         Assert.Empty(store.Read());
     }
@@ -42,7 +43,7 @@ public sealed class TextRecentFilesStoreTests
 
         File.WriteAllText(path, "C:\\a.mps\n\nC:\\b.mps\n", new UTF8Encoding(false));
 
-        var store = new TextRecentFilesStore(path);
+        var store = new TextRecentFilesStore(FileShellStorage.Default, path);
 
         // The store does not tidy; RecentFiles.From does, so validation lives in one place only.
         Assert.Equal([@"C:\a.mps", string.Empty, @"C:\b.mps"], store.Read());
@@ -54,7 +55,7 @@ public sealed class TextRecentFilesStoreTests
     {
         using var directory = new TemporaryDirectory();
 
-        var store = new TextRecentFilesStore(Path.Combine(directory.Root, "nested", "deeper", "recent.txt"));
+        var store = new TextRecentFilesStore(FileShellStorage.Default, Path.Combine(directory.Root, "nested", "deeper", "recent.txt"));
 
         store.Write([@"C:\a.mps"]);
 

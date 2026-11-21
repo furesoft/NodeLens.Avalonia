@@ -1,4 +1,4 @@
-namespace Projectional.Workbench;
+namespace Projectional.Avalonia;
 
 /// <summary>What one shell instance is allowed to offer: the modules and actions it composes.</summary>
 /// <remarks>
@@ -15,7 +15,7 @@ namespace Projectional.Workbench;
 /// </para>
 /// </remarks>
 [Flags]
-internal enum ShellCapability
+public enum ShellCapability
 {
     /// <summary>Nothing: the shell is a place to look at a document somebody else opened.</summary>
     None = 0,
@@ -73,13 +73,13 @@ internal enum ShellCapability
 /// window - create, edit and save a model, with the outline and the problems to orient by, and none of the
 /// language-workbench modules. A host is free to name any other subset; these are the two that must not drift.
 /// </remarks>
-internal static class ShellCapabilities
+public static class ShellCapabilities
 {
     /// <summary>The standalone editor: every module.</summary>
-    internal const ShellCapability Standalone = ShellCapability.All;
+    public const ShellCapability Standalone = ShellCapability.All;
 
     /// <summary>An editor a host embeds: models can be made, edited and saved, and nothing else is offered.</summary>
-    internal const ShellCapability Embedded =
+    public const ShellCapability Embedded =
         ShellCapability.CreateModels | ShellCapability.EditModels | ShellCapability.Save
         | ShellCapability.OpenFiles | ShellCapability.Outline | ShellCapability.Problems;
 
@@ -90,6 +90,6 @@ internal static class ShellCapabilities
     /// Every flag, not any flag: a composite request such as <c>OpenFiles | Save</c> must be answered by a set that
     /// grants both, which is what makes a caller able to ask one question for one command.
     /// </remarks>
-    internal static bool Allows(this ShellCapability granted, ShellCapability capability) =>
+    public static bool Allows(this ShellCapability granted, ShellCapability capability) =>
         (granted & capability) == capability;
 }

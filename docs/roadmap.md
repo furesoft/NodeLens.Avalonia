@@ -51,11 +51,17 @@ handful of completion fine points. The milestone tables below name the ones that
 the survey, the deliberate differences and the open decisions are in
 [mps-gap-analysis.md](architecture/mps-gap-analysis.md).
 
-**Known gap, recorded rather than fixed here:** `standalone.md` and
+**Known gap, in slices:** `standalone.md` and
 [ADR 0015](adr/0015-shell-is-a-library.md) describe a shell that is a library (`ShellView`, `ShellWindow`,
-`IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and none of those types exist yet - the
-app is `MainWindow` alone. ADR 0015 puts that extraction at M6, so the M2 features were added to
-`MainWindow`; whoever does M6 moves them.
+`IShellStorage`, `IShellDialogs`, `ProjectDriver`, `CommandRegistry`), and the app is still `MainWindow`
+alone. ADR 0015 puts that extraction at M6, so the M2 features were added to `MainWindow`; whoever does M6
+moves them. **Slice 1 is delivered**: `ShellCapability`/`ShellCapabilities` moved into the library and became
+public, `ShellOptions` carries a host's decisions, and `IShellStorage` with `FileShellStorage` is the seam the
+recent list now goes through - so a host can keep that state somewhere else today. What is left, in order:
+`IShellDialogs` (the file pickers and the unsaved prompt, which are Avalonia-shaped and need the interface to
+speak paths), `CommandRegistry` (the one enforcement point), then `ShellView`/`ShellWindow` with
+`ProjectDriver` - the last of which moves the whole Workbench minus `Program`/`App`/`SelfCheck` into the
+library, which is why it is its own slice.
 
 The dependency-set incrementality that lets the constraint engine produce diagnostics in volume stays
 where it is, in M4.
