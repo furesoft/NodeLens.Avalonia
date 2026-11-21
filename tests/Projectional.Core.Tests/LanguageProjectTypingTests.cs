@@ -67,11 +67,51 @@ public sealed class LanguageProjectTypingTests
         Assert.Contains("declares no property named 'missing'", error, StringComparison.Ordinal);
     }
 
-    private static void WriteStructure(string directory)
+    [Fact]
+    public void ARuleThatClaimsTheAliasReadsTheWordsTheConceptDeclares()
+    {
+        // MPS' "an instance created from a typed alias": the word completion offers is the word a keystroke creates,
+        // because both read the concept's declaration - so a rule that says "the alias" needs no text of its own.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root, alias: "num");
+        WriteRule(folder.Root, name: "number", conceptKey: "Doc.Number", claims: TypingClaims.Alias, property: "value");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        Assert.Equal("value", language.Typing.ClaimFor("Doc.Number", "num")?.PropertySlot);
+
+        // The whole word, not a prefix and not a case-insensitive match.
+        Assert.Null(language.Typing.ClaimFor("Doc.Number", "numb"));
+        Assert.Null(language.Typing.ClaimFor("Doc.Number", "Num"));
+    }
+
+    [Fact]
+    public void ARuleThatClaimsAnAliasTheConceptDoesNotDeclareIsRefused()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteRule(folder.Root, name: "number", conceptKey: "Doc.Number", claims: TypingClaims.Alias, property: "value");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains("declares none", error, StringComparison.Ordinal);
+    }
+
+    private static void WriteStructure(string directory, string? alias = null)
     {
         var definition = new DefinitionBuilder();
 
-        definition.Concept("Doc.Number", slots: [definition.Property("value", "string")], nameSlot: "value");
+        definition.Concept(
+            "Doc.Number",
+            slots: [definition.Property("value", "string")],
+            nameSlot: "value",
+            alias: alias);
 
         var structure = Path.Combine(directory, LanguageProject.StructureFolder);
 

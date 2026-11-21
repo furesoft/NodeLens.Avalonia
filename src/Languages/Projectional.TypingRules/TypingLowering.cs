@@ -102,8 +102,12 @@ public static class TypingLowering
                     $"Two typing rules claim '{conceptKey}'; one concept is one answer to what the text creates, so state it once.");
             }
 
-            rules = rules.Add(conceptKey, ClaimsOf(conceptKey, claims, text), property);
-            declared.Add(new DeclaredTypingRule(conceptKey, claims, text, property));
+            // The alias claim reads the word from the concept, so that is where the text comes from - and recording it
+            // in the lowered rule is what lets an export write the predicate without the declarations in hand.
+            var words = claims == TypingClaims.Alias ? AliasOf(conceptKey, concept, text) : text;
+
+            rules = rules.Add(conceptKey, ClaimsOf(conceptKey, claims, words), property);
+            declared.Add(new DeclaredTypingRule(conceptKey, claims, words, property));
         }
 
         return (rules, declared);
@@ -130,6 +134,10 @@ public static class TypingLowering
 
                 return IsName;
 
+            case TypingClaims.Alias:
+                // `text` here is the concept's own alias, resolved by the caller before this point.
+                return IsExactly(text!);
+
             case TypingClaims.Prefix:
                 return StartsWith(conceptKey, text);
 
@@ -144,6 +152,8 @@ public static class TypingLowering
     }
 
     private static bool Digits(string text) => text.All(char.IsAsciiDigit);
+
+    private static Func<string, bool> IsExactly(string word) => typed => typed == word;
 
     private static bool IsName(string text) =>
         text.Length > 0
@@ -165,6 +175,22 @@ public static class TypingLowering
             ? throw new ConceptDefinitionException(
                 $"The typing rule of '{conceptKey}' names no word, so it would claim nothing; write the words separated by spaces.")
             : text => words.Contains(text, StringComparer.Ordinal);
+    }
+
+    /// <summary>The concept's alias, refusing a rule that spells its own or a concept that declares none.</summary>
+    /// <remarks>
+    /// The alias is the declaration's, not the rule's: a rule that carried the word would be a second place to say it,
+    /// and the two would drift the moment the author renamed the concept's alias. A concept with no alias cannot be
+    /// typed into existence, so claiming one is a rule that can never fire.
+    /// </remarks>
+    private static string AliasOf(string conceptKey, Concept concept, string? stated)
+    {
+        RefuseText(conceptKey, TypingClaims.Alias, stated);
+
+        return concept.Alias is { Length: > 0 } alias
+            ? alias
+            : throw new ConceptDefinitionException(
+                $"The typing rule of '{conceptKey}' claims its alias, but '{conceptKey}' declares none; set the concept's alias, or claim a text instead.");
     }
 
     /// <summary>Refuses a text on a claim that reads none, so a rule cannot carry words nothing looks at.</summary>
