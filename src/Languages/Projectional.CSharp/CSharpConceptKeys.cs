@@ -143,6 +143,12 @@ public static class CSharpConceptKeys
     /// <summary><c>throw value;</c></summary>
     public const string Throw = "CSharp.Throw";
 
+    /// <summary><c>try { ... } catch (Type name) { ... } finally { ... }</c>.</summary>
+    public const string Try = "CSharp.Try";
+
+    /// <summary>One handler of a <c>try</c>: the exception it catches and what it does.</summary>
+    public const string Catch = "CSharp.Catch";
+
     /// <summary>The slot holding the namespace a file declares.</summary>
     public const string NamespaceSlot = "namespace";
 
@@ -211,4 +217,10 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding the block an if runs otherwise.</summary>
     public const string OtherwiseSlot = "otherwise";
+
+    /// <summary>The slot holding the handlers a try offers.</summary>
+    public const string CatchesSlot = "catches";
+
+    /// <summary>The slot holding the block a try runs in every case, caught or not.</summary>
+    public const string FinallySlot = "finally";
 }

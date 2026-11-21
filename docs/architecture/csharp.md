@@ -49,7 +49,8 @@ behaviour or a generator body need" rather than by C# grammar order.
 `Parenthesized`, `Cast`, `Is`, `Index`, `New` and **collection expressions**; namespaces are
 **file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
 `LocalDeclaration`, `Assignment` with the compound operators, `If`, `While`, `For`, `ForEach`,
-`Return`, `Break`, `Continue` and `Throw` (not `Try`); and `TypeReference`, `Method`, `Constructor`,
+`Return`, `Break`, `Continue`, `Throw` and `Try` with its `Catch` handlers and optional `finally`;
+and `TypeReference`, `Method`, `Constructor`,
 `Property` (an auto-property with `get`, `set` or `init`), `Signature` (a bodiless interface member),
 `Parameter`, `Field`, `Class`, `Interface` with its inheritance list, `Namespace` and `File`. It has no
 importer, so a document is written in the editor and the text is a derived artefact. Read the rest of
