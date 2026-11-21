@@ -50,7 +50,7 @@ public static class TypingLanguage
                 new PropertySlot(
                     TextSlot,
                     PropertyType.String,
-                    description: "The prefix, or the words separated by spaces; empty for digits and name."),
+                    description: "The prefix, or the words separated by spaces; empty for digits, name and alias."),
                 new PropertySlot(
                     PropertySlotSlot,
                     PropertyType.String,

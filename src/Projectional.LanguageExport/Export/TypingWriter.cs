@@ -77,9 +77,10 @@ internal static class TypingWriter
             $"text => text.StartsWith({SourceWriter.Literal(rule.Text)}, StringComparison.Ordinal)",
         TypingClaims.AnyOf => $"text => text is {Words(rule.Text)}",
 
-        // The lowering already replaced the rule's text with the concept's alias, so an alias claim is written as the
-        // one-word pattern it behaves like - the generated language claims the word its declaration named.
-        TypingClaims.Alias => $"text => text is {Words(rule.Text)}",
+        // The lowering already replaced the rule's text with the concept's alias, and an alias is one word - possibly
+        // a phrase with spaces in it, which is why this is an equality and not the pattern `any of` builds: splitting
+        // `circle with radius` into three words would claim three keystrokes the folder never claimed.
+        TypingClaims.Alias => $"text => text == {SourceWriter.Literal(rule.Text)}",
 
         // A rule the language accepted but this writer does not know cannot be written as a predicate, and writing a
         // predicate that claims less than the rule would be silently wrong - so the export refuses instead.
