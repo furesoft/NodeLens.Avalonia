@@ -199,9 +199,12 @@ public sealed class ProjectExplorerTests
 
         var rules = rows.Where(row => row.Kind == ProjectNode.File && row.Folder == LanguageProject.TypingFolder).ToList();
 
-        Assert.Equal(2, rules.Count);
+        // One document per rule, and the sample declares four: two literal claims, and the alias of a binary and a
+        // conditional.
+        Assert.Equal(4, rules.Count);
         Assert.All(rules, rule => Assert.Equal(ProjectIcons.BadgeOf(LanguageProject.TypingFolder), rule.Badge));
         Assert.Contains(rules, rule => rule.Text == "Decl.Int.mps");
+        Assert.Contains(rules, rule => rule.Text == "Decl.Binary.mps");
     }
 
     [Fact]

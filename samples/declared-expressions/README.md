@@ -10,7 +10,7 @@ document someone can open rather than only by the test suite.
 | `structure/` | five concepts: an abstract `Decl.Expression`, an integer and a truth value, a binary form and a conditional |
 | `editor/` | one line each - `1`, `true`, `1 + 2`, `if 1 < 2 then 3 else 4` |
 | `types/` | the rules: two fixed types, a switch over the operator, a `widest of` and one complaint |
-| `typing/` | which node a burst of typing creates: a digit makes an `int`, `true`/`false` make a `bool` |
+| `typing/` | which node a burst of typing creates: a digit makes an `int`, `true`/`false` make a `bool`, and the aliases `binary` and `if` make those two |
 | `import/` | one declared importer: a second spelling of the same expressions, read by `import/sexp.mps` |
 | `tests/` | four assertions the language states about itself |
 | `expressions.mps` | a document of the language |
@@ -45,9 +45,15 @@ typing Decl.Bool claims any of true false writes value
 
 `Decl.Int` claims a run of digits and writes it into its `value`, and `Decl.Bool` claims the two words and does the
 same. Typing `4` into an empty expression slot therefore produces `4`, and typing `true` produces `true`, instead of the
-keystroke being refused for lack of an answer. The two remaining claims - `starts with` and `name` - are unused here
-because nothing in this language is entered by a leading character: a `Decl.Binary` needs two operands, so no burst of
-typing can convey one, and an expression has no name slot.
+keystroke being refused for lack of an answer.
+
+Two more rules claim an **alias** rather than a text: `Decl.Binary` declares `binary` and `Decl.If` declares `if`, so
+typing either word in an empty slot creates that node with its slots still empty. That is the claim that names no word
+of its own - the word lives on the concept declaration, which is the one the completion list offers, so the list and
+the keystroke cannot disagree. `bin` is not `binary`: an alias is claimed whole, not as a prefix.
+
+The two remaining claims - `starts with` and `name` - are unused here because an expression has no name slot, and no
+construct in this language is entered by a leading character alone.
 
 Without this folder the language still opens and edits; it just claims nothing, and the completion list stays the only
 way into an empty slot.

@@ -241,6 +241,36 @@ public sealed class DeclaredExpressionsTests
     }
 
     [Fact]
+    public void TheSampleCreatesABinaryFromItsTypedAlias()
+    {
+        // The alias is what the completion list offers, so it is also what a keystroke creates - MPS' "an instance
+        // created from a typed alias", proven on the sample rather than on a fixture: `Decl.Binary` declares `binary`,
+        // and its typing rule claims that alias instead of spelling it a second time.
+        var language = Language;
+
+        var model = language.NewProject().NewModel("typed");
+        var root = model.NewNode("Decl.Binary");
+        root.Set("operator", "+");
+        model.AddRoot(root);
+
+        using var session = new EditorSession(root, language.Notations, typing: language.Typing);
+
+        session.Select(Selection.At(CellAddress.OfSlot(root.Id, "left")));
+        session.Apply(KeyRouter.Type("binary"));
+
+        var created = Assert.Single(root.GetChildren("left"));
+
+        Assert.Equal("Decl.Binary", created.Concept.Key);
+
+        // The whole word and nothing shorter: a prefix is not a claim, which is what separates an alias from typing
+        // rules that match a prefix.
+        session.Select(Selection.At(CellAddress.OfSlot(root.Id, "right")));
+
+        Assert.Equal(EditOutcome.Unchanged, session.Apply(KeyRouter.Type("bin")).Outcome);
+        Assert.Empty(root.GetChildren("right"));
+    }
+
+    [Fact]
     public void TheSampleTypingRulesMakeATypedDigitBecomeALiteral()
     {
         // The aspect is only worth having if the editor asks it: a digit typed into an empty operand slot has to
