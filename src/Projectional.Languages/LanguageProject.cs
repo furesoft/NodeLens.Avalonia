@@ -10,6 +10,7 @@ using Projectional.ScopeRules;
 using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.TextGen;
+using Projectional.TypingRules;
 using Projectional.TypeRules;
 
 namespace Projectional.Languages;
@@ -52,7 +53,9 @@ public sealed class LanguageProject
     /// <summary>The folder holding the language's own scope rules, which a language may leave out.</summary>
     public const string ScopesFolder = "scopes";
 
-    /// <summary>The folder holding the language's own intentions, which a language may leave out.</summary>
+    /// <summary>The folder holding the language's own typing rules, which a language may leave out.</summary>
+    public const string TypingFolder = "typing";
+
     /// <summary>The folder holding the language's declared importers, which a language may leave out.</summary>
     public const string ImportFolder = "import";
 
@@ -69,6 +72,8 @@ public sealed class LanguageProject
         IReadOnlyList<TextGenerator> generators,
         ConstraintSet constraints,
         ScopeProviderRegistry scopes,
+        ITypingRules typing,
+        bool hasTyping,
         IIntentionProvider intentions,
         bool hasIntentions,
         IReadOnlyList<ITextImporter> importers)
@@ -82,6 +87,8 @@ public sealed class LanguageProject
         Generators = generators;
         Constraints = constraints;
         Scopes = scopes;
+        Typing = typing;
+        HasTyping = hasTyping;
         Intentions = intentions;
         HasIntentions = hasIntentions;
         DeclaredImporters = importers;
@@ -243,6 +250,18 @@ public sealed class LanguageProject
     /// <summary>Whether the project declared a scope rule of its own.</summary>
     public bool HasScopes => Scopes.Count > 0;
 
+    /// <summary>The typing rules the language declares, or the empty registry when it has no <c>typing</c> folder.</summary>
+    /// <remarks>
+    /// The declared half of the typing aspect: the same <see cref="ITypingRules"/> a language written in C# hands a
+    /// session, lowered from rules that are models themselves. A language that declares none loads and its documents
+    /// claim nothing typed into an empty slot, which is the honest state of a language being written - the editor's
+    /// other way in, the completion list, still works.
+    /// </remarks>
+    public ITypingRules Typing { get; }
+
+    /// <summary>Whether the project declared a typing rule of its own.</summary>
+    public bool HasTyping { get; }
+
     /// <summary>The intentions the language declares, lowerable into an entry list.</summary>
     /// <remarks>
     /// The declared half of the intention aspect: the same provider a hand-written package registers with the session.
@@ -305,6 +324,7 @@ public sealed class LanguageProject
             var declarations = StructureLowering.Lower(definitions);
             var concepts = ConceptRegistry.Create(declarations);
             var scopes = LowerScopeProviders(directory, concepts);
+            var typing = LowerTypingRules(directory, concepts);
             var intentions = LowerIntentions(directory, concepts);
             var types = LowerTypes(directory, concepts);
 
@@ -320,6 +340,8 @@ public sealed class LanguageProject
                 LowerGenerators(directory, concepts),
                 LowerConstraints(directory, concepts).With(types.Complaints),
                 scopes.Registry,
+                typing.Registry,
+                typing.HasAny,
                 intentions.Provider,
                 intentions.HasAny,
                 LowerImporters(directory, concepts));
@@ -470,5 +492,18 @@ public sealed class LanguageProject
         var documents = Read(directory, IntentionsFolder, new Project(IntentionLanguage.Concepts));
 
         return (IntentionLowering.CreateProvider(documents, concepts), documents.Count > 0);
+    }
+
+    /// <summary>Every typing rule the project declares, or none when it has no <c>typing</c> folder.</summary>
+    /// <remarks>
+    /// The lowering is given the concepts the structure documents just declared, so a rule that names a concept this
+    /// language does not have, or a property it does not declare, is refused here - the same "earliest moment both
+    /// halves exist" rule the notation, the templates, the constraints and the scopes follow.
+    /// </remarks>
+    private static (ITypingRules Registry, bool HasAny) LowerTypingRules(string directory, ConceptRegistry concepts)
+    {
+        var documents = Read(directory, TypingFolder, new Project(TypingLanguage.Concepts));
+
+        return (TypingLowering.CreateRules(documents, concepts), documents.Count > 0);
     }
 }

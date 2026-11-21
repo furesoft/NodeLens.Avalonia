@@ -340,6 +340,31 @@ The rules live in `Projectional.Language` beside `ICellEmphasis`, not in the edi
 language package can declare them without referencing the editor. What the editor does with a
 claim is [editing.md](editing.md#typing-into-an-empty-slot).
 
+### Typing rules as a model
+
+A language opened as a folder has no C# to write them in, so the aspect has a declared form:
+`Projectional.TypingRules` is the language a `typing/` folder is written in, and `LanguageProject.Typing`
+is the registry it lowers into - the same `TypingRuleRegistry` a package fills by hand
+([ADR 0014](../adr/0014-both-authoring-paths-are-permanent.md)). One document holds one rule:
+
+```
+typing Decl.Int claims digits writes value
+typing Decl.Bool claims any of true false writes value
+typing Decl.Group claims starts with (
+```
+
+A model cannot hold a `Func<string, bool>`, so a rule says *which* predicate instead of writing one, and the four
+symbols are exactly the predicates the shipped languages write by hand: `digits`, `name`, `starts with` and
+`any of`. `text` carries the prefix or the words those two read; `digits` and `name` read none, and a rule that
+carries one anyway is refused rather than ignored. The property is named the way a scope rule names its reference
+slot, and it is optional for the same reason: a parenthesis creates a node and stores nothing. Two rules for one
+concept are refused here as they are in the registry, so the two paths cannot disagree about what a language means.
+
+The lowering checks what a compiler would have checked - the concept exists, the property exists on it and is a
+property rather than a child or a reference - because the folder is the earliest moment both halves exist. A
+language without the aspect keeps the shell's rules, which is the behaviour every language had before the aspect
+existed.
+
 ## Triggers
 
 A typing rule answers for an **empty** slot. The neighbour question - the caret is at the edge of a node that is

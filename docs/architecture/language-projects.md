@@ -31,6 +31,8 @@ MyRules/
     Pipeline.Stage.mps            one rule
   scopes/                         where each reference's names come from (Projectional.ScopeRules)
     Pipeline.Stage.retries.mps    one scope rule
+  typing/                         which node a burst of typing creates (Projectional.TypingRules)
+    Pipeline.Stage.mps            one typing rule
   intentions/                     what a language offers at a caret (Projectional.IntentionRules)
     Pipeline.Stage.mps            one intention
   tests/                          what the language asserts about its own documents (Projectional.Testing)
@@ -115,6 +117,10 @@ M2's gate in its smallest complete form.
   names places needs a parent and a slot to exist, so it can never start a document - the same rule
   [language.md](language.md#applicability) states. Only a window with no language open falls back to the shell's own
   sample, which is what gives a cold shell something to edit; neither command will hand a language author a ruleset.
+- **A document of an opened language is typed by that language.** Its types, constraints, scopes, typing rules,
+  intentions and generators travel with the tab, so a digit typed into an empty slot creates the node the language's
+  `typing/` folder names rather than the node the shell would have guessed. A language without the aspect keeps the
+  shell's rules, which is what every language was given before the aspect existed.
 - **A refused language changes nothing.** `TryAdd` builds both candidate registries first and adopts them only if
   both succeed, because a half-added language would give a document a concept registry that disagrees with the
   notation registry in force - the one state that produces files nobody can open.

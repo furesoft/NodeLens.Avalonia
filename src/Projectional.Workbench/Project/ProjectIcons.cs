@@ -50,6 +50,7 @@ internal static class ProjectIcons
         ["types"] = "M9.5,2.5 H13.5 V6.5 L7,13 L3,9 Z",
         ["constraints"] = "M8,2 L13,4 V8 C13,11 8,14 8,14 C8,14 3,11 3,8 V4 Z",
         ["scopes"] = "M8,2.5 A5.5,5.5 0 1 0 8,13.5 A5.5,5.5 0 1 0 8,2.5 M8,5.5 A2.5,2.5 0 1 0 8,10.5 A2.5,2.5 0 1 0 8,5.5",
+        ["typing"] = "M2.5,4 H13.5 V12 H2.5 Z M4.5,6 H5.5 M7,6 H8 M9.5,6 H10.5 M4.5,9 H10.5",
         ["intentions"] = "M5.5,11 C5.5,8.5 4,7.5 4,5.8 A4,4 0 1 1 12,5.8 C12,7.5 10.5,8.5 10.5,11 Z M6.5,12.5 H9.5 M7,14.2 H9",
         ["import"] = "M8,2 V9 M4.5,6 L8,9.5 L11.5,6 M3,12 V14 H13 V12",
         ["generator"] = "M8,5.5 A2.5,2.5 0 1 0 8,10.5 A2.5,2.5 0 1 0 8,5.5 M8,2 V4 M8,12 V14 M2,8 H4 M12,8 H14",
@@ -68,6 +69,7 @@ internal static class ProjectIcons
         ["types"] = Color.Parse("#8467C4"),
         ["constraints"] = Color.Parse("#C0574B"),
         ["scopes"] = Color.Parse("#2F9DB8"),
+        ["typing"] = Color.Parse("#C1568F"),
         ["intentions"] = Color.Parse("#A98C00"),
         ["import"] = Color.Parse("#4A79C0"),
         ["generator"] = Color.Parse("#D2760A"),
@@ -78,6 +80,11 @@ internal static class ProjectIcons
     /// The letter a file's badge shows: the kind of definition that aspect holds, which is what a reader looks for
     /// under a folder rather than which folder it is in.
     /// </summary>
+    /// <remarks>
+    /// <c>P</c> is a typing rule, which is a predicate on the typed text; <c>R</c> is a constraint rule, <c>S</c> a
+    /// scope rule and <c>M</c> an importer, because <c>I</c>, <c>C</c> and <c>E</c> were taken by the kinds a reader
+    /// meets first.
+    /// </remarks>
     private static readonly Dictionary<string, string> Badges = new(StringComparer.Ordinal)
     {
         ["structure"] = "C",
@@ -85,6 +92,7 @@ internal static class ProjectIcons
         ["types"] = "T",
         ["constraints"] = "R",
         ["scopes"] = "S",
+        ["typing"] = "P",
         ["intentions"] = "I",
         ["import"] = "M",
         ["generator"] = "G",

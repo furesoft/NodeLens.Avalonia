@@ -200,9 +200,12 @@ a node id is a GUID nobody can read:- a **place** is named by the text the docum
 Two consequences are worth stating because they are properties of the editor rather than of this framework's
 tests. A place that shows **no text** - an empty slot, whose `<empty>` is notation rather than document - cannot be
 named, exactly as a user cannot find it; a script reaches it with a key (`ControlEnd`, `Tab`), which is what a user
-does too. And a language project carries **no typing rules aspect**, so a script cannot type into an empty slot to
-create a concept there; filling a slot is `press Enter` or `invoke`, which is the path a user takes when the
-language declares no rules either.
+does too. And a script cannot type into an empty slot to create a concept there, because the assertion vocabulary
+names nodes that exist: typing needs a slot the *caret* is in and rules saying what the text means, neither of which
+a script states. Filling a slot is `press Enter` or `invoke`, which is the path a user takes when the language
+declares no typing rules either. (The typing aspect itself is declarable since `Projectional.TypingRules` - a
+`typing/` folder says which node a burst of typing creates - but a test still cannot press a key into a slot it
+cannot name.)
 
 **No shipped language declares evaluation rules**, because evaluation is not a declarable aspect: rules are
 written in C# against an `EvaluationRegistry`, and nothing in a language project states which registry belongs

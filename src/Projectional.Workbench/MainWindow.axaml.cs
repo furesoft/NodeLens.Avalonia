@@ -2665,7 +2665,7 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>Opens an empty document of <paramref name="module"/>, with the aspects that language declares.</summary>
     /// <remarks>
     /// A document is typed, constrained, scoped and offered its intentions by the language it is written in, so the
-    /// four registries travel with it - the same four <see cref="OnOpenLanguage"/> hands a loaded document. A language
+    /// registries travel with it - the same ones <see cref="OnOpenLanguage"/> hands a loaded document. A language
     /// that names no concept a document could start with says so instead of opening the sample's document in its tab.
     /// </remarks>
     private void OpenNewDocumentOf(LanguageProject module)
@@ -2683,7 +2683,7 @@ public sealed partial class MainWindow : Window, IDisposable
         OpenDocument(
             model,
             _language.Notations,
-            typing: WorkbenchLanguage.Typing,
+            typing: WorkbenchLanguage.TypingFor(module),
             types: module.Types,
             constraints: module.Constraints,
             scopes: module.Scopes,
@@ -2805,7 +2805,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return false;
         }
 
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.IntentionsFolder, LanguageProject.ImportFolder })
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.TypingFolder, LanguageProject.IntentionsFolder, LanguageProject.ImportFolder })
         {
             var path = Path.Combine(language.Directory, folder);
 
@@ -3012,10 +3012,10 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>Opens <paramref name="imported"/> with the aspects of the language that read it.</summary>
     /// <param name="imported">The document, and the opened project whose importer produced it.</param>
     /// <remarks>
-    /// The aspects are that language's own - its types, constraints, scopes, intentions and generators - because an
-    /// imported document must behave exactly like one created from the menu. The notations are the shell's combined
-    /// registry for the reason a new document of an opened language uses it: a document may draw its own concepts and
-    /// the definitions it borrows.
+    /// The aspects are that language's own - its types, constraints, scopes, typing rules, intentions and
+    /// generators - because an imported document must behave exactly like one created from the menu. The notations
+    /// are the shell's combined registry for the reason a new document of an opened language uses it: a document may
+    /// draw its own concepts and the definitions it borrows.
     /// </remarks>
     private void OpenImported(ImportedDocument imported)
     {
@@ -3024,7 +3024,7 @@ public sealed partial class MainWindow : Window, IDisposable
         OpenDocument(
             imported.Model,
             _language.Notations,
-            typing: WorkbenchLanguage.Typing,
+            typing: WorkbenchLanguage.TypingFor(imported.Language),
             types: imported.Language.Types,
             constraints: imported.Language.Constraints,
             scopes: imported.Language.Scopes,
