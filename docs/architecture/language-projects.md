@@ -194,6 +194,10 @@ The decision is [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.m
   concept and one rule; the second declares `extends Units`, a child slot over `Units.Quantity` and nothing else, and
   its document is reported by the rule that lives in the base folder. `WorkbenchLanguageTests` opens them the way a
   user does - base first - and asserts both halves, so the other order has to say which language is missing.
+- **The C# base language is a package and not a folder**, so it is available in every document rather than in the
+  ones a user opened first: `Projectional.CSharp` registers into the shell's own set, which is what "base" means
+  ([csharp.md](csharp.md)). The three cells the declared notation layer was missing were found by writing a
+  C#-shaped language as data first ([declared-editor.md](declared-editor.md)).
 
 ## What is still missing
 

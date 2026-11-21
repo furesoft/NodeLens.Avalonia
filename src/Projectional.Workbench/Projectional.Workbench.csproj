@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Avalonia\Projectional.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.CSharp\Projectional.CSharp.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Editors\Projectional.Editors.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.IntentionRules\Projectional.IntentionRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Languages\Projectional.Languages.csproj" />

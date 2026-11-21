@@ -14,6 +14,8 @@ using Dock.Model.Core;
 using Projectional.Avalonia;
 using Projectional.Core;
 using Projectional.Editing;
+using Projectional.CSharp.Checks;
+using Projectional.CSharp.Intentions;
 using Projectional.Expressions;
 using Projectional.Expressions.Intentions;
 using Projectional.Intentions;
@@ -750,11 +752,13 @@ public sealed partial class MainWindow : Window, IDisposable
         // and a finding about a name has to be about the scope the editor actually uses. A control with no
         // session yet passes null, which the engine reads as the default chain. The rules are the document's
         // own when its language declares any - the sample's when it does not, which keeps every document the
-        // shell has always opened checked exactly as before.
+        // shell has always opened checked exactly as before. The base language's rules are added on top of
+        // whichever of the two applies, because a base language's constraints are in force wherever its
+        // concepts appear: a DSL that holds a C# method is told when that method has no body.
         var findings = DocumentFindings.Of(
             document.Model,
             fixes,
-            document.Constraints ?? SampleConstraints.All,
+            (document.Constraints ?? SampleConstraints.All).With(CSharpConstraints.All),
             document.Types ?? ExpressionsLanguage.Types,
             editor.Session?.Scopes,
             GenerationCoverage.Of(document.Model, document.Generators));
@@ -2147,6 +2151,7 @@ public sealed partial class MainWindow : Window, IDisposable
         document.Session.AddIntentions(ExpressionsIntentions.Provider, IntentionSource.Language);
         document.Session.AddIntentions(RulesIntentions.Provider, IntentionSource.Language);
         document.Session.AddIntentions(StructureIntentions.Provider, IntentionSource.Language);
+        document.Session.AddIntentions(CSharpIntentions.Provider, IntentionSource.Language);
     }
 
     /// <summary>Applies a theme choice to the window, its chrome and every tab's control.</summary>

@@ -1,4 +1,6 @@
 using Projectional.Core;
+using Projectional.CSharp;
+using Projectional.CSharp.Notation;
 using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
@@ -56,6 +58,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     /// </remarks>
     private static readonly IReadOnlyList<ConceptDeclaration> ShellDeclarations =
     [
+        .. CSharpLanguage.ConceptDeclarations,
         .. ExpressionsLanguage.ConceptDeclarations,
         .. RulesLanguage.ConceptDeclarations,
         .. StructureLanguage.ConceptDeclarations,
@@ -432,6 +435,8 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     private static NotationRegistry CreateNotations(ConceptRegistry concepts)
     {
         var notations = RulesLanguage.CreateNotations(concepts);
+
+        CSharpNotations.AddTo(notations);
 
         StructureNotations.AddTo(notations);
         EditorNotations.AddTo(notations);
