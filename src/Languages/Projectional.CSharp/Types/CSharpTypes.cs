@@ -21,6 +21,13 @@ namespace Projectional.CSharp.Types;
 /// is assigned to decides what it becomes - so a rule that answered <c>int[]</c> would be right only for the
 /// assignment it happened to see.
 /// </para>
+/// <para>
+/// The three expressions whose subject is a type split the same way. A cast is the type it names, because saying what
+/// the value is read as is the whole of what a cast does; an <c>is</c> is a truth value whatever its operands are; and
+/// an index is unknown, because what <c>target[index]</c> returns is a fact about the target's type - an array, a
+/// string, a list - and this language models none of them. Reading a type from the target would be a guess that a
+/// string's index is a <c>char</c> and an array's is its element type, and a wrong guess is worse than "no news".
+/// </para>
 /// </remarks>
 public static class CSharpTypes
 {
@@ -43,7 +50,9 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.Parenthesized, new SameAs("inner"))
         .Add(CSharpConceptKeys.Binary, new BinaryType())
         .Add(CSharpConceptKeys.Unary, new UnaryType())
-        .Add(CSharpConceptKeys.Conditional, new SameAs(CSharpLanguage.WhenTrueSlot));
+        .Add(CSharpConceptKeys.Conditional, new SameAs(CSharpLanguage.WhenTrueSlot))
+        .Add(CSharpConceptKeys.Cast, new SameAs("type"))
+        .Add(CSharpConceptKeys.Is, new Constant(Bool));
 
     /// <summary>
     /// A written type, mapped to the primitive it names.

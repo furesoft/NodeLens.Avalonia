@@ -59,6 +59,15 @@ public static class CSharpConceptKeys
     /// <summary>A collection expression: the elements between two brackets.</summary>
     public const string CollectionExpression = "CSharp.CollectionExpression";
 
+    /// <summary><c>(Type)operand</c>: the same value, read as another type.</summary>
+    public const string Cast = "CSharp.Cast";
+
+    /// <summary><c>operand is Type</c>: whether a value is of a type.</summary>
+    public const string Is = "CSharp.Is";
+
+    /// <summary><c>target[index]</c>: the element at a position.</summary>
+    public const string Index = "CSharp.Index";
+
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 
@@ -167,7 +176,10 @@ public static class CSharpConceptKeys
     /// <summary>The slot holding the value an operator is applied to, or the one a ternary chooses.</summary>
     public const string OperandSlot = "operand";
 
-    /// <summary>The slot holding a for's initializer, condition or increment.</summary>
+    /// <summary>The slot holding the position an index reads, or a cast's or an <c>is</c>'s type.</summary>
+    public const string IndexSlot = "index";
+
+    /// <summary>The slot holding a for's initializer.</summary>
     public const string InitializerSlot = "initializer";
 
     /// <summary>The slot holding a for's increment.</summary>

@@ -85,6 +85,28 @@ public static class CSharpNotations
             ed.WhenFilled(CSharpConceptKeys.ElementsSlot, ed.InlineCollection(CSharpConceptKeys.ElementsSlot, ed.Punct(","), string.Empty)),
             ed.Punct("]")));
 
+        // Three expressions whose subject is a type. The type is drawn as a child cell, so it is a node the caret can
+        // enter and the type system can read, exactly as a field's type is; the punctuation is the only thing that
+        // tells the reader which of the three they are looking at.
+        notations.Add(CSharpConceptKeys.Cast, ed => ed.Line(
+            ed.Punct("("),
+            ed.ChildInline("type"),
+            ed.Punct(")"),
+            ed.ChildInline(CSharpConceptKeys.OperandSlot)));
+
+        notations.Add(CSharpConceptKeys.Is, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Space,
+            ed.Keyword("is"),
+            ed.Space,
+            ed.ChildInline("type")));
+
+        notations.Add(CSharpConceptKeys.Index, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.TargetSlot),
+            ed.Punct("["),
+            ed.ChildInline(CSharpConceptKeys.IndexSlot),
+            ed.Punct("]")));
+
         // A namespace, in either of C# 10's two forms, each spelled out in its own group of rows: the file-scoped one
         // ends the header with a semicolon and puts the classes at the same level, the block one opens a brace, moves
         // them in and closes it. The group the model did not choose leaves no row at all, which is what a conditional

@@ -46,8 +46,8 @@ behaviour or a generator body need" rather than by C# grammar order.
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
 `String` and `Bool` literals (not `Long`, `Double`, `Null` or `Char`), `Name`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
-`Parenthesized`, `New` and **collection expressions**; namespaces are **file-scoped or braced** (one
-property, two forms); and what is missing is `Cast`, `Is` and `Index`; `Block`, `ExpressionStatement`,
+`Parenthesized`, `Cast`, `Is`, `Index`, `New` and **collection expressions**; namespaces are
+**file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
 `LocalDeclaration`, `Assignment` with the compound operators, `If`, `While`, `For`, `ForEach`,
 `Return`, `Break`, `Continue` and `Throw` (not `Try`); and `TypeReference`, `Method`, `Constructor`,
 `Property` (an auto-property with `get`, `set` or `init`), `Signature` (a bodiless interface member),
