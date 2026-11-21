@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Semantics;
 
 namespace Projectional.CSharp.Checks;
@@ -27,11 +28,15 @@ public static class CSharpConstraints
     /// <summary>The identifier the padded-name rule reports under.</summary>
     public const string PaddedNameCode = "csharp.field.name";
 
+    /// <summary>The identifier the non-boolean-condition rule reports under.</summary>
+    public const string ConditionNotBooleanCode = "csharp.if.condition.not-boolean";
+
     /// <summary>Every rule the base language states.</summary>
     public static ConstraintSet All { get; } = ConstraintSet.Empty
         .Add(CSharpConceptKeys.Method, new MethodNeedsABody())
         .Add(CSharpConceptKeys.Method, new MethodIsStillCalledTheDefault())
-        .Add(CSharpConceptKeys.Field, new FieldNameCarriesWhitespace());
+        .Add(CSharpConceptKeys.Field, new FieldNameCarriesWhitespace())
+        .Add(CSharpConceptKeys.If, new ConditionMustBeBoolean());
 
     /// <summary>A method with no body generates as a signature only, which is almost never what was meant.</summary>
     private sealed class MethodNeedsABody : IConstraint
@@ -73,6 +78,40 @@ public static class CSharpConstraints
         }
     }
 
+    /// <summary>
+    /// An <c>if</c> whose condition is not a truth value, which is the first rule the language could not state before
+    /// it had types.
+    /// </summary>
+    /// <remarks>
+    /// An <see cref="UnknownType"/> is accepted, and that is the whole discipline of a rule that reads types: a
+    /// condition this language cannot type - a call, a member of an assembly it does not model - is not a mistake, and
+    /// reporting it would put a squiggle under every real program. Only a type it <em>knows</em> and knows to be wrong
+    /// is reported.
+    /// </remarks>
+    private sealed class ConditionMustBeBoolean : IConstraint
+    {
+        private static readonly PrimitiveType Boolean = PrimitiveType.Of(PropertyType.Boolean);
+
+        public void Check(ConstraintContext context)
+        {
+            if (context.Node.GetChild(CSharpConceptKeys.ConditionSlot) is not { } condition)
+            {
+                return;
+            }
+
+            var type = context.TypeOf(condition);
+
+            if (type is UnknownType || Boolean.Accepts(type))
+            {
+                return;
+            }
+
+            context.Error(
+                $"an if condition has to be true or false, but this one is {type.Name}.",
+                role: CSharpConceptKeys.ConditionSlot,
+                code: ConditionNotBooleanCode);
+        }
+    }
     /// <summary>
     /// A name that starts or ends with whitespace. It is invisible in the drawing and part of the generated
     /// identifier, so nothing but this rule can point at it.
