@@ -85,6 +85,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private readonly OutputPanelView OutputView = new();
     private readonly ProblemsPanelView ProblemsView = new();
     private readonly UsagesPanelView UsagesView = new();
+    private readonly TerminalPanelView TerminalPanel = new();
 
     /// <summary>
     /// The one clipboard every tab reads and writes.
@@ -129,6 +130,7 @@ public sealed partial class MainWindow : Window, IDisposable
     private bool _outputClosed;
     private bool _problemsClosed;
     private bool _usagesClosed;
+    private bool _terminalClosed;
 
     // A panel is a view of its own, so the shell reaches the list through it rather than through a name the window's
     // markup used to declare. The view owns what a panel shows; the shell owns what a row means.
@@ -185,6 +187,7 @@ public sealed partial class MainWindow : Window, IDisposable
             Allows(ShellCapability.Run) ? OutputView : null,
             Allows(ShellCapability.Problems) ? ProblemsView : null,
             Allows(ShellCapability.FindUsages) ? UsagesView : null,
+            Allows(ShellCapability.Terminal) ? TerminalPanel : null,
             OnNewDocumentFromStrip);
 
         Dock.Factory = _layout.Factory;
@@ -306,6 +309,10 @@ public sealed partial class MainWindow : Window, IDisposable
 
         _disposed = true;
 
+        // Before the documents, because a running program may be writing to a document's language: the window owns the
+        // child process, and nothing else will end it.
+        TerminalPanel.Stop();
+
         _documents.Dispose();
         _tabs.Clear();
     }
@@ -355,6 +362,17 @@ public sealed partial class MainWindow : Window, IDisposable
         _problemsClosed = !_capabilities.Allows(ShellCapability.Problems);
         _outputClosed = !_capabilities.Allows(ShellCapability.Run);
         _usagesClosed = !_capabilities.Allows(ShellCapability.FindUsages);
+
+        // A terminal is something a user opens: it is a program of their choosing, not a view of the document, so the
+        // shell does not spend a third of the bottom area on one nobody asked to run.
+        _terminalClosed = _capabilities.Allows(ShellCapability.Terminal);
+
+        // A panel the capabilities do not grant has no tab to hide, so its menu entry goes too.
+        TerminalPanelItem.IsVisible = _capabilities.Allows(ShellCapability.Terminal);
+
+        // Said out loud rather than left to the flag: a tool handed to the layout is in the area, and only the layout can
+        // take it out again - which is why the picture of an unrelated panel showed a terminal nobody had opened.
+        ShowTerminal();
     }
 
     /// <summary>Whether this shell may offer <paramref name="capability"/>.</summary>
@@ -649,6 +667,10 @@ public sealed partial class MainWindow : Window, IDisposable
         else if (ReferenceEquals(tool, _layout.Usages))
         {
             _usagesClosed = true;
+        }
+        else if (ReferenceEquals(tool, _layout.Terminal))
+        {
+            _terminalClosed = true;
         }
 
         UpdatePanelCommands();
@@ -1656,6 +1678,26 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
+    private void OnToggleTerminalPanel(object? sender, RoutedEventArgs e)
+    {
+        _terminalClosed = !_terminalClosed;
+
+        ShowTerminal();
+
+        UpdateStatus();
+    }
+
+    /// <summary>Whether the terminal is on screen.</summary>
+    private bool TerminalShown => _layout.IsShown(_layout.Terminal);
+
+    /// <summary>Shows or puts away the terminal, which is the one panel whose content is not derived from a document.</summary>
+    /// <remarks>
+    /// Every other panel is re-derived after each edit and reappears when it has something to say. The terminal has
+    /// nothing to derive: it is a program the user started, so what it shows survives a document switch and only the
+    /// user puts it away.
+    /// </remarks>
+    private void ShowTerminal() => ShowPanel(_layout.Terminal, !_terminalClosed);
+
     /// <summary>Brings the problems tab back from the status bar's count.</summary>
     private void OnShowProblemsPanel(object? sender, RoutedEventArgs e)
     {
@@ -2303,6 +2345,11 @@ public sealed partial class MainWindow : Window, IDisposable
         UsagesPanelItem.IsEnabled = _usageTarget is not null;
         UsagesPanelItem.IsChecked = _layout.IsShown(_layout.Usages);
 
+        // The terminal has no state to be missing, so its entry is always offered - checked while it is on screen, which
+        // is how the user finds their way back to a program that is still running.
+        TerminalPanelItem.IsEnabled = _layout.Terminal is not null;
+        TerminalPanelItem.IsChecked = _layout.IsShown(_layout.Terminal);
+
         // The count is shown while the tab is not: a user who closed it still has to know the document is not
         // clean, and the status bar is where the rest of the document's state lives.
         StatusProblems.IsVisible = problems.Count > 0 && !_layout.IsShown(_layout.Problems);
@@ -2329,6 +2376,29 @@ public sealed partial class MainWindow : Window, IDisposable
             _layout.Activate(outline);
         }
     }
+
+    /// <summary>Shows the terminal, which is how a picture of it is taken.</summary>
+    /// <remarks>
+    /// Internal for the screenshot harness, like <see cref="ShowOutlineTool"/>. It is separate from
+    /// <see cref="RunInTerminal"/> because the order matters to the emulator: the screen is resized when the panel is
+    /// first arranged, and a resize reflows what is already on it - so a command started before the panel was laid out
+    /// printed its answer into a screen nobody was going to see.
+    /// </remarks>
+    internal void ShowTerminalTool()
+    {
+        _terminalClosed = false;
+
+        ShowTerminal();
+
+        if (_layout.Terminal is { } terminal)
+        {
+            _layout.Activate(terminal);
+        }
+    }
+
+    /// <summary>Runs <paramref name="command"/> in the terminal, which is the command the box's Start button runs.</summary>
+    /// <param name="command">The command line to run.</param>
+    internal void RunInTerminal(string command) => TerminalPanel.Run(command);
 
 
 

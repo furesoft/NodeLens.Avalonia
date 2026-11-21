@@ -59,9 +59,12 @@ internal enum ShellCapability
     /// <summary>The problems tab, and the count in the status bar while it is closed.</summary>
     Problems = 1 << 12,
 
+    /// <summary>The terminal tool: a program of the user's choice, its output, and keys typed back into it.</summary>
+    Terminal = 1 << 13,
+
     /// <summary>Everything the standalone editor offers.</summary>
     All = OpenFiles | CreateModels | EditModels | Save | Import | Export | Find | FindUsages | Run | Tests
-        | ProjectExplorer | Outline | Problems,
+        | ProjectExplorer | Outline | Problems | Terminal,
 }
 
 /// <summary>The two sets the shell ships with, and the check both are read through.</summary>

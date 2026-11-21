@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:a="using:Avalonia.Automation"
+             xmlns:local="using:Projectional.Workbench"
+             x:Class="Projectional.Workbench.TerminalPanelView">
+  <!-- A program of the user's choosing, its output as a terminal paints it, and its input typed back into it. -->
+  <DockPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,6,8,4">
+      <TextBlock
+        Grid.Column="0"
+        Text="Command"
+        Classes="statusQuiet"
+        Margin="0,0,8,0"
+        VerticalAlignment="Center" />
+      <TextBox
+        x:Name="CommandBox"
+        Grid.Column="1"
+        a:AutomationProperties.Name="Command to run"
+        PlaceholderText="a program to run, e.g. dotnet --info"
+        FontFamily="Consolas,Menlo,monospace" />
+      <Button
+        x:Name="StartButton"
+        Grid.Column="2"
+        Margin="8,0,0,0"
+        a:AutomationProperties.Name="Run the command in the terminal">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Path Classes="inlineIcon" Data="{DynamicResource IconPlay}" />
+          <TextBlock Text="Start" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button
+        x:Name="StopButton"
+        Grid.Column="3"
+        Margin="6,0,0,0"
+        IsEnabled="False"
+        a:AutomationProperties.Name="Stop the running command">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Path Classes="inlineIcon" Data="{DynamicResource IconPen}" />
+          <TextBlock Text="Stop" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+    </Grid>
+    <Border Classes="panelSurface" BorderThickness="0,1,0,0">
+      <local:TerminalView
+        x:Name="Screen"
+        Margin="0"
+        Focusable="True"
+        FontFamily="Consolas,Menlo,monospace" />
+    </Border>
+  </DockPanel>
+</UserControl>

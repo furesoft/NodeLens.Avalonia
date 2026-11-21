@@ -40,6 +40,7 @@ internal sealed class ShellLayout
     /// <param name="output">The output panel's view, or <see langword="null"/> when the shell cannot run anything.</param>
     /// <param name="problems">The problems panel's view, or <see langword="null"/> when the shell reports nothing.</param>
     /// <param name="usages">The usages panel's view, or <see langword="null"/> when the shell cannot find usages.</param>
+    /// <param name="terminal">The terminal tool's view, or <see langword="null"/> when the shell has no terminal.</param>
     /// <param name="createDocument">
     /// What the document strip's own new-document button does, or <see langword="null"/> to offer none.
     /// </param>
@@ -50,6 +51,7 @@ internal sealed class ShellLayout
         Control? output,
         Control? problems,
         Control? usages,
+        Control? terminal = null,
         Func<IDockable?>? createDocument = null)
     {
         ArgumentNullException.ThrowIfNull(emptyState);
@@ -108,6 +110,12 @@ internal sealed class ShellLayout
         {
             Usages = Tool("Usages", usages);
             bottomTools.Add(Usages);
+        }
+
+        if (terminal is not null)
+        {
+            Terminal = Tool("Terminal", terminal);
+            bottomTools.Add(Terminal);
         }
 
         if (bottomTools.Count > 0)
@@ -181,6 +189,9 @@ internal sealed class ShellLayout
 
     /// <summary>The usages panel's tool, or <see langword="null"/> when it was not composed.</summary>
     internal Tool? Usages { get; private set; }
+
+    /// <summary>The terminal tool, or <see langword="null"/> when it was not composed.</summary>
+    internal Tool? Terminal { get; private set; }
 
     /// <summary>Opens <paramref name="content"/> in a document of its own and brings it to the front.</summary>
     /// <param name="title">What the tab says.</param>

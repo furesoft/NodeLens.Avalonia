@@ -418,6 +418,7 @@
           <MenuItem x:Name="OutputPanelItem" Header="_Output" ToggleType="CheckBox" Click="OnToggleOutputPanel" />
           <MenuItem x:Name="ProblemsPanelItem" Header="_Problems" ToggleType="CheckBox" Click="OnToggleProblemsPanel" />
           <MenuItem x:Name="UsagesPanelItem" Header="_Usages" ToggleType="CheckBox" Click="OnToggleUsagesPanel" />
+          <MenuItem x:Name="TerminalPanelItem" Header="_Terminal" ToggleType="CheckBox" Click="OnToggleTerminalPanel" />
         </MenuItem>
         <Separator />
         <MenuItem x:Name="Representations" Header="_Representation" />
