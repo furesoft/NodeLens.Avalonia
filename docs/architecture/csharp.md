@@ -44,7 +44,7 @@ A base language is useful long before it is complete, so the subset is chosen by
 behaviour or a generator body need" rather than by C# grammar order.
 
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
-`String`, `Bool` and `Null` literals (not `Long`, `Double` or `Char`), `Name`, `MemberAccess`, `Call`,
+`Long`, `Double`, `String`, `Bool` and `Null` literals (not `Char`), `Name`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
 `Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New` and **collection expressions**; namespaces are
 **file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
@@ -58,6 +58,25 @@ and `TypeReference`, `Method`, `Constructor`,
 importer, so a document is written in the editor and the text is a derived artefact. Read the rest of
 this section as the target, and the package as the evidence that the notation, constraint, intention
 and generator machinery can carry a C#-shaped base language at all.
+
+**A number is a number, and its suffix is notation.** `Long` and `Double` were added last, and the
+interesting part is that they do not store a suffix. `10L` and `10` are one number and two literals in
+C#, so the `L` belongs to the concept rather than to the value: `LongLiteral`'s value is an integer and
+the `L` is drawn beside it, which keeps "what number is this" answerable while still generating the
+spelling that makes it a `long`. `Double` needs no suffix at all - `1.5` says what it is, and an
+integral value is not a mistake there, because `double ratio = 3;` is legal C# and the literal widens on
+assignment. Its value is a `Float` property rather than text, so `3.1.4` cannot be stored.
+
+Both then borrow the framework's own primitives: a `double` is `float` and a `long` shares `integer`
+with `int`, because the closed property-type set holds one number with a fraction and one whole number.
+That is a real limit and it is written down rather than papered over - `int` and `long` are the same type
+to every rule that reads them, and only the literal's spelling tells them apart.
+
+**`Char` is still absent, and deliberately.** A `char` literal needs a guarantee the property-type set
+cannot express: "exactly one character". A `String` property would accept `'ab'` and generate it, which
+is invalid C# produced without a single finding - worse than not offering the concept, because today the
+author simply cannot write a character and therefore cannot be misled. It lands when there is something
+that validates the length, whether that is a narrower property type or the check layer.
 
 A base language is useful long before it is complete, so the subset is chosen by "what does a
 behaviour or a generator body need" rather than by C# grammar order.
