@@ -21,8 +21,8 @@ namespace Projectional.Structures.Notation;
 /// a section - so a reader sees at a glance which lines belong to which group.
 /// </para>
 /// <para>
-/// The body keeps a margin from the edge of the page, and the header stands one step further in than the options
-/// below it. That is the shape MPS draws, and it is worth the two indents: a page that starts on the border reads as
+/// The body sits two indents in from the page edge, and the header stands one step further in than the options
+/// below it. That is the shape MPS draws, and it is worth the indents: a page that starts on the border reads as
 /// clipped, and the distinction between "what the concept is" and "how the framework treats it" becomes a matter of
 /// where the lines are rather than of what they say.</para>
 /// <para>
@@ -99,9 +99,10 @@ public static class StructureNotations
         // it and a reader sees a list instead of a comma-separated run. That needs the block form of `WhenFilled`:
         // an unfilled row would leave the blank line it drew, and a concept that implements nothing has no such row
         // at all.
-        notations.Add(StructureConceptKeys.Concept, ed => ed.Indent(ed.Sequence(
-            // The header sits one step in from the options, which is the shape MPS draws: the page keeps a margin,
-            // and what the concept *is* stands further in than the settings about it.
+        notations.Add(StructureConceptKeys.Concept, ed => ed.Indent(ed.Indent(ed.Sequence(
+            // The body sits two indents from the page edge and the header one further in, which is the shape MPS
+            // draws: the page keeps a margin, the settings about the concept start there, and what the concept *is*
+            // stands apart from them.
             ed.Indent(ed.Line(
                 ed.Conditional(StructureLanguage.IsInterfaceProperty, "true", ed.Keyword("interface"), ed.Space),
                 ed.Conditional(
@@ -141,7 +142,7 @@ public static class StructureNotations
             ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
             ed.Line(),
             ed.Line(ed.Keyword("references:")),
-            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true)))));
+            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
@@ -200,9 +201,9 @@ public static class StructureNotations
                     ed.Property("allowOwnSubtree"),
                     ed.Punct(">>"))))));
 
-        notations.Add(StructureConceptKeys.Enumeration, ed => ed.Indent(ed.Sequence(
+        notations.Add(StructureConceptKeys.Enumeration, ed => ed.Indent(ed.Indent(ed.Sequence(
             ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),
-            ed.Indent(ed.Children("symbols", NoSymbols, stacked: true)))));
+            ed.Indent(ed.Children("symbols", NoSymbols, stacked: true))))));
 
         notations.Add(StructureConceptKeys.EnumSymbol, ed => ed.Line(ed.Property("symbol")));
     }

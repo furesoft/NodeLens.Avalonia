@@ -66,10 +66,10 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   (`<<property name : string ... >>`, `<<symbol>>`). The two header lists are hidden rather than given a glyph,
   because `extends` and `implements` already say which list they are. The editor language keeps `<< ... >>` for its
   empty cell lists.
-- **The page keeps a margin, and the header stands one step further in than the options.** Two `Indent`s: one around
-  the whole body and one around the header line, which the `implements` row inherits with it. Without them the
-  document starts on the border and reads as clipped; with them, "what the concept is" and "how the framework treats
-  it" are apart without a brace. Do not flatten it back to flush-left.
+- **The body sits two indents in, and the header stands one step further in than the options.** Two nested
+  `Indent`s around the whole body, plus one around the header line that the `implements` row shares. Without them
+  the document starts on the border and reads as clipped; with them, "what the concept is" and "how the framework
+  treats it" are apart without a brace. Do not flatten it back to flush-left.
 - **`Structure.Concept` holds `properties`, `children` and `references` as three `Many` slots, not one `slots`
   list.** The kind of a slot is a fact of the model, not something the renderer infers from the child's concept -
   which is why MPS splits the sections too. The consequence is a **fixed rank**: lowering concatenates properties,
