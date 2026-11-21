@@ -158,8 +158,8 @@ public sealed class CellLayouter
 
         for (var index = 0; index < cells.Count; index++)
         {
-            // A group boundary is one empty row, and it is space rather than a cell: nothing is drawn there, so
-            // there is nothing to hit-test and no caret to stop on.
+            // A gap is one empty row, and it is space rather than a cell: nothing is drawn there, so there is
+            // nothing to hit-test and no caret to stop on.
             if (blankLineBefore is { } starts && starts.Contains(index))
             {
                 cursorY += _measure.LineHeight;
@@ -169,6 +169,14 @@ public sealed class CellLayouter
 
             cursorY += size.Height;
             right = Math.Max(right, left + size.Width);
+        }
+
+        // The gap above the position after the last child is the gap below it, which is how a list asks for a
+        // trailing empty line: the same set, one index past the end, so there is still one rule and no second
+        // notion of where a gap may stand.
+        if (blankLineBefore is { } trailing && trailing.Contains(cells.Count))
+        {
+            cursorY += _measure.LineHeight;
         }
 
         return new LayoutSize(right - x, Math.Max(_measure.LineHeight, cursorY - y));

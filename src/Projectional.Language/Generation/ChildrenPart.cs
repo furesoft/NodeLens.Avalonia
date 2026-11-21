@@ -12,31 +12,24 @@ public sealed record ChildrenPart : TemplatePart
     /// <summary>Creates a part that expands every child of <paramref name="slot"/>.</summary>
     /// <param name="slot">The list slot to expand.</param>
     /// <param name="separator">What goes between two children; <see langword="null"/> means nothing.</param>
-    /// <param name="blankLineBetweenGroups">
-    /// Whether a boundary between two groups gets a blank line above it.
-    /// </param>
+    /// <param name="gaps">Where the list leaves an empty line.</param>
     /// <param name="tightConcepts">
     /// The concepts whose neighbours share a group, so no blank line separates them. Every other boundary is a group
     /// boundary, so an empty set separates every child from the next.
-    /// </param>
-    /// <param name="blankLineBeforeFirst">
-    /// Whether the list opens with a blank line above its first child.
     /// </param>
     /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
     public ChildrenPart(
         string slot,
         TextTemplate? separator = null,
-        bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null,
-        bool blankLineBeforeFirst = false)
+        ListGap gaps = ListGap.None,
+        IReadOnlySet<string>? tightConcepts = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
 
         Slot = slot;
         Separator = separator ?? TextTemplate.Empty;
-        BlankLineBetweenGroups = blankLineBetweenGroups;
+        Gaps = gaps;
         TightConcepts = tightConcepts ?? ChildGroups.Empty;
-        BlankLineBeforeFirst = blankLineBeforeFirst;
     }
 
     /// <summary>The list slot to expand.</summary>
@@ -46,22 +39,26 @@ public sealed record ChildrenPart : TemplatePart
     public TextTemplate Separator { get; }
 
     /// <summary>
-    /// Whether a boundary between two groups gets a blank line.
+    /// Where this list leaves an empty line.
     /// </summary>
     /// <remarks>
-    /// A group is a run of neighbouring children whose concepts are both in <see cref="TightConcepts"/>; every other
-    /// boundary is a group boundary. The boundary gets one empty line, written as a bare newline before the
-    /// separator: a separator indents the line it starts, so a blank line spelled as two separators would carry the
-    /// indentation of the row after it and generate trailing whitespace. Nothing here is a fact about the model - the
-    /// model holds no whitespace - so the template is what says where a group ends.
+    /// A gap is always written the same way: one bare newline before the ordinary separator, never a doubled separator.
+    /// A separator indents the line it starts, so a blank line spelled as two separators would carry the indentation of
+    /// the row after it and generate trailing whitespace. Nothing here is a fact about the model - the model holds no
+    /// whitespace - so the template is what says where a list breathes.
     /// <para>
-    /// A group boundary is vertical space, so a language pairs this with a <em>stacked</em> child slot in the
-    /// notation: a single-line list has nowhere to draw the gap, and a notation that set this flag without stacking
-    /// would generate a newline the drawing does not show. The two are separate because generation and projection are
-    /// separate: the generator writes text, the notation places cells, and both read the same rule.
+    /// A gap is vertical space, so a language pairs it with a <em>stacked</em> child slot in the notation: a single-line
+    /// list has nowhere to draw one, and a notation that asked for a gap without stacking would generate a newline the
+    /// drawing does not show. The two are separate because generation and projection are separate: the generator writes
+    /// text, the notation places cells, and both read <see cref="ListGap"/>.
+    /// </para>
+    /// <para>
+    /// <see cref="ListGap.BetweenGroups"/> is the only position that reads <see cref="TightConcepts"/>: a group is a run
+    /// of neighbouring children whose concepts are both in the set, and every other boundary is a group boundary. The
+    /// other two positions describe where the whole list sits, so a tight set cannot express them.
     /// </para>
     /// </remarks>
-    public bool BlankLineBetweenGroups { get; }
+    public ListGap Gaps { get; }
 
     /// <summary>
     /// The concepts whose neighbours share a group, so that no blank line separates them.
@@ -72,19 +69,6 @@ public sealed record ChildrenPart : TemplatePart
     /// convention's own default, and the reason the set is the exception rather than the rule.
     /// </remarks>
     public IReadOnlySet<string> TightConcepts { get; }
-
-    /// <summary>
-    /// Whether the list opens with a blank line above its first child.
-    /// </summary>
-    /// <remarks>
-    /// A group boundary separates two neighbours, so it can never apply to the first child - there is nothing above it
-    /// to be separated from. That covers a list that <em>continues</em> something, like a class's members after the
-    /// brace, and not a list that the notation puts under a header of its own, like the types beneath a file-scoped
-    /// namespace declaration where the convention wants an empty line before the first one. This flag is that second
-    /// case and nothing else: it is a property of where the list sits, not of what is in it, which is why it is
-    /// separate from <see cref="BlankLineBetweenGroups"/> rather than another entry in <see cref="TightConcepts"/>.
-    /// </remarks>
-    public bool BlankLineBeforeFirst { get; }
 
     public override string ToString() => $"children {Slot}";
 }

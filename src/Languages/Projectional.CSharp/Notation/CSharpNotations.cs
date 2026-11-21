@@ -152,8 +152,7 @@ public static class CSharpNotations
                     CSharpConceptKeys.ClassesSlot,
                     "<no classes>",
                     stacked: true,
-                    blankLineBetweenGroups: true,
-                    blankLineBeforeFirst: true)),
+                    gaps: ListGap.BetweenGroups | ListGap.BeforeFirst)),
             ed.ConditionalBlock(
                 CSharpLanguage.IsFileScopedSlot,
                 "false",
@@ -166,7 +165,7 @@ public static class CSharpNotations
                     CSharpConceptKeys.ClassesSlot,
                     "<no classes>",
                     stacked: true,
-                    blankLineBetweenGroups: true)),
+                    gaps: ListGap.BetweenGroups)),
                 ed.Line(ed.Punct("}")))));
 
         // A class: the same shape, with its members between the braces. Fields are the tight kind, so a run of fields
@@ -187,7 +186,7 @@ public static class CSharpNotations
                 CSharpConceptKeys.MembersSlot,
                 "<no members>",
                 stacked: true,
-                blankLineBetweenGroups: true,
+                gaps: ListGap.BetweenGroups,
                 tightConcepts: CSharpMemberGroups.Tight)),
             ed.Line(ed.Punct("}"))));
 

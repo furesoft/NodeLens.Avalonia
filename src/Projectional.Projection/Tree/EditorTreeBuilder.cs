@@ -132,9 +132,8 @@ public sealed class EditorTreeBuilder
                 rootAddress,
                 children.Spacing,
                 children.Stacked,
-                children.BlankLineBetweenGroups,
-                children.TightConcepts,
-                children.BlankLineBeforeFirst),
+                children.Gaps,
+                children.TightConcepts),
             CollectionNotationCell collection => BuildCollection(
                 collection.Slot, collection.Separator, collection.EmptyText, collection.Spacing, node, emphasis, rootAddress),
 
@@ -380,9 +379,8 @@ public sealed class EditorTreeBuilder
         CellAddress? rootAddress,
         int spacing,
         bool stacked = false,
-        bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null,
-        bool blankLineBeforeFirst = false)
+        ListGap gaps = ListGap.None,
+        IReadOnlySet<string>? tightConcepts = null)
     {
         if (node.Concept.FindChild(slot) is null)
         {
@@ -418,36 +416,44 @@ public sealed class EditorTreeBuilder
         {
             IsStacked = stacked,
             BlankLineBefore = stacked
-                ? GroupStarts(children, tightConcepts ?? ChildGroups.Empty, blankLineBetweenGroups, blankLineBeforeFirst)
+                ? GapPositions(children, tightConcepts ?? ChildGroups.Empty, gaps)
                 : new HashSet<int>(),
         };
     }
 
     /// <summary>
-    /// The positions whose child starts a new group, so that a blank line goes above it.
+    /// The positions a blank line goes above, one per gap the notation asked for.
     /// </summary>
     /// <remarks>
-    /// The first child starts no group <em>because of the child before it</em> - there is none - so it is in the set
-    /// only when the notation says the list itself opens with a gap, which is the one case where the row above the
-    /// first child is not the thing it belongs to. The result is a set of positions and not a predicate, which is what
-    /// keeps a blank line out of the tree and away from the caret. The decision itself is <see cref="ChildGroups"/>'s,
-    /// the same one the generator asks, so the drawing and the generated text cannot disagree about where a group
-    /// ends.
+    /// A gap always sits <em>above</em> a position, so an empty list gets none and the position after the last child
+    /// stands for the gap below it - the same range the layouter reads. The result is a set of positions and not a
+    /// predicate, which is what keeps a blank line out of the tree and away from the caret. Where a <em>group</em> ends
+    /// is <see cref="ChildGroups"/>'s decision, the same one the generator asks, so the drawing and the generated text
+    /// cannot disagree about it.
     /// </remarks>
-    private static HashSet<int> GroupStarts(
+    private static HashSet<int> GapPositions(
         IReadOnlyList<Node> children,
         IReadOnlySet<string> tight,
-        bool blankLineBetweenGroups,
-        bool blankLineBeforeFirst)
+        ListGap gaps)
     {
         var starts = new HashSet<int>();
 
-        if (blankLineBeforeFirst && children.Count > 0)
+        if (children.Count == 0 || gaps == ListGap.None)
+        {
+            return starts;
+        }
+
+        if (gaps.HasFlag(ListGap.BeforeFirst))
         {
             starts.Add(0);
         }
 
-        if (!blankLineBetweenGroups)
+        if (gaps.HasFlag(ListGap.AfterLast))
+        {
+            starts.Add(children.Count);
+        }
+
+        if (!gaps.HasFlag(ListGap.BetweenGroups))
         {
             return starts;
         }
