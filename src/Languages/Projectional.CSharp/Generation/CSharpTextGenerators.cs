@@ -182,8 +182,22 @@ public static class CSharpTextGenerators
             new TextPart(";")))
 
         .Add(CSharpConceptKeys.Unary, TextTemplate.Of(
-            new PropertyPart(CSharpLanguage.UnaryOperatorSlot),
-            new ChildPart(CSharpConceptKeys.OperandSlot)))
+            new ConditionalPart(
+                CSharpLanguage.IsPostfixSlot,
+                "true",
+                TextTemplate.Of(new ChildPart(CSharpConceptKeys.OperandSlot), new PropertyPart(CSharpLanguage.UnaryOperatorSlot)),
+                TextTemplate.Of(new PropertyPart(CSharpLanguage.UnaryOperatorSlot), new ChildPart(CSharpConceptKeys.OperandSlot)))))
+
+        .Add(CSharpConceptKeys.For, TextTemplate.Of(
+            new TextPart("for ("),
+            new ChildPart(CSharpConceptKeys.InitializerSlot),
+            new TextPart(" "),
+            new ChildPart(CSharpConceptKeys.ConditionSlot),
+            new TextPart("; "),
+            new ChildPart(CSharpConceptKeys.IncrementSlot),
+            new TextPart(")"),
+            LineBreakPart.Instance,
+            new ChildPart(CSharpConceptKeys.BodySlot)))
 
         .Add(CSharpConceptKeys.Conditional, TextTemplate.Of(
             new ChildPart(CSharpConceptKeys.ConditionSlot),

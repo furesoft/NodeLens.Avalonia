@@ -113,6 +113,9 @@ public static class CSharpConceptKeys
     /// <summary><c>if (condition) { ... } else { ... }</c>.</summary>
     public const string If = "CSharp.If";
 
+    /// <summary><c>for (init; condition; increment) { ... }</c>.</summary>
+    public const string For = "CSharp.For";
+
     /// <summary><c>while (condition) { ... }</c>.</summary>
     public const string While = "CSharp.While";
 
@@ -163,6 +166,12 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding the value an operator is applied to, or the one a ternary chooses.</summary>
     public const string OperandSlot = "operand";
+
+    /// <summary>The slot holding a for's initializer, condition or increment.</summary>
+    public const string InitializerSlot = "initializer";
+
+    /// <summary>The slot holding a for's increment.</summary>
+    public const string IncrementSlot = "increment";
 
     /// <summary>The slot holding what a foreach iterates.</summary>
     public const string SourceSlot = "source";

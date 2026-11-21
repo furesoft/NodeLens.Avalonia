@@ -149,6 +149,66 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AForLoopAndAPostfixOperatorDrawAndGenerateTheSameShape()
+    {
+        // The two that belong together: `for (int i = 0; i < 3; i++)` is only writable because the increment is an
+        // expression. The initializer is a statement, and the semicolon it draws *is* the header's first separator.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("counting");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var loop = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.For);
+        var init = model.NewChild(loop, CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.LocalDeclaration);
+        var initType = model.NewChild(init, "type", CSharpConceptKeys.TypeReference);
+        var start = model.NewChild(init, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.IntLiteral);
+        var condition = model.NewChild(loop, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
+        var left = model.NewChild(condition, "left", CSharpConceptKeys.Name);
+        var right = model.NewChild(condition, "right", CSharpConceptKeys.IntLiteral);
+        var increment = model.NewChild(loop, CSharpConceptKeys.IncrementSlot, CSharpConceptKeys.Unary);
+        var counter = model.NewChild(increment, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+        var loopBody = model.NewChild(loop, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        model.NewChild(loopBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Break);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Counting");
+        method.Set(CSharpLanguage.NameSlot, "Count");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        init.Set(CSharpLanguage.NameSlot, "i");
+        initType.Set(CSharpLanguage.NameSlot, "int");
+        start.Set(CSharpLanguage.ValueProperty, "0");
+        condition.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.LessThan);
+        left.SetReference(CSharpConceptKeys.TargetSlot, init);
+        right.Set(CSharpLanguage.ValueProperty, "3");
+        increment.Set(CSharpLanguage.UnaryOperatorSlot, CSharpUnaryOperator.Increment);
+        increment.Set(CSharpLanguage.IsPostfixSlot, "true");
+        counter.SetReference(CSharpConceptKeys.TargetSlot, init);
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Counting
+              {
+                public void Count()
+                {
+                  for (int i = 0; i < 3; i++)
+                  {
+                    break;
+                  }
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void OnlyADeclarationCanBeOfferedForAName()
     {
         // The last step between the scope and the completion list: an entry is offered only when it fits the slot's

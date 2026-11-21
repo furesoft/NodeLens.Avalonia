@@ -53,6 +53,9 @@ public static class CSharpLanguage
     /// <summary>The property holding the member a <c>MemberAccess</c> reads.</summary>
     public const string MemberSlot = "member";
 
+    /// <summary>The property holding whether a unary operator follows its operand.</summary>
+    public const string IsPostfixSlot = "isPostfix";
+
     /// <summary>The property holding a unary operator.</summary>
     public const string UnaryOperatorSlot = "operator";
 
@@ -211,6 +214,7 @@ public static class CSharpLanguage
             CSharpConceptKeys.Unary,
             [
                 new PropertySlot(UnaryOperatorSlot, UnaryType, CSharpUnaryOperator.Not),
+                new PropertySlot(IsPostfixSlot, PropertyType.Boolean, "false", "Whether the operator follows its operand."),
                 new ChildSlot(CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Expression, Cardinality.One),
             ],
             superConcepts: [CSharpConceptKeys.Expression],
@@ -474,6 +478,21 @@ public static class CSharpLanguage
             isRoot: false,
             description: "if (condition) { ... } else { ... }"),
 
+        // `for` has three parts and two separators, and the initializer is a *statement* - which is what makes the
+        // notation work: a local declaration draws its own `;`, so that semicolon is the first separator rather than a
+        // terminator. The increment is an expression for the same reason: `i++` has no `;`, so it cannot close the
+        // header early.
+        new ConceptDeclaration(
+            CSharpConceptKeys.For,
+            [
+                new ChildSlot(CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.Statement, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.IncrementSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Statement],
+            isRoot: false,
+            description: "for (init; condition; increment) { ... }"),
         // A loop's body is a Block and its condition an Expression, so `while` needs no concept of its own for either.
         new ConceptDeclaration(
             CSharpConceptKeys.While,

@@ -198,8 +198,8 @@ internal static class LanguageDocuments
     }
 
     /// <summary>
-    /// The C# base language, in one picture: a file-scoped namespace, two fields, a method with an <c>if</c>/<c>else</c>
-    /// and a collection expression.
+    /// The C# base language, in one picture: a file-scoped namespace, two fields, a method with an <c>if</c>/<c>else</c>,
+    /// a collection expression and a counted <c>for</c> loop.
     /// </summary>
     /// <remarks>
     /// Built through the model API like the sample languages above, and every name in it is a reference that resolves:
@@ -269,8 +269,42 @@ internal static class LanguageDocuments
                 .Set(CSharpLanguage.ValueProperty, value);
         }
 
+        // public void Repeat() { for (int i = 0; i < 3; i++) { Console.WriteLine(message); } } - the counted loop, whose
+        // header is only writable because the initializer is a statement (it draws the first `;`) and the increment is
+        // an expression (it draws none).
+        var repeat = Method(model, cls, "public", isStatic: false, "void", "Repeat", out var repeatBody);
+        var loop = model.NewChild(repeatBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.For);
+        var local = model.NewChild(loop, CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.LocalDeclaration);
+        var localType = model.NewChild(local, "type", CSharpConceptKeys.TypeReference);
+        var start = model.NewChild(local, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.IntLiteral);
+        var bound = model.NewChild(loop, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
+        var beforeBound = model.NewChild(bound, "left", CSharpConceptKeys.Name);
+        var limit = model.NewChild(bound, "right", CSharpConceptKeys.IntLiteral);
+        var step = model.NewChild(loop, CSharpConceptKeys.IncrementSlot, CSharpConceptKeys.Unary);
+        var stepped = model.NewChild(step, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+        var loopBody = model.NewChild(loop, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var repeated = model.NewChild(loopBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var repeatedCall = model.NewChild(repeated, "expression", CSharpConceptKeys.Call);
+        var repeatedCallee = model.NewChild(repeatedCall, "callee", CSharpConceptKeys.MemberAccess);
+        var repeatedConsole = model.NewChild(repeatedCallee, "target", CSharpConceptKeys.Name);
+        var repeatedArgument = model.NewChild(repeatedCall, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Name);
+
+        local.Set(CSharpLanguage.NameSlot, "i");
+        localType.Set(CSharpLanguage.NameSlot, "int");
+        start.Set(CSharpLanguage.ValueProperty, "0");
+        bound.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.LessThan);
+        beforeBound.SetReference(CSharpConceptKeys.TargetSlot, local);
+        limit.Set(CSharpLanguage.ValueProperty, "3");
+        step.Set(CSharpLanguage.UnaryOperatorSlot, CSharpUnaryOperator.Increment);
+        step.Set(CSharpLanguage.IsPostfixSlot, "true");
+        stepped.SetReference(CSharpConceptKeys.TargetSlot, local);
+        repeatedCallee.Set(CSharpLanguage.MemberSlot, "WriteLine");
+        repeatedConsole.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "Console");
+        repeatedArgument.SetReference(CSharpConceptKeys.TargetSlot, message);
+
         _ = greet;
         _ = levels;
+        _ = repeat;
 
         return model;
 
