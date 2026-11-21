@@ -338,6 +338,30 @@ public static class CSharpTextGenerators
             LineBreakPart.Instance,
             new ChildPart(CSharpConceptKeys.BodySlot)))
 
+        // A switch: the value in parentheses, then the sections one per row between braces.
+        .Add(CSharpConceptKeys.Switch, TextTemplate.Of(
+            new TextPart("switch ("),
+            new ChildPart(CSharpConceptKeys.SubjectSlot),
+            new TextPart(")"),
+            LineBreakPart.Instance,
+            new TextPart("{"),
+            new IndentPart(TextTemplate.Of(
+                LineBreakPart.Instance,
+                new ChildrenPart(CSharpConceptKeys.SectionsSlot, TextTemplate.Of(LineBreakPart.Instance)))),
+            LineBreakPart.Instance,
+            new TextPart("}")))
+
+        // One section: `case value:` or `default:`, then what it runs indented beneath.
+        .Add(CSharpConceptKeys.SwitchSection, TextTemplate.Of(
+            new ConditionalPart(CSharpConceptKeys.IsDefaultSlot, "true", TextTemplate.Of(new TextPart("default:"))),
+            new ConditionalPart(CSharpConceptKeys.IsDefaultSlot, "false", TextTemplate.Of(
+                new TextPart("case "),
+                new ChildPart(CSharpConceptKeys.LabelSlot),
+                new TextPart(":"))),
+            new IndentPart(TextTemplate.Of(
+                LineBreakPart.Instance,
+                new ChildrenPart(CSharpConceptKeys.StatementsSlot, TextTemplate.Of(LineBreakPart.Instance))))))
+
         .Add(CSharpConceptKeys.TypeReference, TextTemplate.Of(new PropertyPart(CSharpLanguage.NameSlot)))
         .Add(CSharpConceptKeys.IntLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))
         .Add(CSharpConceptKeys.BoolLiteral, TextTemplate.Of(new PropertyPart(CSharpLanguage.ValueProperty)))

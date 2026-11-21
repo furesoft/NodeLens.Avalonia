@@ -431,6 +431,32 @@ public static class CSharpNotations
                 ed.Property(CSharpLanguage.NameSlot),
                 ed.Punct(")")),
             ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot))));
+
+        // A switch: the value in parentheses, then its sections one per row. The sections are a children list, so
+        // an empty switch draws the placeholder the list declares and the caret can enter it.
+        notations.Add(CSharpConceptKeys.Switch, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("switch"),
+                ed.Space,
+                ed.Punct("("),
+                ed.ChildInline(CSharpConceptKeys.SubjectSlot),
+                ed.Punct(")")),
+            ed.Line(ed.Punct("{")),
+            ed.Indent(ed.Children(CSharpConceptKeys.SectionsSlot, "<no sections>", stacked: true)),
+            ed.Line(ed.Punct("}"))));
+
+        // One section: `case value:` or `default:`, then what it runs indented beneath. Two conditional blocks
+        // rather than one "when filled" cell, because the two forms differ in a keyword and not only in a slot.
+        notations.Add(CSharpConceptKeys.SwitchSection, ed => ed.Sequence(
+            ed.ConditionalBlock(CSharpConceptKeys.IsDefaultSlot, "true",
+                ed.Line(ed.Keyword("default"), ed.Punct(":"))),
+            ed.ConditionalBlock(CSharpConceptKeys.IsDefaultSlot, "false",
+                ed.Line(
+                    ed.Keyword("case"),
+                    ed.Space,
+                    ed.ChildInline(CSharpConceptKeys.LabelSlot),
+                    ed.Punct(":"))),
+            ed.Indent(ed.Children(CSharpConceptKeys.StatementsSlot, "<no statements>", stacked: true))));
     }
 
     /// <summary>A registry holding only the base language, built over <paramref name="concepts"/>.</summary>

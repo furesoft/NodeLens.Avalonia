@@ -636,5 +636,31 @@ public static class CSharpLanguage
             nameRule: NameRule.Camel,
             isRoot: false,
             description: "catch (Type name) { ... }"),
+
+        // `switch (value) { ... }`: the value it chooses on and the sections that answer it. The sections are a
+        // concept of their own rather than a statement, because a section is not a statement the language can put
+        // anywhere - it only exists inside a switch, and what it holds is what it runs.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Switch,
+            [
+                new ChildSlot(CSharpConceptKeys.SubjectSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.SectionsSlot, CSharpConceptKeys.SwitchSection, Cardinality.Many),
+            ],
+            superConcepts: [CSharpConceptKeys.Statement],
+            isRoot: false,
+            description: "switch (value) { case ...: ... }"),
+
+        // One section: a case label or `default`, and what it does. The label is an optional child slot so the
+        // `default` section has none to draw - and `isDefault` says which of the two the section is, because a
+        // notation cannot ask "is this slot empty" and choose a keyword from the answer.
+        new ConceptDeclaration(
+            CSharpConceptKeys.SwitchSection,
+            [
+                new PropertySlot(CSharpConceptKeys.IsDefaultSlot, PropertyType.Boolean, "false", "Whether this is the default section."),
+                new ChildSlot(CSharpConceptKeys.LabelSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0),
+                new ChildSlot(CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Statement, Cardinality.Many),
+            ],
+            isRoot: false,
+            description: "case value: ... or default: ..."),
     ];
 }
