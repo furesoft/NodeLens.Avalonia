@@ -171,7 +171,8 @@ public sealed class Generator
                         children.Separator,
                         generator,
                         children.BlankLineBetweenGroups,
-                        children.TightConcepts);
+                        children.TightConcepts,
+                        children.BlankLineBeforeFirst);
                     break;
 
                 case LoopPart loop:
@@ -247,7 +248,8 @@ public sealed class Generator
         TextGenerator generator,
         Action<Node> emit,
         bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null)
+        IReadOnlySet<string>? tightConcepts = null,
+        bool blankLineBeforeFirst = false)
     {
         var entries = ChildrenOf(owner, slot);
         var written = 0;
@@ -289,6 +291,13 @@ public sealed class Generator
 
                 EmitTemplate(separator, owner, generator);
             }
+            else if (blankLineBeforeFirst)
+            {
+                // The same empty line, in the one position a boundary cannot describe: above the first child,
+                // where there is no neighbour to separate it from - only the row the notation put it under.
+                _text.Append('\n');
+                EmitTemplate(separator, owner, generator);
+            }
 
             previousConcept = entry.Concept.Key;
 
@@ -309,7 +318,8 @@ public sealed class Generator
         TextTemplate separator,
         TextGenerator generator,
         bool blankLineBetweenGroups,
-        IReadOnlySet<string> tightConcepts) =>
+        IReadOnlySet<string> tightConcepts,
+        bool blankLineBeforeFirst) =>
         EmitEntries(
             node,
             slot,
@@ -317,7 +327,8 @@ public sealed class Generator
             generator,
             child => EmitNode(child, generator),
             blankLineBetweenGroups,
-            tightConcepts);
+            tightConcepts,
+            blankLineBeforeFirst);
 
 
     /// <summary>Expands a loop body per child, with the body applied to the child rather than to the list's owner.</summary>

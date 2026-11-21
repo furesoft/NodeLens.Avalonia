@@ -96,6 +96,13 @@ let a click on a generated line move the caret to the node that wrote it.
   written before the ordinary separator, never a doubled separator: a separator indents the line it starts, so two of
   them would leave the next row's indentation standing as trailing whitespace. That is the same defect the empty
   member block fix removed, and the reason the gap is written by the engine rather than spelled as a part.
+- **The gap has three positions and the engine knows two of them.** `BlankLineBetweenGroups` covers a boundary
+  between two neighbours, `BlankLineBeforeFirst` covers the list that the notation puts under a header of its own -
+  the types below a file-scoped namespace declaration - because a boundary separates two children and there is no
+  neighbour above the first one. Both are written the same way (a bare newline before the ordinary separator) and both
+  end up in the projection's one index set, as the positions a blank line goes above; the first child is simply
+  position `0`. The position *after* the last child has no flag yet, which is why a `using` block still runs into its
+  namespace declaration.
 - **The decision to emit nothing is declarable.** `TextGen.Ignore` is a mapping body beside `TextGen.Template` (both
   conform to the abstract `TextGen.Body` the mapping's `template` slot is declared over), and it lowers to the empty
   template. A separate concept rather than an empty template node because an empty box reads as unfinished work: an

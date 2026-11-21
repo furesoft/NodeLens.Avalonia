@@ -19,12 +19,16 @@ public sealed record ChildrenPart : TemplatePart
     /// The concepts whose neighbours share a group, so no blank line separates them. Every other boundary is a group
     /// boundary, so an empty set separates every child from the next.
     /// </param>
+    /// <param name="blankLineBeforeFirst">
+    /// Whether the list opens with a blank line above its first child.
+    /// </param>
     /// <exception cref="ArgumentException"><paramref name="slot"/> is empty.</exception>
     public ChildrenPart(
         string slot,
         TextTemplate? separator = null,
         bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null)
+        IReadOnlySet<string>? tightConcepts = null,
+        bool blankLineBeforeFirst = false)
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
 
@@ -32,6 +36,7 @@ public sealed record ChildrenPart : TemplatePart
         Separator = separator ?? TextTemplate.Empty;
         BlankLineBetweenGroups = blankLineBetweenGroups;
         TightConcepts = tightConcepts ?? ChildGroups.Empty;
+        BlankLineBeforeFirst = blankLineBeforeFirst;
     }
 
     /// <summary>The list slot to expand.</summary>
@@ -67,6 +72,19 @@ public sealed record ChildrenPart : TemplatePart
     /// convention's own default, and the reason the set is the exception rather than the rule.
     /// </remarks>
     public IReadOnlySet<string> TightConcepts { get; }
+
+    /// <summary>
+    /// Whether the list opens with a blank line above its first child.
+    /// </summary>
+    /// <remarks>
+    /// A group boundary separates two neighbours, so it can never apply to the first child - there is nothing above it
+    /// to be separated from. That covers a list that <em>continues</em> something, like a class's members after the
+    /// brace, and not a list that the notation puts under a header of its own, like the types beneath a file-scoped
+    /// namespace declaration where the convention wants an empty line before the first one. This flag is that second
+    /// case and nothing else: it is a property of where the list sits, not of what is in it, which is why it is
+    /// separate from <see cref="BlankLineBetweenGroups"/> rather than another entry in <see cref="TightConcepts"/>.
+    /// </remarks>
+    public bool BlankLineBeforeFirst { get; }
 
     public override string ToString() => $"children {Slot}";
 }
