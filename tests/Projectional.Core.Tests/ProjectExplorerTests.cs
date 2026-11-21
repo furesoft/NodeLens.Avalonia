@@ -204,6 +204,17 @@ public sealed class ProjectExplorerTests
         Assert.Contains(rules, rule => rule.Text == "Decl.Int.mps");
     }
 
+    [Fact]
+    public void TheAccessoryAspectHasItsOwnMark()
+    {
+        // An aspect folder the explorer lists has to be drawable, or its row falls back to the unknown mark. Only the
+        // badge is asserted: a glyph is an Avalonia geometry, and parsing one needs a platform this suite has not got.
+        Assert.False(string.IsNullOrEmpty(ProjectIcons.BadgeOf(LanguageProject.AccessoryFolder)));
+        Assert.NotEqual(
+            ProjectIcons.BadgeOf(LanguageProject.StructureFolder),
+            ProjectIcons.BadgeOf(LanguageProject.AccessoryFolder));
+    }
+
     private static LanguageProject Language() =>
         LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error)
         ?? throw new InvalidOperationException(error);

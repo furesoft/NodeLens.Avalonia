@@ -38,6 +38,7 @@ internal static class ProjectExplorer
         LanguageProject.ConstraintsFolder,
         LanguageProject.ScopesFolder,
         LanguageProject.TypingFolder,
+        LanguageProject.AccessoryFolder,
         LanguageProject.IntentionsFolder,
         LanguageProject.ImportFolder,
         LanguageProject.GeneratorFolder,

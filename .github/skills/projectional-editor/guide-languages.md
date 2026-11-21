@@ -122,9 +122,9 @@ language definition is a model.
 ### A language project is a folder
 
 `Projectional.Languages` holds `LanguageProject`: a directory with a `structure` folder (required) and optional
-`editor`, `types`, `generator`, `constraints`, `scopes`, `typing` and `intentions` folders becomes a
+`editor`, `types`, `generator`, `constraints`, `scopes`, `typing`, `accessory` and `intentions` folders becomes a
 `ConceptRegistry` + `NotationRegistry` + `TypeRegistry` + generators + `ConstraintSet` + `ScopeProviderRegistry` +
-`ITypingRules` + `IIntentionProvider`.
+`ITypingRules` + the accessory models + `IIntentionProvider`.
 **`Open(directory, out error)` answers a usable
 language or a message, never an exception** - opening is a user action, and a user action reports. The notation is
 lowered *against the concepts the structure documents just declared*, so a notation for an undeclared concept is

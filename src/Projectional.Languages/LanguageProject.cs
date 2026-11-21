@@ -52,9 +52,19 @@ public sealed class LanguageProject
 
     /// <summary>The folder holding the language's own scope rules, which a language may leave out.</summary>
     public const string ScopesFolder = "scopes";
-
     /// <summary>The folder holding the language's own typing rules, which a language may leave out.</summary>
     public const string TypingFolder = "typing";
+
+    /// <summary>
+    /// The folder holding the models the language ships for its users - a colour palette, standard units, a set of
+    /// ready-made types - which a language may leave out.
+    /// </summary>
+    /// <remarks>
+    /// Ordinary models of the language's own concepts, not definitions of it: every document of the language gets
+    /// their nodes in its own project, so a user can point a reference at a palette entry and the language carries a
+    /// library instead of only a vocabulary. MPS calls them accessory models.
+    /// </remarks>
+    public const string AccessoryFolder = "accessory";
 
     /// <summary>The folder holding the language's declared importers, which a language may leave out.</summary>
     public const string ImportFolder = "import";
@@ -75,6 +85,7 @@ public sealed class LanguageProject
         ITypingRules typing,
         IReadOnlyList<DeclaredTypingRule> typingRules,
         bool hasTyping,
+        IReadOnlyList<Model> accessory,
         IIntentionProvider intentions,
         bool hasIntentions,
         IReadOnlyList<ITextImporter> importers)
@@ -91,6 +102,7 @@ public sealed class LanguageProject
         Typing = typing;
         HasTyping = hasTyping;
         DeclaredTypingRules = typingRules;
+        Accessory = accessory;
         Intentions = intentions;
         HasIntentions = hasIntentions;
         DeclaredImporters = importers;
@@ -264,6 +276,13 @@ public sealed class LanguageProject
     /// <summary>Whether the project declared a typing rule of its own.</summary>
     public bool HasTyping { get; }
 
+    /// <summary>The models the language ships for its users, in file order; empty when it has no <c>accessory</c> folder.</summary>
+    /// <remarks>
+    /// They are the templates <see cref="NewProject"/> copies into every project, so this is also what a shell lists
+    /// and opens: a language's library nodes are editable language content, not a registry the runtime reads.
+    /// </remarks>
+    public IReadOnlyList<Model> Accessory { get; }
+
     /// <summary>The typing rules as the documents state them, in file order.</summary>
     /// <remarks>
     /// <see cref="Typing"/> is what the editor asks; this is what a tool that has to write the rules again reads,
@@ -345,7 +364,6 @@ public sealed class LanguageProject
             var typing = LowerTypingRules(directory, concepts);
             var intentions = LowerIntentions(directory, concepts);
             var types = LowerTypes(directory, concepts);
-
             error = null;
 
             return new LanguageProject(
@@ -361,6 +379,7 @@ public sealed class LanguageProject
                 typing.Registry,
                 typing.Rules,
                 typing.HasAny,
+                ReadAccessory(directory, concepts),
                 intentions.Provider,
                 intentions.HasAny,
                 LowerImporters(directory, concepts));
@@ -417,8 +436,34 @@ public sealed class LanguageProject
         return roots;
     }
 
-    /// <summary>Why a folder with no <c>structure</c> directory is not a language project.</summary>
+    /// <summary>The models in <c>accessory</c>, loaded once and copied into every project afterwards.</summary>
+    /// <param name="directory">The language's folder.</param>
+    /// <param name="concepts">The concepts those models are written in, which the structure documents just declared.</param>
     /// <remarks>
+    /// Whole models rather than one root each, unlike every aspect reader: an accessory is an ordinary document of the
+    /// language, so it may hold as many roots as its author wants - a palette is a list, not a definition. Loading
+    /// happens here, at open time, so a broken accessory is a load message naming its file rather than an exception the
+    /// first time somebody creates a document.
+    /// </remarks>
+    private static IReadOnlyList<Model> ReadAccessory(string directory, ConceptRegistry concepts)
+    {
+        var folder = Path.Combine(directory, AccessoryFolder);
+
+        if (!System.IO.Directory.Exists(folder))
+        {
+            return [];
+        }
+
+        return
+        [
+            .. System.IO.Directory
+                .EnumerateFiles(folder, "*.mps", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+                .Select(path => ModelFile.Load(new Project(concepts), path)),
+        ];
+    }
+
+    /// <summary>Why a folder with no <c>structure</c> directory is not a language project.</summary>    /// <remarks>
     /// The old layout - one <c>structure.mps</c> holding the whole language - is named explicitly, because the file
     /// that used to be the answer is still sitting there and "not a language project" would send its author looking
     /// for a different problem.
@@ -433,7 +478,23 @@ public sealed class LanguageProject
     }
 
     /// <summary>A project in which a document of this language can be created or loaded.</summary>
-    public Project NewProject() => new(Concepts);
+    /// <remarks>
+    /// The accessory models come with it, copied in with their own identities: a document that points a reference at
+    /// a palette entry, a standard unit or a ready-made type stores that node's id, so the id has to be the same in
+    /// every project the document is ever loaded into - which is what <see cref="Model.CopyTo"/> preserves and
+    /// <see cref="Model.InsertCopy"/> deliberately does not.
+    /// </remarks>
+    public Project NewProject()
+    {
+        var project = new Project(Concepts);
+
+        foreach (var accessory in Accessory)
+        {
+            accessory.CopyTo(project);
+        }
+
+        return project;
+    }
 
     /// <summary>A model of this language, ready for one document.</summary>
     /// <param name="name">The model's name, which is also the file name it is saved under.</param>
