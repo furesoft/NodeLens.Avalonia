@@ -28,56 +28,56 @@ Presentation is the editor language (P2), which is a separate model for the same
 a structure document from an editor document - a definition that mixes the two cannot be reviewed.
 
 ```text
-enum Rules.Outcome
-  accept
-  review
+  enum Rules.Outcome
+    accept
+    review
 ```
 
 ```text
-    concept Rules.Element
+      concept Rules.Element
 
-  instance can be root: true
-  alias: <no alias>
-  short description: <no short description>
-  offered in completion: true
-  named by:
-  collapsed by:
-  named by rule:
+    instance can be root: true
+    alias: <no alias>
+    short description: <no short description>
+    offered in completion: true
+    named by:
+    collapsed by:
+    named by rule:
 
-  properties:
-    << ... >>
+    properties:
+      << ... >>
 
-  children:
-    << ... >>
+    children:
+      << ... >>
 
-  references:
-    << ... >>
+    references:
+      << ... >>
 ```
 
 ```text
-    abstract concept Rules.Rule extends Rules.Element
-    implements Framework.Named
+      abstract concept Rules.Rule extends Rules.Element
+      implements Framework.Named
 
-  instance can be root: true
-  alias: Rule
-  short description: One rule of a ruleset.
-  offered in completion: true
-  named by: name
-  collapsed by:
-  named by rule:
+    instance can be root: true
+    alias: Rule
+    short description: One rule of a ruleset.
+    offered in completion: true
+    named by: name
+    collapsed by:
+    named by rule:
 
-  properties:
-    <<property name : string
-      default:
-      described as: What the rule is called.
-      described when filled: false>>
+    properties:
+      <<property name : string
+        default:
+        described as: What the rule is called.
+        described when filled: false>>
 
-  children:
-    <<child steps : Rules.Step[0..n]>>
+    children:
+      <<child steps : Rules.Step[0..n]>>
 
-  references:
-    <<reference condition : Rules.Condition
-      own subtree: false>>
+    references:
+      <<reference condition : Rules.Condition
+        own subtree: false>>
 ```
 
 `abstract` is a word of the header and not an option, which is MPS' spelling and the better reading of the same
@@ -122,9 +122,9 @@ extends, then the `implements` list on a row of its own, then a block of options
 the groups separated by blank lines. Copying the shape is worth it for the reason MPS has it: a reviewer reads the
 inheritance and the kind of the concept in the header, what it allows in the options, and what it holds in three
 named sections. There are no braces: a concept is a document, and the grouping says where each part ends. The body
-keeps a margin from the page edge and the header stands one step further in than the options - the same two
-indents MPS draws, so the page does not start on the border and "what the concept is" is visibly apart from "how
-the framework treats it".
+sits two indents in from the page edge and the header one step further than the options - the same shape MPS
+draws, so the page does not start on the border and "what the concept is" is visibly apart from "how the framework
+treats it".
 
 Three decisions make that readable, and all three are P4:
 

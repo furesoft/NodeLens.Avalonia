@@ -112,59 +112,59 @@ language because it is the same three ideas: a header that says what the concept
 extends, angle bracket blocks that say what it *holds*, and nothing else.
 
 ```text
-    concept RuleSet
-    implements Framework.Named
+      concept RuleSet
+      implements Framework.Named
 
-  instance can be root: true
-  alias: <no alias>
-  short description: <no short description>
-  offered in completion: true
-  named by: name
-  collapsed by:
-  named by rule:
+    instance can be root: true
+    alias: <no alias>
+    short description: <no short description>
+    offered in completion: true
+    named by: name
+    collapsed by:
+    named by rule:
 
-  properties:
-    <<property name : string
-      default:
-      described as:
-      described when filled: false>>
+    properties:
+      <<property name : string
+        default:
+        described as:
+        described when filled: false>>
 
-  children:
-    <<child rules : Rules.Rule[0..n]>>
+    children:
+      <<child rules : Rules.Rule[0..n]>>
 
-  references:
-    << ... >>
+    references:
+      << ... >>
 ```
 
 ```text
-    abstract concept Condition
+      abstract concept Condition
 
-  instance can be root: true
-  alias: <no alias>
-  short description: <no short description>
-  offered in completion: true
-  named by:
-  collapsed by:
-  named by rule:
+    instance can be root: true
+    alias: <no alias>
+    short description: <no short description>
+    offered in completion: true
+    named by:
+    collapsed by:
+    named by rule:
 
-  properties:
-    <<property negated : boolean
-      default:
-      described as:
-      described when filled: false>>
+    properties:
+      <<property negated : boolean
+        default:
+        described as:
+        described when filled: false>>
 
-  children:
-    << ... >>
+    children:
+      << ... >>
 
-  references:
-    << ... >>
+    references:
+      << ... >>
 ```
 
 ```text
-  enum Operator
-    Less
-    Equal
-    Greater
+    enum Operator
+      Less
+      Equal
+      Greater
 ```
 
 The header says what the concept *is* - including what it extends and implements, so a reader does
