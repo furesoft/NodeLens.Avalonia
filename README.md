@@ -366,6 +366,12 @@ Bold, italic, underline and strikethrough come from two places: the notation (`r
 
 ![Emphasis from the notation and a struck-through rejected rule](docs/images/feature-emphasis.png)
 
+#### Type annotations
+
+The type of a node is drawn beside it in grey, the way an editor shows an inlay hint: `TypeOf` is a notation cell, so the concept's own editor decides whether it appears at all and where on the line it sits - here after each literal's value. The text is the type the language's own type rules compute, read while the tree is built, so it is part of the layout rather than a decoration painted over it: the caret, the selection and the hit test move over the cells the annotation is made of. A language with no type rules leaves the cell out and its documents read exactly as before.
+
+![Literals of a declared language, each followed by its type in grey](docs/images/feature-type-annotation.png)
+
 #### Line numbers
 
 An optional gutter tracks the projected lines instead of a text buffer's newlines, so a node that spans several lines is numbered where it is drawn.
