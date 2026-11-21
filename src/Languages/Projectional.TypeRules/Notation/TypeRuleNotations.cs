@@ -194,24 +194,33 @@ public static class TypeRuleNotations
             ed.Indent(ed.Children(TypeRuleLanguage.InsteadSlot, NothingToProve))));
 
         // A complaint draws as the sentence a finding quotes, so the author reads the diagnostic before it is
-        // reported: the severity first, then the message the user will see. The code follows the message and is
-        // drawn even when it is empty - a property cell is never hidden, because the caret needs something to stand
-        // on (see guide-language.md), so an unset code shows the placeholder and typing over it writes one. A
-        // condition draws only when it is there, so an unconditional complaint reads as the sentence it always
-        // reports.
-        notations.Add(TypeRuleConceptKeys.Complain, ed => ed.Line(
-            ed.Keyword("report"),
-            ed.Space,
-            ed.Property(TypeRuleLanguage.SeveritySlot),
-            ed.Space,
-            ed.Keyword("\""),
-            ed.Property(TypeRuleLanguage.MessageSlot),
-            ed.Keyword("\""),
-            ed.Space,
-            ed.Keyword("code"),
-            ed.Space,
-            ed.Property(TypeRuleLanguage.CodeSlot, emptyText: "<none>"),
-            ed.WhenFilled(TypeRuleLanguage.WhenSlot, ed.Space, ed.ChildInline(TypeRuleLanguage.WhenSlot))));
+        // reported: the severity on the report line, then the message the user will see on a line of its own. The
+        // message is prose and often long, so keeping it inline with the severity and the code would push the
+        // condition out of the window - and the condition is the part that says when the complaint fires.
+        // The code follows the message and is drawn even when it is empty - a property cell is never hidden, because
+        // the caret needs something to stand on (see guide-language.md), so an unset code shows the placeholder and
+        // typing over it writes one. A condition draws only when it is there, so an unconditional complaint reads as
+        // the sentence it always reports.
+        notations.Add(TypeRuleConceptKeys.Complain, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("report"),
+                ed.Space,
+                ed.Property(TypeRuleLanguage.SeveritySlot)),
+            ed.Indent(ed.Sequence(
+                ed.Line(
+                    ed.Keyword("\""),
+                    ed.Property(TypeRuleLanguage.MessageSlot),
+                    ed.Keyword("\"")),
+                ed.Line(
+                    ed.Keyword("code"),
+                    ed.Space,
+                    ed.Property(TypeRuleLanguage.CodeSlot, emptyText: "<none>"),
+                    ed.WhenFilled(
+                        TypeRuleLanguage.WhenSlot,
+                        ed.Space,
+                        ed.Keyword("when"),
+                        ed.Space,
+                        ed.ChildInline(TypeRuleLanguage.WhenSlot)))))));
 
         // A condition draws as the sentence it means: the two child slots whose types are compared, and what it
         // says about them. The `type of` phrasing is the one a child body draws with, so one reading covers both.
