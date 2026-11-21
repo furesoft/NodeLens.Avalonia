@@ -152,6 +152,12 @@ public static class CSharpConceptKeys
     /// <summary>One handler of a <c>try</c>: the exception it catches and what it does.</summary>
     public const string Catch = "CSharp.Catch";
 
+    /// <summary><c>switch (value) { case ...: ... }</c>.</summary>
+    public const string Switch = "CSharp.Switch";
+
+    /// <summary>One section of a <c>switch</c>: a case label or <c>default</c>, and what it does.</summary>
+    public const string SwitchSection = "CSharp.SwitchSection";
+
     /// <summary>The slot holding the namespace a file declares.</summary>
     public const string NamespaceSlot = "namespace";
 
@@ -235,4 +241,16 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding the block a try runs in every case, caught or not.</summary>
     public const string FinallySlot = "finally";
+
+    /// <summary>The slot holding the value a switch chooses on.</summary>
+    public const string SubjectSlot = "subject";
+
+    /// <summary>The slot holding a switch's sections.</summary>
+    public const string SectionsSlot = "sections";
+
+    /// <summary>The slot holding a switch section's case label, empty for <c>default</c>.</summary>
+    public const string LabelSlot = "label";
+
+    /// <summary>The property saying whether a switch section is the <c>default</c> one.</summary>
+    public const string IsDefaultSlot = "isDefault";
 }

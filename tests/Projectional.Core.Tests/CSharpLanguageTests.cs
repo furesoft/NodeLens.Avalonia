@@ -560,6 +560,69 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void ASwitchDrawsAndGeneratesTheSameShape()
+    {
+        // A switch is a statement of its own: the value it chooses on and the sections that answer it. A section is
+        // its own concept because it only exists inside a switch, and `isDefault` picks the keyword - a notation
+        // cannot ask "is this slot empty" and choose a word from the answer.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("switches");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var @class = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(@class, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+        var method = model.NewChild(@class, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+
+        var choice = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Switch);
+        var subject = model.NewChild(choice, CSharpConceptKeys.SubjectSlot, CSharpConceptKeys.Name);
+        var first = model.NewChild(choice, CSharpConceptKeys.SectionsSlot, CSharpConceptKeys.SwitchSection);
+        var label = model.NewChild(first, CSharpConceptKeys.LabelSlot, CSharpConceptKeys.IntLiteral);
+        var second = model.NewChild(choice, CSharpConceptKeys.SectionsSlot, CSharpConceptKeys.SwitchSection);
+
+        model.NewChild(first, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Break);
+        model.NewChild(second, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Break);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        @class.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        @class.Set(CSharpLanguage.NameSlot, "Choices");
+        field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        field.Set(CSharpLanguage.NameSlot, "count");
+        fieldType.Set(CSharpLanguage.NameSlot, "int");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Choose");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        subject.SetReference(CSharpConceptKeys.TargetSlot, field);
+        label.Set(CSharpLanguage.ValueProperty, "0");
+        second.Set(CSharpConceptKeys.IsDefaultSlot, "true");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Choices
+              {
+                public int count;
+                public void Choose()
+                {
+                  switch (count)
+                  {
+                    case 0:
+                      break;
+                    default:
+                      break;
+                  }
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing
