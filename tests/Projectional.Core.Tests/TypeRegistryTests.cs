@@ -97,6 +97,29 @@ public sealed class TypeRegistryTests
         Assert.Equal(2, second.Count);
     }
 
+    [Fact]
+    public void AUnionKeepsEveryRuleAndTheNearerRegistryWins()
+    {
+        // An extending language inherits its base's rules, and where both answer for one concept the language's own
+        // statement is the one in force - one concept has one type rule.
+        var ownRule = new Fixed(PropertyType.String);
+        var own = TypeRegistry.Empty.Add(ExpressionsConceptKeys.IntLiteral, ownRule);
+        var inheritedRule = new Fixed(PropertyType.Integer);
+        var inherited = TypeRegistry.Empty.Add(ExpressionsConceptKeys.IntLiteral, inheritedRule)
+            .Add(ExpressionsConceptKeys.Expression, inheritedRule);
+
+        var union = own.With(inherited);
+
+        Assert.Equal(2, union.Count);
+        Assert.Same(ownRule, union.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.IntLiteral)));
+        Assert.Same(inheritedRule, union.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Expression)));
+
+        // The relations travel with the rules: a base's declared edge is a fact about its types.
+        Assert.Equal(
+            own.Subtypes.Count + inherited.Subtypes.Count,
+            union.Subtypes.Count);
+    }
+
     private sealed class Fixed(PropertyType type) : ITypeRule
     {
         public IType TypeFor(TypeContext context) => PrimitiveType.Of(type);

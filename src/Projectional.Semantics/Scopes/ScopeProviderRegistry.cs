@@ -51,6 +51,31 @@ public sealed class ScopeProviderRegistry : IScopeProvider
     }
 
     /// <summary>
+    /// The union of this registry and <paramref name="other"/>, with this registry's provider winning for a concept
+    /// both answer for.
+    /// </summary>
+    /// <param name="other">The registry to merge in - the base an extending language inherited.</param>
+    /// <remarks>
+    /// One concept has one scope provider, so a union cannot hold two: the nearer registry's provider replaces the
+    /// farther one's. "Nearer" is the caller's order, and the language project passes its own registry first, then
+    /// its bases nearest first.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="other"/> is <see langword="null"/>.</exception>
+    public ScopeProviderRegistry With(ScopeProviderRegistry other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        var providers = new Dictionary<string, IScopeProvider>(other._providers, StringComparer.Ordinal);
+
+        foreach (var (conceptKey, provider) in _providers)
+        {
+            providers[conceptKey] = provider;
+        }
+
+        return new ScopeProviderRegistry(providers);
+    }
+
+    /// <summary>
     /// The provider that answers for <paramref name="concept"/>, or <see langword="null"/> when the
     /// default chain does.
     /// </summary>

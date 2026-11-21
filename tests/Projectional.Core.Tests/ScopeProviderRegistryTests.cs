@@ -84,6 +84,24 @@ public sealed class ScopeProviderRegistryTests
         return (first, ruleset);
     }
 
+    [Fact]
+    public void AUnionKeepsEveryProviderAndTheNearerRegistryWins()
+    {
+        // An extending language inherits its base's scope rules, and where both answer for one concept the language's
+        // own provider is the one in force - one concept has one scope.
+        var ownProvider = new NothingVisible();
+        var inheritedProvider = new NothingVisible();
+        var own = ScopeProviderRegistry.Empty.Add(RulesConceptKeys.Rule, ownProvider);
+        var inherited = ScopeProviderRegistry.Empty.Add(RulesConceptKeys.Rule, inheritedProvider)
+            .Add("Expressions.Expression", inheritedProvider);
+
+        var union = own.With(inherited);
+
+        Assert.Equal(2, union.Count);
+        Assert.Same(ownProvider, union.ProviderFor(RulesLanguage.Concepts.Get(RulesConceptKeys.Rule)));
+        Assert.Same(inheritedProvider, union.ProviderFor(ExpressionsLanguage.Concepts.Get("Expressions.Expression")));
+    }
+
     /// <summary>A provider that sees nothing, which is the smallest thing that is not the default.</summary>
     private sealed class NothingVisible : IScopeProvider
     {

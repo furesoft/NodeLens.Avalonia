@@ -122,6 +122,81 @@ public sealed class LanguageProjectConstraintsTests
         }
     }
 
+    /// <summary>The rules the language in a dependent folder carries, standing on a base by one of the two lists.</summary>
+    /// <remarks>
+    /// `extends` adopts the base language, so its constraints about a shared concept are in force; `depends on` lends
+    /// the vocabulary only, so they are not ([ADR 0027](../../docs/adr/0027-behaviour-is-inherited-through-extends.md)).
+    /// </remarks>
+    private static ConstraintSet ConstraintsOf(string? extends = null, string? dependency = null)
+    {
+        using var coreFolder = new TemporaryDirectory();
+        using var dependentFolder = new TemporaryDirectory();
+
+        WriteStructure(coreFolder.Root);
+        WriteConstraint(coreFolder.Root, "Pipeline.Stage", "detail");
+        WriteRoot(coreFolder.Root, "Core");
+
+        WriteOtherStructure(dependentFolder.Root);
+        WriteRoot(dependentFolder.Root, "Rules", extends, dependency);
+
+        var core = LanguageProject.Open(coreFolder.Root, out _)!;
+
+        return (LanguageProject.Open(dependentFolder.Root, new Answers(core), out var error) ?? throw new InvalidOperationException(error)).Constraints;
+    }
+
+    [Fact]
+    public void AnExtendedLanguagesConstraintsAreInherited()
+    {
+        Assert.Equal(1, ConstraintsOf(extends: "Core").Count);
+    }
+
+    [Fact]
+    public void ADependedOnLanguagesConstraintsAreNotInherited()
+    {
+        Assert.Equal(0, ConstraintsOf(dependency: "Core").Count);
+    }
+
+    /// <summary>The host's answer: the languages it was given, by name.</summary>
+    private sealed class Answers(params LanguageProject[] languages) : ILanguageResolver
+    {
+        public LanguageProject? Find(string name) =>
+            languages.FirstOrDefault(language => string.Equals(language.Name, name, StringComparison.Ordinal));
+    }
+
+    /// <summary>A concept of the dependent language, so its folder declares something of its own.</summary>
+    private static void WriteOtherStructure(string directory)
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Pipeline.Other", slots: [definition.Property("name", "string")], nameSlot: "name");
+
+        var structure = Path.Combine(directory, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+        ModelFile.Save(definition.Documents[0], Path.Combine(structure, "Pipeline.Other.mps"));
+    }
+
+    /// <summary>The language root, saying what it stands on.</summary>
+    private static void WriteRoot(string directory, string name, string? extends = null, string? dependency = null)
+    {
+        var model = StructureLanguage.NewModel("language");
+        var root = model.NewNode(StructureConceptKeys.Language);
+
+        root.Set("name", name);
+
+        if (extends is not null)
+        {
+            model.NewChild(root, StructureLanguage.ExtendsSlot, StructureConceptKeys.Dependency).Set("name", extends);
+        }
+
+        if (dependency is not null)
+        {
+            model.NewChild(root, StructureLanguage.DependenciesSlot, StructureConceptKeys.Dependency).Set("name", dependency);
+        }
+
+        ModelFile.Save(model, Path.Combine(directory, LanguageProject.LanguageFile));
+    }
+
     /// <summary>One rule, as its own document, the way a language project stores it.</summary>
     private static void WriteConstraint(string directory, string conceptKey, string slot)
     {

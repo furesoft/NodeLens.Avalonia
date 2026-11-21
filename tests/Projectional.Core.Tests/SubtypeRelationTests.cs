@@ -129,5 +129,28 @@ public sealed class SubtypeRelationTests
         Assert.False(type.Accepts(UnknownType.Instance));
     }
 
+    [Fact]
+    public void AUnionHoldsBothLanguagesEdgesAndEachOneOnly()
+    {
+        // Two languages' declared edges are one graph, and an edge both state is one fact - the same courtesy Add
+        // gives a language that states one fact twice.
+        var amount = Named("Amount");
+        var money = Named("Money");
+        var text = Named("Text");
+
+        var own = SubtypeRelation.Primitives.Add(amount, money);
+        var inherited = SubtypeRelation.Primitives.Add(money, text);
+
+        var union = own.With(inherited);
+
+        Assert.True(union.IsSubtype(amount, money));
+        Assert.True(union.IsSubtype(amount, text));
+        Assert.Equal(2, union.Count);
+
+        // Adding a relation that holds what this one already holds changes nothing, and says so by identity.
+        Assert.Same(own, own.With(SubtypeRelation.Primitives.Add(amount, money)));
+        Assert.Same(own, own.With(SubtypeRelation.Primitives));
+    }
+
     private static NamedType Named(string name) => new(name, PrimitiveType.Of(PropertyType.String));
 }
