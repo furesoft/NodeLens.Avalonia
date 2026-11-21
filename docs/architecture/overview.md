@@ -72,7 +72,7 @@ makes it a usable test of the integration surface
 
 **One project per language** ([ADR 0021](../adr/0021-one-project-per-language.md)), grouped by folder:
 `src/Languages/` holds the language packages (`Projectional.Expressions`, `.Json`, `.Xml`, `.Structures`,
-`.Editors`, `.TypeRules`, `.TextGen`, `.ConstraintRules`, `.ScopeRules`, `.IntentionRules`), and
+`.Editors`, `.TypeRules`, `.TextGen`, `.ConstraintRules`, `.ScopeRules`, `.TypingRules`, `.IntentionRules`), and
 `src/Languages/Samples/` nests the sample languages (`Projectional.Samples`, `.StateMachine`, `.FeatureModel`,
 `.SqlSchema`) - a subfolder rather than a second `Samples/` beside the repository's own `samples/`, which is
 where the host application lives. Each language project carries its own checks and intentions in `Checks/` and

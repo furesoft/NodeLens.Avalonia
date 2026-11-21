@@ -122,8 +122,9 @@ language definition is a model.
 ### A language project is a folder
 
 `Projectional.Languages` holds `LanguageProject`: a directory with a `structure` folder (required) and optional
-`editor`, `types`, `generator` and `constraints` folders becomes a `ConceptRegistry` + `NotationRegistry` +
-`TypeRegistry` + generators + `ConstraintSet`.
+`editor`, `types`, `generator`, `constraints`, `scopes`, `typing` and `intentions` folders becomes a
+`ConceptRegistry` + `NotationRegistry` + `TypeRegistry` + generators + `ConstraintSet` + `ScopeProviderRegistry` +
+`ITypingRules` + `IIntentionProvider`.
 **`Open(directory, out error)` answers a usable
 language or a message, never an exception** - opening is a user action, and a user action reports. The notation is
 lowered *against the concepts the structure documents just declared*, so a notation for an undeclared concept is
@@ -134,7 +135,9 @@ node draws as a missing-notation cell, which is the state a language being writt
 declaration order, which decides default fill and completion ranking. A structure document's root *is* a
 `Structure.Concept` or a `Structure.Enumeration`; an editor document's root is one `Editor.Notation`; a types
 document's root is one `TypeRule.Rule` or one `TypeRule.Named`; a generator document's root is one
-`TextGen.Generator`; a constraints document's root is one `Constraint.Rule`. **There is no container concept**
+`TextGen.Generator`; a constraints document's root is one `Constraint.Rule`; a scopes document's root is one
+`Scope.Rule`; a typing document's root is one `Typing.Rule`; an intentions document's root is one
+`Intent.Rule`. **There is no container concept**
 (`Structure.Language`, `Editor.Notations`, `TypeRule.Rules`,
 `TextGen.Generators` were deleted): a container with one child would be a second place to say which definitions
 exist. Do not reintroduce one to "simplify" a fixture - a document with two roots is refused by `LanguageProject.Read`

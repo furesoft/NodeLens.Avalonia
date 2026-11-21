@@ -10,6 +10,7 @@ document someone can open rather than only by the test suite.
 | `structure/` | five concepts: an abstract `Decl.Expression`, an integer and a truth value, a binary form and a conditional |
 | `editor/` | one line each - `1`, `true`, `1 + 2`, `if 1 < 2 then 3 else 4` |
 | `types/` | the rules: two fixed types, a switch over the operator, a `widest of` and one complaint |
+| `typing/` | which node a burst of typing creates: a digit makes an `int`, `true`/`false` make a `bool` |
 | `import/` | one declared importer: a second spelling of the same expressions, read by `import/sexp.mps` |
 | `tests/` | four assertions the language states about itself |
 | `expressions.mps` | a document of the language |
@@ -31,6 +32,25 @@ It reports only where the condition holds, which is why `1 == true` is a finding
 identifier a report groups the finding under and a suppression keys on; a complaint that states none reports uncoded,
 which draws as `code <none>`. That placeholder is the whole reason the slot needs no hiding: a property cell is never
 hidden, because the caret has to stand somewhere to write the value.
+
+## What the typing folder says
+
+A typing rule answers the question nothing in the model can: the caret is in an empty `Decl.Expression` slot and the
+user presses `4` - which of the four concrete concepts did they mean? Only the author knows, so the author says it.
+
+```
+typing Decl.Int claims digits writes value
+typing Decl.Bool claims any of true false writes value
+```
+
+`Decl.Int` claims a run of digits and writes it into its `value`, and `Decl.Bool` claims the two words and does the
+same. Typing `4` into an empty expression slot therefore produces `4`, and typing `true` produces `true`, instead of the
+keystroke being refused for lack of an answer. The two remaining claims - `starts with` and `name` - are unused here
+because nothing in this language is entered by a leading character: a `Decl.Binary` needs two operands, so no burst of
+typing can convey one, and an expression has no name slot.
+
+Without this folder the language still opens and edits; it just claims nothing, and the completion list stays the only
+way into an empty slot.
 
 ## What the tests folder says
 
@@ -82,6 +102,7 @@ var language = LanguageProject.Open("samples/declared-expressions", out var erro
 var model = ModelFile.Load(language!.NewProject(), "samples/declared-expressions/expressions.mps");
 
 // language.Types      the four rules
+// language.Typing     what a burst of typing creates
 // language.Constraints the one complaint
 ```
 

@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.ScopeRules\Projectional.ScopeRules.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TextGen\Projectional.TextGen.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.TypingRules\Projectional.TypingRules.csproj" />
   </ItemGroup>
 
   <ItemGroup>

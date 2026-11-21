@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Editors;
 using Projectional.ImportRules;
 using Projectional.Language;
@@ -8,6 +9,7 @@ using Projectional.Projection;
 using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.Testing;
+using Projectional.TypingRules;
 using Projectional.TypeRules;
 using Xunit;
 
@@ -152,6 +154,10 @@ public sealed class DeclaredExpressionsTests
             // The importer is a definition like the rest: a file that would change on its first save is drift the author
             // would meet the moment they opened it.
             AssertByteIdentical(temporary.FullName, directory, LanguageProject.ImportFolder, ImportLanguage.NewProject());
+
+            // The typing rules too, and for the same reason: they are the aspect a language author writes to make
+            // typing produce a node, so a file the writer would re-word is a rule that looks wrong the moment it opens.
+            AssertByteIdentical(temporary.FullName, directory, LanguageProject.TypingFolder, TypingLanguage.NewProject());
         }
         finally
         {
@@ -230,6 +236,53 @@ public sealed class DeclaredExpressionsTests
 
         Assert.Equal(4, report.Ran);
         Assert.True(report.Succeeded, report.ToString());
+    }
+
+    [Fact]
+    public void TheSampleTypingRulesMakeATypedDigitBecomeALiteral()
+    {
+        // The aspect is only worth having if the editor asks it: a digit typed into an empty operand slot has to
+        // produce a `Decl.Int` whose `value` holds the text, from the sample's own `typing/` documents and its own
+        // notation - not from a C# registry the test supplies.
+        var language = Language;
+
+        Assert.True(language.HasTyping);
+
+        var model = language.NewProject().NewModel("typed");
+        var binary = model.NewNode("Decl.Binary");
+        binary.Set("operator", "+");
+        model.AddRoot(binary);
+
+        using var session = new EditorSession(binary, language.Notations, typing: language.Typing);
+
+        session.Select(Selection.At(CellAddress.OfSlot(binary.Id, "left")));
+        session.Apply(KeyRouter.Type("7"));
+
+        var literal = Assert.Single(binary.GetChildren("left"));
+
+        Assert.Equal("Decl.Int", literal.Concept.Key);
+        Assert.Equal("7", literal.GetOrNull("value"));
+    }
+
+    [Fact]
+    public void TheSampleTypingRulesClaimTheWordsItsBooleanUnderstands()
+    {
+        var language = Language;
+
+        var model = language.NewProject().NewModel("typed");
+        var binary = model.NewNode("Decl.Binary");
+        binary.Set("operator", "==");
+        model.AddRoot(binary);
+
+        using var session = new EditorSession(binary, language.Notations, typing: language.Typing);
+
+        session.Select(Selection.At(CellAddress.OfSlot(binary.Id, "right")));
+        session.Apply(KeyRouter.Type("false"));
+
+        var literal = Assert.Single(binary.GetChildren("right"));
+
+        Assert.Equal("Decl.Bool", literal.Concept.Key);
+        Assert.Equal("false", literal.GetOrNull("value"));
     }
 
     [Fact]
