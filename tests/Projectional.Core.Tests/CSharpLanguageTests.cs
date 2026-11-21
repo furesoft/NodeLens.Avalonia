@@ -665,6 +665,66 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AnAsAndANullDrawAndGenerateTheSameShape()
+    {
+        // `as` asks `is`'s question and hands the value back - the two in one word. `null` is the one literal with no
+        // slot and no type of its own: in C# it takes the type of whatever it is assigned to, so a rule that named
+        // one would be wrong wherever the target was something else.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("operands");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var @class = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(@class, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+
+        var read = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var readType = model.NewChild(read, "type", CSharpConceptKeys.TypeReference);
+        var asExpression = model.NewChild(read, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.As);
+        var asOperand = model.NewChild(asExpression, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+        var asType = model.NewChild(asExpression, "type", CSharpConceptKeys.TypeReference);
+
+        var clear = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var clearType = model.NewChild(clear, "type", CSharpConceptKeys.TypeReference);
+        var nothing = model.NewChild(clear, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.NullLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        @class.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        @class.Set(CSharpLanguage.NameSlot, "Reads");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Read");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        readType.Set(CSharpLanguage.NameSlot, "string");
+        clearType.Set(CSharpLanguage.NameSlot, "string");
+        read.Set(CSharpLanguage.NameSlot, "text");
+        clear.Set(CSharpLanguage.NameSlot, "empty");
+        asOperand.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "value");
+        asType.Set(CSharpLanguage.NameSlot, "string");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Reads
+              {
+                public void Read()
+                {
+                  string text = value as string;
+                  string empty = null;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // `as` claims the type it names; `null` deliberately claims none, so the type system says nothing about it.
+        Assert.Equal("string", CSharpTypes.Registry.TypeOf(asExpression).Name);
+        Assert.Equal(UnknownType.Instance.Name, CSharpTypes.Registry.TypeOf(nothing).Name);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

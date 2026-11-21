@@ -32,6 +32,9 @@ public static class CSharpConceptKeys
     /// <summary><c>true</c> or <c>false</c>.</summary>
     public const string BoolLiteral = "CSharp.BoolLiteral";
 
+    /// <summary><c>null</c>: no value at all.</summary>
+    public const string NullLiteral = "CSharp.NullLiteral";
+
     /// <summary>A name, resolved by the compiler and never by us.</summary>
     public const string Name = "CSharp.Name";
 
@@ -64,6 +67,9 @@ public static class CSharpConceptKeys
 
     /// <summary><c>operand is Type</c>: whether a value is of a type.</summary>
     public const string Is = "CSharp.Is";
+
+    /// <summary><c>operand as Type</c>: the value read as a type, or nothing when it is not one.</summary>
+    public const string As = "CSharp.As";
 
     /// <summary><c>target[index]</c>: the element at a position.</summary>
     public const string Index = "CSharp.Index";

@@ -430,6 +430,13 @@ public static class CSharpTextGenerators
             new ChildPart(CSharpConceptKeys.OperandSlot),
             new TextPart(" is "),
             new ChildPart("type")))
+
+        .Add(CSharpConceptKeys.As, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(" as "),
+            new ChildPart("type")))
+
+        .Add(CSharpConceptKeys.NullLiteral, TextTemplate.Of(new TextPart("null")))
         .Add(CSharpConceptKeys.Index, TextTemplate.Of(
             new ChildPart(CSharpConceptKeys.TargetSlot),
             new TextPart("["),

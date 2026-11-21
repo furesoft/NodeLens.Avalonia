@@ -51,6 +51,9 @@ public static class CSharpNotations
         notations.Add(CSharpConceptKeys.TypeReference, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
         notations.Add(CSharpConceptKeys.IntLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
         notations.Add(CSharpConceptKeys.BoolLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
+
+        // `null` has no slot to draw, so the notation is the word and nothing else.
+        notations.Add(CSharpConceptKeys.NullLiteral, ed => ed.Line(ed.Keyword("null")));
         // A reference cell: it draws what the name means, and falls back to the text the user typed while nothing
         // resolves - so an unresolved name is a dangling reference rather than a second kind of name.
         notations.Add(CSharpConceptKeys.Name, ed => ed.Line(ed.Reference(CSharpConceptKeys.TargetSlot, unsetText: "<name>")));
@@ -111,6 +114,14 @@ public static class CSharpNotations
             ed.ChildInline(CSharpConceptKeys.OperandSlot),
             ed.Space,
             ed.Keyword("is"),
+            ed.Space,
+            ed.ChildInline("type")));
+
+        // `as` is `is` with the value handed back: same operand, same type, the word in the middle.
+        notations.Add(CSharpConceptKeys.As, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Space,
+            ed.Keyword("as"),
             ed.Space,
             ed.ChildInline("type")));
 
