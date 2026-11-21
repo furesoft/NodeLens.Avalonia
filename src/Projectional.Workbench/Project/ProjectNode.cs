@@ -15,6 +15,4 @@ internal enum ProjectNode
     /// <summary>A definition document of a project, open or not.</summary>
     File,
 
-    /// <summary>An open document in the <c>Documents</c> group.</summary>
-    Document,
 }

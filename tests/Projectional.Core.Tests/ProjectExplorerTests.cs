@@ -14,33 +14,31 @@ public sealed class ProjectExplorerTests
     private static readonly HashSet<string> NothingCollapsed = [];
 
     [Fact]
-    public void NoDocumentsAndNoLanguagesIsNoRows()
+    public void NoLanguagesIsNoRows()
     {
         Assert.Empty(ProjectExplorer.Of([], [], NothingCollapsed));
     }
 
     [Fact]
-    public void OpenDocumentsAreOneGroupInTabOrder()
-    {
-        using var first = Tab("payroll");
-        using var second = Tab("Release");
-
-        var rows = ProjectExplorer.Of([first, second], [], NothingCollapsed);
-
-        Assert.Equal(["Documents", "payroll", "Release"], rows.Select(row => row.Text));
-        Assert.Equal([0, 1, 1], rows.Select(row => row.Depth));
-        Assert.Same(first, rows[1].Document);
-        Assert.Equal(ProjectNode.Document, rows[1].Kind);
-    }
-
-    [Fact]
-    public void AModifiedDocumentCarriesItsStar()
+    public void AnOpenDocumentIsNotARow()
     {
         using var tab = Tab("payroll");
 
+        // The explorer is the project, not a second tab strip: the tab strip and the title bar already say what is open.
+        Assert.Empty(ProjectExplorer.Of([tab], [], NothingCollapsed));
+    }
+
+    [Fact]
+    public void AModifiedDocumentMarksItsFile()
+    {
+        var language = Language();
+        var path = ProjectExplorer.Of([], [language], NothingCollapsed).First(row => row.Kind == ProjectNode.File).Path!;
+
+        using var tab = Tab("payroll", path);
+
         tab.Root.Set("name", "Renamed");
 
-        var row = Assert.Single(ProjectExplorer.Of([tab], [], NothingCollapsed).Skip(1));
+        var row = Assert.Single(ProjectExplorer.Of([tab], [language], NothingCollapsed), row => row.Kind == ProjectNode.File && row.Path == path);
 
         Assert.True(row.IsDirty);
     }
@@ -80,13 +78,12 @@ public sealed class ProjectExplorerTests
     [Fact]
     public void ACollapsedHeadingDropsEverythingUnderIt()
     {
-        using var tab = Tab("payroll");
         var language = Language();
 
-        var collapsed = new HashSet<string> { ProjectExplorer.DocumentsKey, ProjectExplorer.LanguagesKey };
-        var rows = ProjectExplorer.Of([tab], [language], collapsed);
+        var collapsed = new HashSet<string> { ProjectExplorer.LanguagesKey };
+        var rows = ProjectExplorer.Of([], [language], collapsed);
 
-        Assert.Equal(["Documents", "Languages"], rows.Select(row => row.Text));
+        Assert.Equal(["Languages"], rows.Select(row => row.Text));
         Assert.All(rows, row => Assert.False(row.IsExpanded));
     }
 
@@ -98,19 +95,14 @@ public sealed class ProjectExplorerTests
 
         using var tab = Tab("Pipeline", path);
 
-        // Twice on purpose: once under what is open, once under the project it belongs to.
-        var rows = ProjectExplorer.Of([tab], [language], NothingCollapsed);
-
-        Assert.Same(tab, rows.Single(row => row.Depth == 1 && row.Document is not null).Document);
-
-        var row = rows.Single(row => row.Kind == ProjectNode.File && row.Path == path);
+        var row = Assert.Single(ProjectExplorer.Of([tab], [language], NothingCollapsed), row => row.Kind == ProjectNode.File && row.Path == path);
 
         Assert.Same(tab, row.Document);
         Assert.Equal(Path.GetFileName(path), row.Text);
     }
 
     [Fact]
-    public void OnlyRealFoldersAndDocumentsAreLeavesAndTheRestCanBeOpened()
+    public void OnlyFoldersAndFilesAreLeavesAndTheRestCanBeOpened()
     {
         var language = Language();
 

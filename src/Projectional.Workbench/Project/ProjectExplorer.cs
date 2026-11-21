@@ -43,8 +43,6 @@ internal static class ProjectExplorer
         TestRunner.Folder,
     ];
 
-    /// <summary>The key of the open-documents heading.</summary>
-    internal const string DocumentsKey = "documents";
 
     /// <summary>The key of the languages heading.</summary>
     internal const string LanguagesKey = "languages";
@@ -88,7 +86,7 @@ internal static class ProjectExplorer
     }
 
     /// <summary>The rows, in the order the explorer draws them.</summary>
-    /// <param name="documents">The open documents, in tab order.</param>
+    /// <param name="documents">The open documents, which is only how a file row learns it is open - the explorer lists the project, not the tabs.</param>
     /// <param name="languages">The language projects this window has opened, in the order they joined.</param>
     /// <param name="collapsed">The keys of the nodes drawn shut.</param>
     internal static IReadOnlyList<ProjectEntry> Of(
@@ -101,21 +99,6 @@ internal static class ProjectExplorer
         ArgumentNullException.ThrowIfNull(collapsed);
 
         var rows = new List<ProjectEntry>();
-
-        if (documents.Count > 0)
-        {
-            var open = !collapsed.Contains(DocumentsKey);
-
-            rows.Add(new ProjectEntry("Documents", 0, ProjectNode.Group, DocumentsKey, open));
-
-            if (open)
-            {
-                foreach (var document in documents)
-                {
-                    rows.Add(new ProjectEntry(document.Title, 1, ProjectNode.Document, document: document, path: document.FilePath));
-                }
-            }
-        }
 
         if (languages.Count == 0)
         {

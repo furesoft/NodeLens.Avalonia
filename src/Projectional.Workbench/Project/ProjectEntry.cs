@@ -98,7 +98,6 @@ internal sealed record ProjectEntry
     {
         ProjectNode.Group => null,
         ProjectNode.Project => ProjectIcons.ProjectKey,
-        ProjectNode.Document => ProjectIcons.DocumentKey,
         ProjectNode.Folder => Folder ?? ProjectIcons.FolderKey,
         _ => Folder ?? ProjectIcons.FileKey,
     };
@@ -128,8 +127,8 @@ internal sealed record ProjectEntry
     /// <summary>Whether the row is a language project, which is drawn with its own icon.</summary>
     internal bool IsProject => Kind is ProjectNode.Project;
 
-    /// <summary>Whether the row is a file or a document, which is drawn with a page icon.</summary>
-    internal bool IsFile => Kind is ProjectNode.File or ProjectNode.Document;
+    /// <summary>Whether the row is a definition file, which is drawn with a page icon.</summary>
+    internal bool IsFile => Kind is ProjectNode.File;
 
     /// <summary>Whether the row's document has changes that are not on disk.</summary>
     internal bool IsDirty => Document is { IsDirty: true };

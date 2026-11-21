@@ -249,10 +249,16 @@ the caret - the same bug the project explorer cannot have, because a selection t
 
 ### The project explorer
 
-The other tab of the left column answers the question one level above the browser's: which documents are open, and
-what the languages opened from a folder are made of. `Project/ProjectExplorer.cs` derives the rows - headings, the open
-documents, each language, its aspect folders and the definition files inside them - and
-`Shell/Panels/ProjectPanelView.axaml` draws them; the window only decides what a press means.
+The other tab of the left column answers the question one level above the browser's: what the languages opened from a
+folder are made of. `Project/ProjectExplorer.cs` derives the rows - a heading per language, its aspect folders and the
+definition files inside them - and `Shell/Panels/ProjectPanelView.axaml` draws them; the window only decides what a
+press means.
+
+**An open document is not a row.** The document strip and the title bar already say what is open, and a second list of
+the same thing only pushes the folders out of view. What the open documents are still needed for is a *file* row, which
+learns from them that it is open and whether it is modified - that is where the star beside a name comes from. A panel
+with nothing in it says so and names **File ▸ Open language…**, because the next step is a menu entry the user would
+otherwise have to guess.
 
 - **A row says what it is drawn as.** One colour per aspect, the aspect's own glyph on a folder, and a letter badge on
   a file naming the kind of definition that aspect holds - a green `C` under `structure`, an amber `E` under `editor`.

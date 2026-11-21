@@ -13,72 +13,103 @@
       <local:ProjectIconConverter x:Key="ProjectIcon" />
       <local:ProjectIconBrushConverter x:Key="ProjectIconBrush" />
       <local:BoldWeightConverter x:Key="BoldWeight" />
+      <local:IsEmptyConverter x:Key="IsEmpty" />
     </ResourceDictionary>
   </UserControl.Resources>
 
-  <ListBox
-    x:Name="Rows"
-    Classes="panelList"
-    BorderThickness="0"
-    Background="Transparent"
-    a:AutomationProperties.Name="Project">
-    <!--
-      The panel's own menu, not a row's: a module is what the whole tree is about, so the entry belongs to the panel the
-      way a project's settings belong to the project in the IDE this shell follows. The shell fills in what a command
-      means - the view only says which command exists.
-    -->
-    <ListBox.ContextMenu>
-      <ContextMenu x:Name="PanelMenu" a:AutomationProperties.Name="Project explorer menu">
-        <MenuItem x:Name="ModuleSettingsItem" Header="Module settings…" a:AutomationProperties.Name="Module settings" />
-      </ContextMenu>
-    </ListBox.ContextMenu>
-    <ListBox.ItemTemplate>
-      <DataTemplate x:DataType="local:ProjectEntry">
-        <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">
-          <Border Width="{Binding Indent}" IsVisible="{Binding HasIndent}" />
-          <Button
-            Classes="chevron"
-            IsVisible="{Binding HasChildren}"
-            a:AutomationProperties.Name="Expand or collapse">
-            <Panel>
-              <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronRight}" IsVisible="{Binding !IsExpanded}" />
-              <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronDown}" IsVisible="{Binding IsExpanded}" />
-            </Panel>
-          </Button>
-          <Border Width="16" IsVisible="{Binding !HasChildren}" />
-          <!--
-            A folder, a project and a document are drawn as the mark of what they are, in the colour of the aspect
-            they belong to; a definition file is drawn as a round badge with the kind of definition in it.
-          -->
-          <Path
-            Classes="treeIcon"
-            Data="{Binding Icon, Converter={StaticResource ProjectIcon}}"
-            Stroke="{Binding Icon, Converter={StaticResource ProjectIconBrush}}"
-            IsVisible="{Binding HasIcon}"
-            Margin="2,0,6,0" />
-          <Border
-            Width="14"
-            Height="14"
-            CornerRadius="7"
-            Background="{Binding Icon, Converter={StaticResource ProjectIconBrush}}"
-            IsVisible="{Binding HasBadge}"
-            VerticalAlignment="Center"
-            Margin="2,0,6,0">
+  <Grid>
+    <ListBox
+      x:Name="Rows"
+      Classes="panelList"
+      BorderThickness="0"
+      Background="Transparent"
+      a:AutomationProperties.Name="Project">
+      <!--
+        The panel's own menu, not a row's: a module is what the whole tree is about, so the entry belongs to the panel
+        the way a project's settings belong to the project in the IDE this shell follows. The shell fills in what a
+        command means - the view only says which command exists.
+      -->
+      <ListBox.ContextMenu>
+        <ContextMenu x:Name="PanelMenu" a:AutomationProperties.Name="Project explorer menu">
+          <MenuItem x:Name="ModuleSettingsItem" Header="Module settings…" a:AutomationProperties.Name="Module settings" />
+        </ContextMenu>
+      </ListBox.ContextMenu>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:ProjectEntry">
+          <StackPanel Orientation="Horizontal" a:AutomationProperties.Name="{Binding Text}">
+            <Border Width="{Binding Indent}" IsVisible="{Binding HasIndent}" />
+            <Button
+              Classes="chevron"
+              IsVisible="{Binding HasChildren}"
+              a:AutomationProperties.Name="Expand or collapse">
+              <Panel>
+                <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronRight}" IsVisible="{Binding !IsExpanded}" />
+                <Path Classes="chevronGlyph" Data="{DynamicResource IconChevronDown}" IsVisible="{Binding IsExpanded}" />
+              </Panel>
+            </Button>
+            <Border Width="16" IsVisible="{Binding !HasChildren}" />
+            <!--
+              A folder and a project are drawn as the mark of what they are, in the colour of the aspect they belong
+              to; a definition file is drawn as a round badge with the kind of definition in it.
+            -->
+            <Path
+              Classes="treeIcon"
+              Data="{Binding Icon, Converter={StaticResource ProjectIcon}}"
+              Stroke="{Binding Icon, Converter={StaticResource ProjectIconBrush}}"
+              IsVisible="{Binding HasIcon}"
+              Margin="2,0,6,0" />
+            <Border
+              Width="14"
+              Height="14"
+              CornerRadius="7"
+              Background="{Binding Icon, Converter={StaticResource ProjectIconBrush}}"
+              IsVisible="{Binding HasBadge}"
+              VerticalAlignment="Center"
+              Margin="2,0,6,0">
+              <TextBlock
+                Text="{Binding Badge}"
+                FontSize="9"
+                FontWeight="SemiBold"
+                Foreground="White"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+            </Border>
             <TextBlock
-              Text="{Binding Badge}"
-              FontSize="9"
-              FontWeight="SemiBold"
-              Foreground="White"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center" />
-          </Border>
-          <TextBlock
-            Text="{Binding Text}"
-            VerticalAlignment="Center"
-            FontWeight="{Binding IsBold, Converter={StaticResource BoldWeight}}" />
-          <TextBlock Text="*" VerticalAlignment="Center" Margin="3,0,0,0" IsVisible="{Binding IsDirty}" />
-        </StackPanel>
-      </DataTemplate>
-    </ListBox.ItemTemplate>
-  </ListBox>
+              Text="{Binding Text}"
+              VerticalAlignment="Center"
+              FontWeight="{Binding IsBold, Converter={StaticResource BoldWeight}}" />
+            <TextBlock Text="*" VerticalAlignment="Center" Margin="3,0,0,0" IsVisible="{Binding IsDirty}" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <!--
+      What the panel says while it has nothing to show. The rows are the languages, so an empty panel means no language
+      is open - which is not a state to leave blank, because the next step is a menu entry the user has to be told about.
+    -->
+    <Border
+      Classes="panelSurface"
+      IsVisible="{Binding #Rows.ItemCount, Converter={StaticResource IsEmpty}}"
+      IsHitTestVisible="False">
+      <StackPanel
+        Spacing="8"
+        Margin="14,0"
+        VerticalAlignment="Center">
+        <Path
+          Classes="inlineIcon"
+          Data="{DynamicResource IconFolder}"
+          Width="34"
+          Height="34"
+          StrokeThickness="1.1"
+          HorizontalAlignment="Center" />
+        <TextBlock Text="No language open" Classes="emptyTitle" TextAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock
+          Classes="emptyHint"
+          TextAlignment="Center"
+          TextWrapping="Wrap"
+          Text="File &#x25B8; Open language&#x2026;" />
+      </StackPanel>
+    </Border>
+  </Grid>
 </UserControl>
