@@ -16,6 +16,10 @@ public static class CSharpConceptKeys
     /// <summary>What a class holds. Abstract, because a member is a field or a method.</summary>
     public const string Member = "CSharp.Member";
 
+    /// <summary>What a name can refer to: a field, a parameter or a local. An interface, because the three share no
+    /// slots and only the fact that they are referencable.</summary>
+    public const string NamedDeclaration = "CSharp.NamedDeclaration";
+
     /// <summary>A type, named.</summary>
     public const string TypeReference = "CSharp.TypeReference";
 
@@ -114,6 +118,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding an optional initializer or return value.</summary>
     public const string ValueSlot = "value";
+
+    /// <summary>The slot holding the declaration a name refers to.</summary>
+    public const string TargetSlot = "target";
 
     /// <summary>The slot holding an if's condition.</summary>
     public const string ConditionSlot = "condition";

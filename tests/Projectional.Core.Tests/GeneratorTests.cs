@@ -450,7 +450,7 @@ public sealed class GeneratorTests
     }
 
     [Fact]
-    public void AReferenceWhoseTargetIsGoneEmitsTheUnresolvedText()
+    public void AReferenceWhoseTargetIsGoneEmitsTheTextItKept()
     {
         var (_, transition) = Transition();
         var document = ModelXml.Serialize(transition.Model);
@@ -472,12 +472,27 @@ public sealed class GeneratorTests
         // Loading keeps it (the model never drops data), and a generator still has to say something.
         Assert.Null(orphan.GetReferenceTarget("target"));
 
+        // The text the reference kept is what it was written as, so it is what the generator emits: `resolveInfo`
+        // exists as a fallback, and throwing it away would lose a name the document still holds (invariant 8). The
+        // reader is not misled - the cell is styled `Unresolved`, which is why the state exists separately from the
+        // text. A reference that kept no text has nothing to say, and there the language's own word is used.
         var result = Generate(
             Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new ReferencePart("target", unresolvedText: "?"))),
             orphan);
 
+        var kept = Assert.NotNull(orphan.GetReference("target"));
+
         Assert.True(result.Succeeded);
-        Assert.Equal("?", result.Text);
+        Assert.Equal(kept.ResolveInfo, result.Text);
+
+        // The same reference with nothing kept: there is no text to emit, so the language's own word is used.
+        orphan.SetReference("target", NodeId.New(), resolveInfo: null);
+
+        var wordless = Generate(
+            Registry().Add(SmConceptKeys.Transition, TextTemplate.Of(new ReferencePart("target", unresolvedText: "?"))),
+            orphan);
+
+        Assert.Equal("?", wordless.Text);
     }
 
     [Fact]

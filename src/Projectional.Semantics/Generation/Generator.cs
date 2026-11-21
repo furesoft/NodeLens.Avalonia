@@ -352,9 +352,14 @@ public sealed class Generator
             return part.UnsetText;
         }
 
-        return node.GetReferenceTarget(part.Slot) is { } target
-            ? target.Name ?? $"<{target.Concept.Key}>"
-            : part.UnresolvedText;
+        if (node.GetReferenceTarget(part.Slot) is { } target)
+        {
+            return target.Name ?? $"<{target.Concept.Key}>";
+        }
+
+        // The same rule the drawing follows: the text the reference kept is what it was written as, so an unresolved
+        // reference emits it rather than a placeholder - otherwise generated code would lose a name the model holds.
+        return node.GetReference(part.Slot)?.ResolveInfo is { Length: > 0 } text ? text : part.UnresolvedText;
     }
 
     private Node SingleChildOf(Node node, string slot)

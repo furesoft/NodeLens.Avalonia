@@ -84,6 +84,16 @@ public static class CSharpLanguage
             isRoot: false,
             description: "What a class holds: a field or a method, in the order it was written."),
 
+        // An interface and not an abstract concept, because a field, a parameter and a local share no slots - only the
+        // fact that a name may point at them. `Name.target` is declared over this, which is what makes "which
+        // declaration does this name mean" a question the model asks and a scope provider answers.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NamedDeclaration,
+            isAbstract: true,
+            isInterface: true,
+            isRoot: false,
+            description: "Something a name can refer to: a field, a parameter or a local."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.TypeReference,
             [
@@ -119,14 +129,15 @@ public static class CSharpLanguage
             isRoot: false,
             description: "true or false."),
 
+        // A reference, not a property: the name *is* the declaration it points at, which is what lets a rename follow
+        // it, go-to-definition find it, and a scope provider answer which declarations are visible here. The text a
+        // user typed while nothing resolved is the reference's own resolveInfo, so there is one truth and not two.
         new ConceptDeclaration(
             CSharpConceptKeys.Name,
-            [new PropertySlot(NameSlot, PropertyType.String, description: "The identifier, resolved by the compiler and never by us.")],
+            [new ReferenceSlot(CSharpConceptKeys.TargetSlot, CSharpConceptKeys.NamedDeclaration)],
             superConcepts: [CSharpConceptKeys.Expression],
-            nameSlot: NameSlot,
-            nameRule: NameRule.Identifier,
             isRoot: false,
-            description: "A name, as the compiler will read it in this scope."),
+            description: "A name, referring to the declaration it means."),
 
         new ConceptDeclaration(
             CSharpConceptKeys.MemberAccess,
@@ -232,6 +243,7 @@ public static class CSharpLanguage
                 new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0),
             ],
             superConcepts: [CSharpConceptKeys.Member],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
             nameSlot: NameSlot,
             nameRule: NameRule.Camel,
             isRoot: false,
@@ -263,6 +275,7 @@ public static class CSharpLanguage
                 new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
                 new PropertySlot(NameSlot, PropertyType.String, description: "The parameter's name."),
             ],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
             nameSlot: NameSlot,
             nameRule: NameRule.Camel,
             isRoot: false,
@@ -289,6 +302,7 @@ public static class CSharpLanguage
                 new PropertySlot(NameSlot, PropertyType.String, description: "The local's name."),
                 new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0),
             ],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
             nameSlot: NameSlot,
             nameRule: NameRule.Camel,
             isRoot: false,

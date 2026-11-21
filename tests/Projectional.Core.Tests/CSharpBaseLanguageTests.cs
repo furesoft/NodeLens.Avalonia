@@ -88,7 +88,9 @@ public sealed class CSharpBaseLanguageTests
 
             rule.Set("name", "enough");
             comparison.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.GreaterThan);
-            left.Set(CSharpLanguage.NameSlot, "total");
+            // A dangling reference that keeps the text it was given: the DSL declares no `total`, and the base
+            // language draws the resolveInfo exactly as a resolved name would be drawn.
+            left.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "total");
             right.Set(CSharpLanguage.ValueProperty, "0");
 
             // The DSL's own notation and the base language's are one drawing - the rule around it is declared here,

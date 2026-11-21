@@ -38,7 +38,9 @@ public static class CSharpNotations
         notations.Add(CSharpConceptKeys.TypeReference, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
         notations.Add(CSharpConceptKeys.IntLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
         notations.Add(CSharpConceptKeys.BoolLiteral, ed => ed.Line(ed.Property(CSharpLanguage.ValueProperty)));
-        notations.Add(CSharpConceptKeys.Name, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
+        // A reference cell: it draws what the name means, and falls back to the text the user typed while nothing
+        // resolves - so an unresolved name is a dangling reference rather than a second kind of name.
+        notations.Add(CSharpConceptKeys.Name, ed => ed.Line(ed.Reference(CSharpConceptKeys.TargetSlot, unsetText: "<name>")));
 
         notations.Add(CSharpConceptKeys.StringLiteral, ed => ed.Line(
             ed.Punct("\""),
