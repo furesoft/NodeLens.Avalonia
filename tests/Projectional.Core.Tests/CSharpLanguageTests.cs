@@ -623,6 +623,48 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AFileWithUsingsDrawsAndGeneratesTheSameShape()
+    {
+        // A file imports the namespaces it names without qualifying them. The imports are a concept of their own
+        // because a using names a namespace, not a type: there is no declaration for it to resolve to, so its name
+        // is a property. They matter beyond tidiness - generated C# does not compile without them, because `Console`
+        // is not in scope without `using System;`.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("imports");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var system = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
+        var collections = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var @class = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(@class, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+
+        system.Set(CSharpLanguage.NameSlot, "System");
+        collections.Set(CSharpLanguage.NameSlot, "System.Collections.Generic");
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        @class.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        @class.Set(CSharpLanguage.NameSlot, "Greeter");
+        field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+        field.Set(CSharpLanguage.NameSlot, "message");
+        fieldType.Set(CSharpLanguage.NameSlot, "string");
+
+        const string Expected =
+            """
+            using System;
+            using System.Collections.Generic;
+            namespace Sample
+            {
+              public class Greeter
+              {
+                private string message;
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

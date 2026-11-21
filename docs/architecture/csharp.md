@@ -53,7 +53,8 @@ behaviour or a generator body need" rather than by C# grammar order.
 `Switch` with its `SwitchSection` sections (`case` or `default`);
 and `TypeReference`, `Method`, `Constructor`,
 `Property` (an auto-property, or one whose accessors have bodies, with `get` and `set`), `Indexer` (a member named `this`, so its own concept rather than a property with an empty name slot), `Signature` (a bodiless interface member),
-`Parameter`, `Field`, `Class`, `Interface` with its inheritance list, `Namespace` and `File`. It has no
+`Parameter`, `Field`, `Class`, `Interface` with its inheritance list, `Using` (a file's imports, whose name is a
+property because a namespace is not a type), `Namespace` and `File`. It has no
 importer, so a document is written in the editor and the text is a derived artefact. Read the rest of
 this section as the target, and the package as the evidence that the notation, constraint, intention
 and generator machinery can carry a C#-shaped base language at all.
