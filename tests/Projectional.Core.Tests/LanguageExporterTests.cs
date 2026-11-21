@@ -279,9 +279,29 @@ public sealed class LanguageExporterTests
             typingRules: [new DeclaredTypingRule("Doc.Number", TypingClaims.Alias, "num", "value")]);
 
         Assert.Contains(
-            ".Add(\"Doc.Number\", text => text is \"num\", \"value\")",
+            ".Add(\"Doc.Number\", text => text == \"num\", \"value\")",
             result.Files[0].Text,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAliasWithSpacesIsOneWordNotAWordList()
+    {
+        // An alias may be a phrase - the declaration only refuses whitespace-only - and the folder claims it whole. The
+        // export wrote it through the `any of` pattern first, which split it: the generated language claimed `circle`,
+        // `with` and `radius` as three separate keystrokes, none of which its folder claimed.
+        var result = LanguageExporter.Export(
+            "Declared",
+            [new ConceptDeclaration("Doc.Shape", [new PropertySlot("name", PropertyType.String)], alias: "circle with radius")],
+            [],
+            typingRules: [new DeclaredTypingRule("Doc.Shape", TypingClaims.Alias, "circle with radius", "name")]);
+
+        Assert.Contains(
+            ".Add(\"Doc.Shape\", text => text == \"circle with radius\", \"name\")",
+            result.Files[0].Text,
+            StringComparison.Ordinal);
+
+        Assert.DoesNotContain("text is \"circle\"", result.Files[0].Text, StringComparison.Ordinal);
     }
 
     [Fact]
