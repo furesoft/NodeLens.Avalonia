@@ -68,6 +68,21 @@ public static class CSharpConceptKeys
     /// <summary>A class: its fields and its methods, in the order they were written.</summary>
     public const string Class = "CSharp.Class";
 
+    /// <summary>A type a namespace holds: a class or an interface. Abstract.</summary>
+    public const string TypeDeclaration = "CSharp.TypeDeclaration";
+
+    /// <summary>The base a class names, and the interfaces it implements: the list after the colon.</summary>
+    public const string Inheritance = "CSharp.Inheritance";
+
+    /// <summary>A member of an interface: a signature with no body.</summary>
+    public const string Signature = "CSharp.Signature";
+
+    /// <summary>One entry of a class's inheritance list: a node so the list can be drawn, a reference so it resolves.</summary>
+    public const string InheritanceEntry = "CSharp.InheritanceEntry";
+
+    /// <summary>An interface: the members a class promises to provide.</summary>
+    public const string Interface = "CSharp.Interface";
+
     /// <summary>A constructor: the parameters and the body that make an instance.</summary>
     public const string Constructor = "CSharp.Constructor";
 
@@ -151,6 +166,18 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding what a foreach iterates.</summary>
     public const string SourceSlot = "source";
+
+    /// <summary>The slot holding the class a class extends.</summary>
+    public const string BaseSlot = "base";
+
+    /// <summary>The slot holding the interfaces a class implements.</summary>
+    public const string InterfacesSlot = "interfaces";
+
+    /// <summary>The slot holding the list a class inherits from.</summary>
+    public const string InheritanceSlot = "inheritance";
+
+    /// <summary>The slot holding the entries of that list.</summary>
+    public const string EntriesSlot = "entries";
 
     /// <summary>The slot holding the declaration a name refers to.</summary>
     public const string TargetSlot = "target";

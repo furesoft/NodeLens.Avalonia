@@ -27,10 +27,21 @@ namespace Projectional.CSharp.Scopes;
 public static class CSharpScopes
 {
     /// <summary>The scopes the base language declares.</summary>
-    public static ScopeProviderRegistry Registry { get; } = ScopeProviderRegistry.Empty.Add(
-        CSharpConceptKeys.Name,
-        NamedScopeProvider.For(
-            CSharpConceptKeys.TargetSlot,
-            ScopePlace.Ancestors,
-            CSharpConceptKeys.NamedDeclaration));
+    public static ScopeProviderRegistry Registry { get; } = ScopeProviderRegistry.Empty
+        .Add(
+            CSharpConceptKeys.Name,
+            NamedScopeProvider.For(
+                CSharpConceptKeys.TargetSlot,
+                ScopePlace.Ancestors,
+                CSharpConceptKeys.NamedDeclaration))
+
+        // A class extends another class and implements interfaces, and both are written where the class is - so the
+        // same place answers them, narrowed to the concept each slot may hold.
+        .Add(
+            CSharpConceptKeys.InheritanceEntry,
+            new NamedScopeProvider(
+                new Dictionary<string, ScopeBinding>(StringComparer.Ordinal)
+                {
+                    [CSharpConceptKeys.TargetSlot] = new(ScopePlace.Ancestors, CSharpConceptKeys.TypeDeclaration),
+                }));
 }

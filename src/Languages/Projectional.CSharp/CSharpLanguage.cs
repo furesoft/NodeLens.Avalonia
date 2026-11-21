@@ -255,12 +255,41 @@ public static class CSharpLanguage
                     PropertyType.Boolean,
                     "false",
                     "Whether the namespace is declared for the rest of the file rather than for a block."),
-                new ChildSlot(CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.TypeDeclaration, Cardinality.Many),
             ],
             nameSlot: NameSlot,
             nameRule: NameRule.PascalDot,
             isRoot: false,
             description: "namespace Name { ... }"),
+
+        // A namespace holds types, and a class and an interface are both types - so the slot is declared over this and
+        // the two do not need a second list each.
+        new ConceptDeclaration(
+            CSharpConceptKeys.TypeDeclaration,
+            isAbstract: true,
+            isRoot: false,
+            description: "A type a namespace holds: a class or an interface."),
+
+        // The list after the colon, as a node rather than two references on the class. A reference cannot be hidden by
+        // the notation - there is no "while this reference is set" cell - while a child slot can, and a class that
+        // inherits nothing should draw no colon at all.
+        // One list rather than a base beside a list of interfaces, because C# separates the entries with commas and a
+        // list cell is what knows how to do that: `: Shape, INamed` and `: INamed` are then the same shape, and the
+        // language needs no rule for "a colon with no base but with interfaces".
+        new ConceptDeclaration(
+            CSharpConceptKeys.Inheritance,
+            [new ChildSlot(CSharpConceptKeys.EntriesSlot, CSharpConceptKeys.InheritanceEntry, Cardinality.Many)],
+            isRoot: false,
+            description: "The types a class inherits from, in the order they are written."),
+
+        // One entry. A node rather than a repeatable reference, because a reference has no list cell in the notation
+        // layer: `InlineCollection` reads child slots, so the entry is what the list holds and the reference inside it
+        // is what resolves - rename and go-to-definition work through it unchanged.
+        new ConceptDeclaration(
+            CSharpConceptKeys.InheritanceEntry,
+            [new ReferenceSlot(CSharpConceptKeys.TargetSlot, CSharpConceptKeys.TypeDeclaration)],
+            isRoot: false,
+            description: "One type in a class's inheritance list."),
 
         new ConceptDeclaration(
             CSharpConceptKeys.Class,
@@ -268,12 +297,29 @@ public static class CSharpLanguage
                 new PropertySlot(VisibilitySlot, VisibilityType, CSharpVisibility.Internal),
                 new PropertySlot(IsStaticSlot, PropertyType.Boolean, "false"),
                 new PropertySlot(NameSlot, PropertyType.String, description: "The class's name."),
+                new ChildSlot(CSharpConceptKeys.InheritanceSlot, CSharpConceptKeys.Inheritance, Cardinality.One, minimum: 0),
                 new ChildSlot(CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Member, Cardinality.Many),
             ],
+            superConcepts: [CSharpConceptKeys.TypeDeclaration],
             nameSlot: NameSlot,
             nameRule: NameRule.Pascal,
             isRoot: false,
-            description: "A class: its fields and its methods, in the order they were written."),
+            description: "A class: what it inherits and its members, in the order they were written."),
+
+        // An interface holds signatures, which is why the method's body is optional: the same concept serves a class and
+        // an interface, and the rule that reports a bodyless method skips the one place it is the point.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Interface,
+            [
+                new PropertySlot(VisibilitySlot, PropertyType.String, CSharpVisibility.Public),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The interface's name."),
+                new ChildSlot(CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Signature, Cardinality.Many),
+            ],
+            superConcepts: [CSharpConceptKeys.TypeDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "An interface: the signatures a class promises to provide."),
 
         new ConceptDeclaration(
             CSharpConceptKeys.Field,
@@ -346,6 +392,23 @@ public static class CSharpLanguage
             nameRule: NameRule.Pascal,
             isRoot: false,
             description: "A method: its signature and its body."),
+
+        // A member of an interface: the same four things a method declares before its body, and no body slot at all -
+        // which is why it is its own concept rather than a method with an empty one. An empty slot is a row the layout
+        // keeps for it, and an interface would then draw a placeholder where a signature belongs.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Signature,
+            [
+                new PropertySlot(VisibilitySlot, PropertyType.String, CSharpVisibility.Public),
+                new ChildSlot("returnType", CSharpConceptKeys.TypeReference, Cardinality.One),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The member's name."),
+                new ChildSlot(CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter, Cardinality.Many),
+            ],
+            superConcepts: [CSharpConceptKeys.Member],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "A member of an interface: a signature with no body."),
 
         new ConceptDeclaration(
             CSharpConceptKeys.Parameter,
