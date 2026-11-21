@@ -20,6 +20,7 @@ internal static class NotationWalker
             ConditionalNotationCell conditional => conditional.Content,
             WhenFilledNotationCell whenFilled => whenFilled.Content,
             WhenFilledBlockNotationCell whenFilledBlock => whenFilledBlock.Content,
+            ConditionalBlockNotationCell conditionalBlock => conditionalBlock.Content,
             _ => [],
         };
     }

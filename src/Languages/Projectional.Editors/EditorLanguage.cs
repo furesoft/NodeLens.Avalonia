@@ -309,6 +309,28 @@ public static class EditorLanguage
             nameSlot: "slot",
             description: "Many children with a separator between them, drawn inside a line."),
 
+        // The block sibling of the property conditional, for the same reason the while-filled cell has one: a group of
+        // lines that should leave no row has to be absent from the tree, and the inline conditional cannot hold a
+        // block. C# 10's file-scoped namespace is the case - `namespace A;` and `namespace A { ... }` are one concept
+        // with one boolean, and only one of the two shapes exists in either state.
+        new ConceptDeclaration(
+            EditorConceptKeys.ConditionalBlock,
+            [
+                new PropertySlot(
+                    "slot",
+                    PropertyType.String,
+                    description: "The name of the property whose value decides whether these blocks are drawn.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "value",
+                    PropertyType.String,
+                    description: "The value that property has to hold for the blocks to be drawn.",
+                    showDescriptionWhenFilled: true),
+                new ChildSlot(CellSlot, EditorConceptKeys.BlockCell, Cardinality.Many),
+            ],
+            [EditorConceptKeys.BlockCell],
+            nameSlot: "slot",
+            description: "Blocks drawn only while a property holds a value."),
         // The block sibling of the while-filled cell above, and it exists for the same reason the inline one does: a
         // group of lines that should leave no row at all cannot be an empty block, because layout gives every
         // vertical cell at least one line. Without it a declared language could say `if (...) { }` but not `if (...)

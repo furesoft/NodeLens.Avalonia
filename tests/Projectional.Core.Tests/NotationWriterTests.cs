@@ -59,6 +59,7 @@ public sealed class NotationWriterTests
                         new ChildSlot("body", "Export.Body", Cardinality.Many),
                         new ChildSlot("arguments", "Export.Body", Cardinality.Many),
                         new ChildSlot("otherwise", "Export.Body", Cardinality.One),
+                        new PropertySlot("isFileScoped", PropertyType.Boolean, "false"),
                     ]),
                 new ConceptDeclaration("Export.Body", [new PropertySlot("name", PropertyType.String)], nameSlot: "name"),
             ]));
@@ -66,7 +67,8 @@ public sealed class NotationWriterTests
         notations.Add("Export.Rule", ed => ed.Sequence(
             ed.Children("body", "<no body>", stacked: true),
             ed.Line(ed.Punct("("), ed.InlineCollection("arguments", ed.Punct(",")), ed.Punct(")")),
-            ed.WhenFilledBlock("otherwise", ed.Line(ed.Keyword("else")))));
+            ed.WhenFilledBlock("otherwise", ed.Line(ed.Keyword("else"))),
+            ed.ConditionalBlock("isFileScoped", "true", ed.Line(ed.Keyword("scoped")))));
 
         var source = new SourceWriter();
 
@@ -77,7 +79,8 @@ public sealed class NotationWriterTests
             notations.Add("Export.Rule", ed => ed.Sequence(
                 ed.Children("body", "<no body>", spacing: 1, stacked: true),
                 ed.Line(ed.Punct("("), ed.InlineCollection("arguments", separator: ed.Punct(",")), ed.Punct(")")),
-                ed.WhenFilledBlock("otherwise", ed.Line(ed.Keyword("else")))
+                ed.WhenFilledBlock("otherwise", ed.Line(ed.Keyword("else"))),
+                ed.ConditionalBlock("isFileScoped", "true", ed.Line(ed.Keyword("scoped")))
             ));
 
             """,

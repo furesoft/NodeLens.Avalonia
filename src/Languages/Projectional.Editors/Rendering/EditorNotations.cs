@@ -154,6 +154,21 @@ public static class EditorNotations
                 ed.Keyword("is filled")),
             ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries))));
 
+        // The block form of the property conditional, bracketed like a block for the same reason: the group is absent
+        // from the drawing rather than drawn as an empty row.
+        notations.Add(EditorConceptKeys.ConditionalBlock, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("[/ if"),
+                ed.Space,
+                ed.Property("slot"),
+                ed.Space,
+                ed.Punct("="),
+                ed.Space,
+                ed.Punct("\""),
+                ed.Property("value"),
+                ed.Punct("\"")),
+            ed.Indent(ed.Children(EditorLanguage.CellSlot, NoEntries, stacked: true)),
+            ed.Line(ed.Keyword("/]"))));
         // The block sibling, bracketed like a block: `[/` opens it, and the whole group is absent from the drawing
         // while the slot is empty rather than drawn as an empty row.
         notations.Add(EditorConceptKeys.WhileFilledBlock, ed => ed.Sequence(

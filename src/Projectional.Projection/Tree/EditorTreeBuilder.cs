@@ -143,6 +143,13 @@ public sealed class EditorTreeBuilder
                 address,
                 CellOrientation.Vertical,
                 BuildBlocks(block.Content, node, emphasis)),
+
+            // The property twin of the case above, with the same division: `BuildBlocks` decides whether the group
+            // exists, and this builds it for the root case.
+            ConditionalBlockNotationCell conditionalBlock => new ContainerCell(
+                address,
+                CellOrientation.Vertical,
+                BuildBlocks(conditionalBlock.Content, node, emphasis)),
             _ => throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' uses a block cell of unknown kind '{cell.GetType().Name}'."),
         };
@@ -157,6 +164,14 @@ public sealed class EditorTreeBuilder
             // An unfilled block leaves no row: layout gives every vertical cell at least one line, so a notation
             // that wants nothing at all where the block would be has to keep it out of the tree.
             if (cell is WhenFilledBlockNotationCell block && ChildrenOf(node, block).Count == 0)
+            {
+                continue;
+            }
+
+            // The same rule for a property: the group of rows a value chooses is either drawn or absent, never
+            // present and empty.
+            if (cell is ConditionalBlockNotationCell conditional
+                && !string.Equals(node.GetOrNull(conditional.Slot), conditional.Value, StringComparison.Ordinal))
             {
                 continue;
             }

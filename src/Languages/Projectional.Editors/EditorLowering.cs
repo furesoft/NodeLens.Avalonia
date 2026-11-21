@@ -124,6 +124,10 @@ public static class EditorLowering
             EditorConceptKeys.WhileFilledBlock => ed.WhenFilledBlock(
                 Required(cell, "slot"),
                 [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
+            EditorConceptKeys.ConditionalBlock => ed.ConditionalBlock(
+                Required(cell, "slot"),
+                Required(cell, "value"),
+                [.. cell.GetChildren(EditorLanguage.CellSlot).Select(child => LowerBlock(child, conceptKey))]),
             _ => throw NotACell(cell, conceptKey, "not a block"),
         };
     }

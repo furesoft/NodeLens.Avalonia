@@ -172,12 +172,68 @@ public sealed class WhenFilledNotationTests
         return Assert.Throws<NotationException>(() => notations.Add(Rule, build));
     }
 
+    [Fact]
+    public void ABlockConditionalIsDrawnOnlyWhileThePropertyHoldsTheValue()
+    {
+        // The property twin of the block above, and the case it was added for: one concept with one boolean, drawn
+        // as `namespace A;` or as `namespace A { ... }`. Two concepts would make switching forms a re-creation, and a
+        // variant is a reader's preference rather than something the model decides.
+        var concepts = Concepts();
+        var notations = new NotationRegistry(concepts);
+
+        notations.Add(Rule, ed => ed.Sequence(
+            ed.Line(ed.Keyword("rule"), ed.Space, ed.Property("name")),
+            ed.ConditionalBlock("name", "scoped", ed.Line(ed.Keyword("scoped body"))),
+            ed.ConditionalBlock("name", "block", ed.Line(ed.Keyword("block body")))));
+
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode(Rule);
+
+        rule.Set("name", "scoped");
+
+        Assert.Equal("rule scoped\nscoped body", LayoutSnapshot.Render(rule, notations, width: 40));
+
+        rule.Set("name", "block");
+
+        Assert.Equal("rule block\nblock body", LayoutSnapshot.Render(rule, notations, width: 40));
+
+        // Neither value: the notation says nothing about that state, and says it with no row rather than a blank one.
+        rule.Set("name", "neither");
+
+        Assert.Equal("rule neither", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
+    public void ABlockConditionalOverAPropertyTheConceptDoesNotDeclareIsRefused()
+    {
+        var notations = new NotationRegistry(Concepts());
+
+        var exception = Assert.Throws<NotationException>(() => notations.Add(
+            Rule,
+            ed => ed.Sequence(ed.ConditionalBlock("missing", "true", ed.Line(ed.Keyword("x"))))));
+
+        Assert.Contains("missing", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABlockConditionalOverAValueThePropertyCannotHoldIsRefused()
+    {
+        // A value the type would refuse can never hold, so the group of rows could never be drawn - a mistake in the
+        // notation rather than a state of the model, and the same check the inline conditional makes.
+        var notations = new NotationRegistry(Concepts());
+
+        Assert.Throws<NotationException>(() => notations.Add(
+            Rule,
+            ed => ed.Sequence(ed.ConditionalBlock("flag", "maybe", ed.Line(ed.Keyword("x"))))));
+    }
+
     private static ConceptRegistry Concepts() => ConceptRegistry.Create(
     [
         new ConceptDeclaration(
             Rule,
             [
                 new PropertySlot("name", PropertyType.String),
+                new PropertySlot("flag", PropertyType.Boolean, "false"),
                 new ChildSlot("body", Rule, Cardinality.Many),
                 new ChildSlot("head", Rule, Cardinality.Many),
             ]),
