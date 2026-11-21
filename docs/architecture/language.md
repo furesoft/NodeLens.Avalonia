@@ -221,6 +221,13 @@ one, the way MPS does.
 - Inline only, for now. The property conditional has no block form; the slot conditional gained one
   (`ed.WhenFilledBlock`) when the concept notation needed a row that disappears, and the same idea for a
   property arrives when a notation needs it.
+- **There is no either/or, so A-or-B is two conditionals.** The cell is one-sided: it draws its content while
+  the property holds *one* value and nothing otherwise, so "the type, or `var`" cannot be one cell with two
+  branches. It is `ed.Conditional(slot, "true", word)` beside `ed.Conditional(slot, "false", cell)` - and that
+  only works because a property's declared default is materialized when the node is created
+  (`Node`'s constructor writes `DefaultValue` into the slot map), so exactly one of the two ever matches. An
+  absent value would match neither and the notation would draw nothing at all, which is the shape the C#
+  `var` local was first written in and had to be fixed from.
 
 **The same question asked of a slot is `ed.WhenFilled`.** `ed.WhenFilled("supertypes", ed.Space,
 ed.Keyword("extends"), ed.Space, ed.InlineCollection("supertypes", ed.Punct(",")))` draws that run only while

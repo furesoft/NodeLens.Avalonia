@@ -272,7 +272,11 @@ public static class CSharpTextGenerators
             new TextPart(";")))
 
         .Add(CSharpConceptKeys.LocalDeclaration, TextTemplate.Of(
-            new ChildPart("type"),
+            new ConditionalPart(
+                CSharpLanguage.IsVarSlot,
+                "true",
+                TextTemplate.Of(new TextPart("var")),
+                TextTemplate.Of(new ChildPart("type"))),
             new TextPart(" "),
             new PropertyPart(CSharpLanguage.NameSlot),
             new WhenFilledPart(

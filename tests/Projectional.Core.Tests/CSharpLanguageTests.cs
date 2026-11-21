@@ -1628,6 +1628,69 @@ public sealed class CSharpLanguageTests
         Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
     }
 
+    [Fact]
+    public void AVarLocalDrawsTheWordAndTakesItsTypeFromTheInitializer()
+    {
+        // `var` is not a type, it is the decision not to write one, so three things have to agree: the notation draws
+        // the word instead of the type cell, the generator writes the word, and the type rule reads the slot that does
+        // hold something. The second local is the regression guard - a type left behind by switching to `var` must be
+        // kept in the model (switching back should show what the author wrote) and must not also be drawn, which is
+        // the mistake an either/or conditional made here first.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("variants");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var ratio = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var fraction = model.NewChild(ratio, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.DoubleLiteral);
+        var kept = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var keptType = model.NewChild(kept, "type", CSharpConceptKeys.TypeReference);
+        var count = model.NewChild(kept, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.IntLiteral);
+        var empty = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Numbers");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Show");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        ratio.Set(CSharpLanguage.IsVarSlot, true);
+        ratio.Set(CSharpLanguage.NameSlot, "ratio");
+        fraction.Set(CSharpLanguage.ValueProperty, "1.5");
+        kept.Set(CSharpLanguage.IsVarSlot, true);
+        kept.Set(CSharpLanguage.NameSlot, "kept");
+        keptType.Set(CSharpLanguage.NameSlot, "int");
+        count.Set(CSharpLanguage.ValueProperty, "2");
+        empty.Set(CSharpLanguage.IsVarSlot, true);
+        empty.Set(CSharpLanguage.NameSlot, "nothing");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Numbers
+              {
+                public void Show()
+                {
+                  var ratio = 1.5;
+                  var kept = 2;
+                  var nothing;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // The initializer decides, and with no initializer there is nothing to decide from - unknown rather than a
+        // guess, which is the same answer this language gives wherever it cannot know.
+        Assert.Equal("float", CSharpTypes.Registry.TypeOf(ratio).Name);
+        Assert.Equal(UnknownType.Instance.Name, CSharpTypes.Registry.TypeOf(empty).Name);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");

@@ -49,7 +49,7 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.TypeReference, new TypeReferenceType())
         .Add(CSharpConceptKeys.Field, new SameAs("type"))
         .Add(CSharpConceptKeys.Parameter, new SameAs("type"))
-        .Add(CSharpConceptKeys.LocalDeclaration, new SameAs("type"))
+        .Add(CSharpConceptKeys.LocalDeclaration, new LocalType())
         .Add(CSharpConceptKeys.Property, new SameAs("type"))
         .Add(CSharpConceptKeys.Name, new NameType())
         .Add(CSharpConceptKeys.Parenthesized, new SameAs("inner"))
@@ -98,6 +98,23 @@ public static class CSharpTypes
     private sealed class SameAs(string slot) : ITypeRule
     {
         public IType TypeFor(TypeContext context) => context.TypeOfChild(slot);
+    }
+
+    /// <summary>
+    /// A local declaration is as wide as the type it writes, or as its initializer when it says <c>var</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>var</c> is not a type, it is the decision not to write one: the compiler takes the initializer's. Reading the
+    /// type slot there would answer a type the author deliberately left out - and the slot is empty in that case, so
+    /// the honest answer has to come from the slot that does hold something. A <c>var</c> with no initializer is
+    /// therefore <see cref="UnknownType"/>, which is also the truthful answer: there is nothing to take a type from.
+    /// </remarks>
+    private sealed class LocalType : ITypeRule
+    {
+        public IType TypeFor(TypeContext context) =>
+            context.Node.GetBool(CSharpLanguage.IsVarSlot)
+                ? context.TypeOfChild(CSharpConceptKeys.ValueSlot)
+                : context.TypeOfChild("type");
     }
 
     /// <summary>

@@ -371,8 +371,12 @@ public static class CSharpNotations
             ed.ChildInline("expression"),
             ed.Punct(";")));
 
+        // Two one-sided conditionals rather than one either/or, because an inline conditional draws its content while
+        // the property holds the value and nothing otherwise - it has no else branch. The property is materialized with
+        // its default when the node is created, so exactly one of the two ever draws.
         notations.Add(CSharpConceptKeys.LocalDeclaration, ed => ed.Line(
-            ed.ChildInline("type"),
+            ed.Conditional(CSharpLanguage.IsVarSlot, "true", ed.Keyword("var")),
+            ed.Conditional(CSharpLanguage.IsVarSlot, "false", ed.ChildInline("type")),
             ed.Space,
             ed.Property(CSharpLanguage.NameSlot),
             ed.WhenFilled(

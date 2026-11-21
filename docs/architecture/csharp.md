@@ -72,6 +72,20 @@ with `int`, because the closed property-type set holds one number with a fractio
 That is a real limit and it is written down rather than papered over - `int` and `long` are the same type
 to every rule that reads them, and only the literal's spelling tells them apart.
 
+**`var` is a decision, not a type.** A local declaration carries an `isVar` flag, and the type slot is
+optional because a local that says `var` genuinely holds no type node. The flag is what the notation reads
+(drawing `var` instead of the type cell) and what the type rule reads (taking the initializer's type
+instead of the declared one) - three layers, one property, which is the same bargain `isFileScoped` makes
+for the namespace. A type left behind by switching to `var` is **kept rather than deleted**: it is not
+drawn and not generated while the flag holds, and switching back shows the author the type they wrote
+instead of an empty slot. That is deliberate - the alternative is an edit action that destroys a value the
+user typed, for a view change.
+
+One hole comes with it and is recorded rather than hidden: C# requires an initializer with `var`, and a
+`var` local without one still generates `var name;`, which no compiler accepts. The type rule answers
+*unknown* there, which is truthful, but nothing warns - the check for "a `var` needs an initializer" is a
+rule for the constraint layer, not a projection fact.
+
 **`Char` is still absent, and deliberately.** A `char` literal needs a guarantee the property-type set
 cannot express: "exactly one character". A `String` property would accept `'ab'` and generate it, which
 is invalid C# produced without a single finding - worse than not offering the concept, because today the
