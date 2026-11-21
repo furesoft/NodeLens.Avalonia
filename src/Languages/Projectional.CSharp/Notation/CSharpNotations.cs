@@ -246,6 +246,29 @@ public static class CSharpNotations
                         ed.Line(ed.Keyword("set")),
                         ed.Line(ed.ChildInline(CSharpConceptKeys.SetterSlot, "<no setter>")))),
                 ed.Line(ed.Punct("}")))));
+
+        // An indexer: the type, then `this` and the parameters in brackets, then the accessors - the same shape a
+        // property with bodies has, with the parameters where the name would be. The setter is a WhenFilledBlock,
+        // because a get-only indexer leaves no row for a setter that is not there.
+        notations.Add(CSharpConceptKeys.Indexer, ed => ed.Sequence(
+            ed.Line(
+                ed.Property(CSharpLanguage.VisibilitySlot),
+                ed.Space,
+                ed.ChildInline("type"),
+                ed.Space,
+                ed.Keyword("this"),
+                ed.Punct("["),
+                ed.InlineCollection(CSharpConceptKeys.ParametersSlot, ed.Punct(",")),
+                ed.Punct("]")),
+            ed.Line(ed.Punct("{")),
+            ed.Indent(
+                ed.Line(ed.Keyword("get")),
+                ed.Line(ed.ChildInline(CSharpConceptKeys.GetterSlot, "<no getter>")),
+                ed.WhenFilledBlock(
+                    CSharpConceptKeys.SetterSlot,
+                    ed.Line(ed.Keyword("set")),
+                    ed.Line(ed.ChildInline(CSharpConceptKeys.SetterSlot)))),
+            ed.Line(ed.Punct("}"))));
         // A signature: a method's header and nothing after it.
         notations.Add(CSharpConceptKeys.Signature, ed => ed.Line(
             ed.Property(CSharpLanguage.VisibilitySlot),
