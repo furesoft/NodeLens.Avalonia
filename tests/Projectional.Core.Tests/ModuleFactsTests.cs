@@ -66,6 +66,10 @@ public sealed class ModuleFactsTests
         Assert.Equal("1.0.0", Value(facts, "Declared version"));
         Assert.Equal("none", Value(facts, "Dependencies"));
         Assert.Equal("none", Value(facts, "Extends"));
+
+        // The sample declares nothing to stand on, so nothing resolved; the row is what makes an unanswered
+        // declaration visible instead of silent.
+        Assert.Equal("none", Value(facts, "Resolved"));
     }
 
     private static int Number(ModuleFacts facts, string name) => int.Parse(Value(facts, name), CultureInfo.InvariantCulture);

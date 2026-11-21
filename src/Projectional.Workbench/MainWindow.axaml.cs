@@ -2845,7 +2845,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        if (LanguageProject.Open(directory, out var error) is not { } language)
+        if (LanguageProject.Open(directory, _language, out var error) is not { } language)
         {
             _error = error;
             UpdateStatus();

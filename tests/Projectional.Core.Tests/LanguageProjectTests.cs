@@ -192,14 +192,14 @@ public sealed class LanguageProjectTests
     }
 
     [Fact]
-    public void ALanguageRootNamesTheLanguageAndSaysWhatItStandsOn()
+    public void ALanguageRootNamesTheLanguageAndCarriesItsVersion()
     {
         // `language.mps` is the one document beside the aspect folders: it says what the project is, while every
         // other document says what a part of it is.
         using var folder = new TemporaryDirectory();
 
         WriteStructure(folder.Root);
-        WriteRoot(folder.Root, "Pipeline", version: "1.2.0", dependencies: ["Core"], extends: ["Base"]);
+        WriteRoot(folder.Root, "Pipeline", version: "1.2.0");
 
         var language = LanguageProject.Open(folder.Root, out var error);
 
@@ -207,8 +207,6 @@ public sealed class LanguageProjectTests
         Assert.NotNull(language);
         Assert.Equal("Pipeline", language.Name);
         Assert.Equal("1.2.0", language.Version);
-        Assert.Equal([new LanguageDependency("Core", null)], language.Dependencies);
-        Assert.Equal([new LanguageDependency("Base", null)], language.Extends);
 
         // The definitions are still read: a root describes the project, it does not replace the structure.
         Assert.Equal("Rules.Rule", language.Declarations[0].Key);
@@ -265,6 +263,221 @@ public sealed class LanguageProjectTests
 
         Assert.Null(language);
         Assert.Contains("name", error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredDependencyMakesItsConceptsUsable()
+    {
+        // The gap resolution closes: a slot declared over another language's concept cannot load on its own,
+        // because the registry validates the graph. With a host that answers the name, the language's own registry is
+        // built over the base's declarations - and only over them, so what this language *declares* stays its own.
+        using var coreFolder = new TemporaryDirectory();
+        using var dependentFolder = new TemporaryDirectory();
+
+        var coreConcepts = WriteBase(coreFolder.Root);
+        WriteDependent(dependentFolder.Root, "Rules", "Core");
+
+        var core = LanguageProject.Open(coreFolder.Root, out var coreError);
+
+        Assert.Null(coreError);
+        Assert.NotNull(core);
+
+        // Without an answer the declaration is refused, and the message names what was not resolved.
+        Assert.Null(LanguageProject.Open(dependentFolder.Root, out var unresolved));
+        Assert.Contains("Core", unresolved!, StringComparison.Ordinal);
+
+        var language = LanguageProject.Open(dependentFolder.Root, new Answers(core), out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        Assert.True(language.Concepts.TryGet("Core.Thing", out _));
+        Assert.Equal("Rules.Item", Assert.Single(language.Declarations).Key);
+        Assert.Same(core, Assert.Single(language.Resolved));
+        Assert.Equal([new LanguageDependency("Core", null)], language.Dependencies);
+
+        // The point of the whole exercise: a node of the base's concept can exist in a document of this language.
+        var model = language.NewModel();
+        var rule = model.NewNode("Rules.Item");
+        var thing = model.NewChild(rule, "thing", "Core.Thing");
+
+        Assert.Equal("Core.Thing", thing.Concept.Key);
+        Assert.NotEmpty(coreConcepts.Concepts);
+    }
+
+    [Fact]
+    public void TheBasesAreResolvedTransitivelyAndBaseFirst()
+    {
+        using var baseFolder = new TemporaryDirectory();
+        using var middleFolder = new TemporaryDirectory();
+        using var topFolder = new TemporaryDirectory();
+
+        WriteBase(baseFolder.Root);
+        WriteDependent(middleFolder.Root, "Middle", "Core");
+        WriteDependent(topFolder.Root, "Top", "Middle");
+
+        var core = LanguageProject.Open(baseFolder.Root, out _)!;
+        var middle = LanguageProject.Open(middleFolder.Root, new Answers(core), out var middleError);
+
+        Assert.Null(middleError);
+
+        var top = LanguageProject.Open(topFolder.Root, new Answers(middle!, core), out var topError);
+
+        Assert.Null(topError);
+
+        // Base before dependent, transitively: the order a composed registry is built in.
+        Assert.Equal(["Core", "Middle"], top!.Resolved.Select(language => language.Name));
+        Assert.True(top.Concepts.TryGet("Core.Thing", out _));
+        Assert.True(top.Concepts.TryGet("Middle.Item", out _));
+        Assert.True(top.Concepts.TryGet("Top.Item", out _));
+    }
+
+    [Fact]
+    public void ALanguageReachedTwiceIsResolvedOnce()
+    {
+        // A diamond is not an error, and counting the base once is what keeps its declarations out of the registry
+        // twice - which the registry would refuse as a duplicate key.
+        using var baseFolder = new TemporaryDirectory();
+        using var leftFolder = new TemporaryDirectory();
+        using var rightFolder = new TemporaryDirectory();
+        using var topFolder = new TemporaryDirectory();
+
+        WriteBase(baseFolder.Root);
+        WriteDependent(leftFolder.Root, "Left", "Core");
+        WriteDependent(rightFolder.Root, "Right", "Core");
+        WriteDependent(topFolder.Root, "Top", "Left", "Right");
+
+        var core = LanguageProject.Open(baseFolder.Root, out _)!;
+        var left = LanguageProject.Open(leftFolder.Root, new Answers(core), out _)!;
+        var right = LanguageProject.Open(rightFolder.Root, new Answers(core), out _)!;
+        var top = LanguageProject.Open(topFolder.Root, new Answers(core, left, right), out var error);
+
+        Assert.Null(error);
+        Assert.Equal(["Core", "Left", "Right"], top!.Resolved.Select(language => language.Name));
+    }
+
+    [Fact]
+    public void ADeclaredVersionIsALabelAndNotAComparison()
+    {
+        // Nothing here parses a version, so a request the base does not match still opens: reporting the mismatch is
+        // the host's business, refusing it would be a rule no author could satisfy.
+        using var coreFolder = new TemporaryDirectory();
+        using var dependentFolder = new TemporaryDirectory();
+
+        WriteBase(coreFolder.Root, version: "1.0.0");
+        WriteDependent(dependentFolder.Root, "Rules", "Core");
+        WriteVersionedDependency(dependentFolder.Root, "Rules", "Core", "9.9.9");
+
+        var core = LanguageProject.Open(coreFolder.Root, out _)!;
+        var language = LanguageProject.Open(dependentFolder.Root, new Answers(core), out var error);
+
+        Assert.Null(error);
+        Assert.Equal("9.9.9", language!.Dependencies[0].Version);
+        Assert.Equal("1.0.0", core.Version);
+    }
+
+    [Fact]
+    public void TheAccessoryOfABaseComesIntoADocumentsProject()
+    {
+        // A base's library nodes are part of its vocabulary: a document that points at one stores its id, so the
+        // copy has to carry it with the same identity.
+        using var coreFolder = new TemporaryDirectory();
+        using var dependentFolder = new TemporaryDirectory();
+
+        var coreConcepts = WriteBase(coreFolder.Root);
+
+        WriteAccessory(coreFolder.Root, "palette", coreConcepts);
+        WriteDependent(dependentFolder.Root, "Rules", "Core");
+
+        var core = LanguageProject.Open(coreFolder.Root, out _)!;
+        var language = LanguageProject.Open(dependentFolder.Root, new Answers(core), out var error);
+
+        Assert.Null(error);
+        Assert.Equal("palette", Assert.Single(language!.Accessory).Name);
+        Assert.Contains(language.NewProject().Models, model => model.Name == "palette");
+    }
+
+    [Fact]
+    public void ADependentLanguageDrawsOnlyItsOwnConcepts()
+    {
+        // Resolution makes the base's concepts visible to this project's lowering, which would let it give one a
+        // notation. Two languages drawing one concept cannot both be in force, so the conflict is refused where it
+        // was written rather than when a host composes the two.
+        using var coreFolder = new TemporaryDirectory();
+        using var dependentFolder = new TemporaryDirectory();
+
+        WriteBase(coreFolder.Root);
+        WriteDependent(dependentFolder.Root, "Rules", "Core");
+        WriteNotationFor(dependentFolder.Root, "Core.Thing");
+
+        var core = LanguageProject.Open(coreFolder.Root, out _)!;
+        var language = LanguageProject.Open(dependentFolder.Root, new Answers(core), out var error);
+
+        Assert.Null(language);
+        Assert.Contains("Core.Thing", error!, StringComparison.Ordinal);
+        Assert.Contains("does not declare", error!, StringComparison.Ordinal);
+    }
+
+    /// <summary>The host's answer to a declared dependency: the projects it holds, looked up by name.</summary>
+    private sealed class Answers(params LanguageProject[] languages) : ILanguageResolver
+    {
+        public LanguageProject? Find(string name) =>
+            languages.FirstOrDefault(language => string.Equals(language.Name, name, StringComparison.Ordinal));
+    }
+
+    /// <summary>A base language: one concept, and the registry that concept belongs to.</summary>
+    private static ConceptRegistry WriteBase(string directory, string version = "1.0.0")
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Core.Thing", slots: [definition.Property("name", "string")], nameSlot: "name");
+        Save(directory, "Core.Thing", definition.Documents[0]);
+        WriteRoot(directory, "Core", version);
+
+        return StructureLowering.CreateRegistry(definition.Roots);
+    }
+
+    /// <summary>A language named <paramref name="name"/>: a child slot over the base's concept, and its bases.</summary>
+    private static void WriteDependent(string directory, string name, params string[] dependencies)
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept($"{name}.Item", slots: [definition.Child("thing", "Core.Thing")]);
+        Save(directory, $"{name}.Item", definition.Documents[0]);
+        WriteRoot(directory, name, dependencies: dependencies);
+    }
+
+    /// <summary>A root whose one dependency asks for a version, which is the only way to state the label case.</summary>
+    private static void WriteVersionedDependency(string directory, string name, string dependency, string version)
+    {
+        var model = StructureLanguage.NewModel("language");
+        var root = model.NewNode(StructureConceptKeys.Language);
+
+        root.Set("name", name);
+
+        var entry = model.NewChild(root, StructureLanguage.DependenciesSlot, StructureConceptKeys.Dependency);
+
+        entry.Set("name", dependency);
+        entry.Set(StructureLanguage.VersionSlot, version);
+        ModelFile.Save(model, Path.Combine(directory, LanguageProject.LanguageFile));
+    }
+
+    private static void WriteAccessory(string directory, string name, ConceptRegistry concepts)
+    {
+        var accessory = Path.Combine(directory, LanguageProject.AccessoryFolder);
+        var model = new Project(concepts).NewModel(name);
+
+        Directory.CreateDirectory(accessory);
+        model.AddRoot(model.NewNode("Core.Thing"));
+        ModelFile.Save(model, Path.Combine(accessory, $"{name}.mps"));
+    }
+
+    private static void Save(string directory, string name, Model document)
+    {
+        var structure = Path.Combine(directory, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+        ModelFile.Save(document, Path.Combine(structure, $"{name}.mps"));
     }
 
     /// <summary>Writes a <c>language.mps</c> root, the way the app would save one.</summary>

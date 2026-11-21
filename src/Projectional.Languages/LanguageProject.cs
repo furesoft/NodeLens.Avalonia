@@ -86,6 +86,7 @@ public sealed class LanguageProject
     private LanguageProject(
         string directory,
         LanguageRoot? languageRoot,
+        IReadOnlyList<LanguageProject> resolved,
         IReadOnlyList<ConceptDeclaration> declarations,
         ConceptRegistry concepts,
         NotationRegistry notations,
@@ -106,6 +107,7 @@ public sealed class LanguageProject
         Version = languageRoot?.Version;
         Dependencies = languageRoot?.Dependencies ?? [];
         Extends = languageRoot?.Extends ?? [];
+        Resolved = resolved;
         Declarations = declarations;
         Concepts = concepts;
         Notations = notations;
@@ -143,9 +145,8 @@ public sealed class LanguageProject
 
     /// <summary>The languages this one says it builds on, in the order its root names them.</summary>
     /// <remarks>
-    /// Declared, not resolved. Reading them is what lets a host report what a language stands on and where it
-    /// belongs in a catalogue; merging their concepts in is a project-boundary decision that is deliberately not
-    /// part of this.
+    /// Declared, not resolved: these are the names the root wrote. <see cref="Resolved"/> is what the host
+    /// answered for them; the two are kept apart so a host can report a declaration that nothing answers.
     /// </remarks>
     public IReadOnlyList<LanguageDependency> Dependencies { get; }
 
@@ -154,10 +155,24 @@ public sealed class LanguageProject
     /// language that extends another says something stronger than one that merely uses it.</remarks>
     public IReadOnlyList<LanguageDependency> Extends { get; }
 
+    /// <summary>
+    /// The languages the host answered for, base before dependent and each one once, or empty when the root declared
+    /// none.
+    /// </summary>
+    /// <remarks>
+    /// These are what <see cref="Concepts"/> was built over, transitively. They are not absorbed: each stays the
+    /// project it was, with its own declarations, notation and behaviour, which is the composition
+    /// [ADR 0026](../../docs/adr/0026-a-dependency-resolves-to-the-vocabulary.md) decided on.
+    /// </remarks>
+    public IReadOnlyList<LanguageProject> Resolved { get; }
+
     /// <summary>What the structure model declared, in the order it declared it.</summary>
     public IReadOnlyList<ConceptDeclaration> Declarations { get; }
 
-    /// <summary>The registry those declarations build.</summary>
+    /// <summary>
+    /// The registry the declarations build: this language's own, over the declarations of every language it
+    /// resolved, base first.
+    /// </summary>
     public ConceptRegistry Concepts { get; }
 
     /// <summary>The notation of those concepts; empty when the project has no <c>editor</c> folder.</summary>
@@ -386,8 +401,24 @@ public sealed class LanguageProject
     /// version or dependency. When it is there it is held to the same rule as any other document - one root, and a
     /// broken one is the message that names it, not a half-read language.
     /// </para>
+    /// <para>
+    /// A root that declares dependencies or extensions resolves them through <paramref name="resolver"/>, and the
+    /// language's own registry is then built over their declarations - base first, this language last. The bases are
+    /// not absorbed: their own declarations, notation and behaviour stay theirs, which is the composition
+    /// [ADR 0026](../../docs/adr/0026-a-dependency-resolves-to-the-vocabulary.md) decided on. Without a resolver a
+    /// declaration cannot be answered, and a definition that names a base's concept therefore still fails here - but
+    /// with a message that says which language was not resolved.
+    /// </para>
     /// </remarks>
-    public static LanguageProject? Open(string directory, out string? error)
+    public static LanguageProject? Open(string directory, out string? error) => Open(directory, null, out error);
+
+    /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
+    /// <param name="directory">The language's folder.</param>
+    /// <param name="resolver">What answers a declared dependency's name, or <see langword="null"/> for none.</param>
+    /// <param name="error">Why the folder is not a usable language, or <see langword="null"/> on success.</param>
+    /// <returns>The loaded language, or <see langword="null"/> when it could not be read.</returns>
+    /// <exception cref="ArgumentException"><paramref name="directory"/> is blank.</exception>
+    public static LanguageProject? Open(string directory, ILanguageResolver? resolver, out string? error)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
@@ -401,21 +432,31 @@ public sealed class LanguageProject
         try
         {
             var fullPath = Path.GetFullPath(directory);
+            var languageRoot = ReadLanguageRoot(fullPath);
+            var resolved = Resolve(languageRoot, resolver, fullPath);
             var definitions = Read(fullPath, StructureFolder, new Project(StructureLanguage.Concepts));
             var declarations = StructureLowering.Lower(definitions);
-            var concepts = ConceptRegistry.Create(declarations);
+            var concepts = ConceptRegistry.Create(
+            [
+                .. resolved.SelectMany(language => language.Declarations),
+                .. declarations,
+            ]);
             var scopes = LowerScopeProviders(fullPath, concepts);
             var typing = LowerTypingRules(fullPath, concepts);
             var intentions = LowerIntentions(fullPath, concepts);
             var types = LowerTypes(fullPath, concepts);
+            var notation = LowerNotation(fullPath, concepts);
+
+            EnsureOnlyOwnNotations(notation, declarations);
             error = null;
 
             return new LanguageProject(
                 fullPath,
-                ReadLanguageRoot(fullPath),
+                languageRoot,
+                resolved,
                 declarations,
                 concepts,
-                LowerNotation(fullPath, concepts),
+                notation,
                 types.Registry,
                 LowerGenerators(fullPath, concepts),
                 LowerConstraints(fullPath, concepts).With(types.Complaints),
@@ -423,7 +464,12 @@ public sealed class LanguageProject
                 typing.Registry,
                 typing.Rules,
                 typing.HasAny,
-                ReadAccessory(fullPath, concepts),
+                [
+                    .. resolved
+                        .SelectMany(language => language.Accessory)
+                        .Select(accessory => Rehome(accessory, concepts)),
+                    .. ReadAccessory(fullPath, concepts),
+                ],
                 intentions.Provider,
                 intentions.HasAny,
                 LowerImporters(fullPath, concepts));
@@ -438,6 +484,110 @@ public sealed class LanguageProject
             error = exception.Message;
 
             return null;
+        }
+    }
+
+    /// <summary>The languages the root's two lists name, base before dependent and each one once.</summary>
+    /// <param name="root">The language root, or <see langword="null"/> when the folder declares none.</param>
+    /// <param name="resolver">What answers a name.</param>
+    /// <param name="directory">The folder that declares them, which is where a cycle would close.</param>
+    /// <exception cref="ConceptDefinitionException">
+    /// A declared name has no answer, or the declarations form a cycle.
+    /// </exception>
+    /// <remarks>
+    /// Post-order over the declared names, so a base is collected before the language that extends it and a diamond
+    /// is collected once. The visited list is identity by folder, not by name: two folders may declare one name, and
+    /// what must not be counted twice is the folder.
+    /// </remarks>
+    private static List<LanguageProject> Resolve(
+        LanguageRoot? root,
+        ILanguageResolver? resolver,
+        string directory)
+    {
+        var ordered = new List<LanguageProject>();
+
+        if (root is null)
+        {
+            return ordered;
+        }
+
+        var path = new List<LanguageProject>();
+
+        foreach (var declared in root.Dependencies.Concat(root.Extends))
+        {
+            Collect(declared);
+        }
+
+        return ordered;
+
+        void Collect(LanguageDependency declared)
+        {
+            var project = resolver?.Find(declared.Name)
+                ?? throw new ConceptDefinitionException(
+                    $"'{Path.GetFileName(directory)}' declares a dependency on the language '{declared.Name}', which the host did not resolve. Open that language first, or give the host a resolver that answers it.");
+
+            if (string.Equals(project.Directory, directory, StringComparison.OrdinalIgnoreCase))
+            {
+                throw Cycle([.. path.Select(language => language.Name), project.Name], declared.Name);
+            }
+
+            if (path.Any(language => Same(language, project)))
+            {
+                throw Cycle([.. path.Select(language => language.Name), project.Name], declared.Name);
+            }
+
+            if (ordered.Any(language => Same(language, project)))
+            {
+                return;
+            }
+
+            path.Add(project);
+
+            foreach (var nested in project.Dependencies.Concat(project.Extends))
+            {
+                Collect(nested);
+            }
+
+            path.RemoveAt(path.Count - 1);
+            ordered.Add(project);
+        }
+
+        static bool Same(LanguageProject left, LanguageProject right) =>
+            string.Equals(left.Directory, right.Directory, StringComparison.OrdinalIgnoreCase);
+
+        ConceptDefinitionException Cycle(IReadOnlyList<string> chain, string declared) =>
+            new($"The language '{Path.GetFileName(directory)}' cannot resolve '{declared}': {string.Join(" -> ", chain)} is a cycle, and a language cannot be built on itself.");
+    }
+
+    /// <summary>A base's accessory model, rebuilt in this language's registry.</summary>
+    /// <param name="accessory">The model, written in the base language's concepts.</param>
+    /// <param name="concepts">The registry the copy has to belong to.</param>
+    /// <remarks>
+    /// A node belongs to one concept instance: <see cref="Model.CopyTo"/> refuses a concept that is not the target
+    /// project's own, and the merged registry created new instances for the same keys. So the model is written and
+    /// read back, which maps every concept by key and keeps every node id - which is exactly what a reference to a
+    /// library node stores, so a document that points at one keeps pointing at it.
+    /// </remarks>
+    private static Model Rehome(Model accessory, ConceptRegistry concepts) =>
+        ModelXml.Deserialize(new Project(concepts), ModelXml.Serialize(accessory));
+
+    /// <summary>Refuses a notation this language wrote for a concept it does not declare itself.</summary>
+    /// <remarks>
+    /// Resolution makes a base's concepts visible to this project's lowering, which would let it draw one of them -
+    /// an override. Two languages drawing one concept in one variant cannot coexist in a composed registry, so the
+    /// conflict is reported where it was written instead of when the host composes the two.
+    /// </remarks>
+    private static void EnsureOnlyOwnNotations(NotationRegistry notation, IReadOnlyList<ConceptDeclaration> declarations)
+    {
+        var own = declarations.Select(declaration => declaration.Key).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var written in notation.Notations)
+        {
+            if (!own.Contains(written.ConceptKey))
+            {
+                throw new NotationException(
+                    $"This language gives concept '{written.ConceptKey}' a notation, but does not declare it; a language draws its own concepts, and a base's notation stays with its base.");
+            }
         }
     }
 

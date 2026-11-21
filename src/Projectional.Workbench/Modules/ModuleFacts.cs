@@ -108,6 +108,7 @@ internal sealed record ModuleFacts(
         new("Declared version", module.Version ?? "not declared"),
         new("Dependencies", Listing(module.Dependencies)),
         new("Extends", Listing(module.Extends)),
+        new("Resolved", module.Resolved.Count == 0 ? "none" : string.Join(", ", module.Resolved.Select(language => language.Name))),
         new("Declared concepts", Number(module.Declarations.Count)),
         new("Notations", Number(module.Notations.Notations.Count)),
         new("Type rules", Number(module.Types.Count)),
