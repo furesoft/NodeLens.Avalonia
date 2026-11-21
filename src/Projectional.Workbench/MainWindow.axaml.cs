@@ -2629,7 +2629,21 @@ public sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private void OnNewDocument(object? sender, RoutedEventArgs e)
+    /// <summary>Opens a new document of the language this window is working in.</summary>
+    /// <remarks>
+    /// A new document belongs to the language the user has open, not to the sample the shell ships: a window that has
+    /// opened a folder is working in that language, so Ctrl+N creates one of its documents - with its types,
+    /// constraints, scopes and intentions, exactly like the dedicated entry for an opened language. The sample is the
+    /// answer only while no language is open, which is the state the shell starts in.
+    /// </remarks>
+    private void OnNewDocument(object? sender, RoutedEventArgs e) => NewDocumentCommand();
+
+    /// <summary>Opens a new document of the language this window is working in, or the sample's when none is open.</summary>
+    /// <remarks>
+    /// Internal for the screenshot harness, which presses this the way the menu does: a command that opens the wrong
+    /// language still opens a document, so the picture cannot show it and the gesture has to be checked.
+    /// </remarks>
+    internal void NewDocumentCommand()
     {
         if (!Allows(ShellCapability.CreateModels))
         {
@@ -2637,7 +2651,43 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         _error = null;
+
+        if (CommandModule() is { } module)
+        {
+            OpenNewDocumentOf(module);
+
+            return;
+        }
+
         OpenDocument(PayrollSample.NewEmptyModel(), _language.Notations, typing: WorkbenchLanguage.Typing);
+    }
+
+    /// <summary>Opens an empty document of <paramref name="module"/>, with the aspects that language declares.</summary>
+    /// <remarks>
+    /// A document is typed, constrained, scoped and offered its intentions by the language it is written in, so the
+    /// four registries travel with it - the same four <see cref="OnOpenLanguage"/> hands a loaded document. A language
+    /// that names no concept a document could start with says so instead of opening the sample's document in its tab.
+    /// </remarks>
+    private void OpenNewDocumentOf(LanguageProject module)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+
+        if (WorkbenchLanguage.NewDocument(module) is not { } model)
+        {
+            _error = $"'{module.Name}' declares no concept that can start a document.";
+            UpdateStatus();
+
+            return;
+        }
+
+        OpenDocument(
+            model,
+            _language.Notations,
+            typing: WorkbenchLanguage.Typing,
+            types: module.Types,
+            constraints: module.Constraints,
+            scopes: module.Scopes,
+            intentions: module.Intentions);
     }
 
     /// <summary>Opens an empty concept document, so the declared path can be tried without setup.</summary>
@@ -2793,17 +2843,20 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         _error = null;
 
-        var opened = _language.Opened.FirstOrDefault(language => WorkbenchLanguage.Rootable(language) is not null);
+        // The module the explorer points at, which is what "an opened language" means once more than one is open.
+        var opened = CommandModule() ?? _language.Opened.FirstOrDefault(language => WorkbenchLanguage.Rootable(language) is not null);
 
-        if (opened is null || WorkbenchLanguage.NewDocument(opened) is not { } model)
+        if (opened is null)
         {
-            _error = "No opened language declares a concept a document could start with.";
+            _error = _language.Opened.Count == 0
+                ? "No language is open; File \u25b8 Open language\u2026 opens one."
+                : "No opened language declares a concept a document could start with.";
             UpdateStatus();
 
             return;
         }
 
-        OpenDocument(model, _language.Notations, typing: WorkbenchLanguage.Typing, types: opened.Types, constraints: opened.Constraints, scopes: opened.Scopes, intentions: opened.Intentions);
+        OpenNewDocumentOf(opened);
     }
 
     private async void OnOpenDocument(object? sender, RoutedEventArgs e)

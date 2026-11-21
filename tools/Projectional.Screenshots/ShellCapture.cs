@@ -64,6 +64,7 @@ internal static class ShellCapture
         // only way to know is to press it and read the row afterwards.
         succeeded &= await CheckAsync("project chevron", CheckProjectChevronAsync, log);
         succeeded &= await CheckAsync("outline chevron", CheckOutlineChevronAsync, log);
+        succeeded &= await CheckAsync("new document follows the language", CheckNewDocumentAsync, log);
 
         return succeeded;
     }
@@ -189,6 +190,37 @@ internal static class ShellCapture
         if (after.IsExpanded)
         {
             throw new InvalidOperationException($"pressing the chevron of '{row.Text}' did not shut it");
+        }
+    }
+
+    /// <summary>Presses New ▸ Document and asserts that the document belongs to the opened language.</summary>
+    /// <remarks>
+    /// The failure this pins: the command opened the shell's own sample whatever folder was open, so a window working
+    /// in a declared language got a ruleset. A document that opens is a document either way, which is why this is a
+    /// gesture check and not a picture.
+    /// </remarks>
+    private static async Task CheckNewDocumentAsync(MainWindow window)
+    {
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "declared-pipeline"), out var error)
+            ?? throw new InvalidOperationException(error);
+
+        if (!window.OpenLanguage(language))
+        {
+            throw new InvalidOperationException("the shell refused the pipeline project");
+        }
+
+        await SettleAsync();
+
+        window.NewDocumentCommand();
+        await SettleAsync();
+
+        var root = window.ActiveEditor()?.Session?.Document
+            ?? throw new InvalidOperationException("New ▸ Document opened no document");
+
+        if (!root.Concept.IsKindOf("Pipeline.Pipeline"))
+        {
+            throw new InvalidOperationException(
+                $"New ▸ Document opened a '{root.Concept.Key}' instead of a document of the opened language");
         }
     }
 

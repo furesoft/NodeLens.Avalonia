@@ -108,9 +108,13 @@ M2's gate in its smallest complete form.
   already open **replaces** that language rather than adding it twice: the set is rebuilt from the shell's own
   declarations plus the folders it holds, so the reloaded folder's `import`, `structure`, `editor` and every other
   aspect are read again. That is how a written importer reaches **File ▸ Import…** without a restart.
-- **File ▸ New ▸ Document of an opened language** creates a document of the first concept that can be a root: concrete,
-  and naming no applicability places. A concept that names places needs a parent and a slot to exist, so it can never
-  start a document - the same rule [language.md](language.md#applicability) states.
+- **File ▸ New ▸ Document** creates a document of the language the window is working in - the one the project
+  explorer is pointed at, or with nothing selected the first opened one - so a folder that has been opened is the
+  language the next document is made of. **File ▸ New ▸ Document of an opened language** asks with a list instead.
+  Both start at the first concept that can be a root: concrete, and naming no applicability places. A concept that
+  names places needs a parent and a slot to exist, so it can never start a document - the same rule
+  [language.md](language.md#applicability) states. Only a window with no language open falls back to the shell's own
+  sample, which is what gives a cold shell something to edit; neither command will hand a language author a ruleset.
 - **A refused language changes nothing.** `TryAdd` builds both candidate registries first and adopts them only if
   both succeed, because a half-added language would give a document a concept registry that disagrees with the
   notation registry in force - the one state that produces files nobody can open.
