@@ -408,14 +408,19 @@ assembly into the folder the user chooses.
 What export guarantees, and what it refuses to hide:
 
 - Every structure, notation and designated-slot decision is emitted as the equivalent builder
-  call. The output compiles against `Projectional.Toolkit` - the emitted assembly references
+  call, and so is every **typing** rule: `ITypingRules` and `TypingRuleRegistry` live in
+  `Projectional.Language`, and the four claims a declared rule can name are exactly the predicates a
+  hand-written language writes, so the export writes them out as the same lambdas (`text =>
+  text.All(char.IsAsciiDigit)`, `text is "true" or "false"`, ...) rather than naming the aspect as
+  lost. The output compiles against `Projectional.Toolkit` - the emitted assembly references
   `Projectional.Core` and `Projectional.Language` and nothing else - and passes the same registry
-  dump and the same drawing as the source language.
+  dump, the same drawing and the same answers to a burst of typing as the source language.
 - **A behavioural aspect is stubbed, not dropped.** `types` and `generator` become a member that
   throws `NotSupportedException`, with a message naming the aspect and the folder to look in: a
-  language that silently answered an empty `Types` would look exported and be wrong. `constraints`
-  is named in the README alone, because a `ConstraintSet` lives in `Projectional.Semantics` -
-  which the toolkit deliberately does not aggregate - so a stub for it would break the compile
+  language that silently answered an empty `Types` would look exported and be wrong. `constraints`,
+  `scopes`, `intentions` and `import` are named in the README alone, because what they need lives in
+  an assembly the toolkit deliberately does not aggregate - `Projectional.Semantics`,
+  `Projectional.Editing` and `Projectional.ImportRules` - so a stub for them would break the compile
   promise above. Both halves are listed in the exported project's README.
 - **The assembly is compiled in-process** (Roslyn, against the framework's trusted assemblies and
   the two projectional assemblies), so a caller needs no SDK, no temporary project and no shell,

@@ -35,7 +35,40 @@ public static class TypingLowering
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(concepts);
 
+        return Read(documents, concepts).Registry;
+    }
+
+    /// <summary>The rules a language's typing documents declare, as both the registry and the words it was built from.</summary>
+    /// <param name="documents">
+    /// The roots of those documents: one <see cref="TypingConceptKeys.Rule"/> per document, in file order.
+    /// </param>
+    /// <param name="concepts">The concepts those rules may name, which is the language's own registry.</param>
+    /// <returns>The registry the editor asks, and the rules it was built from in the same order.</returns>
+    /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
+    /// <exception cref="ConceptDefinitionException">A document cannot be lowered.</exception>
+    /// <remarks>
+    /// Both answers come from one pass because they are one fact: the registry holds predicates, which cannot be read
+    /// back, so a caller that has to write the rules again - the C# export - would otherwise need a second parsing of
+    /// the documents and the chance for the two to disagree.
+    /// </remarks>
+    public static (TypingRuleRegistry Registry, IReadOnlyList<DeclaredTypingRule> Rules) Lower(
+        IEnumerable<Node> documents,
+        ConceptRegistry concepts)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        ArgumentNullException.ThrowIfNull(concepts);
+
+        var read = Read(documents, concepts);
+
+        return (read.Registry, read.Rules);
+    }
+
+    private static (TypingRuleRegistry Registry, IReadOnlyList<DeclaredTypingRule> Rules) Read(
+        IEnumerable<Node> documents,
+        ConceptRegistry concepts)
+    {
         var rules = TypingRuleRegistry.Empty;
+        var declared = new List<DeclaredTypingRule>();
         var claimed = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var rule in documents)
@@ -70,9 +103,10 @@ public static class TypingLowering
             }
 
             rules = rules.Add(conceptKey, ClaimsOf(conceptKey, claims, text), property);
+            declared.Add(new DeclaredTypingRule(conceptKey, claims, text, property));
         }
 
-        return rules;
+        return (rules, declared);
     }
 
     /// <summary>The predicate a claim symbol stands for, checked against the text the claim needs.</summary>
