@@ -3,6 +3,7 @@ using Projectional.CSharp.Checks;
 using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
+using Projectional.CSharp.Scopes;
 using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Projection;
@@ -146,6 +147,39 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void ANameSeesTheDeclarationsThatEncloseItNearestFirst()
+    {
+        // The resolution rule, in one place: a name sees what the nodes around it declare. A local in the block that
+        // encloses the use, a parameter in the method that encloses the body, a field in the class that encloses both -
+        // and the nearest declaration wins without a second rule for shadowing.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("scopes");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var parameter = model.NewChild(method, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var statement = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var name = model.NewChild(statement, "expression", CSharpConceptKeys.Name);
+
+        field.Set(CSharpLanguage.NameSlot, "total");
+        method.Set(CSharpLanguage.NameSlot, "Compute");
+        parameter.Set(CSharpLanguage.NameSlot, "factor");
+
+        var scope = CSharpScopes.Registry.ScopeOf(name, CSharpConceptKeys.TargetSlot);
+        var visible = scope.Entries.Select(entry => entry.Name).ToList();
+
+        // The parameter and the field are both visible, and the parameter is nearer: it is declared in the method
+        // that encloses the body, while the field is declared one level further out.
+        Assert.Contains("factor", visible);
+        Assert.Contains("total", visible);
+        Assert.True(
+            visible.IndexOf("factor") < visible.IndexOf("total"),
+            "the nearer declaration has to come first: " + string.Join(", ", visible));
+    }
+
+    [Fact]
     public void ANamespaceIsDrawnInTheFormTheModelChose()
     {
         // C# 10's file-scoped form, as one property rather than a second concept: the same node, drawn with a
@@ -245,8 +279,12 @@ public sealed class CSharpLanguageTests
         method.Set(CSharpLanguage.NameSlot, "Greet");
         returnType.Set(CSharpLanguage.NameSlot, "void");
         callee.Set(CSharpLanguage.MemberSlot, "WriteLine");
-        console.Set(CSharpLanguage.NameSlot, "Console");
-        argument.Set(CSharpLanguage.NameSlot, "message");
+
+        // The argument means the field, so it is a reference that resolves - which is what a scope provider answers.
+        // `Console` means nothing this file declares, so it is a dangling reference that keeps the text it was given:
+        // one kind of node, two states, exactly as a reference cell draws them.
+        argument.SetReference(CSharpConceptKeys.TargetSlot, field);
+        console.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "Console");
 
         return model;
     }

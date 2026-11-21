@@ -343,10 +343,13 @@ public sealed class EditorTreeBuilder
 
         if (node.GetReferenceTarget(slot) is not { } target)
         {
+            // The text the reference kept is what it was written as, so it is what the reader has to see: the state
+            // is what says the target is missing, not a placeholder that throws the text away. `resolveInfo` exists
+            // for exactly this - an unresolved reference degrades rather than losing what was typed.
             return new ReferenceCell(
                 address,
                 slot,
-                "<unresolved>",
+                stored.ResolveInfo is { Length: > 0 } text ? text : "<unresolved>",
                 ReferenceState.Unresolved,
                 stored.Target,
                 emphasis);
