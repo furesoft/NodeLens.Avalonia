@@ -38,6 +38,8 @@ internal static class ParityHarness
                 .Append(concept.IsInterface ? " interface" : string.Empty)
                 .Append(concept.IsAbstract ? " abstract" : string.Empty)
                 .Append(concept.IsOfferedInCompletion ? string.Empty : " hidden")
+                .Append(concept.IsRoot ? string.Empty : " notroot")
+                .Append(" alias=").Append(concept.Alias ?? "-")
                 .Append(" name=").Append(concept.NameSlot?.Name ?? "-")
                 .Append(" collapse=").Append(concept.CollapseSlot?.Name ?? "-")
                 .Append(" nameRule=").Append(concept.NameRule?.Text ?? "-")

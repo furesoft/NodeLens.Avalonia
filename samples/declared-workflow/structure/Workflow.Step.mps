@@ -6,6 +6,8 @@
         <key>Workflow.Step</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One step of a workflow; the next step and the one to repeat on failure.</description>
         <nameSlot>name</nameSlot>

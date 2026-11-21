@@ -6,6 +6,8 @@
         <key>Decl.Expression</key>
         <isAbstract>true</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>false</isOfferedInCompletion>
         <description>What every expression is: the base a child slot is declared over, so no document can hold a bare one.</description>
         <nameSlot></nameSlot>

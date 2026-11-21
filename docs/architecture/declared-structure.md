@@ -80,7 +80,7 @@ draws the word, which is a [conditional cell](language.md#notation) - and the re
 | Concept | Holds |
 | --- | --- |
 | `Structure.Language` | the definition: `enumerations`, `concepts` |
-| `Structure.Concept` | `key`, `isAbstract`, `isOfferedInCompletion`, `description`, `nameSlot`, `collapseSlot`, `nameRule`, `supertypes`, `properties`, `children`, `references` |
+| `Structure.Concept` | `key`, `isAbstract`, `isRoot`, `alias`, `isOfferedInCompletion`, `description`, `nameSlot`, `collapseSlot`, `nameRule`, `supertypes`, `properties`, `children`, `references` |
 | `Structure.SuperType` | `conceptKey` |
 | `Structure.Slot` (abstract) | `name` |
 | `Structure.PropertyDecl` | `typeName`, `defaultValue`, `description` |

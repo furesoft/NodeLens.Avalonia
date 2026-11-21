@@ -6,6 +6,8 @@
         <key>Workflow.Workflow</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One runnable sequence of steps.</description>
         <nameSlot>name</nameSlot>

@@ -6,6 +6,8 @@
         <key>Workflow.Call</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>Runs another step of this workflow here, instead of a command of its own.</description>
         <nameSlot>name</nameSlot>

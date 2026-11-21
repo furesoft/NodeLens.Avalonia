@@ -20,18 +20,22 @@ namespace Projectional.Editing;
 /// </remarks>
 public sealed class CompletionItem
 {
+    private readonly string? _label;
+
     /// <summary>Creates an item for <paramref name="conceptKey"/>.</summary>
     /// <param name="conceptKey">The concept the item inserts, spelled the way the language declares it.</param>
     /// <param name="kind">What the item stands for, which is what a host chooses an icon by.</param>
     /// <param name="description">The concept's own sentence, or <see langword="null"/> when it declares none.</param>
+    /// <param name="label">The word to show when the language offers one that is not the concept's own name.</param>
     /// <exception cref="ArgumentException"><paramref name="conceptKey"/> is empty.</exception>
-    public CompletionItem(string conceptKey, CompletionKind kind, string? description = null)
+    public CompletionItem(string conceptKey, CompletionKind kind, string? description = null, string? label = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(conceptKey);
 
         ConceptKey = conceptKey;
         Kind = kind;
         Description = description;
+        _label = string.IsNullOrWhiteSpace(label) ? null : label;
     }
 
     /// <summary>
@@ -67,11 +71,15 @@ public sealed class CompletionItem
     /// name in the language.
     /// </para>
     /// <para>
+    /// A concept that declares an alias is shown and filtered by that word instead - the language's own answer to
+    /// what its concepts are called in a list. The payload stays the key, so an alias never reaches the model.
+    /// </para>
+    /// <para>
     /// A value keeps its symbol verbatim, dots included. It is already the exact text the property stores,
     /// and shortening it the way a concept key is shortened would show a word the user cannot type.
     /// </para>
     /// </remarks>
-    public string Label => field ??= Kind == CompletionKind.Value ? ConceptKey : LabelOf(ConceptKey);
+    public string Label => field ??= _label ?? (Kind == CompletionKind.Value ? ConceptKey : LabelOf(ConceptKey));
 
     public override string ToString() => ConceptKey;
 

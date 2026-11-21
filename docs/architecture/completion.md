@@ -55,9 +55,11 @@ public sealed class CompletionItem
   would be a second thing to keep in step, and the kind is already the discriminator.
 - **`Label` is the last segment of a concept key** — `Expressions.IntLiteral` becomes
   `IntLiteral` — because a list of fully qualified keys reads as noise, and the short name is
-  what the declaration itself calls the concept, so no language needs a second, display-only
-  name. A **value** keeps its symbol verbatim, dots included: it is already the exact text the
-  property stores, so shortening it would show a word the user cannot type.
+  what the declaration itself calls the concept. A concept that declares an **alias** is shown
+  and filtered by that word instead (`RS` for a rule set), which is the language's own answer to
+  what its concepts are called in a list. The payload stays the key, so an alias never reaches
+  the model. A **value** keeps its symbol verbatim, dots included: it is already the exact text
+  the property stores, so shortening it would show a word the user cannot type.
 - **`Kind` is the vocabulary a host picks an icon by.** Two members today: `Node`, for a concept
   that fills a slot, and `Value`, for a symbol that replaces a cell's text. References and
   keywords slot into the same enum later without changing the item.

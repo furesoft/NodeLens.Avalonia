@@ -48,13 +48,25 @@ internal sealed class DefinitionBuilder
         string? collapseSlot = null,
         bool isInterface = false,
         IReadOnlyList<string>? implements = null,
-        string? nameRule = null)
+        string? nameRule = null,
+        bool isRoot = true,
+        string? alias = null)
     {
         var concept = Start(StructureConceptKeys.Concept);
 
         concept.Set(StructureLanguage.KeySlot, key);
         concept.Set(StructureLanguage.IsAbstractProperty, isAbstract ? "true" : "false");
         concept.Set(StructureLanguage.IsInterfaceProperty, isInterface ? "true" : "false");
+
+        if (!isRoot)
+        {
+            concept.Set(StructureLanguage.IsRootProperty, "false");
+        }
+
+        if (alias is not null)
+        {
+            concept.Set(StructureLanguage.AliasProperty, alias);
+        }
 
         if (nameSlot is not null)
         {

@@ -59,6 +59,24 @@ public static class StructureLanguage
     /// </remarks>
     public const string IsInterfaceProperty = "isInterface";
 
+    /// <summary>
+    /// Whether a node of this concept may start a document.
+    /// </summary>
+    /// <remarks>
+    /// The default is <c>true</c> because that is what every concept meant before the flag existed: a language that
+    /// writes <c>false</c> says its nodes only exist inside another, and the model then refuses to make one a root.
+    /// </remarks>
+    public const string IsRootProperty = "isRoot";
+
+    /// <summary>
+    /// The short word completion offers for this concept instead of the concept's own name.
+    /// </summary>
+    /// <remarks>
+    /// A display word, not a second name: accepting the entry still inserts the concept this definition declares.
+    /// Empty means the list falls back to the concept's own short name.
+    /// </remarks>
+    public const string AliasProperty = "alias";
+
     /// <summary>The concepts of the structure language itself.</summary>
     /// <remarks>
     /// There is no container concept: a document's root <em>is</em> the definition it holds - one concept, or one
@@ -86,6 +104,17 @@ public static class StructureLanguage
                     PropertyType.Boolean,
                     "false",
                     "Whether this concept is an interface: abstract by definition, and a source of members.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    IsRootProperty,
+                    PropertyType.Boolean,
+                    "true",
+                    "Whether a node of this concept may start a document. A concept that may not is only ever a child.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    AliasProperty,
+                    PropertyType.String,
+                    description: "The short word completion offers for this concept, when its own name is not the word an author looks for.",
                     showDescriptionWhenFilled: true),
                 new PropertySlot(
                     "isOfferedInCompletion",

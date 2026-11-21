@@ -349,4 +349,26 @@ public sealed class ModelTests
         var value = model.NewChild(holder, "value", "Lit");
         Assert.Equal("Lit", value.Concept.Key);
     }
+
+    [Fact]
+    public void AConceptThatMayNotStartADocumentCannotBecomeARoot()
+    {
+        // "May this start a document" is a question about the concept, and the model answers it where a root is
+        // made. A concept that refuses is exactly the kind that exists inside another, which is why the refusal
+        // says nothing about a child.
+        var registry = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration("Holder", [new ChildSlot("value", "Part", Cardinality.One)]),
+            new ConceptDeclaration("Part", isRoot: false),
+        ]);
+
+        var model = new Project(registry).NewModel("Roots");
+
+        var exception = Assert.Throws<ModelInvariantException>(() => model.NewNode("Part"));
+
+        Assert.Contains("root", exception.Message, StringComparison.OrdinalIgnoreCase);
+
+        var holder = model.NewNode("Holder");
+        Assert.Equal("Part", model.NewChild(holder, "value", "Part").Concept.Key);
+    }
 }

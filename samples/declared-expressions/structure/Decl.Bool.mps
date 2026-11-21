@@ -6,6 +6,8 @@
         <key>Decl.Bool</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>A truth value literal.</description>
         <nameSlot></nameSlot>

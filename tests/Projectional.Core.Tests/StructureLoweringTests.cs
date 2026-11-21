@@ -703,4 +703,34 @@ public sealed class StructureLoweringTests
             LayoutSnapshot.Render(definition.Roots[2], notations, width: 120),
             StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AConceptSaysWhetherANodeOfItMayStartADocument()
+    {
+        // The definition's answer to "may this be a root" reaches the registry, and a definition that says nothing
+        // keeps what every concept meant before the flag existed.
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Rule");
+        definition.Concept("Rules.Condition", isRoot: false);
+
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
+
+        Assert.True(registry.Get("Rules.Rule").IsRoot);
+        Assert.False(registry.Get("Rules.Condition").IsRoot);
+    }
+
+    [Fact]
+    public void AConceptCarriesTheAliasItsDefinitionDeclares()
+    {
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Rules.Rule", alias: "Rule");
+        definition.Concept("Rules.Condition");
+
+        var registry = StructureLowering.CreateRegistry(definition.Roots);
+
+        Assert.Equal("Rule", registry.Get("Rules.Rule").Alias);
+        Assert.Null(registry.Get("Rules.Condition").Alias);
+    }
 }

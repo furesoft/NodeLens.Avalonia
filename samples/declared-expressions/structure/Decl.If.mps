@@ -6,6 +6,8 @@
         <key>Decl.If</key>
         <isAbstract>false</isAbstract>
         <isInterface>false</isInterface>
+        <isRoot>true</isRoot>
+        <alias></alias>
         <isOfferedInCompletion>true</isOfferedInCompletion>
         <description>One expression chosen by a condition.</description>
         <nameSlot></nameSlot>

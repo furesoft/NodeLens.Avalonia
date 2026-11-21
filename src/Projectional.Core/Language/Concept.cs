@@ -26,7 +26,9 @@ public sealed class Concept
         IReadOnlyList<Concept>? extensions = null,
         IReadOnlyList<Concept>? interfaces = null,
         NameRule? nameRule = null,
-        Func<Node, string?>? nameFunction = null)
+        Func<Node, string?>? nameFunction = null,
+        string? alias = null,
+        bool isRoot = true)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -37,6 +39,8 @@ public sealed class Concept
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         Description = description;
+        Alias = alias;
+        IsRoot = isRoot;
         CollapseSlot = collapseSlot;
         Applicability = applicability ?? Applicability.Anywhere;
         Triggers = triggers ?? [];
@@ -166,6 +170,27 @@ public sealed class Concept
     /// never stored per node and never appears in a change event.
     /// </remarks>
     public string? Description { get; }
+
+    /// <summary>
+    /// The short word a proposal list offers for this concept, or <see langword="null"/> when it offers the concept's
+    /// own name.
+    /// </summary>
+    /// <remarks>
+    /// Not inherited, and read only where a concept is <em>offered</em>: a notification of a concept is a word the
+    /// user picks, while a node's name is a value in the model. The two never mix, which is why a host shows the alias
+    /// in its list and the node's name in the document.
+    /// </remarks>
+    public string? Alias { get; }
+
+    /// <summary>
+    /// Whether a node of this concept may start a document; <see langword="true"/> when the language says nothing.
+    /// </summary>
+    /// <remarks>
+    /// Asked by <see cref="Model.NewNode(Concept)"/> and by nothing else: the model's other ways to place a node -
+    /// a child, a restored root, a pasted subtree - are about where an existing node goes, not about what a document
+    /// may begin with.
+    /// </remarks>
+    public bool IsRoot { get; }
 
     /// <summary>
     /// The resolved slot that says whether a node of this concept may be folded, or <see langword="null"/>.

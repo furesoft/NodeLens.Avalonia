@@ -134,14 +134,21 @@ public static class StructureLowering
             nameSlot: Optional(concept, "nameSlot"),
             isAbstract: isAbstract,
             isOfferedInCompletion: Flag(concept, "isOfferedInCompletion"),
-            description: Optional(concept, "description"),
-            collapseSlot: Optional(concept, "collapseSlot"),
+            description: Optional(concept, "description"),            collapseSlot: Optional(concept, "collapseSlot"),
             // An empty cell means "inherit", not "any": the declaration stays null and the registry walks the
             // supers. A word the enumeration does not offer cannot reach here, because the model refuses it.
             nameRule: Optional(concept, "nameRule") is { } rule ? NameRule.Parse(rule) : null,
             isInterface: isInterface,
             interfaces: concept.GetChildren(StructureLanguage.ImplementsSlot)
-                .Select(implemented => Required(implemented, "conceptKey", $"'{key}'")));
+                .Select(implemented => Required(implemented, "conceptKey", $"'{key}'")),
+            alias: Optional(concept, StructureLanguage.AliasProperty),
+
+            // Absent means "true": a definition written before the flag existed allowed every concept to start a
+            // document, and reading one has to keep meaning that.
+            isRoot: !string.Equals(
+                concept.GetOrNull(StructureLanguage.IsRootProperty),
+                "false",
+                StringComparison.Ordinal));
     }
 
     private static SlotDeclaration LowerSlot(string owner, Node slot, Dictionary<string, IReadOnlyList<string>> enums)
