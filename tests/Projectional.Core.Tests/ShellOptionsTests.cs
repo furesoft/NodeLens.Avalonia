@@ -111,7 +111,8 @@ public sealed class ShellOptionsTests
     }
 
     /// <summary>A host's storage: a dictionary instead of a file, which is the whole point of the seam.</summary>
-    private sealed class InMemoryStorage : IShellStorage    {
+    private sealed class InMemoryStorage : IShellStorage
+    {
         private readonly Dictionary<string, IReadOnlyList<string>> _files = new(StringComparer.Ordinal);
 
         public IReadOnlyList<string> ReadLines(string path) =>
