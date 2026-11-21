@@ -179,6 +179,15 @@ public static class CSharpConceptKeys
     /// <summary>The property holding whether a property has a setter.</summary>
     public const string HasSetterSlot = "hasSetter";
 
+    /// <summary>The property holding whether a property's accessors have bodies.</summary>
+    public const string HasBodiesSlot = "hasBodies";
+
+    /// <summary>The slot holding the block a property's getter runs.</summary>
+    public const string GetterSlot = "getter";
+
+    /// <summary>The slot holding the block a property's setter runs.</summary>
+    public const string SetterSlot = "setter";
+
     /// <summary>The slot holding the value an operator is applied to, or the one a ternary chooses.</summary>
     public const string OperandSlot = "operand";
 

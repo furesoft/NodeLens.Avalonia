@@ -130,15 +130,48 @@ public static class CSharpTextGenerators
             LineBreakPart.Instance,
             new ChildPart(CSharpConceptKeys.BodySlot)))
 
+        // A property in its two shapes, the same pair the notation draws: the auto-property stays on one line, and the
+        // one with bodies takes the shape a method has. The break that ends `{` belongs inside the indent, or the
+        // first accessor lands at the property's own indentation.
         .Add(CSharpConceptKeys.Property, TextTemplate.Of(
-            new PropertyPart(CSharpLanguage.VisibilitySlot),
-            new TextPart(" "),
-            new ChildPart("type"),
-            new TextPart(" "),
-            new PropertyPart(CSharpLanguage.NameSlot),
-            new TextPart(" { get;"),
-            new ConditionalPart(CSharpConceptKeys.HasSetterSlot, "true", TextTemplate.Of(new TextPart(" set;"))),
-            new TextPart(" }")))
+            new ConditionalPart(
+                CSharpConceptKeys.HasBodiesSlot,
+                "false",
+                TextTemplate.Of(
+                    new PropertyPart(CSharpLanguage.VisibilitySlot),
+                    new TextPart(" "),
+                    new ChildPart("type"),
+                    new TextPart(" "),
+                    new PropertyPart(CSharpLanguage.NameSlot),
+                    new TextPart(" { get;"),
+                    new ConditionalPart(CSharpConceptKeys.HasSetterSlot, "true", TextTemplate.Of(new TextPart(" set;"))),
+                    new TextPart(" }"))),
+            new ConditionalPart(
+                CSharpConceptKeys.HasBodiesSlot,
+                "true",
+                TextTemplate.Of(
+                    new PropertyPart(CSharpLanguage.VisibilitySlot),
+                    new TextPart(" "),
+                    new ChildPart("type"),
+                    new TextPart(" "),
+                    new PropertyPart(CSharpLanguage.NameSlot),
+                    LineBreakPart.Instance,
+                    new TextPart("{"),
+                    new IndentPart(TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        new TextPart("get"),
+                        LineBreakPart.Instance,
+                        new ChildPart(CSharpConceptKeys.GetterSlot),
+                        new ConditionalPart(
+                            CSharpConceptKeys.HasSetterSlot,
+                            "true",
+                            TextTemplate.Of(
+                                LineBreakPart.Instance,
+                                new TextPart("set"),
+                                LineBreakPart.Instance,
+                                new ChildPart(CSharpConceptKeys.SetterSlot))))),
+                    LineBreakPart.Instance,
+                    new TextPart("}")))))
         .Add(CSharpConceptKeys.Signature, TextTemplate.Of(
             new PropertyPart(CSharpLanguage.VisibilitySlot),
             new TextPart(" "),

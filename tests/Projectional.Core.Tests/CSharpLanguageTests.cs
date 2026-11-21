@@ -436,6 +436,71 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void APropertyWithAccessorBodiesDrawsAndGeneratesTheSameShape()
+    {
+        // The third shape of a property: the accessors are written out. It is the same concept as the auto-property,
+        // two booleans apart, so one declaration never needs a second name - and a property's name now takes the
+        // property's type, which is what a reader of the getter expects.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("accessors");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.TypeReference);
+        var property = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Property);
+        var propertyType = model.NewChild(property, "type", CSharpConceptKeys.TypeReference);
+        var getter = model.NewChild(property, CSharpConceptKeys.GetterSlot, CSharpConceptKeys.Block);
+        var setter = model.NewChild(property, CSharpConceptKeys.SetterSlot, CSharpConceptKeys.Block);
+
+        var read = model.NewChild(getter, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var readValue = model.NewChild(read, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+        var write = model.NewChild(setter, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Assignment);
+        var writeTarget = model.NewChild(write, "target", CSharpConceptKeys.Name);
+        var writeValue = model.NewChild(write, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Person");
+        field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+        field.Set(CSharpLanguage.NameSlot, "age");
+        fieldType.Set(CSharpLanguage.NameSlot, "int");
+        property.Set(CSharpLanguage.NameSlot, "Age");
+        property.Set(CSharpConceptKeys.HasBodiesSlot, "true");
+        propertyType.Set(CSharpLanguage.NameSlot, "int");
+        readValue.SetReference(CSharpConceptKeys.TargetSlot, field);
+        writeTarget.SetReference(CSharpConceptKeys.TargetSlot, field);
+        writeValue.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "value");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Person
+              {
+                private int age;
+                public int Age
+                {
+                  get
+                  {
+                    return age;
+                  }
+                  set
+                  {
+                    age = value;
+                  }
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // A property's name takes the property's type, so a reader of `Age` gets an `int` without a second rule.
+        Assert.Equal("int", CSharpTypes.Registry.TypeOf(property).Name);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

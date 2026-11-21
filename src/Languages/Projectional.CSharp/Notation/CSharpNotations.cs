@@ -206,20 +206,46 @@ public static class CSharpNotations
                 ed.Punct(")")),
             ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot, "<no body>"))));
 
-        // An auto-property on one line, because that is what it is: the accessors are words, not blocks.
-        notations.Add(CSharpConceptKeys.Property, ed => ed.Line(
-            ed.Property(CSharpLanguage.VisibilitySlot),
-            ed.Space,
-            ed.ChildInline("type"),
-            ed.Space,
-            ed.Property(CSharpLanguage.NameSlot),
-            ed.Space,
-            ed.Punct("{"),
-            ed.Space,
-            ed.Keyword("get;"),
-            ed.Conditional(CSharpConceptKeys.HasSetterSlot, "true", ed.Space, ed.Keyword("set;")),
-            ed.Space,
-            ed.Punct("}")));
+        // A property in its two shapes. The auto-property stays on one line, because that is what it is: the accessors
+        // are words, not blocks. With bodies they are blocks, so the property takes the same shape a method has - the
+        // header, then the accessor and its block below it. The setter is a conditional block of its own, which is what
+        // makes `{ get { ... } }` one boolean away from `{ get { ... } set { ... } }`.
+        notations.Add(CSharpConceptKeys.Property, ed => ed.Sequence(
+            ed.ConditionalBlock(
+                CSharpConceptKeys.HasBodiesSlot,
+                "false",
+                ed.Line(
+                    ed.Property(CSharpLanguage.VisibilitySlot),
+                    ed.Space,
+                    ed.ChildInline("type"),
+                    ed.Space,
+                    ed.Property(CSharpLanguage.NameSlot),
+                    ed.Space,
+                    ed.Punct("{"),
+                    ed.Space,
+                    ed.Keyword("get;"),
+                    ed.Conditional(CSharpConceptKeys.HasSetterSlot, "true", ed.Space, ed.Keyword("set;")),
+                    ed.Space,
+                    ed.Punct("}"))),
+            ed.ConditionalBlock(
+                CSharpConceptKeys.HasBodiesSlot,
+                "true",
+                ed.Line(
+                    ed.Property(CSharpLanguage.VisibilitySlot),
+                    ed.Space,
+                    ed.ChildInline("type"),
+                    ed.Space,
+                    ed.Property(CSharpLanguage.NameSlot)),
+                ed.Line(ed.Punct("{")),
+                ed.Indent(
+                    ed.Line(ed.Keyword("get")),
+                    ed.Line(ed.ChildInline(CSharpConceptKeys.GetterSlot, "<no getter>")),
+                    ed.ConditionalBlock(
+                        CSharpConceptKeys.HasSetterSlot,
+                        "true",
+                        ed.Line(ed.Keyword("set")),
+                        ed.Line(ed.ChildInline(CSharpConceptKeys.SetterSlot, "<no setter>")))),
+                ed.Line(ed.Punct("}")))));
         // A signature: a method's header and nothing after it.
         notations.Add(CSharpConceptKeys.Signature, ed => ed.Line(
             ed.Property(CSharpLanguage.VisibilitySlot),

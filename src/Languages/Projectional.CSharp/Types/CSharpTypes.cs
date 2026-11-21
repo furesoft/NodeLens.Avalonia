@@ -46,6 +46,7 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.Field, new SameAs("type"))
         .Add(CSharpConceptKeys.Parameter, new SameAs("type"))
         .Add(CSharpConceptKeys.LocalDeclaration, new SameAs("type"))
+        .Add(CSharpConceptKeys.Property, new SameAs("type"))
         .Add(CSharpConceptKeys.Name, new NameType())
         .Add(CSharpConceptKeys.Parenthesized, new SameAs("inner"))
         .Add(CSharpConceptKeys.Binary, new BinaryType())

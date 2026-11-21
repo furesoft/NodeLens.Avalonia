@@ -390,9 +390,11 @@ public static class CSharpLanguage
             isRoot: false,
             description: "A constructor: the parameters and the body that make an instance."),
 
-        // An auto-property, which is the one form that needs no accessor body: `{ get; set; }`, or `{ get; }` when the
-        // setter is withheld. A property with written accessors is a later decision - it needs a third shape and the
-        // boolean that chooses between the three, and that is a design of its own.
+        // A property in its two shapes, chosen by two booleans rather than by a second concept: an auto-property
+        // (`{ get; set; }`, or `{ get; }` when the setter is withheld) and a property whose accessors have bodies
+        // (`{ get { ... } set { ... } }`). `hasSetter` says whether there is a setter at all; `hasBodies` says whether
+        // the accessors are written out. The four combinations are the four forms C# allows, so the pair is honest
+        // rather than a shortcut - and a second concept would have meant two names for one declaration.
         new ConceptDeclaration(
             CSharpConceptKeys.Property,
             [
@@ -404,13 +406,20 @@ public static class CSharpLanguage
                     PropertyType.Boolean,
                     "true",
                     "Whether the property offers a setter; without one it is `{ get; }`."),
+                new PropertySlot(
+                    CSharpConceptKeys.HasBodiesSlot,
+                    PropertyType.Boolean,
+                    "false",
+                    "Whether the accessors have bodies; without them it is an auto-property."),
+                new ChildSlot(CSharpConceptKeys.GetterSlot, CSharpConceptKeys.Block, Cardinality.One, minimum: 0),
+                new ChildSlot(CSharpConceptKeys.SetterSlot, CSharpConceptKeys.Block, Cardinality.One, minimum: 0),
             ],
             superConcepts: [CSharpConceptKeys.Member],
             interfaces: [CSharpConceptKeys.NamedDeclaration],
             nameSlot: NameSlot,
             nameRule: NameRule.Pascal,
             isRoot: false,
-            description: "An auto-property: { get; set; }"),
+            description: "A property: { get; set; }, { get; }, or accessors with bodies."),
         new ConceptDeclaration(
             CSharpConceptKeys.Method,
             [
