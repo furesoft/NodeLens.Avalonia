@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -41,6 +42,8 @@ internal sealed class CaptureWindow : Window
 
         var log = new List<string>();
 
+        var exitCode = 0;
+
         try
         {
             foreach (var shot in Shots.All)
@@ -51,17 +54,30 @@ internal sealed class CaptureWindow : Window
             }
 
             // After the editor shots, because each shell shot opens and closes a window of its own.
-            Environment.ExitCode = await ShellCapture.RunAsync(_output, log) ? 0 : 1;
+            exitCode = await ShellCapture.RunAsync(_output, log) ? 0 : 1;
         }
         catch (Exception exception)
         {
             log.Add(exception.ToString());
-            Environment.ExitCode = 1;
+            exitCode = 1;
         }
         finally
         {
             File.WriteAllLines(Path.Combine(Path.GetTempPath(), "projectional-screenshots.log"), log);
-            Close();
+
+            Environment.ExitCode = exitCode;
+
+            // Through the lifetime, not through Close(): the desktop lifetime shuts down with an exit code of its own,
+            // which overwrites Environment.ExitCode and reported a failed run as a clean one. A run whose images and
+            // gesture checks failed has to fail where it is used, or nothing it says is worth reading.
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown(exitCode);
+            }
+            else
+            {
+                Close();
+            }
         }
     }
 

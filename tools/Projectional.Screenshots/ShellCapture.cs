@@ -2,7 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
+using Projectional.Languages;
+using Projectional.Samples.StateMachine;
 using Projectional.Workbench;
 
 namespace Projectional.Screenshots;
@@ -56,7 +59,154 @@ internal static class ShellCapture
             }
         }
 
+        // After the pictures, because a gesture check opens a window of its own. These are the parts of the shell that
+        // are wiring rather than drawing: a chevron that does nothing looks exactly like a chevron that works, so the
+        // only way to know is to press it and read the row afterwards.
+        succeeded &= await CheckAsync("project chevron", CheckProjectChevronAsync, log);
+        succeeded &= await CheckAsync("outline chevron", CheckOutlineChevronAsync, log);
+
         return succeeded;
+    }
+
+    /// <summary>Runs one gesture check and answers whether it held.</summary>
+    /// <remarks>
+    /// A check is a picture's opposite: it proves nothing by looking right, so a failure is a message and an exit code
+    /// rather than a wrong image. Both are reported the way the shots are, because the log is what a run leaves behind
+    /// and a check that failed silently would be a check nobody has.
+    /// </remarks>
+    private static async Task<bool> CheckAsync(string name, Func<MainWindow, Task> check, List<string> log)
+    {
+        try
+        {
+            await RunCheckAsync(check);
+
+            log.Add($"{name}: passed");
+
+            return true;
+        }
+        catch (Exception exception)
+        {
+            log.Add($"{name}: {exception}");
+
+            Console.Error.WriteLine($"{name} failed: {exception.Message}");
+
+            return false;
+        }
+    }
+
+    /// <summary>Shows a window, runs a gesture check against it and closes it.</summary>
+    /// <remarks>
+    /// The window is shown for the same reason a shot's is: a row's chevron is part of a template the theme supplies, and
+    /// a window that was never shown has no rows to press.
+    /// </remarks>
+    private static async Task RunCheckAsync(Func<MainWindow, Task> check)
+    {
+        var window = new MainWindow
+        {
+            Width = 980,
+            Height = 700,
+            Position = new PixelPoint(0, 0),
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+        };
+
+        try
+        {
+            window.Show();
+            await SettleAsync();
+
+            await check(window);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Presses a project folder's chevron and asserts that the folder shut.</summary>
+    /// <remarks>
+    /// The bug this pins: the handler is attached to the list, so <c>sender</c> is the list and the row lives on the
+    /// event's source. Reading the sender meant the row was never found and the press did nothing at all - no
+    /// exception, no log line, a chevron that ignored the pointer. Reading the source is what makes it work, and the
+    /// row is read back afterwards so that "the folder shut" is what was observed rather than what was assumed.
+    /// </remarks>
+    private static async Task CheckProjectChevronAsync(MainWindow window)
+    {
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "declared-pipeline"), out var error)
+            ?? throw new InvalidOperationException(error);
+
+        if (!window.OpenLanguage(language))
+        {
+            throw new InvalidOperationException("the shell refused the pipeline project");
+        }
+
+        await SettleAsync();
+
+        var list = window.ProjectList;
+
+        var row = list.Items.OfType<ProjectEntry>()
+            .FirstOrDefault(entry => entry.Kind is ProjectNode.Folder && entry.IsExpanded)
+            ?? throw new InvalidOperationException("the project explorer showed no open folder to shut");
+
+        PressChevron(list, row);
+
+        var after = list.Items.OfType<ProjectEntry>().FirstOrDefault(entry => entry.Key == row.Key)
+            ?? throw new InvalidOperationException($"the row '{row.Text}' disappeared when its chevron was pressed");
+
+        if (after.IsExpanded)
+        {
+            throw new InvalidOperationException($"pressing the chevron of '{row.Text}' did not shut it");
+        }
+    }
+
+    /// <summary>Presses a model browser row's chevron and asserts that the node shut.</summary>
+    /// <remarks>
+    /// The same correction as the project explorer's, so the same check: the handler reads the row from the event's
+    /// source, and the row is read back afterwards rather than assumed to have changed.
+    /// </remarks>
+    private static async Task CheckOutlineChevronAsync(MainWindow window)
+    {
+        window.OpenDocument(
+            LanguageDocuments.StateMachine(),
+            StateMachineLanguage.CreateNotations(StateMachineLanguage.Concepts),
+            typing: StateMachineLanguage.TypingRules);
+
+        window.ShowOutlineTool();
+
+        await SettleAsync();
+
+        var list = window.OutlineList;
+
+        var row = list.Items.OfType<OutlineEntry>()
+            .FirstOrDefault(entry => entry.HasChildren && entry.IsExpanded)
+            ?? throw new InvalidOperationException("the model browser showed no open row to shut");
+
+        PressChevron(list, row);
+
+        var after = list.Items.OfType<OutlineEntry>().FirstOrDefault(entry => entry.Id == row.Id)
+            ?? throw new InvalidOperationException($"the row '{row.Text}' disappeared when its chevron was pressed");
+
+        if (after.IsExpanded)
+        {
+            throw new InvalidOperationException($"pressing the chevron of '{row.Text}' did not shut it");
+        }
+    }
+
+    /// <summary>Presses the chevron a row is drawn with, the way a pointer does.</summary>
+    /// <remarks>
+    /// The button is looked up through the row's own <c>DataContext</c> rather than through a position, because a row is
+    /// a value and the template's button is the only thing carrying it. Raising the click on the button - not on the
+    /// list - is what makes the event travel the path a real press travels, so the list's handler is reached the way it
+    /// is in use.
+    /// </remarks>
+    private static void PressChevron(ListBox list, object row)
+    {
+        var button = list.GetVisualDescendants()
+            .OfType<Button>()
+            .FirstOrDefault(found => found.Classes.Contains("chevron") && ReferenceEquals(found.DataContext, row))
+            ?? throw new InvalidOperationException($"the row '{row}' has no chevron on screen");
+
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, button));
     }
 
     /// <summary>Shows the workbench, opens one of its dialogs over it and writes the image of the dialog.</summary>

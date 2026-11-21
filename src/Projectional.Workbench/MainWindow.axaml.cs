@@ -132,9 +132,12 @@ public sealed partial class MainWindow : Window, IDisposable
 
     // A panel is a view of its own, so the shell reaches the list through it rather than through a name the window's
     // markup used to declare. The view owns what a panel shows; the shell owns what a row means.
-    private ListBox ProjectList => ProjectView.List;
+    //
+    // The two tree lists are internal for the screenshot harness: a chevron is only known to work by pressing one, and
+    // the press has to reach the button the list's handler is attached to. A picture of a tree cannot show that.
+    internal ListBox ProjectList => ProjectView.List;
 
-    private ListBox OutlineList => OutlineView.List;
+    internal ListBox OutlineList => OutlineView.List;
 
     private ListBox Problems => ProblemsView.List;
 
@@ -1236,7 +1239,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// </remarks>
     private void OnProjectToggle(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control { DataContext: ProjectEntry { Key: { } key } })
+        // The source, not the sender: the handler is attached to the list, so `sender` is the list itself and the row
+        // lives on the button that was pressed. Reading the sender here is why the chevron did nothing at all.
+        if ((e.Source as Control)?.DataContext is not ProjectEntry { Key: { } key })
         {
             return;
         }
@@ -1364,7 +1369,9 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <summary>Opens or shuts the node a browser row's chevron belongs to.</summary>
     private void OnOutlineToggle(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control { DataContext: OutlineEntry entry })
+        // Attached to the list, so the row is on the source rather than on the sender - the same correction the project
+        // explorer's chevron needed.
+        if ((e.Source as Control)?.DataContext is not OutlineEntry entry)
         {
             return;
         }

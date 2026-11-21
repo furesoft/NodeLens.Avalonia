@@ -375,3 +375,35 @@ as an embeddable, language-locked component. M7 = installers and file associatio
 Work that touches any of this also touches a doc; the app's plan lives in
 `docs/architecture/standalone.md`, and the milestone scope in `docs/roadmap.md` M1/M2/M4/M5/M6/M7.
 
+### A handler attached to a list reads `e.Source`, never `sender`
+
+The row templates carry buttons - the chevron that folds a project folder, the outline's chevron - and the handler
+for them is attached once, to the list:
+
+```csharp
+ProjectView.List.AddHandler(Button.ClickEvent, OnProjectToggle);
+```
+
+With that call `sender` is **the list**, not the row's button, so `sender is Control { DataContext: ProjectEntry … }`
+never matches and the press does nothing at all - no exception, no log line, just a chevron that ignores the pointer.
+The row is on `e.Source` (`(e.Source as Control)?.DataContext`), because the button is what raised the event and the
+`DataTemplate` gave it the row as its `DataContext`. Both chevrons in the shell shipped with the `sender` mistake and
+were fixed the same way; the dead one was found by pressing it.
+
+Because a chevron that does nothing looks exactly like one that works, the fix is proven by pressing one rather than
+by looking at a picture: `tools/Projectional.Screenshots` runs two gesture checks after its images, raising
+`Button.ClickEvent` on the row's own button and reading the row back. Reverting the handler to `sender` makes both
+fail with "pressing the chevron of 'structure' did not shut it", which is how the checks are known to be measuring
+the wiring and not the picture. A check needs the row's button on screen, so the two tree lists are internal
+(`MainWindow.ProjectList` / `OutlineList`) for the same reason the harness already drives `OpenDocument` and
+`CollapseProjectFolders`.
+
+**A failed run has to fail.** The harness used to set `Environment.ExitCode` and then close its window, and Avalonia's
+desktop lifetime shuts down with an exit code of its own - overwriting the failure and reporting a clean run. It now
+closes through `desktop.Shutdown(exitCode)`, so a failed image or a failed gesture check reaches the shell as a
+non-zero exit code.
+
+A second trap in the same place: a press on a row selects it before the button's `Click` fires, so a handler that
+also navigates (the outline's) needs its own guard - `_outlineRevealing` / `_outlineToggling` - or folding a node
+also moves the caret into it.
+
