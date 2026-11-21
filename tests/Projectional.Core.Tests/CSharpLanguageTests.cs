@@ -149,6 +149,79 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AClassExtendsABaseAndImplementsAnInterface()
+    {
+        // Inheritance is two references on the class, and an interface is a class whose members have no bodies - which
+        // is why the method's body became optional and why the rule about a missing body skips an interface.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("shapes");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var baseClass = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var shape = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Interface);
+        var contract = model.NewChild(shape, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Signature);
+        var contractReturn = model.NewChild(contract, "returnType", CSharpConceptKeys.TypeReference);
+        var derived = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        baseClass.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        baseClass.Set(CSharpLanguage.NameSlot, "Shape");
+        shape.Set(CSharpLanguage.NameSlot, "INamed");
+        contract.Set(CSharpLanguage.NameSlot, "Describe");
+        contractReturn.Set(CSharpLanguage.NameSlot, "string");
+        derived.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        derived.Set(CSharpLanguage.NameSlot, "Circle");
+        var inherits = model.NewChild(derived, CSharpConceptKeys.InheritanceSlot, CSharpConceptKeys.Inheritance);
+
+        model.NewChild(inherits, CSharpConceptKeys.EntriesSlot, CSharpConceptKeys.InheritanceEntry)
+            .SetReference(CSharpConceptKeys.TargetSlot, baseClass);
+
+        model.NewChild(inherits, CSharpConceptKeys.EntriesSlot, CSharpConceptKeys.InheritanceEntry)
+            .SetReference(CSharpConceptKeys.TargetSlot, shape);
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Shape
+              {
+              }
+              public interface INamed
+              {
+                public string Describe();
+              }
+              public class Circle : Shape, INamed
+              {
+              }
+            }
+            """;
+
+        // The editor shows a placeholder where a member list is empty, because a slot the user has to fill has to be
+        // somewhere the caret can stand; the generator writes nothing there, because a placeholder is not code. That
+        // is the one place the two deliberately differ, and asserting it says so instead of hiding it.
+        const string Drawn =
+            """
+            namespace Sample
+            {
+              public class Shape
+              {
+                <no members>
+              }
+              public interface INamed
+              {
+                public string Describe();
+              }
+              public class Circle : Shape, INamed
+              {
+                <no members>
+              }
+            }
+            """;
+
+        Assert.Equal(Drawn, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void TheNewerExpressionFormsDrawAndGenerateTheSameShape()
     {
         // The three that make a condition out of a value: a negation, a choice and an accumulating assignment. Each is

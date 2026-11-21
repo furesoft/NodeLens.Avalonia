@@ -43,6 +43,7 @@ public static class CSharpConstraints
     {
         public void Check(ConstraintContext context)
         {
+
             if (context.Node.GetChildren(CSharpConceptKeys.BodySlot).Count == 0)
             {
                 context.Warning(

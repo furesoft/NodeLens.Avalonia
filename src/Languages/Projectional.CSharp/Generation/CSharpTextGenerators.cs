@@ -68,14 +68,32 @@ public static class CSharpTextGenerators
             new ConditionalPart(CSharpLanguage.IsStaticSlot, "true", TextTemplate.Of(new TextPart("static "))),
             new TextPart("class "),
             new PropertyPart(CSharpLanguage.NameSlot),
+            new WhenFilledPart(
+                CSharpConceptKeys.InheritanceSlot,
+                TextTemplate.Of(new TextPart(" "), new ChildPart(CSharpConceptKeys.InheritanceSlot))),
             LineBreakPart.Instance,
             new TextPart("{"),
             new IndentPart(TextTemplate.Of(
-                LineBreakPart.Instance,
-                Members(CSharpConceptKeys.MembersSlot))),
+                new WhenFilledPart(CSharpConceptKeys.MembersSlot, TextTemplate.Of(LineBreakPart.Instance, Members(CSharpConceptKeys.MembersSlot))))),
             LineBreakPart.Instance,
             new TextPart("}")))
 
+        .Add(CSharpConceptKeys.Inheritance, TextTemplate.Of(
+            new TextPart(": "),
+            new ChildrenPart(CSharpConceptKeys.EntriesSlot, TextTemplate.Of(new TextPart(", ")))))
+
+        .Add(CSharpConceptKeys.InheritanceEntry, TextTemplate.Of(
+            new ReferencePart(CSharpConceptKeys.TargetSlot, unsetText: "<type>")))
+        .Add(CSharpConceptKeys.Interface, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" interface "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            LineBreakPart.Instance,
+            new TextPart("{"),
+            new IndentPart(TextTemplate.Of(
+                new WhenFilledPart(CSharpConceptKeys.MembersSlot, TextTemplate.Of(LineBreakPart.Instance, Members(CSharpConceptKeys.MembersSlot))))),
+            LineBreakPart.Instance,
+            new TextPart("}")))
         .Add(CSharpConceptKeys.Field, TextTemplate.Of(
             new PropertyPart(CSharpLanguage.VisibilitySlot),
             new TextPart(" "),
@@ -121,6 +139,15 @@ public static class CSharpTextGenerators
             new TextPart(" { get;"),
             new ConditionalPart(CSharpConceptKeys.HasSetterSlot, "true", TextTemplate.Of(new TextPart(" set;"))),
             new TextPart(" }")))
+        .Add(CSharpConceptKeys.Signature, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" "),
+            new ChildPart("returnType"),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart("("),
+            new ChildrenPart(CSharpConceptKeys.ParametersSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart(");")))
         .Add(CSharpConceptKeys.Parameter, TextTemplate.Of(
             new ChildPart("type"),
             new TextPart(" "),
@@ -129,8 +156,7 @@ public static class CSharpTextGenerators
         .Add(CSharpConceptKeys.Block, TextTemplate.Of(
             new TextPart("{"),
             new IndentPart(TextTemplate.Of(
-                LineBreakPart.Instance,
-                Members(CSharpConceptKeys.StatementsSlot))),
+                new WhenFilledPart(CSharpConceptKeys.StatementsSlot, TextTemplate.Of(LineBreakPart.Instance, Members(CSharpConceptKeys.StatementsSlot))))),
             LineBreakPart.Instance,
             new TextPart("}")))
 

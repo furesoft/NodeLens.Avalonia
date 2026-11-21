@@ -118,6 +118,27 @@ public static class CSharpNotations
                 ed.Conditional(CSharpLanguage.IsStaticSlot, "true", ed.Keyword("static"), ed.Space),
                 ed.Keyword("class"),
                 ed.Space,
+                ed.Property(CSharpLanguage.NameSlot),
+                ed.WhenFilled(CSharpConceptKeys.InheritanceSlot, ed.Space, ed.ChildInline(CSharpConceptKeys.InheritanceSlot))),
+            ed.Line(ed.Punct("{")),
+            ed.Indent(ed.Children(CSharpConceptKeys.MembersSlot, "<no members>", stacked: true)),
+            ed.Line(ed.Punct("}"))));
+
+        // `: Base, IFoo` - the colon belongs to the list, so a class that inherits nothing draws no colon.
+        notations.Add(CSharpConceptKeys.Inheritance, ed => ed.Line(
+            ed.Punct(":"),
+            ed.Space,
+            ed.InlineCollection(CSharpConceptKeys.EntriesSlot, ed.Punct(","))));
+
+        notations.Add(CSharpConceptKeys.InheritanceEntry, ed => ed.Line(
+            ed.Reference(CSharpConceptKeys.TargetSlot, unsetText: "<type>")));
+        // An interface is a class without members that have bodies: the header, the brace, the signatures.
+        notations.Add(CSharpConceptKeys.Interface, ed => ed.Sequence(
+            ed.Line(
+                ed.Property(CSharpLanguage.VisibilitySlot),
+                ed.Space,
+                ed.Keyword("interface"),
+                ed.Space,
                 ed.Property(CSharpLanguage.NameSlot)),
             ed.Line(ed.Punct("{")),
             ed.Indent(ed.Children(CSharpConceptKeys.MembersSlot, "<no members>", stacked: true)),
@@ -177,6 +198,17 @@ public static class CSharpNotations
             ed.Conditional(CSharpConceptKeys.HasSetterSlot, "true", ed.Space, ed.Keyword("set;")),
             ed.Space,
             ed.Punct("}")));
+        // A signature: a method's header and nothing after it.
+        notations.Add(CSharpConceptKeys.Signature, ed => ed.Line(
+            ed.Property(CSharpLanguage.VisibilitySlot),
+            ed.Space,
+            ed.ChildInline("returnType"),
+            ed.Space,
+            ed.Property(CSharpLanguage.NameSlot),
+            ed.Punct("("),
+            ed.WhenFilled(CSharpConceptKeys.ParametersSlot, ed.InlineCollection(CSharpConceptKeys.ParametersSlot, ed.Punct(","), string.Empty)),
+            ed.Punct(")"),
+            ed.Punct(";")));
         notations.Add(CSharpConceptKeys.Parameter, ed => ed.Line(
             ed.ChildInline("type"),
             ed.Space,
