@@ -365,6 +365,12 @@ property rather than a child or a reference - because the folder is the earliest
 language without the aspect keeps the shell's rules, which is the behaviour every language had before the aspect
 existed.
 
+Typing is the one behaviour aspect the C# export writes out in full rather than naming as lost: the registry a rule
+builds lives in `Projectional.Language`, and the four claims are exactly the predicates a hand-written language
+writes, so a rule becomes the same lambda the twin would have been written with
+([language-authoring.md](language-authoring.md#export-declared-to-c)). The words are kept beside the registry for
+that reason - a `TypingRule` holds a delegate, and a delegate cannot be read back.
+
 ## Triggers
 
 A typing rule answers for an **empty** slot. The neighbour question - the caret is at the edge of a node that is

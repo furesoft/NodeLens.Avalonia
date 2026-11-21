@@ -73,6 +73,7 @@ public sealed class LanguageProject
         ConstraintSet constraints,
         ScopeProviderRegistry scopes,
         ITypingRules typing,
+        IReadOnlyList<DeclaredTypingRule> typingRules,
         bool hasTyping,
         IIntentionProvider intentions,
         bool hasIntentions,
@@ -89,6 +90,7 @@ public sealed class LanguageProject
         Scopes = scopes;
         Typing = typing;
         HasTyping = hasTyping;
+        DeclaredTypingRules = typingRules;
         Intentions = intentions;
         HasIntentions = hasIntentions;
         DeclaredImporters = importers;
@@ -262,6 +264,22 @@ public sealed class LanguageProject
     /// <summary>Whether the project declared a typing rule of its own.</summary>
     public bool HasTyping { get; }
 
+    /// <summary>The typing rules as the documents state them, in file order.</summary>
+    /// <remarks>
+    /// <see cref="Typing"/> is what the editor asks; this is what a tool that has to write the rules again reads,
+    /// because a <see cref="TypingRule"/> holds a delegate and a delegate cannot be read back. Both come from one
+    /// lowering, so they cannot disagree.
+    /// </remarks>
+    public IReadOnlyList<DeclaredTypingRule> DeclaredTypingRules { get; }
+
+    /// <summary>Whether the project ships an <c>import</c> document of its own.</summary>
+    /// <remarks>
+    /// Only the declared ones: an importer a generator inverts is already covered by
+    /// <see cref="HasGenerators"/>, which is what an export names. This is the flag an export needs to say that a
+    /// hand-written importer is not in the generated file.
+    /// </remarks>
+    public bool HasDeclaredImporters => DeclaredImporters.Count > 0;
+
     /// <summary>The intentions the language declares, lowerable into an entry list.</summary>
     /// <remarks>
     /// The declared half of the intention aspect: the same provider a hand-written package registers with the session.
@@ -341,6 +359,7 @@ public sealed class LanguageProject
                 LowerConstraints(directory, concepts).With(types.Complaints),
                 scopes.Registry,
                 typing.Registry,
+                typing.Rules,
                 typing.HasAny,
                 intentions.Provider,
                 intentions.HasAny,
@@ -498,12 +517,16 @@ public sealed class LanguageProject
     /// <remarks>
     /// The lowering is given the concepts the structure documents just declared, so a rule that names a concept this
     /// language does not have, or a property it does not declare, is refused here - the same "earliest moment both
-    /// halves exist" rule the notation, the templates, the constraints and the scopes follow.
+    /// halves exist" rule the notation, the templates, the constraints and the scopes follow. The words are kept
+    /// beside the registry because a predicate cannot be read back and the C# export has to write the rules again.
     /// </remarks>
-    private static (ITypingRules Registry, bool HasAny) LowerTypingRules(string directory, ConceptRegistry concepts)
+    private static (ITypingRules Registry, IReadOnlyList<DeclaredTypingRule> Rules, bool HasAny) LowerTypingRules(
+        string directory,
+        ConceptRegistry concepts)
     {
         var documents = Read(directory, TypingFolder, new Project(TypingLanguage.Concepts));
+        var (registry, rules) = TypingLowering.Lower(documents, concepts);
 
-        return (TypingLowering.CreateRules(documents, concepts), documents.Count > 0);
+        return (registry, rules, documents.Count > 0);
     }
 }

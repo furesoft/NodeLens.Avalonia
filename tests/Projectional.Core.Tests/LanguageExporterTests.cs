@@ -229,6 +229,78 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
+    public void TheTypingRulesAreWrittenOutRatherThanNamed()
+    {
+        // Typing is the one behaviour aspect the export can spell, so a language that declares it gets the rules in
+        // the file - and the README must not claim they were left out.
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+        Assert.True(language.HasTyping);
+
+        var result = LanguageExporter.Export(language, "Sample.Language");
+        var source = result.Files[0].Text;
+
+        Assert.Contains("public static ITypingRules CreateTypingRules()", source, StringComparison.Ordinal);
+        Assert.Contains("using System.Linq;", source, StringComparison.Ordinal);
+
+        // `Projectional.Language` and nothing else: `ITypingRules` and `TypingRuleRegistry` live there, and a using of
+        // `Projectional.TypingRules` would not compile in a package that references only the toolkit.
+        Assert.Contains("using Projectional.Language;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("using Projectional.TypingRules;", source, StringComparison.Ordinal);
+        Assert.Contains(
+            ".Add(\"Decl.Int\", text => text.All(char.IsAsciiDigit), \"value\")",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".Add(\"Decl.Bool\", text => text is \"true\" or \"false\", \"value\")",
+            source,
+            StringComparison.Ordinal);
+
+        // The importer is named, because an importer is a rule set in an assembly the toolkit does not carry.
+        var readme = result.Files[1].Text;
+
+        Assert.Contains("| `import/` |", readme, StringComparison.Ordinal);
+        Assert.DoesNotContain("| `typing/` |", readme, StringComparison.Ordinal);
+        Assert.Contains("CreateTypingRules", readme, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheCompiledAssemblyClaimsTheSameTextAsTheFolder()
+    {
+        // The parity that matters for this aspect is behavioural: the generated registry has to claim the same bursts
+        // of typing as the folder did. A generated language that claimed different text would be one whose export
+        // cannot be typed into the way its folder could.
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var result = LanguageExporter.Export(language, "Sample.Language", ExportOutput.Assembly);
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+        var type = assembly.GetType("Sample.Language.ExpressionsLanguage", throwOnError: true);
+
+        Assert.NotNull(type);
+
+        var create = type.GetMethod("CreateTypingRules", BindingFlags.Public | BindingFlags.Static);
+
+        Assert.NotNull(create);
+
+        var exported = (ITypingRules)create.Invoke(null, [])!;
+
+        foreach (var concept in new[] { "Decl.Int", "Decl.Bool", "Decl.Binary", "Decl.If" })
+        {
+            foreach (var text in new[] { "42", "4x", "true", "false", "TRUE", "@", "\"quoted" })
+            {
+                Assert.Equal(
+                    language.Typing.ClaimFor(concept, text)?.PropertySlot,
+                    exported.ClaimFor(concept, text)?.PropertySlot);
+            }
+        }
+    }
+
+    [Fact]
     public void ANameRuleSurvivesTheExport()
     {
         // The rule is written as the singleton it is, so the compiled declaration still asks for identifiers -
@@ -302,12 +374,20 @@ public sealed class LanguageExporterTests
             ParityHarness.Dump(ConceptRegistry.Create(exported)));
     }
 
-    [Fact]
-    public void TheCompiledAssemblyNeedsNothingTheToolkitDoesNotBring()
+    [Theory]
+    [InlineData("Declared")]
+    [InlineData("Expressions")]
+    public void TheCompiledAssemblyNeedsNothingTheToolkitDoesNotBring(string sample)
     {
         // ADR 0019: a language package references the toolkit and nothing else. An exported language that needed
-        // more would not be shippable that way, so the promise is read back off the emitted metadata.
-        var result = LanguageExporter.Export(Declared(), "Sample.Language", ExportOutput.Assembly);
+        // more would not be shippable that way, so the promise is read back off the emitted metadata - and the second
+        // sample is the one that declares typing rules, because that is the aspect this export writes out itself.
+        var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, sample), out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var result = LanguageExporter.Export(language, "Sample.Language", ExportOutput.Assembly);
 
         using var stream = new MemoryStream(result.Assembly!.Bytes);
         using var reader = new PEReader(stream);
