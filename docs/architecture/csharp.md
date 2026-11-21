@@ -10,7 +10,9 @@ their notation, three rules, five intentions and a generator, and no importer - 
 `Projectional.CSharp` (`src/Languages/Projectional.CSharp`) and is proved by `CSharpLanguageTests`. It
 is registered in the shell's own registry rather than opened from a folder, so it is available in every
 document the way `jetbrains.mps.baseLanguage` is: a DSL declares a slot over `CSharp.Expression` and the
-user writes code there. What is still planned is the rest of this document: the remaining constructs,
+user writes code there. A *declared* DSL reaches it by writing `depends on CSharp` in its `language.mps` -
+the shell answers a declared name from the folders it opened and then from the packages it ships, which
+is what `LanguageProject.Shipped` is for. What is still planned is the rest of this document: the remaining constructs,
 the behaviour-method attachment, and execution. Generation itself is planned in
 [semantics.md](semantics.md#generation); the trust boundary that makes this safe is in "Execution"
 below.

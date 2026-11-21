@@ -1,5 +1,8 @@
 using Projectional.Core;
 using Projectional.CSharp;
+using Projectional.CSharp.Checks;
+using Projectional.CSharp.Generation;
+using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.ConstraintRules;
 using Projectional.Editors;
@@ -95,6 +98,32 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
 
     /// <summary>The sample language's emphasis rules, which are the only ones the shell ships.</summary>
     internal static ICellEmphasis? Emphasis => RulesLanguage.Emphasis;
+
+    /// <summary>The languages the shell ships, which a declared project may name as a base.</summary>
+    /// <remarks>
+    /// The second kind of answer <see cref="Find"/> gives. A base language is always available - that is what "base"
+    /// means, and it is why C# is here rather than in a folder a user has to open first - so a declared DSL writes
+    /// <c>depends on CSharp</c> and gets the vocabulary without the shell having to be told where C# lives.
+    /// </remarks>
+    private static class ShippedLanguages
+    {
+        private static readonly Dictionary<string, LanguageProject> All = new(StringComparer.Ordinal)
+        {
+            [CSharpLanguage.Name] = LanguageProject.Shipped(
+                CSharpLanguage.Name,
+                version: null,
+                CSharpLanguage.ConceptDeclarations,
+                CSharpLanguage.Concepts,
+                CSharpNotations.CreateNotations(CSharpLanguage.Concepts),
+                CSharpConstraints.All,
+                CSharpIntentions.Provider,
+                [CSharpTextGenerators.Generator],
+                hasIntentions: true),
+        };
+
+        internal static LanguageProject? Find(string name) =>
+            All.TryGetValue(name, out var language) ? language : null;
+    }
 
     /// <summary>The typing rules the shell ships, which are what a language without a <c>typing</c> aspect gets.</summary>
     internal static ITypingRules? Typing => RulesLanguage.TypingRules;
@@ -334,7 +363,8 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     /// first. The comparison is ordinal, like every other key in a model.
     /// </remarks>
     public LanguageProject? Find(string name) =>
-        _opened.FirstOrDefault(opened => string.Equals(opened.Name, name, StringComparison.Ordinal));
+        _opened.FirstOrDefault(opened => string.Equals(opened.Name, name, StringComparison.Ordinal))
+        ?? ShippedLanguages.Find(name);
 
     /// <summary>Takes <paramref name="language"/> into the set, or refuses it with a reason.</summary>
     /// <param name="language">The loaded language project.</param>
