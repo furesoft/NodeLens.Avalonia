@@ -163,18 +163,39 @@ the editor:
 - **One root per document holds here too.** Two roots in `language.mps` is two languages in one file, the same error
   an aspect folder refuses; and a root that says no name is a message naming the file, not an exception at the
   moment the user picks a folder.
-- **The two lists are declared, not resolved.** Reading them is what lets a host report where a language says it
-  belongs and where it extends another. Merging that language's concepts in crosses a project boundary, so it is a
-  decision of its own before it is a feature.
+- **The two lists are resolved through the host.** Reading them is what lets a host report where a language says it
+  belongs; the next section says what resolving them does and does not do.
 - **What it declares is shown, not enforced.** Module settings lists the declared version and the two lists beside
   the author's own two version numbers, which stay in `module.settings`: what the folder *declares* and what its
   author *sets* are two different statements, and only the second one is written by the dialog.
+
+### Resolving a dependency
+
+The decision is [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.md); the shape is small.
+
+- **The host supplies a resolver.** `LanguageProject.Open(folder, resolver, out error)` asks
+  `ILanguageResolver.Find(name)` for every declared dependency and extension, transitively. Nothing scans a directory
+  or a feed: where a language comes from is a deployment question, and the loader has no answer for it.
+- **Resolution builds the language's own registry over its bases.** `Concepts` is the union of the bases'
+  declarations - base before dependent, the same order every time - followed by the language's own; `Accessory` is
+  the union of the same chain, with their identities, so a reference to a base's library node still resolves. This is
+  what lets a slot name a base's concept; today such a definition cannot load at all.
+- **Everything the language says stays its own.** `Declarations`, `Notations` and the behavioural aspects are not
+  absorbed; presentation and behaviour are composed by the host, exactly as `WorkbenchLanguage` and the export's
+  README already prescribe.
+- **Behaviour is not inherited yet.** A base's constraints, scopes, types, typing rules and intentions do not run in
+  a dependent's document. A language that wants those guarantees states them itself, or the host composes the sets;
+  inheriting them is the named follow-up, because it decides whose invariants a shared concept carries.
+- **What cannot be resolved refuses the open**, with a message naming the dependency, and a cycle is refused with its
+  chain. A declared version is a label: read, reported and shown, never compared - nothing here parses a version, and
+  refusing on free text would be a rule nobody can satisfy.
 
 ## What is still missing
 
 | Missing | Why it is not in this slice |
 | --- | --- |
-| Resolving a declared dependency or extension (merging the other language's concepts, references across the project boundary) | Declaring is what `language.mps` was for; acting on the declaration changes what a project *is*, so it needs its own decision first |
+| Inheriting behaviour from an extended language (its constraints, scopes, types, typing rules and intentions running in a dependent's document) | [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.md) narrows resolution to the vocabulary on purpose: the composite aspect registries and the answer to "whose invariants are these" are the follow-up |
+| Overriding a base's notation for one of its concepts | A separate feature: it needs a rule for who wins when two languages draw one concept |
 
 Exporting a loaded language back to C# is delivered - see
 [language-authoring.md](language-authoring.md#export-declared-to-c) - and so is the shell entry that writes it

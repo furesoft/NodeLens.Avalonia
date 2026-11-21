@@ -7,8 +7,9 @@ Status: **delivered** as slices P1 and P4 of [language-authoring.md](language-au
 way MPS writes a structure document - a header, a block of options, one section per kind of slot, and every
 declaration marked with its own kind and drawn on a line of its own. The file layout is delivered as well:
 `language.mps` at the project root is the language itself - a `Structure.Language` node naming it, carrying its
-version and listing the languages it stands on ([language-projects.md](language-projects.md)). Those two lists are
-declared and not resolved, which stays ahead: merging another language's concepts in crosses a project boundary.
+version and listing the languages it stands on ([language-projects.md](language-projects.md)). Those lists are
+resolved through the host, as a vocabulary: the language's registry is built over its bases' declarations, while a
+base's notation and behaviour stay its own ([ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.md)).
 
 ## Why this and not a config file
 

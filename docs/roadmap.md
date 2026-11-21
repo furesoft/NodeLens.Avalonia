@@ -91,7 +91,7 @@ application and in the standalone app, proving the two front ends share the beha
 | --- | --- |
 | Structure language (stage C) | `Projectional.Structures` drawn in its own notation: concepts, slots, inheritance, enumerations as an editable model ([language-authoring.md](architecture/language-authoring.md)) |
 | Editor language (stage C) | `Projectional.Editors` as cell glyphs, with notation and the table variant as an editable model |
-| Language project | one model per aspect beside a `language` root; **the root is delivered** - it names the language, carries its version and declares its dependencies and extended languages - while acting on those lists (resolving a dependency across the project boundary) is still ahead. A new kind of aspect is a new language plus an annotation concept, not a framework change |
+| Language project | one model per aspect beside a `language` root; **the root and its resolution are delivered** - it names the language, carries its version, declares its dependencies and extended languages, and a host-supplied resolver builds the language's registry over them ([ADR 0026](adr/0026-a-dependency-resolves-to-the-vocabulary.md)). What is still ahead is inheriting an extended language's behaviour. A new kind of aspect is a new language plus an annotation concept, not a framework change |
 | Language export | declared to C#, so a language prototyped in the workbench ships as a package without being retyped, behavioural aspects emitted as explicit stubs |
 | Live preview | edit a language definition, see the effect on a model next to it |
 | Bootstrap | versioned bootstrap XML, migrated with user data; the C# declarations stay as the oracle and the fail-safe |

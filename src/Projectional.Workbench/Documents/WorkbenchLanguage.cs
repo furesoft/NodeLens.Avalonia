@@ -37,7 +37,7 @@ namespace Projectional.Workbench;
 /// <see cref="ExpressionsLanguage"/>, so a host composing it has to bring that too.
 /// </para>
 /// </remarks>
-internal sealed class WorkbenchLanguage
+internal sealed class WorkbenchLanguage : ILanguageResolver
 {
     /// <summary>The concepts the sample rules language declares, which is what makes one of its documents runnable.</summary>
     private static readonly HashSet<string> SampleConceptKeys =
@@ -322,6 +322,16 @@ internal sealed class WorkbenchLanguage
 
         return _opened.Any(opened => string.Equals(opened.Directory, language.Directory, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>The opened language called <paramref name="name"/>, which answers a declared dependency.</summary>
+    /// <param name="name">The name a <c>language.mps</c> declared.</param>
+    /// <remarks>
+    /// The window's own set is the whole answer on purpose ([ADR 0026](../../docs/adr/0026-a-dependency-resolves-to-the-vocabulary.md)):
+    /// nothing is read from beside the folder, so a language that stands on another asks the user to open that one
+    /// first. The comparison is ordinal, like every other key in a model.
+    /// </remarks>
+    public LanguageProject? Find(string name) =>
+        _opened.FirstOrDefault(opened => string.Equals(opened.Name, name, StringComparison.Ordinal));
 
     /// <summary>Takes <paramref name="language"/> into the set, or refuses it with a reason.</summary>
     /// <param name="language">The loaded language project.</param>
