@@ -172,6 +172,32 @@ public static class CSharpTextGenerators
                                 new ChildPart(CSharpConceptKeys.SetterSlot))))),
                     LineBreakPart.Instance,
                     new TextPart("}")))))
+
+        // An indexer: the same shape as a property with bodies, with the parameters in brackets where the name would
+        // be. The setter is a WhenFilledPart, so a get-only indexer writes no `set` block at all.
+        .Add(CSharpConceptKeys.Indexer, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" "),
+            new ChildPart("type"),
+            new TextPart(" this["),
+            new ChildrenPart(CSharpConceptKeys.ParametersSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart("]"),
+            LineBreakPart.Instance,
+            new TextPart("{"),
+            new IndentPart(TextTemplate.Of(
+                LineBreakPart.Instance,
+                new TextPart("get"),
+                LineBreakPart.Instance,
+                new ChildPart(CSharpConceptKeys.GetterSlot),
+                new WhenFilledPart(
+                    CSharpConceptKeys.SetterSlot,
+                    TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        new TextPart("set"),
+                        LineBreakPart.Instance,
+                        new ChildPart(CSharpConceptKeys.SetterSlot))))),
+            LineBreakPart.Instance,
+            new TextPart("}")))
         .Add(CSharpConceptKeys.Signature, TextTemplate.Of(
             new PropertyPart(CSharpLanguage.VisibilitySlot),
             new TextPart(" "),

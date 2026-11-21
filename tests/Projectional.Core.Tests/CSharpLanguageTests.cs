@@ -501,6 +501,65 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AnIndexerDrawsAndGeneratesTheSameShape()
+    {
+        // An indexer is its own concept rather than a property with a parameter list, because it has no name at all:
+        // an empty name slot is a row the layout keeps, so a property would draw a placeholder where a name belongs.
+        // It always has bodies, so it needs no `hasBodies` boolean, and its accessors are the same `Block`s a
+        // property's are - so the notation and the generator delegate to the shape they already had.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("indexers");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var indexer = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Indexer);
+        var indexerType = model.NewChild(indexer, "type", CSharpConceptKeys.TypeReference);
+        var parameter = model.NewChild(indexer, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var parameterType = model.NewChild(parameter, "type", CSharpConceptKeys.TypeReference);
+        var getter = model.NewChild(indexer, CSharpConceptKeys.GetterSlot, CSharpConceptKeys.Block);
+        var setter = model.NewChild(indexer, CSharpConceptKeys.SetterSlot, CSharpConceptKeys.Block);
+
+        var read = model.NewChild(getter, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var readValue = model.NewChild(read, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+        var write = model.NewChild(setter, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Assignment);
+        var writeTarget = model.NewChild(write, "target", CSharpConceptKeys.Name);
+        var writeValue = model.NewChild(write, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Scores");
+        indexerType.Set(CSharpLanguage.NameSlot, "int");
+        parameter.Set(CSharpLanguage.NameSlot, "index");
+        parameterType.Set(CSharpLanguage.NameSlot, "int");
+        readValue.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+        writeTarget.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+        writeValue.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "value");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Scores
+              {
+                public int this[int index]
+                {
+                  get
+                  {
+                    return index;
+                  }
+                  set
+                  {
+                    index = value;
+                  }
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

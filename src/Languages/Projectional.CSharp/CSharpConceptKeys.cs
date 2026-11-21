@@ -95,8 +95,11 @@ public static class CSharpConceptKeys
     /// <summary>A constructor: the parameters and the body that make an instance.</summary>
     public const string Constructor = "CSharp.Constructor";
 
-    /// <summary>An auto-property: a getter, and a setter when it has one.</summary>
+    /// <summary>A property: a getter, and a setter when it has one, with or without bodies.</summary>
     public const string Property = "CSharp.Property";
+
+    /// <summary>An indexer: <c>this[parameters]</c>, with its accessors.</summary>
+    public const string Indexer = "CSharp.Indexer";
 
     /// <summary>A field, with an initializer when it has one.</summary>
     public const string Field = "CSharp.Field";

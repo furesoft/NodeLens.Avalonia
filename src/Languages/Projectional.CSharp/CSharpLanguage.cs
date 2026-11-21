@@ -420,6 +420,24 @@ public static class CSharpLanguage
             nameRule: NameRule.Pascal,
             isRoot: false,
             description: "A property: { get; set; }, { get; }, or accessors with bodies."),
+
+        // An indexer is a member whose name is the keyword `this`: the type, then the parameters in brackets, then
+        // the accessors. It is its own concept rather than a property with a parameter list, because it has no name
+        // slot at all - and an empty slot is a row the layout keeps, which would draw a placeholder where a name
+        // belongs. It always has bodies, so it needs no `hasBodies` boolean either.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Indexer,
+            [
+                new PropertySlot(VisibilitySlot, PropertyType.String, CSharpVisibility.Public),
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.GetterSlot, CSharpConceptKeys.Block, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.SetterSlot, CSharpConceptKeys.Block, Cardinality.One, minimum: 0),
+            ],
+            superConcepts: [CSharpConceptKeys.Member],
+            isRoot: false,
+            description: "An indexer: this[parameters] with its accessors."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.Method,
             [
