@@ -152,6 +152,31 @@ public static class CSharpNotations
                 ed.Punct(")")),
             ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot, "<no body>"))));
 
+        // A constructor: the signature without a return type, then the body - the shape a method has, one part shorter.
+        notations.Add(CSharpConceptKeys.Constructor, ed => ed.Sequence(
+            ed.Line(
+                ed.Property(CSharpLanguage.VisibilitySlot),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot),
+                ed.Punct("("),
+                ed.WhenFilled(CSharpConceptKeys.ParametersSlot, ed.InlineCollection(CSharpConceptKeys.ParametersSlot, ed.Punct(","), string.Empty)),
+                ed.Punct(")")),
+            ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot, "<no body>"))));
+
+        // An auto-property on one line, because that is what it is: the accessors are words, not blocks.
+        notations.Add(CSharpConceptKeys.Property, ed => ed.Line(
+            ed.Property(CSharpLanguage.VisibilitySlot),
+            ed.Space,
+            ed.ChildInline("type"),
+            ed.Space,
+            ed.Property(CSharpLanguage.NameSlot),
+            ed.Space,
+            ed.Punct("{"),
+            ed.Space,
+            ed.Keyword("get;"),
+            ed.Conditional(CSharpConceptKeys.HasSetterSlot, "true", ed.Space, ed.Keyword("set;")),
+            ed.Space,
+            ed.Punct("}")));
         notations.Add(CSharpConceptKeys.Parameter, ed => ed.Line(
             ed.ChildInline("type"),
             ed.Space,
