@@ -56,6 +56,7 @@ public sealed class CellStyler : ICellStyler
     {
         ConstantKind.Keyword => TextStyleKind.Keyword,
         ConstantKind.Punctuation => TextStyleKind.Punctuation,
+        ConstantKind.Annotation => TextStyleKind.Annotation,
         _ => TextStyleKind.Default,
     };
 

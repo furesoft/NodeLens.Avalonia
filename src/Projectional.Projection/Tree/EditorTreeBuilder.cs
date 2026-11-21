@@ -32,19 +32,30 @@ public sealed class EditorTreeBuilder
     private readonly ICellEmphasis? _emphasis;
     private readonly INotationChoice? _choice;
     private readonly IReadOnlySet<NodeId>? _collapsed;
+    private readonly TypeRegistry _types;
 
     /// <summary>Builds trees with every concept drawn as <paramref name="choice"/> asks, default variants when it says nothing.</summary>
+    /// <param name="notations">What each concept is drawn with.</param>
+    /// <param name="emphasis">What decorates a cell besides its concept's notation, or <see langword="null"/> for nothing.</param>
+    /// <param name="choice">Which notation variant to draw, or <see langword="null"/> for each concept's default.</param>
+    /// <param name="collapsed">The nodes whose children are not built, or <see langword="null"/> for none.</param>
+    /// <param name="types">
+    /// The language's type rules, which is what a <see cref="TypeOfNotationCell"/> draws. Empty when omitted, and an
+    /// annotation then says <c>unknown</c> - the honest answer for a language that declared none.
+    /// </param>
     public EditorTreeBuilder(
         NotationRegistry notations,
         ICellEmphasis? emphasis = null,
         INotationChoice? choice = null,
-        IReadOnlySet<NodeId>? collapsed = null)
+        IReadOnlySet<NodeId>? collapsed = null,
+        TypeRegistry? types = null)
     {
         ArgumentNullException.ThrowIfNull(notations);
         _notations = notations;
         _emphasis = emphasis;
         _choice = choice;
         _collapsed = collapsed;
+        _types = types ?? TypeRegistry.Empty;
     }
 
     /// <summary>Builds the tree for <paramref name="node"/>.</summary>
@@ -190,6 +201,18 @@ public sealed class EditorTreeBuilder
                 emphasis | constant.Emphasis),
         ],
         SpaceNotationCell => [new SpaceCell(new CellAddress(node.Id))],
+
+        // The type is asked of the registry while the tree is built, exactly like a property value is read from the
+        // model: the cell carries finished text, so a renderer needs no registry and an edit that changes the type
+        // changes the annotation on the next build.
+        TypeOfNotationCell =>
+        [
+            new ConstantCell(
+                new CellAddress(node.Id),
+                _types.TypeOf(node).ToString() ?? UnknownType.Instance.Name,
+                ConstantKind.Annotation,
+                emphasis),
+        ],
         PropertyNotationCell property => [BuildProperty(property, node, emphasis)],
         ReferenceNotationCell reference => [BuildReference(reference, node, emphasis)],
         SingleChildNotationCell single =>

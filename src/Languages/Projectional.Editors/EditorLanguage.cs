@@ -114,6 +114,11 @@ public static class EditorLanguage
             description: "A gap."),
 
         new ConceptDeclaration(
+            EditorConceptKeys.TypeOf,
+            superConcepts: [EditorConceptKeys.InlineCell],
+            description: "The type of the node this notation draws, shown as an annotation."),
+
+        new ConceptDeclaration(
             EditorConceptKeys.Keyword,
             [
                 new PropertySlot(

@@ -61,4 +61,14 @@ public enum TextStyleKind
     /// The marker for a concept with no notation, which is a fault in the language rather than the model.
     /// </summary>
     Missing,
+
+    /// <summary>
+    /// What a node means rather than what it says: a type drawn beside it the way an editor shows an inlay hint.
+    /// </summary>
+    /// <remarks>
+    /// Its own kind rather than a shade of <see cref="Identifier"/>, because a palette has a decision to make about it
+    /// that no other text needs: an annotation is deliberately quieter than the document it annotates, and a host that
+    /// wants it gone says so once instead of matching strings.
+    /// </remarks>
+    Annotation,
 }

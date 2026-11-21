@@ -48,6 +48,7 @@ public sealed class SyntaxPalette
         Entry(TextStyleKind.Unresolved, "#C00000"),
         Entry(TextStyleKind.Placeholder, "#8A8A8A"),
         Entry(TextStyleKind.Missing, "#C00000"),
+        Entry(TextStyleKind.Annotation, "#9A9A9A"),
     ]);
 
     /// <summary>The palette for a dark background.</summary>
@@ -63,6 +64,7 @@ public sealed class SyntaxPalette
         Entry(TextStyleKind.Unresolved, "#F44747"),
         Entry(TextStyleKind.Placeholder, "#6A6A6A"),
         Entry(TextStyleKind.Missing, "#F44747"),
+        Entry(TextStyleKind.Annotation, "#7E7E7E"),
     ]);
 
     /// <summary>Builds a palette from the kinds it mentions.</summary>

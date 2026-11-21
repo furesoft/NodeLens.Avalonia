@@ -57,7 +57,7 @@ query language of its own - a document you open, not a fragment you embed - is p
 | Paste from history | `Ctrl+Shift+V` | missing: a clipboard holds one payload |
 | Duplicate, insert before | `Ctrl+D`, `Insert` | **shipped**: `EditorKey.Duplicate`/`.InsertBefore` route to `DuplicateAtCaretAction` and `InsertBeforeAtCaretAction`, which resolve the node from the caret and delegate to the action the menu already used. Insert means *before*, because Enter is the after; Shift+Insert stays the host's, since that is paste where it exists |
 | Error message at the keyboard | `Ctrl+F1` | partial: the marker tooltip is hover-only |
-| Show the type of the expression | `Alt+Shift+F10` | missing, although the type registry already holds the answer |
+| Show the type of the expression | `Alt+Shift+F10` | **delivered as a notation cell**: `ed.TypeOf()` (or `@type@` in a declared editor) draws the node's type as an annotation - grey, not editable, read from the type rules while the tree is built - and the concept's own notation decides whether and where it appears. Not a popup on a key: the author places it, which is what makes it an inlay hint rather than a decoration the framework adds |
 | Postfix transformations | `expr.if`, `.var`, `.not` | missing; our triggers are prefix and infix. It belongs to the C# base language (M6) |
 | Editor components - a reusable notation fragment another concept's notation embeds | Shapes, "Embedding the editor component" | partial: notation *is* inherited from a super concept, but a language cannot include a named fragment in the middle of a line |
 | Cell intentions inside editor definitions ("Add On New Line") | Shapes, the `Canvas` editor | missing: our definition languages ship make abstract/concrete and little else |

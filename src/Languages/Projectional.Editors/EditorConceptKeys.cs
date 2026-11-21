@@ -40,6 +40,9 @@ public static class EditorConceptKeys
     /// <summary>A gap.</summary>
     public const string Space = "Editor.Space";
 
+    /// <summary>The type of the node, drawn as an annotation rather than as part of the document.</summary>
+    public const string TypeOf = "Editor.TypeOf";
+
     /// <summary>A word the notation itself provides.</summary>
     public const string Keyword = "Editor.Keyword";
 

@@ -154,6 +154,7 @@ public static class EditorLowering
         return cell.Concept.Key switch
         {
             EditorConceptKeys.Space => ed.Space,
+            EditorConceptKeys.TypeOf => ed.TypeOf(),
             EditorConceptKeys.Keyword => ed.Keyword(Required(cell, "text")),
             EditorConceptKeys.Punct => ed.Punct(Required(cell, "text")),
             EditorConceptKeys.Property => ed.Property(

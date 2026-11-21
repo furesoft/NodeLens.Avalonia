@@ -57,6 +57,35 @@ public sealed class EditorLoweringTests
     }
 
     [Fact]
+    public void ADeclaredTypeOfDrawsTheNodesType()
+    {
+        // The declared path for the annotation: an `@type@` cell in the editor language becomes the same
+        // `TypeOfNotationCell` a C# notation spells `ed.TypeOf()`, so a language written as a model can show its types
+        // too. No registry is passed here, so the answer is `unknown` - which is also the proof that the cell draws
+        // what the registry says rather than a fixed string.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration("Rules.Rule", [new PropertySlot("name", PropertyType.String)]),
+        ]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Sequence);
+        var line = notation.Line(root, EditorConceptKeys.Property, EditorConceptKeys.Space);
+
+        line.GetChildren(EditorLanguage.CellSlot)[0].Set("slot", "name");
+        notation.Cell(line, EditorConceptKeys.TypeOf);
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("Rules.Rule");
+
+        rule.Set("name", "Approved");
+
+        Assert.Equal("Approved unknown", LayoutSnapshot.Render(rule, notations, width: 40));
+    }
+
+    [Fact]
     public void ABlockInsideALineCannotBeWritten()
     {
         // The rule the C# builder expresses with its type hierarchy - `ed.Line(ed.Indent(...))` does not compile -
