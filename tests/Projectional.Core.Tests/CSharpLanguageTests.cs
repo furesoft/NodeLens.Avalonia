@@ -70,8 +70,11 @@ public sealed class CSharpLanguageTests
         var file = model.NewNode(CSharpConceptKeys.File);
         var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
         var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
-        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+
+        // The field comes first, which is where the convention puts it: a method before a field would be a style
+        // finding of its own and would hide the three this test is about.
         var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
 
         ns.Set(CSharpLanguage.NameSlot, "Sample");
         cls.Set(CSharpLanguage.NameSlot, "Broken");
@@ -87,6 +90,77 @@ public sealed class CSharpLanguageTests
                 CSharpConstraints.PlaceholderNameCode,
             ],
             findings.Select(finding => finding.Code).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void TheStyleRulesReportTheConventionsTheyState()
+    {
+        // Three style rules, each the .NET convention stated as a check: imports go System first and then
+        // alphabetically, a class's members go fields before methods, and an interface's name starts with I. Each is
+        // a warning rather than an error, because the code would still mean the same thing either way.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("style");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+
+        // System.Text before System: out of order.
+        var text = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
+        var system = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
+        text.Set(CSharpLanguage.NameSlot, "System.Text");
+        system.Set(CSharpLanguage.NameSlot, "System");
+
+        // A method before a field: out of order.
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        cls.Set(CSharpLanguage.NameSlot, "Broken");
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        method.Set(CSharpLanguage.NameSlot, "Run");
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        field.Set(CSharpLanguage.NameSlot, "value");
+
+        // An interface without its I.
+        var shape = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Interface);
+        shape.Set(CSharpLanguage.NameSlot, "Shape");
+
+        var codes = new ConstraintEngine(CSharpConstraints.All).Check(model)
+            .Select(finding => finding.Code)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains(CSharpConstraints.UsingOrderCode, codes);
+        Assert.Contains(CSharpConstraints.MemberOrderCode, codes);
+        Assert.Contains(CSharpConstraints.InterfaceNameCode, codes);
+    }
+
+    [Fact]
+    public void AStyleRuleIsSilentWhenTheConventionIsMet()
+    {
+        var model = new Project(CSharpLanguage.Concepts).NewModel("style");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+
+        // System first, then System.Text: in order. A field, then a method: in order. INamed: named as asked.
+        var system = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
+        var text = model.NewChild(file, CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using);
+        system.Set(CSharpLanguage.NameSlot, "System");
+        text.Set(CSharpLanguage.NameSlot, "System.Text");
+
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        cls.Set(CSharpLanguage.NameSlot, "Ordered");
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        field.Set(CSharpLanguage.NameSlot, "value");
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        method.Set(CSharpLanguage.NameSlot, "Run");
+
+        var named = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Interface);
+        named.Set(CSharpLanguage.NameSlot, "INamed");
+
+        var codes = new ConstraintEngine(CSharpConstraints.All).Check(model)
+            .Select(finding => finding.Code)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.DoesNotContain(CSharpConstraints.UsingOrderCode, codes);
+        Assert.DoesNotContain(CSharpConstraints.MemberOrderCode, codes);
+        Assert.DoesNotContain(CSharpConstraints.InterfaceNameCode, codes);
     }
 
     [Fact]

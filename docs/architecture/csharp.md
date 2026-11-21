@@ -6,7 +6,7 @@ document plans the .NET equivalent - projected C# - and is deliberately a plan f
 for M1.
 
 Status: **partly delivered, and shipped as the base language**. A subset of C# - the concepts below,
-their notation, four rules, five intentions and a generator, and no importer - is the package
+their notation, seven rules, five intentions and a generator, and no importer - is the package
 `Projectional.CSharp` (`src/Languages/Projectional.CSharp`) and is proved by `CSharpLanguageTests`. It
 is registered in the shell's own registry rather than opened from a folder, so it is available in every
 document the way `jetbrains.mps.baseLanguage` is: a DSL declares a slot over `CSharp.Expression` and the
@@ -103,6 +103,48 @@ class that compiles; it is not enough to describe an existing codebase.
 | `unsafe`, `fixed`, stack allocation | the trust boundary already says we do not execute user code; there is no reason to also let it address memory |
 | preprocessor directives | a model has no compilation symbols |
 | expression-bodied members | a body is a `Block`; a one-statement block generates the same IL and one notation is one thing to maintain |
+
+## Style rules, and the one thing the model cannot see
+
+A checker that "checks C# code style" is a set of `IConstraint`s on the language's own concepts, in
+`Checks/CSharpConstraints.cs` beside the correctness rules. The two kinds are deliberately kept in one
+place and told apart by severity: a correctness rule may `Error`, a style rule `Warning`s or `Hint`s,
+because the order of two imports changes nothing about what the code does.
+
+**Delivered.** Seven rules, four of them correctness and three of them style:
+
+| Rule | Code | Severity | What it says |
+| --- | --- | --- | --- |
+| A method needs a body | `csharp.method.body` | Warning | a body-less method generates a signature nobody calls |
+| A method is still called its default | `csharp.method.name` | Hint | the name is the placeholder, so the author has not named it yet |
+| A field's name carries whitespace | `csharp.field.name` | Warning | the padding is invisible in the drawing and part of the generated identifier |
+| An `if` condition must be a boolean | `csharp.if.condition.not-boolean` | Error | the first rule that needed types; a condition of unknown type is allowed, because the editor is not the compiler |
+| Imports are in the conventional order | `csharp.using.order` | Warning | `System` first, then ordinal by name, the order the .NET style guide asks for |
+| Members are in the conventional order | `csharp.member.order` | Warning | fields, then constructors, then properties and indexers, then methods |
+| An interface's name starts with `I` | `csharp.interface.name` | Warning | the one naming convention the style guide states for a declaration |
+
+**The one thing the model cannot see.** "A blank line after a block of fields" is a *whitespace*
+convention, and a projectional model holds no whitespace: the projection draws the line breaks and the
+generator writes them. So the checker cannot state the blank line, and it does not pretend to. It states
+the arrangement that makes the blank line land in the right place - **the fields are contiguous** - and
+the projection is what puts the line where the block ends. That split is the honest one: a rule that
+claimed to see a blank line would be reading the projection's output, not the model.
+
+**Planned: the projection half.** Delivering the blank line itself needs a small framework change in
+`Projectional.Language`, because today neither cell can express "a different gap here":
+
+- `ChildrenPart` draws one separator between every pair of children, so a group boundary cannot have its
+  own. A grouped separator - "the usual gap within a group, a blank line between groups" - is a new part.
+- `LineBreakPart` indents eagerly, so a doubled break would leave a whitespace-only line. The part that
+  ends a group must end a line without indenting the next, or the generated text carries trailing space
+  that the earlier "empty member list" fix deliberately removed.
+- `ChildNotationCell` stacks children with no per-gap choice, so a blank row needs a per-gap decision in
+  the cell as well as in the generator.
+
+Until that lands, the drawing and the generated text both keep members one per line, and the *ordering*
+rule is what keeps the block a block. The rules a style checker cannot state in a model at all - line
+length, brace placement, trailing whitespace, `var` versus an explicit type - are projection choices here,
+not model facts, and belong to the notation's own conventions rather than to a constraint.
 
 ## The two ways logic attaches
 

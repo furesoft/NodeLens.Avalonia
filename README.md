@@ -235,7 +235,7 @@ Keys held with `Ctrl`, `Alt`, or `Meta` belong to the host application, with two
 
 `Projectional.CSharp` ships with the shell rather than sitting in a folder you open first, because it is a *base* language in the MPS sense: the logic inside a behaviour, a generator or a constraint is written in the same editor as the DSL, not in a text file beside it. A language declares a slot over `CSharp.Expression` and its users write code there, so a DSL never has to grow an expression language of its own.
 
-It is data like every other language here - 55 concepts, a notation, four rules, five intentions and a generator, and no importer - so what you see below is the projection, and the generator writes the same characters back out. Names are references that resolve to the declaration they mean, which is what makes go-to-definition and rename work; `Console` is red because it points at nothing this file declares, and the reference keeps the text it was typed as.
+It is data like every other language here - 55 concepts, a notation, seven rules, five intentions and a generator, and no importer - so what you see below is the projection, and the generator writes the same characters back out. Names are references that resolve to the declaration they mean, which is what makes go-to-definition and rename work; `Console` is red because it points at nothing this file declares, and the reference keeps the text it was typed as.
 
 ![A C# document projected as code: a file-scoped namespace, two fields, a method with an if/else, a method returning a collection expression, and a counted for loop](docs/images/language-csharp.png)
 
