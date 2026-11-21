@@ -69,6 +69,15 @@ internal static class Shots
             Documents.AcceptedAndRejected,
             Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(Rule(session, 1).Id, "name"))),
 
+        // Drawn by a language written as a project rather than by the sample: the annotation is a notation cell the
+        // concept's own editor places, so the picture has to be of a language that places one. No gutter: the
+        // annotation is the subject, and a line number column beside a single line would be furniture.
+        new(
+            "feature-type-annotation",
+            LanguageDocuments.DeclaredExpression,
+            Arrange: (_, session) => PutCaret(session, CellAddress.OfSlot(session.Document.Id, "condition")),
+            Surface: DeclaredExpressions),
+
         new(
             "editor-light",
             Documents.ThreeRules,
@@ -206,6 +215,9 @@ internal static class Shots
     /// <summary>The test language a language's own tests are written in.</summary>
     private static LanguageSurface Testing =>
         LanguageSurface.Plain(TestingNotations.Registry);
+
+    /// <summary>The declared expressions language, whose literals annotate the type they have.</summary>
+    private static LanguageSurface DeclaredExpressions => LanguageSurface.Of(LanguageDocuments.DeclaredExpressions);
 
     /// <summary>Switches the machine to the table of its transitions, which is a view state and not a model change.</summary>
     private static void StateMachineTable(ProjectionalEditorControl editor, EditorSession session)

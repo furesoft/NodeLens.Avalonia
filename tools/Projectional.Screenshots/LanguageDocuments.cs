@@ -1,10 +1,12 @@
 using Projectional.Core;
 using Projectional.Expressions;
 using Projectional.ImportRules;
+using Projectional.Languages;
 using Projectional.Samples.FeatureModel;
 using Projectional.Samples.SqlSchema;
 using Projectional.Samples.StateMachine;
 using Projectional.Testing;
+using Projectional.Workbench;
 
 namespace Projectional.Screenshots;
 
@@ -13,6 +15,8 @@ namespace Projectional.Screenshots;
 /// They are the corpus documents of the three samples, built here through the public model API rather than loaded
 /// from their files, for the same reason the feature shots build theirs: the tool must not depend on where the
 /// sources sit. Each is a little longer than its corpus so the picture shows a language rather than a fragment.
+/// The one exception is the declared expressions document, which is opened from the folder - see
+/// <see cref="DeclaredExpressions"/> for why a model built by hand cannot stand in for it.
 /// </remarks>
 internal static class LanguageDocuments
 {
@@ -240,4 +244,32 @@ internal static class LanguageDocuments
 
         return model;
     }
+
+    /// <summary>The declared expressions language, opened once so its document and its surface cannot disagree.</summary>
+    /// <remarks>
+    /// This is the one document of the gallery read from a folder rather than built through the model API, and it has
+    /// to be: the picture is of the <c>typeof</c> annotation, and the type of <c>1 &lt; 2</c> exists only once the
+    /// project's own type rules are lowered - a model built by hand would have to restate them. The folder is the copy
+    /// this tool's build puts in its output, exactly as the shell shots open the pipeline sample, so the picture is of
+    /// the documents a user opens.
+    /// </remarks>
+    internal static LanguageProject DeclaredExpressions { get; } = Open("declared-expressions");
+
+    /// <summary>The sample document of the declared expressions language: an <c>if</c> over a comparison.</summary>
+    /// <remarks>
+    /// Every literal in it is drawn with its type beside it, which is what the concept's own editor decides - the
+    /// notation says <c>@type@</c> after the value, and the annotation the projection computes says <c>int</c>.
+    /// </remarks>
+    internal static Model DeclaredExpression()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "declared-expressions", "expressions.mps");
+
+        return DocumentFile.TryLoad(path, DeclaredExpressions.NewProject(), out var error)
+            ?? throw new InvalidOperationException(error);
+    }
+
+    /// <summary>Opens one of the declaration samples from the copy this tool's build made of it.</summary>
+    private static LanguageProject Open(string name) =>
+        LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, name), out var error)
+            ?? throw new InvalidOperationException(error);
 }
