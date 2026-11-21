@@ -244,9 +244,35 @@ public static class CSharpNotations
             ed.ChildInline(CSharpConceptKeys.ValueSlot),
             ed.Punct(";")));
 
+        // Two conditionals in one line, of which exactly one draws: `!ready` and `count++` are one concept with one
+        // boolean, because the operator is the same and only its side differs.
         notations.Add(CSharpConceptKeys.Unary, ed => ed.Line(
-            ed.Property(CSharpLanguage.UnaryOperatorSlot),
-            ed.ChildInline(CSharpConceptKeys.OperandSlot)));
+            ed.Conditional(
+                CSharpLanguage.IsPostfixSlot,
+                "false",
+                ed.Property(CSharpLanguage.UnaryOperatorSlot),
+                ed.ChildInline(CSharpConceptKeys.OperandSlot)),
+            ed.Conditional(
+                CSharpLanguage.IsPostfixSlot,
+                "true",
+                ed.ChildInline(CSharpConceptKeys.OperandSlot),
+                ed.Property(CSharpLanguage.UnaryOperatorSlot))));
+
+        // `for (int i = 0; i < 3; i++)` - the initializer's own semicolon is the first separator, and the increment has
+        // none, which is why it is an expression.
+        notations.Add(CSharpConceptKeys.For, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("for"),
+                ed.Space,
+                ed.Punct("("),
+                ed.ChildInline(CSharpConceptKeys.InitializerSlot),
+                ed.Space,
+                ed.ChildInline(CSharpConceptKeys.ConditionSlot),
+                ed.Punct(";"),
+                ed.Space,
+                ed.ChildInline(CSharpConceptKeys.IncrementSlot),
+                ed.Punct(")")),
+            ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot, "<no body>"))));
 
         notations.Add(CSharpConceptKeys.Conditional, ed => ed.Line(
             ed.ChildInline(CSharpConceptKeys.ConditionSlot),

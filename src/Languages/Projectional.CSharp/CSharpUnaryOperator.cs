@@ -2,9 +2,10 @@ namespace Projectional.CSharp;
 
 /// <summary>The operators that take one operand, as the symbols C# writes.</summary>
 /// <remarks>
-/// The four that turn a value into another value. Increment and decrement are absent on purpose: they are statements
-/// as much as expressions, and a language that offers them owes the reader an answer about which of the two a use is -
-/// that belongs with the statement forms, not with the operators.
+/// They turn a value into another value. Increment and decrement are here as *expressions*, which is the form a `for`
+/// header needs: `i++` produces the old value and has no semicolon, so it can stand between two of them. The statement
+/// form is what a body would use, and that is a later addition - offering one concept for both would leave the reader
+/// guessing which of the two a use is.
 /// </remarks>
 public static class CSharpUnaryOperator
 {
@@ -20,6 +21,12 @@ public static class CSharpUnaryOperator
     /// <summary>Bitwise complement.</summary>
     public const string Complement = "~";
 
+    /// <summary>Increment, as an expression: the value, then the addition.</summary>
+    public const string Increment = "++";
+
+    /// <summary>Decrement, as an expression.</summary>
+    public const string Decrement = "--";
+
     /// <summary>Every unary operator the property may hold, in the order the completion list offers them.</summary>
-    public static IReadOnlyList<string> All { get; } = [Not, Negate, Plus, Complement];
+    public static IReadOnlyList<string> All { get; } = [Not, Negate, Plus, Complement, Increment, Decrement];
 }

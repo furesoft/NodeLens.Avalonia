@@ -45,14 +45,16 @@ behaviour or a generator body need" rather than by C# grammar order.
 
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
 `String` and `Bool` literals (not `Long`, `Double`, `Null` or `Char`), `Name`, `MemberAccess`, `Call`,
-`Binary` with ten operators, `Parenthesized`, `New` and **collection expressions**; namespaces are
-**file-scoped or braced** (one property, two forms); and what is missing is `Unary`, `Conditional`, `Cast`,
-`Is` and `Index`; `Block`, `ExpressionStatement`, `LocalDeclaration`, `Assignment`, `If`, `Return` and `Throw`
-(not `While`, `For`, `ForEach`, `Break`, `Continue` or `Try`); and `TypeReference`, `Method`,
-`Parameter`, `Field`, `Class`, `Namespace` and `File`. It has no importer, so a document is written in
-the editor and the text is a derived artefact. Read the rest of this section as the target, and the
-package as the evidence that the notation, constraint, intention and generator machinery can carry a
-C#-shaped base language at all.
+`Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
+`Parenthesized`, `New` and **collection expressions**; namespaces are **file-scoped or braced** (one
+property, two forms); and what is missing is `Cast`, `Is` and `Index`; `Block`, `ExpressionStatement`,
+`LocalDeclaration`, `Assignment` with the compound operators, `If`, `While`, `For`, `ForEach`,
+`Return`, `Break`, `Continue` and `Throw` (not `Try`); and `TypeReference`, `Method`, `Constructor`,
+`Property` (an auto-property with `get`, `set` or `init`), `Signature` (a bodiless interface member),
+`Parameter`, `Field`, `Class`, `Interface` with its inheritance list, `Namespace` and `File`. It has no
+importer, so a document is written in the editor and the text is a derived artefact. Read the rest of
+this section as the target, and the package as the evidence that the notation, constraint, intention
+and generator machinery can carry a C#-shaped base language at all.
 
 A base language is useful long before it is complete, so the subset is chosen by "what does a
 behaviour or a generator body need" rather than by C# grammar order.
@@ -66,7 +68,7 @@ behaviour or a generator body need" rather than by C# grammar order.
 | `CSharp.MemberAccess` | `target.member` |
 | `CSharp.Call` | `target(args, ...)` with `MemberAccess` as the target for a method call |
 | `CSharp.Binary` | `left op right`, operator as an enum property |
-| `CSharp.Unary` | `op operand` and postfix `++`/`--` as an enum property |
+| `CSharp.Unary` | `op operand`, or `operand op` for `++`/`--` - the side is a boolean property, not a second concept |
 | `CSharp.Conditional` | `condition ? whenTrue : whenFalse` |
 | `CSharp.Parenthesized` | `(inner)` |
 | `CSharp.Cast` | `(Type)operand` |
@@ -78,7 +80,7 @@ behaviour or a generator body need" rather than by C# grammar order.
 
 `Block`, `ExpressionStatement`, `LocalDeclaration` (`var` or an explicit type), `Assignment`
 (all compound operators as an enum), `If` (with `else if` as a nested `If`), `While`, `For`
-(three optional parts), `ForEach`, `Return`, `Break`, `Continue`, `Throw`, `Try`.
+(initializer, condition and increment), `ForEach`, `Return`, `Break`, `Continue`, `Throw`, `Try`.
 
 **Types and declarations (T0, D0)**
 
