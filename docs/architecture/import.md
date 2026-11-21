@@ -386,7 +386,10 @@ refused because they write what the node does not own.
   text through the named generator, over the corpus, and an importer with nothing but `default inverse` reads back what
   that generator prints.
 - **I11 - the first declared language that needs it.** `samples/declared-pipeline` gets an `import` folder, so the
-  M2-gate language becomes readable as well as printable - the moment a language really exists without C#.
+  M2-gate language becomes readable as well as printable - the moment a language really exists without C#. **The shell
+  ships the importer language too**, so an author writes one in the app: `import` documents open as documents of
+  `Projectional.ImportRules`, **File ▸ New ▸ Importer** starts one, and re-opening the language folder lowers whatever
+  the folder now holds into the importers **File ▸ Import…** offers ([language-projects.md](language-projects.md#in-the-app)).
 
 ## Testing
 

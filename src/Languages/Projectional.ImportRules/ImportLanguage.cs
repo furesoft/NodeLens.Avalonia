@@ -82,8 +82,16 @@ public static class ImportLanguage
     /// <summary>The rules of an importer.</summary>
     public const string RulesSlot = "rules";
 
+    /// <summary>The concepts of the import language, in declaration order.</summary>
+    /// <remarks>
+    /// Public the way every other definition language's list is, because a host composes the language it edits from
+    /// declarations rather than from a finished registry: the shell's registry is one set built from every language
+    /// it can open, and a language that offered only its own registry could not join it.
+    /// </remarks>
+    public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } = [.. Declarations()];
+
     /// <summary>The concepts of the import language.</summary>
-    public static ConceptRegistry Concepts { get; } = ConceptRegistry.Create(Declarations());
+    public static ConceptRegistry Concepts { get; } = ConceptRegistry.Create(ConceptDeclarations);
 
     /// <summary>How those concepts are drawn, so an importer document is readable in the editor.</summary>
     public static NotationRegistry Notations { get; } = CreateNotations();

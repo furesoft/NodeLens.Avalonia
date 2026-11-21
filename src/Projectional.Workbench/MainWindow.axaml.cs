@@ -2677,6 +2677,22 @@ public sealed partial class MainWindow : Window, IDisposable
             typing: WorkbenchLanguage.Typing);
     }
 
+    /// <summary>Opens an empty importer, which is how a language teaches the shell to read a format.</summary>
+    /// <remarks>
+    /// The document is a model of the importer language, so it is edited and saved by the same editor as everything
+    /// else: saved into a language project's <c>import</c> folder it becomes part of that language, and
+    /// <see cref="OnOpenLanguage"/> on the same folder is what lowers it again.
+    /// </remarks>
+    private void OnNewImporter(object? sender, RoutedEventArgs e)
+    {
+        _error = null;
+
+        OpenDocument(
+            _language.NewImportDefinition(),
+            _language.Notations,
+            typing: WorkbenchLanguage.Typing);
+    }
+
     /// <summary>Opens a folder as a language and takes it into this shell's set.</summary>
     /// <remarks>
     /// The language's own two models open as documents afterwards, which is where the user edits them; new
@@ -2739,7 +2755,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return false;
         }
 
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.IntentionsFolder })
+        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.IntentionsFolder, LanguageProject.ImportFolder })
         {
             var path = Path.Combine(language.Directory, folder);
 

@@ -98,11 +98,16 @@ M2's gate in its smallest complete form.
 `WorkbenchLanguage` is **per shell** - an instance, not a static table - and it grows at runtime:
 
 - **File ▸ Open language…** picks a folder, loads it, and takes it into the set. **Every definition document of the
-  folder opens afterwards** - one tab per concept, enumeration, notation, rule, generator and constraint - which is
-  where the user edits them.
-- **File ▸ New ▸ Concept**, **File ▸ New ▸ Enumeration** and **File ▸ New ▸ Notation** create a document with exactly one
-  empty definition of that kind. A definition document is saved into the folder's aspect directory, so a concept
-  created in the app is one more file beside the others.
+  folder opens afterwards** - one tab per concept, enumeration, notation, rule, generator, constraint and importer -
+  which is where the user edits them.
+- **File ▸ New ▸ Concept**, **File ▸ New ▸ Enumeration**, **File ▸ New ▸ Notation** and **File ▸ New ▸ Importer**
+  create a document with exactly one empty definition of that kind. A definition document is saved into the folder's
+  aspect directory, so a concept created in the app is one more file beside the others, and an importer created there
+  is one more way to read a format.
+- **An edited importer takes effect by re-opening the folder.** The same **File ▸ Open language…** on a folder that is
+  already open **replaces** that language rather than adding it twice: the set is rebuilt from the shell's own
+  declarations plus the folders it holds, so the reloaded folder's `import`, `structure`, `editor` and every other
+  aspect are read again. That is how a written importer reaches **File ▸ Import…** without a restart.
 - **File ▸ New ▸ Document of an opened language** creates a document of the first concept that can be a root: concrete,
   and naming no applicability places. A concept that names places needs a parent and a slot to exist, so it can never
   start a document - the same rule [language.md](language.md#applicability) states.

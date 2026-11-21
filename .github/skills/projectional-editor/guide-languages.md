@@ -227,7 +227,14 @@ record, and `Projectional.Json` is the first reference language behind the contr
   and leaves a CRLF file's carriage return in the value - `.Nest` a child, `.Repeat` a list, `.Raw` tier 2 verbatim,
   `.Bind`/`.Matches` a run remembered and required again, `.Fail` a rule's own message). **No backtracking**: every
   choice is decided by the literal at the cursor, so an ambiguity is a *load-time* refusal in `DeclaredImporter`, not a
-  surprise in a file. A document root is a concept no child slot can hold. **File ▸ Import…** runs the declaration:
+  surprise in a file. A document root is a concept no child slot can hold. **The shell declares the language**, so an
+  author writes an importer in the app rather than in a text editor: `WorkbenchLanguage.ShellDeclarations` holds
+  `ImportLanguage.ConceptDeclarations` and `Notations` holds `ImportNotations`, `import/` documents open with the
+  folder, **File ▸ New ▸ Importer** starts one, and re-opening the folder **replaces** the language
+  (`TryAdd` rebuilds from `ShellDeclarations` plus the folders it holds) so the edited `import` folder reaches
+  **File ▸ Import…** without a restart. A language that joins the shell therefore joins it by declarations, not by a
+  finished registry - which is why `ImportLanguage.ConceptDeclarations` exists next to `Concepts`.
+  **File ▸ Import…** runs the declaration:
   `WorkbenchLanguage.TryImport` asks the languages opened in the window before the built-in formats (a TOML shape
   check claims `key = value` and then refuses it, so the reverse order made a declared rule unreachable), and the first
   importer that reads the file opens a document with that language's own aspects. What is not built is a hand-written
