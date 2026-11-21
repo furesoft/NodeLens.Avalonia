@@ -101,4 +101,20 @@ public enum EditorKey
     /// without taking away anything a host could have done with them.
     /// </remarks>
     QuickFix,
+
+    /// <summary>Ctrl+D, which copies the node the caret is in right after it.</summary>
+    /// <remarks>
+    /// The operation is not new - <see cref="DuplicateNodeAction"/> is what the context menu and the intention list
+    /// already offer - so this value exists to give it the key every structural editor spends on it. Taken from the
+    /// host for the same reason Ctrl+B is: duplicating a node is an edit of a model no host can see.
+    /// </remarks>
+    Duplicate,
+
+    /// <summary>The Insert key, which adds an empty sibling of the caret's node before it.</summary>
+    /// <remarks>
+    /// Before, because Enter is the after: <see cref="InsertNodeAction"/> inserts following the caret's node, so a
+    /// gesture that also inserted afterwards would be Enter with another name. Insert is the one side Enter cannot
+    /// reach, and it is the key MPS spends on it.
+    /// </remarks>
+    InsertBefore,
 }

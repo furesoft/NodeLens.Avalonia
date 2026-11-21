@@ -26,6 +26,10 @@ namespace Projectional.Avalonia;
 /// way - a clipboard that only worked through a context menu would be a clipboard nobody finds.
 /// Ctrl+B, because going to a definition is a question only the projection can answer - no host can
 /// navigate a model it cannot see - and every IDE spells that gesture the same way.
+/// Ctrl+D and Insert belong to the same argument: duplicating the node at the caret and inserting a
+/// sibling before it are edits of a model the host cannot see, and both are the gestures a structural
+/// editor is expected to spend on them (Insert for the side Enter cannot reach, since Enter inserts
+/// after).
 /// Ctrl+Home and Ctrl+End, because a click elsewhere in the window means "the start or end of this
 /// document" in the host too, so taking them costs nothing. Alt has its own exceptions, Alt+Up and
 /// Alt+Down, because reordering a node is an edit of the model and no host can offer it for the editor;
@@ -68,7 +72,7 @@ public static class EditorKeyMap
                 };
         }
 
-        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.B or Key.C or Key.V or Key.X or Key.OemPeriod))
+        if (control && key is not (Key.Left or Key.Right or Key.Home or Key.End or Key.Space or Key.A or Key.B or Key.C or Key.D or Key.V or Key.X or Key.OemPeriod))
         {
             return null;
         }
@@ -93,6 +97,11 @@ public static class EditorKeyMap
             Key.A when control => EditorKey.SelectAll,
             Key.B when control => EditorKey.GoToDefinition,
             Key.C when control => EditorKey.Copy,
+            Key.D when control => EditorKey.Duplicate,
+
+            // Bare Insert only: Shift+Insert is paste on the platforms that have that gesture, and taking it would
+            // break a habit the user had before this editor existed.
+            Key.Insert when !shifted => EditorKey.InsertBefore,
             Key.X when control => EditorKey.Cut,
             Key.V when control => EditorKey.Paste,
             Key.OemPeriod when control => EditorKey.QuickFix,
