@@ -49,13 +49,13 @@ public sealed class ChildNotationCell : BlockNotationCell
     /// </remarks>
     public bool Stacked { get; init; }
 
-    /// <summary>Whether a boundary between two groups gets a blank line.</summary>
+    /// <summary>Where this list leaves an empty line.</summary>
     /// <remarks>
-    /// Only a stacked child cell can draw one: a group boundary is vertical space, so on a single line there is
-    /// nowhere to put it. The rule is the same one the generator's <c>ChildrenPart</c> applies, so the drawing and
-    /// the generated text put the blank line in the same place.
+    /// Only a stacked child cell can draw a gap: it is vertical space, so on a single line there is nowhere to put it.
+    /// The generator's <c>ChildrenPart</c> carries the same value, so a list that breathes does so in the drawn
+    /// document and in the generated text alike.
     /// </remarks>
-    public bool BlankLineBetweenGroups { get; init; }
+    public ListGap Gaps { get; init; }
 
     /// <summary>
     /// The concepts whose neighbours share a group, so that no blank line separates them.
@@ -65,14 +65,6 @@ public sealed class ChildNotationCell : BlockNotationCell
     /// the drawing and the generated text cannot disagree about where a group ends.
     /// </remarks>
     public IReadOnlySet<string> TightConcepts { get; init; } = ChildGroups.Empty;
-
-    /// <summary>Whether the list opens with a blank line above its first child.</summary>
-    /// <remarks>
-    /// Only a stacked child cell can draw one, for the same reason a group boundary needs one. The generator's
-    /// <c>ChildrenPart</c> carries the same flag, so a list that opens with a gap does so in the drawn document and in
-    /// the generated text alike.
-    /// </remarks>
-    public bool BlankLineBeforeFirst { get; init; }
 
     public override string ToString() => Stacked ? $"children {Slot} (stacked)" : $"children {Slot}";
 }

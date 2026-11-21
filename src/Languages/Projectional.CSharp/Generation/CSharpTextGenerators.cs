@@ -34,29 +34,26 @@ public static class CSharpTextGenerators
 
     /// <summary>A member list: one entry per line, through the separator rather than a trailing break.</summary>
     /// <param name="slot">The list slot to expand.</param>
-    /// <param name="blankLineBetweenGroups">
-    /// Whether a boundary between two groups gets a blank line, as the .NET conventions ask of a class's members.
+    /// <param name="gaps">
+    /// Where the list breathes, as the .NET conventions ask of a class's members and of a namespace's types.
     /// </param>
     /// <param name="tightConcepts">The concepts whose neighbours share a group.</param>
     private static ChildrenPart Members(
         string slot,
-        bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null,
-        bool blankLineBeforeFirst = false) =>
-        new(
-            slot,
-            TextTemplate.Of(LineBreakPart.Instance),
-            blankLineBetweenGroups,
-            tightConcepts,
-            blankLineBeforeFirst);
+        ListGap gaps = ListGap.None,
+        IReadOnlySet<string>? tightConcepts = null) =>
+        new(slot, TextTemplate.Of(LineBreakPart.Instance), gaps, tightConcepts);
 
     private static TemplateRegistry Templates() => TemplateRegistry.Empty
         .Add(CSharpConceptKeys.File, TextTemplate.Of(
+            // The trailing break used to be written here; the list's own gap writes it now, so the two cannot
+            // disagree about whether a file's imports are followed by one newline or two.
             new WhenFilledPart(
                 CSharpConceptKeys.UsingsSlot,
-                TextTemplate.Of(
-                    new ChildrenPart(CSharpConceptKeys.UsingsSlot, TextTemplate.Of(LineBreakPart.Instance)),
-                    LineBreakPart.Instance)),
+                TextTemplate.Of(new ChildrenPart(
+                    CSharpConceptKeys.UsingsSlot,
+                    TextTemplate.Of(LineBreakPart.Instance),
+                    ListGap.AfterLast))),
             new ChildPart(CSharpConceptKeys.NamespaceSlot),
             LineBreakPart.Instance))
 
@@ -75,8 +72,7 @@ public static class CSharpTextGenerators
                     new TextPart(";"),
                     Members(
                         CSharpConceptKeys.ClassesSlot,
-                        blankLineBetweenGroups: true,
-                        blankLineBeforeFirst: true)),
+                        ListGap.BetweenGroups | ListGap.BeforeFirst)),
                 TextTemplate.Of(
                     new TextPart("namespace "),
                     new PropertyPart(CSharpLanguage.NameSlot),
@@ -84,7 +80,7 @@ public static class CSharpTextGenerators
                     new TextPart("{"),
                     new IndentPart(TextTemplate.Of(
                         LineBreakPart.Instance,
-                        Members(CSharpConceptKeys.ClassesSlot, blankLineBetweenGroups: true))),
+                        Members(CSharpConceptKeys.ClassesSlot, ListGap.BetweenGroups))),
                     LineBreakPart.Instance,
                     new TextPart("}")))))
 
@@ -106,8 +102,8 @@ public static class CSharpTextGenerators
                         LineBreakPart.Instance,
                         Members(
                             CSharpConceptKeys.MembersSlot,
-                            blankLineBetweenGroups: true,
-                            tightConcepts: CSharpMemberGroups.Tight))))),
+                            ListGap.BetweenGroups,
+                            CSharpMemberGroups.Tight))))),
             LineBreakPart.Instance,
             new TextPart("}")))
 

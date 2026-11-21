@@ -46,13 +46,18 @@ public sealed class ChildCell : StructureCell
     public bool IsEmpty => Content.Count == 0;
 
     /// <summary>
-    /// The positions in <see cref="EditorCell.Children"/> that start a group and therefore get a blank line above
-    /// them.
+    /// The positions in <see cref="EditorCell.Children"/> that get a blank line above them.
     /// </summary>
     /// <remarks>
     /// A set of indices rather than a cell, because a blank line is not a model element: a spacer in the tree would
     /// become a caret stop and a hit-test target, and there is nothing there to put a caret in. Only a stacked child
-    /// cell reads it, because a group boundary is vertical space.
+    /// cell reads it, because a gap is vertical space.
+    /// <para>
+    /// A gap always sits <em>above</em> a position, so the set is a range rather than only the children: position
+    /// <c>0</c> is the gap above the first child and position <c>Count</c> - one past the last, which no child occupies
+    /// - is the gap below it. That is what lets a list that continues into something else ask for a trailing gap
+    /// without a second mechanism: the layouter asks about each child and then once about the position after the end.
+    /// </para>
     /// </remarks>
     public IReadOnlySet<int> BlankLineBefore { get; init; } = NoBlankLines;
 

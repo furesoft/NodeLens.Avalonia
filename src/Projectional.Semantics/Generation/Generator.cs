@@ -170,9 +170,8 @@ public sealed class Generator
                         children.Slot,
                         children.Separator,
                         generator,
-                        children.BlankLineBetweenGroups,
-                        children.TightConcepts,
-                        children.BlankLineBeforeFirst);
+                        children.Gaps,
+                        children.TightConcepts);
                     break;
 
                 case LoopPart loop:
@@ -247,9 +246,8 @@ public sealed class Generator
         TextTemplate separator,
         TextGenerator generator,
         Action<Node> emit,
-        bool blankLineBetweenGroups = false,
-        IReadOnlySet<string>? tightConcepts = null,
-        bool blankLineBeforeFirst = false)
+        ListGap gaps = ListGap.None,
+        IReadOnlySet<string>? tightConcepts = null)
     {
         var entries = ChildrenOf(owner, slot);
         var written = 0;
@@ -280,10 +278,10 @@ public sealed class Generator
 
             if (written++ > 0)
             {
-                // A group boundary is one empty line, and it is a bare newline rather than a second separator:
-                // the separator indents the line it starts, so two of them would leave the row's indentation
-                // standing on an otherwise empty line.
-                if (blankLineBetweenGroups
+                // A gap is one empty line, and it is a bare newline rather than a second separator: the separator
+                // indents the line it starts, so two of them would leave the row's indentation standing on an
+                // otherwise empty line.
+                if (gaps.HasFlag(ListGap.BetweenGroups)
                     && ChildGroups.IsBoundary(previousConcept, entry.Concept.Key, tightConcepts ?? ChildGroups.Empty))
                 {
                     _text.Append('\n');
@@ -291,10 +289,10 @@ public sealed class Generator
 
                 EmitTemplate(separator, owner, generator);
             }
-            else if (blankLineBeforeFirst)
+            else if (gaps.HasFlag(ListGap.BeforeFirst))
             {
-                // The same empty line, in the one position a boundary cannot describe: above the first child,
-                // where there is no neighbour to separate it from - only the row the notation put it under.
+                // The same empty line, in the position no boundary can describe: above the first child, where
+                // there is no neighbour to separate it from - only the row the notation put it under.
                 _text.Append('\n');
                 EmitTemplate(separator, owner, generator);
             }
@@ -309,6 +307,14 @@ public sealed class Generator
                 _regions.Add(region with { Start = region.Start + start });
             }
         }
+
+        // The gap below the last child. It is only reached when something was written, because a list that emitted
+        // nothing must not leave a blank line behind: an ignored concept is not a row.
+        if (written > 0 && gaps.HasFlag(ListGap.AfterLast))
+        {
+            _text.Append('\n');
+            EmitTemplate(separator, owner, generator);
+        }
     }
 
     /// <summary>Expands <paramref name="slot"/> as one entry per child, separated by <paramref name="separator"/>.</summary>
@@ -317,19 +323,16 @@ public sealed class Generator
         string slot,
         TextTemplate separator,
         TextGenerator generator,
-        bool blankLineBetweenGroups,
-        IReadOnlySet<string> tightConcepts,
-        bool blankLineBeforeFirst) =>
+        ListGap gaps,
+        IReadOnlySet<string> tightConcepts) =>
         EmitEntries(
             node,
             slot,
             separator,
             generator,
             child => EmitNode(child, generator),
-            blankLineBetweenGroups,
-            tightConcepts,
-            blankLineBeforeFirst);
-
+            gaps,
+            tightConcepts);
 
     /// <summary>Expands a loop body per child, with the body applied to the child rather than to the list's owner.</summary>
     /// <remarks>

@@ -88,21 +88,22 @@ let a click on a generated line move the caret to the node that wrote it.
   stands: nothing at all at a single-child slot, and a stray comma in a list - a syntax error dressed up as a feature.
   A region written into a buffer learns where the buffer ended up, so "go to source" still points at the right
   character.
-- **A separator can depend on the pair, not just the list.** `ChildrenPart.BlankLineBetweenGroups` puts a blank line
-  between *groups*: a boundary is a group boundary unless both neighbours are in the part's `TightConcepts` set, and
-  `ChildGroups.IsBoundary` is the one rule, so the drawing and the generated text cannot disagree about where a group
-  ends. The set is concept keys rather than "same concept" because C# wants fields tight and every other member to
-  start its own group - "same concept" would keep two methods tight as well. The blank line is a **bare newline**
+- **A separator can depend on the pair, not just the list.** `ChildrenPart.Gaps` with `ListGap.BetweenGroups` puts a
+  blank line between *groups*: a boundary is a group boundary unless both neighbours are in the part's `TightConcepts`
+  set, and `ChildGroups.IsBoundary` is the one rule, so the drawing and the generated text cannot disagree about where
+  a group ends. The set is concept keys rather than "same concept" because C# wants fields tight and every other member
+  to start its own group - "same concept" would keep two methods tight as well. The blank line is a **bare newline**
   written before the ordinary separator, never a doubled separator: a separator indents the line it starts, so two of
   them would leave the next row's indentation standing as trailing whitespace. That is the same defect the empty
   member block fix removed, and the reason the gap is written by the engine rather than spelled as a part.
-- **The gap has three positions and the engine knows two of them.** `BlankLineBetweenGroups` covers a boundary
-  between two neighbours, `BlankLineBeforeFirst` covers the list that the notation puts under a header of its own -
-  the types below a file-scoped namespace declaration - because a boundary separates two children and there is no
-  neighbour above the first one. Both are written the same way (a bare newline before the ordinary separator) and both
-  end up in the projection's one index set, as the positions a blank line goes above; the first child is simply
-  position `0`. The position *after* the last child has no flag yet, which is why a `using` block still runs into its
-  namespace declaration.
+- **The gap has three positions, and one value names them.** `ListGap.BetweenGroups` covers a boundary between
+  two neighbours, `BeforeFirst` covers the list that the notation puts under a header of its own - the types below a
+  file-scoped namespace declaration - and `AfterLast` covers the list that continues into something else, the imports
+  above a namespace. All three are written the same way (a bare newline before the ordinary separator) and all three
+  end up in the projection's one index set, as the positions a blank line goes above: the first child is position `0`
+  and the row after the last child is position `Count`, which no child occupies. `AfterLast` is emitted only when the
+  list wrote something, because an entry the generator ignores is not a row and must not leave a blank line behind.
+  The three were separate flags until the third arrived; they are independent, so they are flags and not a choice.
 - **The decision to emit nothing is declarable.** `TextGen.Ignore` is a mapping body beside `TextGen.Template` (both
   conform to the abstract `TextGen.Body` the mapping's `template` slot is declared over), and it lowers to the empty
   template. A separate concept rather than an empty template node because an empty box reads as unfinished work: an
