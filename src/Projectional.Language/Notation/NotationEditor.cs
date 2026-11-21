@@ -103,12 +103,27 @@ public sealed class NotationEditor
     /// <param name="emptyText">What the slot shows while it holds nothing.</param>
     /// <param name="spacing">The gap between two children, in spaces; only used in a line.</param>
     /// <param name="stacked">Whether each child starts on a new line.</param>
+    /// <param name="blankLineBetweenGroups">
+    /// Whether a boundary between two groups gets a blank line above it.
+    /// </param>
+    /// <param name="tightConcepts">
+    /// The concepts whose neighbours share a group, so no blank line separates them.
+    /// </param>
     public ChildNotationCell Children(
         string slot,
         string emptyText = "<empty>",
         int spacing = 1,
-        bool stacked = false) =>
-        new(slot) { EmptyText = emptyText, Spacing = spacing, Stacked = stacked };
+        bool stacked = false,
+        bool blankLineBetweenGroups = false,
+        IReadOnlySet<string>? tightConcepts = null) =>
+        new(slot)
+        {
+            EmptyText = emptyText,
+            Spacing = spacing,
+            Stacked = stacked,
+            BlankLineBetweenGroups = blankLineBetweenGroups,
+            TightConcepts = tightConcepts ?? ChildGroups.Empty,
+        };
 
     public CollectionNotationCell Collection(
         string slot,

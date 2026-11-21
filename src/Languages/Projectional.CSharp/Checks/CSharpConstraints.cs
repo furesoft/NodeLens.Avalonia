@@ -219,9 +219,9 @@ public static class CSharpConstraints
     /// <remarks>
     /// This is the model's half of the "blank line after a block of fields" convention. The model holds no
     /// whitespace, so a rule cannot see a blank line; what it can see is whether the fields are contiguous. When they
-    /// are, the projection can put the blank line where the block ends - and when they are not, this rule says so.
-    /// Only the first member out of place is reported, because the order is a single sequence and the first break is
-    /// the one that needs moving.
+    /// are, the projection puts the blank line where the block ends - and when they are not, this rule says so. Only
+    /// the first member out of place is reported, because the order is a single sequence and the first break is the
+    /// one that needs moving.
     /// </remarks>
     private sealed class MembersAreGroupedByKind : IConstraint
     {

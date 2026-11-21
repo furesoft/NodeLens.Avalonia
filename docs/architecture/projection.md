@@ -125,6 +125,13 @@ the tree, in abstract **layout units** rather than pixels.
   written into the separator notation itself (`Punct(",")` beside `Line(Space, Keyword("and"))`).
   There is no trailing gap after the last item. A gap is real cells, not padding applied by
   the layout, so a wide gap is several `SpaceCell`s and every one of them is a caret stop.
+- **A stacked child slot can leave a blank row between groups.** `ChildNotationCell.BlankLineBetweenGroups`
+  asks for one, and `ChildCell.BlankLineBefore` carries the positions it applies to: the stack advances the
+  cursor by one line height before each of them. The gap is *space*, not a cell, because a childless cell is a
+  leaf and every leaf is a caret target - a spacer would be a caret stop on a row nobody drew. The positions
+  come from `ChildGroups.IsBoundary`, the same rule the generator applies, so the drawing and the generated
+  text put the blank line in the same place. A group boundary is vertical space, so only a stacked slot can
+  draw one; the flag on a single-line slot does nothing.
 - **Where a list may stand is a type, not a flag.** `CollectionNotationCell` is a block cell and
   starts its own line; `InlineCollectionNotationCell` stays inside the line it is drawn on, with the
   same `Separator`/`Spacing`/`EmptyText` and the same runtime `CollectionCell` (which arranges its

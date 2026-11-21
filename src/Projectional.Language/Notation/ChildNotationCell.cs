@@ -49,5 +49,22 @@ public sealed class ChildNotationCell : BlockNotationCell
     /// </remarks>
     public bool Stacked { get; init; }
 
+    /// <summary>Whether a boundary between two groups gets a blank line.</summary>
+    /// <remarks>
+    /// Only a stacked child cell can draw one: a group boundary is vertical space, so on a single line there is
+    /// nowhere to put it. The rule is the same one the generator's <c>ChildrenPart</c> applies, so the drawing and
+    /// the generated text put the blank line in the same place.
+    /// </remarks>
+    public bool BlankLineBetweenGroups { get; init; }
+
+    /// <summary>
+    /// The concepts whose neighbours share a group, so that no blank line separates them.
+    /// </summary>
+    /// <remarks>
+    /// The same set the generator's <c>ChildrenPart</c> carries, read by the same <see cref="ChildGroups"/> rule, so
+    /// the drawing and the generated text cannot disagree about where a group ends.
+    /// </remarks>
+    public IReadOnlySet<string> TightConcepts { get; init; } = ChildGroups.Empty;
+
     public override string ToString() => Stacked ? $"children {Slot} (stacked)" : $"children {Slot}";
 }

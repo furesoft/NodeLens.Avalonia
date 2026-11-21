@@ -130,21 +130,28 @@ the arrangement that makes the blank line land in the right place - **the fields
 the projection is what puts the line where the block ends. That split is the honest one: a rule that
 claimed to see a blank line would be reading the projection's output, not the model.
 
-**Planned: the projection half.** Delivering the blank line itself needs a small framework change in
-`Projectional.Language`, because today neither cell can express "a different gap here":
+**Delivered: the projection half.** The blank line itself is a projection fact, and it now has a
+declaration of its own rather than an engine convention: `ChildNotationCell.BlankLineBetweenGroups` draws
+it and `ChildrenPart.BlankLineBetweenGroups` writes it, and both read `ChildGroups` for *where* a group
+ends so the drawing and the generated text cannot disagree. Three details were what made it more than a
+flag:
 
-- `ChildrenPart` draws one separator between every pair of children, so a group boundary cannot have its
-  own. A grouped separator - "the usual gap within a group, a blank line between groups" - is a new part.
-- `LineBreakPart` indents eagerly, so a doubled break would leave a whitespace-only line. The part that
-  ends a group must end a line without indenting the next, or the generated text carries trailing space
-  that the earlier "empty member list" fix deliberately removed.
-- `ChildNotationCell` stacks children with no per-gap choice, so a blank row needs a per-gap decision in
-  the cell as well as in the generator.
+- **A group is a run of a declared kind, not of one concept.** `ChildGroups.IsBoundary` asks a tight set
+  the language supplies: a boundary is a group boundary unless *both* neighbours are in it. C#'s set holds
+  one entry, `Field`, which is the "blank line between members, except inside a block of fields" convention
+  spelled out. An empty set therefore separates every child, which is the convention's own default.
+- **The blank line is a bare newline, not a doubled separator.** `LineBreakPart` indents eagerly, so a
+  second break would leave a whitespace-only row - the trailing space the earlier "empty member list" fix
+  deliberately removed. The generator writes one unindented newline at the boundary and lets the ordinary
+  separator start the next row, so the generated text has no trailing space and the drawing has a gap.
+- **The projection asks for a gap, not for a cell.** A spacer cell would be a leaf and therefore a caret
+  target, so the caret would stop on a row nobody drew. `ChildCell.BlankLineBefore` names the positions
+  instead and `CellLayouter` advances the cursor by one line height at each, which keeps the caret on the
+  members and the blank row out of the tree.
 
-Until that lands, the drawing and the generated text both keep members one per line, and the *ordering*
-rule is what keeps the block a block. The rules a style checker cannot state in a model at all - line
-length, brace placement, trailing whitespace, `var` versus an explicit type - are projection choices here,
-not model facts, and belong to the notation's own conventions rather than to a constraint.
+The rules a style checker cannot state in a model at all - line length, brace placement, trailing
+whitespace, `var` versus an explicit type - are projection choices here, not model facts, and belong to
+the notation's own conventions rather than to a constraint.
 
 ## The two ways logic attaches
 
