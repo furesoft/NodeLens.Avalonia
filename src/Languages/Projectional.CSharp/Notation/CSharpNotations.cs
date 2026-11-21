@@ -190,6 +190,23 @@ public static class CSharpNotations
             ed.Indent(ed.Children(CSharpConceptKeys.MembersSlot, "<no members>", stacked: true)),
             ed.Line(ed.Punct("}"))));
 
+        // An enum: a header and its values, comma-separated in a row. The values are a collection rather than a
+        // children list because a comma between them is punctuation that belongs to the list, not to the value - and
+        // the collection cell draws in a row, so the generator joins them with a comma and a space to match.
+        notations.Add(CSharpConceptKeys.Enum, ed => ed.Sequence(
+            ed.Line(
+                ed.Property(CSharpLanguage.VisibilitySlot),
+                ed.Space,
+                ed.Keyword("enum"),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot)),
+            ed.Line(ed.Punct("{")),
+            ed.Indent(ed.Collection(CSharpConceptKeys.MembersSlot, ed.Punct(","), "<no values>")),
+            ed.Line(ed.Punct("}"))));
+
+        // One value: its name and nothing else. The comma belongs to the list, so the value draws no punctuation.
+        notations.Add(CSharpConceptKeys.EnumMember, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
+
         // A field: one line, and the `= value` part only while there is an initializer.
         notations.Add(CSharpConceptKeys.Field, ed => ed.Line(
             ed.Property(CSharpLanguage.VisibilitySlot),

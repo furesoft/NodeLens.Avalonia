@@ -397,6 +397,32 @@ public static class CSharpLanguage
             isRoot: false,
             description: "An interface: the signatures a class promises to provide."),
 
+        // An enum is a type whose values are a closed set of names, so it is a type declaration like a class and an
+        // interface - and its members are names, not fields: an enum value has no type of its own and no initializer
+        // to write. Its members are a concept of their own so a name in the model can refer to one, which is what
+        // `Color.Red` would need to resolve.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Enum,
+            [
+                new PropertySlot(VisibilitySlot, PropertyType.String, CSharpVisibility.Public),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The enum's name."),
+                new ChildSlot(CSharpConceptKeys.MembersSlot, CSharpConceptKeys.EnumMember, Cardinality.Many),
+            ],
+            superConcepts: [CSharpConceptKeys.TypeDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "An enum: a type whose values are a closed set of names."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.EnumMember,
+            [new PropertySlot(NameSlot, PropertyType.String, description: "The value's name.")],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "One value of an enum."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.Field,
             [

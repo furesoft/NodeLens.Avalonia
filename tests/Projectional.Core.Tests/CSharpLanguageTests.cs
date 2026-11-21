@@ -725,6 +725,42 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AnEnumDrawsAndGeneratesTheSameShape()
+    {
+        // An enum is a type declaration whose values are a closed set of names. The values are a collection, not a
+        // children list, because the comma between them is punctuation that belongs to the list rather than to the
+        // value - and the value draws nothing but its name.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("enums");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var colour = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Enum);
+
+        foreach (var name in new[] { "Red", "Green", "Blue" })
+        {
+            model.NewChild(colour, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.EnumMember)
+                .Set(CSharpLanguage.NameSlot, name);
+        }
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        colour.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        colour.Set(CSharpLanguage.NameSlot, "Colour");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public enum Colour
+              {
+                Red, Green, Blue
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing
