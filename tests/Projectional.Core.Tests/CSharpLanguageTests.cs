@@ -149,6 +149,33 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void OnlyADeclarationCanBeOfferedForAName()
+    {
+        // The last step between the scope and the completion list: an entry is offered only when it fits the slot's
+        // target concept. A name may point at a declaration, so a method - which is a member and a named node, but not
+        // a NamedDeclaration - must not appear in the list, and a field must.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("offers");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var statement = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var name = model.NewChild(statement, "expression", CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.NameSlot, "Offers");
+        field.Set(CSharpLanguage.NameSlot, "count");
+        method.Set(CSharpLanguage.NameSlot, "Run");
+
+        var entries = CSharpScopes.Registry.ScopeOf(name, CSharpConceptKeys.TargetSlot).Entries;
+
+        Assert.Contains(entries, entry => entry.Name == "count" && entry.Fits(CSharpConceptKeys.NamedDeclaration, CSharpLanguage.Concepts));
+        Assert.DoesNotContain(entries, entry => entry.Name == "Run" && entry.Fits(CSharpConceptKeys.NamedDeclaration, CSharpLanguage.Concepts));
+    }
+
+    [Fact]
     public void AClassExtendsABaseAndImplementsAnInterface()
     {
         // Inheritance is two references on the class, and an interface is a class whose members have no bodies - which
