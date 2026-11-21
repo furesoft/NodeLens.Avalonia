@@ -149,9 +149,22 @@ public static class CSharpTextGenerators
 
         .Add(CSharpConceptKeys.Assignment, TextTemplate.Of(
             new ChildPart("target"),
-            new TextPart(" = "),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.AssignmentOperatorSlot),
+            new TextPart(" "),
             new ChildPart(CSharpConceptKeys.ValueSlot),
             new TextPart(";")))
+
+        .Add(CSharpConceptKeys.Unary, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.UnaryOperatorSlot),
+            new ChildPart(CSharpConceptKeys.OperandSlot)))
+
+        .Add(CSharpConceptKeys.Conditional, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.ConditionSlot),
+            new TextPart(" ? "),
+            new ChildPart(CSharpLanguage.WhenTrueSlot),
+            new TextPart(" : "),
+            new ChildPart(CSharpLanguage.WhenFalseSlot)))
 
         .Add(CSharpConceptKeys.If, TextTemplate.Of(
             new TextPart("if ("),

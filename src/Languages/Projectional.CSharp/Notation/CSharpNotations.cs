@@ -203,13 +203,29 @@ public static class CSharpNotations
                 ed.ChildInline(CSharpConceptKeys.ValueSlot)),
             ed.Punct(";")));
 
+        // The operator is a property, so `count = 1` and `count += 1` are one node with one difference.
         notations.Add(CSharpConceptKeys.Assignment, ed => ed.Line(
             ed.ChildInline("target"),
             ed.Space,
-            ed.Punct("="),
+            ed.Property(CSharpLanguage.AssignmentOperatorSlot),
             ed.Space,
             ed.ChildInline(CSharpConceptKeys.ValueSlot),
             ed.Punct(";")));
+
+        notations.Add(CSharpConceptKeys.Unary, ed => ed.Line(
+            ed.Property(CSharpLanguage.UnaryOperatorSlot),
+            ed.ChildInline(CSharpConceptKeys.OperandSlot)));
+
+        notations.Add(CSharpConceptKeys.Conditional, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.ConditionSlot),
+            ed.Space,
+            ed.Punct("?"),
+            ed.Space,
+            ed.ChildInline(CSharpLanguage.WhenTrueSlot),
+            ed.Space,
+            ed.Punct(":"),
+            ed.Space,
+            ed.ChildInline(CSharpLanguage.WhenFalseSlot)));
 
         // An `if`: the condition, its block, and the else branch in a group of rows that is absent while there is none.
         notations.Add(CSharpConceptKeys.If, ed => ed.Sequence(
