@@ -148,6 +148,26 @@ public static class CSharpTextGenerators
                     LineBreakPart.Instance,
                     new ChildPart(CSharpConceptKeys.OtherwiseSlot)))))
 
+        .Add(CSharpConceptKeys.While, TextTemplate.Of(
+            new TextPart("while ("),
+            new ChildPart(CSharpConceptKeys.ConditionSlot),
+            new TextPart(")"),
+            LineBreakPart.Instance,
+            new ChildPart(CSharpConceptKeys.BodySlot)))
+
+        .Add(CSharpConceptKeys.ForEach, TextTemplate.Of(
+            new TextPart("foreach ("),
+            new ChildPart("type"),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart(" in "),
+            new ChildPart(CSharpConceptKeys.SourceSlot),
+            new TextPart(")"),
+            LineBreakPart.Instance,
+            new ChildPart(CSharpConceptKeys.BodySlot)))
+
+        .Add(CSharpConceptKeys.Break, TextTemplate.Of(new TextPart("break;")))
+        .Add(CSharpConceptKeys.Continue, TextTemplate.Of(new TextPart("continue;")))
         .Add(CSharpConceptKeys.Return, TextTemplate.Of(
             new TextPart("return"),
             new WhenFilledPart(

@@ -329,6 +329,44 @@ public static class CSharpLanguage
             isRoot: false,
             description: "if (condition) { ... } else { ... }"),
 
+        // A loop's body is a Block and its condition an Expression, so `while` needs no concept of its own for either.
+        new ConceptDeclaration(
+            CSharpConceptKeys.While,
+            [
+                new ChildSlot(CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Statement],
+            isRoot: false,
+            description: "while (condition) { ... }"),
+
+        // `foreach` declares its element where it is used, which is why the type and the name are slots of the loop
+        // rather than a local the body could see: the language has no scope for a declaration that is not a node.
+        new ConceptDeclaration(
+            CSharpConceptKeys.ForEach,
+            [
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The name each element is bound to."),
+                new ChildSlot(CSharpConceptKeys.SourceSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Statement],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Camel,
+            isRoot: false,
+            description: "foreach (Type name in source) { ... }"),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.Break,
+            superConcepts: [CSharpConceptKeys.Statement],
+            isRoot: false,
+            description: "break;"),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.Continue,
+            superConcepts: [CSharpConceptKeys.Statement],
+            isRoot: false,
+            description: "continue;"),
         new ConceptDeclaration(
             CSharpConceptKeys.Return,
             [new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0)],

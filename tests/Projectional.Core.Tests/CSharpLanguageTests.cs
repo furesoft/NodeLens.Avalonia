@@ -149,6 +149,66 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void ALoopDrawsAndGeneratesTheSameShape()
+    {
+        // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing
+        // about the other - which is the property the whole language rests on.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("loops");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var loop = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.While);
+        var condition = model.NewChild(loop, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.BoolLiteral);
+        var loopBody = model.NewChild(loop, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var stop = model.NewChild(loopBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Break);
+        var each = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ForEach);
+        var elementType = model.NewChild(each, "type", CSharpConceptKeys.TypeReference);
+        var source = model.NewChild(each, CSharpConceptKeys.SourceSlot, CSharpConceptKeys.Name);
+        var eachBody = model.NewChild(each, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var next = model.NewChild(eachBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Continue);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Loops");
+        method.Set(CSharpLanguage.NameSlot, "Run");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        condition.Set(CSharpLanguage.ValueProperty, "true");
+        elementType.Set(CSharpLanguage.NameSlot, "string");
+        each.Set(CSharpLanguage.NameSlot, "line");
+        source.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "lines");
+
+        _ = stop;
+        _ = next;
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Loops
+              {
+                public void Run()
+                {
+                  while (true)
+                  {
+                    break;
+                  }
+                  foreach (string line in lines)
+                  {
+                    continue;
+                  }
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ATypesAreWhatTheOperandsAndTheDeclarationSay()
     {
         // Local propagation and nothing further: a literal knows its own type, a name borrows the type of the

@@ -200,6 +200,34 @@ public static class CSharpNotations
                 ed.Line(ed.Keyword("else")),
                 ed.Line(ed.ChildInline(CSharpConceptKeys.OtherwiseSlot)))));
 
+        // A loop: the header on its line, the body on the lines below it - the same shape `if` has, which is what makes
+        // a nest of them read as the code it is.
+        notations.Add(CSharpConceptKeys.While, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("while"),
+                ed.Space,
+                ed.Punct("("),
+                ed.ChildInline(CSharpConceptKeys.ConditionSlot),
+                ed.Punct(")")),
+            ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot, "<no body>"))));
+
+        notations.Add(CSharpConceptKeys.ForEach, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("foreach"),
+                ed.Space,
+                ed.Punct("("),
+                ed.ChildInline("type"),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot),
+                ed.Space,
+                ed.Keyword("in"),
+                ed.Space,
+                ed.ChildInline(CSharpConceptKeys.SourceSlot),
+                ed.Punct(")")),
+            ed.Line(ed.ChildInline(CSharpConceptKeys.BodySlot, "<no body>"))));
+
+        notations.Add(CSharpConceptKeys.Break, ed => ed.Line(ed.Keyword("break"), ed.Punct(";")));
+        notations.Add(CSharpConceptKeys.Continue, ed => ed.Line(ed.Keyword("continue"), ed.Punct(";")));
         notations.Add(CSharpConceptKeys.Return, ed => ed.Line(
             ed.Keyword("return"),
             ed.WhenFilled(CSharpConceptKeys.ValueSlot, ed.Space, ed.ChildInline(CSharpConceptKeys.ValueSlot)),

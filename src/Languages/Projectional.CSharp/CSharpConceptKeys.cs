@@ -86,6 +86,18 @@ public static class CSharpConceptKeys
     /// <summary><c>if (condition) { ... } else { ... }</c>.</summary>
     public const string If = "CSharp.If";
 
+    /// <summary><c>while (condition) { ... }</c>.</summary>
+    public const string While = "CSharp.While";
+
+    /// <summary><c>foreach (Type name in source) { ... }</c>.</summary>
+    public const string ForEach = "CSharp.ForEach";
+
+    /// <summary>Leaves the enclosing loop.</summary>
+    public const string Break = "CSharp.Break";
+
+    /// <summary>Skips to the next iteration of the enclosing loop.</summary>
+    public const string Continue = "CSharp.Continue";
+
     /// <summary><c>return value;</c></summary>
     public const string Return = "CSharp.Return";
 
@@ -118,6 +130,9 @@ public static class CSharpConceptKeys
 
     /// <summary>The slot holding an optional initializer or return value.</summary>
     public const string ValueSlot = "value";
+
+    /// <summary>The slot holding what a foreach iterates.</summary>
+    public const string SourceSlot = "source";
 
     /// <summary>The slot holding the declaration a name refers to.</summary>
     public const string TargetSlot = "target";
