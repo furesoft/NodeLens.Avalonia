@@ -7,6 +7,7 @@ using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Samples;
+using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.Testing;
 using Projectional.TextGen;
@@ -539,6 +540,51 @@ public sealed class WorkbenchLanguageTests
         Assert.Equal("value", expressions.Typing.ClaimFor("Decl.Bool", "true")?.PropertySlot);
 
         Assert.Null(expressions.Typing.ClaimFor("Decl.Bool", "42"));
+    }
+
+    [Fact]
+    public void ALanguageThatExtendsAnotherResolvesItsBaseAndInheritsItsRules()
+    {
+        // The two sample folders as a user opens them: the base first, then the language that says it extends it.
+        var shell = new WorkbenchLanguage();
+        var units = Sample("Units");
+
+        Assert.True(shell.TryAdd(units, out var refused), refused ?? "refused");
+
+        var invoice = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Invoice"), shell, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(invoice);
+        Assert.True(shell.TryAdd(invoice, out refused), refused ?? "refused");
+
+        // The base's concept is part of the dependent's vocabulary, so its folder can declare a slot over it...
+        Assert.Contains(invoice.Concepts.Concepts, concept => concept.Key == "Units.Quantity");
+
+        // ...while the dependent still declares only what its own folder wrote - the shell composes that list.
+        Assert.DoesNotContain(invoice.Declarations, declaration => declaration.Key == "Units.Quantity");
+        Assert.Equal(["Units"], invoice.Inherited.Select(language => language.Name));
+
+        // And the base's rule runs in the dependent's document: `invoice.mps` has a unit with surrounding whitespace.
+        var document = ModelFile.Load(
+            invoice.NewProject(),
+            Path.Combine(AppContext.BaseDirectory, "Invoice", "invoice.mps"));
+
+        var finding = Assert.Single(new ConstraintEngine(invoice.Constraints).Check(document));
+
+        Assert.Equal("unit", finding.Role);
+        Assert.Contains("whitespace", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageThatExtendsAnotherSaysWhichLanguageIsMissing()
+    {
+        // Nothing is read from beside the folder: a window that has not opened the base is told so, by name.
+        var shell = new WorkbenchLanguage();
+
+        var invoice = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Invoice"), shell, out var error);
+
+        Assert.Null(invoice);
+        Assert.Contains("Units", error!, StringComparison.Ordinal);
     }
 
     /// <summary>One of the sample folders, copied beside the test binary by the project file.</summary>

@@ -1347,7 +1347,10 @@ public sealed partial class MainWindow : Window, IDisposable
             path,
             WorkbenchLanguage.Emphasis,
             language is null ? WorkbenchLanguage.Typing : WorkbenchLanguage.TypingFor(language),
-            types: language?.Types);
+            types: language?.Types,
+            constraints: language?.Constraints,
+            scopes: language?.Scopes,
+            intentions: language?.Intentions);
     }
 
     /// <summary>Fills the model browser from the active document.</summary>
