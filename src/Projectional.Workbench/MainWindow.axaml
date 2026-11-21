@@ -323,6 +323,7 @@
           <MenuItem Header="_Concept" Click="OnNewConcept" />
           <MenuItem Header="_Enumeration" Click="OnNewEnumeration" />
           <MenuItem Header="_Notation" Click="OnNewNotation" />
+          <MenuItem Header="_Importer" Click="OnNewImporter" />
           <MenuItem Header="Document of an _opened language" Click="OnNewLanguageDocument" />
         </MenuItem>
         <Separator />

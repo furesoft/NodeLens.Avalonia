@@ -3,6 +3,7 @@ using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
 using Projectional.Expressions;
+using Projectional.ImportRules;
 using Projectional.IntentionRules;
 using Projectional.IntentionRules.Notation;
 using Projectional.Language;
@@ -44,27 +45,42 @@ internal sealed class WorkbenchLanguage
 
     private readonly List<LanguageProject> _opened = [];
 
+    /// <summary>
+    /// What the shell declares on its own, which every set is composed from.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from <see cref="Concepts"/> because a language opened from a folder can be opened again - that is
+    /// how an edited importer, constraint or notation takes effect - and a set built from the composed registry would
+    /// re-declare the language it is replacing. Rebuilding from these plus the languages that stay makes re-opening a
+    /// replacement instead of a second declaration of the same keys.
+    /// </remarks>
+    private static readonly IReadOnlyList<ConceptDeclaration> ShellDeclarations =
+    [
+        .. ExpressionsLanguage.ConceptDeclarations,
+        .. RulesLanguage.ConceptDeclarations,
+        .. StructureLanguage.ConceptDeclarations,
+        .. EditorLanguage.ConceptDeclarations,
+        .. TypeRuleLanguage.ConceptDeclarations,
+        .. TextGenLanguage.ConceptDeclarations,
+        .. ConstraintLanguage.ConceptDeclarations,
+        .. ScopeLanguage.ConceptDeclarations,
+        .. IntentionLanguage.ConceptDeclarations,
+
+        // The test language too: a language project's tests/ folder holds documents of it, and a shell that cannot
+        // load them refuses the very files the tests command runs - the failure read "Testing.Test, which the
+        // language does not declare".
+        .. TestingLanguage.ConceptDeclarations,
+
+        // And the importer language, for the same reason and with the same consequence: a language's import/
+        // folder is written in it, so a shell that does not declare it cannot open the file an author writes to
+        // teach the shell a format.
+        .. ImportLanguage.ConceptDeclarations,
+    ];
+
     /// <summary>Builds the set every shell starts with.</summary>
     internal WorkbenchLanguage()
     {
-        Concepts = ConceptRegistry.Create(
-        [
-            .. ExpressionsLanguage.ConceptDeclarations,
-            .. RulesLanguage.ConceptDeclarations,
-            .. StructureLanguage.ConceptDeclarations,
-            .. EditorLanguage.ConceptDeclarations,
-            .. TypeRuleLanguage.ConceptDeclarations,
-            .. TextGenLanguage.ConceptDeclarations,
-            .. ConstraintLanguage.ConceptDeclarations,
-            .. ScopeLanguage.ConceptDeclarations,
-            .. IntentionLanguage.ConceptDeclarations,
-
-            // The test language too: a language project's tests/ folder holds documents of it, and a shell that cannot
-            // load them refuses the very files the tests command runs - the failure read "Testing.Test, which the
-            // language does not declare".
-            .. TestingLanguage.ConceptDeclarations,
-        ]);
-
+        Concepts = ConceptRegistry.Create(ShellDeclarations);
         Notations = CreateNotations(Concepts);
     }
 
@@ -117,6 +133,16 @@ internal sealed class WorkbenchLanguage
 
     /// <summary>A model of the constraint language: one empty rule, ready to be written.</summary>
     internal Model NewConstraintDefinition() => NewDefinition(ConstraintConceptKeys.Rule, "constraint");
+
+    /// <summary>
+    /// A model of the importer language: one empty importer, ready to be written.
+    /// </summary>
+    /// <remarks>
+    /// The root is created rather than left to the user because an importer document <em>is</em> one importer, the
+    /// same way a structure document is one concept: the sections for its token classes and its rules are cells of
+    /// that root, so a document without one would have nowhere to type.
+    /// </remarks>
+    internal Model NewImportDefinition() => NewDefinition(ImportConceptKeys.Importer, "import");
 
     /// <summary>A model holding exactly one new root of <paramref name="conceptKey"/>.</summary>
     private Model NewDefinition(string conceptKey, string name)
@@ -290,21 +316,30 @@ internal sealed class WorkbenchLanguage
         ConceptRegistry concepts;
         NotationRegistry notations;
 
+        // The languages that stay are decided before the set is built, because the set is built *from* them: a
+        // language re-opened from the same folder replaces its predecessor, and keeping the old declarations in the
+        // composition would declare every one of its concepts twice.
+        var survivors = _opened
+            .Where(opened => !string.Equals(opened.Directory, language.Directory, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
         try
         {
             concepts = ConceptRegistry.Create(
             [
                 // The framework's own interfaces are injected by Create, so re-declaring them would be
-                // refused as a reserved key - and re-declaring is only ever about the languages.
-                .. Concepts.Concepts
-                    .Where(concept => !FrameworkInterfaces.All.Any(framework => framework.Key == concept.Key))
-                    .Select(Redeclare),
+                // refused as a reserved key - and re-declaring is only ever about the languages. The shell's own
+                // declarations are re-declared rather than reused through a registry, because a registry is keyed by
+                // concept and the ones that stay below are files that may have changed since they were read.
+                .. ShellDeclarations
+                    .Where(declaration => !FrameworkInterfaces.All.Any(framework => framework.Key == declaration.Key)),
+                .. survivors.SelectMany(opened => opened.Declarations),
                 .. language.Declarations,
             ]);
 
             notations = CreateNotations(concepts);
 
-            foreach (var opened in _opened)
+            foreach (var opened in survivors)
             {
                 AddNotations(notations, opened.Notations);
             }
@@ -319,8 +354,7 @@ internal sealed class WorkbenchLanguage
         }
 
         _opened.RemoveAll(opened => string.Equals(opened.Directory, language.Directory, StringComparison.OrdinalIgnoreCase));
-        _opened.Add(language);
-        Concepts = concepts;
+        _opened.Add(language);        Concepts = concepts;
         Notations = notations;
         error = null;
 
@@ -373,6 +407,7 @@ internal sealed class WorkbenchLanguage
         ScopeNotations.AddTo(notations);
         IntentionNotations.AddTo(notations);
         TestingNotations.AddTo(notations);
+        ImportNotations.AddTo(notations);
 
         return notations;
     }
@@ -384,37 +419,4 @@ internal sealed class WorkbenchLanguage
             notations.Add(notation);
         }
     }
-
-    /// <summary>A concept re-declared, so the registry can be rebuilt with one more language.</summary>
-    /// <remarks>
-    /// <see cref="ConceptRegistry"/> is immutable and takes declarations, not concepts, so growing the set means
-    /// writing every concept down again. The information is the same one the declaration carried, in the same order -
-    /// which is also why the dump comparison of the parity harness covers this path.
-    /// </remarks>
-    private static ConceptDeclaration Redeclare(Concept concept) => new(
-        concept.Key,
-        concept.Slots.Select(Redeclare).ToArray(),
-
-        // Extensions, not SuperConcepts: the latter is the union of what this concept extends and what it
-        // implements, and writing it back into the extension list would name each interface twice.
-        concept.Extensions.Select(super => super.Key).ToArray(),
-        concept.NameSlot?.Name,
-        concept.IsAbstract,
-        concept.IsOfferedInCompletion,
-        concept.Description,
-        concept.CollapseSlot?.Name,
-        concept.Applicability,
-        concept.Triggers,
-        concept.IsInterface,
-        concept.Interfaces.Select(implemented => implemented.Key).ToArray(),
-        alias: concept.Alias,
-        isRoot: concept.IsRoot);
-
-    private static SlotDeclaration Redeclare(SlotDeclaration slot) => slot switch
-    {
-        PropertySlot property => new PropertySlot(property.Name, property.Type, property.DefaultValue, property.Description),
-        ChildSlot child => new ChildSlot(child.Name, child.ChildConceptKey, child.Cardinality, child.Minimum),
-        ReferenceSlot reference => new ReferenceSlot(reference.Name, reference.TargetConceptKey, reference.AllowOwnSubtree),
-        _ => throw new InvalidOperationException($"'{slot.GetType().Name}' is not a slot kind this shell can re-declare."),
-    };
 }

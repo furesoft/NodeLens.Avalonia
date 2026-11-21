@@ -2,6 +2,7 @@ using Projectional.Core;
 using Projectional.ConstraintRules;
 using Projectional.Editors;
 using Projectional.Editing;
+using Projectional.ImportRules;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
@@ -355,6 +356,111 @@ public sealed class WorkbenchLanguageTests
             Assert.Single(model.Roots);
             Assert.Equal(TestingConceptKeys.Test, model.Roots[0].Concept.Key);
         }
+    }
+
+    [Fact]
+    public void ReopeningTheSameLanguageReplacesIt()
+    {
+        // Re-opening a folder is how a change to a language takes effect - a written importer, a new concept, a fixed
+        // notation - so the set has to replace the language rather than add it twice.
+        using var folder = new TemporaryDirectory();
+
+        WriteLanguage(folder.Root, "Payroll.Payslip", ["name"]);
+
+        var language = new WorkbenchLanguage();
+
+        Assert.True(language.TryAdd(LanguageProject.Open(folder.Root, out _)!, out var error), error);
+        Assert.True(language.TryAdd(LanguageProject.Open(folder.Root, out _)!, out error), error);
+
+        Assert.Single(language.Opened);
+        Assert.True(language.Concepts.TryGet("Payroll.Payslip", out _));
+    }
+
+    [Fact]
+    public void AnImporterDocumentOfTheSampleOpensInTheShell()
+    {
+        // A language project's import/ folder holds documents of the importer language, which no sample project
+        // declares - so the shell's own registry has to, or File > Open refuses the very file a language author
+        // writes to teach the shell a format.
+        var language = new WorkbenchLanguage();
+
+        var files = Directory
+            .EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "Declared", LanguageProject.ImportFolder), "*.mps")
+            .ToList();
+
+        Assert.NotEmpty(files);
+
+        foreach (var file in files)
+        {
+            var model = DocumentFile.TryLoad(file, language.NewProject(), out var error);
+
+            Assert.Null(error);
+            Assert.NotNull(model);
+            Assert.Single(model.Roots);
+            Assert.Equal(ImportConceptKeys.Importer, model.Roots[0].Concept.Key);
+        }
+    }
+
+    [Fact]
+    public void AnImporterWrittenInTheShellReadsTheFormatItDeclares()
+    {
+        // The loop the shell has to make possible: the importer language is part of the shell's set, so a document
+        // written in it lowers into an importer that reads a file of the language it belongs to. The parts are
+        // created the way the editor creates them - through the model the shell hands to the editor - because a
+        // document that cannot be written cannot be lowered either.
+        var shell = new WorkbenchLanguage();
+        var pipeline = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var openError);
+
+        Assert.Null(openError);
+        Assert.NotNull(pipeline);
+
+        var document = shell.NewImportDefinition();
+        var importer = Assert.Single(document.Roots);
+
+        importer.Set(ImportLanguage.NameSlot, "ini");
+
+        var space = document.NewChild(importer, ImportLanguage.TokensSlot, ImportConceptKeys.Skipped);
+        space.Set(ImportLanguage.TokenNameSlot, "Space");
+        space.Set(ImportLanguage.UntilSlot, "\\n");
+
+        var pipelineRule = document.NewChild(importer, ImportLanguage.RulesSlot, ImportConceptKeys.Rule);
+        pipelineRule.Set(ImportLanguage.ConceptKeySlot, "Pipeline.Pipeline");
+        document.NewChild(pipelineRule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal)
+            .Set(ImportLanguage.TextSlot, "pipeline = ");
+        document.NewChild(pipelineRule, ImportLanguage.PartsSlot, ImportConceptKeys.Line)
+            .Set(ImportLanguage.SlotSlot, "name");
+        var stages = document.NewChild(pipelineRule, ImportLanguage.PartsSlot, ImportConceptKeys.Repeat);
+        stages.Set(ImportLanguage.SlotSlot, "stages");
+        stages.Set(ImportLanguage.MinimumSlot, "0");
+
+        var stageRule = document.NewChild(importer, ImportLanguage.RulesSlot, ImportConceptKeys.Rule);
+        stageRule.Set(ImportLanguage.ConceptKeySlot, "Pipeline.Stage");
+        document.NewChild(stageRule, ImportLanguage.PartsSlot, ImportConceptKeys.Literal)
+            .Set(ImportLanguage.TextSlot, "stage = ");
+        document.NewChild(stageRule, ImportLanguage.PartsSlot, ImportConceptKeys.Line)
+            .Set(ImportLanguage.SlotSlot, "command");
+
+        // The document drawn with the shell's own notations, which is what makes it writable: a missing notation
+        // would show the author a `<no notation for ...>` marker instead of the importer.
+        var drawn = LayoutSnapshot.Render(importer, shell.Notations, width: 120);
+
+        Assert.Contains("importer ini", drawn, StringComparison.Ordinal);
+        Assert.Contains("rule Pipeline.Stage", drawn, StringComparison.Ordinal);
+
+        var lowered = ImportLowering.CreateImporter(importer, pipeline.Concepts);
+        var model = pipeline.NewProject().NewModel("imported");
+        var result = lowered.Import(model, "pipeline = Release\nstage = dotnet build\nstage = dotnet test");
+
+        Assert.True(
+            result.Succeeded,
+            string.Join("; ", result.Diagnostics.Select(diagnostic => $"{diagnostic.Line}:{diagnostic.Column} {diagnostic.Message}")));
+
+        var root = Assert.Single(result.Roots);
+
+        Assert.Equal("Release", root.GetOrNull("name"));
+        Assert.Equal(
+            ["dotnet build", "dotnet test"],
+            root.GetChildren("stages").Select(stage => stage.GetOrNull("command")));
     }
 
     /// <summary>Writes a one-concept language project whose notation is the keyword <c>rule</c> and the name.</summary>
