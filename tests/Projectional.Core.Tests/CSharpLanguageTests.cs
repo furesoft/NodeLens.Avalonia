@@ -690,6 +690,134 @@ public sealed class CSharpLanguageTests
         Assert.Equal("[1, 2]", new Projectional.Semantics.Generator().Generate(empty, generator).Text);
     }
 
+    [Fact]
+    public void ACastAnIsAndAnIndexDrawAndGenerateTheSameShape()
+    {
+        // The three expressions whose subject is a type. Each holds its type in a child slot rather than a property,
+        // so the type is a node the caret can enter and the type system can read - the same reason a field does.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("types");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+
+        // int count = (int)value;
+        var cast = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var castType = model.NewChild(cast, "type", CSharpConceptKeys.TypeReference);
+        var castValue = model.NewChild(cast, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Cast);
+        var castTargetType = model.NewChild(castValue, "type", CSharpConceptKeys.TypeReference);
+        var castOperand = model.NewChild(castValue, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+
+        // bool ready = value is string;
+        var test = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var testType = model.NewChild(test, "type", CSharpConceptKeys.TypeReference);
+        var testValue = model.NewChild(test, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Is);
+        var testOperand = model.NewChild(testValue, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+        var testTargetType = model.NewChild(testValue, "type", CSharpConceptKeys.TypeReference);
+
+        // int first = value[0];
+        var index = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.LocalDeclaration);
+        var indexType = model.NewChild(index, "type", CSharpConceptKeys.TypeReference);
+        var indexValue = model.NewChild(index, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Index);
+        var indexTarget = model.NewChild(indexValue, CSharpConceptKeys.TargetSlot, CSharpConceptKeys.Name);
+        var position = model.NewChild(indexValue, CSharpConceptKeys.IndexSlot, CSharpConceptKeys.IntLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Reads");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Read");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+
+        cast.Set(CSharpLanguage.NameSlot, "count");
+        castType.Set(CSharpLanguage.NameSlot, "int");
+        castTargetType.Set(CSharpLanguage.NameSlot, "int");
+        test.Set(CSharpLanguage.NameSlot, "ready");
+        testType.Set(CSharpLanguage.NameSlot, "bool");
+        testTargetType.Set(CSharpLanguage.NameSlot, "string");
+        index.Set(CSharpLanguage.NameSlot, "first");
+        indexType.Set(CSharpLanguage.NameSlot, "int");
+        position.Set(CSharpLanguage.ValueProperty, "0");
+
+        // `value` means nothing this file declares, so all three point at nothing and keep the text they were given -
+        // one reference state, three expressions, and the drawing and the text agree on all of them.
+        castOperand.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "value");
+        testOperand.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "value");
+        indexTarget.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "value");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Reads
+              {
+                public void Read()
+                {
+                  int count = (int)value;
+                  bool ready = value is string;
+                  int first = value[0];
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // A cast is the type it names and an `is` is a truth value; an index is deliberately unknown, because what
+        // `target[index]` returns is a fact about the target's type, which this language does not model.
+        Assert.Equal("int", CSharpTypes.Registry.TypeOf(castValue).Name);
+        Assert.Equal("bool", CSharpTypes.Registry.TypeOf(testValue).Name);
+        Assert.IsType<UnknownType>(CSharpTypes.Registry.TypeOf(indexValue));
+    }
+
+    [Fact]
+    public void APostfixOperatorNeedsNoStatementOfItsOwn()
+    {
+        // `count++;` is an expression statement whose expression is the postfix form, so the statement concept the
+        // language already has carries it. The backlog said "a statement form for ++/--"; the answer is that there is
+        // nothing to add, and this test is the evidence rather than an assertion in a document.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("postfix");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var statement = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var increment = model.NewChild(statement, "expression", CSharpConceptKeys.Unary);
+        var operand = model.NewChild(increment, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Counter");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Step");
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        increment.Set(CSharpLanguage.UnaryOperatorSlot, CSharpUnaryOperator.Increment);
+        increment.Set(CSharpLanguage.IsPostfixSlot, "true");
+        operand.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "count");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Counter
+              {
+                public void Step()
+                {
+                  count++;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
     private static Model Sample()
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("hello");

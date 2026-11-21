@@ -297,5 +297,22 @@ public static class CSharpTextGenerators
         .Add(CSharpConceptKeys.CollectionExpression, TextTemplate.Of(
             new TextPart("["),
             new ChildrenPart(CSharpConceptKeys.ElementsSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart("]")))
+
+        // The three type-directed expressions, spelled the way the notation draws them: the type cell is a child in
+        // both, so neither the drawing nor the text has to know what the type means.
+        .Add(CSharpConceptKeys.Cast, TextTemplate.Of(
+            new TextPart("("),
+            new ChildPart("type"),
+            new TextPart(")"),
+            new ChildPart(CSharpConceptKeys.OperandSlot)))
+        .Add(CSharpConceptKeys.Is, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(" is "),
+            new ChildPart("type")))
+        .Add(CSharpConceptKeys.Index, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.TargetSlot),
+            new TextPart("["),
+            new ChildPart(CSharpConceptKeys.IndexSlot),
             new TextPart("]")));
 }

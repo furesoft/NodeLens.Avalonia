@@ -242,6 +242,40 @@ public static class CSharpLanguage
             isRoot: false,
             description: "A collection expression: [1, 2, 3]."),
 
+        // Three expressions whose subject is a type. A cast and an `is` both name one in a child slot rather than in a
+        // property, so the type is a node the caret can enter and the type system can read - the same reason a field
+        // holds its type as a child. An index names no type at all: it takes a position, and what an array or a string
+        // returns there is a fact about the type of the target, which this language does not model.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Cast,
+            [
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Expression, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "(Type)operand"),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.Is,
+            [
+                new ChildSlot(CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "operand is Type"),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.Index,
+            [
+                new ChildSlot(CSharpConceptKeys.TargetSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.IndexSlot, CSharpConceptKeys.Expression, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "target[index]"),
+
         new ConceptDeclaration(
             CSharpConceptKeys.File,
             [new ChildSlot(CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace, Cardinality.One)],
