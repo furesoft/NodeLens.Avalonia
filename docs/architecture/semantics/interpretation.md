@@ -76,7 +76,20 @@ parser sits here rather than in the shell because a declared test's `Testing.Eva
 pairs, and a run in a test and a run in the shell must not disagree about what a value is. A run is a snapshot,
 so an edit drops the report, exactly as an edit replaces the findings.
 
-Still open: stepping (a UI vocabulary, open question 11), value kinds for records and lists (they arrive with
-the first language that evaluates one), and the cross-check against generated code, which needs the generator
-first.
+**Stepping is a replay, and the vocabulary is now a type.** `TraceCursor` (in
+`Projectional.Semantics/Interpretation/`) walks a finished run's trace: it starts *before* the first step (`-1`, so a
+reader who has just run a document is at the beginning of the story), and `Step`/`Back` answer whether they could
+move rather than throwing, which is what lets a shell drive a button without a second test. Nothing in the
+interpreter changed to gain it, and nothing could: the runtime already records every node it evaluated and what came
+out, so there is nothing to suspend.
+
+What it is *not*: an enter/exit tracer. The trace is post-order - a child's value is recorded before the parent that
+consumes it - so stepping shows a cascade of finished values, not a call stack being pushed and popped. Showing entry
+as well would need the interpreter to record a second event, and that is a different feature. The cursor exposes the
+`NodeId` and not a caret address, because `Projectional.Semantics` references only `Core` and `Language`; the shell
+maps it to a `CellAddress`, exactly as the existing "click a trace row to move the caret" already does.
+
+Still open: the shell's step commands (the panel can already jump to a row; stepping needs buttons and a current-row
+mark), value kinds for records and lists (they arrive with the first language that evaluates one), and the
+cross-check against generated code, which needs the generator first.
 
