@@ -35,6 +35,17 @@ namespace Projectional.Languages;
 /// </remarks>
 public sealed class LanguageProject
 {
+    /// <summary>
+    /// The file at the project root that is the language itself: its name, its version and the languages it stands
+    /// on.
+    /// </summary>
+    /// <remarks>
+    /// The only document of a project that is not a definition, and the only one that does not live in an aspect
+    /// folder. It is optional: a folder without it is still a language, named after the folder and declaring no
+    /// version and no dependencies, which is what every project was before the file existed.
+    /// </remarks>
+    public const string LanguageFile = "language.mps";
+
     /// <summary>The folder holding the concepts and enumerations, which every language project needs.</summary>
     public const string StructureFolder = "structure";
 
@@ -73,8 +84,8 @@ public sealed class LanguageProject
     public const string IntentionsFolder = "intentions";
 
     private LanguageProject(
-        string name,
         string directory,
+        LanguageRoot? languageRoot,
         IReadOnlyList<ConceptDeclaration> declarations,
         ConceptRegistry concepts,
         NotationRegistry notations,
@@ -90,8 +101,11 @@ public sealed class LanguageProject
         bool hasIntentions,
         IReadOnlyList<ITextImporter> importers)
     {
-        Name = name;
+        Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
+        Version = languageRoot?.Version;
+        Dependencies = languageRoot?.Dependencies ?? [];
+        Extends = languageRoot?.Extends ?? [];
         Declarations = declarations;
         Concepts = concepts;
         Notations = notations;
@@ -111,11 +125,34 @@ public sealed class LanguageProject
     /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
     private IReadOnlyList<ITextImporter> DeclaredImporters { get; }
 
-    /// <summary>The language's name, which is the name of the folder it lives in.</summary>
+    /// <summary>
+    /// The language's name: what <c>language.mps</c> calls it, or the name of the folder it lives in when the
+    /// project declares no root.
+    /// </summary>
     public string Name { get; }
 
     /// <summary>The folder it was loaded from, which is also where a save writes.</summary>
     public string Directory { get; }
+
+    /// <summary>The version the language declares for itself, or <see langword="null"/> when it declares none.</summary>
+    /// <remarks>
+    /// Text as the author spelled it - <c>1.2.0</c>, <c>1.2.0-preview.3</c> - and not a number this layer parses:
+    /// nothing acts on it, and a host that shows it must show the claim rather than a normalised form of it.
+    /// </remarks>
+    public string? Version { get; }
+
+    /// <summary>The languages this one says it builds on, in the order its root names them.</summary>
+    /// <remarks>
+    /// Declared, not resolved. Reading them is what lets a host report what a language stands on and where it
+    /// belongs in a catalogue; merging their concepts in is a project-boundary decision that is deliberately not
+    /// part of this.
+    /// </remarks>
+    public IReadOnlyList<LanguageDependency> Dependencies { get; }
+
+    /// <summary>The languages this one says it extends, in the order its root names them.</summary>
+    /// <remarks>Declared too, for the same reason, and kept apart from <see cref="Dependencies"/> because a
+    /// language that extends another says something stronger than one that merely uses it.</remarks>
+    public IReadOnlyList<LanguageDependency> Extends { get; }
 
     /// <summary>What the structure model declared, in the order it declared it.</summary>
     public IReadOnlyList<ConceptDeclaration> Declarations { get; }
@@ -343,6 +380,12 @@ public sealed class LanguageProject
     /// The notation is lowered against the concepts the structure documents just declared, so a notation for a
     /// concept that was never declared is refused here - the earliest point at which both halves exist.
     /// </para>
+    /// <para>
+    /// <c>language.mps</c> is read as well, beside the aspect folders rather than inside one. It is optional, and a
+    /// project without it keeps what every project had before it existed: the folder's own name and no declared
+    /// version or dependency. When it is there it is held to the same rule as any other document - one root, and a
+    /// broken one is the message that names it, not a half-read language.
+    /// </para>
     /// </remarks>
     public static LanguageProject? Open(string directory, out string? error)
     {
@@ -357,32 +400,33 @@ public sealed class LanguageProject
 
         try
         {
-            var definitions = Read(directory, StructureFolder, new Project(StructureLanguage.Concepts));
+            var fullPath = Path.GetFullPath(directory);
+            var definitions = Read(fullPath, StructureFolder, new Project(StructureLanguage.Concepts));
             var declarations = StructureLowering.Lower(definitions);
             var concepts = ConceptRegistry.Create(declarations);
-            var scopes = LowerScopeProviders(directory, concepts);
-            var typing = LowerTypingRules(directory, concepts);
-            var intentions = LowerIntentions(directory, concepts);
-            var types = LowerTypes(directory, concepts);
+            var scopes = LowerScopeProviders(fullPath, concepts);
+            var typing = LowerTypingRules(fullPath, concepts);
+            var intentions = LowerIntentions(fullPath, concepts);
+            var types = LowerTypes(fullPath, concepts);
             error = null;
 
             return new LanguageProject(
-                new DirectoryInfo(Path.GetFullPath(directory)).Name,
-                Path.GetFullPath(directory),
+                fullPath,
+                ReadLanguageRoot(fullPath),
                 declarations,
                 concepts,
-                LowerNotation(directory, concepts),
+                LowerNotation(fullPath, concepts),
                 types.Registry,
-                LowerGenerators(directory, concepts),
-                LowerConstraints(directory, concepts).With(types.Complaints),
+                LowerGenerators(fullPath, concepts),
+                LowerConstraints(fullPath, concepts).With(types.Complaints),
                 scopes.Registry,
                 typing.Registry,
                 typing.Rules,
                 typing.HasAny,
-                ReadAccessory(directory, concepts),
+                ReadAccessory(fullPath, concepts),
                 intentions.Provider,
                 intentions.HasAny,
-                LowerImporters(directory, concepts));
+                LowerImporters(fullPath, concepts));
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -434,6 +478,37 @@ public sealed class LanguageProject
         }
 
         return roots;
+    }
+
+    /// <summary>The language root, or <see langword="null"/> when the project declares none.</summary>
+    /// <param name="languageDirectory">The language's folder, where <c>language.mps</c> sits.</param>
+    /// <exception cref="ConceptDefinitionException">
+    /// The file holds no root or more than one, or what it holds is not a readable language root.
+    /// </exception>
+    /// <remarks>
+    /// One root per document holds here too, and for the same reason: two roots in <c>language.mps</c> is two
+    /// languages in one file, and taking the first would hide the second. A missing file is not a failure - the
+    /// folder name is the fallback name every project had before this document existed.
+    /// </remarks>
+    private static LanguageRoot? ReadLanguageRoot(string languageDirectory)
+    {
+        var path = Path.Combine(languageDirectory, LanguageFile);
+
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var model = ModelFile.Load(new Project(StructureLanguage.Concepts), path);
+
+        return model.Roots.Count switch
+        {
+            1 => StructureLowering.ReadLanguage(model.Roots[0]),
+            0 => throw new ConceptDefinitionException(
+                $"'{LanguageFile}' holds no language root; it says what the language is called and holds exactly one root."),
+            _ => throw new ConceptDefinitionException(
+                $"'{LanguageFile}' holds {model.Roots.Count} roots; the language root is one document with one root."),
+        };
     }
 
     /// <summary>The models in <c>accessory</c>, loaded once and copied into every project afterwards.</summary>

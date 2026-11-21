@@ -31,9 +31,9 @@ public static class StructureLowering
     /// <returns>One declaration per concept root, in that order.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definitions"/> is <see langword="null"/>.</exception>
     /// <exception cref="ConceptDefinitionException">
-    /// A root is neither a concept nor an enumeration, a concept or enumeration key is declared twice, a property
-    /// names no type or an unknown one, an enumeration holds no symbols, or a child or reference slot names no
-    /// concept.
+    /// A root is neither a concept nor an enumeration (a language root belongs at the project root, not here), a
+    /// concept or enumeration key is declared twice, a property names no type or an unknown one, an enumeration
+    /// holds no symbols, or a child or reference slot names no concept.
     /// </exception>
     /// <remarks>
     /// The enumerations are collected before any concept is lowered, because a property may be declared over an
@@ -58,6 +58,12 @@ public static class StructureLowering
                 case StructureConceptKeys.Enumeration:
                     break;
 
+                case StructureConceptKeys.Language:
+                    // The root is not a definition and cannot be one: it belongs at the project root as
+                    // `language.mps`, and a copy under `structure/` would otherwise be silently ignored.
+                    throw new ConceptDefinitionException(
+                        "A language root belongs at the project root as 'language.mps', not in a structure document; a folder's structure holds one concept or one enumeration per document.");
+
                 default:
                     throw new ConceptDefinitionException(
                         $"'{root.Concept.Key}' is not a definition; a structure document holds one concept or one enumeration.");
@@ -74,6 +80,69 @@ public static class StructureLowering
     /// </exception>
     public static ConceptRegistry CreateRegistry(IEnumerable<Node> definitions) =>
         ConceptRegistry.Create(Lower(definitions));
+
+    /// <summary>What a language root says about its language.</summary>
+    /// <param name="root">The one root of <c>language.mps</c>.</param>
+    /// <returns>The name, version and the two lists the root declares.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="root"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ConceptDefinitionException">
+    /// The root is not a <see cref="StructureConceptKeys.Language"/>, it does not say its name, a dependency does
+    /// not say its name, or the same name appears twice in one of the two lists.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The entry point of the one document that is not a definition. It is separate from <see cref="Lower"/> on
+    /// purpose: a root describes the project, while a definition describes a concept, and asking one method to
+    /// answer both would be the container concept the layout is built to avoid.
+    /// </para>
+    /// <para>
+    /// Nothing here resolves a dependency. It checks only that the root is readable - a name where one is needed and
+    /// no name declared twice - because the graph behind the names is a project boundary, which is a decision of its
+    /// own.
+    /// </para>
+    /// </remarks>
+    public static LanguageRoot ReadLanguage(Node root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        if (root.Concept.Key != StructureConceptKeys.Language)
+        {
+            throw new ConceptDefinitionException(
+                $"'{root.Concept.Key}' is not a language root; 'language.mps' holds one '{StructureConceptKeys.Language}'.");
+        }
+
+        var name = Required(root, "name", "the language root");
+
+        return new LanguageRoot(
+            name,
+            Optional(root, StructureLanguage.VersionSlot),
+            Dependencies(root, StructureLanguage.DependenciesSlot, name),
+            Dependencies(root, StructureLanguage.ExtendsSlot, name));
+    }
+
+    /// <summary>One of the root's two lists, read in the order the root names it.</summary>
+    private static List<LanguageDependency> Dependencies(Node root, string slot, string language)
+    {
+        var dependencies = new List<LanguageDependency>();
+        var names = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var child in root.GetChildren(slot))
+        {
+            var name = Optional(child, "name")
+                ?? throw new ConceptDefinitionException(
+                    $"Language '{language}' declares an entry in '{slot}' without a name.");
+
+            if (!names.Add(name))
+            {
+                throw new ConceptDefinitionException(
+                    $"Language '{language}' names '{name}' twice in '{slot}'; a dependency is declared once.");
+            }
+
+            dependencies.Add(new LanguageDependency(name, Optional(child, StructureLanguage.VersionSlot)));
+        }
+
+        return dependencies;
+    }
 
     /// <summary>The declared enumerations, keyed by name, so a property can be declared over one.</summary>
     private static Dictionary<string, IReadOnlyList<string>> Enumerations(IReadOnlyList<Node> roots)

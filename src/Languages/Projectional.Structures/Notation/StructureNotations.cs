@@ -57,6 +57,12 @@ namespace Projectional.Structures.Notation;
 /// <see cref="ConditionalNotationCell"/>, so a concrete concept shows <c>concept Rules.Rule</c> and nothing else -
 /// which is also why the value is not a cell the user can type into, and why toggling it is an intention.
 /// </para>
+/// <para>
+/// The language root is the one document that is not a definition, so it is drawn for what it is: <c>language Name</c>
+/// as its header, then its version and the two lists it stands on, one indent in - the same relation a concept's
+/// options have to its header. An empty list says <c>&lt;&lt; ... &gt;&gt;</c> like any other section, and an absent
+/// version says <c>&lt;any version&gt;</c>, because asking for nothing is a statement rather than a blank.
+/// </para>
 /// </remarks>
 public static class StructureNotations
 {
@@ -72,6 +78,7 @@ public static class StructureNotations
 
     private const string NoSection = "<< ... >>";
     private const string NoSymbols = "<<symbol>>";
+    private const string NoVersion = "<any version>";
 
     /// <summary>Registers the notation of every concept of the structure language.</summary>
     /// <param name="notations">The registry to add to.</param>
@@ -81,6 +88,35 @@ public static class StructureNotations
         ArgumentNullException.ThrowIfNull(notations);
 
         var ed = NotationEditor.Create();
+
+        // The language root is the one document that is not a definition, so it is drawn as what it is: a header
+        // that names the language, then the facts about it - its version and the two lists it stands on - one
+        // indent in, the same way a concept's options hang under its header. The empty placeholder says a list is
+        // there to be filled, and `version` says "any" because an absent version is a promise of nothing rather
+        // than a missing value.
+        notations.Add(StructureConceptKeys.Language, ed =>
+        {
+            var facts = ed.Sequence(
+                ed.Line(
+                    ed.Keyword("version:"),
+                    ed.Space,
+                    ed.Property(StructureLanguage.VersionSlot, emptyText: NoVersion)),
+                ed.Line(ed.Keyword("depends on:")),
+                ed.Indent(ed.Children(StructureLanguage.DependenciesSlot, NoSection, stacked: true)),
+                ed.Line(ed.Keyword("extends:")),
+                ed.Indent(ed.Children(StructureLanguage.ExtendsSlot, NoSection, stacked: true)));
+
+            return ed.Indent(ed.Indent(ed.Sequence(
+                ed.Line(ed.Keyword("language"), ed.Space, ed.Property("name")),
+                ed.Indent(facts))));
+        });
+
+        // One dependency is one line, because that is what it is: a name and the version asked for, if any. The
+        // list above it already says whether it is a dependency or an extension.
+        notations.Add(StructureConceptKeys.Dependency, ed => ed.Line(
+            ed.Property("name"),
+            ed.Space,
+            ed.Property(StructureLanguage.VersionSlot, emptyText: NoVersion)));
 
         // `abstract concept Rule` rather than an option, which is how MPS writes it and how the word is read: as
         // part of what the concept is, not as one of its settings. The word exists in the notation always and in
