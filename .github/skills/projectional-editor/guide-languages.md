@@ -55,17 +55,18 @@ definition, plus `StructureLowering` into the `ConceptDeclaration`s every other 
   and both land the caret on the new key. Do not add the cell without the entry: an unreachable slot is worse
   than a placeholder. Its declared twin is `Editor.WhileFilled` (ADR 0014: anything C# can say, a model must be
   able to say).
-- **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`,
-  `<<child steps : Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>` - and every collection in
-  that notation **stacks**, because a definition is read one declaration per line. Layout draws a collection inline
-  unless the notation asks otherwise, so this is `stacked: true` on every collection here, not a renderer default; a
-  section with four slots used to be drawn side by side. The marker is what makes a property's three option lines
-  readable: without a visible end nobody can tell where one declaration stops.
+- **Every section reads the same way and nothing carries a marker.** A row is `name : type` for a property,
+  `name : Concept[range]` for a child and `name : Concept` for a reference, because the heading above it already
+  says which kind it is - a marker per row would repeat the heading once per line, which is why MPS draws them
+  without one. What marks where a row ends is the indentation of the lines hanging under it: a property's
+  `default:`/`described as:`, a reference's `own subtree:`, sit one step further in. Every collection in that
+  notation **stacks**, because a definition is read one declaration per line; layout draws a collection inline
+  unless the notation asks otherwise, so this is `stacked: true` on every collection here, not a renderer default.
 - **An empty section says `<< ... >>` in the structure language**: the heading above it already names the kind, so
-  the placeholder only has to say "nothing here yet". A declaration inside one still says its own kind
-  (`<<property name : string ... >>`, `<<symbol>>`). The two header lists are hidden rather than given a glyph,
-  because `extends` and `implements` already say which list they are. The editor language keeps `<< ... >>` for its
-  empty cell lists.
+  the placeholder only has to say "nothing here yet", and it stands exactly where the rows would. `<<symbol>>` is
+  the one placeholder that still names its kind, because an enumeration's rows are symbols rather than a
+  typed declaration. The two header lists are hidden rather than given a glyph, because `extends` and `implements`
+  already say which list they are. The editor language keeps `<< ... >>` for its empty cell lists.
 - **The body sits two indents in, and the header stands one step further in than the options.** Two nested
   `Indent`s around the whole body, plus one around the header line that the `implements` row shares. Without them
   the document starts on the border and reads as clipped; with them, "what the concept is" and "how the framework

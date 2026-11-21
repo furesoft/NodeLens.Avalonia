@@ -17,8 +17,8 @@ namespace Projectional.Structures.Notation;
 /// <para>
 /// There are no braces. A concept is a document, and a document does not need a bracket to say where it ends; what it
 /// needs is the grouping, which the blank lines between the header, the options and each section give. Indentation
-/// is then only used for what is <em>under</em> something - the entries of <c>implements</c>, and the declarations of
-/// a section - so a reader sees at a glance which lines belong to which group.
+/// is then only used for what is <em>under</em> something - the entries of <c>implements</c>, the rows of a section,
+/// and the option lines under a declaration - so a reader sees at a glance which lines belong to which group.
 /// </para>
 /// <para>
 /// The body sits two indents in from the page edge, and the header stands one step further in than the options
@@ -39,11 +39,12 @@ namespace Projectional.Structures.Notation;
 /// which kind of thing. The per-kind placeholder said it twice, and the one shared form is what MPS draws.
 /// </para>
 /// <para>
-/// A slot declaration carries its own kind and closes where it ends - <c>&lt;&lt;property name : string ...
-/// &gt;&gt;</c>, <c>&lt;&lt;child steps : Rules.Step[1..n]&gt;&gt;</c>, <c>&lt;&lt;reference condition :
-/// Rules.Condition ... &gt;&gt;</c>. The marker is what makes a list of declarations readable: a property has three
-/// option lines under it, and without a visible end the reader cannot tell where one declaration stops and the next
-/// begins. It is also the word MPS uses for the same three things.
+/// A section's rows all read the same way - <c>name : type</c> for a property, <c>name : Concept[range]</c> for a
+/// child, <c>name : Concept</c> for a reference - because the heading above them already says which kind they are.
+/// A marker around every row would repeat the heading once per line, and MPS draws them without one for exactly
+/// that reason. What a row needs instead of a closing marker is the indentation of the lines that hang under it: a
+/// property's <c>default:</c> and <c>described as:</c>, a reference's <c>own subtree:</c>, are one step in from the
+/// row they belong to, which is the same rule the entries of <c>implements</c> follow.
 /// </para>
 /// <para>
 /// Every collection here stacks, because a definition is read one declaration per line. The layout draws a
@@ -100,7 +101,7 @@ public static class StructureNotations
         // an unfilled row would leave the blank line it drew, and a concept that implements nothing has no such row
         // at all.
         notations.Add(StructureConceptKeys.Concept, ed => ed.Indent(ed.Indent(ed.Sequence(
-            // The body sits two indents from the page edge and the header one further in, which is the shape MPS
+            // The body sits two indents in from the page edge and the header one further in, which is the shape MPS
             // draws: the page keeps a margin, the settings about the concept start there, and what the concept *is*
             // stands apart from them.
             ed.Indent(ed.Line(
@@ -124,7 +125,7 @@ public static class StructureNotations
                     ed.Line(ed.Keyword("implements"), ed.Space),
                     ed.Children(StructureLanguage.ImplementsSlot, NoSection, stacked: true)))),
             ed.Line(),
-            ed.Indent(ed.Indent(ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
+            ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
             ed.Line(ed.Keyword("alias:"), ed.Space, ed.Property(StructureLanguage.AliasProperty, emptyText: NoAlias)),
             ed.Line(
                 ed.Keyword("short description:"),
@@ -142,7 +143,7 @@ public static class StructureNotations
             ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
             ed.Line(),
             ed.Line(ed.Keyword("references:")),
-            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))))));
+            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
@@ -151,11 +152,12 @@ public static class StructureNotations
             ed.Space,
             ed.Property("name")));
 
+        // A property reads like a child's row - `name : string` - because the section heading already says the kind,
+        // and a marker around every row would repeat it once per line. What the option lines under it need instead
+        // of the closing `>>` is the indentation: a line that stands under another one belongs to it, which is the
+        // same rule the entries of `implements` follow.
         notations.Add(StructureConceptKeys.PropertyDecl, ed => ed.Sequence(
             ed.Line(
-                ed.Punct("<<"),
-                ed.Keyword("property"),
-                ed.Space,
                 ed.Property("name"),
                 ed.Space,
                 ed.Punct(":"),
@@ -167,13 +169,13 @@ public static class StructureNotations
                 ed.Line(
                     ed.Keyword("described when filled:"),
                     ed.Space,
-                    ed.Property("showDescriptionWhenFilled"),
-                    ed.Punct(">>"))))));
+                    ed.Property("showDescriptionWhenFilled"))))));
 
+        // A child reads `testMethod : StateMachineTestMethod[0..n]`, which is how MPS writes one: the section heading
+        // already says the kind, and the row only has to say the name, the concept and the range - a marker around it
+        // would repeat the heading on every line. The indent belongs to the section, not to this row, so that the
+        // empty placeholder stands where the rows stand.
         notations.Add(StructureConceptKeys.ChildDecl, ed => ed.Line(
-            ed.Punct("<<"),
-            ed.Keyword("child"),
-            ed.Space,
             ed.Property("name"),
             ed.Space,
             ed.Punct(":"),
@@ -181,25 +183,21 @@ public static class StructureNotations
             ed.Property("childConceptKey"),
             ed.Punct("["),
             ed.Property("cardinality"),
-            ed.Punct("]"),
-            ed.Punct(">>")));
+            ed.Punct("]")));
 
+        // A reference reads like a child's row as well - `condition : Rules.Condition` - for the same reason: the
+        // heading says "references", so the kind is already stated once.
         notations.Add(StructureConceptKeys.ReferenceDecl, ed => ed.Sequence(
             ed.Line(
-                ed.Punct("<<"),
-                ed.Keyword("reference"),
-                ed.Space,
                 ed.Property("name"),
                 ed.Space,
                 ed.Punct(":"),
                 ed.Space,
                 ed.Property("targetConceptKey")),
-            ed.Indent(ed.Sequence(
-                ed.Line(
-                    ed.Keyword("own subtree:"),
-                    ed.Space,
-                    ed.Property("allowOwnSubtree"),
-                    ed.Punct(">>"))))));
+            ed.Indent(ed.Line(
+                ed.Keyword("own subtree:"),
+                ed.Space,
+                ed.Property("allowOwnSubtree")))));
 
         notations.Add(StructureConceptKeys.Enumeration, ed => ed.Indent(ed.Indent(ed.Sequence(
             ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),

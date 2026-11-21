@@ -243,10 +243,10 @@ public sealed class StructureLoweringTests
                 "    named by rule:",
                 string.Empty,
                 "    properties:",
-                "      <<property name : string",
+                "      name : string",
                 "        default:",
                 "        described as:",
-                "        described when filled: false>>",
+                "        described when filled: false",
                 string.Empty,
                 "    children:",
                 "      << ... >>",
@@ -290,8 +290,8 @@ public sealed class StructureLoweringTests
     public void AChildSlotIsDrawnWithItsRangeInBrackets()
     {
         // The one cell MPS offers for a cardinality: the range an author reads, right after the concept it holds.
-        // The declaration also says its own kind and closes where it ends, so a section with several slots needs
-        // no heading to be read correctly.
+        // The row carries no marker and sits flush under its heading, which is how MPS writes a child: the heading
+        // already says the kind, so the row only has to say the name, the concept and the range.
         var definition = new DefinitionBuilder();
 
         definition.Concept("Rules.Step", slots: [definition.Property("text", "string")]);
@@ -300,7 +300,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 120);
 
-        Assert.Contains("<<child steps : Rules.Step[1..n]>>", drawn, StringComparison.Ordinal);
+        Assert.Contains("steps : Rules.Step[1..n]", drawn, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -378,13 +378,15 @@ public sealed class StructureLoweringTests
 
         var lines = LayoutSnapshot.Render(rule, StructureNotations.Create(), width: 160).Split('\n');
 
-        Assert.Contains("      <<property name : string", lines);
-        Assert.Contains("      <<property outcome : Rules.Outcome", lines);
-        Assert.Contains("      <<child steps : Rules.Step[1]>>", lines);
-        Assert.Contains("      <<child body : Rules.Body[1]>>", lines);
-        Assert.Contains("      <<reference condition : Rules.Condition", lines);
-        Assert.Contains("      <<reference other : Rules.Condition", lines);
-        Assert.Contains("        own subtree: false>>", lines);
+        // One row syntax for all three kinds: the heading says which one it is, so a row only says the name, the
+        // type and (for a child) the range. The option lines hang one step further in.
+        Assert.Contains("      name : string", lines);
+        Assert.Contains("      outcome : Rules.Outcome", lines);
+        Assert.Contains("      steps : Rules.Step[1]", lines);
+        Assert.Contains("      body : Rules.Body[1]", lines);
+        Assert.Contains("      condition : Rules.Condition", lines);
+        Assert.Contains("      other : Rules.Condition", lines);
+        Assert.Contains("        own subtree: false", lines);
     }
 
     [Fact]

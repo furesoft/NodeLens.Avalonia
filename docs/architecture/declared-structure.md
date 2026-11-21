@@ -67,17 +67,17 @@ a structure document from an editor document - a definition that mixes the two c
     named by rule:
 
     properties:
-      <<property name : string
+      name : string
         default:
         described as: What the rule is called.
-        described when filled: false>>
+        described when filled: false
 
     children:
-      <<child steps : Rules.Step[0..n]>>
+      steps : Rules.Step[0..n]
 
     references:
-      <<reference condition : Rules.Condition
-        own subtree: false>>
+      condition : Rules.Condition
+        own subtree: false
 ```
 
 `abstract` is a word of the header and not an option, which is MPS' spelling and the better reading of the same
@@ -135,10 +135,12 @@ Three decisions make that readable, and all three are P4:
   the feature: an empty list has no caret stop, so `Inherit from…` and `Implement interface…`
   (`Projectional.Structures.Intentions`) are the way to write the first entry - and to append a second, because
   Enter does not extend a list inside a line.
-- **A declaration says its own kind and closes where it ends** - `<<property name : string ... >>`, `<<child steps :
-  Rules.Step[1..n]>>`, `<<reference condition : Rules.Condition ... >>`. A property carries three option lines under
-  it, so without a visible end the reader cannot tell where one declaration stops and the next begins. The word
-  inside the marker is MPS' word for the same three things.
+- **Every section reads the same way, and nothing carries a marker.** A row is `name : type` for a property,
+  `name : Concept[range]` for a child and `name : Concept` for a reference, because the heading above it already
+  says which kind it is - one marker per row would repeat the heading once per line, and MPS draws them without one
+  for exactly that reason. What a row needs instead of a closing marker is the indentation of the lines that hang
+  under it: a property's `default:` and `described as:`, a reference's `own subtree:`, are one step in from the row
+  they belong to.
 - **Every collection stacks, and an empty section says `<< ... >>`.** Layout draws a collection inline unless the
   notation asks it to ([projection.md](projection.md) §Layout), so two properties of one concept used to be drawn
   side by side and an enumeration's symbols shared a line. A definition is read one declaration per line. The empty
