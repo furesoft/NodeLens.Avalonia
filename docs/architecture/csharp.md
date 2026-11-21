@@ -44,9 +44,9 @@ A base language is useful long before it is complete, so the subset is chosen by
 behaviour or a generator body need" rather than by C# grammar order.
 
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
-`String` and `Bool` literals (not `Long`, `Double`, `Null` or `Char`), `Name`, `MemberAccess`, `Call`,
+`String`, `Bool` and `Null` literals (not `Long`, `Double` or `Char`), `Name`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
-`Parenthesized`, `Cast`, `Is`, `Index`, `New` and **collection expressions**; namespaces are
+`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New` and **collection expressions**; namespaces are
 **file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
 `LocalDeclaration`, `Assignment` with the compound operators, `If`, `While`, `For`, `ForEach`,
 `Return`, `Break`, `Continue`, `Throw`, `Try` with its `Catch` handlers and optional `finally`, and

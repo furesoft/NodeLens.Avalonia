@@ -150,6 +150,16 @@ public static class CSharpLanguage
             isRoot: false,
             description: "true or false."),
 
+        // `null` is the one literal with no slot: it is a word and nothing else. Its type is deliberately not claimed,
+        // because in C# `null` has no type of its own - it takes the type of whatever it is assigned to - so a rule
+        // that named one would be wrong wherever the target was something else.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NullLiteral,
+            [],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "null"),
+
         // A reference, not a property: the name *is* the declaration it points at, which is what lets a rename follow
         // it, go-to-definition find it, and a scope provider answer which declarations are visible here. The text a
         // user typed while nothing resolved is the reference's own resolveInfo, so there is one truth and not two.
@@ -265,6 +275,19 @@ public static class CSharpLanguage
             superConcepts: [CSharpConceptKeys.Expression],
             isRoot: false,
             description: "operand is Type"),
+
+        // `operand as Type` is `is` and a cast in one word: it asks the same question and yields the value when the
+        // answer is yes. Its type is the type it names, the same claim a cast makes, because a language without
+        // nullability cannot say "this type or nothing" in its type system.
+        new ConceptDeclaration(
+            CSharpConceptKeys.As,
+            [
+                new ChildSlot(CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "operand as Type"),
 
         new ConceptDeclaration(
             CSharpConceptKeys.Index,

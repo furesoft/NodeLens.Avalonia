@@ -53,7 +53,8 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.Unary, new UnaryType())
         .Add(CSharpConceptKeys.Conditional, new SameAs(CSharpLanguage.WhenTrueSlot))
         .Add(CSharpConceptKeys.Cast, new SameAs("type"))
-        .Add(CSharpConceptKeys.Is, new Constant(Bool));
+        .Add(CSharpConceptKeys.Is, new Constant(Bool))
+        .Add(CSharpConceptKeys.As, new SameAs("type"));
 
     /// <summary>
     /// A written type, mapped to the primitive it names.
