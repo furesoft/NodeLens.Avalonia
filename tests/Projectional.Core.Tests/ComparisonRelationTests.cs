@@ -113,4 +113,21 @@ public sealed class ComparisonRelationTests
 
         Assert.False(new TypeSolver(comparisons: comparisons).Solve([TypeEquation.Subtype(Int, Text)]).Succeeded);
     }
+
+    [Fact]
+    public void AUnionHoldsBothLanguagesComparisonsAndEachPairOnce()
+    {
+        // The same union the edges offer: a base's declared interchange is a fact the extending language inherits,
+        // and a pair both state is one fact, whichever side of it each language wrote first.
+        var money = PrimitiveType.Of(PropertyType.Float);
+        var own = ComparisonRelation.Empty.Add(Int, Text);
+        var inherited = ComparisonRelation.Empty.Add(Text, Int).Add(Text, money);
+
+        var union = own.With(inherited);
+
+        Assert.True(union.IsComparableTo(Int, Text));
+        Assert.True(union.IsComparableTo(Text, money));
+        Assert.Equal(2, union.Count);
+        Assert.Same(own, own.With(ComparisonRelation.Empty.Add(Text, Int)));
+    }
 }

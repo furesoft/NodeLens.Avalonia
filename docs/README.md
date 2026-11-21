@@ -127,3 +127,4 @@ This directory stays authoritative whenever the two disagree.
 | [0024](adr/0024-distribution-and-updates-are-velopack.md) | Distribution and updates are Velopack's job |
 | [0025](adr/0025-the-tour-is-a-guide-overlay.md) | The guided tour is a guide overlay of our own, in GuideControl's model |
 | [0026](adr/0026-a-dependency-resolves-to-the-vocabulary.md) | A declared dependency is resolved by the host and narrowed to the vocabulary |
+| [0027](adr/0027-behaviour-is-inherited-through-extends.md) | Behaviour is inherited through `extends`, and only through it |

@@ -81,6 +81,36 @@ public sealed class SubtypeRelation : ISubtype
         return Holds(subtype, supertype) ? this : new SubtypeRelation([.. _edges, (subtype, supertype)]);
     }
 
+    /// <summary>The union of this relation and <paramref name="other"/>, every edge held once.</summary>
+    /// <param name="other">The relation to add, whose edges follow this one's.</param>
+    /// <remarks>
+    /// The union is what an extending language needs: its own edges and those of the languages it extends describe one
+    /// graph, and neither set is a correction of the other. The order is this relation's edges first, then the added
+    /// ones, and an edge both sides already hold appears once.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="other"/> is <see langword="null"/>.</exception>
+    public SubtypeRelation With(SubtypeRelation other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (other._edges.Count == 0)
+        {
+            return this;
+        }
+
+        List<(IType Subtype, IType Supertype)> merged = [.. _edges];
+
+        foreach (var (subtype, supertype) in other._edges)
+        {
+            if (!merged.Exists(edge => Same(edge.Subtype, subtype) && Same(edge.Supertype, supertype)))
+            {
+                merged.Add((subtype, supertype));
+            }
+        }
+
+        return merged.Count == _edges.Count ? this : new SubtypeRelation(merged);
+    }
+
     /// <summary>Whether a value of the type <paramref name="actual"/> may stand where <paramref name="expected"/> is required.</summary>
     /// <param name="actual">The type the node produces.</param>
     /// <param name="expected">The type the language requires.</param>

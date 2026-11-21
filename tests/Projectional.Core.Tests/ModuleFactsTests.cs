@@ -70,6 +70,7 @@ public sealed class ModuleFactsTests
         // The sample declares nothing to stand on, so nothing resolved; the row is what makes an unanswered
         // declaration visible instead of silent.
         Assert.Equal("none", Value(facts, "Resolved"));
+        Assert.Equal("none", Value(facts, "Inherited"));
     }
 
     private static int Number(ModuleFacts facts, string name) => int.Parse(Value(facts, name), CultureInfo.InvariantCulture);

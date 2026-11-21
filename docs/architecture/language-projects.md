@@ -180,12 +180,13 @@ The decision is [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.m
   declarations - base before dependent, the same order every time - followed by the language's own; `Accessory` is
   the union of the same chain, with their identities, so a reference to a base's library node still resolves. This is
   what lets a slot name a base's concept; today such a definition cannot load at all.
-- **Everything the language says stays its own.** `Declarations`, `Notations` and the behavioural aspects are not
-  absorbed; presentation and behaviour are composed by the host, exactly as `WorkbenchLanguage` and the export's
-  README already prescribe.
-- **Behaviour is not inherited yet.** A base's constraints, scopes, types, typing rules and intentions do not run in
-  a dependent's document. A language that wants those guarantees states them itself, or the host composes the sets;
-  inheriting them is the named follow-up, because it decides whose invariants a shared concept carries.
+- **Everything the language says stays its own, except through `extends`.** `Declarations` and `Notations` are never
+  absorbed: presentation is composed by the host, exactly as `WorkbenchLanguage` and the export's README prescribe.
+- **Behaviour is inherited through `extends`, not through `depends on`.** An extended language's constraints, scope
+  providers, type rules and their relations, typing rules and intentions run in the dependent's document - its own
+  statement first, its nearest base next ([ADR 0027](../adr/0027-behaviour-is-inherited-through-extends.md)). A
+  language that merely *uses* another lends its vocabulary and none of its opinions about it. Generators and importers
+  cross neither line: they produce documents rather than describe a node.
 - **What cannot be resolved refuses the open**, with a message naming the dependency, and a cycle is refused with its
   chain. A declared version is a label: read, reported and shown, never compared - nothing here parses a version, and
   refusing on free text would be a rule nobody can satisfy.
@@ -194,8 +195,7 @@ The decision is [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.m
 
 | Missing | Why it is not in this slice |
 | --- | --- |
-| Inheriting behaviour from an extended language (its constraints, scopes, types, typing rules and intentions running in a dependent's document) | [ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.md) narrows resolution to the vocabulary on purpose: the composite aspect registries and the answer to "whose invariants are these" are the follow-up |
-| Overriding a base's notation for one of its concepts | A separate feature: it needs a rule for who wins when two languages draw one concept |
+| Overriding a base's notation for one of its concepts | A separate feature: two languages drawing one concept in one variant cannot both be in force, so it needs a rule for who wins |
 
 Exporting a loaded language back to C# is delivered - see
 [language-authoring.md](language-authoring.md#export-declared-to-c) - and so is the shell entry that writes it

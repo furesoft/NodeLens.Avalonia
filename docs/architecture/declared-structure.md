@@ -9,7 +9,9 @@ declaration marked with its own kind and drawn on a line of its own. The file la
 `language.mps` at the project root is the language itself - a `Structure.Language` node naming it, carrying its
 version and listing the languages it stands on ([language-projects.md](language-projects.md)). Those lists are
 resolved through the host, as a vocabulary: the language's registry is built over its bases' declarations, while a
-base's notation and behaviour stay its own ([ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.md)).
+base's notation stays its own and its behaviour is inherited through `extends`
+([ADR 0026](../adr/0026-a-dependency-resolves-to-the-vocabulary.md),
+[ADR 0027](../adr/0027-behaviour-is-inherited-through-extends.md)).
 
 ## Why this and not a config file
 

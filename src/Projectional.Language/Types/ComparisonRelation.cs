@@ -59,6 +59,38 @@ public sealed class ComparisonRelation
         return IsComparableTo(left, right) ? this : new ComparisonRelation([.. _pairs, (left, right)]);
     }
 
+    /// <summary>The union of this relation and <paramref name="other"/>, every pair held once.</summary>
+    /// <param name="other">The relation to add, whose pairs follow this one's.</param>
+    /// <remarks>
+    /// The union an extending language needs, for the same reason the edges offer one: two languages' comparisons are
+    /// one set of facts. This relation's pairs come first, the added ones follow, and a pair both sides already hold
+    /// appears once.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="other"/> is <see langword="null"/>.</exception>
+    public ComparisonRelation With(ComparisonRelation other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (other._pairs.Count == 0)
+        {
+            return this;
+        }
+
+        List<(IType Left, IType Right)> merged = [.. _pairs];
+
+        foreach (var (left, right) in other._pairs)
+        {
+            if (!merged.Exists(pair =>
+                (SubtypeRelation.Same(pair.Left, left) && SubtypeRelation.Same(pair.Right, right))
+                || (SubtypeRelation.Same(pair.Left, right) && SubtypeRelation.Same(pair.Right, left))))
+            {
+                merged.Add((left, right));
+            }
+        }
+
+        return merged.Count == _pairs.Count ? this : new ComparisonRelation(merged);
+    }
+
     /// <summary>Whether each of the two types may stand where the other is expected.</summary>
     /// <param name="left">One type.</param>
     /// <param name="right">The other.</param>

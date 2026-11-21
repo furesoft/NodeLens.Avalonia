@@ -87,6 +87,7 @@ public sealed class LanguageProject
         string directory,
         LanguageRoot? languageRoot,
         IReadOnlyList<LanguageProject> resolved,
+        IReadOnlyList<LanguageProject> inherited,
         IReadOnlyList<ConceptDeclaration> declarations,
         ConceptRegistry concepts,
         NotationRegistry notations,
@@ -108,6 +109,7 @@ public sealed class LanguageProject
         Dependencies = languageRoot?.Dependencies ?? [];
         Extends = languageRoot?.Extends ?? [];
         Resolved = resolved;
+        Inherited = inherited;
         Declarations = declarations;
         Concepts = concepts;
         Notations = notations;
@@ -165,6 +167,17 @@ public sealed class LanguageProject
     /// [ADR 0026](../../docs/adr/0026-a-dependency-resolves-to-the-vocabulary.md) decided on.
     /// </remarks>
     public IReadOnlyList<LanguageProject> Resolved { get; }
+
+    /// <summary>
+    /// The languages whose behaviour this one inherits, nearest first - the <c>extends</c> chain of its root, or
+    /// empty when it has none.
+    /// </summary>
+    /// <remarks>
+    /// A subset of <see cref="Resolved"/>: a dependency lends a vocabulary, an extension adopts the language
+    /// ([ADR 0027](../../docs/adr/0027-behaviour-is-inherited-through-extends.md)). The order is the precedence the
+    /// merged aspects follow - this language's own statement first, then the nearest extension's.
+    /// </remarks>
+    public IReadOnlyList<LanguageProject> Inherited { get; }
 
     /// <summary>What the structure model declared, in the order it declared it.</summary>
     public IReadOnlyList<ConceptDeclaration> Declarations { get; }
@@ -433,12 +446,12 @@ public sealed class LanguageProject
         {
             var fullPath = Path.GetFullPath(directory);
             var languageRoot = ReadLanguageRoot(fullPath);
-            var resolved = Resolve(languageRoot, resolver, fullPath);
+            var bases = Resolve(languageRoot, resolver, fullPath);
             var definitions = Read(fullPath, StructureFolder, new Project(StructureLanguage.Concepts));
             var declarations = StructureLowering.Lower(definitions);
             var concepts = ConceptRegistry.Create(
             [
-                .. resolved.SelectMany(language => language.Declarations),
+                .. bases.All.SelectMany(language => language.Declarations),
                 .. declarations,
             ]);
             var scopes = LowerScopeProviders(fullPath, concepts);
@@ -448,30 +461,49 @@ public sealed class LanguageProject
             var notation = LowerNotation(fullPath, concepts);
 
             EnsureOnlyOwnNotations(notation, declarations);
+
+            // Behaviour is inherited through `extends` only, own statement first and the nearest base next
+            // ([ADR 0027](../../docs/adr/0027-behaviour-is-inherited-through-extends.md)).
+            var inheritedTypes = types.Registry;
+            var inheritedConstraints = LowerConstraints(fullPath, concepts).With(types.Complaints);
+            var inheritedScopes = scopes.Registry;
+            List<ITypingRules> typingSets = [typing.Registry];
+            List<IIntentionProvider> intentionSets = [intentions.Provider];
+
+            foreach (var inherited in bases.Extended)
+            {
+                inheritedTypes = inheritedTypes.With(inherited.Types);
+                inheritedConstraints = inheritedConstraints.With(inherited.Constraints);
+                inheritedScopes = inheritedScopes.With(inherited.Scopes);
+                typingSets.Add(inherited.Typing);
+                intentionSets.Add(inherited.Intentions);
+            }
+
             error = null;
 
             return new LanguageProject(
                 fullPath,
                 languageRoot,
-                resolved,
+                bases.All,
+                bases.Extended,
                 declarations,
                 concepts,
                 notation,
-                types.Registry,
+                inheritedTypes,
                 LowerGenerators(fullPath, concepts),
-                LowerConstraints(fullPath, concepts).With(types.Complaints),
-                scopes.Registry,
-                typing.Registry,
+                inheritedConstraints,
+                inheritedScopes,
+                ChainedTypingRules.Of(typingSets),
                 typing.Rules,
-                typing.HasAny,
+                typing.HasAny || bases.Extended.Any(language => language.HasTyping),
                 [
-                    .. resolved
+                    .. bases.All
                         .SelectMany(language => language.Accessory)
                         .Select(accessory => Rehome(accessory, concepts)),
                     .. ReadAccessory(fullPath, concepts),
                 ],
-                intentions.Provider,
-                intentions.HasAny,
+                ChainedIntentions.Of(intentionSets),
+                intentions.HasAny || bases.Extended.Any(language => language.HasIntentions),
                 LowerImporters(fullPath, concepts));
         }
         catch (Exception exception) when (exception is ModelFormatException
@@ -487,6 +519,15 @@ public sealed class LanguageProject
         }
     }
 
+    /// <summary>The languages a language stands on: what it resolved, and what it inherits behaviour from.</summary>
+    /// <param name="All">Every resolved language, base before dependent.</param>
+    /// <param name="Extended">Those reached along an <c>extends</c> edge, nearest first.</param>
+    /// <remarks>
+    /// The two sets differ because the root's two lists do: a dependency lends a vocabulary, an extension is an
+    /// adoption of the language's behaviour as well ([ADR 0027](../../docs/adr/0027-behaviour-is-inherited-through-extends.md)).
+    /// </remarks>
+    private sealed record Bases(List<LanguageProject> All, List<LanguageProject> Extended);
+
     /// <summary>The languages the root's two lists name, base before dependent and each one once.</summary>
     /// <param name="root">The language root, or <see langword="null"/> when the folder declares none.</param>
     /// <param name="resolver">What answers a name.</param>
@@ -495,20 +536,26 @@ public sealed class LanguageProject
     /// A declared name has no answer, or the declarations form a cycle.
     /// </exception>
     /// <remarks>
+    /// <para>
     /// Post-order over the declared names, so a base is collected before the language that extends it and a diamond
     /// is collected once. The visited list is identity by folder, not by name: two folders may declare one name, and
     /// what must not be counted twice is the folder.
+    /// </para>
+    /// <para>
+    /// The second set is walked again, along <c>extends</c> only and nearest first, because that is the order
+    /// behaviour is inherited in: the language's own statement wins, then its nearest base's, then that one's.
+    /// </para>
     /// </remarks>
-    private static List<LanguageProject> Resolve(
+    private static Bases Resolve(
         LanguageRoot? root,
         ILanguageResolver? resolver,
         string directory)
     {
-        var ordered = new List<LanguageProject>();
+        var all = new List<LanguageProject>();
 
         if (root is null)
         {
-            return ordered;
+            return new Bases(all, []);
         }
 
         var path = new List<LanguageProject>();
@@ -518,25 +565,31 @@ public sealed class LanguageProject
             Collect(declared);
         }
 
-        return ordered;
+        var extended = new List<LanguageProject>();
 
-        void Collect(LanguageDependency declared)
+        foreach (var declared in root.Extends)
         {
-            var project = resolver?.Find(declared.Name)
+            Mark(declared);
+        }
+
+        return new Bases(all, extended);
+
+        LanguageProject Answer(LanguageDependency declared) =>
+            resolver?.Find(declared.Name)
                 ?? throw new ConceptDefinitionException(
                     $"'{Path.GetFileName(directory)}' declares a dependency on the language '{declared.Name}', which the host did not resolve. Open that language first, or give the host a resolver that answers it.");
 
-            if (string.Equals(project.Directory, directory, StringComparison.OrdinalIgnoreCase))
+        void Collect(LanguageDependency declared)
+        {
+            var project = Answer(declared);
+
+            if (string.Equals(project.Directory, directory, StringComparison.OrdinalIgnoreCase)
+                || path.Any(language => Same(language, project)))
             {
                 throw Cycle([.. path.Select(language => language.Name), project.Name], declared.Name);
             }
 
-            if (path.Any(language => Same(language, project)))
-            {
-                throw Cycle([.. path.Select(language => language.Name), project.Name], declared.Name);
-            }
-
-            if (ordered.Any(language => Same(language, project)))
+            if (all.Any(language => Same(language, project)))
             {
                 return;
             }
@@ -549,7 +602,24 @@ public sealed class LanguageProject
             }
 
             path.RemoveAt(path.Count - 1);
-            ordered.Add(project);
+            all.Add(project);
+        }
+
+        void Mark(LanguageDependency declared)
+        {
+            var project = Answer(declared);
+
+            if (extended.Any(language => Same(language, project)))
+            {
+                return;
+            }
+
+            extended.Add(project);
+
+            foreach (var nested in project.Extends)
+            {
+                Mark(nested);
+            }
         }
 
         static bool Same(LanguageProject left, LanguageProject right) =>

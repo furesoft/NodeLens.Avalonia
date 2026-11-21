@@ -121,6 +121,41 @@ public sealed class TypeRegistry
         return new TypeRegistry(rules, Subtypes, Comparisons, Replacements);
     }
 
+    /// <summary>
+    /// The union of this registry and <paramref name="other"/>: every rule, edge, pair and replacement of both,
+    /// with this registry's statement winning for a concept both answer for.
+    /// </summary>
+    /// <param name="other">The registry to merge in - the base an extending language inherited.</param>
+    /// <remarks>
+    /// <para>
+    /// One concept has one type rule, so a union cannot hold two: the nearer registry's rule replaces the farther
+    /// one's. "Nearer" is the caller's order, and <see cref="LanguageProject"/> passes its own registry first, then
+    /// its bases nearest first.
+    /// </para>
+    /// <para>
+    /// The relations and the replacements are additive: a base's declared edge or interchange is a fact about its
+    /// types that the extending language inherits rather than restates.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="other"/> is <see langword="null"/>.</exception>
+    public TypeRegistry With(TypeRegistry other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        var rules = new Dictionary<string, ITypeRule>(other._rules, StringComparer.Ordinal);
+
+        foreach (var (conceptKey, rule) in _rules)
+        {
+            rules[conceptKey] = rule;
+        }
+
+        return new TypeRegistry(
+            rules,
+            Subtypes.With(other.Subtypes),
+            Comparisons.With(other.Comparisons),
+            [.. Replacements, .. other.Replacements]);
+    }
+
     /// <summary>The rule that answers for <paramref name="concept"/>, or <see langword="null"/>.</summary>
     public ITypeRule? RuleFor(Concept concept)
     {
