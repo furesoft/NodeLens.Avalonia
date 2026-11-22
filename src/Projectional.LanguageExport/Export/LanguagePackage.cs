@@ -27,13 +27,18 @@ public static class LanguagePackage
     /// <summary>Packs the requested half of <paramref name="result"/> into a zip archive.</summary>
     /// <param name="result">What the exporter produced.</param>
     /// <param name="content">The sources, or the assemblies.</param>
+    /// <param name="files">Files to add after them, such as the documentation a caller generated.</param>
     /// <returns>The archive's bytes, ready to be written where the user asked.</returns>
+    /// <remarks>
+    /// <paramref name="files"/> come last and in the order they are given, so the archive stays reproducible and the
+    /// export's own entries keep the order the exporter promised.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="result"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
     /// <paramref name="content"/> asks for assemblies and the export compiled none, because it was asked for
     /// <see cref="ExportOutput.Source"/>.
     /// </exception>
-    public static byte[] Zip(ExportResult result, PackageContent content)
+    public static byte[] Zip(ExportResult result, PackageContent content, IReadOnlyList<PackageFile>? files = null)
     {
         ArgumentNullException.ThrowIfNull(result);
 
@@ -42,6 +47,11 @@ public static class LanguagePackage
             PackageContent.Assemblies => Assemblies(result),
             _ => Sources(result),
         };
+
+        if (files is { Count: > 0 })
+        {
+            entries = [.. entries, .. files.Select(file => (file.Name, file.Bytes))];
+        }
 
         using var buffer = new MemoryStream();
 
