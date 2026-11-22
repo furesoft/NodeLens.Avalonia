@@ -167,6 +167,7 @@ type - which is all the page said before - is a name for a class rather than for
 | `<Language>/generators.html` | every generator *as the template it emits* |
 | `<Language>/importers.html` | per importer: the concepts a document may start with, then its rules - the anchor and the parts, in the words the import language draws - with the token classes they read, or, for a generator's inverse, the templates it reads the text back from - plus the codes a refusal carries |
 | `<Language>/accessory.html` | the documents that are models of the language itself |
+| `<Language>/checks.html` | the checks a document of the language is checked for: the code each finding carries and one sentence saying what the check looks for. The one aspect with no folder - a check is framework code a language takes from the catalogue, and the page says so in its origin column |
 | `<Language>/examples.html` | every document the language ships, drawn by the headless renderer and coloured by the kinds the editor paints - so the page shows what the language *looks like* rather than describing it. Omitted for a language that ships none |
 | `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script - the header, the tree, the drawer and the responsive rules; and the filter, the drawer toggle and Enter. Both deterministic, both small enough to read |
 
@@ -260,13 +261,19 @@ language in the chain, so the archive is the one place a reader gets a language 
    the identity in its facts, which is what an author writes in `structure/`. It appears twice for that reason - as
    a column of the concept list, where "how do names read in this language" is asked, and beside the name slot in the
    slot table, where the rule belongs to one cell.
-7. **The picture is composed from the chain, like the shell's.** A document of a dependent language draws its base's
+9. **The picture is composed from the chain, like the shell's.** A document of a dependent language draws its base's
    concepts - Invoice holds a `Units.Quantity` - and a language's notation registry holds only what that language
    declares. So the chain builds one concept registry over every declaration and one notation registry over that, which
    is the composition `WorkbenchLanguage` performs; without it the page showed `<no notation for Units.Quantity>` where
    the editor draws a quantity.
-8. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
+10. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
    `https://` link into, and the shipped project has everything a page needs.
+11. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
+    constant nobody can read through the interface. A page that could only list class names would document the framework
+    rather than the language. Most implementations satisfy both explicitly, so the class keeps the constant a test
+    asserts against and the interface answers with it; each title is the class own summary, so the page cannot drift from
+    the code it describes. Checks are also the one aspect with no folder, and the overview says so in the same column
+    that names every other aspect.
 
 ## Published by CI
 

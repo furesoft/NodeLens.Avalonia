@@ -24,6 +24,10 @@ public sealed class XmlCommentCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "XML002";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A comment whose text contains --, which XML forbids inside one.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "xml.comment.separate-dashes";
 

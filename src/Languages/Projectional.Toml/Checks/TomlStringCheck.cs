@@ -24,6 +24,10 @@ public sealed class TomlStringCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "TOML004";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A string whose text is not spelled as the kind it declares, with the escape as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "toml.string.escape";
 

@@ -32,6 +32,10 @@ public sealed class XmlSpellingCheck : ICheck
     /// <summary>The diagnostic for a text or attribute value that would not survive the round trip.</summary>
     public const string Code = "XML001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "Text or an attribute value that is not a spelling XML would read back, with the escape as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "xml.spelling.escape";
 

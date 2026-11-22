@@ -29,4 +29,16 @@ public interface ICheck
     /// <param name="model">The document to inspect, whole subtrees included.</param>
     /// <returns>The findings, in document order, each with at least one repair.</returns>
     IReadOnlyList<DiagnosticFix> Find(Model model);
+
+    /// <summary>The identifier this check puts on its findings, such as <c>STD001</c>.</summary>
+    /// <remarks>
+    /// Part of the contract rather than a constant each class happens to declare, because a check that cannot name itself
+    /// cannot be documented or switched off by name - and the pages a language ships have to say which findings a reader
+    /// will see. Most implementations satisfy it explicitly, so the class keeps the constant a test asserts against while
+    /// the interface answers with it. A check may report more than one code; this is the one it is known by.
+    /// </remarks>
+    string Code { get; }
+
+    /// <summary>What this check looks for, in one sentence, as a page shows it beside the code.</summary>
+    string Title { get; }
 }

@@ -29,6 +29,10 @@ public sealed class EmptyChildSlotCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD010";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A single-valued child slot that holds nothing.";
+
     /// <summary>The stable identifier of the repair that fills the slot.</summary>
     public const string FixId = "std.empty-child-slot.insert";
 

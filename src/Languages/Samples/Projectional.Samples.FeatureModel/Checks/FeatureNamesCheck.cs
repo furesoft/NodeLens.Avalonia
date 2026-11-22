@@ -26,6 +26,10 @@ public sealed class FeatureNamesCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "FM001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "Two features of one model under one name.";
+
     /// <summary>The stable identifier of the repair that renames the later feature.</summary>
     public const string FixId = "fm.feature-name.rename";
 

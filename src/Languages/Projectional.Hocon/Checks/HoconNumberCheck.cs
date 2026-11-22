@@ -17,6 +17,10 @@ public sealed class HoconNumberCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "HOCON002";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A number cell whose text is no longer a HOCON number, with the declared default as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "hocon.number.reset";
 

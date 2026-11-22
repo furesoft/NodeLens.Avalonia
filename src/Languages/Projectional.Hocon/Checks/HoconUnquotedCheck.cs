@@ -17,6 +17,10 @@ public sealed class HoconUnquotedCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "HOCON001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "An unquoted value or key that is no longer a legal run, with quoting it as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "hocon.unquoted.quote";
 

@@ -38,6 +38,10 @@ public sealed class IdentifierNameCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD004";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A name a concept declares must be spelled the way the concept says, and is not.";
+
     /// <summary>The stable identifier of the repair that rewrites the name.</summary>
     public const string FixId = "std.identifier-name.rewrite";
 

@@ -25,6 +25,10 @@ public sealed class TomlDateTimeCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "TOML003";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A date or time cell whose text no longer parses, with the declared default as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "toml.datetime.reset";
 

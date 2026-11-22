@@ -26,6 +26,10 @@ public sealed class MinimumChildCountCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD011";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A list slot that holds nothing while its declaration asks for at least one child.";
+
     /// <summary>The stable identifier of the repair that adds the first child.</summary>
     public const string FixId = "std.minimum-child-count.add";
 

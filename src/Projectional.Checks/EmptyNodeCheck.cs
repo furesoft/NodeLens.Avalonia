@@ -54,6 +54,10 @@ public sealed class EmptyNodeCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD012";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A list entry that holds nothing but the defaults its concept gives it.";
+
     /// <summary>The stable identifier of the repair that deletes the node.</summary>
     public const string FixId = "std.empty-node.delete";
 

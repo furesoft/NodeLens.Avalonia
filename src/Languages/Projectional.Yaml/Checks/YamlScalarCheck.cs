@@ -17,6 +17,10 @@ public sealed class YamlScalarCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "YAML002";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A scalar whose text is no longer one scalar, with quoting it as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "yaml.scalar.quote";
 

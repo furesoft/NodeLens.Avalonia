@@ -33,6 +33,10 @@ public sealed class PlaceholderNameCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A name that still equals the placeholder its concept starts it with.";
+
     /// <summary>The stable identifier of the repair that names the node.</summary>
     public const string FixId = "std.placeholder-name.name";
 

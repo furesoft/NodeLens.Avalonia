@@ -17,6 +17,10 @@ public sealed class YamlPlacementCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "YAML001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A pair whose value stands on the key's line although it cannot, with moving it down as the repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "yaml.placement.nest";
 

@@ -26,6 +26,10 @@ public sealed class JsonDuplicateMemberCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "JSON003";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "One object naming the same member twice, with a rename to the first free suffix as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "json.duplicate-name.rename";
 

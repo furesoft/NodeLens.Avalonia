@@ -65,6 +65,7 @@ internal static class AspectsPage
         Aspect.Generators => LanguageProject.GeneratorFolder,
         Aspect.Importers => LanguageProject.ImportFolder,
         Aspect.Accessory => LanguageProject.AccessoryFolder,
+        Aspect.Checks => "no folder: a language takes them from the framework",
         _ => "-",
     };
 

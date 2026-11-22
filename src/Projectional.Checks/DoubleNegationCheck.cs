@@ -31,6 +31,10 @@ public sealed class DoubleNegationCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD041";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A negation whose operand is negated again by the same operator, so the two cancel out.";
+
     /// <summary>The stable identifier of the repair that removes both negations.</summary>
     public const string FixId = "std.double-negation.remove";
 
