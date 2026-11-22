@@ -468,13 +468,16 @@ What export guarantees, and what it refuses to hide:
 
 ### What export still leaves to you
 
-One declared aspect is still written as a stub rather than as code:
+`types/` is written as code, and it is the last aspect that was not. The five shapes a declared rule lowers to are
+public in `Projectional.Language` - `FixedTypeRule`, `ChildTypeRule`, `WidestTypeRule`, `SwitchTypeRule`,
+`EquationsTypeRule` - so a language written by hand and one exported from a folder declare the same objects, and the
+generated file needs no lambda. `TypeRegistry.Rules` and `SubtypeRelation.Edges` are the other direction the export
+needs, exactly as `TemplateRegistry.Templates` was for generators. A named type is hoisted into a field of its own,
+because the lowering interns one instance per name and two rules naming `place` mean one type.
 
-- **`types/` needs a code generator, not a printer.** `ITypeRule` is behaviour - `TypeFor(TypeContext)` - and the
-  declared vocabulary (fixed, child, switch, primitive, record, list, optional, named, ref, join, meet, widest,
-  equations, complain, supertypes, comparable, replacement) is a small language of its own; `TypeRuleLowering` is 871
-  lines and an export has to mirror it. The registry also answers `RuleFor(concept)` and `Add` only, so it has to be
-  enumerable first.
+Two things are still refused rather than written, and a language that declares them cannot be exported: **comparable
+pairs** (`Comparable`) and **replacements** (`Replacement`). Both are statements about types a rule already names, and
+both have no spelling in the generated file yet - the writer says so instead of dropping them.
 
 `generator/` is no longer on that list. Every part a template is made of is a record in `Projectional.Language`, so a
 generator is written as the data it is: one `new TextGenerator(name, TemplateRegistry.Empty.Add(concept, ...))` per

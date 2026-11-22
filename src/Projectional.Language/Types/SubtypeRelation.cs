@@ -48,6 +48,14 @@ public sealed class SubtypeRelation : ISubtype
     /// <summary>How many edges were declared, which is zero for <see cref="Primitives"/>.</summary>
     public int Count => _edges.Count;
 
+    /// <summary>The edges this relation holds, in the order they were declared.</summary>
+    /// <remarks>
+    /// Readable because the relation is a declaration as much as an answer: an export has to be able to write the
+    /// language's own edges into the code it generates, and a consumer that shows a type hierarchy needs the pairs
+    /// rather than a question answered one type at a time.
+    /// </remarks>
+    public IReadOnlyList<(IType Subtype, IType Supertype)> Edges => _edges;
+
     /// <summary>The same relation with one more edge declared: every <paramref name="subtype"/> may stand as a <paramref name="supertype"/>.</summary>
     /// <param name="subtype">The type that may stand in place of the other.</param>
     /// <param name="supertype">The type it may stand in place of.</param>
