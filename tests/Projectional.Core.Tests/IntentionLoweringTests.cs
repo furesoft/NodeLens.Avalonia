@@ -87,6 +87,144 @@ public sealed class IntentionLoweringTests
         Assert.Contains("one entry per label", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ADeclaredExtractRunsAsTheEditTheActionWould()
+    {
+        // The subject is the extract fixture's own shape: a step in a chain, a `library` on the container above it,
+        // and a call that stands where a step stands and points back at one - the same three facts the workflow
+        // sample states, in the smallest language that has them.
+        var (container, steps) = ExtractLanguage.WithSteps("build");
+
+        using var session = ExtractLanguage.Open(container);
+
+        session.AddIntentions(
+            IntentionLowering.CreateProvider([ExtractRule()], ExtractLanguage.Concepts),
+            IntentionSource.Language);
+
+        Caret(session, steps[0]);
+
+        var offer = Assert.Single(IntentionList.For(session));
+
+        Assert.Equal("Extract to the library", offer.Label);
+        Assert.Equal(EditSafety.Plain, offer.Safety);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+        Assert.Same(steps[0], Assert.Single(container.GetChildren("library")));
+        Assert.Equal(
+            ExtractLanguage.Call,
+            Assert.Single(container.GetChild("chain")!.GetChildren("steps")).Concept.Key);
+    }
+
+    [Fact]
+    public void ADeclaredExtractIsNotOfferedOnANodeThatIsAlreadyInTheDestination()
+    {
+        // An offer that comes back rejected is worse than no offer, so the place is part of the declaration.
+        var (container, _) = ExtractLanguage.WithSteps("build");
+        var extracted = container.Model.NewChild(container, "library", ExtractLanguage.Step);
+
+        using var session = ExtractLanguage.Open(container);
+
+        session.AddIntentions(
+            IntentionLowering.CreateProvider([ExtractRule()], ExtractLanguage.Concepts),
+            IntentionSource.Language);
+
+        Caret(session, extracted);
+
+        Assert.Empty(IntentionList.For(session));
+    }
+
+    [Fact]
+    public void AnExtractWithNoDestinationIsRefused()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => LowerExtract(into: ""));
+
+        Assert.Contains("has to name the concept that receives the node", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExtractThatNamesAConceptOfAnotherLanguageIsRefused()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => LowerExtract(into: "Other.Rule"));
+
+        Assert.Contains("not a concept", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExtractWhoseDestinationDoesNotHoldTheSubjectIsRefused()
+    {
+        // `chain` holds a run of steps, and the rule is about steps: the extract could never run, so it must not load.
+        var exception = Assert.Throws<ConceptDefinitionException>(
+            () => LowerExtract(into: ExtractLanguage.Container, slot: "chain"));
+
+        Assert.Contains("does not accept 'Extract.Step'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExtractWhoseUseCannotStandWhereTheSubjectStandsIsRefused()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => LowerExtract(asConcept: ExtractLanguage.Chain));
+
+        Assert.Contains("is not a 'Extract.Step'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExtractWhoseUseHasNoSuchReferenceIsRefused()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => LowerExtract(reference: "nowhere"));
+
+        Assert.Contains("declares no reference named 'nowhere'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExtractWhoseNamePropertyIsNotTextIsRefused()
+    {
+        var exception = Assert.Throws<ConceptDefinitionException>(() => LowerExtract(name: "attempts"));
+
+        Assert.Contains("writes text into it", exception.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>An extract of any step into the container's library, leaving a call behind.</summary>
+    private static Node ExtractRule(
+        string conceptKey = ExtractLanguage.Step,
+        string into = ExtractLanguage.Container,
+        string slot = "library",
+        string asConcept = ExtractLanguage.Call,
+        string reference = "calls",
+        string? name = null)
+    {
+        var model = IntentionLanguage.NewProject().NewModel("extract");
+        var rule = model.NewNode(IntentionConceptKeys.Rule);
+
+        rule.Set(IntentionLanguage.ConceptKeySlot, conceptKey);
+        rule.Set(IntentionLanguage.LabelSlot, "Extract to the library");
+        rule.Set(IntentionLanguage.DescriptionSlot, "Moves this step into the library and leaves a call here.");
+
+        var action = model.NewChild(rule, IntentionLanguage.ActionSlot, IntentionConceptKeys.Extract);
+
+        action.Set(IntentionLanguage.IntoConceptSlot, into);
+        action.Set(IntentionLanguage.IntoChildSlot, slot);
+        action.Set(IntentionLanguage.AsConceptSlot, asConcept);
+        action.Set(IntentionLanguage.ReferenceSlot, reference);
+
+        if (name is not null)
+        {
+            action.Set(IntentionLanguage.ExtractNameSlot, name);
+        }
+
+        return rule;
+    }
+
+    /// <summary>Lowers one extract rule against the extract fixture, which is where its checks run.</summary>
+    private static void LowerExtract(
+        string conceptKey = ExtractLanguage.Step,
+        string into = ExtractLanguage.Container,
+        string slot = "library",
+        string asConcept = ExtractLanguage.Call,
+        string reference = "calls",
+        string? name = null) =>
+        IntentionLowering.CreateProvider(
+            [ExtractRule(conceptKey, into, slot, asConcept, reference, name)],
+            ExtractLanguage.Concepts);
+
     private static (EditorSession Session, Node Rule, Node Condition) Document()
     {
         var model = PayrollSample.NewSampleModel();

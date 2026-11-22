@@ -4,9 +4,9 @@ namespace Projectional.IntentionRules;
 /// <remarks>
 /// A rule says what an entry is called and what it does, and the doing is one of a closed set of bodies - a wrap with
 /// the values the wrapper is born with, a property value, a sibling, a child in an empty slot, a delete, a move, a
-/// replace, or an inline from a reference. The set is closed for the same reason the constraint and template languages
-/// are: an intention produces an <c>EditAction</c>, and an expression over the model would turn a declaration into a
-/// program the framework has to interpret.
+/// replace, an inline from a reference, or an extract into a declared place. The set is closed for the same reason the
+/// constraint and template languages are: an intention produces an <c>EditAction</c>, and an expression over the model
+/// would turn a declaration into a program the framework has to interpret.
 /// </remarks>
 public static class IntentionConceptKeys
 {
@@ -39,6 +39,9 @@ public static class IntentionConceptKeys
 
     /// <summary>Replaces the node with a copy of what its reference points at.</summary>
     public const string Inline = "Intent.Inline";
+
+    /// <summary>Takes the node out into a declared place and leaves a use of it behind.</summary>
+    public const string Extract = "Intent.Extract";
 
     /// <summary>Writes a property value on the node the caret is on.</summary>
     public const string Set = "Intent.Set";

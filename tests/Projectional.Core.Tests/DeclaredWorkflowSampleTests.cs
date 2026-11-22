@@ -139,6 +139,86 @@ public sealed class DeclaredWorkflowSampleTests
 
         Assert.Equal("Workflow.Call", test.GetChild("next")!.Concept.Key);
     }
+
+    [Fact]
+    public void TheDeclaredExtractMovesAStepIntoTheLibraryAndLeavesACallBehind()
+    {
+        // The other direction of the same pair, on the same document: `test` and the chain it carries move into the
+        // library, where the workflow keeps what it reuses, and a call to it stays where it stood.
+        var language = Language();
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Workflow", "release.mps"));
+        var workflow = model.Roots[0];
+        var build = workflow.GetChild("first")!;
+        var test = build.GetChild("next")!;
+        var id = test.Id;
+
+        using var session = new EditorSession(workflow, language.Notations);
+
+        session.AddIntentions(language.Intentions, IntentionSource.Language);
+
+        var place = CaretPlaces.Of(session.Tree).First(each => each.Address.Owner == test.Id);
+
+        session.Select(Selection.At(CaretPosition.At(place, 0)));
+
+        var offer = Assert.Single(IntentionList.For(session), each => each.Label == "Extract to the library");
+
+        Assert.Equal(EditSafety.Plain, offer.Safety);
+        Assert.Equal(EditOutcome.Applied, session.Apply(offer).Outcome);
+
+        // The step itself, with the rest of the chain it carried and its identity intact.
+        var library = workflow.GetChildren("library");
+
+        Assert.Equal(2, library.Count);
+        Assert.Equal(id, library[1].Id);
+        Assert.Equal("dotnet test", library[1].GetOrNull("command"));
+        Assert.Equal("Workflow.Call", library[1].GetChild("next")!.Concept.Key);
+
+        // What stands where it stood is a call named after it, pointing back at it.
+        var call = build.GetChild("next")!;
+
+        Assert.Equal("Workflow.Call", call.Concept.Key);
+        Assert.Equal("test", call.GetOrNull("name"));
+        Assert.Equal(id, call.GetReference("calls")!.Value.Target);
+        Assert.Null(call.GetChild("next"));
+
+        // The caret followed the node into its new place: the id did not change, so the cell it named still exists.
+        Assert.Equal(id, session.Selection.Caret.Address.Owner);
+
+        session.History.Undo();
+
+        Assert.Equal(id, build.GetChild("next")!.Id);
+        Assert.Single(workflow.GetChildren("library"));
+    }
+
+    [Fact]
+    public void InliningWhatAnExtractLeftBehindPutsTheChainBack()
+    {
+        // The two declared bodies are inverses on this document: the call extract left behind is exactly what the
+        // inline consumes. The definition stays in the library, which is the plan's answer to its own open question.
+        var language = Language();
+        var model = ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Workflow", "release.mps"));
+        var workflow = model.Roots[0];
+        var build = workflow.GetChild("first")!;
+
+        using var session = new EditorSession(workflow, language.Notations);
+
+        session.AddIntentions(language.Intentions, IntentionSource.Language);
+
+        Caret(session, build.GetChild("next")!);
+        session.Apply(IntentionList.For(session).Single(each => each.Label == "Extract to the library"));
+
+        Caret(session, build.GetChild("next")!);
+        session.Apply(IntentionList.For(session).Single(each => each.Label == "Inline this call"));
+
+        // The chain runs the commands itself again, and the library is what the extract left in it.
+        var restored = build.GetChild("next")!;
+
+        Assert.Equal("Workflow.Step", restored.Concept.Key);
+        Assert.Equal("dotnet test", restored.GetOrNull("command"));
+        Assert.Equal("Workflow.Call", restored.GetChild("next")!.Concept.Key);
+        Assert.Equal(2, workflow.GetChildren("library").Count);
+    }
+
     [Fact]
     public void TheInsertEntryIsOfferedOnTheEmptySlotAndFillsIt()
     {
@@ -240,5 +320,13 @@ public sealed class DeclaredWorkflowSampleTests
         Assert.NotNull(language);
 
         return language;
+    }
+
+    /// <summary>Puts the caret in the first place of <paramref name="node"/>, which is how a gesture starts.</summary>
+    private static void Caret(EditorSession session, Node node)
+    {
+        var place = CaretPlaces.Of(session.Tree).First(each => each.Address.Owner == node.Id);
+
+        session.Select(Selection.At(CaretPosition.At(place, 0)));
     }
 }
