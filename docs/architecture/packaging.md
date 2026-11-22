@@ -29,12 +29,14 @@ dependency. It also includes `Projectional.Workbench`: it is an application, but
 product, and its `--self-check` entry point makes it usable as a tool. A host that wants the shell as a
 library takes the package and ignores the executable.
 
-`dotnet pack Projectional.slnx` therefore produces **31 packages**:
+`dotnet pack Projectional.slnx` therefore produces **35 packages**:
 
-- **14 framework assemblies** - `Core`, `Language`, `Persistence`, `Projection`, `Semantics`, `Editing`,
-  `Checks`, `Intentions`, `Testing`, `Toolkit`, `Avalonia`, `Workbench`, `Languages`, `LanguageExport`
-- **12 languages** - `Expressions`, `Json`, `Xml`, `Toml`, `Hocon`, `Yaml`, `Structures`, `Editors`,
-  `TypeRules`, `TextGen`, `ConstraintRules`, `ScopeRules`, `IntentionRules`
+- **15 framework assemblies** - `Core`, `Language`, `Languages`, `LanguageDocs`, `LanguageExport`,
+  `Persistence`, `Projection`, `Semantics`, `Editing`, `Checks`, `Intentions`, `Testing`, `Toolkit`,
+  `Avalonia`, `Workbench`
+- **16 languages** - `CSharp`, `Expressions`, `Json`, `Xml`, `Toml`, `Hocon`, `Yaml`, `Structures`,
+  `Editors`, `TypeRules`, `TypingRules`, `TextGen`, `ConstraintRules`, `ScopeRules`, `IntentionRules`,
+  `ImportRules`
 - **4 sample languages** - `Samples`, `Samples.StateMachine`, `Samples.FeatureModel`, `Samples.SqlSchema`
 
 The CI `pack` job asserts that number. Adding a project means updating the assertion in the same commit:
@@ -122,7 +124,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-That pushes the tag, which triggers `ci`; the `pack` job produces the 31 packages and uploads them as an
+That pushes the tag, which triggers `ci`; the `pack` job produces the 35 packages and uploads them as an
 artifact, and `publish-nuget` downloads that artifact and pushes both `.nupkg` and `.snupkg` to nuget.org.
 
 Two properties of the job are deliberate:
@@ -154,11 +156,17 @@ it, so switching is a change to one job rather than a change to this document's 
 | --- | --- |
 | `build-and-test` | Builds and tests on Windows and Ubuntu with full history. |
 | `byte-stability` | The saved form of the corpus is still byte-identical (ADR 0005). |
-| `pack` | `dotnet pack` succeeds and produces exactly 31 packages; uploads them as an artifact. |
+| `pack` | `dotnet pack` succeeds and produces exactly 35 packages; uploads them as an artifact. |
 | `publish-nuget` | Tag-gated; pushes the artifact to nuget.org. |
 
-`single-file` publishes the standalone app and asserts the single-file shape; it is unrelated to packaging
-and stays as it was.
+`single-file` publishes the standalone app and asserts the single-file shape; it is unrelated to packaging. `docs`
+publishes the generated documentation site to GitHub Pages, which is also unrelated to packaging.
+
+The `single-file` job is a build of every product, so it fails on anything the single-file analyzer objects to. That is
+not decoration: `Projectional.LanguageExport` answers where its reference assemblies live, and `Assembly.Location` is
+empty inside a bundle - IL3000, an error here because warnings are errors - so the compiler asks the runtime's trusted
+platform assemblies instead (`AssemblyCompiler.PathOf`). A product assembly that must survive that publish may not read
+`Assembly.Location`.
 
 ## Known caveats
 

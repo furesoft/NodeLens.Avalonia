@@ -97,12 +97,28 @@ internal static class AssemblyCompiler
         return references;
     }
 
-    /// <summary>The file an assembly was loaded from, which single-file publishing does not have.</summary>
+    /// <summary>The file an assembly can be read from, asked of the runtime rather than of the assembly.</summary>
+    /// <remarks>
+    /// <c>Assembly.Location</c> is the obvious way to answer this and the wrong one: it is empty for an assembly a
+    /// single-file bundle kept inside itself, and the single-file analyzer rejects it at build time (IL3000) - which
+    /// would make the one product that must survive that publish fail to build. The trusted platform assemblies are
+    /// asked instead, and they are already the source of every other reference here: their entries are files on disk,
+    /// and an assembly the bundle did not keep beside the application is simply not among them.
+    /// </remarks>
     private static string PathOf(Type type)
     {
-        var location = type.Assembly.Location;
+        var fileName = $"{type.Assembly.GetName().Name}.dll";
 
-        if (string.IsNullOrEmpty(location))
+        var location = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string trusted
+            ? trusted
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault(path => string.Equals(Path.GetFileName(path), fileName, StringComparison.OrdinalIgnoreCase))
+            : null;
+
+        // The file has to exist, not merely be listed: a bundle's own assemblies are described by paths that name a
+        // place inside it, and handing one of those to the compiler would replace this sentence with a message about a
+        // file the compiler could not read.
+        if (location is null || !File.Exists(location))
         {
             throw new ExportCompilationException(
                 $"The assembly '{type.Assembly.GetName().Name}' has no file on disk, so the export cannot compile "
