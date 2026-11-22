@@ -27,6 +27,13 @@ public sealed class TemplateRegistry
     /// <summary>How many concepts declare a template.</summary>
     public int Count => _templates.Count;
 
+    /// <summary>The templates this registry declares, keyed by concept, for a caller that has to read it out.</summary>
+    /// <remarks>
+    /// The registry answers <see cref="TemplateFor"/> for a lookup, and that is all a generator needs. An export needs
+    /// the other direction - what is in here - because it writes the registry as code rather than querying it.
+    /// </remarks>
+    public IReadOnlyDictionary<string, TextTemplate> Templates => _templates;
+
     /// <summary>The same registry with <paramref name="template"/> answering for <paramref name="conceptKey"/>.</summary>
     /// <param name="conceptKey">The concept the template is about.</param>
     /// <param name="template">What a node of that concept emits.</param>

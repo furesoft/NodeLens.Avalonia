@@ -82,7 +82,7 @@ public static class LanguageExporter
                 basis.Notations.Notations,
                 NamespaceFor(basis.Name),
                 basis.HasTypes,
-                basis.HasGenerators,
+                basis.Generators,
                 basis.HasConstraints,
                 basis.HasScopes,
                 basis.HasIntentions,
@@ -107,7 +107,7 @@ public static class LanguageExporter
             language.Notations.Notations,
             namespaceName,
             language.HasTypes,
-            language.HasGenerators,
+            language.Generators,
             language.HasConstraints,
             language.HasScopes,
             language.HasIntentions,
@@ -147,7 +147,7 @@ public static class LanguageExporter
     /// <param name="notations">The notation they are drawn with, in registration order.</param>
     /// <param name="namespaceName">The namespace to declare, or <c>null</c> to declare none.</param>
     /// <param name="hasTypes">Whether the language declares type rules this export cannot write.</param>
-    /// <param name="hasGenerators">Whether it declares text generators this export cannot write.</param>
+    /// <param name="generators">The text generators it declares, which this export writes out in full.</param>
     /// <param name="hasConstraints">Whether it declares constraints this export cannot write.</param>
     /// <param name="hasScopes">Whether it declares scope rules this export cannot write.</param>
     /// <param name="hasIntentions">Whether it declares intentions this export cannot write.</param>
@@ -165,7 +165,7 @@ public static class LanguageExporter
         IReadOnlyList<Notation> notations,
         string? namespaceName = null,
         bool hasTypes = false,
-        bool hasGenerators = false,
+        IReadOnlyList<TextGenerator>? generators = null,
         bool hasConstraints = false,
         bool hasScopes = false,
         bool hasIntentions = false,
@@ -180,7 +180,7 @@ public static class LanguageExporter
             notations,
             namespaceName,
             hasTypes,
-            hasGenerators,
+            generators,
             hasConstraints,
             hasScopes,
             hasIntentions,
@@ -222,7 +222,7 @@ public static class LanguageExporter
         IReadOnlyList<Notation> notations,
         string? namespaceName,
         bool hasTypes,
-        bool hasGenerators,
+        IReadOnlyList<TextGenerator>? generators,
         bool hasConstraints,
         bool hasScopes,
         bool hasIntentions,
@@ -240,8 +240,8 @@ public static class LanguageExporter
         var typing = typingRules ?? [];
         var className = ClassName(name);
         var stem = className + VersionSuffix(metadata?.Version);
-        var omitted = Omissions(hasTypes, hasGenerators, hasConstraints, hasScopes, hasIntentions, hasImport);
-        var source = Source(name, className, namespaceName, declarations, notations, typing, omitted, metadata, informationalVersion);
+        var omitted = Omissions(hasTypes, hasConstraints, hasScopes, hasIntentions, hasImport);
+        var source = Source(name, className, namespaceName, declarations, notations, generators ?? [], typing, omitted, metadata, informationalVersion);
 
         var files = new List<GeneratedFile>(2) { new($"{stem}.cs", source) };
 
@@ -284,7 +284,6 @@ public static class LanguageExporter
 
     private static List<string> Omissions(
         bool hasTypes,
-        bool hasGenerators,
         bool hasConstraints,
         bool hasScopes,
         bool hasIntentions,
@@ -295,11 +294,6 @@ public static class LanguageExporter
         if (hasTypes)
         {
             omitted.Add("types");
-        }
-
-        if (hasGenerators)
-        {
-            omitted.Add("generator");
         }
 
         if (hasConstraints)
@@ -331,6 +325,7 @@ public static class LanguageExporter
         string? namespaceName,
         IReadOnlyList<ConceptDeclaration> declarations,
         IReadOnlyList<Notation> notations,
+        IReadOnlyList<TextGenerator> generators,
         IReadOnlyList<DeclaredTypingRule> typingRules,
         List<string> omitted,
         LanguageMetadata? metadata,
@@ -400,16 +395,16 @@ public static class LanguageExporter
                 TypingWriter.Write(source, typingRules);
             }
 
+            if (generators.Count > 0)
+            {
+                source.Blank();
+                Generators(source, generators);
+            }
+
             if (omitted.Contains("types"))
             {
                 source.Blank();
                 Stub(source, "TypeRegistry", "Types", "types", "type rules");
-            }
-
-            if (omitted.Contains("generator"))
-            {
-                source.Blank();
-                Stub(source, "IReadOnlyList<TextGenerator>", "Generators", "generator", "text generators");
             }
         }
 
@@ -454,6 +449,100 @@ public static class LanguageExporter
     private static void MetadataAttribute(SourceWriter source, string key, string value) =>
         source.Line(
             $"[assembly: System.Reflection.AssemblyMetadata({SourceWriter.Literal(key)}, {SourceWriter.Literal(value)})]");
+
+    /// <summary>Writes the generators a language declares as the data they are.</summary>
+    /// <remarks>
+    /// A generator is a name and a template per concept, and every part a template holds is a record in
+    /// <c>Projectional.Language</c> - which is why this aspect is the one behavioural aspect an export can write as
+    /// code rather than describe: nothing here is a lambda. The templates are written in key order so two exports of
+    /// one language are the same bytes.
+    /// </remarks>
+    private static void Generators(SourceWriter source, IReadOnlyList<TextGenerator> generators)
+    {
+        source.Line("/// <summary>How those models become text: one generator per target.</summary>");
+        source.Line("public static IReadOnlyList<TextGenerator> Generators { get; } =");
+        source.Line("[");
+
+        using (source.Indent())
+        {
+            foreach (var generator in generators)
+            {
+                source.Line($"new TextGenerator({SourceWriter.Literal(generator.Name)}, TemplateRegistry.Empty");
+
+                using (source.Indent())
+                {
+                    foreach (var template in generator.Templates.Templates.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+                    {
+                        source.Line($".Add({SourceWriter.Literal(template.Key)}, {TemplateText(template.Value)})");
+                    }
+                }
+
+                source.Line("),");
+            }
+        }
+
+        source.Line("];");
+    }
+
+    /// <summary>A template as one C# expression, nested parts included.</summary>
+    private static string TemplateText(TextTemplate template) =>
+        template.Parts.Count == 0
+            ? "TextTemplate.Empty"
+            : $"new TextTemplate([{string.Join(", ", template.Parts.Select(PartText))}])";
+
+    /// <summary>One part as a C# expression.</summary>
+    /// <exception cref="ExportCompilationException">The part has no export spelling.</exception>
+    private static string PartText(TemplatePart part) => part switch
+    {
+        TextPart text => $"new TextPart({SourceWriter.Literal(text.Text)})",
+        PropertyPart property => $"new PropertyPart({SourceWriter.Literal(property.Slot)})",
+        ChildPart child => $"new ChildPart({SourceWriter.Literal(child.Slot)})",
+        ParentPart parent => $"new ParentPart({SourceWriter.Literal(parent.Slot)})",
+        SelfPart => "SelfPart.Instance",
+        LineBreakPart => "LineBreakPart.Instance",
+        ReferencePart reference =>
+            $"new ReferencePart({SourceWriter.Literal(reference.Slot)}, {SourceWriter.Literal(reference.UnsetText)}, {SourceWriter.Literal(reference.UnresolvedText)})",
+        ChildrenPart children => ChildrenText(children),
+        LoopPart loop => $"new LoopPart({SourceWriter.Literal(loop.Slot)}, {TemplateText(loop.Body)}{Optional(loop.Separator)})",
+        IndentPart indent => $"new IndentPart({TemplateText(indent.Body)})",
+        ConditionalPart conditional =>
+            $"new ConditionalPart({SourceWriter.Literal(conditional.Slot)}, {SourceWriter.Literal(conditional.Value)}, {TemplateText(conditional.Then)}{Optional(conditional.Otherwise)})",
+        WhenFilledPart filled =>
+            $"new WhenFilledPart({SourceWriter.Literal(filled.Slot)}, {TemplateText(filled.Then)}{Optional(filled.Otherwise)})",
+
+        // A part the template language gains later must be a refusal, not a silently missing piece of a generated
+        // file: a generator that dropped a part would print something other than what the language says.
+        _ => throw new ExportCompilationException(
+            $"'{part.GetType().Name}' has no export spelling yet, so the generator cannot be written as C#.",
+            [$"The template part '{part.GetType().Name}' is not known to the export."]),
+    };
+
+    /// <summary>A separator or else-branch as a trailing argument, or nothing when it is absent.</summary>
+    private static string Optional(TextTemplate? template) =>
+        template is null || template.IsEmpty ? string.Empty : ", " + TemplateText(template);
+
+    private static string ChildrenText(ChildrenPart children)
+    {
+        var arguments = new List<string> { SourceWriter.Literal(children.Slot) };
+
+        if (children.Gaps != ListGap.None || children.TightConcepts.Count > 0)
+        {
+            arguments.Add(children.Separator.IsEmpty ? "null" : TemplateText(children.Separator));
+        }
+
+        if (children.Gaps != ListGap.None || children.TightConcepts.Count > 0)
+        {
+            arguments.Add($"ListGap.{children.Gaps}");
+        }
+
+        if (children.TightConcepts.Count > 0)
+        {
+            arguments.Add(
+                $"new HashSet<string> {{ {string.Join(", ", children.TightConcepts.OrderBy(key => key, StringComparer.Ordinal).Select(SourceWriter.Literal))} }}");
+        }
+
+        return $"new ChildrenPart({string.Join(", ", arguments)})";
+    }
 
     private static void Notations(SourceWriter source, IReadOnlyList<Notation> notations)    {
         source.Line("/// <summary>How those concepts are drawn.</summary>");
@@ -628,7 +717,7 @@ public static class LanguageExporter
             }
 
             var stubbed = omitted
-                .Where(folder => folder is "types" or "generator")
+                .Where(folder => folder is "types")
                 .Select(folder => folder == "types" ? "`Types`" : "`Generators`")
                 .ToList();
 
@@ -659,7 +748,6 @@ public static class LanguageExporter
     private static string ReasonFor(string folder) => folder switch
     {
         "types" => "a type rule answers one question per node - behaviour, not data",
-        "generator" => "a template is behaviour, not data",
         "scopes" => "a scope rule says where names come from - behaviour beside the editor",
         "intentions" => "an intention produces an edit - behaviour beside the editor",
         "import" => "an importer is a rule set written in `Projectional.ImportRules`, outside the toolkit",

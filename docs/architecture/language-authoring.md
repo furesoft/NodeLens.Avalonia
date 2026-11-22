@@ -465,20 +465,20 @@ What export guarantees, and what it refuses to hide:
 
 ### What export still leaves to you
 
-Two declared aspects are still written as a stub rather than as code, and each is missing exactly one thing:
+One declared aspect is still written as a stub rather than as code:
 
-- **`generator/` is writable as data; the registry cannot be read back.** Every part a template is made of -
-  `TextPart`, `PropertyPart`, `ChildPart`, `ChildrenPart`, `LoopPart`, `IndentPart`, `LineBreakPart`,
-  `ConditionalPart`, `WhenFilledPart`, `ParentPart`, `ReferencePart`, `SelfPart` - is a record in
-  `Projectional.Language`, which a package may reference, so a generator is a `new TextGenerator(name, templates)` the
-  export could write. What it cannot do today is enumerate `TemplateRegistry`: the registry answers
-  `TemplateFor(concept)` and `Add`, and an export needs the mappings. That enumeration is the whole missing piece.
 - **`types/` needs a code generator, not a printer.** `ITypeRule` is behaviour - `TypeFor(TypeContext)` - and the
   declared vocabulary (fixed, child, switch, primitive, record, list, optional, named, ref, join, meet, widest,
-  equations, complain, supertypes, comparable, replacement) is a small language of its own;
-  `TypeRuleLowering` is 871 lines and an export has to mirror it. The registry also answers `RuleFor(concept)` and
-  `Add` only, so it has to be enumerable first.
+  equations, complain, supertypes, comparable, replacement) is a small language of its own; `TypeRuleLowering` is 871
+  lines and an export has to mirror it. The registry also answers `RuleFor(concept)` and `Add` only, so it has to be
+  enumerable first.
 
+`generator/` is no longer on that list. Every part a template is made of is a record in `Projectional.Language`, so a
+generator is written as the data it is: one `new TextGenerator(name, TemplateRegistry.Empty.Add(concept, ...))` per
+target, with text, property, child, children (separator, gaps and tight concepts included), parent, reference, self,
+line break, loop, indent, conditional and when-filled parts. The one thing that was missing was
+`TemplateRegistry.Templates` - the registry answered `TemplateFor(concept)`, and an export needs the other direction -
+and a test proves the result by running the emitted generator and the folder's over one document and comparing the text.
 ## Slices
 
 Each slice is its own branch and its own merge. The order is chosen so that something is
