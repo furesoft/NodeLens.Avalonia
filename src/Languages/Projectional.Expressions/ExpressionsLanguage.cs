@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Language;
+using Projectional.Semantics;
 
 namespace Projectional.Expressions;
 
@@ -96,6 +97,14 @@ public static class ExpressionsLanguage
     /// language that writes its rules as a model produces a registry of exactly this shape.
     /// </remarks>
     public static TypeRegistry Types { get; } = ExpressionTypes.Registry;
+
+    /// <summary>The rules this language states about its own concepts, which a host composes like the language.</summary>
+    /// <remarks>
+    /// Three of them are about names that only a run would otherwise resolve: a function declared twice, a call that
+    /// names nothing, and a call whose argument count does not match. A host adds them where it adds its own, because a
+    /// rule about <c>Expressions.Call</c> is in force wherever a call appears.
+    /// </remarks>
+    public static ConstraintSet Constraints { get; } = Checks.ExpressionsConstraints.All;
 
 
 
