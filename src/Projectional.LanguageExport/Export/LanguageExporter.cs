@@ -40,11 +40,23 @@ public static class LanguageExporter
     /// <summary>The metadata key naming one language whose behaviour it inherits, repeated once per extension.</summary>
     public const string ExtendsKey = "Projectional.Extends";
 
-    /// <summary>Exports a language project, asking it which aspects it declares.</summary>
+    /// <summary>Exports a language project, asking it which aspects it declares, and everything it stands on.</summary>
     /// <param name="language">The language a user opened.</param>
-    /// <param name="namespaceName">The namespace to declare, or <c>null</c> to declare none.</param>
-    /// <param name="output">Whether to compile the generated source into an assembly as well.</param>
-    /// <exception cref="ExportCompilationException">The generated source does not compile.</exception>
+    /// <param name="namespaceName">The namespace to declare for it, or <c>null</c> to declare none.</param>
+    /// <param name="output">Whether to compile the generated sources into assemblies as well.</param>
+    /// <returns>
+    /// One source per language - the ones it stands on first, base before dependent - and the README of
+    /// <paramref name="language"/> last; the same languages as assemblies when <paramref name="output"/> asks for them.
+    /// </returns>
+    /// <exception cref="ExportCompilationException">The generated source of one language does not compile.</exception>
+    /// <remarks>
+    /// A language is shipped as one package per language, so the languages it was resolved against are exported too:
+    /// <c>declared-invoice</c> extends <c>Units</c>, and a folder holding only the dependent's file would be a package
+    /// whose base the caller has to find elsewhere. A language that ships with the framework is skipped - it already
+    /// is a package, and it has no folder of a user's to write - which is the same line the shell draws when it offers
+    /// export for the languages opened from a folder.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="language"/> is <see langword="null"/>.</exception>
     public static ExportResult Export(
         LanguageProject language,
         string? namespaceName = null,
@@ -52,7 +64,40 @@ public static class LanguageExporter
     {
         ArgumentNullException.ThrowIfNull(language);
 
-        return Export(
+        var files = new List<GeneratedFile>();
+        var assemblies = new List<GeneratedAssembly>();
+        var beside = new List<string>();
+
+        foreach (var basis in language.Resolved)
+        {
+            if (basis.Directory.Length == 0)
+            {
+                continue;
+            }
+
+            var exported = Build(
+                basis.Name,
+                basis.Declarations,
+                basis.Notations.Notations,
+                NamespaceFor(basis.Name),
+                basis.HasTypes,
+                basis.HasGenerators,
+                basis.HasConstraints,
+                basis.HasScopes,
+                basis.HasIntentions,
+                basis.DeclaredTypingRules,
+                basis.HasDeclaredImporters,
+                Metadata(basis),
+                output,
+                readme: false,
+                beside: null);
+
+            files.AddRange(exported.Files);
+            assemblies.AddRange(exported.Assemblies);
+            beside.Add(basis.Name);
+        }
+
+        var own = Build(
             language.Name,
             language.Declarations,
             language.Notations.Notations,
@@ -64,8 +109,15 @@ public static class LanguageExporter
             language.HasIntentions,
             language.DeclaredTypingRules,
             language.HasDeclaredImporters,
+            Metadata(language),
             output,
-            Metadata(language));
+            readme: true,
+            beside);
+
+        files.AddRange(own.Files);
+        assemblies.AddRange(own.Assemblies);
+
+        return new ExportResult(files, assemblies);
     }
 
     /// <summary>What the root says about the language, in the shape the writer states it with.</summary>
@@ -110,7 +162,47 @@ public static class LanguageExporter
         IReadOnlyList<DeclaredTypingRule>? typingRules = null,
         bool hasImport = false,
         ExportOutput output = ExportOutput.Source,
-        LanguageMetadata? metadata = null)
+        LanguageMetadata? metadata = null) =>
+        Build(
+            name,
+            declarations,
+            notations,
+            namespaceName,
+            hasTypes,
+            hasGenerators,
+            hasConstraints,
+            hasScopes,
+            hasIntentions,
+            typingRules,
+            hasImport,
+            metadata,
+            output,
+            readme: true,
+            beside: null);
+
+    /// <summary>Builds one language's source, its README and, on request, the assembly that source compiles to.</summary>
+    /// <param name="readme">
+    /// Whether this language's README is part of the answer. A language the exported one stands on is a package of its
+    /// own, but only the exported one documents the folder, so its neighbours are named in one README rather than one
+    /// each - two <c>README.md</c> in one directory would be one file anyway.
+    /// </param>
+    /// <param name="beside">The languages exported beside this one, named in the README, or <see langword="null"/>.</param>
+    private static ExportResult Build(
+        string name,
+        IReadOnlyList<ConceptDeclaration> declarations,
+        IReadOnlyList<Notation> notations,
+        string? namespaceName,
+        bool hasTypes,
+        bool hasGenerators,
+        bool hasConstraints,
+        bool hasScopes,
+        bool hasIntentions,
+        IReadOnlyList<DeclaredTypingRule>? typingRules,
+        bool hasImport,
+        LanguageMetadata? metadata,
+        ExportOutput output,
+        bool readme,
+        IReadOnlyList<string>? beside)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -121,12 +213,18 @@ public static class LanguageExporter
         var omitted = Omissions(hasTypes, hasGenerators, hasConstraints, hasScopes, hasIntentions, hasImport);
         var source = Source(name, className, namespaceName, declarations, notations, typing, omitted, metadata);
 
+        var files = new List<GeneratedFile>(2) { new($"{className}.cs", source) };
+
+        if (readme)
+        {
+            files.Add(new GeneratedFile(
+                "README.md",
+                Readme(name, className, notations.Count > 0, typing.Count > 0, omitted, metadata, beside)));
+        }
+
         return new ExportResult(
-            [
-                new GeneratedFile($"{className}.cs", source),
-                new GeneratedFile("README.md", Readme(name, className, notations.Count > 0, typing.Count > 0, omitted, metadata)),
-            ],
-            output == ExportOutput.Assembly ? AssemblyCompiler.Compile(className, source) : null);
+            files,
+            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(className, source)] : []);
     }
 
     private static List<string> Omissions(
@@ -332,7 +430,14 @@ public static class LanguageExporter
         }
     }
 
-    private static string Readme(string name, string className, bool hasNotations, bool hasTyping, List<string> omitted, LanguageMetadata? metadata)
+    private static string Readme(
+        string name,
+        string className,
+        bool hasNotations,
+        bool hasTyping,
+        List<string> omitted,
+        LanguageMetadata? metadata,
+        IReadOnlyList<string>? beside)
     {
         var lines = new List<string>
         {
@@ -384,6 +489,22 @@ public static class LanguageExporter
                 lines.Add("A declared version is a label: it becomes the assembly's informational version, the one");
                 lines.Add("free-form version field there is, and never its assembly version - that field is four");
                 lines.Add("numbers, and nothing in the framework parses a version an author typed.");
+            }
+        }
+
+        if (beside is { Count: > 0 })
+        {
+            lines.Add(string.Empty);
+            lines.Add("## What else is in this folder");
+            lines.Add(string.Empty);
+            lines.Add("A language ships as one package per language, so the languages this one stands on are");
+            lines.Add("exported beside it, base first, each with its own source and - when the export compiled one -");
+            lines.Add("its own assembly:");
+            lines.Add(string.Empty);
+
+            foreach (var baseName in beside)
+            {
+                lines.Add($"- `{ClassName(baseName)}.cs` for {baseName}, and its assembly when one was compiled");
             }
         }
 

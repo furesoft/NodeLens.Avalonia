@@ -373,6 +373,7 @@ public sealed partial class MainWindow : Window, IDisposable
         NewDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.CreateModels);
         ImportDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Import);
         ExportLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
+        PackageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
         RecentFilesItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
         SaveDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Save);
         SaveAsItem.IsVisible = _capabilities.Allows(ShellCapability.Save);
@@ -484,6 +485,11 @@ public sealed partial class MainWindow : Window, IDisposable
             return ValueTask.CompletedTask;
         });
         AddCommand("export", "Export Language", ShellCapability.Export, async target => await ExportLanguageAsync((LanguageProject)target!));
+
+        // Two commands rather than one with a question, because the answer is what the menu entry already says: the
+        // sources and the assemblies are handed to different people, and the archive holds one or the other.
+        AddCommand("package-sources", "Package Sources", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Sources));
+        AddCommand("package-assemblies", "Package Assemblies", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Assemblies));
         AddAsync("save", "Save", ShellCapability.Save, SaveActiveAsync);
         AddAsync("save-as", "Save As", ShellCapability.Save, SaveActiveAsAsync);
         AddAsync("save-generated", "Save Generated Text", ShellCapability.Save, SaveGeneratedTextAsync);
@@ -2709,6 +2715,33 @@ public sealed partial class MainWindow : Window, IDisposable
             .Select(language => new MenuItem { Header = language.Name, Command = new ExportLanguageCommand(this, language) })
             .ToList();
 
+        PackageItem.IsEnabled = opened.Count > 0;
+        PackageItem.ItemsSource = opened
+            .Select(language => new MenuItem
+            {
+                Header = language.Name,
+                ItemsSource = new MenuItem[]
+                {
+                    new()
+                    {
+                        Header = "Sources (.zip)",
+                        Command = new PackageLanguageCommand(this, language, PackageContent.Sources),
+                    },
+                    new()
+                    {
+                        Header = "Assemblies (.zip)",
+                        Command = new PackageLanguageCommand(this, language, PackageContent.Assemblies),
+                    },
+                },
+            })
+            .ToList();
+
+        ToolTip.SetTip(
+            PackageItem,
+            opened.Count > 0
+                ? "Packs a language and the languages it stands on into one zip: the generated sources, or the assemblies they compile to."
+                : "No language has been opened from a folder.");
+
         ToolTip.SetTip(
             ExportLanguageItem,
             opened.Count > 0
@@ -2766,7 +2799,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
             var written = LanguageExportWriter.Write(result, directory);
 
-            _error = $"{language.Name} exported: {written.Count} files written to {directory}.";
+            _error = result.Assemblies.Count > 1
+                ? $"{language.Name} exported with the {result.Assemblies.Count - 1} language(s) it stands on: {written.Count} files written to {directory}."
+                : $"{language.Name} exported: {written.Count} files written to {directory}.";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ExportCompilationException)
         {
@@ -2820,6 +2855,77 @@ public sealed partial class MainWindow : Window, IDisposable
         public bool CanExecute(object? parameter) => true;
 
         public void Execute(object? parameter) => _window.RunCommand("new-" + _definition.Id);
+    }
+
+    /// <summary>Packs one opened language into a zip archive the user picks a place for.</summary>
+    /// <remarks>
+    /// The archive always covers the whole chain, because the export answers one package per language: a zip of only
+    /// the dependent's file would be the one archive that cannot be handed on. The command is one per content rather
+    /// than one that asks, because the menu entry already says which - and the two are for different people.
+    /// </remarks>
+    private async Task PackageLanguageAsync(LanguageProject language, PackageContent content)
+    {
+        _error = null;
+
+        var name = LanguageExporter.NamespaceFor(language.Name);
+        var assemblies = content == PackageContent.Assemblies;
+
+        var path = await _dialogs.ChooseFileToSaveAsync(
+            assemblies ? $"Package the assemblies of {language.Name}" : $"Package the sources of {language.Name}",
+            assemblies ? $"{name}-assemblies.zip" : $"{name}-sources.zip",
+            new ShellFileType("Zip archive", ["*.zip"]));
+
+        if (path is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = LanguageExporter.Export(
+                language,
+                name,
+                assemblies ? ExportOutput.Assembly : ExportOutput.Source);
+
+            File.WriteAllBytes(path, LanguagePackage.Zip(result, content));
+
+            var packed = assemblies ? result.Assemblies.Count : result.Files.Count;
+
+            _error = $"{language.Name} packaged: {packed} files in {path}.";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ExportCompilationException or InvalidOperationException)
+        {
+            _error = $"Could not package {language.Name}: {exception.Message}";
+        }
+
+        UpdateStatus();
+    }
+
+    /// <summary>A menu entry that packs one opened language into a zip archive.</summary>
+    private sealed class PackageLanguageCommand : System.Windows.Input.ICommand
+    {
+        private readonly MainWindow _window;
+        private readonly LanguageProject _language;
+        private readonly PackageContent _content;
+
+        internal PackageLanguageCommand(MainWindow window, LanguageProject language, PackageContent content)
+        {
+            _window = window;
+            _language = language;
+            _content = content;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _window.RunCommand(
+            _content == PackageContent.Assemblies ? "package-assemblies" : "package-sources",
+            _language);
     }
 
     /// <summary>A menu entry that generates one document with one generator.</summary>

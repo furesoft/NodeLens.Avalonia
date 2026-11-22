@@ -19,10 +19,10 @@ namespace Projectional.Workbench;
 /// </remarks>
 internal static class LanguageExportWriter
 {
-    /// <summary>Writes the generated files and, when present, the assembly into <paramref name="directory"/>.</summary>
+    /// <summary>Writes the generated files and, when present, the assemblies into <paramref name="directory"/>.</summary>
     /// <param name="result">What the exporter produced.</param>
     /// <param name="directory">The folder to write into; it is created when it does not exist.</param>
-    /// <returns>The written paths, the files in the export's order and the assembly last.</returns>
+    /// <returns>The written paths, the files in the export's order and the assemblies after them, base first.</returns>
     /// <exception cref="IOException">A file could not be written.</exception>
     /// <exception cref="UnauthorizedAccessException">The folder cannot be written to.</exception>
     public static IReadOnlyList<string> Write(ExportResult result, string directory)
@@ -32,7 +32,7 @@ internal static class LanguageExportWriter
 
         Directory.CreateDirectory(directory);
 
-        var written = new List<string>(result.Files.Count + 1);
+        var written = new List<string>(result.Files.Count + result.Assemblies.Count);
         var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         foreach (var file in result.Files)
@@ -43,7 +43,7 @@ internal static class LanguageExportWriter
             written.Add(path);
         }
 
-        if (result.Assembly is { } assembly)
+        foreach (var assembly in result.Assemblies)
         {
             var path = Path.Combine(directory, assembly.Name);
 
