@@ -199,6 +199,15 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     internal static DefinitionKind TypeRuleKind { get; } = new(
         "type-rule", "Type rule", LanguageProject.TypesFolder, TypeRuleConceptKeys.Rule);
 
+    /// <summary>One declared type, which is what a rule that names a type of its own refers to.</summary>
+    /// <remarks>
+    /// The second of the five documents a <c>types</c> folder can hold, and the one the sample found missing: primitive
+    /// names are <c>string</c>, <c>int</c>, <c>float</c>, <c>bool</c> and <c>date</c>, so a language whose nodes have a
+    /// type of their own has to declare it - and a kind the shell could open but not start would make that impossible.
+    /// </remarks>
+    internal static DefinitionKind TypeNameKind { get; } = new(
+        "type-name", "Named type", LanguageProject.TypesFolder, TypeRuleConceptKeys.Named);
+
     /// <summary>One rule the language states about its own documents.</summary>
     internal static DefinitionKind ConstraintKind { get; } = new(
         "constraint", "Constraint", LanguageProject.ConstraintsFolder, ConstraintConceptKeys.Rule);
@@ -232,9 +241,11 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     /// </para>
     /// <para>
     /// A <c>types</c> folder holds five kinds of document - a rule, a named type, supertypes, comparability and a
-    /// replacement - and this list starts the first, because the other four are statements about types a rule already
-    /// named. An <c>accessory</c> document is deliberately absent: it is not a definition but an ordinary model of the
-    /// language, so it needs a language before it can be written at all.
+    /// replacement - and this list starts the first two: a rule says what a concept's type is, and a named type is what
+    /// a rule of a language with types of its own has to refer to, so both can be created from nothing. The other
+    /// three are statements about a type some rule already names, which waits until a language needs them. An
+    /// <c>accessory</c> document is deliberately absent: it is not a definition but an ordinary model of the language,
+    /// so it needs a language before it can be written at all.
     /// </para>
     /// </remarks>
     internal static IReadOnlyList<DefinitionKind> Definitions { get; } =
@@ -243,6 +254,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         EnumerationKind,
         NotationKind,
         TypeRuleKind,
+        TypeNameKind,
         ConstraintKind,
         ScopeRuleKind,
         TypingRuleKind,
