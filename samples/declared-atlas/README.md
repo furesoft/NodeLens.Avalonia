@@ -21,6 +21,7 @@ folder also proves that a language may be built on another language's concepts.
 | structure | `structure/` | an abstract concept, inheritance, references, two root concepts (one of them nestable), a borrowed concept |
 | editor | `editor/` | a sequence with an indented child list, an inline line and a reference cell |
 | types | `types/` | a declared record type (`place`) and three rules that name it, so three concepts answer one type |
+| evaluation | `evaluation/` | three meanings: a place answers with its name, a map with how many places it holds, a stop with whether it points anywhere |
 | typing | `typing/` | two claims: letters in an empty slot are a place's name, and a landmark is claimed by the words it is usually called |
 | constraints | `constraints/` | two findings: a place that is still called `unnamed` (hint) and a stop that points nowhere (error) |
 | scopes | `scopes/` | four name sources: a map's entry is `local`, a stop's target comes from `ancestors`, a route names its map and the place it starts at through the `project` - the second of those is a library node |

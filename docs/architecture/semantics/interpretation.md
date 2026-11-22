@@ -30,11 +30,12 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of nine bodies: a value read from the node (`property`, `child`, `variable`), a value
-written into the rule (`constant`), arithmetic and logic over other bodies (`operator`), a choice (`choose` with
-`condition`, `then`, `otherwise`), the first entry of a slot whose condition holds (`first` with `over`, `when`, `then`),
-a name bound while another body answers (`bind`), and a refusal with a sentence (`fail`) - and `EvaluationRuleLowering`
-turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
+- a `rule for <concept>` holding one of eleven bodies: a value read from the node (`property`, `child`, `variable`), a
+question about the node's own shape (`has`, which asks whether a slot holds anything, and `count`, which says how many
+entries a child slot holds), a value written into the rule (`constant`), arithmetic and logic over other bodies
+(`operator`), a choice (`choose` with `condition`, `then`, `otherwise`), the first entry of a slot whose condition holds
+(`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`), and a refusal with a sentence
+(`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
 *means*, because that is a computation and this repository has no language for computation: an `operator` body either
 writes its symbol itself or names the property that holds one, and `OperatorSemantics` answers whole-number arithmetic
 (including a power), the four comparisons, equality by value and the two logical operators. A concept whose meaning is a
@@ -92,6 +93,12 @@ It answers `fail` for 0, 42 and 49 points, and `pass` for 50 and 97. Four things
   is none - and it is what keeps a half-written document from reporting a result nobody would trust.
 - **Nothing about it is C#.** The language's structure is its own declared concepts and the whole of its meaning is the
   rule above; deleting the assembly's evaluation code would remove no part of it.
+
+A rule that has to tolerate an empty slot asks before it reads. `has <slot>` answers whether a property, a child slot or a
+reference holds anything, and `count <slot>` how many entries a child slot holds - neither is derivable from the other
+bodies, because a body that reads a slot refuses when it is empty and nothing else can stand in a condition. The Atlas
+sample states two meanings this way: a map answers how many places it holds (`count places`), and a stop answers whether
+it points anywhere (`has to`), which is the same question the language's own constraint asks of it.
 
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`
