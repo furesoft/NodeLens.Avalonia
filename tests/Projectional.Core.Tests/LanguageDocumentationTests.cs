@@ -473,6 +473,62 @@ public sealed class LanguageDocumentationTests
         Assert.Contains("s-keyword", reader.ReadToEnd(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheAspectsPageCoversEveryFolderWithWhatItActuallyHolds()
+    {
+        var language = Atlas();
+
+        var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Atlas/aspects.html");
+
+        // Every folder of a language has a section, including the one the concept page cannot show: an enumeration is
+        // not a concept, so it exists only here.
+        foreach (var heading in new[] { "Concepts", "Enumerations", "Notations", "Types", "Typing", "Constraints", "Scopes", "Intentions", "Generators", "Import", "Accessory models" })
+        {
+            Assert.Contains($"<h2>{heading}</h2>", page.Text, StringComparison.Ordinal);
+        }
+
+        // A notation is written out where it is listed, so a reader sees the shape without opening six concept pages.
+        Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;", page.Text, StringComparison.Ordinal);
+
+        // A scope provider is asked per reference at scope time, so the page lists the concept's own reference slots
+        // rather than claiming which ones the provider fills.
+        Assert.Contains("Reference slots of the concept", page.Text, StringComparison.Ordinal);
+        Assert.Contains("onMap, start", page.Text, StringComparison.Ordinal);
+
+        // The rule objects hold a check method, so the page counts them instead of inventing a name.
+        Assert.Contains("No rule applies everywhere.", page.Text, StringComparison.Ordinal);
+        Assert.Contains("can say that one is registered but not which offers it makes", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AGeneratorIsShownAsTheTemplateItEmits()
+    {
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Atlas()),
+            each => each.Path == "Atlas/aspects.html");
+
+        // The parts, read back: a slot as {name}, a conditional in brackets, and a list with the separator that joins it
+        // - which is the one fact about a list a reader cannot guess from its name.
+        Assert.Contains("place {name} at {at}", page.Text, StringComparison.Ordinal);
+        Assert.Contains("[if entry: at -&gt;entry]", page.Text, StringComparison.Ordinal);
+        Assert.Contains("{places... separated by &quot;\\n&quot;}", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheEnumerationsSectionStatesWhatALanguageWithoutOneHas()
+    {
+        // Lowering resolves an enumeration into the symbols a property may hold and keeps no key for it, so a page names
+        // an enumeration by its symbols and the slots that hold it. None of the declared samples declares one - C# is
+        // the language that does, and it is not a `LanguageProject` a test can build without the shell - so what is
+        // pinned here is the section's honesty for a language that has none.
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Atlas()),
+            each => each.Path == "Atlas/aspects.html");
+
+        Assert.Contains("<h2>Enumerations</h2>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("No property is declared over an enumeration.", page.Text, StringComparison.Ordinal);
+    }
+
     /// <summary>Every <c>href</c> and <c>src</c> a page writes, which is every path it asks a reader to follow.</summary>
     private static Regex LinkPattern() => new("(?:href|src)=\"([^\"]+)\"", RegexOptions.CultureInvariant);
 
