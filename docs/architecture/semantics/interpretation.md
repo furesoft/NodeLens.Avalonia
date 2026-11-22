@@ -29,6 +29,15 @@ generated JSON records). That is the cheapest correctness net available for a la
 
 ### What is implemented
 
+**Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
+- a `rule for <concept>` holding one of five bodies, `property`, `child`, `variable`, `operator` and `choose by` - and
+`EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot
+say is what an operator *means*, because that is a computation and this repository has no language for computation: an
+`operator` body names the property that holds the symbol and `OperatorSemantics` answers whole-number arithmetic
+(including a power), the four comparisons, equality by value and the two logical operators. A concept whose meaning is a
+computation of its own - resolving a call, deciding by the first non-empty entry - keeps a hand-written rule, which is the
+escape hatch the aspect being an interface exists for.
+
 The aspect is `IEvaluationRule` in `Projectional.Language/Evaluation/`, beside the notation, the typing rules
 and the type rules - a language package declares what its concepts mean without referencing the layer that runs
 them. `EvaluationRegistry` answers per concept and inherits from the super concepts, exactly as the type

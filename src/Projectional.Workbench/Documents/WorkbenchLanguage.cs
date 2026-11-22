@@ -5,6 +5,7 @@ using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.CSharp.Scopes;
+using Projectional.EvaluationRules;
 using Projectional.Expressions.Intentions;
 using Projectional.Semantics;
 using Projectional.CSharp.Types;
@@ -73,6 +74,10 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         .. StructureLanguage.ConceptDeclarations,
         .. EditorLanguage.ConceptDeclarations,
         .. TypeRuleLanguage.ConceptDeclarations,
+
+        // The evaluation rule language too: a language project writes its meaning in it, so a shell that does not declare
+        // it cannot open the file an author writes to say what a concept means.
+        .. EvaluationRuleLanguage.ConceptDeclarations,
         .. TextGenLanguage.ConceptDeclarations,
         .. ConstraintLanguage.ConceptDeclarations,
         .. ScopeLanguage.ConceptDeclarations,
@@ -604,6 +609,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         StructureNotations.AddTo(notations);
         EditorNotations.AddTo(notations);
         TypeRuleNotations.AddTo(notations);
+        EvaluationRuleNotations.AddTo(notations);
         TextGenNotations.AddTo(notations);
         ConstraintNotations.AddTo(notations);
         ScopeNotations.AddTo(notations);
