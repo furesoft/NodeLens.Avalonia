@@ -45,6 +45,7 @@ internal sealed record ModuleFacts(
             [LanguageProject.StructureFolder] = "Structure",
             [LanguageProject.EditorFolder] = "Editor",
             [LanguageProject.TypesFolder] = "Types",
+            [LanguageProject.EvaluationFolder] = "Evaluation",
             [LanguageProject.ConstraintsFolder] = "Constraints",
             [LanguageProject.ScopesFolder] = "Scopes",
             [LanguageProject.TypingFolder] = "Typing",

@@ -1,5 +1,6 @@
 using Projectional.Core;
 using Projectional.Checks;
+using Projectional.EvaluationRules;
 using Projectional.ConstraintRules;
 using Projectional.Editing;
 using Projectional.IntentionRules;
@@ -56,6 +57,9 @@ public sealed class LanguageProject
     /// <summary>The folder holding the type rules and the named types, which a language may leave out.</summary>
     public const string TypesFolder = "types";
 
+    /// <summary>The folder whose documents say what the concepts of this language evaluate to.</summary>
+    public const string EvaluationFolder = "evaluation";
+
     /// <summary>The folder holding the text generators, which a language may leave out until it has any.</summary>
     public const string GeneratorFolder = "generator";
 
@@ -103,6 +107,7 @@ public sealed class LanguageProject
         StructureFolder,
         EditorFolder,
         TypesFolder,
+        EvaluationFolder,
         ConstraintsFolder,
         ScopesFolder,
         TypingFolder,
@@ -602,6 +607,7 @@ public sealed class LanguageProject
             var typing = LowerTypingRules(fullPath, concepts);
             var intentions = LowerIntentions(fullPath, concepts);
             var types = LowerTypes(fullPath, concepts);
+            var evaluation = LowerEvaluation(fullPath, concepts);
             var notation = LowerNotation(fullPath, concepts);
 
             EnsureOnlyOwnNotations(notation, declarations);
@@ -650,7 +656,7 @@ public sealed class LanguageProject
                 intentions.HasAny || bases.Extended.Any(language => language.HasIntentions),
                 LowerImporters(fullPath, concepts),
                 checks: null,
-                evaluation: null);
+                evaluation);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -950,6 +956,18 @@ public sealed class LanguageProject
     /// type per concept, and a complaint per concept that reports instead of typing. Reading twice would parse
     /// the same models twice for no gain.
     /// </remarks>
+    /// <summary>The rules the <c>evaluation</c> folder declares, or <see langword="null"/> when it holds none.</summary>
+    /// <remarks>
+    /// Null rather than an empty registry, because "this language states no meaning" is a fact the documentation page and a
+    /// host both report differently from "it states these three" - and an empty registry would say the second.
+    /// </remarks>
+    private static EvaluationRegistry? LowerEvaluation(string directory, ConceptRegistry concepts)
+    {
+        var documents = Read(directory, EvaluationFolder, new Project(EvaluationRuleLanguage.Concepts));
+
+        return documents.Count == 0 ? null : EvaluationRuleLowering.CreateRegistry(documents, concepts);
+    }
+
     private static TypeAspect LowerTypes(string directory, ConceptRegistry concepts)
     {
         var documents = Read(directory, TypesFolder, new Project(TypeRuleLanguage.Concepts));

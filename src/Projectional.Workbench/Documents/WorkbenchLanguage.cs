@@ -279,6 +279,10 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     internal static DefinitionKind ScopeRuleKind { get; } = new(
         "scope-rule", "Scope rule", LanguageProject.ScopesFolder, ScopeConceptKeys.Rule);
 
+    /// <summary>One rule saying what a concept evaluates to.</summary>
+    internal static DefinitionKind EvaluationRuleKind { get; } = new(
+        "evaluation-rule", "Evaluation rule", LanguageProject.EvaluationFolder, EvaluationRuleConceptKeys.Rule);
+
     /// <summary>One rule saying which node a burst of typing creates.</summary>
     internal static DefinitionKind TypingRuleKind { get; } = new(
         "typing-rule", "Typing rule", LanguageProject.TypingFolder, TypingConceptKeys.Rule);
@@ -320,6 +324,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         TypeNameKind,
         ConstraintKind,
         ScopeRuleKind,
+        EvaluationRuleKind,
         TypingRuleKind,
         IntentionKind,
         GeneratorKind,
