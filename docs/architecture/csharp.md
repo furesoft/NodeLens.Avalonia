@@ -184,6 +184,15 @@ children of one slot and two of them share a name. What is left for this file is
 cannot say - the conventions about *arrangement* (order, grouping) and about a name that has to agree
 with a node that is not itself, like the constructor above.
 
+**A correction: the catalogue did not reach this language.** The paragraph above said `STD004` and `STD002`
+applied to C#, and neither did. A `LanguageProject` could carry constraints, intentions, types and scopes but
+no check set, so C# - the one language the shell always has - was the one language the standard catalogue
+never ran on, and the naming conventions the concepts declare were enforced by nothing. `LanguageProject.Checks`
+closes that, and `CSharpChecks` takes `STD002` and `STD004` from the name group plus the structural and the
+reference group whole. The two rules in the table above stay: `PlaceholderNameCheck` (`STD001`) and
+`SurroundingWhitespaceCheck` (`STD003`) answer the questions `csharp.method.name` and `csharp.field.name`
+already answer, and two sources for one finding is the duplication the shell removed once already.
+
 **What is deliberately absent: an unused `using`.** It is not undecidable in principle, but it is
 undecidable here: the language models a name as text the compiler resolves, so nothing in the model
 knows that `Console` came from the `using System;` line. A rule that guessed from the text would be

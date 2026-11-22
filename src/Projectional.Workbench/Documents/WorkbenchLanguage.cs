@@ -130,6 +130,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 [CSharpTextGenerators.Generator],
                 scopes: CSharpScopes.Registry,
                 types: CSharpTypes.Registry,
+                checks: CSharpChecks.All,
                 hasIntentions: true),
         };
 

@@ -1,3 +1,4 @@
+using Projectional.Checks;
 using Projectional.CSharp;
 using Projectional.CSharp.Checks;
 using Projectional.CSharp.Generation;
@@ -1844,6 +1845,71 @@ public sealed class CSharpLanguageTests
             """;
 
         Assert.Equal(Generated, new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
+    public void TheChecksReportTheOneDanglingNameTheSampleHolds()
+    {
+        // The sample is well-formed C# but for one thing on purpose: `Console` is a name reference nobody declares,
+        // which is how a base language sees the standard library. The catalogue reports it and nothing else, which is
+        // the half of this test that matters - a check set that fires on well-formed code is noise an author learns to
+        // ignore, and this language had no check set at all before.
+        var fix = Assert.Single(CSharpChecks.All.Find(Sample()));
+
+        Assert.Contains(
+            fix.Diagnostic.Code,
+            (string?[])[UnresolvedReferenceCheck.Code, UnresolvedReferenceCheck.ClearCode]);
+        Assert.Contains("Console", fix.Diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheChecksReportTwoMembersOfOneClassWithOneName()
+    {
+        // Not a style judgement: C# refuses the second one. Nothing in the language said so before, and this rule is
+        // taken from the name group on its own because it is the one member of that group C# does not state itself.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("duplicate");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.NameSlot, "Greeter");
+
+        for (var index = 0; index < 2; index++)
+        {
+            var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+            method.Set(CSharpLanguage.NameSlot, "Greet");
+        }
+
+        Assert.Contains(
+            CSharpChecks.All.Find(model),
+            fix => fix.Diagnostic.Code == DuplicateNameCheck.Code);
+    }
+
+    [Fact]
+    public void TheChecksReportAnOperandThatIsNotThere()
+    {
+        // A binary with no right operand draws and generates `1 +`, which no compiler accepts. The structural group is
+        // what says so, and it needs nothing from the language but the declaration of a slot that must hold a child.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("empty");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var statement = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.ExpressionStatement);
+        var sum = model.NewChild(statement, "expression", CSharpConceptKeys.Binary);
+        var left = model.NewChild(sum, "left", CSharpConceptKeys.IntLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.NameSlot, "Greeter");
+        method.Set(CSharpLanguage.NameSlot, "Count");
+        sum.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.Add);
+        left.Set(CSharpLanguage.ValueProperty, "1");
+
+        Assert.Contains(
+            CSharpChecks.All.Find(model),
+            fix => fix.Diagnostic.Code == EmptyChildSlotCheck.Code && fix.Diagnostic.Target.Equals(sum.Id));
     }
 
     private static Model Sample()
