@@ -11,6 +11,7 @@ behaviour ([ADR 0026](../../docs/adr/0026-a-dependency-resolves-to-the-vocabular
 | `language.mps` | the language itself: `Invoice`, version 1.0.0, `extends Units` |
 | `structure/Invoice.Line.mps` | one concept, with a child slot declared over `Units.Quantity` |
 | `editor/Invoice.Line.mps` | how it is drawn: `Paper = 12 in kg` |
+| `evaluation/line.mps` | what a line means: the amount of the quantity it holds, read out of the record the base language answers with |
 | `invoice.mps` | a document of the language: one line whose unit has surrounding whitespace |
 
 ## What it proves

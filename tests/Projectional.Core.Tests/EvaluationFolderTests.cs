@@ -55,7 +55,11 @@ public sealed class EvaluationFolderTests
         }
     }
 
-    /// <summary>Copies the test data folder <paramref name="name"/> into a directory of its own.</summary>
+    /// <summary>Copies the test data folder <paramref name="name"/> into a directory of its own, without the rules it ships.</summary>
+    /// <remarks>
+    /// <c>Units</c> states a meaning of its own now, so its <c>evaluation</c> folder is taken away before a test writes one:
+    /// what these two tests are about is the reader, not what the sample happens to ship today.
+    /// </remarks>
     private static string Copy(string name)
     {
         var source = Path.Combine(AppContext.BaseDirectory, name);
@@ -67,6 +71,13 @@ public sealed class EvaluationFolderTests
 
             _ = Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(file, destination);
+        }
+
+        var evaluation = Path.Combine(target, LanguageProject.EvaluationFolder);
+
+        if (Directory.Exists(evaluation))
+        {
+            Directory.Delete(evaluation, recursive: true);
         }
 
         return target;

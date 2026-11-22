@@ -617,6 +617,7 @@ public sealed class LanguageProject
             var inheritedTypes = types.Registry;
             var inheritedConstraints = LowerConstraints(fullPath, concepts).With(types.Complaints);
             var inheritedScopes = scopes.Registry;
+            var inheritedEvaluation = evaluation;
             List<ITypingRules> typingSets = [typing.Registry];
             List<IIntentionProvider> intentionSets = [intentions.Provider];
 
@@ -625,6 +626,14 @@ public sealed class LanguageProject
                 inheritedTypes = inheritedTypes.With(inherited.Types);
                 inheritedConstraints = inheritedConstraints.With(inherited.Constraints);
                 inheritedScopes = inheritedScopes.With(inherited.Scopes);
+
+                // A base's meanings come along too. Without this a language that extends another inherits its types, its
+                // constraints, its scopes, its typing and its intentions, and not what its concepts *mean* - so a rule of the
+                // extending language could not delegate to a borrowed concept at all.
+                if (inherited.Evaluation is { } baseEvaluation)
+                {
+                    inheritedEvaluation = inheritedEvaluation is null ? baseEvaluation : inheritedEvaluation.With(baseEvaluation);
+                }
                 typingSets.Add(inherited.Typing);
                 intentionSets.Add(inherited.Intentions);
             }
@@ -656,7 +665,7 @@ public sealed class LanguageProject
                 intentions.HasAny || bases.Extended.Any(language => language.HasIntentions),
                 LowerImporters(fullPath, concepts),
                 checks: null,
-                evaluation);
+                inheritedEvaluation);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
