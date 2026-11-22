@@ -23,16 +23,36 @@ public static class ExpressionsEvaluation
     public static EvaluationRegistry Registry { get; } = Create();
 
     private static EvaluationRegistry Create() => EvaluationRegistry.Empty
-        .Add(ExpressionsConceptKeys.IntLiteral, new DelegateEvaluationRule(context => context.PropertyValue("value")))
-        .Add(ExpressionsConceptKeys.BoolLiteral, new DelegateEvaluationRule(context => context.PropertyValue("value")))
-        .Add(ExpressionsConceptKeys.StringLiteral, new DelegateEvaluationRule(context => context.PropertyValue("value")))
-        .Add(ExpressionsConceptKeys.Name, new DelegateEvaluationRule(ReadName))
-        .Add(ExpressionsConceptKeys.Parenthesized, new DelegateEvaluationRule(context => context.EvalChild("inner")))
-        .Add(ExpressionsConceptKeys.Unary, new DelegateEvaluationRule(ApplyUnary))
-        .Add(ExpressionsConceptKeys.Binary, new DelegateEvaluationRule(ApplyBinary))
-        .Add(ExpressionsConceptKeys.If, new DelegateEvaluationRule(ChooseBranch))
-        .Add(ExpressionsConceptKeys.Function, new DelegateEvaluationRule(context => context.EvalChild("body")))
-        .Add(ExpressionsConceptKeys.Call, new DelegateEvaluationRule(ApplyCall));
+        .Add(
+            ExpressionsConceptKeys.IntLiteral,
+            new DelegateEvaluationRule(context => context.PropertyValue("value"), "The number its value property holds."))
+        .Add(
+            ExpressionsConceptKeys.BoolLiteral,
+            new DelegateEvaluationRule(context => context.PropertyValue("value"), "The truth value its property holds."))
+        .Add(
+            ExpressionsConceptKeys.StringLiteral,
+            new DelegateEvaluationRule(context => context.PropertyValue("value"), "The text its property holds."))
+        .Add(
+            ExpressionsConceptKeys.Name,
+            new DelegateEvaluationRule(ReadName, "The value the run binds to that name."))
+        .Add(
+            ExpressionsConceptKeys.Parenthesized,
+            new DelegateEvaluationRule(context => context.EvalChild("inner"), "What the grouped expression evaluates to."))
+        .Add(
+            ExpressionsConceptKeys.Unary,
+            new DelegateEvaluationRule(ApplyUnary, "Its operator applied to the value of its operand."))
+        .Add(
+            ExpressionsConceptKeys.Binary,
+            new DelegateEvaluationRule(ApplyBinary, "Its operator applied to the values of its two operands."))
+        .Add(
+            ExpressionsConceptKeys.If,
+            new DelegateEvaluationRule(ChooseBranch, "The branch its condition chooses."))
+        .Add(
+            ExpressionsConceptKeys.Function,
+            new DelegateEvaluationRule(context => context.EvalChild("body"), "What its body evaluates to, with its parameters supplied by the run."))
+        .Add(
+            ExpressionsConceptKeys.Call,
+            new DelegateEvaluationRule(ApplyCall, "The body of the function it names, evaluated with the arguments bound."));
 
     private static Value ReadName(EvaluationContext context) =>
         context.Node.GetOrNull("name") is { Length: > 0 } name

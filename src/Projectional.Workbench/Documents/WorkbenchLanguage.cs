@@ -151,7 +151,8 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 types: ExpressionsLanguage.Types,
                 typing: ExpressionsLanguage.TypingRules,
                 hasTyping: true,
-                hasIntentions: true),
+                hasIntentions: true,
+                evaluation: ExpressionsEvaluation.Registry),
         };
 
         /// <summary>Every language the shell ships, which is what a documentation set starts from.</summary>

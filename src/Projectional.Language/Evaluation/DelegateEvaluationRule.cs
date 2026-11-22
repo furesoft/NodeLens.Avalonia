@@ -8,11 +8,13 @@ namespace Projectional.Language;
 /// language package - is what this avoids.
 /// </remarks>
 /// <param name="evaluate">What the node evaluates to.</param>
-public sealed class DelegateEvaluationRule(Func<EvaluationContext, Value> evaluate) : IEvaluationRule
+public sealed class DelegateEvaluationRule(Func<EvaluationContext, Value> evaluate, string? description = null) : IEvaluationRule
 {
     private readonly Func<EvaluationContext, Value> _evaluate =
         evaluate ?? throw new ArgumentNullException(nameof(evaluate));
 
     /// <inheritdoc />
     public Value Evaluate(EvaluationContext context) => _evaluate(context);
+
+    public string? Description => description;
 }

@@ -38,6 +38,7 @@ internal static class AspectPages
         Aspect.Importers,
         Aspect.Accessory,
         Aspect.Checks,
+        Aspect.Evaluation,
     ];
 
     /// <summary>Renders the page of one aspect.</summary>
@@ -75,6 +76,7 @@ internal static class AspectPages
             Aspect.Importers => language.Importers.Count,
             Aspect.Accessory => language.Accessory.Count,
             Aspect.Checks => language.Checks?.Count ?? 0,
+            Aspect.Evaluation => language.Evaluation?.Count ?? 0,
             _ => 0,
         };
     }
@@ -119,10 +121,33 @@ internal static class AspectPages
             Aspect.Checks => count == 0
                 ? "The language brings no check of its own, so its documents are checked with the ones the host supplies."
                 : $"{Html.Count(count, "check")} the framework derives from the declarations.",
+            Aspect.Evaluation => count == 0
+                ? "The language states no meaning of its own, so a document of it can be drawn and not run."
+                : $"{Html.Count(count, "concept")} of this language answer with a value.",
             _ => string.Empty,
         };
     }
 
+    /// <summary>What each concept of the language evaluates to, in the sentence its rule carries.</summary>
+    /// <remarks>
+    /// The rows are the language own concepts, not the registry entries: a rule is looked up per concept, which is how the
+    /// interpreter finds one, so a page can never list a concept the run would not reach.
+    /// </remarks>
+    private static string Evaluation(DocumentationChain chain, LanguageProject language, int depth)
+    {
+        var rows = DocumentationChain.Own(language)
+            .Select(concept => (Concept: concept, Rule: language.Evaluation?.RuleFor(concept)))
+            .Where(entry => entry.Rule is not null)
+            .Select(entry => new List<string>
+            {
+                chain.ConceptReference(depth, entry.Concept.Key),
+                entry.Rule!.Description is { Length: > 0 } said
+                    ? Html.Escape(said)
+                    : "<span class=\"muted\">the rule does not say</span>",
+            });
+
+        return Html.Table(["Concept", "Evaluates to"], rows, "It states none.");
+    }
     /// <summary>The checks the language brings, with the code each of its findings carries.</summary>
     /// <remarks>
     /// A constraint and a check answer one question from two sides, and the constraints page beside this one would invite
@@ -154,6 +179,10 @@ internal static class AspectPages
         {
             switch (aspect)
             {
+                case Aspect.Evaluation:
+                    body.Append(Evaluation(chain, language, depth));
+                    break;
+
                 case Aspect.Checks:
                     body.Append(Checks(language));
                     body.Append(Html.Paragraph(

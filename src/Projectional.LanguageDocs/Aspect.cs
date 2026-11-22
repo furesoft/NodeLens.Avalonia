@@ -46,6 +46,13 @@ internal enum Aspect
     /// is a question about the language whether or not its author wrote the answer.
     /// </remarks>
     Checks,
+
+    /// <summary>What each concept evaluates to.</summary>
+    /// <remarks>
+    /// The second aspect with no folder, and for a stronger reason than checks: the others are languages a project writes
+    /// in a folder, while a rule about meaning is a computation and no model for one exists here.
+    /// </remarks>
+    Evaluation,
 }
 
 /// <summary>Where each aspect's page lives, what it is called, and what a language has in it.</summary>
@@ -65,6 +72,7 @@ internal static class AspectNames
         Aspect.Importers => "importers.html",
         Aspect.Accessory => "accessory.html",
         Aspect.Checks => "checks.html",
+        Aspect.Evaluation => "evaluation.html",
         _ => throw new ArgumentOutOfRangeException(nameof(aspect), aspect, "No page for that aspect."),
     };
 
@@ -82,6 +90,7 @@ internal static class AspectNames
         Aspect.Importers => "Importers",
         Aspect.Accessory => "Accessory",
         Aspect.Checks => "Checks",
+        Aspect.Evaluation => "Evaluation",
         _ => throw new ArgumentOutOfRangeException(nameof(aspect), aspect, "No title for that aspect."),
     };
 

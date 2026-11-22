@@ -25,4 +25,11 @@ public interface IEvaluationRule
     /// <param name="context">The node, its children and the variables of the run.</param>
     /// <exception cref="EvaluationException">The node cannot be evaluated, with a message for the user.</exception>
     Value Evaluate(EvaluationContext context);
+    /// <summary>What this rule computes, in one sentence, or <see langword="null"/> when it does not say.</summary>
+    /// <remarks>
+    /// Nullable on purpose: the sentence is for a reader of a documentation page, and a rule that computes something a
+    /// sentence cannot summarise should say nothing rather than print its own type name. A language that wants its
+    /// meaning documented writes one per rule; a host that composes several sees which ones did.
+    /// </remarks>
+    string? Description { get; }
 }
