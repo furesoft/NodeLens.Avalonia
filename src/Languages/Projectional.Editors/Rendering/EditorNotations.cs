@@ -33,7 +33,7 @@ public static class EditorNotations
 
         var ed = NotationEditor.Create();
 
-        notations.Add(EditorConceptKeys.Notation, ed => ed.Sequence(
+        notations.Add(EditorConceptKeys.Notation, ed => ed.Indent(ed.Sequence(
             ed.Line(
                 ed.Keyword("editor for concept"),
                 ed.Space,
@@ -44,7 +44,7 @@ public static class EditorNotations
                 ed.Property("variant")),
             ed.Indent(ed.Indent(ed.Sequence(
                 ed.Line(ed.Keyword("node cell layout:")),
-                ed.Line(ed.ChildInline(EditorLanguage.RootSlot, "<no layout>")))))));
+                ed.Line(ed.ChildInline(EditorLanguage.RootSlot, "<no layout>"))))))));
 
         notations.Add(EditorConceptKeys.Cell, ed => ed.Line(ed.Keyword("cell")));
         notations.Add(EditorConceptKeys.InlineCell, ed => ed.Line(ed.Keyword("inline cell")));

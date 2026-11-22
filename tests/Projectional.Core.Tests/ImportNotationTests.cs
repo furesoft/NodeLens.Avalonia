@@ -29,6 +29,21 @@ public sealed class ImportNotationTests
     }
 
     [Fact]
+    public void AnImporterIsDrawnLikeAnyOtherDefinition()
+    {
+        // The shape every definition language shares: the page keeps a margin, so the header is one indent in, and
+        // what the definition says about itself hangs two indents under it - tokens and rules here, exactly as the
+        // settings and sections hang under a concept's header. Nothing pinned this before, which is how the importer
+        // came to start at the page edge while a concept did not.
+        var lines = Render("ini.mps").Split('\n');
+
+        Assert.Equal("  importer ini", lines[0]);
+        Assert.StartsWith("      token Space", lines[1], StringComparison.Ordinal);
+        Assert.StartsWith("      rule Pipeline.Pipeline", lines[2], StringComparison.Ordinal);
+        Assert.StartsWith("        \"pipeline = \"", lines[3], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ATokenClassDrawsAsTheSentenceItMeans()
     {
         var drawn = Render("relaxed.mps");
