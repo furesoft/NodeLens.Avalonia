@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Projection;
 using Projectional.Persistence;
 using Xunit;
 
@@ -67,6 +68,28 @@ public sealed class LanguageSnapshotTests
         Assert.Same(
             BoardLanguage.Concepts.Get(BoardLanguage.Item),
             reloaded.Roots[0].GetChildren(BoardLanguage.ItemsSlot)[0].Concept);
+    }
+
+    [Fact]
+    public void ARunSaysWhereItsTextIsAndWhatItMeans()
+    {
+        var model = Board("Shopping", "milk");
+
+        // The same drawing as text, answered as pieces: a caller that colours a picture needs the position the renderer
+        // chose and the classification the editor paints with, and re-deriving either from the characters is how a
+        // highlighter drifts from the editor it documents.
+        var runs = LanguageSnapshot.Runs(model, BoardNotations.Registry, width: 40);
+
+        Assert.Equal("board", Assert.Single(runs, run => run.Text == "board").Text);
+        Assert.Contains(runs, run => run.Text == "board" && run.Kind == TextStyleKind.Keyword && run.Row == 0 && run.Column == 0);
+        Assert.Contains(runs, run => run.Text == "Shopping" && run.Kind == TextStyleKind.Text && run.Row == 0 && run.Column == 6);
+        Assert.Contains(runs, run => run.Text == "milk" && run.Kind == TextStyleKind.Text && run.Row == 1 && run.Column == 4);
+
+        // The pieces still spell the text the renderer would have drawn, which is what stops the two from disagreeing.
+        var characters = LanguageSnapshot.Render(model, BoardNotations.Registry, width: 40);
+
+        Assert.All(runs, run => Assert.InRange(run.Row, 0, characters.Split('\n').Length - 1));
+        Assert.Equal("board", characters.Split('\n')[0][..5]);
     }
 
     /// <summary>A board with one item per entry of <paramref name="texts"/>.</summary>

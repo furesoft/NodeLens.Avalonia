@@ -89,16 +89,7 @@ internal static class LayoutSnapshot
 
     private static string Render(IReadOnlyList<CellLayout> layouts, int width)
     {
-        // Roots are stacked with no gap between them: vertical spacing is something a notation
-        // decides, so the renderer must not invent any between two documents.
-        var rowOffsets = new int[layouts.Count];
-        var height = 0;
-
-        for (var i = 0; i < layouts.Count; i++)
-        {
-            rowOffsets[i] = height;
-            height += Rows(layouts[i]);
-        }
+        var rowOffsets = Stack(layouts, out var height);
 
         // A grid needs at least one row, so an empty model renders through a blank one and comes
         // out of ToString as the empty string.
@@ -110,6 +101,87 @@ internal static class LayoutSnapshot
         }
 
         return grid.ToString();
+    }
+
+    /// <summary>Where each layout starts, and how tall the stacked picture is.</summary>
+    /// <remarks>
+    /// Roots are stacked with no gap between them: vertical spacing is something a notation decides, so the renderer
+    /// must not invent any between two documents. Both outputs stack the same way because both ask this.
+    /// </remarks>
+    private static int[] Stack(IReadOnlyList<CellLayout> layouts, out int height)
+    {
+        var offsets = new int[layouts.Count];
+        var bottom = 0;
+
+        for (var i = 0; i < layouts.Count; i++)
+        {
+            offsets[i] = bottom;
+            bottom += Rows(layouts[i]);
+        }
+
+        height = bottom;
+
+        return offsets;
+    }
+
+    /// <summary>Renders one node as classified runs instead of characters, for a caller that wants to colour it.</summary>
+    /// <param name="node">The node to render.</param>
+    /// <param name="notations">The notation that projects it.</param>
+    /// <param name="width">How many columns the picture has.</param>
+    /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    /// <param name="types">The language's type rules, which a <see cref="TypeOfNotationCell"/> draws.</param>
+    /// <returns>The runs in the order they are drawn, which is the layout's own order.</returns>
+    /// <remarks>
+    /// The runs carry the position the renderer put them at and the classification <see cref="CellStyler"/> gives them,
+    /// which is the same pair a painter uses. Nothing here knows about colour: a caller decides what a keyword looks
+    /// like, exactly as a palette does in the editor.
+    /// </remarks>
+    internal static IReadOnlyList<SnapshotRun> Runs(
+        Node node,
+        NotationRegistry notations,
+        int width,
+        INotationChoice? choice = null,
+        TypeRegistry? types = null)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(notations);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+
+        return Runs([LayoutOf(node, notations, choice, types)], width);
+    }
+
+    /// <summary>Renders every root of <paramref name="model"/> as classified runs.</summary>
+    /// <param name="model">The model to render.</param>
+    /// <param name="notations">The notation that projects it.</param>
+    /// <param name="width">How many columns the picture has.</param>
+    /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    /// <param name="types">The language's type rules, which a <see cref="TypeOfNotationCell"/> draws.</param>
+    internal static IReadOnlyList<SnapshotRun> Runs(
+        Model model,
+        NotationRegistry notations,
+        int width,
+        INotationChoice? choice = null,
+        TypeRegistry? types = null)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(notations);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+
+        return Runs([.. model.Roots.Select(root => LayoutOf(root, notations, choice, types))], width);
+    }
+
+    /// <summary>Walks the layouts into a run collector, with the same rows the character grid would use.</summary>
+    private static IReadOnlyList<SnapshotRun> Runs(IReadOnlyList<CellLayout> layouts, int width)
+    {
+        var rowOffsets = Stack(layouts, out _);
+        var runs = new SnapshotRuns();
+
+        for (var i = 0; i < layouts.Count; i++)
+        {
+            Draw(runs, layouts[i], rowOffsets[i], width);
+        }
+
+        return runs.Runs;
     }
 
     private static int Rows(CellLayout layout)
@@ -124,7 +196,7 @@ internal static class LayoutSnapshot
         return bottom;
     }
 
-    private static void Draw(SnapshotGrid grid, CellLayout layout, int rowOffset, int width)
+    private static void Draw(ISnapshotSink sink, CellLayout layout, int rowOffset, int width)
     {
         foreach (var placed in layout.Cells)
         {
@@ -145,7 +217,7 @@ internal static class LayoutSnapshot
             // renderer places no page edge of its own for anything to wrap at.
             if (layout.LinesOf(placed.Cell) is not { } lines)
             {
-                grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, Cut(text, available));
+                sink.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, Cut(text, available), CellStyler.Default.StyleOf(placed.Cell));
                 continue;
             }
 
@@ -154,7 +226,7 @@ internal static class LayoutSnapshot
             // hold, and slicing the value's lines would draw nothing at all.
             if (lines.IsSingleLine)
             {
-                grid.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, Cut(text, available));
+                sink.Write(rowOffset + (int)Math.Round(placed.Bounds.Y), column, Cut(text, available), CellStyler.Default.StyleOf(placed.Cell));
                 continue;
             }
 
@@ -171,7 +243,7 @@ internal static class LayoutSnapshot
 
                 var row = rowOffset + (int)Math.Round(placed.Bounds.Y + (index * lines.LineHeight));
 
-                grid.Write(row, column, Cut(text.Substring(line.Start, line.ContentLength), available));
+                sink.Write(row, column, Cut(text.Substring(line.Start, line.ContentLength), available), CellStyler.Default.StyleOf(placed.Cell));
             }
         }
     }

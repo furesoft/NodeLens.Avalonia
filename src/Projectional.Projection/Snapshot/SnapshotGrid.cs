@@ -15,7 +15,7 @@ namespace Projectional.Projection;
 /// that a snapshot shows what was drawn rather than how much room was reserved for it.
 /// </para>
 /// </remarks>
-internal sealed class SnapshotGrid
+internal sealed class SnapshotGrid : ISnapshotSink
 {
     private readonly char[][] _rows;
 
@@ -37,6 +37,18 @@ internal sealed class SnapshotGrid
     internal int Width { get; }
 
     internal int Height { get; }
+
+    /// <summary>Draws <paramref name="text"/> at <paramref name="row"/> and <paramref name="column"/>, ignoring its style.</summary>
+    /// <remarks>
+    /// A grid holds characters, so the classification is dropped here: the styled output is
+    /// <see cref="SnapshotRuns"/>, and both are drawn by the same walk.
+    /// </remarks>
+    public void Write(int row, int column, string text, TextStyleKind kind)
+    {
+        _ = kind;
+
+        Write(row, column, text);
+    }
 
     /// <summary>Draws <paramref name="text"/> at <paramref name="row"/> and <paramref name="column"/>.</summary>
     /// <exception cref="ArgumentException">The text would leave the grid.</exception>
