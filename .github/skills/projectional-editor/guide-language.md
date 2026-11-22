@@ -23,10 +23,13 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
   `Indent` then pushes the rest of the row further right: a template of five parts reads as a diagonal
   staircase. The text-gen template had exactly that bug. A collection is stacked unless its entries are
   genuinely one word each (`[a, b, c]`).
-- **Every definition language indents its content by exactly one level.** The structure language used two,
-  so a concept was read three indents in while a generator was read one - the same shape spelled two ways.
-  One `Indent` at the root of a notation, and one more per nesting step, is the rule; a notation that wants
-  to look different has to say why.
+- **A document is one indent in, and a definition's body is two indents under its header.** The structure
+  language drew its documents two levels in while every other definition language drew one - the same shape
+  spelled two ways - so the page is now uniform: one `Indent` at the root of a notation, one more per nesting
+  step. A concept is the exception that is written down rather than discovered: its header is the concept, and
+  the settings and the four sections hang *two* indents under it (`ed.Indent(ed.Indent(...))`), because they are
+  one block that belongs to the line above rather than a paragraph beside it - a body one level in read as if
+  the header were its sibling.
 - **`Horizontal` is the one cell where the parent decides a direction.** It takes blocks like a
   sequence and lays them out in one row, so a notation whose cells are each a small diagram can put a
   bracket beside them (`[ cells ]` in the editor language). Everywhere else the orientation is inherited -
