@@ -30,13 +30,16 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of five bodies, `property`, `child`, `variable`, `operator` and `choose by` - and
-`EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot
-say is what an operator *means*, because that is a computation and this repository has no language for computation: an
-`operator` body names the property that holds the symbol and `OperatorSemantics` answers whole-number arithmetic
+- a `rule for <concept>` holding one of nine bodies: a value read from the node (`property`, `child`, `variable`), a value
+written into the rule (`constant`), arithmetic and logic over other bodies (`operator`), a choice (`choose` with
+`condition`, `then`, `otherwise`), the first entry of a slot whose condition holds (`first` with `over`, `when`, `then`),
+a name bound while another body answers (`bind`), and a refusal with a sentence (`fail`) - and `EvaluationRuleLowering`
+turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
+*means*, because that is a computation and this repository has no language for computation: an `operator` body either
+writes its symbol itself or names the property that holds one, and `OperatorSemantics` answers whole-number arithmetic
 (including a power), the four comparisons, equality by value and the two logical operators. A concept whose meaning is a
-computation of its own - resolving a call, deciding by the first non-empty entry - keeps a hand-written rule, which is the
-escape hatch the aspect being an interface exists for.
+computation of its own - resolving a call, counting the entries of a slot - keeps a hand-written rule, which is the escape
+hatch the aspect being an interface exists for.
 
 The aspect is `IEvaluationRule` in `Projectional.Language/Evaluation/`, beside the notation, the typing rules
 and the type rules - a language package declares what its concepts mean without referencing the layer that runs
@@ -60,6 +63,39 @@ Three decisions are worth keeping:
 - **Values are records, not objects.** `IntValue`, `BoolValue`, `StringValue`, `DateValue` compare by content,
   so an interpreter test is an assertion. `PropertyValue` maps a property through its declared
   `PropertyType.TryParse`, which is the same authority the model validates writes with.
+
+### An evaluator for a language of your own
+
+Nine bodies are enough to answer for a whole language. The worked example is a grade report: `Grade.Report` has a `name`
+and the `points` it scored, and the language owes it one of two words. That is one rule.
+
+```text
+rule for Grade.Report
+  choose
+    condition   operator >= over (property points) and (constant int 50)
+    then        constant string pass
+    otherwise   constant string fail
+```
+
+It answers `fail` for 0, 42 and 49 points, and `pass` for 50 and 97. Four things in it are worth copying.
+
+- **The symbol is written on the body.** `operator >=` is what lets a rule compare a slot against a value the rule names:
+  a report has no operator property of its own for the body to read one from. Leaving `symbol` empty is the other form -
+  `operatorSlot` then names the property whose *value* is the symbol, which is how a language whose operator varies per
+  node (arithmetic, `<`, `&&`) is written. A symbol on the body wins over the node's, because the rule is the narrower
+  statement of the two.
+- **The answers are constants, not concepts.** `pass` and `fail` are written into the rule, so the language's own
+  vocabulary does not need them: a word that only an evaluation produces is not a concept, and adding one would make the
+  document spell out the answer the meaning is supposed to compute.
+- **A refusal is part of the meaning.** A report whose `points` is empty is refused with `'points' of Grade.Report holds
+  no valid int.` rather than answering `fail`. That is the interpreter's existing rule - nobody stated a value, so there
+  is none - and it is what keeps a half-written document from reporting a result nobody would trust.
+- **Nothing about it is C#.** The language's structure is its own declared concepts and the whole of its meaning is the
+  rule above; deleting the assembly's evaluation code would remove no part of it.
+
+The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
+language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`
+writes the rule and pins the five answers and the refusal.
 
 The shipped meanings: `ExpressionsEvaluation` (literals, names, arithmetic and comparison over whole numbers,
 equality by content, `&&`/`||`, unary `-`/`!`, `if`, parentheses) and `RulesEvaluation` (a rule is the truth of

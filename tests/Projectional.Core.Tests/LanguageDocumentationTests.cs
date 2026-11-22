@@ -248,7 +248,7 @@ public sealed class LanguageDocumentationTests
     [Fact]
     public void TheLanguageARuleIsWrittenInIsPartOfTheSet()
     {
-        // A language author meets these concepts the way they meet the type rule language, so the five bodies are
+        // A language author meets these concepts the way they meet the type rule language, so its bodies are
         // documented beside the rest - and a documentation set that dropped them would hide half the authoring model.
         var language = LanguageProject.Shipped(
             Projectional.EvaluationRules.EvaluationRuleLanguage.Name,
