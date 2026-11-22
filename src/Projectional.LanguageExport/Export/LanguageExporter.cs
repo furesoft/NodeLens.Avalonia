@@ -60,13 +60,14 @@ public static class LanguageExporter
     public static ExportResult Export(
         LanguageProject language,
         string? namespaceName = null,
-        ExportOutput output = ExportOutput.Source)
+        ExportOutput output = ExportOutput.Source,
+        AssemblyLayout layout = AssemblyLayout.PerLanguage)
     {
         ArgumentNullException.ThrowIfNull(language);
 
         var files = new List<GeneratedFile>();
-        var assemblies = new List<GeneratedAssembly>();
         var beside = new List<string>();
+        var sources = new List<Built>();
 
         foreach (var basis in language.Resolved)
         {
@@ -88,13 +89,16 @@ public static class LanguageExporter
                 basis.DeclaredTypingRules,
                 basis.HasDeclaredImporters,
                 Metadata(basis),
-                output,
+
+                // One assembly can hold one informational version, and it is the exported language's: a dependency's
+                // own version still travels as AssemblyMetadata, which allows the repetition.
+                informationalVersion: layout == AssemblyLayout.PerLanguage,
                 readme: false,
                 beside: null);
 
             files.AddRange(exported.Files);
-            assemblies.AddRange(exported.Assemblies);
-            beside.Add(ClassName(basis.Name) + VersionSuffix(basis.Version));
+            beside.Add(exported.Stem);
+            sources.Add(exported);
         }
 
         var own = Build(
@@ -110,12 +114,18 @@ public static class LanguageExporter
             language.DeclaredTypingRules,
             language.HasDeclaredImporters,
             Metadata(language),
-            output,
+            informationalVersion: true,
             readme: true,
             beside);
 
         files.AddRange(own.Files);
-        assemblies.AddRange(own.Assemblies);
+        sources.Add(own);
+
+        var assemblies = output != ExportOutput.Assembly
+            ? []
+            : layout == AssemblyLayout.Combined
+                ? [AssemblyCompiler.Compile(own.Stem, [.. sources.Select(source => source.Text)])]
+                : sources.Select(source => AssemblyCompiler.Compile(source.Stem, source.Text)).ToList();
 
         return new ExportResult(files, assemblies);
     }
@@ -162,8 +172,9 @@ public static class LanguageExporter
         IReadOnlyList<DeclaredTypingRule>? typingRules = null,
         bool hasImport = false,
         ExportOutput output = ExportOutput.Source,
-        LanguageMetadata? metadata = null) =>
-        Build(
+        LanguageMetadata? metadata = null)
+    {
+        var built = Build(
             name,
             declarations,
             notations,
@@ -176,11 +187,26 @@ public static class LanguageExporter
             typingRules,
             hasImport,
             metadata,
-            output,
+            informationalVersion: true,
             readme: true,
             beside: null);
 
-    /// <summary>Builds one language's source, its README and, on request, the assembly that source compiles to.</summary>
+        return new ExportResult(
+            built.Files,
+            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(built.Stem, built.Text)] : []);
+    }
+
+    /// <summary>One language as files, as source text, and under the name its files carry.</summary>
+    /// <param name="Files">The source file and, when asked for, the README.</param>
+    /// <param name="Stem">The file name without extension: the class name and the declared version.</param>
+    /// <param name="Text">The generated source, which an assembly layout may compile together with another's.</param>
+    private sealed record Built(IReadOnlyList<GeneratedFile> Files, string Stem, string Text);
+
+    /// <summary>Builds one language's source and, on request, its README.</summary>
+    /// <param name="informationalVersion">
+    /// Whether the source states the declared version as the assembly's informational version. One assembly can hold
+    /// one such attribute, so a combined layout writes it for the exported language alone.
+    /// </param>
     /// <param name="readme">
     /// Whether this language's README is part of the answer. A language the exported one stands on is a package of its
     /// own, but only the exported one documents the folder, so its neighbours are named in one README rather than one
@@ -190,7 +216,7 @@ public static class LanguageExporter
     /// The file names, without extension, exported beside this one - each a language and its declared version - named in
     /// the README, or <see langword="null"/> when this file is alone.
     /// </param>
-    private static ExportResult Build(
+    private static Built Build(
         string name,
         IReadOnlyList<ConceptDeclaration> declarations,
         IReadOnlyList<Notation> notations,
@@ -203,7 +229,7 @@ public static class LanguageExporter
         IReadOnlyList<DeclaredTypingRule>? typingRules,
         bool hasImport,
         LanguageMetadata? metadata,
-        ExportOutput output,
+        bool informationalVersion,
         bool readme,
         IReadOnlyList<string>? beside)
     {
@@ -215,7 +241,7 @@ public static class LanguageExporter
         var className = ClassName(name);
         var stem = className + VersionSuffix(metadata?.Version);
         var omitted = Omissions(hasTypes, hasGenerators, hasConstraints, hasScopes, hasIntentions, hasImport);
-        var source = Source(name, className, namespaceName, declarations, notations, typing, omitted, metadata);
+        var source = Source(name, className, namespaceName, declarations, notations, typing, omitted, metadata, informationalVersion);
 
         var files = new List<GeneratedFile>(2) { new($"{stem}.cs", source) };
 
@@ -226,9 +252,7 @@ public static class LanguageExporter
                 Readme(name, className, notations.Count > 0, typing.Count > 0, omitted, metadata, beside)));
         }
 
-        return new ExportResult(
-            files,
-            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(stem, source)] : []);
+        return new Built(files, stem, source);
     }
 
     /// <summary>The declared version as a file-name suffix: <c>-1.0.0</c>, or nothing when none is declared.</summary>
@@ -309,7 +333,8 @@ public static class LanguageExporter
         IReadOnlyList<Notation> notations,
         IReadOnlyList<DeclaredTypingRule> typingRules,
         List<string> omitted,
-        LanguageMetadata? metadata)
+        LanguageMetadata? metadata,
+        bool informationalVersion)
     {
         var source = new SourceWriter();
         var stubs = omitted.Contains("types") || omitted.Contains("generator");
@@ -345,7 +370,7 @@ public static class LanguageExporter
 
         if (metadata is not null)
         {
-            AssemblyMetadata(source, name, metadata);
+            AssemblyMetadata(source, name, metadata, informationalVersion);
             source.Blank();
         }
 
@@ -401,14 +426,18 @@ public static class LanguageExporter
     /// field an assembly has. The assembly version is left alone, because it is four numbers and nothing here parses a
     /// version a user typed.
     /// </remarks>
-    private static void AssemblyMetadata(SourceWriter source, string name, LanguageMetadata metadata)
+    private static void AssemblyMetadata(SourceWriter source, string name, LanguageMetadata metadata, bool informationalVersion)
     {
         MetadataAttribute(source, LanguageKey, name);
 
         if (metadata.Version is { Length: > 0 } version)
         {
             MetadataAttribute(source, VersionKey, version);
-            source.Line($"[assembly: System.Reflection.AssemblyInformationalVersion({SourceWriter.Literal(version)})]");
+
+            if (informationalVersion)
+            {
+                source.Line($"[assembly: System.Reflection.AssemblyInformationalVersion({SourceWriter.Literal(version)})]");
+            }
         }
 
         foreach (var dependency in metadata.DependsOn)
