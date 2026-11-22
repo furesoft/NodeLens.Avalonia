@@ -50,6 +50,13 @@ What is next, in order:
    red when a new aspect is not added to it ([full-sample.md](architecture/full-sample.md)). The per-axis samples stay:
    they explain one thing, this one keeps them true.
 
+5. **The interactive language documentation.** A `LanguageProject` turned into a folder of static HTML a team can open
+   in a browser, link into a wiki, or ship beside a package: one page per concept with its slots and its notation, the
+   aspect summary, examples drawn by the headless renderer, and one search over all of it. **A language's documentation
+   contains the documentation of every language it stands on** - the chain is followed downward, base first, shipped
+   bases included, with every link across languages resolved through one map and every declared dependency the host
+   could not answer shown as a fact rather than left out ([language-docs.md](architecture/language-docs.md)).
+
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, an instance
 created from a typed alias, data flow, comments, an inspector, block-selection shrink and a
