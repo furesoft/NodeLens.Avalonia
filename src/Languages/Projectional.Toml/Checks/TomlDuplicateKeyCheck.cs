@@ -29,6 +29,10 @@ public sealed class TomlDuplicateKeyCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "TOML001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "One table naming the same key twice, with a rename to the first free suffix as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "toml.duplicate-key.rename";
 

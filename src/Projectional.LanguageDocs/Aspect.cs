@@ -38,6 +38,14 @@ internal enum Aspect
 
     /// <summary>The documents that are models of the language itself.</summary>
     Accessory,
+
+    /// <summary>The findings a document of the language is checked for.</summary>
+    /// <remarks>
+    /// The one aspect with no folder: a check is framework code rather than a declaration, so a language takes them from
+    /// the catalogue instead of stating them. The page exists anyway, because "what will be reported about my document"
+    /// is a question about the language whether or not its author wrote the answer.
+    /// </remarks>
+    Checks,
 }
 
 /// <summary>Where each aspect's page lives, what it is called, and what a language has in it.</summary>
@@ -56,6 +64,7 @@ internal static class AspectNames
         Aspect.Generators => "generators.html",
         Aspect.Importers => "importers.html",
         Aspect.Accessory => "accessory.html",
+        Aspect.Checks => "checks.html",
         _ => throw new ArgumentOutOfRangeException(nameof(aspect), aspect, "No page for that aspect."),
     };
 
@@ -72,6 +81,7 @@ internal static class AspectNames
         Aspect.Generators => "Generators",
         Aspect.Importers => "Importers",
         Aspect.Accessory => "Accessory",
+        Aspect.Checks => "Checks",
         _ => throw new ArgumentOutOfRangeException(nameof(aspect), aspect, "No title for that aspect."),
     };
 

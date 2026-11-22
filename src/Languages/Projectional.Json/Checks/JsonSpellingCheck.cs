@@ -25,6 +25,10 @@ public sealed class JsonSpellingCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "JSON001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A name or a string whose text is not spelled as JSON requires, with the escape as its repair.";
+
     /// <summary>The identifier of the one repair this check offers.</summary>
     public const string FixId = "json.spelling.escape";
 

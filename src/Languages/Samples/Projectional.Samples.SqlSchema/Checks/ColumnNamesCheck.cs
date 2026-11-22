@@ -24,6 +24,10 @@ public sealed class ColumnNamesCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "SQL001";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "Two columns of one table under one name.";
+
     /// <summary>The stable identifier of the repair that renames the later column.</summary>
     public const string FixId = "sql.column-name.rename";
 

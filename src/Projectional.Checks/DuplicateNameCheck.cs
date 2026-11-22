@@ -50,6 +50,10 @@ public sealed class DuplicateNameCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD002";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "Two children of one slot that answer to the same name.";
+
     /// <summary>The stable identifier of the repair that renames the later child.</summary>
     public const string FixId = "std.duplicate-name.rename";
 

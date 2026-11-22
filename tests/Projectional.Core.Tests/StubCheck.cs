@@ -19,6 +19,10 @@ internal sealed class StubCheck : ICheck
     /// <summary>How many times this check has been asked, which is what "runs every check" means.</summary>
     internal int Calls { get; private set; }
 
+    string ICheck.Code => "STUB001";
+
+    string ICheck.Title => "One fixed finding, so a test can say what composition and order do";
+
     public IReadOnlyList<DiagnosticFix> Find(Model model)
     {
         ArgumentNullException.ThrowIfNull(model);

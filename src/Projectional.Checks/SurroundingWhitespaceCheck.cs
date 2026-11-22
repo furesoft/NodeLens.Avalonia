@@ -24,6 +24,10 @@ public sealed class SurroundingWhitespaceCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD003";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A name with whitespace in front of or behind it.";
+
     /// <summary>The stable identifier of the repair that trims the name.</summary>
     public const string FixId = "std.surrounding-whitespace.trim";
 

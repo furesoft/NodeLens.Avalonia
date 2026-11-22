@@ -38,6 +38,10 @@ public sealed class BinaryGroupingCheck : ICheck
     /// <summary>The identifier a host puts on a finding so a user can look it up.</summary>
     public const string Code = "STD040";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A binary expression whose grouping a reader would only get right from operator precedence.";
+
     /// <summary>The stable identifier of the repair that adds the parentheses.</summary>
     public const string FixId = "std.binary-grouping.wrap";
 

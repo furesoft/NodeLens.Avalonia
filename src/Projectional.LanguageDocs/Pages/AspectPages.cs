@@ -37,6 +37,7 @@ internal static class AspectPages
         Aspect.Generators,
         Aspect.Importers,
         Aspect.Accessory,
+        Aspect.Checks,
     ];
 
     /// <summary>Renders the page of one aspect.</summary>
@@ -73,6 +74,7 @@ internal static class AspectPages
             Aspect.Generators => language.Generators.Count,
             Aspect.Importers => language.Importers.Count,
             Aspect.Accessory => language.Accessory.Count,
+            Aspect.Checks => language.Checks?.Count ?? 0,
             _ => 0,
         };
     }
@@ -114,10 +116,30 @@ internal static class AspectPages
             Aspect.Accessory => count == 0
                 ? "The language ships no accessory document."
                 : $"{Html.Count(count, "accessory document")}.",
+            Aspect.Checks => count == 0
+                ? "The language brings no check of its own, so its documents are checked with the ones the host supplies."
+                : $"{Html.Count(count, "check")} the framework derives from the declarations.",
             _ => string.Empty,
         };
     }
 
+    /// <summary>The checks the language brings, with the code each of its findings carries.</summary>
+    /// <remarks>
+    /// A constraint and a check answer one question from two sides, and the constraints page beside this one would invite
+    /// the question: a constraint is a rule the language spells out in its own model, a check is one the framework derives
+    /// from the declarations - the name slot, the child slots, the property types. A language can have both, and then the
+    /// two pages read as one answer: that is what the author stated, this is what the framework adds.
+    /// </remarks>
+    private static string Checks(LanguageProject language)
+    {
+        var rows = (language.Checks?.Checks ?? []).Select(check => new List<string>
+        {
+            $"<code>{Html.Escape(check.Code)}</code>",
+            Html.Escape(check.Title),
+        });
+
+        return Html.Table(["Code", "Looks for"], rows, "It brings none.");
+    }
     private static string Body(DocumentationChain chain, LanguageProject language, int depth, Aspect aspect)
     {
         var concepts = DocumentationChain.Own(language);
@@ -132,6 +154,13 @@ internal static class AspectPages
         {
             switch (aspect)
             {
+                case Aspect.Checks:
+                    body.Append(Checks(language));
+                    body.Append(Html.Paragraph(
+                        "A check may report more than one code: the one listed is the code it is known by, and the"
+                        + " findings a repair can only be made by removing the node carry a second."));
+                    break;
+
                 case Aspect.Enumerations:
                     body.Append(EnumerationsTable(concepts));
                     break;

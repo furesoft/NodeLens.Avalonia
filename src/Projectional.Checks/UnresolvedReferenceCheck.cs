@@ -36,6 +36,10 @@ public sealed class UnresolvedReferenceCheck : ICheck
     /// <summary>The identifier of a finding that has at least one close candidate.</summary>
     public const string Code = "STD020";
 
+    string ICheck.Code => Code;
+
+    string ICheck.Title => "A reference whose target is gone, repaired by pointing it at a name the scope offers - or by clearing it.";
+
     /// <summary>The identifier of a finding whose only repair is clearing the reference.</summary>
     public const string ClearCode = "STD021";
 

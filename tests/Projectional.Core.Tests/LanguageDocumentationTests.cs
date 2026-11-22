@@ -244,6 +244,36 @@ public sealed class LanguageDocumentationTests
         Assert.DoesNotContain("implemented by", literal.Text, StringComparison.Ordinal);
     }
     [Fact]
+    public void AChecksPageNamesEveryCheckTheLanguageBrings()
+    {
+        var pages = LanguageDocumentation.Generate(CSharp());
+        var checks = Assert.Single(pages, page => page.Path == "CSharp/checks.html");
+
+        // Every check says which code its findings carry and what it looks for, which is what makes the page an answer to
+        // "what will be reported about my document" rather than a list of the framework's class names.
+        Assert.Contains("<code>STD002</code>", checks.Text, StringComparison.Ordinal);
+        Assert.Contains("<code>STD020</code>", checks.Text, StringComparison.Ordinal);
+        Assert.Contains("Two children of one slot that answer to the same name.", checks.Text, StringComparison.Ordinal);
+
+        // The aspect page says where the aspect comes from, and that it is nowhere in the folder of a language.
+        var aspects = Assert.Single(pages, page => page.Path == "CSharp/aspects.html");
+
+        Assert.Contains("no folder: a language takes them from the framework", aspects.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AChecksPageStatesWhatALanguageWithoutChecksHas()
+    {
+        var checks = Assert.Single(
+            LanguageDocumentation.Generate(Atlas()),
+            page => page.Path == "Atlas/checks.html");
+
+        // A declared language states constraints and brings no checks, so the page says which rule applies instead of
+        // showing an empty table - and it says it once, not a second time as the table's own empty row.
+        Assert.Contains("brings no check of its own", checks.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("<th>Code</th>", checks.Text, StringComparison.Ordinal);
+    }
+    [Fact]
     public void AConceptPageNamesTheSlotsThatCanHoldIt()
     {
         var pages = LanguageDocumentation.Generate(CSharp());
@@ -748,7 +778,8 @@ public sealed class LanguageDocumentationTests
             CSharpNotations.CreateNotations(CSharpLanguage.Concepts),
             CSharpConstraints.All,
             CSharpIntentions.Provider,
-            [CSharpTextGenerators.Generator]);
+            [CSharpTextGenerators.Generator],
+            checks: CSharpChecks.All);
     private static LanguageProject Atlas() => Atlas(Units());
 
     private static LanguageProject Atlas(LanguageProject units) =>
