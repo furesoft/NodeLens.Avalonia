@@ -144,11 +144,11 @@ public static class StructureNotations
         // an unfilled row would leave the blank line it drew, and a concept that implements nothing has no such row
         // at all.
         notations.Add(StructureConceptKeys.Concept, ed => ed.Indent(ed.Sequence(
-            // The body sits one indent in from the page edge and the header one further in, which is the shape MPS
-            // draws: the settings about the concept start there, and what the concept *is* stands apart from them.
-            // One indent, not two: every definition language indents its content by the same amount, so a concept and
-            // a generator are read the same way.
-            ed.Indent(ed.Line(
+            // The header is the concept; everything it holds sits two indents under it, so the settings and the four
+            // sections read as one block that belongs to the line above them rather than as a paragraph beside it.
+            // Two indents, not one: a declaration is a child of the concept, and its own options are one further in
+            // again, which is the depth MPS gives a concept's body.
+            ed.Line(
                 ed.Conditional(StructureLanguage.IsInterfaceProperty, "true", ed.Keyword("interface"), ed.Space),
                 ed.Conditional(
                     StructureLanguage.IsInterfaceProperty,
@@ -162,33 +162,33 @@ public static class StructureNotations
                     ed.Space,
                     ed.Keyword("extends"),
                     ed.Space,
-                    ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance)))),
-            ed.WhenFilledBlock(
-                StructureLanguage.ImplementsSlot,
-                ed.Indent(ed.Horizontal(
-                    ed.Line(ed.Keyword("implements"), ed.Space),
-                    ed.Children(StructureLanguage.ImplementsSlot, NoSection, stacked: true)))),
-            ed.Line(),
-            ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
-            ed.Line(ed.Keyword("alias:"), ed.Space, ed.Property(StructureLanguage.AliasProperty, emptyText: NoAlias)),
-            ed.Line(
-                ed.Keyword("short description:"),
-                ed.Space,
-                ed.Property("description", emptyText: NoShortDescription)),
-            ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
-            ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
-            ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
-            ed.Line(ed.Keyword("named by rule:"), ed.Space, ed.Property("nameRule")),
-            ed.Line(),
-            ed.Line(ed.Keyword("properties:")),
-            ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoSection, stacked: true)),
-            ed.Line(),
-            ed.Line(ed.Keyword("children:")),
-            ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
-            ed.Line(),
-            ed.Line(ed.Keyword("references:")),
-            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true)))));
-
+                    ed.InlineCollection(StructureLanguage.SuperTypeSlot, ed.Punct(","), NoInheritance))),
+            ed.Indent(ed.Indent(ed.Sequence(
+                ed.WhenFilledBlock(
+                    StructureLanguage.ImplementsSlot,
+                    ed.Indent(ed.Horizontal(
+                        ed.Line(ed.Keyword("implements"), ed.Space),
+                        ed.Children(StructureLanguage.ImplementsSlot, NoSection, stacked: true)))),
+                ed.Line(),
+                ed.Line(ed.Keyword("instance can be root:"), ed.Space, ed.Property(StructureLanguage.IsRootProperty)),
+                ed.Line(ed.Keyword("alias:"), ed.Space, ed.Property(StructureLanguage.AliasProperty, emptyText: NoAlias)),
+                ed.Line(
+                    ed.Keyword("short description:"),
+                    ed.Space,
+                    ed.Property("description", emptyText: NoShortDescription)),
+                ed.Line(ed.Keyword("offered in completion:"), ed.Space, ed.Property("isOfferedInCompletion")),
+                ed.Line(ed.Keyword("named by:"), ed.Space, ed.Property("nameSlot")),
+                ed.Line(ed.Keyword("collapsed by:"), ed.Space, ed.Property("collapseSlot")),
+                ed.Line(ed.Keyword("named by rule:"), ed.Space, ed.Property("nameRule")),
+                ed.Line(),
+                ed.Line(ed.Keyword("properties:")),
+                ed.Indent(ed.Children(StructureLanguage.PropertiesSlot, NoSection, stacked: true)),
+                ed.Line(),
+                ed.Line(ed.Keyword("children:")),
+                ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
+                ed.Line(),
+                ed.Line(ed.Keyword("references:")),
+                ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))))));
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
         notations.Add(StructureConceptKeys.Slot, ed => ed.Line(
