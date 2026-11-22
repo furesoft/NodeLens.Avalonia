@@ -24,6 +24,7 @@
           <properties>
             <name>name</name>
             <typeName>string</typeName>
+            <defaultValue>unnamed</defaultValue>
             <showDescriptionWhenFilled>false</showDescriptionWhenFilled>
           </properties>
         </node>

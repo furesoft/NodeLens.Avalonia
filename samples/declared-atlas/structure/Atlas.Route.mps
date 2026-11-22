@@ -30,6 +30,15 @@
           </properties>
         </node>
       </children>
+      <children role="references">
+        <node id="b0000000-0000-4000-8000-000000000503" concept="Structure.ReferenceDecl" name="onMap">
+          <properties>
+            <name>onMap</name>
+            <targetConceptKey>Atlas.Map</targetConceptKey>
+            <allowOwnSubtree>false</allowOwnSubtree>
+          </properties>
+        </node>
+      </children>
     </node>
   </nodes>
 </model>

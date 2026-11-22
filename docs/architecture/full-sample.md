@@ -101,7 +101,13 @@ the sample is incomplete by design.
    name it - a place, a landmark and a stop are the same thing to anything reading a route - plus two claims (letters
    are a place's name; a landmark is claimed by `lake`, `peak` or `pass`). `DeclaredAtlasTests` asserts the type of
    nodes in both documents and both claims.
-3. **constraints + scopes** - the two findings and the three name sources.
+3. **constraints + scopes** - **delivered**: two findings (a place still called `unnamed` as a hint, a stop that points
+   nowhere as an error) and three name sources - `local` for a map's entry, `ancestors` for a stop's target and
+   `project` for a route naming the map of another document. The structure grew what there was to say something about:
+   a map now holds its routes, and a route names the map it lies on. The slice also pinned what the five places mean,
+   which nothing said before: `local` is the node's children and siblings, `ancestors` the children of each enclosing
+   node, and `model`/`project` are the **roots** of the document and of the project's other documents - so a nested
+   place is never reachable through `model`, and the sample says so in its README.
 4. **intentions + generator + import** - the two offers, the text out and the text back in (the generator writes what
    the importer reads, which is the parity that keeps a spelling in one place).
 5. **accessory + tests + `map.mps`** - the library nodes, one document, and the `tests/` folder with one assertion per
