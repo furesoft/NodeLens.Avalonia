@@ -148,6 +148,15 @@ public static class EvaluationRuleLanguage
             description: "How many entries a child slot holds.",
             nameSlot: SlotSlot),
 
+        // Delegation, which is what a reference is for: a stop answers with what the place it points at answers. Without
+        // this body a reference could only be asked whether it is filled, never followed.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Reference,
+            [new PropertySlot(SlotSlot, PropertyType.String)],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The value of the node a reference slot points at, which is that node's own rule.",
+            nameSlot: SlotSlot),
+
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Variable,
             [new PropertySlot(SlotSlot, PropertyType.String)],

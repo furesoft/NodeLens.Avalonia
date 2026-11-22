@@ -30,9 +30,10 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of eleven bodies: a value read from the node (`property`, `child`, `variable`), a
+- a `rule for <concept>` holding one of twelve bodies: a value read from the node (`property`, `child`, `variable`), a
 question about the node's own shape (`has`, which asks whether a slot holds anything, and `count`, which says how many
-entries a child slot holds), a value written into the rule (`constant`), arithmetic and logic over other bodies
+entries a child slot holds), the value of the node a reference points at (`reference`), a value written into the rule
+(`constant`), arithmetic and logic over other bodies
 (`operator`), a choice (`choose` with `condition`, `then`, `otherwise`), the first entry of a slot whose condition holds
 (`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`), and a refusal with a sentence
 (`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
@@ -99,6 +100,12 @@ reference holds anything, and `count <slot>` how many entries a child slot holds
 bodies, because a body that reads a slot refuses when it is empty and nothing else can stand in a condition. The Atlas
 sample states two meanings this way: a map answers how many places it holds (`count places`), and a stop answers whether
 it points anywhere (`has to`), which is the same question the language's own constraint asks of it.
+
+A reference is followed, not only tested. `reference <slot>` answers with what the node in that slot answers, through that
+node's own rule - so a language composes a meaning out of other meanings, and a stop can answer with the name of the place
+it points at. Three refusals are separate sentences, because they need different answers: the slot is not a reference (the
+rule names the wrong shape), it points nowhere (the document is half-written), or it points at a node the model does not
+hold (the reference dangles).
 
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`

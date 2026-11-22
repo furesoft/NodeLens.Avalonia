@@ -44,6 +44,11 @@ public static class EvaluationRuleNotations
             ed.Space,
             ed.Property(EvaluationRuleLanguage.SlotSlot)));
 
+        notations.Add(EvaluationRuleConceptKeys.Reference, ed => ed.Line(
+            ed.Keyword("reference"),
+            ed.Space,
+            ed.Property(EvaluationRuleLanguage.SlotSlot)));
+
         notations.Add(EvaluationRuleConceptKeys.Variable, ed => ed.Line(
             ed.Keyword("variable"),
             ed.Space,

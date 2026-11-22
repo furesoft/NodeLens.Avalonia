@@ -114,6 +114,15 @@ public static class EvaluationRuleLowering
             };
         }
 
+        // Delegation: the node the reference points at answers through its own rule, so following a reference composes the
+        // same way a child does and the trace names the node the answer actually came from.
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Reference))
+        {
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            return context => context.EvalReference(slot);
+        }
+
         // A slot the concept does not declare answers nothing rather than zero: a count of a slot that does not exist is a
         // rule written against the wrong concept, and zero is a number a document could have meant.
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Count))
@@ -324,6 +333,11 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Count))
         {
             return $"How many entries its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} child slot holds.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Reference))
+        {
+            return $"The value of the node its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} reference points at.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))

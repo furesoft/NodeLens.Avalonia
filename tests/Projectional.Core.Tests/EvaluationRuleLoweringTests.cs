@@ -381,6 +381,57 @@ public sealed class EvaluationRuleLoweringTests
             counted.Lower().RuleFor(FirstLanguage.Concepts.Get(FirstLanguage.Container))!.Description);
     }
     [Fact]
+    public void ADeclaredReferenceAnswersWithTheValueOfTheNodeItPointsAt()
+    {
+        // Delegation: the callee answers through its own rule, which is the composition a reference exists for. A body that
+        // could only ask whether a reference is filled would leave every delegation to hand-written C#.
+        var rules = new Rules();
+        var reference = Body(rules.Rule(ExpressionsConceptKeys.Call), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Reference);
+        reference.Set(EvaluationRuleLanguage.SlotSlot, "callee");
+        Constant(rules.Rule(ExpressionsConceptKeys.Function), "string", "done");
+
+        var model = ExpressionsLanguage.NewProject().NewModel("functions");
+        var function = model.NewNode(ExpressionsConceptKeys.Function);
+        function.Set("name", "f");
+        model.AddRoot(function);
+
+        var call = model.NewNode(ExpressionsConceptKeys.Call);
+        call.SetReference("callee", function);
+        model.AddRoot(call);
+
+        Assert.Equal(new StringValue("done"), Evaluate(rules.Lower(), model, call));
+    }
+
+    [Fact]
+    public void ADeclaredReferenceRefusesASlotThatIsNotAReference()
+    {
+        var rules = new Rules();
+        var reference = Body(rules.Rule(ExpressionsConceptKeys.Call), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Reference);
+        reference.Set(EvaluationRuleLanguage.SlotSlot, "arguments");
+
+        var call = ExpressionsLanguage.NewProject().NewModel("functions").NewNode(ExpressionsConceptKeys.Call);
+        var failure = new Interpreter(rules.Lower()).Run(call, cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("is not a reference of", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredReferenceRefusesASlotThatPointsNowhere()
+    {
+        // A different sentence from the one above, because it needs a different answer: this document is half-written, the
+        // other rule was written against the wrong shape.
+        var rules = new Rules();
+        var reference = Body(rules.Rule(ExpressionsConceptKeys.Call), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Reference);
+        reference.Set(EvaluationRuleLanguage.SlotSlot, "callee");
+
+        var call = ExpressionsLanguage.NewProject().NewModel("functions").NewNode(ExpressionsConceptKeys.Call);
+        var failure = new Interpreter(rules.Lower()).Run(call, cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("points nowhere", failure.Message, StringComparison.Ordinal);
+    }
+    [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {
         var rules = new Rules();
