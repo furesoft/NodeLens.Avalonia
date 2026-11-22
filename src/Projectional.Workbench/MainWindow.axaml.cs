@@ -3070,7 +3070,10 @@ public sealed partial class MainWindow : Window, IDisposable
     /// <remarks>
     /// <para>
     /// Every definition document of the folder opens, because that is where the user edits the language: one concept
-    /// or enumeration per file, one notation per file, one rule or named type per file.
+    /// or enumeration per file, one notation per file, one rule or named type per file. The folders are
+    /// <see cref="LanguageProject.AspectFolders"/>, the same one list the project explorer draws, so an aspect the
+    /// framework gains is opened by the shell without a second list to remember - which is how <c>generator</c> came
+    /// to be shown in the explorer and never opened as a tab.
     /// </para>
     /// <para>
     /// Internal rather than private because the screenshot harness drives the shell through this seam: a folder
@@ -3090,7 +3093,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return false;
         }
 
-        foreach (var folder in new[] { LanguageProject.StructureFolder, LanguageProject.EditorFolder, LanguageProject.TypesFolder, LanguageProject.ConstraintsFolder, LanguageProject.ScopesFolder, LanguageProject.TypingFolder, LanguageProject.AccessoryFolder, LanguageProject.IntentionsFolder, LanguageProject.ImportFolder })
+        foreach (var folder in LanguageProject.AspectFolders)
         {
             var path = Path.Combine(language.Directory, folder);
 

@@ -53,6 +53,11 @@ one child would be a second place to say which definitions exist.
 The folder's name is the language's name. The `structure` folder is required and must hold at least one document; the
 other four are optional.
 
+`LanguageProject.AspectFolders` is the one ordered list of those folders - the reading order above, with `generator`
+and `import` last because their documents say what a model becomes rather than what it is. A host that shows or opens
+a language walks it: the project explorer draws it and the shell's **File ▸ Open language…** opens every document in
+it. Two copies of the list is how `generator/` came to be drawn in the explorer and never opened as a tab.
+
 The `tests` folder is not an aspect of the language: `LanguageProject.Open` does not read it, because a language does
 not depend on its own tests. `TestRunner` in `Projectional.Testing` reads it, in the same ordinal order, and runs the
 assertions each document states ([language-tests.md](language-tests.md)).
@@ -102,8 +107,11 @@ M2's gate in its smallest complete form.
 `WorkbenchLanguage` is **per shell** - an instance, not a static table - and it grows at runtime:
 
 - **File ▸ Open language…** picks a folder, loads it, and takes it into the set. **Every definition document of the
-  folder opens afterwards** - one tab per concept, enumeration, notation, rule, generator, constraint and importer -
-  which is where the user edits them.
+  folder opens afterwards** - one tab per concept, enumeration, notation, type rule, constraint, scope rule, typing
+  rule, intention, generator and importer - which is where the user edits them. The folders are
+  `LanguageProject.AspectFolders`, the same list the project explorer draws, so an aspect the framework gains is opened
+  by the shell without a second list to keep in step; the typing language is declared by the shell for the reason the
+  importer language is, because `typing/` documents are written in it.
 - **File ▸ New ▸ Concept**, **File ▸ New ▸ Enumeration**, **File ▸ New ▸ Notation** and **File ▸ New ▸ Importer**
   create a document with exactly one empty definition of that kind. A definition document is saved into the folder's
   aspect directory, so a concept created in the app is one more file beside the others, and an importer created there

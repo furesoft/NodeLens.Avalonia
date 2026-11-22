@@ -83,6 +83,34 @@ public sealed class LanguageProject
     /// <summary>The folder holding the language's intentions, which a language may leave out.</summary>
     public const string IntentionsFolder = "intentions";
 
+    /// <summary>The folders that hold a language's definition documents, in the order a reader meets them.</summary>
+    /// <remarks>
+    /// <para>
+    /// One list, because two copies of it drifted: the project explorer had its own and so did the shell's "open a
+    /// language" loop, and the second never learned about <see cref="GeneratorFolder"/> - a folder the language
+    /// declares, the explorer shows and the shell therefore never opened.
+    /// </para>
+    /// <para>
+    /// The order is the reading order of a language: what it declares, how it is drawn, the aspects that give it a
+    /// meaning, and last the two whose documents say what a model becomes. The <c>tests</c> folder is not here and
+    /// cannot be, because a language does not depend on its own tests - the test runner reads that one - and neither
+    /// is <see cref="LanguageFile"/>, which sits beside the folders rather than inside one.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyList<string> AspectFolders { get; } =
+    [
+        StructureFolder,
+        EditorFolder,
+        TypesFolder,
+        ConstraintsFolder,
+        ScopesFolder,
+        TypingFolder,
+        AccessoryFolder,
+        IntentionsFolder,
+        ImportFolder,
+        GeneratorFolder,
+    ];
+
     private LanguageProject(
         string directory,
         LanguageRoot? languageRoot,

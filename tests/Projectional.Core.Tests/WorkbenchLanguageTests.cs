@@ -11,6 +11,7 @@ using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.Testing;
 using Projectional.TextGen;
+using Projectional.TypingRules;
 using Projectional.TypeRules;
 using Projectional.Workbench;
 using Xunit;
@@ -41,7 +42,67 @@ public sealed class WorkbenchLanguageTests
         Assert.True(language.Concepts.TryGet(TypeRuleConceptKeys.Rule, out _));
         Assert.True(language.Concepts.TryGet(TextGenConceptKeys.Generator, out _));
         Assert.True(language.Concepts.TryGet(ConstraintConceptKeys.Rule, out _));
+        Assert.True(language.Concepts.TryGet(TypingConceptKeys.Rule, out _));
         Assert.Empty(language.Opened);
+    }
+
+    [Fact]
+    public void EveryDefinitionDocumentOfEverySampleOpensInTheShell()
+    {
+        // A project's definition documents are written in one language per aspect, so "the shell can open a language"
+        // is a claim about every aspect and not about the ones that were built last. It had drifted twice: the typing
+        // language was declared by no shell, so its documents were refused, and the folder list the shell walked had
+        // no `generator` entry, so that aspect opened nowhere. This walks the folders the samples actually ship
+        // rather than the list the shell walks, which is what makes the next aspect arrive with a failing test
+        // instead of with a missing tab.
+        var language = new WorkbenchLanguage();
+
+        var samples = Directory
+            .EnumerateDirectories(AppContext.BaseDirectory)
+            .Where(directory => LanguageProject.AspectFolders.Any(folder => Directory.Exists(Path.Combine(directory, folder))))
+            .OrderBy(directory => directory, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(samples);
+        Assert.DoesNotContain(TestRunner.Folder, LanguageProject.AspectFolders);
+
+        var opened = 0;
+
+        foreach (var sample in samples)
+        {
+            foreach (var folder in Directory.EnumerateDirectories(sample).OrderBy(path => path, StringComparer.Ordinal))
+            {
+                var aspect = Path.GetFileName(folder);
+
+                // The tests folder is the one directory beside the aspects, and a language does not depend on it.
+                if (aspect == TestRunner.Folder)
+                {
+                    continue;
+                }
+
+                Assert.True(
+                    LanguageProject.AspectFolders.Contains(aspect, StringComparer.Ordinal),
+                    $"'{sample}' ships a '{aspect}' folder the shell's one list of aspect folders does not name");
+
+                foreach (var file in Directory.EnumerateFiles(folder, "*.mps", SearchOption.TopDirectoryOnly))
+                {
+                    var model = DocumentFile.TryLoad(file, language.NewProject(), out var error);
+
+                    Assert.True(error is null, $"{file}: {error}");
+                    Assert.NotNull(model);
+
+                    var root = Assert.Single(model.Roots);
+
+                    Assert.True(
+                        language.Notations.TryGet(root.Concept.Key, out _),
+                        $"'{root.Concept.Key}' of {file} has no notation in the shell's registry");
+
+                    opened++;
+                }
+            }
+        }
+
+        Assert.True(opened > 0);
     }
 
     [Fact]
