@@ -92,7 +92,11 @@ part a folder cannot fake - a `types/` directory that lowered to nothing would s
 Each slice is a commit that leaves the repository green; the guard test arrives with the last one, because until then
 the sample is incomplete by design.
 
-1. **structure + editor + `language.mps`** - the concepts, their notation, and the dependency on `Units`.
+1. **structure + editor + `language.mps`** - **delivered**: six concepts (`Spot` abstract, `Place`, `Landmark`,
+   `Stop` with a reference to a place, and the roots `Map` and `Route`), one notation each, a root that names the
+   language, says what it is for and declares the dependency on `Units`, and the two documents `map.mps` and
+   `route.mps`. `DeclaredAtlasTests` pins the load, the drawing of both documents and the byte-identical round trip
+   of every file.
 2. **types + typing** - the rules and the claims, with `DeclaredAtlasTests` asserting one type and one typed burst.
 3. **constraints + scopes** - the two findings and the three name sources.
 4. **intentions + generator + import** - the two offers, the text out and the text back in (the generator writes what
@@ -101,6 +105,10 @@ the sample is incomplete by design.
    kind.
 6. **the guard test and the documentation** - `TheFullSampleDeclaresEveryAspectTheFrameworkKnows`, the README, a row in
    `implemented.md`, and the sample added to `File > Open examples` by the build's copy rule.
+
+Slices 2 to 6 are open. Until the last one lands the sample is incomplete on purpose, which is why the guard test
+arrives with it rather than now: a guard that had to be told which aspects are still missing would be a second list to
+keep in step with this one.
 
 ## What this document is not
 

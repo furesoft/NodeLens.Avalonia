@@ -73,6 +73,7 @@
     <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Examples\declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <None Include="..\..\samples\declared-units\**\*.mps" Link="Examples\declared-units\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <None Include="..\..\samples\declared-workflow\**\*.mps" Link="Examples\declared-workflow\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="..\..\samples\declared-atlas\**\*.mps" Link="Examples\declared-atlas\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>
