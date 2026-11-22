@@ -40,20 +40,41 @@ public static class EvaluationRuleLanguage
     /// <summary>The property naming the property that holds an operator symbol.</summary>
     public const string OperatorSlot = "operatorSlot";
 
-    /// <summary>The property naming the child slot of the left operand.</summary>
-    public const string LeftSlot = "leftSlot";
+    /// <summary>The body that answers the left operand, or the only one.</summary>
+    public const string LeftSlot = "left";
 
-    /// <summary>The property naming the child slot of the right operand, empty for a unary operator.</summary>
-    public const string RightSlot = "rightSlot";
+    /// <summary>The body that answers the right operand, empty for a unary operator.</summary>
+    public const string RightSlot = "right";
 
-    /// <summary>The property naming the child slot whose value the choose body reads.</summary>
-    public const string ConditionSlot = "conditionSlot";
+    /// <summary>The body whose value decides a choose body.</summary>
+    public const string ConditionSlot = "condition";
 
     /// <summary>The body a choose body answers with while its condition is true.</summary>
     public const string ThenSlot = "then";
 
     /// <summary>The body a choose body answers with otherwise.</summary>
     public const string OtherwiseSlot = "otherwise";
+
+    /// <summary>The property naming the child slot whose entries a first body walks.</summary>
+    public const string OverSlot = "over";
+
+    /// <summary>The body a first body asks about each entry, answered for that entry.</summary>
+    public const string WhenSlot = "when";
+
+    /// <summary>The property holding the name a bind body introduces.</summary>
+    public const string NameSlot = "name";
+
+    /// <summary>The body whose value a bind body binds.</summary>
+    public const string ValueSlot = "value";
+
+    /// <summary>The property holding the sentence a fail body refuses with.</summary>
+    public const string MessageSlot = "message";
+
+    /// <summary>The values a constant may hold, in the order the property offers them.</summary>
+    public static IReadOnlyList<string> ConstantKinds { get; } = ["int", "bool", "string"];
+
+    /// <summary>The type of the property that says which kind of value a constant holds.</summary>
+    public static PropertyType ConstantKindType { get; } = PropertyType.Enum("int", "bool", "string");
 
     /// <summary>Every concept this language declares, in declaration order.</summary>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } = CreateDeclarations();
@@ -92,7 +113,7 @@ public static class EvaluationRuleLanguage
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Body,
             isAbstract: true,
-            description: "What a rule answers with, as one of the five bodies below."),
+            description: "What a rule answers with, as one of the bodies below."),
 
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Property,
@@ -115,12 +136,30 @@ public static class EvaluationRuleLanguage
             description: "The value the run bound to the name a property holds.",
             nameSlot: SlotSlot),
 
+        // Written in the rule rather than read from the node, which is what a rule that answers with an outcome needs: the
+        // alternative was a node whose property happens to hold the same text.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Constant,
+            [
+                new PropertySlot(
+                    "kind",
+                    ConstantKindType,
+                    description: "Which kind of value the text holds, such as int.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(ValueSlot, PropertyType.String, description: "The value as text, such as 42."),
+            ],
+            [EvaluationRuleConceptKeys.Body],
+            description: "A value written into the rule itself: the outcome of a decision, or a number the rule needs.",
+            nameSlot: ValueSlot),
+
+        // The operands are bodies rather than slot names, which is what lets a rule say `(the first applicable rule's
+        // outcome) + 1`: an operand that can only name a child slot would stop at the node's own shape.
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Operator,
             [
                 new PropertySlot(OperatorSlot, PropertyType.String, description: "The property holding the symbol, such as operator."),
-                new PropertySlot(LeftSlot, PropertyType.String, description: "The child slot of the left operand, or the only one."),
-                new PropertySlot(RightSlot, PropertyType.String, description: "The child slot of the right operand, empty for a unary operator."),
+                new ChildSlot(LeftSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+                new ChildSlot(RightSlot, EvaluationRuleConceptKeys.Body, Cardinality.One, minimum: 0),
             ],
             [EvaluationRuleConceptKeys.Body],
             description: "An operator applied to the values of its operands: leave the right operand empty for a unary operator, and the rule applies the symbol to the left one alone.",
@@ -129,12 +168,46 @@ public static class EvaluationRuleLanguage
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Choose,
             [
-                new PropertySlot(ConditionSlot, PropertyType.String, description: "The child slot whose value decides."),
+                new ChildSlot(ConditionSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
                 new ChildSlot(ThenSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
                 new ChildSlot(OtherwiseSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
             ],
             [EvaluationRuleConceptKeys.Body],
-            description: "One of two bodies, decided by the truth value of a child slot's value.",
-            nameSlot: ConditionSlot),
+            // No name slot: a choice has no string of its own, and a name slot has to be a string property - the condition
+            // is a body, which is a child.
+            description: "One of two bodies, decided by the truth value of a third."),
+
+        // The shape every rule-based DSL needs: the first child that applies decides, and what it answers is read from
+        // *that* child. Both bodies are evaluated with the entry as their subject, which is what a context for another node
+        // is for.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.First,
+            [
+                new PropertySlot(OverSlot, PropertyType.String, description: "The child slot whose entries are tried in order."),
+                new ChildSlot(WhenSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+                new ChildSlot(ThenSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+                new ChildSlot(OtherwiseSlot, EvaluationRuleConceptKeys.Body, Cardinality.One, minimum: 0),
+            ],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The first entry of a list whose condition holds, answered by the body beside the condition; with no otherwise body an entry that never applies is a refusal.",
+            nameSlot: OverSlot),
+
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Bind,
+            [
+                new PropertySlot(NameSlot, PropertyType.String, description: "The name the body may read, such as total."),
+                new ChildSlot(ValueSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+                new ChildSlot(BodySlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+            ],
+            [EvaluationRuleConceptKeys.Body],
+            description: "A name bound to one body while another one answers: the once-only value a rule would otherwise compute twice.",
+            nameSlot: NameSlot),
+
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Fail,
+            [new PropertySlot(MessageSlot, PropertyType.String, description: "What is wrong, in the words the user sees.")],
+            [EvaluationRuleConceptKeys.Body],
+            description: "A refusal with a sentence, for the case the rule can recognise and has no value for.",
+            nameSlot: MessageSlot),
     ];
 }

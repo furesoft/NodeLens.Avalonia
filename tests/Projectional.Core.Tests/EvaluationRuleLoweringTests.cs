@@ -9,92 +9,214 @@ namespace Projectional.Core.Tests;
 
 /// <summary>A language's meaning written as a model, lowered into the registry the interpreter runs.</summary>
 /// <remarks>
-/// The five bodies are the whole language, so the proof is not "a rule was built" but "a document runs": the models below
+/// The bodies are the whole language, so the proof is not "a rule was built" but "a document runs": the models below
 /// describe the arithmetic of the expression vocabulary, and evaluating through them has to give the answers its
 /// hand-written rules give. That agreement is what makes the declared path an equal of the coded one rather than a sketch.
 /// </remarks>
 public sealed class EvaluationRuleLoweringTests
 {
+
     [Fact]
     public void ADeclaredRuleReadsAPropertyThroughItsDeclaredType()
     {
-        var rules = Lower(Rule(ExpressionsConceptKeys.IntLiteral, Property("value")));
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.IntLiteral), "value");
+
         var (model, literal) = Literal(42);
 
-        Assert.Equal(new IntValue(42), Evaluate(rules, model, literal));
+        Assert.Equal(new IntValue(42), Evaluate(rules.Lower(), model, literal));
     }
 
     [Fact]
     public void ADeclaredOperatorRuleAppliesTheFrameworkSemantics()
     {
-        var rules = Lower(
-            Rule(ExpressionsConceptKeys.IntLiteral, Property("value")),
-            Rule(ExpressionsConceptKeys.Binary, Operator("operator", "left", "right")));
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.IntLiteral), "value");
+
+        var sum = Operator(rules.Rule(ExpressionsConceptKeys.Binary), "operator");
+        Child(sum, "left", EvaluationRuleLanguage.LeftSlot);
+        Child(sum, "right", EvaluationRuleLanguage.RightSlot);
 
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");
-        var sum = model.NewNode(ExpressionsConceptKeys.Binary);
-        sum.Set("operator", "+");
-        model.NewChild(sum, "left", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
-        model.NewChild(sum, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 3);
+        var node = model.NewNode(ExpressionsConceptKeys.Binary);
+        node.Set("operator", "+");
+        model.NewChild(node, "left", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
+        model.NewChild(node, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 3);
 
-        Assert.Equal(new IntValue(5), Evaluate(rules, model, sum));
+        Assert.Equal(new IntValue(5), Evaluate(rules.Lower(), model, node));
     }
 
     [Fact]
-    public void ADeclaredUnaryRuleLeavesTheRightOperandOut()
+    public void ADeclaredOperatorRuleWithoutARightOperandIsUnary()
     {
-        var rules = Lower(
-            Rule(ExpressionsConceptKeys.IntLiteral, Property("value")),
-            Rule(ExpressionsConceptKeys.Unary, Operator("operator", "operand", right: null)));
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.IntLiteral), "value");
+
+        var negation = Operator(rules.Rule(ExpressionsConceptKeys.Unary), "operator");
+        Child(negation, "operand", EvaluationRuleLanguage.LeftSlot);
 
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");
-        var negation = model.NewNode(ExpressionsConceptKeys.Unary);
-        negation.Set("operator", "-");
-        model.NewChild(negation, "operand", ExpressionsConceptKeys.IntLiteral).Set("value", 7);
+        var node = model.NewNode(ExpressionsConceptKeys.Unary);
+        node.Set("operator", "-");
+        model.NewChild(node, "operand", ExpressionsConceptKeys.IntLiteral).Set("value", 7);
 
-        Assert.Equal(new IntValue(-7), Evaluate(rules, model, negation));
+        Assert.Equal(new IntValue(-7), Evaluate(rules.Lower(), model, node));
+    }
+
+    [Fact]
+    public void AnOperandIsABodyRatherThanASlotName()
+    {
+        // `(left * right) + 1`: the operands are bodies of their own, so an expression the node does not hold as two
+        // children can still be computed - which a vocabulary of slot names could not say.
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.IntLiteral), "value");
+
+        var sum = Operator(rules.Rule(ExpressionsConceptKeys.Binary), "operator");
+
+        var product = Body(sum, EvaluationRuleLanguage.LeftSlot, EvaluationRuleConceptKeys.Operator);
+        product.Set(EvaluationRuleLanguage.OperatorSlot, "operator");
+        Child(product, "left", EvaluationRuleLanguage.LeftSlot);
+        Child(product, "right", EvaluationRuleLanguage.RightSlot);
+
+        Constant(sum, "int", "1", EvaluationRuleLanguage.RightSlot);
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var node = model.NewNode(ExpressionsConceptKeys.Binary);
+        node.Set("operator", "+");
+        model.NewChild(node, "left", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
+        model.NewChild(node, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 3);
+
+        // The node's children are the operands of both bodies, because a body reads the node it is about: the product is
+        // `left * right` of the same node, and the addition adds 1 to it.
+        Assert.Equal(new IntValue(7), Evaluate(rules.Lower(), model, node));
     }
 
     [Fact]
     public void ADeclaredChooseRuleAnswersWithTheArmItsConditionChooses()
     {
-        var rules = Lower(
-            Rule(ExpressionsConceptKeys.IntLiteral, Property("value")),
-            Rule(ExpressionsConceptKeys.BoolLiteral, Property("value")),
-            Rule(ExpressionsConceptKeys.If, Choose("condition", thenRead: "then", otherwiseRead: "else")));
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.IntLiteral), "value");
+        Property(rules.Rule(ExpressionsConceptKeys.BoolLiteral), "value");
+
+        var choose = Body(rules.Rule(ExpressionsConceptKeys.If), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Choose);
+        Child(choose, "condition", EvaluationRuleLanguage.ConditionSlot);
+        Child(choose, "then", EvaluationRuleLanguage.ThenSlot);
+        Child(choose, "else", EvaluationRuleLanguage.OtherwiseSlot);
 
         var model = ExpressionsLanguage.NewProject().NewModel("expressions");
-        var chosen = model.NewNode(ExpressionsConceptKeys.If);
-        model.NewChild(chosen, "condition", ExpressionsConceptKeys.BoolLiteral).Set("value", true);
-        model.NewChild(chosen, "then", ExpressionsConceptKeys.IntLiteral).Set("value", 1);
-        model.NewChild(chosen, "else", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
+        var node = model.NewNode(ExpressionsConceptKeys.If);
+        model.NewChild(node, "condition", ExpressionsConceptKeys.BoolLiteral).Set("value", true);
+        model.NewChild(node, "then", ExpressionsConceptKeys.IntLiteral).Set("value", 1);
+        model.NewChild(node, "else", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
 
-        Assert.Equal(new IntValue(1), Evaluate(rules, model, chosen));
+        Assert.Equal(new IntValue(1), Evaluate(rules.Lower(), model, node));
+    }
+
+    [Fact]
+    public void ADeclaredConstantAnswersWithTheValueWrittenIntoTheRule()
+    {
+        var rules = new Rules();
+        Constant(rules.Rule(ExpressionsConceptKeys.IntLiteral), "int", "7");
+
+        var (model, literal) = Literal(42);
+
+        // Not the node's own value: the rule says what it answers, which is what an outcome needs.
+        Assert.Equal(new IntValue(7), Evaluate(rules.Lower(), model, literal));
+    }
+
+    [Fact]
+    public void ADeclaredBindBindsANameForTheRestOfTheRule()
+    {
+        // bind total to (property value) then answer (variable total) * 2
+        var rules = new Rules();
+        var rule = rules.Rule(ExpressionsConceptKeys.IntLiteral);
+
+        var bind = Body(rule, EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Bind);
+        bind.Set(EvaluationRuleLanguage.NameSlot, "total");
+
+        Property(bind, "value", EvaluationRuleLanguage.ValueSlot);
+
+        Variable(bind, "total", EvaluationRuleLanguage.BodySlot);
+
+        var (model, node) = Literal(21);
+
+        // The answer reads the bound name, and the node carries no such property: the binding is what makes it a value.
+        Assert.Equal(new IntValue(21), Evaluate(rules.Lower(), model, node));
+    }
+
+    [Fact]
+    public void ADeclaredFirstAnswersWithTheEntryThatApplied()
+    {
+        var (rules, _) = FirstRules();
+
+        Assert.Equal(new IntValue(2), Evaluate(rules, Block(entries: [(false, 1), (true, 2)])));
+    }
+
+    [Fact]
+    public void ADeclaredFirstRefusesWhenNoEntryApplies()
+    {
+        var (rules, _) = FirstRules();
+
+        // A rule that says nothing about the empty case is a refusal rather than a default: a value nobody stated would be
+        // a value the author never wrote.
+        var failure = new Interpreter(rules).Run(Block(entries: [(false, 1)]), cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("no entry", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredFirstAnswersWithItsOtherwiseBodyWhenNoEntryApplies()
+    {
+        var (rules, first) = FirstRules();
+        Constant(first, "int", "0", EvaluationRuleLanguage.OtherwiseSlot);
+
+        Assert.Equal(new IntValue(0), Evaluate(rules, Block(entries: [(false, 1)])));
+    }
+
+    [Fact]
+    public void ADeclaredFailRefusesWithItsSentence()
+    {
+        var rules = new Rules();
+        var fail = Body(rules.Rule(ExpressionsConceptKeys.IntLiteral), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Fail);
+        fail.Set(EvaluationRuleLanguage.MessageSlot, "this literal has no value here.");
+
+        var (_, literal) = Literal(42);
+        var failure = new Interpreter(rules.Lower()).Run(literal, cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Equal("this literal has no value here.", failure.Message);
     }
 
     [Fact]
     public void ADeclaredRuleDescribesItselfForTheDocumentation()
     {
-        var rules = Lower(
-            Rule(ExpressionsConceptKeys.IntLiteral, Property("value")),
-            Rule(ExpressionsConceptKeys.Binary, Operator("operator", "left", "right")));
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.IntLiteral), "value");
 
-        var binary = rules.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Binary))!;
-        var literal = rules.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.IntLiteral))!;
+        var sum = Operator(rules.Rule(ExpressionsConceptKeys.Binary), "operator");
+        Child(sum, "left", EvaluationRuleLanguage.LeftSlot);
+        Child(sum, "right", EvaluationRuleLanguage.RightSlot);
+
+        var registry = rules.Lower();
 
         // The sentence names the slots the rule reads, not the values it happened to see, so a page describes every
         // document the rule applies to.
-        Assert.Equal("Its operator operator applied to the values of its left and right children.", binary.Description);
-        Assert.Equal("The value of its value property, read through its declared type.", literal.Description);
+        Assert.Equal(
+            "Its operator operator applied to the values of its two operands.",
+            registry.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Binary))!.Description);
+        Assert.Equal(
+            "The value of its value property, read through its declared type.",
+            registry.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.IntLiteral))!.Description);
     }
 
     [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {
-        var rules = RuleFor(conceptKey: null, Property("value"));
+        var rules = new Rules();
+        Property(rules.Rule(conceptKey: null), "value");
 
-        var exception = Assert.Throws<EvaluationRuleException>(
-            () => EvaluationRuleLowering.CreateRegistry([rules], ExpressionsLanguage.Concepts));
+        var exception = Assert.Throws<EvaluationRuleException>(() => rules.Lower());
 
         Assert.Contains("concept it answers for", exception.Message, StringComparison.Ordinal);
     }
@@ -102,14 +224,52 @@ public sealed class EvaluationRuleLoweringTests
     [Fact]
     public void ARuleThatNamesAConceptTheLanguageDoesNotDeclareIsRefused()
     {
-        var rules = RuleFor("Expressions.NoSuchConcept", Property("value"));
+        var rules = new Rules();
+        Property(rules.Rule("Expressions.NoSuchConcept"), "value");
 
-        Assert.Throws<ConceptDefinitionException>(
-            () => EvaluationRuleLowering.CreateRegistry([rules], ExpressionsLanguage.Concepts));
+        Assert.Throws<ConceptDefinitionException>(() => rules.Lower());
     }
 
-    private static EvaluationRegistry Lower(params Node[] rules) =>
-        EvaluationRuleLowering.CreateRegistry(rules, ExpressionsLanguage.Concepts);
+    [Fact]
+    public void AConstantThatIsNotTheKindItClaimsIsRefused()
+    {
+        var rules = new Rules();
+        Constant(rules.Rule(ExpressionsConceptKeys.IntLiteral), "int", "twelve");
+
+        Assert.Throws<EvaluationRuleException>(() => rules.Lower());
+    }
+
+    /// <summary>The three rules a first body needs: a literal's value, a flag's value, and the block that walks entries.</summary>
+    private static (EvaluationRegistry Rules, Node First) FirstRules()
+    {
+        var rules = new Rules(FirstLanguage.Concepts);
+
+        Property(rules.Rule(FirstLanguage.Entry), FirstLanguage.OutcomeSlot);
+        Property(rules.Rule(FirstLanguage.Entry), FirstLanguage.EnabledSlot);
+
+        var first = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.First);
+        first.Set(EvaluationRuleLanguage.OverSlot, FirstLanguage.EntriesSlot);
+        Property(first, FirstLanguage.EnabledSlot, EvaluationRuleLanguage.WhenSlot);
+        Property(first, FirstLanguage.OutcomeSlot, EvaluationRuleLanguage.ThenSlot);
+
+        return (rules.Lower(), first);
+    }
+
+    /// <summary>A block whose entries each carry an enabled flag and an outcome, which is the shape a first body walks.</summary>
+    private static Node Block(params (bool Enabled, int Outcome)[] entries)
+    {
+        var model = new Project(FirstLanguage.Concepts).NewModel("first");
+        var container = model.NewNode(FirstLanguage.Container);
+
+        foreach (var (enabled, outcome) in entries)
+        {
+            var entry = model.NewChild(container, FirstLanguage.EntriesSlot, FirstLanguage.Entry);
+            entry.Set(FirstLanguage.EnabledSlot, enabled);
+            entry.Set(FirstLanguage.OutcomeSlot, outcome);
+        }
+
+        return container;
+    }
 
     private static (Model Model, Node Literal) Literal(int value)
     {
@@ -122,67 +282,88 @@ public sealed class EvaluationRuleLoweringTests
 
     private static Value Evaluate(EvaluationRegistry rules, Model model, Node node)
     {
-        var result = new Interpreter(rules).Run(node);
+        _ = model;
+
+        return Evaluate(rules, node);
+    }
+
+    private static Value Evaluate(EvaluationRegistry rules, Node node)
+    {
+        var result = new Interpreter(rules).Run(node, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Failure is null, result.Failure?.Message);
 
         return result.Value!;
     }
 
-    /// <summary>One rule model: the concept it answers for, and the body it answers with.</summary>
-    private static Node Rule(string conceptKey, Action<Node> body) => RuleFor(conceptKey, body);
+    /// <summary>Adds one body of <paramref name="conceptKey"/> to <paramref name="owner"/> and answers with it.</summary>
+    private static Node Body(Node owner, string slot, string conceptKey) =>
+        owner.Model.NewChild(owner, slot, conceptKey);
 
-    private static Node RuleFor(string? conceptKey, Action<Node> body)
+    /// <summary>A body that reads one slot of the node: <paramref name="slot"/> holds the body, <paramref name="read"/> its name.</summary>
+    private static Node Property(Node owner, string read, string slot = EvaluationRuleLanguage.BodySlot) =>
+        Reading(owner, slot, EvaluationRuleConceptKeys.Property, read);
+
+    private static Node Child(Node owner, string read, string slot = EvaluationRuleLanguage.BodySlot) =>
+        Reading(owner, slot, EvaluationRuleConceptKeys.Child, read);
+
+    private static Node Variable(Node owner, string read, string slot = EvaluationRuleLanguage.BodySlot) =>
+        Reading(owner, slot, EvaluationRuleConceptKeys.Variable, read);
+
+    /// <summary>A body that names a slot of the node in its own <c>slot</c> property.</summary>
+    private static Node Reading(Node owner, string slot, string conceptKey, string read)
     {
-        var model = new Project(EvaluationRuleLanguage.Concepts).NewModel("rules");
-        var rule = model.NewNode(EvaluationRuleConceptKeys.Rule);
+        var body = Body(owner, slot, conceptKey);
+        body.Set(EvaluationRuleLanguage.SlotSlot, read);
 
-        if (conceptKey is not null)
-        {
-            rule.Set(EvaluationRuleLanguage.ConceptKeySlot, conceptKey);
-        }
-
-        body(rule);
-        model.AddRoot(rule);
-
-        return rule;
+        return body;
     }
 
-    private static Action<Node> Property(string slot) => rule => Body(rule, EvaluationRuleConceptKeys.Property)
-        .Set(EvaluationRuleLanguage.SlotSlot, slot);
-
-    private static Action<Node> Child(string slot) => rule => Body(rule, EvaluationRuleConceptKeys.Child)
-        .Set(EvaluationRuleLanguage.SlotSlot, slot);
-
-    private static Action<Node> Operator(string operatorSlot, string left, string? right) => rule =>
+    private static Node Constant(Node owner, string kind, string value, string slot = EvaluationRuleLanguage.BodySlot)
     {
-        var op = Body(rule, EvaluationRuleConceptKeys.Operator);
+        var constant = Body(owner, slot, EvaluationRuleConceptKeys.Constant);
+        constant.Set("kind", kind);
+        constant.Set(EvaluationRuleLanguage.ValueSlot, value);
 
+        return constant;
+    }
+
+    /// <summary>An operator body with its two operand slots, and no right operand until a test adds one.</summary>
+    private static Node Operator(Node rule, string operatorSlot)
+    {
+        var op = Body(rule, EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Operator);
         op.Set(EvaluationRuleLanguage.OperatorSlot, operatorSlot);
-        op.Set(EvaluationRuleLanguage.LeftSlot, left);
 
-        if (right is not null)
-        {
-            op.Set(EvaluationRuleLanguage.RightSlot, right);
-        }
-    };
+        return op;
+    }
 
-    /// <summary>A choose body whose two arms read the children in <paramref name="thenRead"/> and <paramref name="otherwiseRead"/>.</summary>
-    private static Action<Node> Choose(string conditionSlot, string thenRead, string otherwiseRead) => rule =>
+    /// <summary>The rule models one test writes: one model, one rule per concept.</summary>
+    private sealed class Rules
     {
-        var choose = Body(rule, EvaluationRuleConceptKeys.Choose);
+        private readonly ConceptRegistry _concepts;
+        private readonly Model _model = new Project(EvaluationRuleLanguage.Concepts).NewModel("rules");
 
-        choose.Set(EvaluationRuleLanguage.ConditionSlot, conditionSlot);
+        /// <summary>The rules of one test, checked against the language whose concepts they name.</summary>
+        /// <param name="concepts">That language registry, or the expression vocabulary by default.</param>
+        internal Rules(ConceptRegistry? concepts = null) => _concepts = concepts ?? ExpressionsLanguage.Concepts;
+        private readonly List<Node> _roots = [];
 
-        choose.Model
-            .NewChild(choose, EvaluationRuleLanguage.ThenSlot, EvaluationRuleConceptKeys.Child)
-            .Set(EvaluationRuleLanguage.SlotSlot, thenRead);
+        /// <summary>One rule for <paramref name="conceptKey"/>, or one with the property empty when it is <see langword="null"/>.</summary>
+        internal Node Rule(string? conceptKey)
+        {
+            var rule = _model.NewNode(EvaluationRuleConceptKeys.Rule);
 
-        choose.Model
-            .NewChild(choose, EvaluationRuleLanguage.OtherwiseSlot, EvaluationRuleConceptKeys.Child)
-            .Set(EvaluationRuleLanguage.SlotSlot, otherwiseRead);
-    };
+            if (conceptKey is not null)
+            {
+                rule.Set(EvaluationRuleLanguage.ConceptKeySlot, conceptKey);
+            }
 
-    private static Node Body(Node rule, string conceptKey) =>
-        rule.Model.NewChild(rule, EvaluationRuleLanguage.BodySlot, conceptKey);
+            _model.AddRoot(rule);
+            _roots.Add(rule);
+
+            return rule;
+        }
+
+        internal EvaluationRegistry Lower() => EvaluationRuleLowering.CreateRegistry(_roots, _concepts);
+    }
 }
