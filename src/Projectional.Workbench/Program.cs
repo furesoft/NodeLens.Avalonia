@@ -21,6 +21,13 @@ internal static class Program
             return;
         }
 
+        // The third: a merge driver calls this from a hook, where there is no window to show anything in.
+        if (MergeExport.IsRequested(args))
+        {
+            Environment.ExitCode = MergeExport.Run(args);
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
