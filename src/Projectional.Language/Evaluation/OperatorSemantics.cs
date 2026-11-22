@@ -10,9 +10,15 @@ namespace Projectional.Language;
 /// </para>
 /// <para>
 /// The set is deliberately closed: whole-number arithmetic (including a power, because <c>x ^ 2</c> is how a function is
-/// written), the four comparisons, equality by value, the two short-circuiting logical operators, and the two unary ones.
-/// A language that needs more - dates, text ordering, division with a remainder - adds its own rule, which is the point of
-/// an aspect being an interface rather than a table.
+/// written), the four comparisons, equality by value, the two short-circuiting logical operators, the two unary ones, and
+/// <c>+</c> over two texts, which joins them. A language that needs more - dates, text *ordering*, which is a decision
+/// about a culture rather than about a value, division with a remainder - adds its own rule, which is the point of an
+/// aspect being an interface rather than a table.
+/// </para>
+/// <para>
+/// Text is joined here rather than left to a language, because a **declared** rule has no escape hatch: it can name bodies
+/// and nothing else, so a label built out of two parts would have been inexpressible. Joining is also the one text operation
+/// that needs no decision - it is concatenation, not collation - which is why ordering stays out of this class.
 /// </para>
 /// <para>
 /// Every refusal is a sentence naming the kinds rather than the values, because a trace line is read to find the mistake,
@@ -52,6 +58,13 @@ public static class OperatorSemantics
             return new BoolValue(symbol == "==" ? left.Equals(right) : !left.Equals(right));
         }
 
+        // Before the arithmetic, so that two texts are joined instead of being refused as "not whole numbers": a text that is
+        // told it is not a number would send the reader looking for the wrong mistake.
+        if (symbol is "+" && left is StringValue first && right is StringValue second)
+        {
+            return new StringValue(first.Content + second.Content);
+        }
+
         if (symbol is "+" or "-" or "*" or "/" or "^" or "<" or ">" or "<=" or ">=")
         {
             return Arithmetic(context, symbol, left, right);
@@ -76,9 +89,9 @@ public static class OperatorSemantics
         return symbol switch
         {
             "-" when operand is IntValue number => new IntValue(-number.Content),
-            "-" => throw context.Error($"{Describe("-", operand)} expects a whole number."),
+            "-" => throw context.Error(Describe("-", operand)),
             "!" when operand is BoolValue flag => new BoolValue(!flag.Content),
-            "!" => throw context.Error($"{Describe("!", operand)} expects a truth value."),
+            "!" => throw context.Error(Describe("!", operand)),
             _ => throw context.Error($"'{symbol}' is not a unary operator this framework applies."),
         };
     }
@@ -88,7 +101,7 @@ public static class OperatorSemantics
     {
         if (left is not BoolValue first || right is not BoolValue second)
         {
-            throw context.Error($"{Describe(symbol, left, right)} expects truth values.");
+            throw context.Error(Describe(symbol, left, right));
         }
 
         return new BoolValue(symbol == "&&" ? first.Content && second.Content : first.Content || second.Content);
@@ -99,7 +112,7 @@ public static class OperatorSemantics
     {
         if (left is not IntValue first || right is not IntValue second)
         {
-            throw context.Error($"{Describe(symbol, left, right)} expects whole numbers.");
+            throw context.Error(Describe(symbol, left, right));
         }
 
         return symbol switch

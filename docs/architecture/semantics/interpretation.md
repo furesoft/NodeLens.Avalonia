@@ -39,7 +39,11 @@ entries a child slot holds), the value of the node a reference points at (`refer
 (`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
 *means*, because that is a computation and this repository has no language for computation: an `operator` body either
 writes its symbol itself or names the property that holds one, and `OperatorSemantics` answers whole-number arithmetic
-(including a power), the four comparisons, equality by value and the two logical operators. A concept whose meaning is a
+(including a power), the four comparisons, equality by value, the two logical operators, and `+` over two texts, which
+joins them - that last one because a declared rule has no way into C# at all, so a label built out of two parts would
+otherwise be inexpressible. Text is joined and not ordered: `<` over two texts is a decision about a culture rather than
+about a value, and stays out. Both authoring paths read that one class - the expression vocabulary delegates to it rather
+than keeping a copy, so a symbol cannot mean one thing in a declared rule and another in a coded one. A concept whose meaning is a
 computation of its own - resolving a call, counting the entries of a slot - keeps a hand-written rule, which is the escape
 hatch the aspect being an interface exists for.
 

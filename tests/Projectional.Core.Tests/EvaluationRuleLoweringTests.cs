@@ -486,6 +486,18 @@ public sealed class EvaluationRuleLoweringTests
         Assert.Contains("beyond the whole numbers", failure.Message, StringComparison.Ordinal);
     }
     [Fact]
+    public void ADeclaredOperatorJoinsTwoTexts()
+    {
+        // A declared rule has no way into C#, so a label built out of two parts has to be expressible in the vocabulary.
+        var rules = new Rules(GradeLanguage.Concepts);
+        var join = Body(rules.Rule(GradeLanguage.Report), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Operator);
+        join.Set(EvaluationRuleLanguage.SymbolSlot, "+");
+        Property(join, GradeLanguage.NameSlot, EvaluationRuleLanguage.LeftSlot);
+        Constant(join, "string", " graded", EvaluationRuleLanguage.RightSlot);
+
+        Assert.Equal(new StringValue("essay graded"), Evaluate(rules.Lower(), Report(points: 42, name: "essay").Model.Roots[0]));
+    }
+    [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {
         var rules = new Rules();
