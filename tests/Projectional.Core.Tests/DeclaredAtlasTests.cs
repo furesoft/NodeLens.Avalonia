@@ -522,11 +522,28 @@ public sealed class DeclaredAtlasTests
         // are spots in the slot that is counted.
         Assert.Equal(new IntValue(2), Run(rules, map));
 
-        // A stop answers whether it points anywhere, which is the same question the language's own constraint asks of it.
+        // A stop answers with what the place it points at answers - the reference is followed and that node's own rule
+        // decides - and a place answers with its name, or with the word the language uses while it has none.
         var route = map.GetChildren("routes")[0];
+        var stops = route.GetChildren("stops");
 
-        Assert.Equal(new BoolValue(true), Run(rules, route.GetChildren("stops")[0]));
-        Assert.Equal(new BoolValue(false), Run(rules, map.Model.NewChild(route, "stops", "Atlas.Stop")));
+        Assert.Equal(new StringValue("peak"), Run(rules, stops[0]));
+        Assert.Equal(new StringValue("lake"), Run(rules, stops[1]));
+
+        // A route answers the list of what its stops answer, in the order it stops there: the list body composes the reference
+        // and the place's own rule into one value.
+        Assert.Equal(new ListValue([new StringValue("peak"), new StringValue("lake")]), Run(rules, route));
+
+        var unnamed = map.Model.NewChild(map, "places", "Atlas.Place");
+
+        Assert.Equal(new StringValue("unnamed"), Run(rules, unnamed));
+
+        // A stop that points nowhere is refused, with the sentence that says so rather than an invented name.
+        var unlinked = map.Model.NewChild(route, "stops", "Atlas.Stop");
+        var failure = new Interpreter(rules).Run(unlinked, cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("points nowhere", failure.Message, StringComparison.Ordinal);
     }
     /// <summary>What the sample's declared rules answer for <paramref name="node"/>.</summary>
     private static Value Run(EvaluationRegistry rules, Node node)

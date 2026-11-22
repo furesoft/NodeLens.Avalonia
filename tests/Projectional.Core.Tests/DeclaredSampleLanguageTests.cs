@@ -3,6 +3,8 @@ using Projectional.Core;
 using Projectional.ConstraintRules;
 using Projectional.Editing;
 using Projectional.Editors;
+using Projectional.EvaluationRules;
+using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
@@ -33,6 +35,9 @@ namespace Projectional.Core.Tests;
 /// </remarks>
 public sealed class DeclaredSampleLanguageTests
 {
+    /// <summary>A document the sample ships, next to the definitions the test loads.</summary>
+    private static string Document(string name) => Path.Combine(AppContext.BaseDirectory, "Declared", name);
+
     private static LanguageProject Language()
     {
         var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error);
@@ -259,6 +264,20 @@ public sealed class DeclaredSampleLanguageTests
     }
 
     [Fact]
+    public void TheLanguageStatesWhatAPipelineMeans()
+    {
+        // A pipeline answers how much patience it asks for: the total of the retries its stages allow, which is a fold over a
+        // list - the one shape that had no spelling before `sum`.
+        var language = Language();
+        var rules = Assert.IsType<EvaluationRegistry>(language.Evaluation);
+        var pipeline = ModelFile.Load(language.NewProject(), Document("pipeline.mps")).Roots[0];
+
+        var result = new Interpreter(rules).Run(pipeline, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Failure is null, result.Failure?.Message);
+        Assert.Equal(new IntValue(1), result.Value);
+    }
+    [Fact]
     public void EveryDefinitionDocumentSavesBackByteIdentically()
     {
         // The layout is a wire format too: each definition file is one root, and re-saving it must not move a byte.
@@ -272,11 +291,13 @@ public sealed class DeclaredSampleLanguageTests
             var editor = Directory.EnumerateFiles(Path.Combine(directory, "editor"), "*.mps").ToList();
             var constraints = Directory.EnumerateFiles(Path.Combine(directory, "constraints"), "*.mps").ToList();
             var generators = Directory.EnumerateFiles(Path.Combine(directory, "generator"), "*.mps").ToList();
+            var evaluation = Directory.EnumerateFiles(Path.Combine(directory, "evaluation"), "*.mps").ToList();
 
             Assert.Equal(2, structure.Count);
             Assert.Equal(2, editor.Count);
             Assert.Equal(2, constraints.Count);
             Assert.Single(generators);
+            Assert.Single(evaluation);
 
             foreach (var file in structure)
             {
@@ -296,6 +317,11 @@ public sealed class DeclaredSampleLanguageTests
             foreach (var file in generators)
             {
                 AssertRoundTrips(file, new Project(TextGenLanguage.Concepts));
+            }
+
+            foreach (var file in evaluation)
+            {
+                AssertRoundTrips(file, new Project(EvaluationRuleLanguage.Concepts));
             }
 
             // The language root is a document of the structure language too, and the one file whose re-save would be

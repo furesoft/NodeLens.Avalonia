@@ -61,6 +61,9 @@ public static class EvaluationRuleLanguage
     /// <summary>The property naming the child slot whose entries a first body walks.</summary>
     public const string OverSlot = "over";
 
+    /// <summary>The body a sum body asks each entry for the value it adds.</summary>
+    public const string EachSlot = "each";
+
     /// <summary>The body a first body asks about each entry, answered for that entry.</summary>
     public const string WhenSlot = "when";
 
@@ -72,6 +75,12 @@ public static class EvaluationRuleLanguage
 
     /// <summary>The property holding the sentence a fail body refuses with.</summary>
     public const string MessageSlot = "message";
+
+    /// <summary>The child slot holding the named values of a record body.</summary>
+    public const string FieldsSlot = "fields";
+
+    /// <summary>The body a field body reads a named value out of.</summary>
+    public const string FromSlot = "from";
 
     /// <summary>The values a constant may hold, in the order the property offers them.</summary>
     public static IReadOnlyList<string> ConstantKinds { get; } = ["int", "bool", "string"];
@@ -148,6 +157,15 @@ public static class EvaluationRuleLanguage
             description: "How many entries a child slot holds.",
             nameSlot: SlotSlot),
 
+        // Delegation, which is what a reference is for: a stop answers with what the place it points at answers. Without
+        // this body a reference could only be asked whether it is filled, never followed.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Reference,
+            [new PropertySlot(SlotSlot, PropertyType.String)],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The value of the node a reference slot points at, which is that node's own rule.",
+            nameSlot: SlotSlot),
+
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Variable,
             [new PropertySlot(SlotSlot, PropertyType.String)],
@@ -203,6 +221,52 @@ public static class EvaluationRuleLanguage
         // The shape every rule-based DSL needs: the first child that applies decides, and what it answers is read from
         // *that* child. Both bodies are evaluated with the entry as their subject, which is what a context for another node
         // is for.
+        // The value a node with several properties answers with, and the two bodies that make one useful: building it out of
+        // named values, and reading one back. Without the pair a rule could produce a record and never use it.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Record,
+            [new ChildSlot(FieldsSlot, EvaluationRuleConceptKeys.RecordField, Cardinality.Many)],
+            [EvaluationRuleConceptKeys.Body],
+            description: "A record value: one answer holding several named values, such as an amount and its unit."),
+
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.RecordField,
+            [
+                new PropertySlot(NameSlot, PropertyType.String, description: "The name this value is held under, such as value."),
+                new ChildSlot(ValueSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+            ],
+            description: "One named value inside a record body.",
+            nameSlot: NameSlot),
+
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.List,
+            [new PropertySlot(SlotSlot, PropertyType.String)],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The values of every entry of a child slot, as one list in the order they stand in.",
+            nameSlot: SlotSlot),
+
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Field,
+            [
+                new PropertySlot(NameSlot, PropertyType.String, description: "The field to read, such as value."),
+                new ChildSlot(FromSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+            ],
+            [EvaluationRuleConceptKeys.Body],
+            description: "One named value of a record, which is how a record answers with a part of itself.",
+            nameSlot: NameSlot),
+
+        // A fold, and the one shape nothing else in the vocabulary could express: no body accumulates, so "the total of this
+        // list" had no spelling at all.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Sum,
+            [
+                new PropertySlot(OverSlot, PropertyType.String, description: "The child slot whose entries are added up."),
+                new ChildSlot(EachSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+            ],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The total of what the entries of a child slot answer, which must be whole numbers.",
+            nameSlot: OverSlot),
+
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.First,
             [

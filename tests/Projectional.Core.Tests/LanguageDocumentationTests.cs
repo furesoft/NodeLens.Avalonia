@@ -283,11 +283,12 @@ public sealed class LanguageDocumentationTests
     public void AnEvaluationPageStatesWhatALanguageWithoutMeaningHas()
     {
         var page = Assert.Single(
-            LanguageDocumentation.Generate(Units()),
-            each => each.Path == "Units/evaluation.html");
+            LanguageDocumentation.Generate(CSharp()),
+            each => each.Path == "CSharp/evaluation.html");
 
         // A language that states no meaning is drawn and generated but not run, and the page says that rather than showing
-        // an empty table. `Units` rather than `Atlas`: the full sample declares every aspect, so it now has rules of its own.
+        // an empty table. `CSharp` rather than `Atlas` or `Units`: both declare aspects completely enough to state a meaning,
+        // and this page is about the language that has none.
         Assert.Contains("can be drawn and not run", page.Text, StringComparison.Ordinal);
         Assert.DoesNotContain("<th>Evaluates to</th>", page.Text, StringComparison.Ordinal);
     }

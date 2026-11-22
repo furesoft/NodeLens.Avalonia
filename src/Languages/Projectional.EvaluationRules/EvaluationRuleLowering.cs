@@ -114,6 +114,15 @@ public static class EvaluationRuleLowering
             };
         }
 
+        // Delegation: the node the reference points at answers through its own rule, so following a reference composes the
+        // same way a child does and the trace names the node the answer actually came from.
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Reference))
+        {
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            return context => context.EvalReference(slot);
+        }
+
         // A slot the concept does not declare answers nothing rather than zero: a count of a slot that does not exist is a
         // rule written against the wrong concept, and zero is a number a document could have meant.
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Count))
@@ -150,6 +159,26 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Choose))
         {
             return Choose(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Sum))
+        {
+            return Sum(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Record))
+        {
+            return Record(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Field))
+        {
+            return Field(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.List))
+        {
+            return List(body);
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))
@@ -236,6 +265,83 @@ public static class EvaluationRuleLowering
                 : otherwise is null
                     ? throw context.Error("the condition of this choose body is false and it has no otherwise body.")
                     : otherwise(context);
+        };
+    }
+
+    /// <summary>A record value, built from the named values the rule states.</summary>
+    /// <exception cref="EvaluationRuleException">Two fields share a name, or one states no value.</exception>
+    private static Func<EvaluationContext, Value> Record(Node body)
+    {
+        var fields = body.GetChildren(EvaluationRuleLanguage.FieldsSlot)
+            .Select(field => (Name: SlotOf(field, EvaluationRuleLanguage.NameSlot), Answer: Compile(Required(field, EvaluationRuleLanguage.ValueSlot))))
+            .ToArray();
+
+        // Refused while the rule is built rather than while it runs: two fields of one name are a field written twice, and which
+        // value survived would be the order of a dictionary rather than a decision the author made.
+        if (fields.GroupBy(field => field.Name, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1) is { } duplicate)
+        {
+            throw new EvaluationRuleException(body, $"this record names the field '{duplicate.Key}' twice.");
+        }
+
+        return context => new RecordValue(
+            fields.Select(field => new KeyValuePair<string, Value>(field.Name, field.Answer(context))));
+    }
+
+    /// <summary>One named value of a record the body answers.</summary>
+    /// <remarks>
+    /// Two refusals, because they are two different corrections: a value that is not a record is a rule that asked the wrong
+    /// body, and a name the record does not hold is a rule and a record that disagree about a field.
+    /// </remarks>
+    private static Func<EvaluationContext, Value> Field(Node body)
+    {
+        var name = SlotOf(body, EvaluationRuleLanguage.NameSlot);
+        var from = Compile(Required(body, EvaluationRuleLanguage.FromSlot));
+
+        return context => from(context) is RecordValue record
+            ? record.Field(name) ?? throw context.Error($"the record this rule reads holds no field '{name}'.")
+            : throw context.Error($"'{name}' is a field of a record, and this body answers with something else.");
+    }
+
+    /// <summary>Every entry of a child slot, as one list.</summary>
+    private static Func<EvaluationContext, Value> List(Node body)
+    {
+        var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+        return context => context.Node.Concept.FindChild(slot) is null
+            ? throw context.Error($"'{slot}' is not a child slot of {context.Node.Concept.Key}, so this rule cannot list it.")
+            : new ListValue(context.Node.GetChildren(slot).Select(context.Eval));
+    }
+
+    /// <summary>The total of what the entries of a slot answer, each asked for itself.</summary>
+    /// <remarks>
+    /// Accumulated in a <see cref="long"/> and range-checked per step, because a wrapped <see cref="int"/> is a wrong answer
+    /// rather than a refusal - the same reason a power refuses a result it cannot represent.
+    /// </remarks>
+    private static Func<EvaluationContext, Value> Sum(Node body)
+    {
+        var over = SlotOf(body, EvaluationRuleLanguage.OverSlot);
+        var each = Compile(Required(body, EvaluationRuleLanguage.EachSlot));
+
+        return context =>
+        {
+            long total = 0;
+
+            foreach (var entry in context.Node.GetChildren(over))
+            {
+                if (each(context.For(entry)) is not IntValue number)
+                {
+                    throw context.Error($"the entries of '{over}' must answer with whole numbers to be summed, and one answered with something else.");
+                }
+
+                total += number.Content;
+
+                if (total is > int.MaxValue or < int.MinValue)
+                {
+                    throw context.Error($"the total of '{over}' is beyond the whole numbers this framework holds.");
+                }
+            }
+
+            return new IntValue((int)total);
         };
     }
 
@@ -326,6 +432,11 @@ public static class EvaluationRuleLowering
             return $"How many entries its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} child slot holds.";
         }
 
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Reference))
+        {
+            return $"The value of the node its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} reference points at.";
+        }
+
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))
         {
             return $"The value the run binds to the name in its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} property.";
@@ -350,6 +461,26 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Choose))
         {
             return "The body whose arm the condition chooses.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Sum))
+        {
+            return $"The total of what each of its {SlotOf(body, EvaluationRuleLanguage.OverSlot)} entries answers.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Record))
+        {
+            return "A record of the named values this rule states.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Field))
+        {
+            return $"The field {SlotOf(body, EvaluationRuleLanguage.NameSlot)} of the record its body answers with.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.List))
+        {
+            return $"The values of its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} entries, as one list.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))

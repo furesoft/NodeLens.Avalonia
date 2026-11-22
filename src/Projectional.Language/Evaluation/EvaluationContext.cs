@@ -122,6 +122,36 @@ public sealed class EvaluationContext
             : throw Error($"'{slot}' of {Node.Concept.Key} must hold exactly one child to be evaluated, but holds {children.Count}.");
     }
 
+    /// <summary>What the node in the reference slot <paramref name="slot"/> evaluates to.</summary>
+    /// <param name="slot">The reference slot to follow.</param>
+    /// <exception cref="EvaluationException">
+    /// The slot is not a reference, points nowhere, points at a node the model does not hold, or the node it points at
+    /// cannot be evaluated.
+    /// </exception>
+    /// <remarks>
+    /// The three refusals are separate sentences because they need different answers: a slot that is not a reference is a
+    /// rule written against the wrong shape, a slot that points nowhere is a half-written document, and a dangling target
+    /// is a reference whose node is gone. Answering the same thing for all three would send the reader to the wrong place.
+    /// </remarks>
+    public Value EvalReference(string slot)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(slot);
+
+        if (Node.Concept.FindReference(slot) is null)
+        {
+            throw Error($"'{slot}' is not a reference of {Node.Concept.Key}.");
+        }
+
+        if (Node.GetReferenceTarget(slot) is { } target)
+        {
+            return _runtime.Evaluate(target, Locals);
+        }
+
+        throw Node.GetReference(slot) is null
+            ? Error($"'{slot}' of {Node.Concept.Key} points nowhere, so there is nothing to evaluate.")
+            : Error($"'{slot}' of {Node.Concept.Key} points at a node this model does not hold.");
+    }
+
     /// <summary>The same run seen from <paramref name="node"/>, which is how a rule speaks about another node.</summary>
     /// <param name="node">The node to answer for, such as an entry of a list the rule walks.</param>
     /// <returns>A context for <paramref name="node"/> with the same runtime and the same bound names.</returns>

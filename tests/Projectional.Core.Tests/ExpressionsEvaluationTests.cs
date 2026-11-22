@@ -70,6 +70,19 @@ public sealed class ExpressionsEvaluationTests
             Run(model, Binary(model, "==", Text(model, "1"), Int(model, 1))));
     }
 
+    [Fact]
+    public void PlusJoinsTwoTextsAndOnlyTexts()
+    {
+        // The one text operation that needs no cultural decision, and the one a declared rule could not otherwise express.
+        var model = NewModel();
+
+        Assert.Equal(new StringValue("ab"), Run(model, Binary(model, "+", Text(model, "a"), Text(model, "b"))));
+
+        // A text and a number still refuse rather than turn the number into text: how a number reads is a formatting decision.
+        var mixed = RunResult(model, Binary(model, "+", Text(model, "a"), Int(model, 1)));
+
+        Assert.Equal("'+' cannot be applied to text and a whole number.", mixed.Failure?.Message);
+    }
     [Theory]
     [InlineData("&&", true, false, false)]
     [InlineData("||", true, false, true)]

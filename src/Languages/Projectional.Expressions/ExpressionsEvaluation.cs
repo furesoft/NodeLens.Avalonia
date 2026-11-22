@@ -64,83 +64,28 @@ public static class ExpressionsEvaluation
             ? context.EvalChild(condition.Content ? "then" : "else")
             : throw context.Error("The condition of an if must be a truth value.");
 
+    /// <summary>Its operator, applied to the value of its operand by the framework's one meaning for a symbol.</summary>
+    /// <remarks>
+    /// Read from <see cref="OperatorSemantics"/> rather than repeated here: the two authoring paths are supposed to answer the
+    /// same question the same way, and a copy is how they stop doing that. Which operators a document may write is still this
+    /// language's business, and that is the notation's enum rather than a check here.
+    /// </remarks>
     private static Value ApplyUnary(EvaluationContext context)
     {
         var operand = context.EvalChild("operand");
+        var symbol = context.Node.GetOrNull("operator") ?? throw context.Error("A unary expression must say which operator it applies.");
 
-        return context.Node.GetOrNull("operator") switch
-        {
-            "-" when operand is IntValue number => new IntValue(-number.Content),
-            "-" => throw context.Error($"{Describe("-", operand)} expects a whole number."),
-            "!" when operand is BoolValue flag => new BoolValue(!flag.Content),
-            "!" => throw context.Error($"{Describe("!", operand)} expects a truth value."),
-            var other => throw context.Error($"'{other}' is not an operator of a unary expression."),
-        };
+        return OperatorSemantics.ApplyUnary(context, symbol, operand);
     }
 
+    /// <summary>Its operator, applied to the values of its operands by the framework's one meaning for a symbol.</summary>
     private static Value ApplyBinary(EvaluationContext context)
     {
         var left = context.EvalChild("left");
         var right = context.EvalChild("right");
+        var symbol = context.Node.GetOrNull("operator") ?? throw context.Error("A binary expression must say which operator it applies.");
 
-        return context.Node.GetOrNull("operator") switch
-        {
-            "+" or "-" or "*" or "/" or "^" or "<" or ">" or "<=" or ">=" => Arithmetic(context, left, right),
-            "==" => new BoolValue(Equals(left, right)),
-            "!=" => new BoolValue(!Equals(left, right)),
-            "&&" => Logic(context, left, right, and: true),
-            "||" => Logic(context, left, right, and: false),
-            var other => throw context.Error($"'{other}' is not an operator of a binary expression."),
-        };
-    }
-
-    /// <summary>Applies the comparison and arithmetic operators, which are about whole numbers here.</summary>
-    /// <remarks>
-    /// A language that wants dates or text ordered adds its own concepts (or its own rules) rather than making
-    /// this one guess: "what does <c>&lt;</c> mean for a string" is a decision the language makes, and this
-    /// language has no opinion.
-    /// </remarks>
-    private static Value Arithmetic(EvaluationContext context, Value left, Value right)
-    {
-        var symbol = context.Node.GetOrNull("operator")!;
-
-        if (left is not IntValue first || right is not IntValue second)
-        {
-            throw context.Error($"{Describe(symbol, left, right)} expects whole numbers.");
-        }
-
-        return symbol switch
-        {
-            "+" => new IntValue(first.Content + second.Content),
-            "-" => new IntValue(first.Content - second.Content),
-            "*" => new IntValue(first.Content * second.Content),
-            "/" when second.Content == 0 => throw context.Error("Division by zero has no value."),
-            "/" => new IntValue(first.Content / second.Content),
-            "^" => Power(context, first.Content, second.Content),
-            "<" => new BoolValue(first.Content < second.Content),
-            ">" => new BoolValue(first.Content > second.Content),
-            "<=" => new BoolValue(first.Content <= second.Content),
-            _ => new BoolValue(first.Content >= second.Content),
-        };
-    }
-
-    /// <summary>Raises a whole number to a whole power, refusing what this language cannot represent.</summary>
-    /// <remarks>
-    /// Only whole results, because the vocabulary has no fractional literal to write one in and a value nobody can
-    /// spell again would be a second kind of number the language does not admit to having.
-    /// </remarks>
-    private static IntValue Power(EvaluationContext context, int basis, int exponent)
-    {
-        if (exponent < 0)
-        {
-            throw context.Error("A power of a whole number needs an exponent of zero or more.");
-        }
-
-        var raised = Math.Pow(basis, exponent);
-
-        return raised is > int.MaxValue or < int.MinValue
-            ? throw context.Error($"{basis} to the power of {exponent} is beyond the whole numbers this language holds.")
-            : new IntValue((int)raised);
+        return OperatorSemantics.Apply(context, symbol, left, right);
     }
 
     /// <summary>Applies the function its callee points at to the values of the arguments.</summary>
@@ -194,26 +139,4 @@ public static class ExpressionsEvaluation
 
         return context.With(bound).Eval(body);
     }
-    private static BoolValue Logic(EvaluationContext context, Value left, Value right, bool and)
-    {
-        if (left is not BoolValue first || right is not BoolValue second)
-        {
-            throw context.Error($"{Describe(and ? "&&" : "||", left, right)} expects truth values.");
-        }
-
-        return new BoolValue(and ? first.Content && second.Content : first.Content || second.Content);
-    }
-
-    /// <summary>How an operator complains about what it was given, naming the kinds rather than the values.</summary>
-    private static string Describe(string symbol, params Value[] operands) =>
-        $"'{symbol}' cannot be applied to {string.Join(" and ", operands.Select(operand => Kind(operand)))}.";
-
-    private static string Kind(Value value) => value switch
-    {
-        IntValue => "a whole number",
-        BoolValue => "a truth value",
-        StringValue => "text",
-        DateValue => "a date",
-        _ => value.GetType().Name,
-    };
 }

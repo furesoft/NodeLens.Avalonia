@@ -1,5 +1,9 @@
 using Projectional.CSharp;
+using Projectional.Core;
+using Projectional.Language;
 using Projectional.Languages;
+using Projectional.Persistence;
+using Projectional.Semantics;
 using Projectional.Workbench;
 using Xunit;
 
@@ -182,6 +186,41 @@ public sealed class ExampleProjectsTests
     }
 
     /// <summary>The example folders this test build copied, which is the set the app ships.</summary>
+    [Fact]
+    public void AnExampleInheritsTheMeaningsOfTheLanguageItExtends()
+    {
+        // The payoff of a record, and of inheriting meanings through `extends`: a quantity answers with an amount and its unit,
+        // and an invoice line that holds one answers with the amount alone - through the base language's rule, which this
+        // language never states.
+        var catalogue = SampleCatalogue();
+        var opened = ExampleProjects.Load(
+            new WorkbenchLanguage(),
+            ExampleProjects.Needed(Example(catalogue, "Invoice"), catalogue),
+            out var refused);
+
+        Assert.Empty(refused);
+
+        var invoice = opened.Single(project => project.Name == "Invoice");
+        var rules = Assert.IsType<EvaluationRegistry>(invoice.Evaluation);
+        var line = ModelFile.Load(invoice.NewProject(), Path.Combine(AppContext.BaseDirectory, "Invoice", "invoice.mps")).Roots[0];
+        var quantity = line.GetChildren("quantity")[0];
+
+        Assert.Equal(
+            new RecordValue([new("value", new IntValue(12)), new("unit", new StringValue(" kg "))]),
+            Evaluate(rules, quantity));
+        Assert.Equal(new IntValue(12), Evaluate(rules, line));
+    }
+
+    /// <summary>What <paramref name="rules"/> answer for <paramref name="node"/>.</summary>
+    private static Value Evaluate(EvaluationRegistry rules, Node node)
+    {
+        var result = new Interpreter(rules).Run(node, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Failure is null, result.Failure?.Message);
+
+        return result.Value!;
+    }
+
     private static IReadOnlyList<ExampleProject> SampleCatalogue() => ExampleProjects.Catalogue(AppContext.BaseDirectory);
 
     private static ExampleProject Example(IReadOnlyList<ExampleProject> catalogue, string folder) =>
