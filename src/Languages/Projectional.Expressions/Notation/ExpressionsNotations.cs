@@ -82,7 +82,7 @@ internal static class ExpressionsNotations
         notations.Add(ExpressionsConceptKeys.Parameter, ed => ed.Line(ed.Property("name")));
 
         notations.Add(ExpressionsConceptKeys.Call, ed => ed.Line(
-            ed.Property("callee"),
+            ed.Reference("callee", "<<function>>"),
             ed.Punct("("),
             ed.InlineCollection(ExpressionsLanguage.ArgumentsSlot, separator: ed.Punct(", ")),
             ed.Punct(")")));

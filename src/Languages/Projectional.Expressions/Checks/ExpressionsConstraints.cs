@@ -37,15 +37,15 @@ public static class ExpressionsConstraints
         .Add(ExpressionsConceptKeys.Function, new ParametersAreDistinct())
         .Add(ExpressionsConceptKeys.Call, new CallMatchesItsFunction());
 
-    /// <summary>The name of the function <paramref name="model"/> declares under <paramref name="name"/>, if any.</summary>
+    /// <summary>The function <paramref name="call"/> points at, or <see langword="null"/> when its reference is unresolved.</summary>
     /// <remarks>
-    /// The first in document order, which is the one the interpreter applies - a rule that offered a different answer from
-    /// the run would be the second opinion this layer avoids everywhere else.
+    /// Read from the reference rather than from a name, so the rule and the run agree by construction: both answer with
+    /// the node the author chose, and neither can quietly pick a different function of the same name.
     /// </remarks>
-    private static Node? FunctionNamed(Model model, string name) =>
-        model.Roots
-            .Where(root => root.Concept.IsKindOf(ExpressionsConceptKeys.Function))
-            .FirstOrDefault(root => string.Equals(root.GetOrNull("name"), name, StringComparison.Ordinal));
+    private static Node? FunctionOf(Node call) =>
+        call.GetReference("callee") is { } target && target.IsResolvedIn(call.Model.Project)
+            ? call.Model.Roots.FirstOrDefault(root => root.Id.Equals(target.Target))
+            : null;
 
     /// <summary>Two functions of one name: only the later one reports, so a pair is one finding.</summary>
     private sealed class FunctionNameIsUnique : IConstraint
@@ -97,15 +97,14 @@ public static class ExpressionsConstraints
     {
         public void Check(ConstraintContext context)
         {
-            if (context.Node.GetOrNull("callee") is not { Length: > 0 } callee)
-            {
-                return;
-            }
+            var callee = context.Node.GetReference("callee")?.ResolveInfo;
 
-            if (FunctionNamed(context.Node.Model, callee) is not { } function)
+            if (FunctionOf(context.Node) is not { } function)
             {
                 context.Error(
-                    $"no function of this model is called \"{callee}\".",
+                    callee is { Length: > 0 }
+                        ? $"no function of this model is called \"{callee}\"."
+                        : "this call names no function.",
                     role: "callee",
                     code: UnknownFunctionCode);
 

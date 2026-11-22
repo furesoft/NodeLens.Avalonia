@@ -756,12 +756,17 @@ possible is the one thing the projection never needed and the interpreter did:
 hands its arguments to the body. The scope is a value rather than a stack, because a rule
 that forgot to pop would leak the parameters of one call into the next.
 
-The callee is text, not a reference, for the reason `Name` is: this vocabulary resolves
-names when something runs the model. The cost is written down where it is paid - renaming a
-function does not follow into its calls - and it buys a sub-language a host can compose
-without a scope provider or a reference slot.
-The price of that is paid in the editor instead: `ExpressionsConstraints` reports the four
-facts only a run would otherwise resolve - a function declared twice (one finding, on the
-later one, because a call resolves to the first), a parameter declared twice, a call that
-names nothing, and a call whose argument count does not match. The interpreter keeps saying
-them too, because a model nobody opened has no editor to say them.
+The callee is a reference rather than text, and the difference is what a project is for: a
+function is declared in a document of the same project, so the name resolves while the
+document is edited. `ExpressionsScopes` states the one rule this vocabulary has - the
+functions of the project, which is `ScopePlace.Project` because a definition is not written
+inside the expression that uses it - and that single declaration is what makes a rename
+follow into the calls, a call offer the functions in the completion list, and go to
+definition work on it. A call whose reference does not resolve is reported (`EXPR002`) and
+refused at run time rather than searched for by name, so the drawing and the run cannot
+disagree about which function was meant.
+`ExpressionsConstraints` reports the facts only a run would otherwise resolve: a function
+declared twice (one finding, on the later one, because the first is the one the author meant
+to keep), a parameter declared twice, a call whose reference resolves to nothing, and a call
+whose argument count does not match. The interpreter keeps saying them too, because a model
+nobody opened has no editor to say them.

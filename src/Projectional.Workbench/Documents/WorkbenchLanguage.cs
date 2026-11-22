@@ -5,6 +5,7 @@ using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.CSharp.Scopes;
+using Projectional.Semantics;
 using Projectional.CSharp.Types;
 using Projectional.ConstraintRules;
 using Projectional.Editors;
@@ -154,6 +155,16 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
 
     /// <summary>The typing rules the shell ships, which are what a language without a <c>typing</c> aspect gets.</summary>
     internal static ITypingRules? Typing => RulesLanguage.TypingRules;
+
+    /// <summary>The scopes a document of the shell own languages resolves its references with.</summary>
+    /// <remarks>
+    /// Combined rather than chosen, because one document can hold concepts of several of them: a rule condition is an
+    /// expression, an expression can hold a C# call, and a call names a function of its project. A language that brings a
+    /// scope of its own still wins, because a document opened from a project passes that registry instead.
+    /// </remarks>
+    internal static ScopeProviderRegistry Scopes { get; } = ScopeProviderRegistry.Empty
+        .With(CSharpScopes.Registry)
+        .With(Projectional.Expressions.Scopes.ExpressionsScopes.Registry);
 
     /// <summary>The typing rules a document of <paramref name="language"/> claims typed text with.</summary>
     /// <param name="language">The language the document is written in.</param>

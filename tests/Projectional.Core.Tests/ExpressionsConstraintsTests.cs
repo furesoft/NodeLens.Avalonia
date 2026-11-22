@@ -44,7 +44,7 @@ public sealed class ExpressionsConstraintsTests
     public void ACallToNothingIsReported()
     {
         var model = NewModel();
-        Call(model, "cube", 2);
+        DanglingCall(model, "cube", 2);
 
         var finding = Assert.Single(Findings(model));
 
@@ -55,8 +55,8 @@ public sealed class ExpressionsConstraintsTests
     public void ACallWithTheWrongArgumentCountIsReported()
     {
         var model = NewModel();
-        Function(model, "square", "x");
-        Call(model, "square", 2, 3);
+        var function = Function(model, "square", "x");
+        Call(model, function, 2, 3);
 
         // The function itself is clean, so the one finding is the arity.
         var finding = Assert.Single(Findings(model));
@@ -68,8 +68,8 @@ public sealed class ExpressionsConstraintsTests
     public void ACallThatMatchesItsFunctionIsLeftAlone()
     {
         var model = NewModel();
-        Function(model, "square", "x");
-        Call(model, "square", 4);
+        var function = Function(model, "square", "x");
+        Call(model, function, 4);
 
         Assert.Empty(Findings(model));
     }
@@ -95,10 +95,26 @@ public sealed class ExpressionsConstraintsTests
         return function;
     }
 
-    private static Node Call(Model model, string callee, params int[] arguments)
+    private static Node Call(Model model, Node function, params int[] arguments)
     {
         var call = model.NewNode(ExpressionsConceptKeys.Call);
-        call.Set("callee", callee);
+        call.SetReference("callee", function);
+
+        foreach (var each in arguments)
+        {
+            model.NewChild(call, ExpressionsLanguage.ArgumentsSlot, ExpressionsConceptKeys.IntLiteral).Set("value", each);
+        }
+
+        model.AddRoot(call);
+
+        return call;
+    }
+
+    /// <summary>A call whose callee keeps the text it was given and resolves to nothing.</summary>
+    private static Node DanglingCall(Model model, string callee, params int[] arguments)
+    {
+        var call = model.NewNode(ExpressionsConceptKeys.Call);
+        call.SetReference("callee", NodeId.New(), callee);
 
         foreach (var each in arguments)
         {

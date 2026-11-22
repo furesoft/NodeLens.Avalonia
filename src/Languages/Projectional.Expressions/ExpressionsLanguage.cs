@@ -106,6 +106,9 @@ public static class ExpressionsLanguage
     /// </remarks>
     public static ConstraintSet Constraints { get; } = Checks.ExpressionsConstraints.All;
 
+    /// <summary>Which functions a call can reach, which is what resolves its callee.</summary>
+    public static ScopeProviderRegistry Scopes { get; } = Projectional.Expressions.Scopes.ExpressionsScopes.Registry;
+
 
 
     /// <summary>The slot holding a function parameter list.</summary>
@@ -289,14 +292,13 @@ public static class ExpressionsLanguage
             nameRule: NameRule.Camel,
             isRoot: false),
 
-        // The callee is text rather than a reference, for the reason a Name is: this vocabulary resolves names when
-        // something runs the model, and the run decides what a name means. The cost is written down where it is paid - a
-        // rename of a function does not follow into its calls - and paying it buys a language that needs no scope
-        // provider and no reference slot to be useful.
+        // The callee is a reference rather than text: a function is declared in a document of the same project, so the
+        // name can be resolved while the document is edited - which is what makes a rename follow into the calls and a
+        // call offer the functions the project holds.
         new ConceptDeclaration(
             ExpressionsConceptKeys.Call,
             [
-                new PropertySlot("callee", PropertyType.String, description: "The name of the function to apply, such as f."),
+                new ReferenceSlot("callee", ExpressionsConceptKeys.Function),
                 new ChildSlot(ArgumentsSlot, ExpressionsConceptKeys.Expression, Cardinality.Many),
             ],
             [ExpressionsConceptKeys.Expression],
