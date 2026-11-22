@@ -52,9 +52,9 @@ public sealed class ConstraintLanguageTests
 
         Assert.Equal(
             """
-            rule for every node
-                when << what it checks >>
-                then error "<< what is wrong >>" as <<no code>>
+              rule for every node
+                  when << what it checks >>
+                  then error "<< what is wrong >>" as <<no code>>
             """,
             LayoutSnapshot.Render(model, ConstraintNotations.Registry, width: 80));
     }
@@ -75,9 +75,9 @@ public sealed class ConstraintLanguageTests
 
         Assert.Equal(
             """
-            rule for Rules.Rule
-                when the slot condition is empty
-                then warning "a rule needs a condition" as rules.condition.required
+              rule for Rules.Rule
+                  when the slot condition is empty
+                  then warning "a rule needs a condition" as rules.condition.required
             """,
             LayoutSnapshot.Render(rule, ConstraintNotations.Registry, width: 80));
     }
@@ -100,9 +100,9 @@ public sealed class ConstraintLanguageTests
 
         Assert.Equal(
             """
-            rule for Pipeline.Stage
-                when the value of name is still the default
-                then hint "a stage is still called "unnamed"; give it a name." as pipeline.stage.name
+              rule for Pipeline.Stage
+                  when the value of name is still the default
+                  then hint "a stage is still called "unnamed"; give it a name." as pipeline.stage.name
             """,
             LayoutSnapshot.Render(rule, ConstraintNotations.Registry, width: 200));
     }

@@ -23,8 +23,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.IntLiteral is
-                type int
+              rule Expressions.IntLiteral is
+                  type int
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -51,11 +51,11 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.Binary is
-                switch on operator
-                  when > then type bool
-                  otherwise:
-                    type of left
+              rule Expressions.Binary is
+                  switch on operator
+                    when > then type bool
+                    otherwise:
+                      type of left
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -87,8 +87,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.IntLiteral is
-                type (amount: int, currency: [string?])
+              rule Expressions.IntLiteral is
+                  type (amount: int, currency: [string?])
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -144,8 +144,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule TypeRule.Named is
-                type Amount
+              rule TypeRule.Named is
+                  type Amount
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
 
@@ -217,8 +217,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.IntLiteral is
-                type int|string
+              rule Expressions.IntLiteral is
+                  type int|string
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -241,8 +241,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.IntLiteral is
-                type int&Amount
+              rule Expressions.IntLiteral is
+                  type int&Amount
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }
@@ -261,10 +261,10 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.IntLiteral is
-                report error
-                  "An integer literal is not allowed here."
-                  code <none>
+              rule Expressions.IntLiteral is
+                  report error
+                    "An integer literal is not allowed here."
+                    code <none>
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 80));
     }
@@ -287,10 +287,10 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.Binary is
-                report error
-                  "The operands are not comparable."
-                  code <none> when type of left is not comparable with type of right
+              rule Expressions.Binary is
+                  report error
+                    "The operands are not comparable."
+                    code <none> when type of left is not comparable with type of right
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 120));
     }
@@ -316,10 +316,10 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.Binary is
-                report error
-                  "The operands are not comparable."
-                  code expr.operands when type of left is not comparable with type of right
+              rule Expressions.Binary is
+                  report error
+                    "The operands are not comparable."
+                    code expr.operands when type of left is not comparable with type of right
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 160));
     }
@@ -394,8 +394,8 @@ public sealed class TypeRuleNotationTests
 
         Assert.Equal(
             """
-            rule Expressions.If is
-                widest of then and else
+              rule Expressions.If is
+                  widest of then and else
             """,
             LayoutSnapshot.Render(model, TypeRuleNotations.Registry, width: 60));
     }

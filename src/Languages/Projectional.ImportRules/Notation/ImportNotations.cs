@@ -27,10 +27,10 @@ public static class ImportNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(ImportConceptKeys.Importer, ed => ed.Sequence(
+        notations.Add(ImportConceptKeys.Importer, ed => ed.Indent(ed.Sequence(
             ed.Line(ed.Keyword("importer"), ed.Space, ed.Property(ImportLanguage.NameSlot, emptyText: NoName)),
             ed.Indent(ed.Indent(ed.Children(ImportLanguage.TokensSlot, NoToken, stacked: true))),
-            ed.Indent(ed.Indent(ed.Children(ImportLanguage.RulesSlot, NoRule, stacked: true)))));
+            ed.Indent(ed.Indent(ed.Children(ImportLanguage.RulesSlot, NoRule, stacked: true))))));
 
         notations.Add(ImportConceptKeys.Rule, ed => ed.Sequence(
             ed.Line(ed.Keyword("rule"), ed.Space, ed.Property(ImportLanguage.ConceptKeySlot, emptyText: NoName)),

@@ -54,12 +54,12 @@ public static class TestingNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(TestingConceptKeys.Test, ed => ed.Sequence(
+        notations.Add(TestingConceptKeys.Test, ed => ed.Indent(ed.Sequence(
             ed.Line(
                 ed.Keyword("test", TextEmphasis.Bold),
                 ed.Space,
                 ed.Property(TestingLanguage.DocumentSlot)),
-            ed.Indent(ed.Indent(ed.Children(TestingLanguage.AssertionSlot, NoAssertion, stacked: true)))));
+            ed.Indent(ed.Indent(ed.Children(TestingLanguage.AssertionSlot, NoAssertion, stacked: true))))));
 
         notations.Add(TestingConceptKeys.RoundTrips, ed => ed.Line(
             ed.Keyword("round trips")));

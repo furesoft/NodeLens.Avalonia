@@ -49,7 +49,7 @@ public static class ConstraintNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(ConstraintConceptKeys.Rule, ed => ed.Sequence(
+        notations.Add(ConstraintConceptKeys.Rule, ed => ed.Indent(ed.Sequence(
             ed.Line(
                 ed.Keyword("rule", TextEmphasis.Bold),
                 ed.Space,
@@ -72,7 +72,7 @@ public static class ConstraintNotations
                     ed.Space,
                     ed.Keyword("as"),
                     ed.Space,
-                    ed.Property(ConstraintLanguage.CodeSlot, emptyText: NoCode)))))));
+                    ed.Property(ConstraintLanguage.CodeSlot, emptyText: NoCode))))))));
 
         notations.Add(ConstraintConceptKeys.EmptySlot, ed => ed.Line(
             ed.Keyword("the slot"),

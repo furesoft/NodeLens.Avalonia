@@ -40,14 +40,14 @@ public static class TypeRuleNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
-        notations.Add(TypeRuleConceptKeys.Rule, ed => ed.Sequence(
+        notations.Add(TypeRuleConceptKeys.Rule, ed => ed.Indent(ed.Sequence(
             ed.Line(
                 ed.Keyword("rule", TextEmphasis.Bold),
                 ed.Space,
                 ed.Property(TypeRuleLanguage.ConceptKeySlot),
                 ed.Space,
                 ed.Keyword("is")),
-            ed.Indent(ed.Indent(ed.Line(ed.ChildInline(TypeRuleLanguage.BodySlot))))));
+            ed.Indent(ed.Indent(ed.Line(ed.ChildInline(TypeRuleLanguage.BodySlot)))))));
 
         notations.Add(TypeRuleConceptKeys.Fixed, ed => ed.Line(
             ed.Keyword("type"),
