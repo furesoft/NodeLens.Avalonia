@@ -30,10 +30,10 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of twelve bodies: a value read from the node (`property`, `child`, `variable`), a
+- a `rule for <concept>` holding one of thirteen bodies: a value read from the node (`property`, `child`, `variable`), a
 question about the node's own shape (`has`, which asks whether a slot holds anything, and `count`, which says how many
 entries a child slot holds), the value of the node a reference points at (`reference`), a value written into the rule
-(`constant`), arithmetic and logic over other bodies
+(`constant`), a total over a list (`sum over ... of ...`), arithmetic and logic over other bodies
 (`operator`), a choice (`choose` with `condition`, `then`, `otherwise`), the first entry of a slot whose condition holds
 (`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`), and a refusal with a sentence
 (`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
@@ -106,6 +106,12 @@ node's own rule - so a language composes a meaning out of other meanings, and a 
 it points at. Three refusals are separate sentences, because they need different answers: the slot is not a reference (the
 rule names the wrong shape), it points nowhere (the document is half-written), or it points at a node the model does not
 hold (the reference dangles).
+
+A total is a fold, and no other body could express one: nothing in the vocabulary accumulates, so "the retries this
+pipeline allows" had no spelling. `sum over <slot> of <body>` asks each entry for a value and adds them, refusing an entry
+that is not a whole number and a total beyond what an `int` holds - a wrapped number would be a wrong answer rather than a
+refusal, the same reason a power refuses one. The total of an empty list is zero, unlike a `first` with nothing that
+applies: an empty list has an answer and no rule is missing.
 
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`

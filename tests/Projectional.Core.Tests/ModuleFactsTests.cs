@@ -59,7 +59,7 @@ public sealed class ModuleFactsTests
         // The accessory document's roots are the language's own concepts, so it belongs in the list; the order is the
         // folder order the dialog and the explorer share.
         Assert.Equal(
-            ["structure", "editor", "constraints", "accessory", "import", "generator", "tests"],
+            ["structure", "editor", "evaluation", "constraints", "accessory", "import", "generator", "tests"],
             facts.Roots);
     }
 

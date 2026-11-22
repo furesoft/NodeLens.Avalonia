@@ -87,6 +87,15 @@ public static class EvaluationRuleNotations
                 ed.Line(ed.Keyword("then"), ed.Space, ed.ChildInline(EvaluationRuleLanguage.ThenSlot)),
                 ed.Line(ed.Keyword("otherwise"), ed.Space, ed.ChildInline(EvaluationRuleLanguage.OtherwiseSlot))))));
 
+        notations.Add(EvaluationRuleConceptKeys.Sum, ed => ed.Line(
+            ed.Keyword("sum over"),
+            ed.Space,
+            ed.Property(EvaluationRuleLanguage.OverSlot, emptyText: "<<slot>>"),
+            ed.Space,
+            ed.Keyword("of"),
+            ed.Space,
+            ed.ChildInline(EvaluationRuleLanguage.EachSlot)));
+
         // The two bodies read as one sentence, because that is what they say: the entries are tried in order, and the
         // answer comes from the entry that applied.
         notations.Add(EvaluationRuleConceptKeys.First, ed => ed.Sequence(

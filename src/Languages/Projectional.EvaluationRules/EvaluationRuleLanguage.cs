@@ -61,6 +61,9 @@ public static class EvaluationRuleLanguage
     /// <summary>The property naming the child slot whose entries a first body walks.</summary>
     public const string OverSlot = "over";
 
+    /// <summary>The body a sum body asks each entry for the value it adds.</summary>
+    public const string EachSlot = "each";
+
     /// <summary>The body a first body asks about each entry, answered for that entry.</summary>
     public const string WhenSlot = "when";
 
@@ -212,6 +215,18 @@ public static class EvaluationRuleLanguage
         // The shape every rule-based DSL needs: the first child that applies decides, and what it answers is read from
         // *that* child. Both bodies are evaluated with the entry as their subject, which is what a context for another node
         // is for.
+        // A fold, and the one shape nothing else in the vocabulary could express: no body accumulates, so "the total of this
+        // list" had no spelling at all.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Sum,
+            [
+                new PropertySlot(OverSlot, PropertyType.String, description: "The child slot whose entries are added up."),
+                new ChildSlot(EachSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
+            ],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The total of what the entries of a child slot answer, which must be whole numbers.",
+            nameSlot: OverSlot),
+
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.First,
             [

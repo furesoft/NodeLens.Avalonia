@@ -432,6 +432,60 @@ public sealed class EvaluationRuleLoweringTests
         Assert.Contains("points nowhere", failure.Message, StringComparison.Ordinal);
     }
     [Fact]
+    public void ADeclaredSumAddsUpWhatTheEntriesOfASlotAnswer()
+    {
+        var rules = new Rules(FirstLanguage.Concepts);
+        var sum = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Sum);
+        sum.Set(EvaluationRuleLanguage.OverSlot, FirstLanguage.EntriesSlot);
+        Property(sum, FirstLanguage.OutcomeSlot, EvaluationRuleLanguage.EachSlot);
+
+        Assert.Equal(new IntValue(6), Evaluate(rules.Lower(), Block(entries: [(true, 1), (false, 2), (true, 3)])));
+    }
+
+    [Fact]
+    public void ADeclaredSumOfAnEmptySlotIsZero()
+    {
+        // Zero rather than a refusal, unlike a first body with nothing that applies: an empty list has a total, and the total
+        // of nothing is nothing.
+        var rules = new Rules(FirstLanguage.Concepts);
+        var sum = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Sum);
+        sum.Set(EvaluationRuleLanguage.OverSlot, FirstLanguage.EntriesSlot);
+        Property(sum, FirstLanguage.OutcomeSlot, EvaluationRuleLanguage.EachSlot);
+
+        Assert.Equal(new IntValue(0), Evaluate(rules.Lower(), Block()));
+    }
+
+    [Fact]
+    public void ADeclaredSumRefusesAnEntryThatIsNotAWholeNumber()
+    {
+        var rules = new Rules(FirstLanguage.Concepts);
+        var sum = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Sum);
+        sum.Set(EvaluationRuleLanguage.OverSlot, FirstLanguage.EntriesSlot);
+        Property(sum, FirstLanguage.EnabledSlot, EvaluationRuleLanguage.EachSlot);
+
+        var failure = new Interpreter(rules.Lower()).Run(Block(entries: [(true, 1)]), cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("whole numbers to be summed", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredSumRefusesATotalBeyondTheWholeNumbersItHolds()
+    {
+        // A wrapped number would be a wrong answer rather than a refusal, which is the same reason a power refuses one.
+        var rules = new Rules(FirstLanguage.Concepts);
+        var sum = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Sum);
+        sum.Set(EvaluationRuleLanguage.OverSlot, FirstLanguage.EntriesSlot);
+        Property(sum, FirstLanguage.OutcomeSlot, EvaluationRuleLanguage.EachSlot);
+
+        var failure = new Interpreter(rules.Lower())
+            .Run(Block(entries: [(true, int.MaxValue), (true, 1)]), cancellationToken: TestContext.Current.CancellationToken)
+            .Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("beyond the whole numbers", failure.Message, StringComparison.Ordinal);
+    }
+    [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {
         var rules = new Rules();

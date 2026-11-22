@@ -161,6 +161,11 @@ public static class EvaluationRuleLowering
             return Choose(body);
         }
 
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Sum))
+        {
+            return Sum(body);
+        }
+
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))
         {
             return First(body);
@@ -245,6 +250,39 @@ public static class EvaluationRuleLowering
                 : otherwise is null
                     ? throw context.Error("the condition of this choose body is false and it has no otherwise body.")
                     : otherwise(context);
+        };
+    }
+
+    /// <summary>The total of what the entries of a slot answer, each asked for itself.</summary>
+    /// <remarks>
+    /// Accumulated in a <see cref="long"/> and range-checked per step, because a wrapped <see cref="int"/> is a wrong answer
+    /// rather than a refusal - the same reason a power refuses a result it cannot represent.
+    /// </remarks>
+    private static Func<EvaluationContext, Value> Sum(Node body)
+    {
+        var over = SlotOf(body, EvaluationRuleLanguage.OverSlot);
+        var each = Compile(Required(body, EvaluationRuleLanguage.EachSlot));
+
+        return context =>
+        {
+            long total = 0;
+
+            foreach (var entry in context.Node.GetChildren(over))
+            {
+                if (each(context.For(entry)) is not IntValue number)
+                {
+                    throw context.Error($"the entries of '{over}' must answer with whole numbers to be summed, and one answered with something else.");
+                }
+
+                total += number.Content;
+
+                if (total is > int.MaxValue or < int.MinValue)
+                {
+                    throw context.Error($"the total of '{over}' is beyond the whole numbers this framework holds.");
+                }
+            }
+
+            return new IntValue((int)total);
         };
     }
 
@@ -364,6 +402,11 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Choose))
         {
             return "The body whose arm the condition chooses.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Sum))
+        {
+            return $"The total of what each of its {SlotOf(body, EvaluationRuleLanguage.OverSlot)} entries answers.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))

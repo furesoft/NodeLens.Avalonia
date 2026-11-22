@@ -11,6 +11,7 @@ sees" is not a claim to check - there is nothing to delete.
 | `editor/` | how those concepts are drawn - one document per notation, a header line and a table |
 | `constraints/` | the rules the language states about itself - one document per rule |
 | `generator/` | the language's one text generator, `ShellScript`, as a model of the generator language |
+| `evaluation/` | what a pipeline means: the total of the retries its stages allow |
 | `tests/` | what the language asserts about its own documents - one test per document |
 | `pipeline.mps` | a document of the language, so the folder is something to open |
 | `nightly.mps` | a second document, with a stage that has no command |

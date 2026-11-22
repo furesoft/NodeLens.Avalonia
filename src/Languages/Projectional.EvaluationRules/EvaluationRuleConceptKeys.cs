@@ -14,7 +14,8 @@ namespace Projectional.EvaluationRules;
 /// (<see cref="Has"/>, <see cref="Count"/>), the value of the node a reference points at (<see cref="Reference"/>), a
 /// value written down (<see cref="Constant"/>),
 /// arithmetic and logic over other bodies (<see cref="Operator"/>), a choice between two bodies (<see cref="Choose"/>), the
-/// first entry of a list that applies followed by what that entry answers (<see cref="First"/>), a name bound for the rest
+/// first entry of a list that applies followed by what that entry answers (<see cref="First"/>), the total of a list
+/// (<see cref="Sum"/>), a name bound for the rest
 /// of the rule (<see cref="Bind"/>), and a refusal with a sentence (<see cref="Fail"/>).
 /// </para>
 /// </remarks>
@@ -40,6 +41,9 @@ public static class EvaluationRuleConceptKeys
 
     /// <summary>The value of the node a reference slot points at.</summary>
     public const string Reference = "Evaluation.Reference";
+
+    /// <summary>The total of what the entries of a slot answer.</summary>
+    public const string Sum = "Evaluation.Sum";
 
     /// <summary>The value the run bound to the name a property holds.</summary>
     public const string Variable = "Evaluation.Variable";
