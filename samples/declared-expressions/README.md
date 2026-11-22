@@ -9,13 +9,14 @@ even though the generator cannot be inverted into one.
 
 | File | What it is |
 | --- | --- |
+| `language.mps` | the language itself: `Expressions`, version 1.0.0, standing on nothing |
 | `structure/` | five concepts: an abstract `Decl.Expression`, an integer and a truth value, a binary form and a conditional |
 | `editor/` | one line each - `1`, `true`, `1 + 2`, `if 1 < 2 then 3 else 4` |
 | `types/` | the rules: two fixed types, a switch over the operator, a `widest of` and one complaint |
 | `typing/` | which node a burst of typing creates: a digit makes an `int`, `true`/`false` make a `bool`, and the aliases `binary` and `if` make those two |
 | `import/` | one declared importer: a second spelling of the same expressions, read by `import/sexp.mps` |
 | `generator/` | one text generator: the same S-expression spelling, written by `generator/sexpr.mps` |
-| `tests/` | four assertions the language states about itself |
+| `tests/` | five assertions the language states about itself |
 | `expressions.mps` | a document of the language |
 | `uncomparable.mps` | a document the complaint reports on |
 
