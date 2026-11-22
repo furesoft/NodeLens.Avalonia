@@ -74,6 +74,17 @@ public sealed class DeclaredImporter : ITextImporter
     /// <summary>The rules this importer reads.</summary>
     public IReadOnlyList<ImportRule> Rules => [.. _rules.Values];
 
+    /// <summary>The lexical classes the rules may read, which is what a capture names when it does not run to a literal.</summary>
+    public IReadOnlyList<ImportToken> Tokens => [.. _tokens.Values];
+
+    /// <summary>The concepts that may stand at the top of a document, in the order the text is tried against them.</summary>
+    /// <remarks>
+    /// Exposed beside <see cref="Rules"/> for the same reason: a host that documents or debugs an importer needs to
+    /// know which of its rules can be a document, and the order it tries them in is what decides a file that could be
+    /// either.
+    /// </remarks>
+    public IReadOnlyList<string> Roots => _roots;
+
     /// <summary>Whether the text starts like one of the rules that may be a document.</summary>
     public bool CanImport(string text)
     {
