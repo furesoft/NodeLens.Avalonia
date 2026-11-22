@@ -46,10 +46,12 @@ public static class EvaluationRuleNotations
 
         // The right operand is a body and may be absent, so it is drawn as a conditional block over a slot that can hold
         // nothing: `operator + over ...` is the unary reading, and the `and` only appears when there is a second operand.
+        // The symbol the body applies, or - left empty - the node's own: the empty cell says where it comes from, which is
+        // the one thing a reader cannot infer from `operator ... over ...`.
         notations.Add(EvaluationRuleConceptKeys.Operator, ed => ed.Line(
             ed.Keyword("operator"),
             ed.Space,
-            ed.Property(EvaluationRuleLanguage.OperatorSlot),
+            ed.Property(EvaluationRuleLanguage.SymbolSlot, emptyText: "<<symbol>>"),
             ed.Space,
             ed.Keyword("over"),
             ed.Space,

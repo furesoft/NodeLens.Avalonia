@@ -93,6 +93,55 @@ public sealed class EvaluationRuleLoweringTests
     }
 
     [Fact]
+    public void ADeclaredOperatorAppliesTheSymbolItsBodyNames()
+    {
+        // The node is an int literal, which has no operator property to read one from: the symbol has to come from the rule,
+        // which is what lets a rule say "this value against 50" at all.
+        var rules = new Rules();
+        var comparison = Body(rules.Rule(ExpressionsConceptKeys.IntLiteral), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Operator);
+        comparison.Set(EvaluationRuleLanguage.SymbolSlot, ">=");
+
+        Constant(comparison, "int", "5", EvaluationRuleLanguage.LeftSlot);
+        Constant(comparison, "int", "3", EvaluationRuleLanguage.RightSlot);
+
+        var (model, literal) = Literal(42);
+
+        Assert.Equal(new BoolValue(true), Evaluate(rules.Lower(), model, literal));
+    }
+
+    [Fact]
+    public void ADeclaredOperatorPrefersItsOwnSymbolOverTheOneItsNodeHolds()
+    {
+        // The operatorSlot names the node's `value`, which holds "42" and is not an operator at all. Preferring the body's
+        // symbol is what makes the two forms one rule: a symbol written in the rule, and a symbol that varies per node.
+        var rules = new Rules();
+        var comparison = Body(rules.Rule(ExpressionsConceptKeys.IntLiteral), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Operator);
+        comparison.Set(EvaluationRuleLanguage.SymbolSlot, ">=");
+        comparison.Set(EvaluationRuleLanguage.OperatorSlot, "value");
+
+        Constant(comparison, "int", "5", EvaluationRuleLanguage.LeftSlot);
+        Constant(comparison, "int", "3", EvaluationRuleLanguage.RightSlot);
+
+        var (model, literal) = Literal(42);
+
+        Assert.Equal(new BoolValue(true), Evaluate(rules.Lower(), model, literal));
+    }
+
+    [Fact]
+    public void AnOperatorBodyThatNamesNoSymbolAndWhoseNodeHoldsNoneIsRefused()
+    {
+        var rules = new Rules();
+        var comparison = Body(rules.Rule(ExpressionsConceptKeys.IntLiteral), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Operator);
+
+        Constant(comparison, "int", "5", EvaluationRuleLanguage.LeftSlot);
+
+        var (model, literal) = Literal(42);
+        var failure = new Interpreter(rules.Lower()).Run(literal, cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("names no symbol", failure.Message, StringComparison.Ordinal);
+    }
+    [Fact]
     public void ADeclaredChooseRuleAnswersWithTheArmItsConditionChooses()
     {
         var rules = new Rules();
@@ -222,13 +271,28 @@ public sealed class EvaluationRuleLoweringTests
         // The sentence names the slots the rule reads, not the values it happened to see, so a page describes every
         // document the rule applies to.
         Assert.Equal(
-            "Its operator operator applied to the values of its two operands.",
+            "The operator of the node applied to the values of its two operands.",
             registry.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.Binary))!.Description);
         Assert.Equal(
             "The value of its value property, read through its declared type.",
             registry.RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.IntLiteral))!.Description);
     }
 
+    [Fact]
+    public void ADeclaredOperatorDescribesTheSymbolItNames()
+    {
+        // A body that writes its own symbol describes it as written, and one that leaves it empty says where it reads it -
+        // which is the difference a docs page has to show, because only the second varies with the node.
+        var rules = new Rules();
+        var comparison = Body(rules.Rule(ExpressionsConceptKeys.IntLiteral), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Operator);
+        comparison.Set(EvaluationRuleLanguage.SymbolSlot, ">=");
+
+        Constant(comparison, "int", "5", EvaluationRuleLanguage.LeftSlot);
+
+        Assert.Equal(
+            "Its >= operator applied to the value of its left operand.",
+            rules.Lower().RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.IntLiteral))!.Description);
+    }
     [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {

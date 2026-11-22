@@ -37,7 +37,10 @@ public static class EvaluationRuleLanguage
     /// <summary>The property naming a slot of the node a body reads.</summary>
     public const string SlotSlot = "slot";
 
-    /// <summary>The property naming the property that holds an operator symbol.</summary>
+    /// <summary>The symbol an operator body applies itself, which wins over the one its node holds.</summary>
+    public const string SymbolSlot = "symbol";
+
+    /// <summary>The property naming the property that holds the symbol, for a body that names none itself.</summary>
     public const string OperatorSlot = "operatorSlot";
 
     /// <summary>The body that answers the left operand, or the only one.</summary>
@@ -157,7 +160,11 @@ public static class EvaluationRuleLanguage
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Operator,
             [
-                new PropertySlot(OperatorSlot, PropertyType.String, description: "The property holding the symbol, such as operator."),
+                new PropertySlot(
+                    SymbolSlot,
+                    PropertyType.String,
+                    description: "The symbol this body applies, such as >=. Left empty, the rule reads the one the node holds in the property named below."),
+                new PropertySlot(OperatorSlot, PropertyType.String, description: "The property holding the symbol, for a rule whose operator varies with the node."),
                 new ChildSlot(LeftSlot, EvaluationRuleConceptKeys.Body, Cardinality.One),
                 new ChildSlot(RightSlot, EvaluationRuleConceptKeys.Body, Cardinality.One, minimum: 0),
             ],
