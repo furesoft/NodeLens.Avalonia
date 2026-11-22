@@ -106,15 +106,18 @@ It answers `fail` for 0, 42 and 49 points, and `pass` for 50 and 97. Four things
 
 A rule that has to tolerate an empty slot asks before it reads. `has <slot>` answers whether a property, a child slot or a
 reference holds anything, and `count <slot>` how many entries a child slot holds - neither is derivable from the other
-bodies, because a body that reads a slot refuses when it is empty and nothing else can stand in a condition. The Atlas
-sample states two meanings this way: a map answers how many places it holds (`count places`), and a stop answers whether
-it points anywhere (`has to`), which is the same question the language's own constraint asks of it.
+bodies, because a body that reads a slot refuses when it is empty and nothing else can stand in a condition. Two meanings
+in the Atlas sample are written this way: a map answers how many places it holds (`count places`), and a place answers with
+a label only while it has a position (`has at`), because a position is the slot the language leaves empty. **The guard has to
+name the slot that really can be empty**: the first version of that rule asked about `name`, which the language gives the
+default `unnamed` - so the guard was always true and the test that "passed" was passing for the wrong reason, which is what
+a guard on a defaulted property looks like from the outside.
 
 A reference is followed, not only tested. `reference <slot>` answers with what the node in that slot answers, through that
-node's own rule - so a language composes a meaning out of other meanings, and a stop can answer with the name of the place
-it points at. Three refusals are separate sentences, because they need different answers: the slot is not a reference (the
-rule names the wrong shape), it points nowhere (the document is half-written), or it points at a node the model does not
-hold (the reference dangles).
+node's own rule - so a language composes a meaning out of other meanings, and a stop answers with the label the place it
+points at answers with. Three refusals are separate sentences, because they need different answers: the slot is not a
+reference (the rule names the wrong shape), it points nowhere (the document is half-written), or it points at a node the
+model does not hold (the reference dangles).
 
 A total is a fold, and no other body could express one: nothing in the vocabulary accumulates, so "the retries this
 pipeline allows" had no spelling. `sum over <slot> of <body>` asks each entry for a value and adds them, refusing an entry
@@ -124,9 +127,18 @@ applies: an empty list has an answer and no rule is missing.
 
 A node with several properties answers with a record, and the two bodies that make one useful are `record` (named values,
 each of them any body) and `field <name> of <body>` (one value read back out of one). A quantity answers `{ value = 12, unit
-= kg }` this way, and an invoice line that holds one answers with the amount alone - which is the composition the third body,
-`list of <slot>`, completes: a route answers the list of what its stops answer, in the order it stops there. Both kinds are
-values like any other, so they compare by content, travel through `bind`, appear in the trace and can be compared with `==`.
+= kg }` this way, and an invoice line that holds one answers with the amount alone. Both kinds are values like any other, so
+they compare by content, travel through `bind`, appear in the trace and can be compared with `==`.
+
+The three composed meanings in the samples are one chain each, and between them they use every body:
+
+- **A total** - `Invoice.Bill` answers `sum over lines of (field value of (child quantity))`: a fold over a child slot, whose
+  each-body reads one field of the record the base language answers with. Twelve and five and thirty are added, the units are
+  left alone, and the number is `47`.
+- **A label** - `Atlas.Place` answers `name + " at " + at` while it has a position, and its name alone otherwise: two texts
+  joined, one of them a constant the rule writes, so a language builds a phrase without a single line of C#.
+- **A list** - `Atlas.Route` answers `list of stops`, which is the labels of the places the route stops at, in order: the list
+  body asks each stop, the stop's rule follows its reference, and the place's rule builds the label.
 
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`
