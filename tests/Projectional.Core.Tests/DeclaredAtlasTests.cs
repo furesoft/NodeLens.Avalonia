@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.Loader;
 using Projectional.ConstraintRules;
 using Projectional.Core;
 using Projectional.Editing;
@@ -5,6 +7,7 @@ using Projectional.Editors;
 using Projectional.ImportRules;
 using Projectional.IntentionRules;
 using Projectional.Language;
+using Projectional.LanguageExport;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
@@ -350,6 +353,38 @@ public sealed class DeclaredAtlasTests
         Assert.True(report.Succeeded, report.ToString());
 
         Assert.Contains(report.Results, result => result.Succeeded);
+    }
+
+    [Fact]
+    public void TheTypesExportAsCodeThatAnswersWhatTheFolderDoes()
+    {
+        // The aspect the export could not write for longest, proved the only way that counts: the generated source is
+        // compiled, loaded, and asked the same question the folder's registry was asked. A named record and three
+        // rules that name it survive the trip, which is what makes an exported language a language rather than a
+        // vocabulary.
+        var language = Language();
+        var result = LanguageExporter.Export(language, "Sample.Atlas", ExportOutput.Assembly);
+        var source = result.Files.Single(file => file.Name.StartsWith("Atlas", StringComparison.Ordinal)).Text;
+
+        Assert.Contains("public static TypeRegistry Types { get; } = TypeRegistry.Empty", source, StringComparison.Ordinal);
+        Assert.Contains(".Add(\"Atlas.Place\", new FixedTypeRule(Place))", source, StringComparison.Ordinal);
+        Assert.Contains("new NamedType(\"place\", new RecordType([(\"name\", PrimitiveType.Of(PropertyType.String))", source, StringComparison.Ordinal);
+
+        var context = new AssemblyLoadContext("atlas-types", isCollectible: true);
+        var assembly = context.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+        var type = assembly.GetType("Sample.Atlas.AtlasLanguage", throwOnError: true)!;
+
+        var exported = (TypeRegistry)type.GetProperty("Types", BindingFlags.Public | BindingFlags.Static)!.GetValue(null)!;
+
+        Assert.Equal(language.Types.Count, exported.Count);
+
+        var model = ModelFile.Load(language.NewProject(), Document("map.mps"));
+        var place = model.Roots[0].GetChildren("places")[0];
+        var landmark = model.Roots[0].GetChildren("places")[1];
+
+        Assert.Equal(language.Types.TypeOf(place).Name, exported.TypeOf(place).Name);
+        Assert.Equal("place", exported.TypeOf(place).Name);
+        Assert.Equal("place", exported.TypeOf(landmark).Name);
     }
 
     [Fact]

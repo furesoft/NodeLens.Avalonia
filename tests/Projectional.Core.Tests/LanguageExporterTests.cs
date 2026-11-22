@@ -169,28 +169,26 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
-    public void AnAspectTheExportCannotWriteThrowsInsteadOfAnsweringAnEmptyRegistry()
+    public void TheTypesAspectIsWrittenAndAConstraintIsTheOnlyThingLeftOut()
     {
+        // What the export writes and what it cannot: a type rule is one of five objects in `Projectional.Language`, so
+        // it is written as code; a `ConstraintSet` cannot be named through the toolkit, so a language that states one
+        // has no member for it in the generated file rather than a member that throws.
         var result = LanguageExporter.Export(
             "Declared",
             [],
             [],
-            hasTypes: true,
+            types: TypeRegistry.Empty.Add("Doc.Number", new FixedTypeRule(PrimitiveType.Of(PropertyType.Integer))),
             hasConstraints: true);
 
         var source = result.Files[0].Text;
 
-        Assert.Contains("public static TypeRegistry Types =>", source, StringComparison.Ordinal);
-        Assert.Contains("throw new NotSupportedException(\"The type rules declared in 'types'", source, StringComparison.Ordinal);
+        Assert.Contains("public static TypeRegistry Types { get; } = TypeRegistry.Empty", source, StringComparison.Ordinal);
+        Assert.Contains(".Add(\"Doc.Number\", new FixedTypeRule(PrimitiveType.Of(PropertyType.Integer)))", source, StringComparison.Ordinal);
 
-        // A constraint is left out of the file entirely: a `ConstraintSet` cannot be named through the toolkit.
         Assert.DoesNotContain("Constraints =>", source, StringComparison.Ordinal);
-
-        // And the generators are no longer an aspect this export cannot write: a template is data in
-        // `Projectional.Language`, so a language that declares none simply has no member, and one that does gets code.
         Assert.DoesNotContain("Generators =>", source, StringComparison.Ordinal);
     }
-
     [Fact]
     public void ADeclaredGeneratorIsWrittenAsTheDataItIs()
     {

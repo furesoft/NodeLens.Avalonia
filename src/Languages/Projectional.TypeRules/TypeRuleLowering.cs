@@ -434,9 +434,9 @@ public static class TypeRuleLowering
 
     private static ITypeRule LowerBody(Node body, string conceptKey, DeclaredTypes aliases) => body.Concept.Key switch
     {
-        TypeRuleConceptKeys.Fixed => new FixedRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey, aliases, [])),
-        TypeRuleConceptKeys.Child => new ChildRule(Required(body, TypeRuleLanguage.SlotSlot)),
-        TypeRuleConceptKeys.Widest => new WidestRule(
+        TypeRuleConceptKeys.Fixed => new FixedTypeRule(LowerType(RequiredChild(body, TypeRuleLanguage.TypeSlot), conceptKey, aliases, [])),
+        TypeRuleConceptKeys.Child => new ChildTypeRule(Required(body, TypeRuleLanguage.SlotSlot)),
+        TypeRuleConceptKeys.Widest => new WidestTypeRule(
             Required(body, TypeRuleLanguage.LeftSlot),
             Required(body, TypeRuleLanguage.RightSlot)),
         TypeRuleConceptKeys.Switch => LowerSwitch(body, conceptKey, aliases),
@@ -584,7 +584,7 @@ public static class TypeRuleLowering
         }
     }
 
-    private static SwitchRule LowerSwitch(Node body, string conceptKey, DeclaredTypes aliases)
+    private static SwitchTypeRule LowerSwitch(Node body, string conceptKey, DeclaredTypes aliases)
     {
         var property = Required(body, TypeRuleLanguage.PropertySlot);
         var cases = new Dictionary<string, ITypeRule>(StringComparer.Ordinal);
@@ -612,7 +612,7 @@ public static class TypeRuleLowering
                 $"The type rule for '{conceptKey}' switches on '{property}' but says nothing about any other value.");
         }
 
-        return new SwitchRule(property, cases, LowerBody(otherwise, conceptKey, aliases));
+        return new SwitchTypeRule(property, cases, LowerBody(otherwise, conceptKey, aliases));
     }
 
     /// <summary>
@@ -623,7 +623,7 @@ public static class TypeRuleLowering
     /// the whole reason a body of this kind exists: a relation between two unknowns says nothing unless the
     /// unknowns are shared, and sharing them is a property of the document, not of the solver.
     /// </remarks>
-    private static EquationsRule LowerEquations(Node body, string conceptKey, DeclaredTypes aliases)
+    private static EquationsTypeRule LowerEquations(Node body, string conceptKey, DeclaredTypes aliases)
     {
         Dictionary<string, TypeVariable> variables = new(StringComparer.Ordinal);
         List<TypeEquation> equations = [];
@@ -639,7 +639,7 @@ public static class TypeRuleLowering
                 $"The type rule for '{conceptKey}' states equations but states none, so it means nothing.");
         }
 
-        return new EquationsRule(equations);
+        return new EquationsTypeRule(equations);
     }
 
     private static TypeEquation LowerEquation(
@@ -791,81 +791,5 @@ public static class TypeRuleLowering
                 || context.Types.Subtypes.IsComparableTo(leftType, rightType)
                 || context.Types.Comparisons.IsComparableTo(leftType, rightType);
         }
-    }
-
-    /// <summary>A type written out, which is the same whatever the node holds.</summary>
-    private sealed class FixedRule(IType type) : ITypeRule
-    {
-        public IType TypeFor(TypeContext context) => type;
-    }
-
-    /// <summary>The type of one of the node's children.</summary>
-    private sealed class ChildRule(string slot) : ITypeRule
-    {
-        public IType TypeFor(TypeContext context) => context.TypeOfChild(slot);
-    }
-
-    /// <summary>The common supertype of the types of two of the node's children.</summary>
-    /// <remarks>
-    /// <para>
-    /// The one answer a rule could not give before: <see cref="ChildRule"/> names one child and a
-    /// <see cref="TypeRuleConceptKeys.Join"/> joins two <em>written</em> types, so "the widest of these two children"
-    /// had no spelling. A conditional needs exactly that - <c>if c then 1 else "x"</c> is neither branch's type.
-    /// </para>
-    /// <para>
-    /// A child that is not filled contributes nothing rather than its <see cref="UnknownType"/>: a half-written
-    /// conditional is the ordinary state of a document being edited, and joining against an unknown would answer
-    /// unknown and lose the type the written branch just earned. With neither filled the answer is unknown, because
-    /// nothing said anything.
-    /// </para>
-    /// </remarks>
-    private sealed class WidestRule(string left, string right) : ITypeRule
-    {
-        public IType TypeFor(TypeContext context)
-        {
-            if (context.Node.GetChild(left) is null)
-            {
-                return context.Node.GetChild(right) is null
-                    ? UnknownType.Instance
-                    : context.TypeOfChild(right);
-            }
-
-            if (context.Node.GetChild(right) is null)
-            {
-                return context.TypeOfChild(left);
-            }
-
-            return TypeLattice.Join(context.Subtypes, context.TypeOfChild(left), context.TypeOfChild(right));
-        }
-    }
-
-    /// <summary>A choice between bodies, decided by a property's value.</summary>
-    private sealed class SwitchRule(
-        string property,
-        IReadOnlyDictionary<string, ITypeRule> cases,
-        ITypeRule otherwise) : ITypeRule
-    {
-        public IType TypeFor(TypeContext context)
-        {
-            var value = context.Node.GetOrNull(property);
-
-            return value is not null && cases.TryGetValue(value, out var rule)
-                ? rule.TypeFor(context)
-                : otherwise.TypeFor(context);
-        }
-    }
-
-    /// <summary>A body that states relations, which the solver satisfies instead of the rule answering a type.</summary>
-    /// <remarks>
-    /// <see cref="TypeFor"/> answers <see cref="UnknownType"/> because a rule that states relations has not said
-    /// what type the node is - it has said what must hold for the types around it. Answering anything else would
-    /// be the guess the solver exists to avoid, and the solver reads the equations from
-    /// <see cref="ITypeRule.EquationsFor"/> precisely so the two answers stay separate.
-    /// </remarks>
-    private sealed class EquationsRule(IReadOnlyList<TypeEquation> equations) : ITypeRule
-    {
-        public IType TypeFor(TypeContext context) => UnknownType.Instance;
-
-        public IEnumerable<TypeEquation> EquationsFor(TypeContext context) => equations;
     }
 }

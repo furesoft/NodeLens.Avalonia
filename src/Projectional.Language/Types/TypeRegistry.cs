@@ -105,6 +105,14 @@ public sealed class TypeRegistry
     /// <summary>How many concepts declare a rule.</summary>
     public int Count => _rules.Count;
 
+    /// <summary>The rule each concept declares, keyed by concept, in the order they were added.</summary>
+    /// <remarks>
+    /// Readable for the same reason <see cref="TemplateRegistry.Templates"/> is: an export reads the registry the other
+    /// way round, writing the rules out as the code that declares them. The dictionary is the registry's own, so a
+    /// caller must not mutate it - there is nothing to mutate, because <see cref="Add"/> answers a new registry.
+    /// </remarks>
+    public IReadOnlyDictionary<string, ITypeRule> Rules => _rules;
+
     /// <summary>The same registry with <paramref name="rule"/> answering for <paramref name="conceptKey"/>.</summary>
     /// <exception cref="ArgumentException">The concept key is empty.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="rule"/> is <see langword="null"/>.</exception>

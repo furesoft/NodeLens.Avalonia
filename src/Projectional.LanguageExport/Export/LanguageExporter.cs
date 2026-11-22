@@ -21,7 +21,7 @@ namespace Projectional.LanguageExport;
 /// registries it writes out. A language project is one caller, not the definition of the input.
 /// </para>
 /// <para>
-/// An aspect the declared path has but this export cannot spell - type rules, generators, constraints - is named in
+/// An aspect the declared path has but this export cannot spell - constraints, scopes, intentions, import - is named in
 /// the generated file and in the README rather than dropped. A generated language that looked complete and silently
 /// answered <c>Unknown</c> for every type would be a language nobody could tell was half exported.
 /// </para>
@@ -84,7 +84,7 @@ public static class LanguageExporter
                 basis.Declarations,
                 basis.Notations.Notations,
                 NamespaceFor(basis.Name),
-                basis.HasTypes,
+                basis.Types,
                 basis.Generators,
                 basis.HasConstraints,
                 basis.HasScopes,
@@ -109,7 +109,7 @@ public static class LanguageExporter
             language.Declarations,
             language.Notations.Notations,
             namespaceName,
-            language.HasTypes,
+            language.Types,
             language.Generators,
             language.HasConstraints,
             language.HasScopes,
@@ -150,7 +150,7 @@ public static class LanguageExporter
     /// <param name="declarations">What the structure documents declared, in declaration order.</param>
     /// <param name="notations">The notation they are drawn with, in registration order.</param>
     /// <param name="namespaceName">The namespace to declare, or <c>null</c> to declare none.</param>
-    /// <param name="hasTypes">Whether the language declares type rules this export cannot write.</param>
+    /// <param name="types">The type rules and edges the language declares, written out in full.</param>
     /// <param name="generators">The text generators it declares, which this export writes out in full.</param>
     /// <param name="hasConstraints">Whether it declares constraints this export cannot write.</param>
     /// <param name="hasScopes">Whether it declares scope rules this export cannot write.</param>
@@ -168,7 +168,7 @@ public static class LanguageExporter
         IReadOnlyList<ConceptDeclaration> declarations,
         IReadOnlyList<Notation> notations,
         string? namespaceName = null,
-        bool hasTypes = false,
+        TypeRegistry? types = null,
         IReadOnlyList<TextGenerator>? generators = null,
         bool hasConstraints = false,
         bool hasScopes = false,
@@ -183,7 +183,7 @@ public static class LanguageExporter
             declarations,
             notations,
             namespaceName,
-            hasTypes,
+            types ?? TypeRegistry.Empty,
             generators,
             hasConstraints,
             hasScopes,
@@ -225,7 +225,7 @@ public static class LanguageExporter
         IReadOnlyList<ConceptDeclaration> declarations,
         IReadOnlyList<Notation> notations,
         string? namespaceName,
-        bool hasTypes,
+        TypeRegistry types,
         IReadOnlyList<TextGenerator>? generators,
         bool hasConstraints,
         bool hasScopes,
@@ -244,8 +244,8 @@ public static class LanguageExporter
         var typing = typingRules ?? [];
         var className = ClassName(name);
         var stem = className + VersionSuffix(metadata?.Version);
-        var omitted = Omissions(hasTypes, hasConstraints, hasScopes, hasIntentions, hasImport);
-        var source = Source(name, className, namespaceName, declarations, notations, generators ?? [], typing, omitted, metadata, informationalVersion);
+        var omitted = Omissions(hasConstraints, hasScopes, hasIntentions, hasImport);
+        var source = Source(name, className, namespaceName, declarations, notations, generators ?? [], typing, types, omitted, metadata, informationalVersion);
 
         var files = new List<GeneratedFile>(2) { new($"{stem}.cs", source) };
 
@@ -287,7 +287,6 @@ public static class LanguageExporter
     }
 
     private static List<string> Omissions(
-        bool hasTypes,
         bool hasConstraints,
         bool hasScopes,
         bool hasIntentions,
@@ -295,10 +294,6 @@ public static class LanguageExporter
     {
         var omitted = new List<string>();
 
-        if (hasTypes)
-        {
-            omitted.Add("types");
-        }
 
         if (hasConstraints)
         {
@@ -331,12 +326,12 @@ public static class LanguageExporter
         IReadOnlyList<Notation> notations,
         IReadOnlyList<TextGenerator> generators,
         IReadOnlyList<DeclaredTypingRule> typingRules,
+        TypeRegistry types,
         List<string> omitted,
         LanguageMetadata? metadata,
         bool informationalVersion)
     {
         var source = new SourceWriter();
-        var stubs = omitted.Contains("types") || omitted.Contains("generator");
         var typing = typingRules.Count > 0;
 
         source.Line("// <auto-generated>");
@@ -345,7 +340,7 @@ public static class LanguageExporter
         source.Line("// </auto-generated>");
         source.Blank();
 
-        if (stubs || TypingWriter.NeedsSystem(typingRules))
+        if (TypingWriter.NeedsSystem(typingRules))
         {
             source.Line("using System;");
         }
@@ -360,7 +355,7 @@ public static class LanguageExporter
         source.Line();
         source.Line("using Projectional.Core;");
 
-        if (notations.Count > 0 || stubs || typing)
+        if (notations.Count > 0 || types.Count > 0 || typing)
         {
             source.Line("using Projectional.Language;");
         }
@@ -405,10 +400,10 @@ public static class LanguageExporter
                 Generators(source, generators);
             }
 
-            if (omitted.Contains("types"))
+            if (types.Count > 0)
             {
                 source.Blank();
-                Stub(source, "TypeRegistry", "Types", "types", "type rules");
+                TypeWriter.Write(source, types);
             }
         }
 
@@ -570,24 +565,6 @@ public static class LanguageExporter
         source.Line("}");
     }
 
-    /// <summary>Names an aspect this export cannot write, so a caller cannot mistake the language for complete.</summary>
-    /// <remarks>
-    /// The member throws instead of answering an empty registry: an empty <c>Types</c> is the honest state of a
-    /// language that declared none, and a generated language that answered it after dropping its rules would be
-    /// silently wrong. The message names the folder to look in.
-    /// </remarks>
-    private static void Stub(SourceWriter source, string type, string member, string folder, string what)
-    {
-        source.Line($"/// <summary>The declared {what}, which this export cannot write yet.</summary>");
-        source.Line($"public static {type} {member} =>");
-
-        using (source.Indent())
-        {
-            source.Line(
-                $"throw new NotSupportedException(\"The {what} declared in '{folder}' have no export spelling yet; write them in this project's `Checks/` or `Intentions/` folder.\");");
-        }
-    }
-
     private static string Readme(
         string name,
         string className,
@@ -730,20 +707,9 @@ public static class LanguageExporter
                 lines.Add($"| `{folder}/` | {ReasonFor(folder)} |");
             }
 
-            var stubbed = omitted
-                .Where(folder => folder is "types")
-                .Select(folder => folder == "types" ? "`Types`" : "`Generators`")
-                .ToList();
-
-            if (stubbed.Count > 0)
-            {
-                lines.Add(string.Empty);
-                lines.Add($"{string.Join(" and ", stubbed)} throw `NotSupportedException` rather than answer an");
-                lines.Add("empty registry, so nothing reads a half-exported aspect by accident. Write what they");
-                lines.Add("would answer in a folder of this project - `Checks/` or `Intentions/`, the shape");
-                lines.Add("a language package uses: one project per language, with its behaviour inside it.");
-            }
-
+            // Nothing is stubbed any more: types and generators are written as code, and what is left - constraints,
+            // scopes, intentions, import - lives in an assembly the toolkit deliberately does not carry, so a stub
+            // could not even name its type.
             var unstubbable = omitted.Where(folder => folder is "constraints" or "scopes" or "intentions" or "import").ToList();
 
             if (unstubbable.Count > 0)
@@ -761,7 +727,6 @@ public static class LanguageExporter
 
     private static string ReasonFor(string folder) => folder switch
     {
-        "types" => "a type rule answers one question per node - behaviour, not data",
         "scopes" => "a scope rule says where names come from - behaviour beside the editor",
         "intentions" => "an intention produces an edit - behaviour beside the editor",
         "import" => "an importer is a rule set written in `Projectional.ImportRules`, outside the toolkit",
