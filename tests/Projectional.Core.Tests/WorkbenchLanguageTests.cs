@@ -57,11 +57,7 @@ public sealed class WorkbenchLanguageTests
         // instead of with a missing tab.
         var language = new WorkbenchLanguage();
 
-        var samples = Directory
-            .EnumerateDirectories(AppContext.BaseDirectory)
-            .Where(directory => LanguageProject.AspectFolders.Any(folder => Directory.Exists(Path.Combine(directory, folder))))
-            .OrderBy(directory => directory, StringComparer.Ordinal)
-            .ToList();
+        var samples = Samples();
 
         Assert.NotEmpty(samples);
         Assert.DoesNotContain(TestRunner.Folder, LanguageProject.AspectFolders);
@@ -198,7 +194,7 @@ public sealed class WorkbenchLanguageTests
     public void ANewConceptDocumentOpensInASessionAndCanBeWritten()
     {
         var language = new WorkbenchLanguage();
-        var model = language.NewConceptDefinition();
+        var model = language.NewDefinition(WorkbenchLanguage.ConceptKind);
 
         using var session = new EditorSession(model.Roots[0], language.Notations, typing: WorkbenchLanguage.Typing);
 
@@ -213,7 +209,7 @@ public sealed class WorkbenchLanguageTests
     public void ADefinitionSurvivesARoundTripThroughTheShellsLanguage()
     {
         var language = new WorkbenchLanguage();
-        var model = language.NewConceptDefinition();
+        var model = language.NewDefinition(WorkbenchLanguage.ConceptKind);
 
         model.Roots[0].Set(StructureLanguage.KeySlot, "Rules.Rule");
 
@@ -264,12 +260,89 @@ public sealed class WorkbenchLanguageTests
     }
 
     [Fact]
+    public void EveryDefinitionKindCanBeCreatedDrawnAndSaved()
+    {
+        // One entry per aspect that holds definitions, and each has to answer what a menu entry implies: the shell can
+        // build the document, draw it, and write it back as the file that becomes part of a language. The folder is
+        // checked against the one list, because a definition nothing would open is not a definition.
+        var language = new WorkbenchLanguage();
+
+        foreach (var definition in WorkbenchLanguage.Definitions)
+        {
+            var model = language.NewDefinition(definition);
+            var root = Assert.Single(model.Roots);
+
+            Assert.Equal(definition.ConceptKey, root.Concept.Key);
+            Assert.Contains(definition.Folder, LanguageProject.AspectFolders);
+            Assert.True(
+                language.Notations.TryGet(root.Concept.Key, out _),
+                $"'{root.Concept.Key}' has no notation in the shell's registry");
+
+            var written = ModelXml.Serialize(model);
+            var read = ModelXml.Deserialize(language.NewProject(), written);
+
+            Assert.Equal(written, ModelXml.Serialize(read));
+        }
+    }
+
+    [Fact]
+    public void EveryDefinitionRootTheSamplesShipCanBeCreatedInTheShell()
+    {
+        // The other direction, and the one that found this: what a language project actually holds. Every root concept
+        // in every sample's aspect folders has to be one the shell can start, or an author can open an aspect and not
+        // write it - which is how the typing rules became readable and uncreatable.
+        var language = new WorkbenchLanguage();
+        var roots = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var sample in Samples())
+        {
+            foreach (var folder in LanguageProject.AspectFolders)
+            {
+                var path = Path.Combine(sample, folder);
+
+                if (!Directory.Exists(path))
+                {
+                    continue;
+                }
+
+                foreach (var file in Directory.EnumerateFiles(path, "*.mps", SearchOption.TopDirectoryOnly))
+                {
+                    var model = DocumentFile.TryLoad(file, language.NewProject(), out var error);
+
+                    Assert.True(error is null, $"{file}: {error}");
+                    Assert.NotNull(model);
+
+                    roots.Add(Assert.Single(model.Roots).Concept.Key);
+                }
+            }
+        }
+
+        Assert.NotEmpty(roots);
+
+        foreach (var key in roots)
+        {
+            Assert.True(
+                WorkbenchLanguage.Definitions.Any(definition => definition.ConceptKey == key),
+                $"a sample ships a '{key}' document and no command starts one");
+        }
+    }
+
+    /// <summary>The sample language projects copied beside the tests, in ordinal order.</summary>
+    private static IReadOnlyList<string> Samples() =>
+    [
+        .. Directory
+            .EnumerateDirectories(AppContext.BaseDirectory)
+            .Where(directory => LanguageProject.AspectFolders.Any(folder => Directory.Exists(Path.Combine(directory, folder))))
+            .OrderBy(directory => directory, StringComparer.Ordinal),
+    ];
+
+    [Fact]
     public void AConceptDocumentOpensAsOneDefinition()
     {
         // One definition per document: the root is the concept, so an empty one is the concept's own sections -
         // there is no list to be ambiguous about, which is what the old two-section shape needed headings for.
         var language = new WorkbenchLanguage();
-        var model = language.NewConceptDefinition();
+        var model = language.NewDefinition(WorkbenchLanguage.ConceptKind);
 
         using var session = new EditorSession(model.Roots[0], language.Notations);
 
@@ -282,7 +355,7 @@ public sealed class WorkbenchLanguageTests
     public void ANotationDocumentOpensAsOneNotation()
     {
         var language = new WorkbenchLanguage();
-        var model = language.NewNotationDefinition();
+        var model = language.NewDefinition(WorkbenchLanguage.NotationKind);
 
         using var session = new EditorSession(model.Roots[0], language.Notations);
 
@@ -369,8 +442,8 @@ public sealed class WorkbenchLanguageTests
         // shell answers "not runnable" instead of asking the interpreter at all.
         var language = new WorkbenchLanguage();
 
-        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewConceptDefinition()));
-        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewNotationDefinition()));
+        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewDefinition(WorkbenchLanguage.ConceptKind)));
+        Assert.Null(WorkbenchLanguage.InterpreterFor(language.NewDefinition(WorkbenchLanguage.NotationKind)));
     }
 
     [Fact]
@@ -392,12 +465,12 @@ public sealed class WorkbenchLanguageTests
         var language = new WorkbenchLanguage();
         var opened = LanguageProject.Open(folder.Root, out _)!;
 
-        Assert.Null(language.ProjectFor(language.NewConceptDefinition()));
+        Assert.Null(language.ProjectFor(language.NewDefinition(WorkbenchLanguage.ConceptKind)));
 
         Assert.True(language.TryAdd(opened, out var error), error);
 
         Assert.Same(opened, language.ProjectFor(WorkbenchLanguage.NewDocument(opened)!));
-        Assert.Null(language.ProjectFor(language.NewConceptDefinition()));
+        Assert.Null(language.ProjectFor(language.NewDefinition(WorkbenchLanguage.ConceptKind)));
         Assert.Null(language.ProjectFor(language.NewProject().NewModel("empty")));
     }
 
@@ -478,7 +551,7 @@ public sealed class WorkbenchLanguageTests
         Assert.Null(openError);
         Assert.NotNull(pipeline);
 
-        var document = shell.NewImportDefinition();
+        var document = shell.NewDefinition(WorkbenchLanguage.ImporterKind);
         var importer = Assert.Single(document.Roots);
 
         importer.Set(ImportLanguage.NameSlot, "ini");

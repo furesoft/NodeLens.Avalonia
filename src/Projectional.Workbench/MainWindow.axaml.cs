@@ -250,6 +250,13 @@ public sealed partial class MainWindow : Window, IDisposable
         Compose();
         RegisterCommands();
 
+        // The registry knows the commands; the menu needs the entries. Both come from WorkbenchLanguage.Definitions,
+        // so there is one statement of what the shell can start.
+        UpdateDefinitionMenu();
+
+        // The examples are data beside the executable, so their submenu is filled from the catalogue the same way.
+        UpdateExampleMenu();
+
         // Before the first tab exists: a session takes its clipboard when it is created, and the sample opens
         // below.
         _clipboard = new AvaloniaClipboard(() => TopLevel.GetTopLevel(this)?.Clipboard);
@@ -359,6 +366,10 @@ public sealed partial class MainWindow : Window, IDisposable
 
         OpenDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
         OpenLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
+
+        // The examples are a folder beside the executable. A publish does not ship it, so the entry goes rather than
+        // offering a submenu with nothing in it.
+        OpenExamplesItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles) && Examples.Count > 0;
         NewDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.CreateModels);
         ImportDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Import);
         ExportLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
@@ -378,6 +389,10 @@ public sealed partial class MainWindow : Window, IDisposable
         RunTestsItem.IsVisible = _capabilities.Allows(ShellCapability.Tests);
         ClearOutputItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
         GenerateItem.IsVisible = _capabilities.Allows(ShellCapability.Run);
+
+        // The definition entries are "create a model" like Document, so a host that does not grant it sees no submenu
+        // rather than an entry the registry would refuse.
+        NewDefinitionItem.IsVisible = _capabilities.Allows(ShellCapability.CreateModels);
 
         // The panels, the same way: no problems module, no problems tab and no count. A panel the capabilities do not
         // grant was never handed to the layout, so there is no tab to hide - only the flags the menu reads remain.
@@ -425,8 +440,25 @@ public sealed partial class MainWindow : Window, IDisposable
 
             return ValueTask.CompletedTask;
         });
-        AddAsync("open", "Open", ShellCapability.OpenFiles, OpenDocumentAsync);
+
+        // One command per kind of definition document, because the registry is the one place that decides whether an
+        // entry may run. The menu is built from the same list, so an entry and its capability cannot be two statements.
+        foreach (var definition in WorkbenchLanguage.Definitions)
+        {
+            AddAction("new-" + definition.Id, "New " + definition.Label, ShellCapability.CreateModels, () =>
+            {
+                OpenDefinition(definition);
+
+                return ValueTask.CompletedTask;
+            });
+        }        AddAsync("open", "Open", ShellCapability.OpenFiles, OpenDocumentAsync);
         AddAsync("open-language", "Open Language", ShellCapability.OpenFiles, OpenLanguageAsync);
+        AddCommand("open-example", "Open Example", ShellCapability.OpenFiles, target =>
+        {
+            OpenExample((ExampleProject)target!);
+
+            return ValueTask.CompletedTask;
+        });
         AddAsync("import", "Import", ShellCapability.Import, ImportDocumentAsync);
 
         // Opening a path is its own command because the picker is not the only way in: a file dropped on the window
@@ -2744,6 +2776,52 @@ public sealed partial class MainWindow : Window, IDisposable
         UpdateStatus();
     }
 
+    /// <summary>A menu entry that opens one example language project.</summary>
+    private sealed class OpenExampleCommand : System.Windows.Input.ICommand
+    {
+        private readonly MainWindow _window;
+        private readonly ExampleProject _example;
+
+        internal OpenExampleCommand(MainWindow window, ExampleProject example)
+        {
+            _window = window;
+            _example = example;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _window.RunCommand("open-example", _example);
+    }
+
+    /// <summary>A menu entry that starts one kind of definition document.</summary>
+    private sealed class NewDefinitionCommand : System.Windows.Input.ICommand
+    {
+        private readonly MainWindow _window;
+        private readonly DefinitionKind _definition;
+
+        internal NewDefinitionCommand(MainWindow window, DefinitionKind definition)
+        {
+            _window = window;
+            _definition = definition;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _window.RunCommand("new-" + _definition.Id);
+    }
+
     /// <summary>A menu entry that generates one document with one generator.</summary>
     private sealed class RunGeneratorCommand : System.Windows.Input.ICommand
     {
@@ -2977,55 +3055,35 @@ public sealed partial class MainWindow : Window, IDisposable
             intentions: module.Intentions);
     }
 
-    /// <summary>Opens an empty concept document, so the declared path can be tried without setup.</summary>
+    /// <summary>Fills the menu's definition submenu with one entry per kind of definition document.</summary>
     /// <remarks>
-    /// The structure language is loaded into this app like any other, so this is only a convenience: the document
-    /// it opens is a model written in that language, editable and saveable by the same editor as everything else.
+    /// Built from <see cref="WorkbenchLanguage.Definitions"/> rather than written into the markup, because the command
+    /// registry is filled from the same list: markup entries would be a second statement of what the shell can start,
+    /// and the two drifting apart is what left four kinds startable out of the ten a language declares.
     /// </remarks>
-    private void OnNewConcept(object? sender, RoutedEventArgs e)
+    private void UpdateDefinitionMenu()
     {
-        _error = null;
-
-        OpenDocument(
-            _language.NewConceptDefinition(),
-            _language.Notations,
-            typing: WorkbenchLanguage.Typing);
+        NewDefinitionItem.ItemsSource = WorkbenchLanguage.Definitions
+            .Select(definition => new MenuItem
+            {
+                Header = definition.Label,
+                Command = new NewDefinitionCommand(this, definition),
+            })
+            .ToList();
     }
 
-    /// <summary>Opens an empty notation, which is one half of a language definition.</summary>
-    private void OnNewNotation(object? sender, RoutedEventArgs e)
-    {
-        _error = null;
-
-        OpenDocument(
-            _language.NewNotationDefinition(),
-            _language.Notations,
-            typing: WorkbenchLanguage.Typing);
-    }
-
-    /// <summary>Opens an empty enumeration, which is the other half of what a structure document can hold.</summary>
-    private void OnNewEnumeration(object? sender, RoutedEventArgs e)
-    {
-        _error = null;
-
-        OpenDocument(
-            _language.NewEnumerationDefinition(),
-            _language.Notations,
-            typing: WorkbenchLanguage.Typing);
-    }
-
-    /// <summary>Opens an empty importer, which is how a language teaches the shell to read a format.</summary>
+    /// <summary>Opens one empty definition document, ready to be written.</summary>
     /// <remarks>
-    /// The document is a model of the importer language, so it is edited and saved by the same editor as everything
-    /// else: saved into a language project's <c>import</c> folder it becomes part of that language, and
-    /// <see cref="OnOpenLanguage"/> on the same folder is what lowers it again.
+    /// The document is a model of the language the aspect is written in, so it is edited and saved by the same editor
+    /// as everything else: saved into a language project's aspect folder it becomes part of that language, and
+    /// <see cref="OnOpenLanguage"/> on the same folder is what reads it back.
     /// </remarks>
-    private void OnNewImporter(object? sender, RoutedEventArgs e)
+    private void OpenDefinition(DefinitionKind definition)
     {
         _error = null;
 
         OpenDocument(
-            _language.NewImportDefinition(),
+            _language.NewDefinition(definition),
             _language.Notations,
             typing: WorkbenchLanguage.Typing);
     }
@@ -3093,6 +3151,19 @@ public sealed partial class MainWindow : Window, IDisposable
             return false;
         }
 
+        ShowDefinitions(language);
+
+        // A language whose folders hold no definition document opens no tab, so the project list is the only
+        // place that learns it joined.
+        ShowProject();
+
+        return true;
+    }
+
+    /// <summary>Opens every definition document of <paramref name="language"/> as a tab.</summary>
+    /// <param name="language">The project, already taken into the shell's set.</param>
+    private void ShowDefinitions(LanguageProject language)
+    {
         foreach (var folder in LanguageProject.AspectFolders)
         {
             var path = Path.Combine(language.Directory, folder);
@@ -3112,13 +3183,63 @@ public sealed partial class MainWindow : Window, IDisposable
                 }
             }
         }
+    }
 
-        // A language whose folders hold no definition document opens no tab, so the project list is the only
-        // place that learns it joined.
+    /// <summary>Opens <paramref name="example"/> and the examples it stands on.</summary>
+    /// <remarks>
+    /// The dependencies open first, because a declared language refuses to load without them - <c>declared-invoice</c>
+    /// extends <c>declared-units</c> - and their definition documents open with them, since a language the example
+    /// stands on is part of what the user came to look at.
+    /// </remarks>
+    private void OpenExample(ExampleProject example)
+    {
+        _error = null;
+
+        var needed = ExampleProjects.Needed(example, Examples);
+        var opened = ExampleProjects.Load(_language, needed, out var refused);
+
+        foreach (var project in opened)
+        {
+            ShowDefinitions(project);
+        }
+
         ShowProject();
 
-        return true;
+        if (refused.Count > 0)
+        {
+            _error = string.Join(" ", refused);
+        }
+        else
+        {
+            var standsOn = opened.Count > 1 ? $" with {(opened.Count == 2 ? "the language" : "the languages")} it stands on" : string.Empty;
+
+            _error = $"Opened the {example.Name} example{standsOn}.";
+        }
+
+        UpdateStatus();
     }
+
+    /// <summary>Fills the examples submenu with one entry per example a build placed beside the executable.</summary>
+    /// <remarks>
+    /// One entry per example rather than one command that opens all of them: a language project opens its definition
+    /// documents as tabs, and five projects at once would be several dozen tabs of definition files the user did not
+    /// ask for. The list comes from <see cref="ExampleProjects.Catalogue"/>, so the menu and the folder cannot
+    /// disagree about what ships.
+    /// </remarks>
+    private void UpdateExampleMenu()
+    {
+        OpenExamplesItem.ItemsSource = Examples
+            .Select(example => new MenuItem
+            {
+                Header = example.Name,
+                Command = new OpenExampleCommand(this, example),
+            })
+            .ToList();
+    }
+
+    /// <summary>The examples a build placed beside the executable, read once.</summary>
+    private static IReadOnlyList<ExampleProject> Examples { get; } =
+        ExampleProjects.Catalogue(Path.Combine(AppContext.BaseDirectory, ExampleProjects.Folder));
 
     /// <summary>Creates a document of one of the languages this shell knows.</summary>
     /// <param name="sender">The menu entry.</param>

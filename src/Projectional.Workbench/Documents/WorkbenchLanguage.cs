@@ -183,34 +183,81 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
             : [];
     }
 
-    /// <summary>A model of the structure language: one empty concept, ready to be written.</summary>
+    /// <summary>The kind of definition document <c>File ▸ New ▸ Language definition ▸ Concept</c> starts.</summary>
+    internal static DefinitionKind ConceptKind { get; } = new(
+        "concept", "Concept", LanguageProject.StructureFolder, StructureConceptKeys.Concept);
+
+    /// <summary>An enumeration, which is the other half of what a structure document can hold.</summary>
+    internal static DefinitionKind EnumerationKind { get; } = new(
+        "enumeration", "Enumeration", LanguageProject.StructureFolder, StructureConceptKeys.Enumeration);
+
+    /// <summary>One concept's notation, which is one half of a language definition.</summary>
+    internal static DefinitionKind NotationKind { get; } = new(
+        "notation", "Notation", LanguageProject.EditorFolder, EditorConceptKeys.Notation);
+
+    /// <summary>One type rule, which is what a <c>types</c> folder is written of.</summary>
+    internal static DefinitionKind TypeRuleKind { get; } = new(
+        "type-rule", "Type rule", LanguageProject.TypesFolder, TypeRuleConceptKeys.Rule);
+
+    /// <summary>One rule the language states about its own documents.</summary>
+    internal static DefinitionKind ConstraintKind { get; } = new(
+        "constraint", "Constraint", LanguageProject.ConstraintsFolder, ConstraintConceptKeys.Rule);
+
+    /// <summary>One rule saying where a reference slot's names come from.</summary>
+    internal static DefinitionKind ScopeRuleKind { get; } = new(
+        "scope-rule", "Scope rule", LanguageProject.ScopesFolder, ScopeConceptKeys.Rule);
+
+    /// <summary>One rule saying which node a burst of typing creates.</summary>
+    internal static DefinitionKind TypingRuleKind { get; } = new(
+        "typing-rule", "Typing rule", LanguageProject.TypingFolder, TypingConceptKeys.Rule);
+
+    /// <summary>One entry a language offers at a caret.</summary>
+    internal static DefinitionKind IntentionKind { get; } = new(
+        "intention", "Intention", LanguageProject.IntentionsFolder, IntentionConceptKeys.Rule);
+
+    /// <summary>One way of printing the language's models as text.</summary>
+    internal static DefinitionKind GeneratorKind { get; } = new(
+        "generator", "Generator", LanguageProject.GeneratorFolder, TextGenConceptKeys.Generator);
+
+    /// <summary>One way of reading a text as the language's models.</summary>
+    internal static DefinitionKind ImporterKind { get; } = new(
+        "importer", "Importer", LanguageProject.ImportFolder, ImportConceptKeys.Importer);
+
+    /// <summary>Every definition document the shell can start, in the order the menu offers them.</summary>
     /// <remarks>
-    /// One definition per document, so the menu entry creates a concept and nothing else: an enumeration is a
-    /// document of its own, because the two are edited at different times and a diff should read as one definition.
+    /// <para>
+    /// In the order of <see cref="LanguageProject.AspectFolders"/>: what a language declares, how it is drawn, and the
+    /// aspects that give it a meaning. A kind whose folder is not in that list would be a document nothing opens, so a
+    /// test holds the two together rather than trusting the two to stay in step.
+    /// </para>
+    /// <para>
+    /// A <c>types</c> folder holds five kinds of document - a rule, a named type, supertypes, comparability and a
+    /// replacement - and this list starts the first, because the other four are statements about types a rule already
+    /// named. An <c>accessory</c> document is deliberately absent: it is not a definition but an ordinary model of the
+    /// language, so it needs a language before it can be written at all.
+    /// </para>
     /// </remarks>
-    internal Model NewConceptDefinition() => NewDefinition(StructureConceptKeys.Concept, "concept");
+    internal static IReadOnlyList<DefinitionKind> Definitions { get; } =
+    [
+        ConceptKind,
+        EnumerationKind,
+        NotationKind,
+        TypeRuleKind,
+        ConstraintKind,
+        ScopeRuleKind,
+        TypingRuleKind,
+        IntentionKind,
+        GeneratorKind,
+        ImporterKind,
+    ];
 
-    /// <summary>A model of the structure language: one empty enumeration, ready to be written.</summary>
-    internal Model NewEnumerationDefinition() => NewDefinition(StructureConceptKeys.Enumeration, "enumeration");
-
-    /// <summary>A model of the editor language: one empty notation, ready to be written.</summary>
-    internal Model NewNotationDefinition() => NewDefinition(EditorConceptKeys.Notation, "notation");
-
-    /// <summary>A model of the generator language: one empty generator, ready to be written.</summary>
-    internal Model NewGeneratorDefinition() => NewDefinition(TextGenConceptKeys.Generator, "generator");
-
-    /// <summary>A model of the constraint language: one empty rule, ready to be written.</summary>
-    internal Model NewConstraintDefinition() => NewDefinition(ConstraintConceptKeys.Rule, "constraint");
-
-    /// <summary>
-    /// A model of the importer language: one empty importer, ready to be written.
-    /// </summary>
+    /// <summary>A model of the language <paramref name="definition"/> is written in: one empty definition to write.</summary>
     /// <remarks>
-    /// The root is created rather than left to the user because an importer document <em>is</em> one importer, the
-    /// same way a structure document is one concept: the sections for its token classes and its rules are cells of
-    /// that root, so a document without one would have nowhere to type.
+    /// The root is created rather than left to the user, because a definition document <em>is</em> one definition: the
+    /// sections of a concept, an importer's token classes, the mappings of a generator are cells of that root, so a
+    /// document without one would have nowhere to type.
     /// </remarks>
-    internal Model NewImportDefinition() => NewDefinition(ImportConceptKeys.Importer, "import");
+    internal Model NewDefinition(DefinitionKind definition) => NewDefinition(definition.ConceptKey, definition.Id);
 
     /// <summary>A model holding exactly one new root of <paramref name="conceptKey"/>.</summary>
     private Model NewDefinition(string conceptKey, string name)
