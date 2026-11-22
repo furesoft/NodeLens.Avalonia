@@ -95,6 +95,27 @@ public sealed class ExpressionsEvaluationTests
     }
 
     [Fact]
+    public void AScopeBindsANameForTheNodeItEncloses()
+    {
+        var model = NewModel();
+        var name = model.NewNode(ExpressionsConceptKeys.Name);
+        name.Set("name", "x");
+
+        var runtime = new Interpreter(ExpressionsEvaluation.Registry);
+        var outer = new EvaluationContext(name, runtime);
+
+        // Nothing is bound at the top of a run, so the name has no value there.
+        Assert.Throws<EvaluationException>(() => outer.Variable("x"));
+
+        // A call binds its arguments in front of the enclosing scope, and the binding is a value rather than a stack that
+        // is pushed and popped: the context it was made from is unchanged, so a rule cannot leak one call's parameters
+        // into the next one by forgetting to pop.
+        var inner = outer.With(new Dictionary<string, Value>(StringComparer.Ordinal) { ["x"] = new IntValue(2) });
+
+        Assert.Equal(new IntValue(2), inner.Variable("x"));
+        Assert.Throws<EvaluationException>(() => outer.Variable("x"));
+    }
+    [Fact]
     public void AUnaryOperatorAppliesToItsOperand()
     {
         var model = NewModel();
