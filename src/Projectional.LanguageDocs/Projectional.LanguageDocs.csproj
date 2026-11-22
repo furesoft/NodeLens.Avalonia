@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Projectional.Languages\Projectional.Languages.csproj" />
     <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\Projectional.Toolkit\Projectional.Toolkit.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -83,6 +83,34 @@ internal static class DocumentationAssets
         th, td { text-align: left; vertical-align: top; padding: .32rem .7rem .32rem 0; border-bottom: 1px solid var(--line); }
         th { color: var(--muted); font-weight: 600; white-space: nowrap; }
         code, .key { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .88em; }
+        /* The notation a concept is written with: text, so it scrolls sideways rather than wrapping mid-shape. */
+        pre.notation, pre.example { margin: .4rem 0 .2rem; padding: .6rem .8rem; overflow-x: auto; background: var(--panel);
+                                    border: 1px solid var(--line); border-radius: .35rem; font-size: .88rem;
+                                    line-height: 1.45; }
+        /* The colours are SyntaxPalette's own, light and dark, so a drawing on a page and the same drawing in the editor
+           are the same picture. The kinds come from the renderer's classification, never from the text. */
+        :root {
+          --s-default: #1E1E1E; --s-keyword: #0000C0; --s-punct: #5A5A5A; --s-number: #098658;
+          --s-text: #A31515; --s-ref: #1E7FBF; --s-unresolved: #C00000; --s-placeholder: #8A8A8A;
+          --s-annotation: #9A9A9A;
+        }
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --s-default: #D4D4D4; --s-keyword: #569CD6; --s-punct: #9A9A9A; --s-number: #B5CEA8;
+            --s-text: #CE9178; --s-ref: #4EC9B0; --s-unresolved: #F44747; --s-placeholder: #6A6A6A;
+            --s-annotation: #7E7E7E;
+          }
+        }
+        pre.example { color: var(--s-default); }
+        .s-keyword { color: var(--s-keyword); }
+        .s-punct { color: var(--s-punct); }
+        .s-ident { color: var(--s-default); }
+        .s-number { color: var(--s-number); }
+        .s-text { color: var(--s-text); }
+        .s-ref { color: var(--s-ref); }
+        .s-unresolved, .s-missing { color: var(--s-unresolved); }
+        .s-placeholder { color: var(--s-placeholder); }
+        .s-annotation { color: var(--s-annotation); }
         .muted { color: var(--muted); }
         .empty { color: var(--muted); font-style: italic; }
         .unresolved { color: var(--muted); text-decoration: line-through dotted; }

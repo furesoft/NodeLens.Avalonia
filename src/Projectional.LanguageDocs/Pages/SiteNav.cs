@@ -41,6 +41,11 @@ internal static class SiteNav
             Item(nav, depth, language, "index.html", "Overview", path);
             Item(nav, depth, language, "aspects.html", "Aspects", path);
 
+            if (chain.Examples(language).Count > 0)
+            {
+                Item(nav, depth, language, "examples.html", "Examples", path);
+            }
+
             nav.Append("<details class=\"folder\"").Append(Open(path, $"{folder}/concepts/") ? " open" : string.Empty).Append(">\n");
             nav.Append("<summary>Concepts <span class=\"count\">")
                 .Append(concepts.Count.ToString(CultureInfo.InvariantCulture))
