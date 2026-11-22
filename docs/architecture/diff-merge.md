@@ -1,11 +1,12 @@
 # Model-aware diff and merge
 
-*The rename half of the M6 gate is delivered. This is the other half: two branches editing different parts of one
-model merge without hand-editing XML.*
+*The rename half of the M6 gate is delivered. This is the other half, and it is delivered too: two branches editing
+different parts of one model merge without hand-editing XML.*
 
 Two decisions carry the design, and both are the opposite of what a text tool does: the merge is **keyed on node ids**
 rather than on lines, and a conflict is **refused, never written**. What follows says why each is forced, what already
-exists, and what one slice of it would deliver.
+existed, and what building it found. The decision itself is frozen in
+[ADR 0028](../adr/0028-a-merge-is-keyed-on-nodes-and-refuses.md).
 
 ## Why a text merge is not enough
 
@@ -30,10 +31,10 @@ Nothing has to be invented to *see* a change:
   `PropertyChanged`, `ReferenceChanged` - one `NodeDifference` per change, keyed by `NodeId`, carrying the slot, both
   `NodePlace`s and both values. It is the same machinery the intention preview already uses, so it is not new code
   written for a plan.
-- **`Model.CopyTo(Project target, string? name)`** copies a model into another project *keeping every id*. That is what
-  a merge needs and what `InsertCopy` deliberately does not do (a copy gets new ids, because a copy is a second node).
-  The part that does it, `CopySubtree`, is private to `Model`; the merge uses `CopyTo` or asks for a narrower public
-  entry beside it.
+- **`Model.CreateDetached(NodeId, Concept)`** builds a node under an id the caller chooses, which is what the reader
+  uses to restore a document and what the merge uses to recreate every survivor. `Model.CopyTo(Project target)` is the
+  coarser sibling the plan expected to lean on - a whole model across projects, ids kept - and it turned out not to be
+  needed: rebuilding node by node made the result a function of the three inputs instead of a patch on one of them.
 - **`ModelFile.Load` / `Save`** are the canonical reader and writer, so a merged model is written as the bytes the next
   load reads back - the merge cannot produce a file that round-trips differently from how it was built.
 
@@ -108,8 +109,11 @@ does not vanish when the node it followed is gone.
 UI to put it in):
 
 ```powershell
-Projectional.Workbench.exe --merge base.mps ours.mps theirs.mps -o merged.mps
+Projectional.Workbench.exe --merge <language folder> base.mps ours.mps theirs.mps -o merged.mps
 ```
+
+The language folder is an argument because a document names its concepts but not the slots that make a property
+comparable and a child a child - and those live in the language's declarations, so the three files are read with it.
 
 It runs before Avalonia starts, the way `--self-check` and `--docs` do, so it needs no display and no window. The exit
 codes are the contract: `0` merged and written, `2` conflict and nothing written, `1` a file that could not be read -
@@ -119,8 +123,12 @@ A clone opts in, and nothing happens without that:
 
 ```text
 # .gitattributes       *.mps merge=projectional
-# git config           merge.projectional.driver "<app> --merge %O %A %B -o %A"
+# git config           merge.projectional.driver "<app> --merge <language folder> %O %A %B -o %A"
 ```
+
+**The executable has to be quoted**, because git runs the driver through `sh` - without the quotes a path with a space
+in it splits, the driver fails, and git reports a conflict where the merge would have succeeded. Measured by doing it:
+the failure is indistinguishable from a real conflict until the driver is quoted.
 
 **Where the code lives**: `Projectional.Core/Merge/`, beside `Diff/`, because it is model-level policy over
 `ModelDiff` and needs nothing above Core - no language, no projection. The verb in `Projectional.Workbench` calls it,
@@ -148,11 +156,32 @@ The gate is a test before it is a feature:
 
 | Slice | Delivers | Effort |
 | --- | --- | --- |
-| D1 | `ModelDiff` used as the side descriptor: a `MergeSide` per difference list, and the node-level rule table above with the conflict record. No writing yet - the answer for a given triple is data a test can assert | 2-3 days |
-| D2 | The per-slot sequence merge with anchored insertions, which is the gate's own case | 2-3 days |
-| D3 | Building the result: `ours.CopyTo` a fresh project, applying theirs' additions with their ids, and the refusal that writes nothing | 2-3 days |
-| D4 | `--merge` in `Program`/`DocsExport`'s pattern, the exit codes, and the sample triple under `tests/` so the gate is one `dotnet test` | 1-2 days |
-| D5 | The UI (two sides of one node, take either), once D1-D4 prove the engine |
+| D1 | **delivered.** The node-level rule table with the conflict record, `MergeConflictKind` and `MergeResult`. `ModelDiff` earns its keep for one question only - which nodes a side touched, so a deletion can ask whether the other side changed the node or something below it - because comparing the two sides' *values* directly is both simpler and more precise: it is what makes "both changed it to the same value" not a conflict | - |
+| D2 | **delivered.** The per-slot merge: base order, then what each side put here that the base did not have here, emitted after the base id it follows in its own sequence, ours before theirs at one anchor | - |
+| D3 | **delivered, and not the way the plan said.** The result is *rebuilt* rather than patched onto a copy of ours: every surviving node is created with its own id, attached where the merge decided, and filled with the merged values. That made it a function of the three inputs, and it needed no new public API at all - `Model.CreateDetached(id, concept)` is internal, and the merge lives in the same assembly | - |
+| D4 | **delivered.** `--merge` in `Program`'s pattern with the exit codes, and a real two-branch merge through git with the driver configured, which is the gate in its own form | - |
+| D5 | The UI (two sides of one node, take either), once D1-D4 prove the engine | 1-2 weeks |
+
+**What building it found.**
+
+*The delete-versus-edit question has a direction, and the obvious one is backwards.* The side to consult is the one that
+**kept** the node, not the one that deleted it: the deleting side's own difference list holds that deletion, so asking
+it makes every deletion a conflict. The first version did exactly that, and the test that deletes on one side while the
+other side is untouched turned red.
+
+*A reordering question is only a question when both sides hold the same nodes.* When one side moved a node out of a slot
+and another in, the two id lists hold different nodes and comparing their order would be a guess dressed as a conflict;
+the check therefore requires the same set before it compares sequences.
+
+*A slot's order is list arithmetic, not index arithmetic.* Added and moved-in nodes are the same thing here - the base
+did not have them in this slot - so the two cases share one rule: emit after the base id the node follows in its own
+side's sequence.
+
+*A dangling reference is only the merge's fault when one side still had the target.* A node both sides deleted left the
+same dangling reference behind before the merge ran, and refusing that would refuse a state both branches accepted.
+
+*Building is a transaction of the model's, not of the project's.* `Project` has none; the model the result is built in
+does, and opening it before the first node exists is what makes a merge one change event to whoever is listening.
 
 ## Open questions
 
