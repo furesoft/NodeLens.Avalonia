@@ -121,9 +121,11 @@ internal static class AspectPages
             Aspect.Checks => count == 0
                 ? "The language brings no check of its own, so its documents are checked with the ones the host supplies."
                 : $"{Html.Count(count, "check")} the framework derives from the declarations.",
-            Aspect.Evaluation => count == 0
+            // Counted by concept rather than by rule, because one rule answers for every concept its key is a kind of:
+            // a page that said "1 concept" above a table of two is the kind of arithmetic a reader should not have to do.
+            Aspect.Evaluation => language.Evaluation is null
                 ? "The language states no meaning of its own, so a document of it can be drawn and not run."
-                : $"{Html.Count(count, "concept")} of this language answer with a value.",
+                : $"{Html.Count(Meaning(language), "concept")} of this language answer with a value.",
             _ => string.Empty,
         };
     }
@@ -148,6 +150,10 @@ internal static class AspectPages
 
         return Html.Table(["Concept", "Evaluates to"], rows, "It states none.");
     }
+    /// <summary>How many concepts of <paramref name="language"/> a rule answers for.</summary>
+    private static int Meaning(LanguageProject language) =>
+        DocumentationChain.Own(language).Count(concept => language.Evaluation?.RuleFor(concept) is not null);
+
     /// <summary>The checks the language brings, with the code each of its findings carries.</summary>
     /// <remarks>
     /// A constraint and a check answer one question from two sides, and the constraints page beside this one would invite

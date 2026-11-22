@@ -278,9 +278,10 @@ language in the chain, so the archive is the one place a reader gets a language 
    they meet the type rule language.
 12. **A rule about meaning says what it computes.** `IEvaluationRule.Description` is nullable, because a sentence is for a
     reader and a rule that cannot summarise itself should say nothing rather than print its type name - but a language that
-    wants its meaning documented writes one per rule, and the page lists exactly those. The evaluation aspect is the second
-    with no folder, and for a stronger reason than checks: the others are languages a project writes in a folder, while a
-    rule about meaning is a computation and this repository has no model for one.
+    wants its meaning documented writes one per rule, and the page lists exactly those. What the page counts is concepts,
+    not rules: a rule answers for every concept its key is a kind of, so one rule for a base concept fills two rows.
+    The aspect has a folder of its own (`evaluation/`, read by `EvaluationRuleLowering`), but the *meaning of an operator
+    symbol* stays with the framework - that is a computation, and a model of one would be a language nobody asked for.
 13. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
     constant nobody can read through the interface. A page that could only list class names would document the framework
     rather than the language. Most implementations satisfy both explicitly, so the class keeps the constant a test
