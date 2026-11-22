@@ -3280,7 +3280,8 @@ public sealed partial class MainWindow : Window, IDisposable
             types: module.Types,
             constraints: module.Constraints,
             scopes: module.Scopes,
-            intentions: module.Intentions);
+            intentions: module.Intentions,
+            checks: module.Checks);
     }
 
     /// <summary>Fills the menu's definition submenu with one entry per kind of definition document.</summary>
@@ -3694,7 +3695,8 @@ public sealed partial class MainWindow : Window, IDisposable
             constraints: imported.Language.Constraints,
             scopes: imported.Language.Scopes,
             intentions: imported.Language.Intentions,
-            generators: imported.Language.Generators);
+            generators: imported.Language.Generators,
+            checks: imported.Language.Checks);
     }
 
     /// <summary>Opens the model at <paramref name="path"/>, reporting why it could not when it cannot.</summary>

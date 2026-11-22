@@ -7,6 +7,7 @@
     not enough, and the generator turns it back into code a compiler accepts.
   -->
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
     <ProjectReference Include="..\..\..\src\Projectional.Core\Projectional.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
