@@ -84,7 +84,7 @@ public sealed class Interpreter : IEvaluationRuntime
 
         try
         {
-            value = Evaluate(node);
+            value = Evaluate(node, EvaluationContext.NoLocals);
         }
         catch (EvaluationException error)
         {
@@ -98,7 +98,7 @@ public sealed class Interpreter : IEvaluationRuntime
         return new InterpretationResult(value, _failure, [.. _trace], _steps);
     }
 
-    Value IEvaluationRuntime.Evaluate(Node node) => Evaluate(node);
+    Value IEvaluationRuntime.Evaluate(Node node, IReadOnlyDictionary<string, Value> locals) => Evaluate(node, locals);
 
     Value? IEvaluationRuntime.Variable(string name) =>
         _variables.TryGetValue(name, out var value) ? value : null;
@@ -108,7 +108,7 @@ public sealed class Interpreter : IEvaluationRuntime
     /// The record is written after the rule returns, so the trace reads post-order - a child's line precedes the
     /// line of the node that asked for it, which is the order the reader needs to follow the answer back.
     /// </remarks>
-    private Value Evaluate(Node node)
+    private Value Evaluate(Node node, IReadOnlyDictionary<string, Value> locals)
     {
         Guard(node);
         _steps++;
@@ -123,7 +123,7 @@ public sealed class Interpreter : IEvaluationRuntime
 
         try
         {
-            var value = rule.Evaluate(new EvaluationContext(node, this));
+            var value = rule.Evaluate(new EvaluationContext(node, this, locals));
 
             _trace.Add(new TraceEntry(depth, node.Id, node.Concept.Key, value));
 

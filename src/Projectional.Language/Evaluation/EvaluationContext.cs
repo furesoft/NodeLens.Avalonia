@@ -21,6 +21,10 @@ namespace Projectional.Language;
 /// </remarks>
 public sealed class EvaluationContext
 {
+    /// <summary>The scope at the top of a run, where no name is bound yet.</summary>
+    public static IReadOnlyDictionary<string, Value> NoLocals { get; } =
+        new Dictionary<string, Value>(StringComparer.Ordinal);
+
     private readonly IEvaluationRuntime _runtime;
 
     /// <summary>Creates the context one rule sees.</summary>
@@ -33,16 +37,62 @@ public sealed class EvaluationContext
     /// </remarks>
     /// <exception cref="ArgumentNullException">Either argument is <see langword="null"/>.</exception>
     public EvaluationContext(Node node, IEvaluationRuntime runtime)
+        : this(node, runtime, NoLocals)
+    {
+    }
+
+    /// <summary>Creates the context one rule sees, with the names bound in the scope that reaches it.</summary>
+    /// <param name="node">The node being evaluated.</param>
+    /// <param name="runtime">The runtime that counts steps, records the trace and stops runaway runs.</param>
+    /// <param name="locals">The values bound in the enclosing scope, such as a call's parameters.</param>
+    /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// Public for the reason the two-argument form is: the runtime that calls it lives one layer up.
+    /// </remarks>
+    public EvaluationContext(Node node, IEvaluationRuntime runtime, IReadOnlyDictionary<string, Value> locals)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(locals);
 
         Node = node;
         _runtime = runtime;
+        Locals = locals;
     }
 
     /// <summary>The node being evaluated.</summary>
     public Node Node { get; }
+
+    /// <summary>The names bound in the scope this context stands in, empty at the top of a run.</summary>
+    public IReadOnlyDictionary<string, Value> Locals { get; }
+
+    /// <summary>The same node seen from a scope that binds <paramref name="locals"/> in front of this one.</summary>
+    /// <param name="locals">The names to bind, which win over the enclosing scope and over the run own variables.</param>
+    /// <returns>A context for <see cref="Node"/> whose children are evaluated inside the new scope.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="locals"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// What a call needs and a rule cannot build itself: the arguments are values the caller already computed, and a
+    /// rule has no way to hand them to the body except through the context. The scope is a value, not a stack that is
+    /// pushed and popped, because a rule that forgot to pop would leak one call parameters into the next.
+    /// </remarks>
+    public EvaluationContext With(IReadOnlyDictionary<string, Value> locals)
+    {
+        ArgumentNullException.ThrowIfNull(locals);
+
+        if (locals.Count == 0)
+        {
+            return this;
+        }
+
+        Dictionary<string, Value> merged = new(Locals, StringComparer.Ordinal);
+
+        foreach (var (name, value) in locals)
+        {
+            merged[name] = value;
+        }
+
+        return new EvaluationContext(Node, _runtime, merged);
+    }
 
     /// <summary>What <paramref name="node"/> evaluates to.</summary>
     /// <param name="node">The node to evaluate, usually a child of <see cref="Node"/>.</param>
@@ -53,7 +103,7 @@ public sealed class EvaluationContext
     {
         ArgumentNullException.ThrowIfNull(node);
 
-        return _runtime.Evaluate(node);
+        return _runtime.Evaluate(node, Locals);
     }
 
     /// <summary>What the single child in <paramref name="slot"/> evaluates to.</summary>
@@ -68,7 +118,7 @@ public sealed class EvaluationContext
         var children = Node.GetChildren(slot);
 
         return children.Count == 1
-            ? _runtime.Evaluate(children[0])
+            ? _runtime.Evaluate(children[0], Locals)
             : throw Error($"'{slot}' of {Node.Concept.Key} must hold exactly one child to be evaluated, but holds {children.Count}.");
     }
 
@@ -84,7 +134,7 @@ public sealed class EvaluationContext
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        return _runtime.Variable(name) ?? throw Error($"'{name}' has no value in this run.");
+        return Locals.TryGetValue(name, out var bound) ? bound : _runtime.Variable(name) ?? throw Error($"'{name}' has no value in this run.");
     }
 
     /// <summary>The value of the property <paramref name="slot"/> as a <see cref="Value"/>.</summary>

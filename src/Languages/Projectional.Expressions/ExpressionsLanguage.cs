@@ -99,6 +99,12 @@ public static class ExpressionsLanguage
 
 
 
+    /// <summary>The slot holding a function parameter list.</summary>
+    public const string ParametersSlot = "parameters";
+
+    /// <summary>The slot holding the arguments of a call.</summary>
+    public const string ArgumentsSlot = "arguments";
+
     private static bool ClaimsName(string text) =>
         text.Length > 0
         && (char.IsAsciiLetter(text[0]) || text[0] == '_')
@@ -250,5 +256,41 @@ public static class ExpressionsLanguage
                     anchorSlot: "condition",
                     caretSlot: "then"),
             ]),
+
+        // A function is the one concept here that is not part of an expression: it is a document of its own, because a
+        // definition is what a host opens and an expression is what it holds. `f(x) = x ^ 2` reads as the equation it is.
+        new ConceptDeclaration(
+            ExpressionsConceptKeys.Function,
+            [
+                new PropertySlot("name", PropertyType.String, description: "The name the call writes, such as f."),
+                new ChildSlot(ParametersSlot, ExpressionsConceptKeys.Parameter, Cardinality.Many),
+                new ChildSlot("body", ExpressionsConceptKeys.Expression, Cardinality.One),
+            ],
+            description: "A function: a name, its parameters, and the expression it answers with.",
+            interfaces: [FrameworkInterfaces.Named],
+            nameSlot: "name",
+            nameRule: NameRule.Camel),
+
+        new ConceptDeclaration(
+            ExpressionsConceptKeys.Parameter,
+            [new PropertySlot("name", PropertyType.String, description: "The parameter name, such as x.")],
+            description: "One parameter of a function.",
+            interfaces: [FrameworkInterfaces.Named],
+            nameSlot: "name",
+            nameRule: NameRule.Camel,
+            isRoot: false),
+
+        // The callee is text rather than a reference, for the reason a Name is: this vocabulary resolves names when
+        // something runs the model, and the run decides what a name means. The cost is written down where it is paid - a
+        // rename of a function does not follow into its calls - and paying it buys a language that needs no scope
+        // provider and no reference slot to be useful.
+        new ConceptDeclaration(
+            ExpressionsConceptKeys.Call,
+            [
+                new PropertySlot("callee", PropertyType.String, description: "The name of the function to apply, such as f."),
+                new ChildSlot(ArgumentsSlot, ExpressionsConceptKeys.Expression, Cardinality.Many),
+            ],
+            [ExpressionsConceptKeys.Expression],
+            description: "An application: a function's name and the arguments it is given."),
     ];
 }

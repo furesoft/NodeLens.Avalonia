@@ -59,6 +59,13 @@ public sealed class ExpressionsLanguageTests
                 // extension.
                 Assert.Empty(concept.Extensions);
             }
+            else if (concept.Key is ExpressionsConceptKeys.Function or ExpressionsConceptKeys.Parameter)
+            {
+                // A definition is not an expression: `f(x) = x ^ 2` is a document, and a parameter is a part of one.
+                // Neither may stand in an expression slot, which is exactly why they do not extend Expression - the
+                // vocabulary's claim that everything it declares is a value would otherwise be false.
+                Assert.False(concept.IsKindOf(ExpressionsConceptKeys.Expression), concept.Key);
+            }
             else
             {
                 Assert.True(concept.IsKindOf(ExpressionsConceptKeys.Expression), concept.Key);
@@ -130,6 +137,35 @@ public sealed class ExpressionsLanguageTests
         Assert.Equal("(1 + 2) * 3", LayoutSnapshot.Render(model, Notations, width: 20));
     }
 
+    [Fact]
+    public void AFunctionReadsAsTheEquationItIs()
+    {
+        // `f(x) = x ^ 2`: the definition is a document of its own, and its drawing is the equation a reader writes.
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var function = model.NewNode(ExpressionsConceptKeys.Function);
+        function.Set("name", "f");
+        model.NewChild(function, ExpressionsLanguage.ParametersSlot, ExpressionsConceptKeys.Parameter).Set("name", "x");
+
+        var power = model.NewChild(function, "body", ExpressionsConceptKeys.Binary);
+        power.Set("operator", "^");
+        model.NewChild(power, "left", ExpressionsConceptKeys.Name).Set("name", "x");
+        model.NewChild(power, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
+        model.AddRoot(function);
+
+        Assert.Equal("f(x) = x ^ 2", LayoutSnapshot.Render(model, Notations, width: 40));
+    }
+
+    [Fact]
+    public void ACallReadsAsTheApplicationItIs()
+    {
+        var model = ExpressionsLanguage.NewProject().NewModel();
+        var call = model.NewNode(ExpressionsConceptKeys.Call);
+        call.Set("callee", "f");
+        model.NewChild(call, ExpressionsLanguage.ArgumentsSlot, ExpressionsConceptKeys.IntLiteral).Set("value", 4);
+        model.AddRoot(call);
+
+        Assert.Equal("f(4)", LayoutSnapshot.Render(model, Notations, width: 40));
+    }
     [Fact]
     public void AUnaryExpressionDrawsItsOperatorInFrontOfItsOperand()
     {
