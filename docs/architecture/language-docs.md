@@ -282,6 +282,14 @@ language in the chain, so the archive is the one place a reader gets a language 
     not rules: a rule answers for every concept its key is a kind of, so one rule for a base concept fills two rows.
     The aspect has a folder of its own (`evaluation/`, read by `EvaluationRuleLowering`), but the *meaning of an operator
     symbol* stays with the framework - that is a computation, and a model of one would be a language nobody asked for.
+    **A rule is drawn as well as described.** The sentence says what a rule computes; the drawing says how, and it is the
+    half a language author copies - which is why `LanguageProject` keeps the documents beside the lowered registry. The
+    drawing uses the *rule language's* notations, never the documented language's: a rule is written in `EvaluationRules`
+    whatever language it is about, so drawing it with the language it describes would ask for a notation no concept of it
+    has, and a quiet empty block would be worse than none. A shipped language has a registry and no documents, so its page
+    states the sentences and draws nothing; that is a difference in what a package hands over, not in what a page does.
+    Drawing them found a defect no test had: the `record` body flowed its fields onto one line, because the builder stacks
+    entries only when asked.
 13. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
     constant nobody can read through the interface. A page that could only list class names would document the framework
     rather than the language. Most implementations satisfy both explicitly, so the class keeps the constant a test

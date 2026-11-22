@@ -65,9 +65,11 @@ public static class EvaluationRuleNotations
 
         // A record is a block rather than a line: one named value per line, indented, so a record of three fields still reads
         // as the one answer it is.
+        // Stacked, because a record of two fields on one line reads as one field with a long name: the drawing is what showed
+        // that the default flows the entries and that a block is what this body means.
         notations.Add(EvaluationRuleConceptKeys.Record, ed => ed.Sequence(
             ed.Line(ed.Keyword("record")),
-            ed.Indent(ed.Children(EvaluationRuleLanguage.FieldsSlot))));
+            ed.Indent(ed.Children(EvaluationRuleLanguage.FieldsSlot, stacked: true))));
 
         notations.Add(EvaluationRuleConceptKeys.RecordField, ed => ed.Line(
             ed.Property(EvaluationRuleLanguage.NameSlot, emptyText: "<<name>>"),

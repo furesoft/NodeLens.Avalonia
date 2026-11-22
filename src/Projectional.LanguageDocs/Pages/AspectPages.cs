@@ -150,6 +150,35 @@ internal static class AspectPages
 
         return Html.Table(["Concept", "Evaluates to"], rows, "It states none.");
     }
+    /// <summary>The rules as they are written, drawn: a sentence says what a rule computes, a drawing says how it says so.</summary>
+    /// <remarks>
+    /// The table above is what a reader checks an answer against; this is what a language author copies from. The names are
+    /// the files, because a rule has no name of its own beyond the concept it answers for - which the table already lists.
+    /// </remarks>
+    private static string EvaluationDefinitions(LanguageProject language)
+    {
+        var drawings = RuleDrawings.Of(language);
+
+        if (drawings.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var body = new StringBuilder();
+
+        body.Append(Html.Paragraph(
+            $"{Html.Count(drawings.Count, "rule")} as written, drawn with the language a rule is written in."));
+
+        foreach (var drawing in drawings)
+        {
+            body.Append(Html.Section(drawing.Name, drawing.Refusal is { Length: > 0 } refusal
+                ? Html.Paragraph($"It could not be drawn: {refusal}")
+                : $"<pre class=\"example\">{drawing.Html}</pre>\n"));
+        }
+
+        return body.ToString();
+    }
+
     /// <summary>How many concepts of <paramref name="language"/> a rule answers for.</summary>
     private static int Meaning(LanguageProject language) =>
         DocumentationChain.Own(language).Count(concept => language.Evaluation?.RuleFor(concept) is not null);
@@ -187,6 +216,7 @@ internal static class AspectPages
             {
                 case Aspect.Evaluation:
                     body.Append(Evaluation(chain, language, depth));
+                    body.Append(EvaluationDefinitions(language));
                     break;
 
                 case Aspect.Checks:
