@@ -1,9 +1,12 @@
 using Projectional.Core;
 using Projectional.Editors;
+using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
 using Projectional.Structures;
+using Projectional.TypingRules;
+using Projectional.TypeRules;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -91,6 +94,34 @@ public sealed class DeclaredAtlasTests
     }
 
     [Fact]
+    public void TheLanguageDeclaresTypesAndTypingClaims()
+    {
+        var language = Language();
+
+        Assert.True(language.HasTypes);
+        Assert.True(language.HasTyping);
+
+        var map = ModelFile.Load(language.NewProject(), Document("map.mps"));
+        var places = map.Roots[0].GetChildren("places");
+
+        // Three concepts, one type: a place, a landmark and a stop are the same thing to anything that reads a
+        // route, which is what separating a type from a concept is for.
+        Assert.All(places, place => Assert.Equal("place", language.Types.TypeOf(place).Name));
+        Assert.Equal(
+            "place",
+            language.Types.TypeOf(ModelFile.Load(language.NewProject(), Document("route.mps")).Roots[0].GetChildren("stops")[0]).Name);
+
+        // The claim is what makes typing create the node: letters in an empty slot are a place's name.
+        var claim = Assert.IsType<TypingRule>(language.Typing.ClaimFor("Atlas.Place", "peak"));
+
+        Assert.Equal("name", claim.PropertySlot);
+
+        // A landmark claims the words a landmark is usually called, and nothing else claims them.
+        Assert.IsType<TypingRule>(language.Typing.ClaimFor("Atlas.Landmark", "lake"));
+        Assert.Null(language.Typing.ClaimFor("Atlas.Landmark", "summit"));
+    }
+
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
@@ -100,6 +131,8 @@ public sealed class DeclaredAtlasTests
         {
             AssertRoundTrips(Path.Combine(folder, LanguageProject.StructureFolder), new Project(StructureLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.EditorFolder), new Project(EditorLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.TypesFolder), new Project(TypeRuleLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.TypingFolder), new Project(TypingLanguage.Concepts), temporary.FullName);
 
             // The root sits beside the aspect folders rather than in one, so it needs its own call.
             AssertRoundTrips(folder, new Project(StructureLanguage.Concepts), temporary.FullName, LanguageProject.LanguageFile);

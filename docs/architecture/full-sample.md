@@ -97,7 +97,10 @@ the sample is incomplete by design.
    language, says what it is for and declares the dependency on `Units`, and the two documents `map.mps` and
    `route.mps`. `DeclaredAtlasTests` pins the load, the drawing of both documents and the byte-identical round trip
    of every file.
-2. **types + typing** - the rules and the claims, with `DeclaredAtlasTests` asserting one type and one typed burst.
+2. **types + typing** - **delivered**: one declared record type (`place`, two `string` fields) and three rules that
+   name it - a place, a landmark and a stop are the same thing to anything reading a route - plus two claims (letters
+   are a place's name; a landmark is claimed by `lake`, `peak` or `pass`). `DeclaredAtlasTests` asserts the type of
+   nodes in both documents and both claims.
 3. **constraints + scopes** - the two findings and the three name sources.
 4. **intentions + generator + import** - the two offers, the text out and the text back in (the generator writes what
    the importer reads, which is the parity that keeps a spelling in one place).

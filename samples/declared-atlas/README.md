@@ -20,9 +20,11 @@ folder also proves that a language may be built on another language's concepts.
 | root | `language.mps` | the name, the version and one declared dependency |
 | structure | `structure/` | an abstract concept, inheritance, a reference, two root concepts, a borrowed concept |
 | editor | `editor/` | a sequence with an indented child list, an inline line and a reference cell |
+| types | `types/` | a declared record type (`place`) and three rules that name it, so three concepts answer one type |
+| typing | `typing/` | two claims: letters in an empty slot are a place's name, and a landmark is claimed by the words it is usually called |
 
-The remaining aspects - types, typing rules, constraints, scopes, intentions, generator, import, accessory and the
-framework's own tests - arrive one slice at a time; each one is added here and in the plan's aspect table.
+The remaining aspects - constraints, scopes, intentions, generator, import, accessory and the framework's own tests -
+arrive one slice at a time; each one is added here and in the plan's aspect table.
 
 ## The documents
 
