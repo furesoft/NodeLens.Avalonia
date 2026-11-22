@@ -24,9 +24,16 @@ folder also proves that a language may be built on another language's concepts.
 | typing | `typing/` | two claims: letters in an empty slot are a place's name, and a landmark is claimed by the words it is usually called |
 | constraints | `constraints/` | two findings: a place that is still called `unnamed` (hint) and a stop that points nowhere (error) |
 | scopes | `scopes/` | three name sources: a map's entry is `local`, a stop's target comes from `ancestors`, a route names its map across the `project` |
+| intentions | `intentions/` | two offers: add the first stop to an empty route, delete the stop under the caret |
+| generator | `generator/` | `AtlasText`, the language as lines: the map with its places and its route, one stop per line |
 
-The remaining aspects - intentions, generator, import, accessory and the framework's own tests - arrive one slice at a
-time; each one is added here and in the plan's aspect table.
+`import/` is **not** declared yet, and the reason is a gap rather than an omission: the declared importer fills
+properties, but not references (`Bind` only remembers text), and its `Repeat` did not match the child rules of a list
+slot in the attempt recorded in the plan. A format the generator writes is therefore not yet one the declared importer
+reads, and shipping half a parity would be worse than shipping none.
+
+The remaining aspects - import, accessory and the framework's own tests - arrive one slice at a time; each one is
+added here and in the plan's aspect table.
 
 The three name sources are the three that mean something different here: `local` is the node's own children and
 siblings, `ancestors` is the children of each enclosing node, and `model` and `project` offer the **roots** of the
