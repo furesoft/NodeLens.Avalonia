@@ -10,7 +10,8 @@ namespace Projectional.EvaluationRules;
 /// </para>
 /// <para>
 /// What the bodies are chosen to cover is an evaluator for a real DSL, not a demonstration: a value read from the node
-/// (<see cref="Property"/>, <see cref="Child"/>, <see cref="Variable"/>), a value written down (<see cref="Constant"/>),
+/// (<see cref="Property"/>, <see cref="Child"/>, <see cref="Variable"/>), a question about the node's shape
+/// (<see cref="Has"/>, <see cref="Count"/>), a value written down (<see cref="Constant"/>),
 /// arithmetic and logic over other bodies (<see cref="Operator"/>), a choice between two bodies (<see cref="Choose"/>), the
 /// first entry of a list that applies followed by what that entry answers (<see cref="First"/>), a name bound for the rest
 /// of the rule (<see cref="Bind"/>), and a refusal with a sentence (<see cref="Fail"/>).
@@ -29,6 +30,12 @@ public static class EvaluationRuleConceptKeys
 
     /// <summary>The value of the single child in a slot.</summary>
     public const string Child = "Evaluation.Child";
+
+    /// <summary>Whether a slot of the node holds anything, whatever kind of slot it is.</summary>
+    public const string Has = "Evaluation.Has";
+
+    /// <summary>How many entries a child slot holds.</summary>
+    public const string Count = "Evaluation.Count";
 
     /// <summary>The value the run bound to the name a property holds.</summary>
     public const string Variable = "Evaluation.Variable";

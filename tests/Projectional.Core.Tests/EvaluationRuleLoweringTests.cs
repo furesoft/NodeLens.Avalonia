@@ -294,6 +294,93 @@ public sealed class EvaluationRuleLoweringTests
             rules.Lower().RuleFor(ExpressionsLanguage.Concepts.Get(ExpressionsConceptKeys.IntLiteral))!.Description);
     }
     [Fact]
+    public void ADeclaredCountAnswersWithHowManyEntriesASlotHolds()
+    {
+        var rules = new Rules(FirstLanguage.Concepts);
+        var count = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Count);
+        count.Set(EvaluationRuleLanguage.SlotSlot, FirstLanguage.EntriesSlot);
+
+        Assert.Equal(new IntValue(3), Evaluate(rules.Lower(), Block(entries: [(true, 1), (false, 2), (true, 3)])));
+    }
+
+    [Fact]
+    public void ADeclaredCountRefusesASlotTheConceptDoesNotDeclare()
+    {
+        // Zero would be a number a document could have meant, so a slot the concept does not have is a refusal naming the
+        // concept - the rule was written against the wrong one.
+        var rules = new Rules(FirstLanguage.Concepts);
+        var count = Body(rules.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Count);
+        count.Set(EvaluationRuleLanguage.SlotSlot, "stops");
+
+        var failure = new Interpreter(rules.Lower()).Run(Block(entries: [(true, 1)]), cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("is not a child slot of", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredHasAnswersWhetherAPropertyHoldsAValue()
+    {
+        var rules = new Rules(GradeLanguage.Concepts);
+        var has = Body(rules.Rule(GradeLanguage.Report), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Has);
+        has.Set(EvaluationRuleLanguage.SlotSlot, GradeLanguage.PointsSlot);
+
+        Assert.Equal(new BoolValue(true), Evaluate(rules.Lower(), Report(points: 42).Model.Roots[0]));
+        Assert.Equal(new BoolValue(false), Evaluate(rules.Lower(), Report(points: null).Model.Roots[0]));
+    }
+
+    [Fact]
+    public void ADeclaredHasGuardsASlotTheRuleOnlyReadsWhileItIsFilled()
+    {
+        // The composition the body exists for: `property` refuses on an empty slot and nothing else could stand in a
+        // condition, so before it a rule that has to tolerate an empty slot could not be written at all.
+        var rules = new Rules(GradeLanguage.Concepts);
+        var rule = rules.Rule(GradeLanguage.Report);
+
+        var choose = Body(rule, EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Choose);
+        var condition = Body(choose, EvaluationRuleLanguage.ConditionSlot, EvaluationRuleConceptKeys.Has);
+        condition.Set(EvaluationRuleLanguage.SlotSlot, GradeLanguage.NameSlot);
+        Property(choose, GradeLanguage.NameSlot, EvaluationRuleLanguage.ThenSlot);
+        Constant(choose, "string", "(unnamed)", EvaluationRuleLanguage.OtherwiseSlot);
+
+        var registry = rules.Lower();
+
+        Assert.Equal(new StringValue("essay"), Evaluate(registry, Report(points: 42, name: "essay").Model.Roots[0]));
+        Assert.Equal(new StringValue("(unnamed)"), Evaluate(registry, Report(points: 42).Model.Roots[0]));
+    }
+
+    [Fact]
+    public void ADeclaredHasRefusesASlotTheConceptDoesNotDeclare()
+    {
+        var rules = new Rules(GradeLanguage.Concepts);
+        var has = Body(rules.Rule(GradeLanguage.Report), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Has);
+        has.Set(EvaluationRuleLanguage.SlotSlot, "stops");
+
+        var failure = new Interpreter(rules.Lower()).Run(Report(points: 42).Model.Roots[0], cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("is not a slot of", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheShapeBodiesDescribeWhatTheyAsk()
+    {
+        var asked = new Rules(GradeLanguage.Concepts);
+        var has = Body(asked.Rule(GradeLanguage.Report), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Has);
+        has.Set(EvaluationRuleLanguage.SlotSlot, GradeLanguage.NameSlot);
+
+        var counted = new Rules(FirstLanguage.Concepts);
+        var count = Body(counted.Rule(FirstLanguage.Container), EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Count);
+        count.Set(EvaluationRuleLanguage.SlotSlot, FirstLanguage.EntriesSlot);
+
+        Assert.Equal(
+            "Whether its name slot holds anything.",
+            asked.Lower().RuleFor(GradeLanguage.Concepts.Get(GradeLanguage.Report))!.Description);
+        Assert.Equal(
+            "How many entries its entries child slot holds.",
+            counted.Lower().RuleFor(FirstLanguage.Concepts.Get(FirstLanguage.Container))!.Description);
+    }
+    [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {
         var rules = new Rules();
@@ -380,6 +467,26 @@ public sealed class EvaluationRuleLoweringTests
     }
 
     /// <summary>Adds one body of <paramref name="conceptKey"/> to <paramref name="owner"/> and answers with it.</summary>
+    /// <summary>A report with the points it scored, and optionally a name, in a model of its own.</summary>
+    private static (Model Model, Node Report) Report(int? points, string? name = null)
+    {
+        var model = new Project(GradeLanguage.Concepts).NewModel("reports");
+        var report = model.NewNode(GradeLanguage.Report);
+
+        if (points is { } scored)
+        {
+            report.Set(GradeLanguage.PointsSlot, scored.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        if (name is not null)
+        {
+            report.Set(GradeLanguage.NameSlot, name);
+        }
+
+        model.AddRoot(report);
+
+        return (model, report);
+    }
     private static Node Body(Node owner, string slot, string conceptKey) =>
         owner.Model.NewChild(owner, slot, conceptKey);
 

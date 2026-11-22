@@ -132,6 +132,22 @@ public static class EvaluationRuleLanguage
             description: "The value of the single child in a slot.",
             nameSlot: SlotSlot),
 
+        // The two bodies that ask about the node's shape rather than answering with a value of it. Without them a rule
+        // cannot guard a slot that may be empty - `choose` has no way to ask - and cannot say how much a node holds.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Has,
+            [new PropertySlot(SlotSlot, PropertyType.String)],
+            [EvaluationRuleConceptKeys.Body],
+            description: "Whether a slot of the node holds anything: a value in a property, an entry in a child slot, or a target in a reference.",
+            nameSlot: SlotSlot),
+
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Count,
+            [new PropertySlot(SlotSlot, PropertyType.String)],
+            [EvaluationRuleConceptKeys.Body],
+            description: "How many entries a child slot holds.",
+            nameSlot: SlotSlot),
+
         new ConceptDeclaration(
             EvaluationRuleConceptKeys.Variable,
             [new PropertySlot(SlotSlot, PropertyType.String)],

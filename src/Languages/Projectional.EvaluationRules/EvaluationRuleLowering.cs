@@ -94,6 +94,37 @@ public static class EvaluationRuleLowering
             return context => context.EvalChild(slot);
         }
 
+        // The one body that asks a question instead of naming a value: a rule that guards a slot before reading it is the
+        // reason it exists, because `child` refuses on an empty slot and nothing but a truth value can stand in a condition.
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Has))
+        {
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            return context =>
+            {
+                var concept = context.Node.Concept;
+
+                return concept.FindProperty(slot) is not null
+                    ? new BoolValue(context.Node.GetOrNull(slot) is { Length: > 0 })
+                    : concept.FindChild(slot) is not null
+                        ? new BoolValue(context.Node.GetChildren(slot).Count > 0)
+                        : concept.FindReference(slot) is null
+                            ? throw context.Error($"'{slot}' is not a slot of {concept.Key}, so this rule cannot ask whether it holds anything.")
+                            : new BoolValue(context.Node.GetReference(slot) is not null);
+            };
+        }
+
+        // A slot the concept does not declare answers nothing rather than zero: a count of a slot that does not exist is a
+        // rule written against the wrong concept, and zero is a number a document could have meant.
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Count))
+        {
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            return context => context.Node.Concept.FindChild(slot) is null
+                ? throw context.Error($"'{slot}' is not a child slot of {context.Node.Concept.Key}, so this rule cannot count it.")
+                : new IntValue(context.Node.GetChildren(slot).Count);
+        }
+
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))
         {
             var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
@@ -283,6 +314,16 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Child))
         {
             return $"The value of its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} child.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Has))
+        {
+            return $"Whether its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} slot holds anything.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Count))
+        {
+            return $"How many entries its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} child slot holds.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))
