@@ -315,16 +315,16 @@
     <Menu DockPanel.Dock="Top" Classes="mainMenu">
       <MenuItem x:Name="FileMenu" Header="_File">
         <!--
-          The five "new ..." commands live one level down: they are how a language is declared, not how a
-          session starts, and five flat entries were three quarters of the menu for something rare.
+          Two ways a session starts, then one entry per kind of definition document: those are how a language is
+          declared, not how a session starts, and ten flat entries would be most of the menu for something rare. The
+          definition entries are built from WorkbenchLanguage.Definitions, so the menu cannot offer a kind the command
+          registry does not know.
         -->
         <MenuItem x:Name="NewDocumentItem" Header="_New">
           <MenuItem Header="_Document" HotKey="Ctrl+N" InputGesture="Ctrl+N" Click="OnNewDocument" />
-          <MenuItem Header="_Concept" Click="OnNewConcept" />
-          <MenuItem Header="_Enumeration" Click="OnNewEnumeration" />
-          <MenuItem Header="_Notation" Click="OnNewNotation" />
-          <MenuItem Header="_Importer" Click="OnNewImporter" />
           <MenuItem Header="Document of an _opened language" Click="OnNewLanguageDocument" />
+          <Separator />
+          <MenuItem x:Name="NewDefinitionItem" Header="Language _definition" />
         </MenuItem>
         <Separator />
         <MenuItem x:Name="OpenDocumentItem" Header="_Open..." HotKey="Ctrl+O" InputGesture="Ctrl+O" Click="OnOpenDocument">
@@ -333,6 +333,8 @@
           </MenuItem.Icon>
         </MenuItem>
         <MenuItem x:Name="OpenLanguageItem" Header="Open _language..." Click="OnOpenLanguage" />
+        <!-- Filled from ExampleProjects.Catalogue: one entry per example a build placed beside the executable. -->
+        <MenuItem x:Name="OpenExamplesItem" Header="Open e_xamples" />
         <MenuItem x:Name="ExportLanguageItem" Header="E_xport language to C#..." IsEnabled="False" />
         <MenuItem x:Name="ImportDocumentItem" Header="_Import..." Click="OnImportDocument" />
         <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />

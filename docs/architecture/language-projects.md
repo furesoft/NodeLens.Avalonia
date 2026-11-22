@@ -113,6 +113,18 @@ M2's gate in its smallest complete form.
   `LanguageProject.AspectFolders`, the same list the project explorer draws, so an aspect the framework gains is opened
   by the shell without a second list to keep in step; the typing language is declared by the shell for the reason the
   importer language is, because `typing/` documents are written in it.
+- **File ▸ Open e_xamples** opens one of the samples this repository ships without a picker. A build copies
+  `samples/declared-*` into `Examples/` beside the executable; the submenu lists them by the name each `language.mps`
+  declares (by its folder, without the shared prefix, when it declares none), and choosing one opens the examples it
+  stands on first - `declared-invoice` declares `extends Units` - because a declared language refuses to load without
+  its base. A publish ships no examples: the single-file app stays one file, so the entry hides itself rather than
+  offering an empty submenu.
+- **File ▸ New ▸ Language definition** starts a document for every kind of definition a project declares - a concept,
+  an enumeration, a notation, a type rule, a constraint, a scope rule, a typing rule, an intention, a generator and an
+  importer - one empty definition each, ready to be written and saved into the aspect folder. The entries are
+  `WorkbenchLanguage.Definitions`, which is also what registers their commands, so the menu cannot offer a kind the
+  registry does not know. A `types` folder holds five kinds of document (a rule, a named type, supertypes, comparability
+  and a replacement) and the menu starts the rule, because the other four are statements about types a rule named.
 - **File ▸ New ▸ Concept**, **File ▸ New ▸ Enumeration**, **File ▸ New ▸ Notation** and **File ▸ New ▸ Importer**
   create a document with exactly one empty definition of that kind. A definition document is saved into the folder's
   aspect directory, so a concept created in the app is one more file beside the others, and an importer created there
