@@ -523,20 +523,26 @@ public sealed class DeclaredAtlasTests
         Assert.Equal(new IntValue(2), Run(rules, map));
 
         // A stop answers with what the place it points at answers - the reference is followed and that node's own rule
-        // decides - and a place answers with its name, or with the word the language uses while it has none.
+        // decides - and a place answers with a label built out of two of its properties, or with the word the language uses
+        // while it has no name at all.
         var route = map.GetChildren("routes")[0];
         var stops = route.GetChildren("stops");
 
-        Assert.Equal(new StringValue("peak"), Run(rules, stops[0]));
-        Assert.Equal(new StringValue("lake"), Run(rules, stops[1]));
+        Assert.Equal(new StringValue("peak at 1500m"), Run(rules, stops[0]));
+        Assert.Equal(new StringValue("lake at 410m"), Run(rules, stops[1]));
 
-        // A route answers the list of what its stops answer, in the order it stops there: the list body composes the reference
-        // and the place's own rule into one value.
-        Assert.Equal(new ListValue([new StringValue("peak"), new StringValue("lake")]), Run(rules, route));
+        // A route answers the list of what its stops answer, in the order it stops there: the list body composes the reference,
+        // the label and the place's own rule into one value.
+        Assert.Equal(
+            new ListValue([new StringValue("peak at 1500m"), new StringValue("lake at 410m")]),
+            Run(rules, route));
 
-        var unnamed = map.Model.NewChild(map, "places", "Atlas.Place");
+        // A place without a position answers with its name alone, and a fresh one is called `unnamed` because that is the
+        // language's own default for the property - which is why the guard asks about `at` and not about `name`.
+        var unplaced = map.Model.NewChild(map, "places", "Atlas.Place");
 
-        Assert.Equal(new StringValue("unnamed"), Run(rules, unnamed));
+        Assert.Equal(new StringValue("unnamed"), Run(rules, unplaced));
+        Assert.Equal(new StringValue("unnamed at 900m"), Run(rules, Placed(unplaced, "900m")));
 
         // A stop that points nowhere is refused, with the sentence that says so rather than an invented name.
         var unlinked = map.Model.NewChild(route, "stops", "Atlas.Stop");
@@ -544,6 +550,13 @@ public sealed class DeclaredAtlasTests
 
         Assert.NotNull(failure);
         Assert.Contains("points nowhere", failure.Message, StringComparison.Ordinal);
+    }
+    /// <summary>Gives the place no position… and then one, so a rule that guards on it has both sides.</summary>
+    private static Node Placed(Node place, string at)
+    {
+        place.Set("at", at);
+
+        return place;
     }
     /// <summary>What the sample's declared rules answer for <paramref name="node"/>.</summary>
     private static Value Run(EvaluationRegistry rules, Node node)

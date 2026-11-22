@@ -1,9 +1,12 @@
 using Projectional.CSharp;
 using Projectional.Core;
+using Projectional.Editors;
+using Projectional.EvaluationRules;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Semantics;
+using Projectional.Structures;
 using Projectional.Workbench;
 using Xunit;
 
@@ -211,6 +214,72 @@ public sealed class ExampleProjectsTests
         Assert.Equal(new IntValue(12), Evaluate(rules, line));
     }
 
+    [Fact]
+    public void AnExampleSumsTheLinesOfItsDocument()
+    {
+        // A total, written as the fold it is: each line's quantity is a record the base language answers with, the amount is
+        // one field of it, and the sum adds the three - twelve and five and thirty, with the units left alone.
+        var catalogue = SampleCatalogue();
+        var opened = ExampleProjects.Load(
+            new WorkbenchLanguage(),
+            ExampleProjects.Needed(Example(catalogue, "Invoice"), catalogue),
+            out var refused);
+
+        Assert.Empty(refused);
+
+        var invoice = opened.Single(project => project.Name == "Invoice");
+        var rules = Assert.IsType<EvaluationRegistry>(invoice.Evaluation);
+        var bill = ModelFile.Load(invoice.NewProject(), Path.Combine(AppContext.BaseDirectory, "Invoice", "bill.mps")).Roots[0];
+
+        Assert.Equal(new IntValue(47), Evaluate(rules, bill));
+    }
+    [Fact]
+    public void TheInvoicesDefinitionsSaveBackByteIdentically()
+    {
+        // The invoice folder never had this test and now carries a concept, a notation, a document and two rules, every one of
+        // them hand-written in the file format: a writer that reorders a slot or drops an empty property shows up here rather
+        // than in a reader that silently accepts its own output.
+        var catalogue = SampleCatalogue();
+        var opened = ExampleProjects.Load(
+            new WorkbenchLanguage(),
+            ExampleProjects.Needed(Example(catalogue, "Invoice"), catalogue),
+            out var refused);
+
+        Assert.Empty(refused);
+
+        var directory = Example(catalogue, "Invoice").Directory;
+        var temporary = Directory.CreateTempSubdirectory("invoice-definitions");
+
+        try
+        {
+            foreach (var (folder, concepts) in new (string Folder, ConceptRegistry Concepts)[]
+            {
+                (LanguageProject.StructureFolder, StructureLanguage.Concepts),
+                (LanguageProject.EditorFolder, EditorLanguage.Concepts),
+                (LanguageProject.EvaluationFolder, EvaluationRuleLanguage.Concepts),
+            })
+            {
+                foreach (var file in Directory.EnumerateFiles(Path.Combine(directory, folder), "*.mps"))
+                {
+                    AssertRoundTrips(file, new Project(concepts), temporary.FullName);
+                }
+            }
+        }
+        finally
+        {
+            temporary.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Loads <paramref name="file"/> and requires saving it again to produce the same bytes.</summary>
+    private static void AssertRoundTrips(string file, Project project, string directory)
+    {
+        var saved = Path.Combine(directory, $"{Guid.NewGuid():N}.mps");
+
+        ModelFile.Save(ModelFile.Load(project, file), saved);
+
+        Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(saved));
+    }
     /// <summary>What <paramref name="rules"/> answer for <paramref name="node"/>.</summary>
     private static Value Evaluate(EvaluationRegistry rules, Node node)
     {
