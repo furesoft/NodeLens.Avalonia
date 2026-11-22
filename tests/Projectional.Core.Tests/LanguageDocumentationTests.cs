@@ -7,6 +7,8 @@ using Projectional.CSharp.Checks;
 using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
+using Projectional.Expressions;
+using Projectional.Expressions.Intentions;
 using Projectional.LanguageDocs;
 using Projectional.LanguageExport;
 using Projectional.Languages;
@@ -242,6 +244,28 @@ public sealed class LanguageDocumentationTests
 
         Assert.DoesNotContain("extended by", literal.Text, StringComparison.Ordinal);
         Assert.DoesNotContain("implemented by", literal.Text, StringComparison.Ordinal);
+    }
+    [Fact]
+    public void AnEvaluationPageStatesWhatEachConceptMeans()
+    {
+        var pages = LanguageDocumentation.Generate(ExpressionsProject());
+        var page = Assert.Single(pages, each => each.Path == "Expressions/evaluation.html");
+
+        // The sentence is the rule own, so the page cannot describe a meaning the interpreter does not have.
+        Assert.Contains("Its operator applied to the values of its two operands.", page.Text, StringComparison.Ordinal);
+        Assert.Contains("Expressions.Call.html", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEvaluationPageStatesWhatALanguageWithoutMeaningHas()
+    {
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Atlas()),
+            each => each.Path == "Atlas/evaluation.html");
+
+        // A declared language is drawn and generated but not run, and the page says that rather than showing an empty table.
+        Assert.Contains("can be drawn and not run", page.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("<th>Evaluates to</th>", page.Text, StringComparison.Ordinal);
     }
     [Fact]
     public void AChecksPageNamesEveryCheckTheLanguageBrings()
@@ -768,6 +792,19 @@ public sealed class LanguageDocumentationTests
     private static LanguageProject Fail(string? error) =>
         throw new InvalidOperationException(error ?? "the folder did not open, and said nothing about why");
 
+    /// <summary>The shipped expression vocabulary as a project, the one language whose meaning is declared.</summary>
+    private static LanguageProject ExpressionsProject() =>
+        LanguageProject.Shipped(
+            ExpressionsLanguage.Name,
+            version: null,
+            ExpressionsLanguage.ConceptDeclarations,
+            ExpressionsLanguage.Concepts,
+            ExpressionsLanguage.CreateNotations(ExpressionsLanguage.Concepts),
+            ExpressionsLanguage.Constraints,
+            ExpressionsIntentions.Provider,
+            [],
+            types: ExpressionsLanguage.Types,
+            evaluation: ExpressionsEvaluation.Registry);
     /// <summary>The base language as a project, which is the fixture whose inheritance is worth reversing.</summary>
     private static LanguageProject CSharp() =>
         LanguageProject.Shipped(
