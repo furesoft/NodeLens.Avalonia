@@ -70,7 +70,7 @@ the shape the problem has:
 
 ```text
 MyRules/
-  language.mps           the language root: name, version, dependencies, extended languages
+  language.mps           the language root: name, what it is for, version, dependencies, extended languages
   structure/             concepts, slots, inheritance, enumerations - one definition per document
     Pipeline.Pipeline.mps
     Pipeline.Stage.mps
@@ -99,9 +99,9 @@ a model: one root per file, named after what it holds. The split is not cosmetic
 the aspects readable and reviewable, because a diff of one concept is a diff of one file. Inside a
 document the root *is* the definition: there is no `language`-style container concept whose only
 job would be to list its children. The single exception is `language.mps` at the project root,
-which is not a document *of* an aspect but the language itself - it names the language, carries its
-version and lists the languages it stands on, and `Projectional.Languages` reads it beside the
-folders rather than through one.
+which is not a document *of* an aspect but the language itself - it names the language, may say what
+it is for, carries its version and lists the languages it stands on, and `Projectional.Languages`
+reads it beside the folders rather than through one.
 
 The folder names are the aspects' (`structure`, `editor`, `types`, `generator`), and so is the
 split, because the alternative - one file with every aspect as a section - loses exactly the
@@ -432,7 +432,10 @@ What export guarantees, and what it refuses to hide:
   languages it stands on are written as assembly attributes - `Projectional.Language`,
   `Projectional.LanguageVersion`, `Projectional.DependsOn` and `Projectional.Extends` - so a host
   reads a package's identity without opening the language, and a folder name that differs from the
-  language's name cannot make the package anonymous. The declared version becomes the assembly's
+  language's name cannot make the package anonymous. The `description` the root may write travels
+  the same way, as `Projectional.LanguageDescription`: the name says *which* language a package
+  holds, and only the author can say *what it is for*. Blank reads as nothing, so an untouched cell
+  costs no attribute. The declared version becomes the assembly's
   *informational* version, the one free-form version field there is; its assembly version is left
   alone, because that field is four numbers and nothing in the framework parses a version an author
   typed.

@@ -7,4 +7,8 @@ namespace Projectional.Workbench;
 /// The languages it declares a dependency on or an extension of, by their declared names - read from
 /// <c>language.mps</c> and not resolved, because resolving is what opening it does.
 /// </param>
-internal sealed record ExampleProject(string Directory, string Name, IReadOnlyList<string> StandsOn);
+internal sealed record ExampleProject(
+    string Directory,
+    string Name,
+    IReadOnlyList<string> StandsOn,
+    string? Description = null);

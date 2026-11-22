@@ -3351,12 +3351,40 @@ public sealed partial class MainWindow : Window, IDisposable
     private void UpdateExampleMenu()
     {
         OpenExamplesItem.ItemsSource = Examples
-            .Select(example => new MenuItem
+            .Select(example =>
             {
-                Header = example.Name,
-                Command = new OpenExampleCommand(this, example),
+                var item = new MenuItem
+                {
+                    Header = example.Name,
+                    Command = new OpenExampleCommand(this, example),
+                };
+
+                // What the folder says it is for, where the decision is made: a name alone says which language this
+                // is, not whether it is the one being looked for.
+                if (ExampleTip(example) is { } tip)
+                {
+                    ToolTip.SetTip(item, tip);
+                }
+
+                return item;
             })
             .ToList();
+    }
+
+    /// <summary>What a menu entry says on hover, or <see langword="null"/> when the example says nothing.</summary>
+    private static string? ExampleTip(ExampleProject example)
+    {
+        var standsOn = example.StandsOn.Count == 0
+            ? null
+            : $"Stands on {string.Join(", ", example.StandsOn)}.";
+
+        return (example.Description, standsOn) switch
+        {
+            ({ Length: > 0 } description, { } dependencies) => $"{description}{Environment.NewLine}{Environment.NewLine}{dependencies}",
+            ({ Length: > 0 } description, null) => description,
+            (_, { } dependencies) => dependencies,
+            _ => null,
+        };
     }
 
     /// <summary>The examples a build placed beside the executable, read once.</summary>

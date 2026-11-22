@@ -113,9 +113,14 @@ public static class StructureLowering
 
         var name = Required(root, "name", "the language root");
 
+        // Trimmed, because a sentence is what the author meant and the spaces around it are how the cell was clicked
+        // into; blank reads as nothing rather than as an empty description.
+        var description = Optional(root, StructureLanguage.DescriptionSlot)?.Trim();
+
         return new LanguageRoot(
             name,
             Optional(root, StructureLanguage.VersionSlot),
+            description is { Length: > 0 } ? description : null,
             Dependencies(root, StructureLanguage.DependenciesSlot, name),
             Dependencies(root, StructureLanguage.ExtendsSlot, name));
     }

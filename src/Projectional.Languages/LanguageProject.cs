@@ -134,6 +134,7 @@ public sealed class LanguageProject
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
         Version = languageRoot?.Version;
+        Description = languageRoot?.Description;
         Dependencies = languageRoot?.Dependencies ?? [];
         Extends = languageRoot?.Extends ?? [];
         Resolved = resolved;
@@ -172,6 +173,13 @@ public sealed class LanguageProject
     /// nothing acts on it, and a host that shows it must show the claim rather than a normalised form of it.
     /// </remarks>
     public string? Version { get; }
+
+    /// <summary>What the language is for, in the author's words, or <see langword="null"/> when it says nothing.</summary>
+    /// <remarks>
+    /// The sentence beside the identity, kept as the author wrote it: a host shows it where a person decides whether
+    /// this is the language they were looking for, and an export carries it into the assembly.
+    /// </remarks>
+    public string? Description { get; }
 
     /// <summary>The languages this one says it builds on, in the order its root names them.</summary>
     /// <remarks>
@@ -467,6 +475,7 @@ public sealed class LanguageProject
     /// <param name="generators">The generators it ships.</param>
     /// <param name="types">Its type rules, or <see cref="TypeRegistry.Empty"/> for none.</param>
     /// <param name="scopes">Its scope providers, or <see cref="ScopeProviderRegistry.Empty"/> for none.</param>
+    /// <param name="description">What the language is for, or <see langword="null"/> when it says nothing.</param>
     /// <returns>A project that resolves and inherits like a loaded one, with no folder behind it.</returns>
     /// <exception cref="ArgumentException"><paramref name="name"/> is blank.</exception>
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
@@ -501,7 +510,8 @@ public sealed class LanguageProject
         ScopeProviderRegistry? scopes = null,
         ITypingRules? typing = null,
         bool hasTyping = false,
-        bool hasIntentions = false)
+        bool hasIntentions = false,
+        string? description = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -513,7 +523,7 @@ public sealed class LanguageProject
 
         return new LanguageProject(
             directory: string.Empty,
-            new LanguageRoot(name, version, [], []),
+            new LanguageRoot(name, version, description, [], []),
             resolved: [],
             inherited: [],
             declarations,

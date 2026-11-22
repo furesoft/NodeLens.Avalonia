@@ -162,7 +162,8 @@ internal static class ExampleProjects
             return new ExampleProject(
                 directory,
                 root.Name,
-                [.. root.Dependencies.Select(dependency => dependency.Name), .. root.Extends.Select(dependency => dependency.Name)]);
+                [.. root.Dependencies.Select(dependency => dependency.Name), .. root.Extends.Select(dependency => dependency.Name)],
+                root.Description);
         }
         catch (Exception exception) when (exception is ModelFormatException or ConceptDefinitionException)
         {

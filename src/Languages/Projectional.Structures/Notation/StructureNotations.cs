@@ -80,6 +80,8 @@ public static class StructureNotations
     private const string NoSymbols = "<<symbol>>";
     private const string NoVersion = "<any version>";
 
+    private const string NoDescription = "<no description>";
+
     /// <summary>Registers the notation of every concept of the structure language.</summary>
     /// <param name="notations">The registry to add to.</param>
     /// <exception cref="ArgumentNullException"><paramref name="notations"/> is <see langword="null"/>.</exception>
@@ -90,13 +92,18 @@ public static class StructureNotations
         var ed = NotationEditor.Create();
 
         // The language root is the one document that is not a definition, so it is drawn as what it is: a header
-        // that names the language, then the facts about it - its version and the two lists it stands on - one
+        // that names the language, then the facts about it - what it is for, its version and the two lists it
+        // stands on - one
         // indent in, the same way a concept's options hang under its header. The empty placeholder says a list is
         // there to be filled, and `version` says "any" because an absent version is a promise of nothing rather
         // than a missing value.
         notations.Add(StructureConceptKeys.Language, ed =>
         {
             var facts = ed.Sequence(
+                ed.Line(
+                    ed.Keyword("about:"),
+                    ed.Space,
+                    ed.Property(StructureLanguage.DescriptionSlot, emptyText: NoDescription)),
                 ed.Line(
                     ed.Keyword("version:"),
                     ed.Space,
