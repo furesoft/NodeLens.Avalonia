@@ -49,12 +49,16 @@ _site/
   Atlas/
     index.html                what Atlas says it stands on, and its concepts grouped by inheritance root
     concepts/Atlas.Stop.html
-    aspects.html
+    aspects.html              every aspect at a glance, and a link to each
+    enumerations.html         one page per aspect: what that folder lowered into
+    notations.html
+    types.html  typing.html  constraints.html  scopes.html  intentions.html
+    generators.html  importers.html  accessory.html
     examples.html
   Units/
     index.html
     concepts/Units.Quantity.html
-    aspects.html
+    aspects.html + one page per aspect
     examples.html
 ```
 
@@ -144,7 +148,17 @@ a language emits is what a reader wants before trusting it with a model.
 | `index.html` | the set: one row per language - name, version, how many concepts it declares, and what it stands on |
 | `<Language>/index.html` | what that language declares it stands on (name, relation, the version asked for and the version answered, with a mismatch marked), then its concepts grouped by inheritance root |
 | `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, the notation written out as the shape it spells (`map <name> at <entry>`, its body indented), every slot as a row (kind, key, type or target, cardinality, default) |
-| `<Language>/aspects.html` | one section per aspect folder, written out where the lowered form still carries the author's words: the concepts by kind, the **enumerations** by the symbols they offer and the slots that hold them, every notation *as the shape it spells*, the type rules with subtypes, comparisons and replacements, the typing claims, the constraints per concept, the scope providers with their concept's reference slots, whether intentions exist, every generator *as the template it emits*, the import formats, and the accessory documents |
+| `<Language>/aspects.html` | every aspect at a glance: the folder it comes from, how much the language declares, one sentence saying what that means, and a link to its page - plus the concepts by kind, which is what `structure/` holds |
+| `<Language>/enumerations.html` | the enumerations by the symbols they offer and the slots that hold them |
+| `<Language>/notations.html` | every notation *as the shape it spells* |
+| `<Language>/types.html` | the type rules, with subtypes, comparisons and replacements |
+| `<Language>/typing.html` | what a burst of typing claims, and into which slot |
+| `<Language>/constraints.html` | the constraints per concept |
+| `<Language>/scopes.html` | the scope providers, beside the concept's own reference slots |
+| `<Language>/intentions.html` | whether a provider is registered, and why a page can say no more |
+| `<Language>/generators.html` | every generator *as the template it emits* |
+| `<Language>/importers.html` | the text formats the language can read |
+| `<Language>/accessory.html` | the documents that are models of the language itself |
 | `<Language>/examples.html` | every document the language ships, drawn by the headless renderer and coloured by the kinds the editor paints - so the page shows what the language *looks like* rather than describing it. Omitted for a language that ships none |
 | `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script - the header, the tree, the drawer and the responsive rules; and the filter, the drawer toggle and Enter. Both deterministic, both small enough to read |
 
@@ -214,7 +228,21 @@ language in the chain, so the archive is the one place a reader gets a language 
    examples page at all rather than an empty one, because an empty room with a sign on the door is worse than no room.
    The tests' models were the other candidate and are the wrong one: they are assertions about a language, not examples
    of it.
-5. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
+5. **One page per aspect, not ten sections on one page.** The overview compares the aspects and links them; each aspect
+   has a page of its own and an entry in the tree, because a reader looking for "which concepts generate text" wants
+   `Generators` under the language and not a heading they have to scroll to. An aspect a language does not declare still
+   gets its page, saying so: "no generator" is an answer to "does this language generate code", which is different from
+   an examples page nobody would miss.
+6. **An example is drawn without the type annotations.** A `TypeOf` cell is the editor telling a language author what
+   its type rules are missing, and `unknown` is that complaint - not part of the language's shape. The documentation
+   therefore asks the renderer for the shape and gets no cell at all (`EditorTreeBuilder(annotations: false)`), together
+   with the punctuation that separates it, because a cell dropped on its own leaves `1 :` behind.
+7. **The picture is composed from the chain, like the shell's.** A document of a dependent language draws its base's
+   concepts - Invoice holds a `Units.Quantity` - and a language's notation registry holds only what that language
+   declares. So the chain builds one concept registry over every declaration and one notation registry over that, which
+   is the composition `WorkbenchLanguage` performs; without it the page showed `<no notation for Units.Quantity>` where
+   the editor draws a quantity.
+8. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
    `https://` link into, and the shipped project has everything a page needs.
 
 ## Published by CI
@@ -271,6 +299,11 @@ GitHub Actions**.
   page, because the tree carries every language of the set.
 - **`LanguageSnapshot.Runs` answers where a piece is and what it means** (in `Projectional.Toolkit`), which is the
   public half of the change and the reason a language author can colour a picture without reaching into the projection.
+- **Every aspect has its own page and the overview links it**, and an aspect page holds what that aspect declares.
+- **An example is drawn without the editor's annotations**: no `unknown` anywhere, and the punctuation with it.
+- **An example draws a concept of the language it stands on**, which is the composed registry.
+- **Every sample language declares an accessory document** (`ExampleProjectsTests`), so the examples of a language are
+  what it ships rather than a promise the documentation makes on its behalf.
 - **The pages travel inside a package**: the archive holds the code of the chain and, after it, `docs/index.html`,
   `docs/Atlas/concepts/…`, `docs/Atlas/examples.html` and the base's folder - so a reader of the one file can follow a
   link into the language it stands on. `LanguagePackage.Zip` grew a list of extra files for this: the export layer takes
