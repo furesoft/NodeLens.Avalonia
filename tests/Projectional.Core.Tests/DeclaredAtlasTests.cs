@@ -2,6 +2,7 @@ using Projectional.ConstraintRules;
 using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Editors;
+using Projectional.ImportRules;
 using Projectional.IntentionRules;
 using Projectional.Language;
 using Projectional.Languages;
@@ -261,6 +262,46 @@ public sealed class DeclaredAtlasTests
     }
 
     [Fact]
+    public void TheGeneratedTextIsWriteOnlyBecauseATemplateCannotReadAReferenceBack()
+    {
+        // The limit the sample ran into, pinned as a fact: the importer that a generator gives refuses a template that
+        // writes a reference, because the text has nowhere to resolve into. Atlas writes its map entry and its stops as
+        // references, so its own text is not the format it reads back.
+        var language = Language();
+
+        Assert.False(language.TryCreateImporter("AtlasText", out var importer, out var error));
+        Assert.Null(importer);
+        Assert.Contains("names a reference", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheDeclaredImporterReadsTheReferenceFreeFormat()
+    {
+        // What import can do today: a declared format that fills properties and children. It names no place, so the
+        // map's entry and the route's stops stay unsaid - which is the honest shape of the gap rather than a format
+        // that silently drops them.
+        var language = Language();
+
+        Assert.True(language.TryCreateImporter("places", out var importer, out var error), error);
+        Assert.NotNull(importer);
+
+        var model = language.NewProject().NewModel("imported");
+        var result = importer.Import(model, "map alpen\nplace peak at 1500m\nlandmark lake at 410m");
+
+        Assert.True(result.Succeeded, string.Join(" | ", result.Diagnostics.Select(diagnostic => diagnostic.Message)));
+
+        var map = Assert.Single(result.Roots);
+
+        Assert.Equal("Atlas.Map", map.Concept.Key);
+        Assert.Equal("alpen", map.GetOrNull("name"));
+        Assert.Equal(
+            ["Atlas.Place/peak/1500m", "Atlas.Landmark/lake/410m"],
+            map.GetChildren("places").Select(place => $"{place.Concept.Key}/{place.GetOrNull("name")}/{place.GetOrNull("at")}"));
+
+        // Nothing said where the map is entered, and the importer does not invent it.
+        Assert.Null(map.GetReference("entry"));
+    }
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
@@ -276,6 +317,7 @@ public sealed class DeclaredAtlasTests
             AssertRoundTrips(Path.Combine(folder, LanguageProject.ScopesFolder), new Project(ScopeLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.IntentionsFolder), new Project(IntentionLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.GeneratorFolder), new Project(TextGenLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.ImportFolder), new Project(ImportLanguage.Concepts), temporary.FullName);
 
             // The root sits beside the aspect folders rather than in one, so it needs its own call.
             AssertRoundTrips(folder, new Project(StructureLanguage.Concepts), temporary.FullName, LanguageProject.LanguageFile);

@@ -109,16 +109,16 @@ the sample is incomplete by design.
    node, and `model`/`project` are the **roots** of the document and of the project's other documents - so a nested
    place is never reachable through `model`, and the sample says so in its README.
 4. **intentions + generator + import** - the two offers, the text out and the text back in (the generator writes what
-   the importer reads, which is the parity that keeps a spelling in one place). **Half delivered**: `intentions/` holds
-   the two offers (add the first stop to an empty route, delete the stop under the caret) and `generator/` holds
-   `AtlasText`, which writes the map, its places, its route and its stops one line each - pinned by
-   `DeclaredAtlasTests` as exact text. `import/` is **open**, and the attempt found out why: a declared rule fills
-   properties (`Capture`, `Line`), while a reference is only `Bind`able, which remembers text without setting anything,
-   and `Repeat` did not match the child rules of a list slot. Both halves need the import layer read properly before a
-   parity test can exist; shipping a format the importer cannot read back would be worse than shipping none.
-   Two smaller findings belong here: a `TextGen.WhenFilled` is refused without an `otherwise` template, even when the
-   empty case is meant to write nothing (an empty template is the answer), and a reference part writes `<none>` for an
-   unset reference, so a conditional is what keeps that out of the text.
+   the importer reads, which is the parity that keeps a spelling in one place). **Delivered, with one limit found by
+   doing it**: `intentions/` holds the two offers (add the first stop to an empty route, delete the stop under the
+   caret), `generator/` holds `AtlasText` (the map, its places, its route and its stops, one line each) and `import/`
+   holds `places`, a declared format that reads a map and its places back. The limit is the parity itself: **an
+   importer cannot read a reference back.** A template may write one, but the importer derived from that template
+   refuses it ("writes something the node does not own and has nothing to read into"), and a declared rule fills
+   properties and children only - so `AtlasText` is write-only and `places` is the spelling that can be read, without
+   the entry and without the stops. Two smaller findings: a `TextGen.WhenFilled` is refused without an `otherwise`
+   template even when the empty case writes nothing (an empty template is the answer), and a reference part writes
+   `<none>` for an unset reference, so a conditional is what keeps that out of the text.
 5. **accessory + tests + `map.mps`** - the library nodes, one document, and the `tests/` folder with one assertion per
    kind.
 6. **the guard test and the documentation** - `TheFullSampleDeclaresEveryAspectTheFrameworkKnows`, the README, a row in

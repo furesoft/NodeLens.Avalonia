@@ -26,14 +26,16 @@ folder also proves that a language may be built on another language's concepts.
 | scopes | `scopes/` | three name sources: a map's entry is `local`, a stop's target comes from `ancestors`, a route names its map across the `project` |
 | intentions | `intentions/` | two offers: add the first stop to an empty route, delete the stop under the caret |
 | generator | `generator/` | `AtlasText`, the language as lines: the map with its places and its route, one stop per line |
+| import | `import/` | `places`, a declared format that reads a map and its places back |
 
-`import/` is **not** declared yet, and the reason is a gap rather than an omission: the declared importer fills
-properties, but not references (`Bind` only remembers text), and its `Repeat` did not match the child rules of a list
-slot in the attempt recorded in the plan. A format the generator writes is therefore not yet one the declared importer
-reads, and shipping half a parity would be worse than shipping none.
+`import/` reads a **different** spelling than the generator writes, and that is the interesting part: an importer
+cannot read a reference back. A generator's template may write one, but the importer derived from that template refuses
+it - "it has nothing to read into" - and a declared rule fills properties and children only. So `AtlasText` is
+write-only (`DeclaredAtlasTests` pins the refusal), and `places` is the declared format that can be read: a map line
+and one line per place, with no entry and no stops, because those are references.
 
-The remaining aspects - import, accessory and the framework's own tests - arrive one slice at a time; each one is
-added here and in the plan's aspect table.
+The remaining aspects - accessory and the framework's own tests - arrive one slice at a time; each one is added here
+and in the plan's aspect table.
 
 The three name sources are the three that mean something different here: `local` is the node's own children and
 siblings, `ancestors` is the children of each enclosing node, and `model` and `project` offer the **roots** of the
