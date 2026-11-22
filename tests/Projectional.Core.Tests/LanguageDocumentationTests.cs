@@ -244,6 +244,52 @@ public sealed class LanguageDocumentationTests
         Assert.DoesNotContain("implemented by", literal.Text, StringComparison.Ordinal);
     }
     [Fact]
+    public void AConceptPageNamesTheSlotsThatCanHoldIt()
+    {
+        var pages = LanguageDocumentation.Generate(CSharp());
+
+        // The reverse of the slot table: the slot that holds a member belongs to the class, so a reader on the concept
+        // that a change would break is told which concept refers to it.
+        var member = Assert.Single(pages, page => page.Path == "CSharp/concepts/CSharp.Member.html");
+
+        Assert.Contains("Held by", member.Text, StringComparison.Ordinal);
+        Assert.Contains("CSharp.Class.html", member.Text, StringComparison.Ordinal);
+        Assert.Contains("<code>members</code>", member.Text, StringComparison.Ordinal);
+
+        // A concept no slot names says so rather than showing an empty table.
+        var file = Assert.Single(pages, page => page.Path == "CSharp/concepts/CSharp.File.html");
+
+        Assert.Contains("No concept of this set declares a slot that can hold it.", file.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguagePageNamesTheNamingConventionOfEveryConcept()
+    {
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(CSharp()),
+            each => each.Path == "CSharp/index.html");
+
+        // The convention is a column of the concept list, because "how do names read here" is asked of the list: a rule
+        // shared by nine concepts is invisible in nine separate concept pages.
+        Assert.Contains("<th>Naming</th>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<code>PascalCase</code>", page.Text, StringComparison.Ordinal);
+
+        // And a concept that declares no rule says "any", which is the honest answer rather than an empty cell.
+        Assert.Contains("<span class=\"muted\">any</span>", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConceptPageNamesTheRuleBesideTheSlotItAppliesTo()
+    {
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(CSharp()),
+            each => each.Path == "CSharp/concepts/CSharp.Class.html");
+
+        // Beside the slot, not only in the facts above it: the rule is about that cell, and a reader scanning the table
+        // should not have to match it up with a sentence higher on the page.
+        Assert.Contains("<code>name</code> <span class=\"muted\">PascalCase</span>", page.Text, StringComparison.Ordinal);
+    }
+    [Fact]
     public void AConceptWithNoNotationOfItsOwnSaysSoInsteadOfDrawingNothing()
     {
         var language = Atlas();

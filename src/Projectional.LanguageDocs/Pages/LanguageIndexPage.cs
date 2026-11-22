@@ -132,10 +132,14 @@ internal static class LanguageIndexPage
                 Html.Link(DocumentationChain.Link(depth, language, $"concepts/{concept.Key}.html"), concept.Key),
                 Kind(concept),
                 concept.NameSlot?.Name is { } name ? $"<code>{Html.Escape(name)}</code>" : "<span class=\"muted\">none</span>",
+                concept.NameRule?.Requirement is { Length: > 0 } shape ? $"<code>{Html.Escape(shape)}</code>" : "<span class=\"muted\">any</span>",
                 Html.Escape(concept.Description ?? string.Empty),
             });
 
-        return Html.Table(["Concept", "Kind", "Named by", "Description"], rows, "Nothing inherits from this concept.");
+        // The naming convention is a column of its own rather than a sentence on the concept page, because the question
+        // "how do names read in this language" is asked of the list, not of one concept - and a convention shared by a
+        // dozen concepts is invisible in a dozen separate rows.
+        return Html.Table(["Concept", "Kind", "Named by", "Naming", "Description"], rows, "Nothing inherits from this concept.");
     }
 
     /// <summary>How a concept is declared, in the words the structure language uses.</summary>
