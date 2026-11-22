@@ -31,22 +31,38 @@ internal sealed record ModuleFacts(
     IReadOnlyList<string> Roots,
     IReadOnlyList<ModuleFact> Contents)
 {
+    /// <summary>The name of the language each aspect folder's documents are written in.</summary>
+    /// <remarks>
+    /// Spelled here rather than read from a package because an aspect is a folder and the language that reads it is
+    /// the shell's decision - the same table the shell's editors are registered from. The folders are not spelled
+    /// here: they come from <see cref="LanguageProject.AspectFolders"/>, so an aspect the framework gains is a row in
+    /// this dialog without a second list to keep in step, and a folder with no name here fails a test instead of
+    /// losing its row.
+    /// </remarks>
+    private static readonly Dictionary<string, string> AspectLanguageNames =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [LanguageProject.StructureFolder] = "Structure",
+            [LanguageProject.EditorFolder] = "Editor",
+            [LanguageProject.TypesFolder] = "Types",
+            [LanguageProject.ConstraintsFolder] = "Constraints",
+            [LanguageProject.ScopesFolder] = "Scopes",
+            [LanguageProject.TypingFolder] = "Typing",
+            [LanguageProject.AccessoryFolder] = "Accessory",
+            [LanguageProject.IntentionsFolder] = "Intentions",
+            [LanguageProject.ImportFolder] = "Import",
+            [LanguageProject.GeneratorFolder] = "Generator",
+        };
+
     /// <summary>The language each aspect folder's documents are written in, in the order the aspects are listed.</summary>
     /// <remarks>
-    /// The definition languages the workbench ships, one per aspect. Spelled here rather than read from a package
-    /// because an aspect is a folder and the language that reads it is the shell's decision - the same table the
-    /// shell's editors are registered from.
+    /// Every aspect the framework knows, including the two that were missing here for as long as they existed - a
+    /// module with typing rules and a library reported both as absent, which is the one answer a settings dialog must
+    /// not give. The tests folder is the last row and is not an aspect: it proves the language rather than declares it.
     /// </remarks>
     private static readonly (string Folder, string Language)[] AspectLanguages =
     [
-        (LanguageProject.StructureFolder, "Structure"),
-        (LanguageProject.EditorFolder, "Editor"),
-        (LanguageProject.TypesFolder, "Types"),
-        (LanguageProject.ConstraintsFolder, "Constraints"),
-        (LanguageProject.ScopesFolder, "Scopes"),
-        (LanguageProject.IntentionsFolder, "Intentions"),
-        (LanguageProject.ImportFolder, "Import"),
-        (LanguageProject.GeneratorFolder, "Generator"),
+        .. LanguageProject.AspectFolders.Select(folder => (Folder: folder, Language: AspectLanguageNames[folder])),
         (TestRunner.Folder, "Tests"),
     ];
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Projectional.Languages;
+using Projectional.Testing;
 using Projectional.Workbench;
 using Xunit;
 
@@ -17,10 +18,25 @@ public sealed class ModuleFactsTests
     {
         var facts = ModuleFacts.Of(Language());
 
-        // Nine aspects, because "no constraints" is a fact about the module and a row that is missing cannot say it.
-        Assert.Equal(9, facts.Aspects.Count);
-        Assert.Contains(facts.Aspects, aspect => aspect.Name == "scopes" && aspect.Documents == 0 && !aspect.IsPresent);
+        // One row per aspect the framework knows, whether or not this module has it: "no typing rules" is a fact about
+        // the module and a row that is missing cannot say it. The count comes from the one list, because a literal
+        // here is what let two aspects go unlisted.
+        Assert.Equal(LanguageProject.AspectFolders.Count + 1, facts.Aspects.Count);
+        Assert.Contains(facts.Aspects, aspect => aspect.Name == "typing" && aspect.Documents == 0 && !aspect.IsPresent);
+        Assert.Contains(facts.Aspects, aspect => aspect.Name == "accessory" && aspect.Documents == 0 && !aspect.IsPresent);
         Assert.Contains(facts.Aspects, aspect => aspect.Name == "structure" && aspect.Documents > 0 && aspect.IsPresent);
+    }
+
+    [Fact]
+    public void TheAspectRowsAreTheOneListOfAspectFolders()
+    {
+        // The dialog and the project explorer draw the same folders, so the rows are derived from the list rather
+        // than written a second time: everything but the tests folder, in its order.
+        var facts = ModuleFacts.Of(Language());
+
+        Assert.Equal(
+            [.. LanguageProject.AspectFolders, TestRunner.Folder],
+            facts.Aspects.Select(aspect => aspect.Name));
     }
 
     [Fact]
