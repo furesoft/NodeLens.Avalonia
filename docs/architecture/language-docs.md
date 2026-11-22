@@ -141,6 +141,14 @@ The generated text is the opposite case and is written out in full: a generator'
 page spells it - `map {name}[if entry: at ->entry]`, a list with the separator that joins it - because the shape of what
 a language emits is what a reader wants before trusting it with a model.
 
+**An importer is written out in full as well, both kinds.** A declared importer holds its rules as lowered objects - the
+concept, the anchor and the ordered parts - and the token classes those parts read, so the page prints them in the words
+the import language draws them with (`capture name from Text`, `repeat stages`, `token Space is skipped as whitespace`).
+A generator's inverse has no document at all, because what it reads *is* the generator's template, so the page spells
+that template the way the generators page does. Both pages also name the concepts a document may start with and the
+codes a refusal carries, because those are the rest of what decides whether a file is read. Naming the importer's CLR
+type - which is all the page said before - is a name for a class rather than for a format.
+
 ## What it contains
 
 | Page | Content |
@@ -157,7 +165,7 @@ a language emits is what a reader wants before trusting it with a model.
 | `<Language>/scopes.html` | the scope providers, beside the concept's own reference slots |
 | `<Language>/intentions.html` | whether a provider is registered, and why a page can say no more |
 | `<Language>/generators.html` | every generator *as the template it emits* |
-| `<Language>/importers.html` | the text formats the language can read |
+| `<Language>/importers.html` | per importer: the concepts a document may start with, then its rules - the anchor and the parts, in the words the import language draws - with the token classes they read, or, for a generator's inverse, the templates it reads the text back from - plus the codes a refusal carries |
 | `<Language>/accessory.html` | the documents that are models of the language itself |
 | `<Language>/examples.html` | every document the language ships, drawn by the headless renderer and coloured by the kinds the editor paints - so the page shows what the language *looks like* rather than describing it. Omitted for a language that ships none |
 | `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script - the header, the tree, the drawer and the responsive rules; and the filter, the drawer toggle and Enter. Both deterministic, both small enough to read |

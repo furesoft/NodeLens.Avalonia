@@ -12,6 +12,12 @@ namespace Projectional.ImportRules;
 /// One record for four classes for the reason <see cref="ImportPart"/> gives: the author writes a concept, and what
 /// the reader walks is one shape. The unused fields are empty rather than absent, which is what a declared class with
 /// three properties already is.
+/// <para>
+/// A <see cref="ImportTokenKind.Fixed"/> class reuses two of them, and the names are the ones a word or a quoted run
+/// gives them: <see cref="Extra"/> holds the mark the run opens with and <see cref="Quote"/> holds the mark it closes
+/// with, because a fixed run is a quoted run that resolves nothing. Lowering is where that mapping happens, so a reader
+/// of this record meets a name that does not describe the fixed case.
+/// </para>
 /// </remarks>
 public sealed record ImportToken(
     string Name,

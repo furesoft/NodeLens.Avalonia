@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 
 using Projectional.Core;
+using Projectional.ImportRules;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Structures;
@@ -355,17 +356,123 @@ internal static class AspectPages
         }
     }
 
+    /// <summary>Each importer, with what it actually reads: a rule per concept, or the templates it inverts.</summary>
+    /// <remarks>
+    /// A page that named the CLR type of each importer said nothing a reader could use - "TemplateImporter" is the name
+    /// of a class, not of a format. What decides whether a file is read is the rule that matches it, so that is what is
+    /// printed: for a declared importer the rules and token classes its model states, for a generator's inverse the
+    /// templates it reads back. Both come from the importer itself rather than from the documents, because the inverse
+    /// has no document - its rules are the generator's templates.
+    /// </remarks>
     private static string Importers(LanguageProject language)
     {
-        var rows = language.Importers
-            .Select(importer => new List<string>
+        var body = new StringBuilder();
+
+        foreach (var importer in language.Importers)
+        {
+            body.Append(CultureInfo.InvariantCulture, $"<h2><code>{Html.Escape(importer.Format)}</code></h2>\n");
+
+            switch (importer)
             {
-                $"<code>{Html.Escape(importer.Format)}</code>",
-                Html.Escape(importer.GetType().Name),
+                case DeclaredImporter declared:
+                    Declared(declared, body);
+                    break;
+
+                case TemplateImporter inverted:
+                    Inverted(inverted, body);
+                    break;
+
+                default:
+                    body.Append(Html.Paragraph(
+                        "This importer is supplied by the host, so this page can name it and not describe what it reads."));
+                    break;
+            }
+        }
+
+        return body.ToString();
+    }
+
+    /// <summary>A declared importer: the rules a model states and the token classes they read.</summary>
+    private static void Declared(DeclaredImporter importer, StringBuilder body)
+    {
+        body.Append(Html.MarkupParagraph(
+            "Reads the format from rules its model declares, rather than from a generator's templates, so it can read a"
+            + $" file the generator never prints. {Starts(importer.Roots)}"));
+
+        var rules = importer.Rules
+            .OrderBy(rule => rule.ConceptKey, StringComparer.Ordinal)
+            .Select(rule => new List<string>
+            {
+                Code(rule.ConceptKey),
+                $"<pre class=\"notation\">{Html.Escape(ImportSpelling.Of(rule))}</pre>",
             });
 
-        return Html.Table(["Format", "Importer"], rows, "The language imports no text.");
+        body.Append(Html.Table(["Concept", "Rule"], rules, "The importer declares no rule."));
+
+        var tokens = importer.Tokens
+            .OrderBy(token => token.Name, StringComparer.Ordinal)
+            .Select(token => new List<string>
+            {
+                Code(token.Name),
+                $"<code>{Html.Escape(ImportSpelling.Of(token))}</code>",
+            });
+
+        body.Append(Html.Table(
+            ["Token class", "What it reads"],
+            tokens,
+            "No token class is declared, so every run ends at the next literal."));
+
+        body.Append(Html.MarkupParagraph(
+            "Every choice is decided by the text at the cursor, so nothing is tried and undone: a rule is taken by the"
+            + " literal it starts with, and a repeat's separator has to be told apart from what one of its entries begins"
+            + " with - a rule where it cannot be is refused when the importer is built, not halfway through a file. A file"
+            + $" that does not match is refused with one of {Codes(DeclaredImporter.EndsEarly, DeclaredImporter.TrailingText, DeclaredImporter.UnexpectedText, DeclaredImporter.EmptyText, DeclaredImporter.TooFew)}, naming the place it stopped."));
     }
+
+    /// <summary>A generator's inverse: the templates it reads the text back from.</summary>
+    private static void Inverted(TemplateImporter importer, StringBuilder body)
+    {
+        var generator = importer.Generator;
+
+        body.Append(Html.MarkupParagraph(
+            $"Reads back what the {Code(generator.Name)} generator writes, so the file a document was generated into can"
+            + $" be opened again rather than being a one-way street. {Starts(importer.Roots)}"));
+
+        var rows = generator.Templates.Templates
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => new List<string>
+            {
+                Code(entry.Key),
+                entry.Value.IsEmpty
+                    ? "<span class=\"muted\">empty, so it writes nothing and nothing is read back</span>"
+                    : $"<pre class=\"notation\">{Html.Escape(TemplateSpelling.Of(entry.Value))}</pre>",
+            });
+
+        body.Append(Html.Table(
+            ["Concept", "The text it reads"],
+            rows,
+            "The generator has no template, so there is nothing to read back."));
+
+        body.Append(Html.MarkupParagraph(
+            "Nothing is tried and undone: a literal anchors the shape, a property is the run up to the template's next"
+            + " literal, a child is read by the template of the concept its slot allows, and a list repeats until its"
+            + " separator stops matching. A file whose text differs from what the generator writes is refused with one of"
+            + $" {Codes(TemplateImporter.EndsEarly, TemplateImporter.TrailingText, TemplateImporter.UnexpectedText, TemplateImporter.EmptyText)}, naming the place it stopped."));
+    }
+
+    /// <summary>The concepts a document may start with, as a sentence.</summary>
+    private static string Starts(IReadOnlyList<string> roots) => roots.Count switch
+    {
+        0 => "No concept is named as a document root, so it could not read a file at all.",
+        1 => $"A document starts with {Code(roots[0])}.",
+        _ => $"A document starts with {string.Join(", ", roots.Take(roots.Count - 1).Select(Code))} or {Code(roots[^1])}.",
+    };
+
+    /// <summary>The refusal codes, so a reader who sees one in the status line can find it here.</summary>
+    private static string Codes(params ReadOnlySpan<string> codes) =>
+        string.Join(", ", codes.ToArray().Select(Code));
+
+    private static string Code(string text) => $"<code>{Html.Escape(text)}</code>";
 
     /// <summary>The accessory documents, which are models of the language rather than of its syntax.</summary>
     private static string Accessory(LanguageProject language)

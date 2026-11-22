@@ -570,6 +570,38 @@ public sealed class LanguageDocumentationTests
     }
 
     [Fact]
+    public void TheImportersPageDocumentsWhatATemplateImporterReads()
+    {
+        // A generator's inverse is the importer with no document of its own: what it reads *is* the generator's
+        // template, so that is what the page has to print. Naming its CLR type was all it said before, which tells a
+        // reader nothing about whether their file will be read.
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Pipeline()),
+            each => each.Path == "Pipeline/importers.html");
+
+        Assert.Contains("<code>ShellScript</code>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("{stages... separated by", page.Text, StringComparison.Ordinal);
+        Assert.Contains("A document starts with <code>Pipeline.Pipeline</code>.", page.Text, StringComparison.Ordinal);
+        Assert.Contains("template.unexpected-text", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheImportersPageDocumentsTheRulesOfADeclaredImporter()
+    {
+        // The words are the notation's own - `line name`, `repeat stages`, `token Space is skipped as whitespace` - so
+        // a reader who opens `import/ini.mps` in the editor meets the same sentences there.
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Pipeline()),
+            each => each.Path == "Pipeline/importers.html");
+
+        Assert.Contains("&quot;pipeline = &quot;", page.Text, StringComparison.Ordinal);
+        Assert.Contains("line name", page.Text, StringComparison.Ordinal);
+        Assert.Contains("repeat stages", page.Text, StringComparison.Ordinal);
+        Assert.Contains("token Space is skipped as whitespace", page.Text, StringComparison.Ordinal);
+        Assert.Contains("import.too-few", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnExampleIsDrawnWithoutTheEditorsTypeAnnotations()
     {
         var page = Assert.Single(
@@ -633,6 +665,10 @@ public sealed class LanguageDocumentationTests
     private static LanguageProject Expressions() =>
         Assert.IsType<LanguageProject>(
             LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error) ?? Fail(error));
+
+    private static LanguageProject Pipeline() =>
+        Assert.IsType<LanguageProject>(
+            LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Declared"), out var error) ?? Fail(error));
 
     private static LanguageProject Units() =>
         Assert.IsType<LanguageProject>(

@@ -81,6 +81,14 @@ public sealed class TemplateImporter : ITextImporter
     /// <summary>The generator this importer reads back.</summary>
     public TextGenerator Generator { get; }
 
+    /// <summary>The concepts that may stand at the top of a document, in the order the text is tried against them.</summary>
+    /// <remarks>
+    /// Exposed because it is the one fact about an importer a host cannot derive: which document roots it accepts is
+    /// decided when it is built, from the generator's templates, and a file dialog or a documentation page that wants
+    /// to say "this reads a document starting with a pipeline" has nowhere else to ask.
+    /// </remarks>
+    public IReadOnlyList<string> Roots => _roots;
+
     /// <summary>Whether the text starts like one of the concepts that may be a document.</summary>
     /// <remarks>
     /// A cheap shape check, never a promise: it compares the text against the literal prefixes of the root templates.
