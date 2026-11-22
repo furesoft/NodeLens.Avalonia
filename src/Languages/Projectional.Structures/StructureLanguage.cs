@@ -86,6 +86,16 @@ public static class StructureLanguage
     /// </remarks>
     public const string VersionSlot = "version";
 
+    /// <summary>
+    /// One sentence saying what the language is for, which a host may show and an export carries.
+    /// </summary>
+    /// <remarks>
+    /// Free text, not a contract: nothing in the framework parses it and a language without one is as valid as one
+    /// with. The name and the version say <em>which</em> language this is; this says <em>what</em> it is for, which
+    /// is the question a reader of somebody else's folder asks first.
+    /// </remarks>
+    public const string DescriptionSlot = "description";
+
     /// <summary>The languages a language root says it builds on.</summary>
     public const string DependenciesSlot = "dependencies";
 
@@ -308,6 +318,11 @@ public static class StructureLanguage
                     VersionSlot,
                     PropertyType.String,
                     description: "The version the language declares for itself, as the author spells it.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    DescriptionSlot,
+                    PropertyType.String,
+                    description: "What the language is for, in one sentence.",
                     showDescriptionWhenFilled: true),
                 new ChildSlot(DependenciesSlot, StructureConceptKeys.Dependency, Cardinality.Many),
                 new ChildSlot(ExtendsSlot, StructureConceptKeys.Dependency, Cardinality.Many),

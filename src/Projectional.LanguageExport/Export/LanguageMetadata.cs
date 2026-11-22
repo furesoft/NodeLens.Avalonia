@@ -2,6 +2,7 @@ namespace Projectional.LanguageExport;
 
 /// <summary>What a language's root says about it, which an export states in the assembly's own metadata.</summary>
 /// <param name="Version">The version the author spelled, or <see langword="null"/> when the root names none.</param>
+/// <param name="Description">What the language is for, in the author's words, or <see langword="null"/> for none.</param>
 /// <param name="DependsOn">The languages it says it builds on, each written as <c>Name</c> or <c>Name 1.0.0</c>.</param>
 /// <param name="Extends">The languages whose behaviour it inherits, written the same way.</param>
 /// <remarks>
@@ -18,9 +19,10 @@ namespace Projectional.LanguageExport;
 /// </remarks>
 public sealed record LanguageMetadata(
     string? Version,
+    string? Description,
     IReadOnlyList<string> DependsOn,
     IReadOnlyList<string> Extends)
 {
     /// <summary>No version and nothing it stands on: the identity of a language whose root declares nothing.</summary>
-    public static LanguageMetadata Empty { get; } = new(null, [], []);
+    public static LanguageMetadata Empty { get; } = new(null, null, [], []);
 }

@@ -761,6 +761,7 @@ public sealed class StructureLoweringTests
         var root = LanguageRoot(
             name: "Pipeline",
             version: "1.2.0",
+            description: "A build pipeline, as the steps it runs.",
             dependencies: [("Expressions", "1.0.0"), ("Core", null)],
             extends: [("Base", null)]);
 
@@ -768,10 +769,21 @@ public sealed class StructureLoweringTests
 
         Assert.Equal("Pipeline", language.Name);
         Assert.Equal("1.2.0", language.Version);
+        Assert.Equal("A build pipeline, as the steps it runs.", language.Description);
         Assert.Equal(
             [new LanguageDependency("Expressions", "1.0.0"), new LanguageDependency("Core", null)],
             language.Dependencies);
         Assert.Equal([new LanguageDependency("Base", null)], language.Extends);
+    }
+
+    [Fact]
+    public void ALanguageRootWithoutADescriptionSaysNothingRatherThanAnEmptySentence()
+    {
+        // The distinction matters to a host that shows the sentence: "the author wrote nothing" and "the author wrote
+        // an empty line" are the same document, and neither is a description.
+        var root = LanguageRoot(description: "   ");
+
+        Assert.Null(StructureLowering.ReadLanguage(root).Description);
     }
 
     [Fact]
@@ -825,11 +837,16 @@ public sealed class StructureLoweringTests
     [Fact]
     public void TheLanguageRootIsDrawnAsAHeaderAndItsFacts()
     {
-        var root = LanguageRoot(name: "Pipeline", version: "1.2.0", dependencies: [("Core", null)]);
+        var root = LanguageRoot(
+            name: "Pipeline",
+            version: "1.2.0",
+            description: "A build pipeline, as the steps it runs.",
+            dependencies: [("Core", null)]);
 
         Assert.Equal(
             """
                 language Pipeline
+                  about: A build pipeline, as the steps it runs.
                   version: 1.2.0
                   depends on:
                     Core <any version>
@@ -843,6 +860,7 @@ public sealed class StructureLoweringTests
     private static Node LanguageRoot(
         string name = "Pipeline",
         string? version = null,
+        string? description = null,
         IReadOnlyList<(string Name, string? Version)>? dependencies = null,
         IReadOnlyList<(string Name, string? Version)>? extends = null)
     {
@@ -854,6 +872,11 @@ public sealed class StructureLoweringTests
         if (version is not null)
         {
             root.Set(StructureLanguage.VersionSlot, version);
+        }
+
+        if (description is not null)
+        {
+            root.Set(StructureLanguage.DescriptionSlot, description);
         }
 
         Add(StructureLanguage.DependenciesSlot, dependencies);

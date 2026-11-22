@@ -65,6 +65,19 @@ public sealed class ExampleProjectsTests
     }
 
     [Fact]
+    public void AnExampleCarriesWhatItsRootSaysItIsFor()
+    {
+        // The menu shows the sentence on hover, which is the one place a user decides whether this is the language
+        // they were looking for.
+        var catalogue = SampleCatalogue();
+
+        Assert.Equal("A build pipeline, as the steps it runs.", Example(catalogue, "Declared").Description);
+
+        // A root that writes no sentence leaves the menu with nothing to show, rather than an empty tooltip.
+        Assert.Null(Example(catalogue, "Units").Description);
+    }
+
+    [Fact]
     public void AnExampleWithoutARootIsNamedByItsFolder()
     {
         // The fallback, and the reason it exists: a folder is a language the moment it holds a `structure` folder, and

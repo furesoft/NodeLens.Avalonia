@@ -5,6 +5,7 @@
       <properties>
         <name>Pipeline</name>
         <version>1.0.0</version>
+        <description>A build pipeline, as the steps it runs.</description>
       </properties>
     </node>
   </nodes>

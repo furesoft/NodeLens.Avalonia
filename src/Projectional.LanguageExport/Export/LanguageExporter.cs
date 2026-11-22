@@ -34,6 +34,9 @@ public static class LanguageExporter
     /// <summary>The metadata key holding the version the root declares.</summary>
     public const string VersionKey = "Projectional.LanguageVersion";
 
+    /// <summary>The metadata key holding what the root says the language is for.</summary>
+    public const string DescriptionKey = "Projectional.LanguageDescription";
+
     /// <summary>The metadata key naming one language it builds on, repeated once per dependency.</summary>
     public const string DependsOnKey = "Projectional.DependsOn";
 
@@ -134,6 +137,7 @@ public static class LanguageExporter
     private static LanguageMetadata Metadata(LanguageProject language) =>
         new(
             language.Version,
+            language.Description,
             [.. language.Dependencies.Select(Dependency)],
             [.. language.Extends.Select(Dependency)]);
 
@@ -425,6 +429,11 @@ public static class LanguageExporter
     {
         MetadataAttribute(source, LanguageKey, name);
 
+        if (metadata.Description is { Length: > 0 } description)
+        {
+            MetadataAttribute(source, DescriptionKey, description);
+        }
+
         if (metadata.Version is { Length: > 0 } version)
         {
             MetadataAttribute(source, VersionKey, version);
@@ -616,6 +625,11 @@ public static class LanguageExporter
             lines.Add("| Key | Value |");
             lines.Add("| --- | --- |");
             lines.Add($"| `{LanguageKey}` | `{name}` |");
+
+            if (metadata.Description is { Length: > 0 } description)
+            {
+                lines.Add($"| `{DescriptionKey}` | {description} |");
+            }
 
             if (metadata.Version is { Length: > 0 } version)
             {

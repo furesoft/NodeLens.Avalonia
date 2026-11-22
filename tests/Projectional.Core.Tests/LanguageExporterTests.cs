@@ -55,6 +55,7 @@ public sealed class LanguageExporterTests
             using Projectional.Language;
 
             [assembly: System.Reflection.AssemblyMetadata("Projectional.Language", "Pipeline")]
+            [assembly: System.Reflection.AssemblyMetadata("Projectional.LanguageDescription", "A build pipeline, as the steps it runs.")]
             [assembly: System.Reflection.AssemblyMetadata("Projectional.LanguageVersion", "1.0.0")]
             [assembly: System.Reflection.AssemblyInformationalVersion("1.0.0")]
 
@@ -250,6 +251,7 @@ public sealed class LanguageExporterTests
         // are passed directly because this is the writer's test - the project overload is pinned by the file above.
         var metadata = new LanguageMetadata(
             "1.0.0",
+            "A build pipeline, as the steps it runs.",
             ["Units 1.0.0"],
             ["Units 1.0.0"]);
 
@@ -266,6 +268,10 @@ public sealed class LanguageExporterTests
             StringComparison.Ordinal);
         Assert.Contains(
             $"""[assembly: System.Reflection.AssemblyMetadata("{LanguageExporter.VersionKey}", "1.0.0")]""",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"""[assembly: System.Reflection.AssemblyMetadata("{LanguageExporter.DescriptionKey}", "A build pipeline, as the steps it runs.")]""",
             source,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -296,6 +302,9 @@ public sealed class LanguageExporterTests
 
         Assert.Equal("Pipeline", metadata[LanguageExporter.LanguageKey]);
         Assert.Equal("1.0.0", metadata[LanguageExporter.VersionKey]);
+
+        // The sentence the root holds travels too: a package can say what it is for, not only what it is called.
+        Assert.Equal("A build pipeline, as the steps it runs.", metadata[LanguageExporter.DescriptionKey]);
         Assert.Equal(
             "1.0.0",
             assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion);
