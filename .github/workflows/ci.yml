@@ -92,8 +92,8 @@ jobs:
           count=$(find artifacts -maxdepth 1 -name '*.nupkg' | wc -l)
           echo "artifacts/ holds $count package(s):"
           find artifacts -maxdepth 1 -name '*.nupkg' -printf '  %f\n' | sort
-          # 34 projects are packable today; a drop means one silently stopped being packed.
-          test "$count" -eq 34
+          # 35 projects are packable today; a drop means one silently stopped being packed.
+          test "$count" -eq 35
 
       - name: Upload the packages
         uses: actions/upload-artifact@v4
@@ -198,3 +198,54 @@ jobs:
       - name: Smoke-run the bundle
         shell: bash
         run: ./publish/${{ matrix.exe }} --self-check
+
+  docs:
+    name: documentation site
+    runs-on: ubuntu-latest
+    # Publishing pages needs the token that uploads them; the checkout still only reads.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # One deployment at a time, and a queued run must not cancel the one that is publishing.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up the SDK the repository pins
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # The documented languages are the shell's own: C# is shipped with it, and the examples are the folders a build
+      # copies beside the executable. Building the shell first is therefore what makes the site complete.
+      - name: Build the shell whose languages are documented
+        run: dotnet build src/Projectional.Workbench --configuration Release
+
+      # The generator runs before Avalonia starts, so it needs no display and can run here. It exits non-zero when an
+      # example did not open, which is the point: a site that silently lost a language is worse than a failed job.
+      - name: Generate the site
+        shell: bash
+        run: |
+          dotnet run --project src/Projectional.Workbench --configuration Release --no-build -- --docs _site
+          test -f _site/index.html
+          echo "_site holds $(find _site -type f | wc -l) file(s)"
+
+      # A pull request builds the site - that is the check that the generator still works - and only main publishes it.
+      - name: Upload the pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        id: deployment
+        uses: actions/deploy-pages@v4
