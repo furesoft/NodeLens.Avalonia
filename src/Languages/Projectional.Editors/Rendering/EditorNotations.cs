@@ -42,8 +42,9 @@ public static class EditorNotations
                 ed.Keyword("variant:"),
                 ed.Space,
                 ed.Property("variant")),
-            ed.Line(ed.Keyword("node cell layout:")),
-            ed.Indent(ed.Sequence(ed.Line(ed.ChildInline(EditorLanguage.RootSlot, "<no layout>"))))));
+            ed.Indent(ed.Indent(ed.Sequence(
+                ed.Line(ed.Keyword("node cell layout:")),
+                ed.Line(ed.ChildInline(EditorLanguage.RootSlot, "<no layout>")))))));
 
         notations.Add(EditorConceptKeys.Cell, ed => ed.Line(ed.Keyword("cell")));
         notations.Add(EditorConceptKeys.InlineCell, ed => ed.Line(ed.Keyword("inline cell")));

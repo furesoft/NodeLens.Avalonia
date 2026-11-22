@@ -226,7 +226,7 @@ public sealed class StructureLoweringTests
         var notations = StructureNotations.Create();
 
         Assert.Equal(
-            string.Join('\n', "  enum Rules.Outcome", "    accept"),
+            string.Join('\n', "  enum Rules.Outcome", "      accept"),
             LayoutSnapshot.Render(outcome, notations, width: 120));
 
         Assert.Equal(
@@ -234,25 +234,25 @@ public sealed class StructureLoweringTests
                 '\n',
                 "  concept Rules.Rule",
                 string.Empty,
-                "      instance can be root: true",
-                "      alias: <no alias>",
-                "      short description: <no short description>",
-                "      offered in completion: true",
-                "      named by:",
-                "      collapsed by:",
-                "      named by rule:",
+                  "      instance can be root: true",
+                  "      alias: <no alias>",
+                  "      short description: <no short description>",
+                  "      offered in completion: true",
+                  "      named by:",
+                  "      collapsed by:",
+                  "      named by rule:",
                 string.Empty,
-                "      properties:",
-                "        name : string",
-                "          default:",
-                "          described as:",
-                "          described when filled: false",
+                  "      properties:",
+                  "        name : string",
+                  "          default:",
+                  "          described as:",
+                  "          described when filled: false",
                 string.Empty,
-                "      children:",
-                "        << ... >>",
+                  "      children:",
+                  "        << ... >>",
                 string.Empty,
-                "      references:",
-                "        << ... >>"),
+                  "      references:",
+                  "        << ... >>"),
             LayoutSnapshot.Render(rule, notations, width: 120));
     }
 
@@ -477,7 +477,7 @@ public sealed class StructureLoweringTests
         var outcome = definition.Enumeration("Rules.Outcome", "accept", "review");
 
         Assert.Equal(
-            string.Join('\n', "  enum Rules.Outcome", "    accept", "    review"),
+            string.Join('\n', "  enum Rules.Outcome", "      accept", "      review"),
             LayoutSnapshot.Render(outcome, StructureNotations.Create(), width: 120));
     }
 
@@ -846,12 +846,12 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             """
               language Pipeline
-                about: A build pipeline, as the steps it runs.
-                version: 1.2.0
-                depends on:
-                  Core <any version>
-                extends:
-                  << ... >>
+                  about: A build pipeline, as the steps it runs.
+                  version: 1.2.0
+                  depends on:
+                    Core <any version>
+                  extends:
+                    << ... >>
             """,
             LayoutSnapshot.Render(root, StructureNotations.Create(), width: 120));
     }

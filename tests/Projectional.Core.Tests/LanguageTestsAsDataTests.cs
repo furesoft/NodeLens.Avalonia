@@ -109,7 +109,7 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test pipeline.mps
-              round trips
+                round trips
             """,
             LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
     }
@@ -132,8 +132,8 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test pipeline.mps
-              reports
-                << which code >> error << anywhere >>
+                reports
+                  << which code >> error << anywhere >>
             """,
             LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
     }
@@ -425,8 +425,8 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test pipeline.mps
-              generates ShellScript
-                # Release
+                generates ShellScript
+                  # Release
             """,
             LayoutSnapshot.Render(generated, TestingNotations.Registry, width: 80));
 
@@ -446,8 +446,8 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test release.mps
-              evaluates amount=1500
-                answers Release
+                evaluates amount=1500
+                  answers Release
             """,
             LayoutSnapshot.Render(evaluated, TestingNotations.Registry, width: 80));
     }
@@ -645,11 +645,11 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test pipeline.mps
-              script 60 columns
-                caret at Release
-                type Pre
-              then draws
-                pipeline PreRelease
+                script 60 columns
+                  caret at Release
+                  type Pre
+                then draws
+                  pipeline PreRelease
             """,
             LayoutSnapshot.Render(model, TestingNotations.Registry, width: 80));
     }
@@ -827,7 +827,7 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test release.mps
-              the node at build has type string
+                the node at build has type string
             """,
             LayoutSnapshot.Render(typed, TestingNotations.Registry, width: 80));
 
@@ -845,8 +845,8 @@ public sealed class LanguageTestsAsDataTests
         Assert.Equal(
             """
             test release.mps
-              the node at build sees into onFailure
-                Release
+                the node at build sees into onFailure
+                  Release
             """,
             LayoutSnapshot.Render(scoped, TestingNotations.Registry, width: 80));
     }

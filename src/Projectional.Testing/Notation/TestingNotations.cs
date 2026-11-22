@@ -59,7 +59,7 @@ public static class TestingNotations
                 ed.Keyword("test", TextEmphasis.Bold),
                 ed.Space,
                 ed.Property(TestingLanguage.DocumentSlot)),
-            ed.Indent(ed.Children(TestingLanguage.AssertionSlot, NoAssertion, stacked: true))));
+            ed.Indent(ed.Indent(ed.Children(TestingLanguage.AssertionSlot, NoAssertion, stacked: true)))));
 
         notations.Add(TestingConceptKeys.RoundTrips, ed => ed.Line(
             ed.Keyword("round trips")));

@@ -42,7 +42,7 @@ public static class TextGenNotations
                 ed.Keyword("generate", TextEmphasis.Bold),
                 ed.Space,
                 ed.Property(TextGenLanguage.NameSlot)),
-            ed.Indent(ed.Children(TextGenLanguage.MappingsSlot, NoEntries, stacked: true))));
+            ed.Indent(ed.Indent(ed.Children(TextGenLanguage.MappingsSlot, NoEntries, stacked: true)))));
 
         notations.Add(TextGenConceptKeys.Mapping, ed => ed.Sequence(
             ed.Line(
