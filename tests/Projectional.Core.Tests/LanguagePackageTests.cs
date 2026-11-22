@@ -44,6 +44,21 @@ public sealed class LanguagePackageTests
     }
 
     [Fact]
+    public void TheCombinedArchiveHoldsOneAssembly()
+    {
+        var result = LanguageExporter.Export(
+            Invoice(),
+            "Sample.Invoice",
+            ExportOutput.Assembly,
+            AssemblyLayout.Combined);
+
+        var zip = LanguagePackage.Zip(result, PackageContent.Assemblies);
+
+        Assert.Equal(["InvoiceLanguage-1.0.0.dll"], Names(zip));
+        Assert.Equal(result.Assemblies[0].Bytes, Bytes(zip, "InvoiceLanguage-1.0.0.dll"));
+    }
+
+    [Fact]
     public void TheSameExportIsTheSameArchive()
     {
         // The export promises that the same language twice is the same bytes; an archive carrying the clock would

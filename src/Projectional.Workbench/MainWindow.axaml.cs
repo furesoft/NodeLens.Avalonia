@@ -488,8 +488,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
         // Two commands rather than one with a question, because the answer is what the menu entry already says: the
         // sources and the assemblies are handed to different people, and the archive holds one or the other.
-        AddCommand("package-sources", "Package Sources", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Sources));
-        AddCommand("package-assemblies", "Package Assemblies", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Assemblies));
+        AddCommand("package-sources", "Package Sources", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Sources, AssemblyLayout.PerLanguage));
+        AddCommand("package-assemblies", "Package Assemblies", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Assemblies, AssemblyLayout.PerLanguage));
+        AddCommand("package-combined", "Package One Assembly", ShellCapability.Export, async target => await PackageLanguageAsync((LanguageProject)target!, PackageContent.Assemblies, AssemblyLayout.Combined));
         AddAsync("save", "Save", ShellCapability.Save, SaveActiveAsync);
         AddAsync("save-as", "Save As", ShellCapability.Save, SaveActiveAsAsync);
         AddAsync("save-generated", "Save Generated Text", ShellCapability.Save, SaveGeneratedTextAsync);
@@ -2725,12 +2726,17 @@ public sealed partial class MainWindow : Window, IDisposable
                     new()
                     {
                         Header = "Sources (.zip)",
-                        Command = new PackageLanguageCommand(this, language, PackageContent.Sources),
+                        Command = new PackageLanguageCommand(this, language, PackageContent.Sources, AssemblyLayout.PerLanguage),
                     },
                     new()
                     {
-                        Header = "Assemblies (.zip)",
-                        Command = new PackageLanguageCommand(this, language, PackageContent.Assemblies),
+                        Header = "Assemblies, one per language (.zip)",
+                        Command = new PackageLanguageCommand(this, language, PackageContent.Assemblies, AssemblyLayout.PerLanguage),
+                    },
+                    new()
+                    {
+                        Header = "Assemblies, one for all (.zip)",
+                        Command = new PackageLanguageCommand(this, language, PackageContent.Assemblies, AssemblyLayout.Combined),
                     },
                 },
             })
@@ -2863,7 +2869,7 @@ public sealed partial class MainWindow : Window, IDisposable
     /// the dependent's file would be the one archive that cannot be handed on. The command is one per content rather
     /// than one that asks, because the menu entry already says which - and the two are for different people.
     /// </remarks>
-    private async Task PackageLanguageAsync(LanguageProject language, PackageContent content)
+    private async Task PackageLanguageAsync(LanguageProject language, PackageContent content, AssemblyLayout layout)
     {
         _error = null;
 
@@ -2871,9 +2877,13 @@ public sealed partial class MainWindow : Window, IDisposable
         var named = name + LanguageExporter.VersionSuffix(language.Version);
         var assemblies = content == PackageContent.Assemblies;
 
+        var suffix = !assemblies
+            ? "sources"
+            : layout == AssemblyLayout.Combined ? "combined" : "assemblies";
+
         var path = await _dialogs.ChooseFileToSaveAsync(
             assemblies ? $"Package the assemblies of {language.Name}" : $"Package the sources of {language.Name}",
-            assemblies ? $"{named}-assemblies.zip" : $"{named}-sources.zip",
+            $"{named}-{suffix}.zip",
             new ShellFileType("Zip archive", ["*.zip"]));
 
         if (path is null)
@@ -2886,7 +2896,8 @@ public sealed partial class MainWindow : Window, IDisposable
             var result = LanguageExporter.Export(
                 language,
                 name,
-                assemblies ? ExportOutput.Assembly : ExportOutput.Source);
+                assemblies ? ExportOutput.Assembly : ExportOutput.Source,
+                layout);
 
             File.WriteAllBytes(path, LanguagePackage.Zip(result, content));
 
@@ -2908,12 +2919,14 @@ public sealed partial class MainWindow : Window, IDisposable
         private readonly MainWindow _window;
         private readonly LanguageProject _language;
         private readonly PackageContent _content;
+        private readonly AssemblyLayout _layout;
 
-        internal PackageLanguageCommand(MainWindow window, LanguageProject language, PackageContent content)
+        internal PackageLanguageCommand(MainWindow window, LanguageProject language, PackageContent content, AssemblyLayout layout)
         {
             _window = window;
             _language = language;
             _content = content;
+            _layout = layout;
         }
 
         public event EventHandler? CanExecuteChanged
@@ -2925,7 +2938,9 @@ public sealed partial class MainWindow : Window, IDisposable
         public bool CanExecute(object? parameter) => true;
 
         public void Execute(object? parameter) => _window.RunCommand(
-            _content == PackageContent.Assemblies ? "package-assemblies" : "package-sources",
+            _content == PackageContent.Sources
+                ? "package-sources"
+                : _layout == AssemblyLayout.Combined ? "package-combined" : "package-assemblies",
             _language);
     }
 

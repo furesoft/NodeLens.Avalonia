@@ -32,11 +32,23 @@ internal static class AssemblyCompiler
     /// <param name="assemblyName">The assembly's simple name; the emitted file is <c>{assemblyName}.dll</c>.</param>
     /// <param name="source">The generated C#, exactly as the export wrote it.</param>
     /// <exception cref="ExportCompilationException">The source does not compile.</exception>
-    public static GeneratedAssembly Compile(string assemblyName, string source)
+    public static GeneratedAssembly Compile(string assemblyName, string source) => Compile(assemblyName, [source]);
+
+    /// <summary>Compiles several generated files into one assembly.</summary>
+    /// <param name="assemblyName">The assembly's simple name; the emitted file is <c>{assemblyName}.dll</c>.</param>
+    /// <param name="sources">The generated C# files, one per language, exactly as the export wrote them.</param>
+    /// <remarks>
+    /// The trees are compiled together rather than concatenated: each file is a unit with its own using directives and
+    /// its own namespace, so joining the text would put one file's usings after another file's class.
+    /// </remarks>
+    /// <exception cref="ExportCompilationException">The sources do not compile.</exception>
+    public static GeneratedAssembly Compile(string assemblyName, IReadOnlyList<string> sources)
     {
+        ArgumentNullException.ThrowIfNull(sources);
+
         var compilation = CSharpCompilation.Create(
             assemblyName,
-            [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest))],
+            [.. sources.Select(source => CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest)))],
             References.Value,
             new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,

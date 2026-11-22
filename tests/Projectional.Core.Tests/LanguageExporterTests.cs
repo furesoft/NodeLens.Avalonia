@@ -284,6 +284,36 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
+    public void TheWholeChainCanBeOneAssembly()
+    {
+        // The other layout a caller chooses: one binary holding every language of the export, named after the language
+        // that was exported. The files stay one per language - what changes is only what is compiled.
+        var result = LanguageExporter.Export(
+            Invoice(),
+            "Sample.Invoice",
+            ExportOutput.Assembly,
+            AssemblyLayout.Combined);
+
+        Assert.Equal(["UnitsLanguage-1.0.0.cs", "InvoiceLanguage-1.0.0.cs", "README.md"], result.Files.Select(file => file.Name));
+
+        var assembly = Assert.Single(result.Assemblies);
+
+        Assert.Equal("InvoiceLanguage-1.0.0.dll", assembly.Name);
+
+        var loaded = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(assembly.Bytes));
+
+        // Both halves are in the one binary, which is the claim a combined layout makes.
+        Assert.NotNull(loaded.GetType("Units.UnitsLanguage", throwOnError: false));
+        Assert.NotNull(loaded.GetType("Sample.Invoice.InvoiceLanguage", throwOnError: false));
+
+        // One assembly holds one informational version, and it is the exported language's: a dependency keeps its own
+        // version as metadata instead - the compile would have refused a second attribute.
+        Assert.Equal(
+            "1.0.0",
+            loaded.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion);
+    }
+
+    [Fact]
     public void ALanguageThatStandsOnNothingIsOnePackage()
     {
         // The other side of the same rule: no dependency means no second file, and the archive the shell packs holds

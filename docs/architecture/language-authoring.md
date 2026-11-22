@@ -444,6 +444,15 @@ What export guarantees, and what it refuses to hide:
   folder of a user's to write. **File ▸ Package…** turns that answer into one zip - the sources, or the assemblies -
   so a language is handed on as a single file. The archive is reproducible: entries in export order and a fixed
   timestamp, the same rule the generated files follow.
+- **Two assembly layouts, chosen at export.** `AssemblyLayout.PerLanguage` compiles one binary per language of the
+  chain - the shape a package family ships in, where a consumer takes only the base it needs - and
+  `AssemblyLayout.Combined` compiles the same sources into one assembly named after the exported language, the shape a
+  host that embeds the whole family references. The sources are one file per language either way; the compiler takes
+  syntax trees rather than concatenated text, because each file carries its own using directives and namespace. In the
+  combined layout the assembly's informational version is the exported language's and each dependency keeps its own
+  name and version as `AssemblyMetadata`, because one assembly can hold only one informational version. **File ▸
+  Package…** offers both (`Assemblies, one per language` and `Assemblies, one for all`); two languages whose classes
+  answer the same name are a compile error, which is the honest answer - one assembly cannot hold both.
 - Export is one-way by design: the declared model stays the source of truth
   ([ADR 0002](../adr/0002-model-as-source-of-truth.md)) and re-export overwrites the generated
   files. Editing generated code and re-exporting loses the edit, which is stated in the header of
