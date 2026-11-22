@@ -98,7 +98,12 @@ public static class EvaluationRuleLowering
         {
             var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
 
-            return context => context.Variable(context.Node.GetOrNull(slot) ?? string.Empty);
+            // The name is read from a property of the node, so a node without that property is a rule written against the
+            // wrong concept - a sentence rather than the framework's KeyNotFoundException, which names a slot the rule
+            // author never typed in this document.
+            return context => context.Node.Concept.FindProperty(slot) is null
+                ? throw context.Error($"'{slot}' is not a property of {context.Node.Concept.Key}, so this rule cannot say which name it reads.")
+                : context.Variable(context.Node.GetOrNull(slot) ?? string.Empty);
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Constant))

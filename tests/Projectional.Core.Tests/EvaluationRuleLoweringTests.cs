@@ -86,9 +86,10 @@ public sealed class EvaluationRuleLoweringTests
         model.NewChild(node, "left", ExpressionsConceptKeys.IntLiteral).Set("value", 2);
         model.NewChild(node, "right", ExpressionsConceptKeys.IntLiteral).Set("value", 3);
 
-        // The node's children are the operands of both bodies, because a body reads the node it is about: the product is
-        // `left * right` of the same node, and the addition adds 1 to it.
-        Assert.Equal(new IntValue(7), Evaluate(rules.Lower(), model, node));
+        // Both bodies read the node's own symbol, which is `+`: the inner one adds the two children (5) and the outer one
+        // adds a constant the node does not hold at all (6). The point is the right operand is a body - a constant here,
+        // an operator or a `first` elsewhere - which a vocabulary of slot names could not say.
+        Assert.Equal(new IntValue(6), Evaluate(rules.Lower(), model, node));
     }
 
     [Fact]
@@ -127,39 +128,57 @@ public sealed class EvaluationRuleLoweringTests
     [Fact]
     public void ADeclaredBindBindsANameForTheRestOfTheRule()
     {
-        // bind total to (property value) then answer (variable total) * 2
+        // On a `Name` node, whose `name` property holds the text `total`: bind total to 21, then answer with the variable
+        // the property names. Without the binding the node would have nothing to read, which is what the test that follows
+        // covers.
         var rules = new Rules();
-        var rule = rules.Rule(ExpressionsConceptKeys.IntLiteral);
+        var rule = rules.Rule(ExpressionsConceptKeys.Name);
 
         var bind = Body(rule, EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Bind);
         bind.Set(EvaluationRuleLanguage.NameSlot, "total");
 
-        Property(bind, "value", EvaluationRuleLanguage.ValueSlot);
+        Constant(bind, "int", "21", EvaluationRuleLanguage.ValueSlot);
+        Variable(bind, "name", EvaluationRuleLanguage.BodySlot);
 
-        Variable(bind, "total", EvaluationRuleLanguage.BodySlot);
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var node = model.NewNode(ExpressionsConceptKeys.Name);
+        node.Set("name", "total");
 
-        var (model, node) = Literal(21);
-
-        // The answer reads the bound name, and the node carries no such property: the binding is what makes it a value.
         Assert.Equal(new IntValue(21), Evaluate(rules.Lower(), model, node));
+    }
+
+    [Fact]
+    public void AVariableWhoseNamePropertyTheNodeDoesNotHaveIsRefused()
+    {
+        // A rule written against the wrong concept: the node has no `slot` property for the rule to read a name from, and
+        // the refusal names that rather than the framework's KeyNotFoundException.
+        var rules = new Rules();
+        var rule = rules.Rule(ExpressionsConceptKeys.IntLiteral);
+        Variable(rule, "total");
+
+        var (model, literal) = Literal(42);
+        var failure = new Interpreter(rules.Lower()).Run(literal, cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("is not a property of", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ADeclaredFirstAnswersWithTheEntryThatApplied()
     {
-        var (rules, _) = FirstRules();
+        var (fixture, _) = FirstRules();
 
-        Assert.Equal(new IntValue(2), Evaluate(rules, Block(entries: [(false, 1), (true, 2)])));
+        Assert.Equal(new IntValue(2), Evaluate(fixture.Lower(), Block(entries: [(false, 1), (true, 2)])));
     }
 
     [Fact]
     public void ADeclaredFirstRefusesWhenNoEntryApplies()
     {
-        var (rules, _) = FirstRules();
+        var (fixture, _) = FirstRules();
 
         // A rule that says nothing about the empty case is a refusal rather than a default: a value nobody stated would be
         // a value the author never wrote.
-        var failure = new Interpreter(rules).Run(Block(entries: [(false, 1)]), cancellationToken: TestContext.Current.CancellationToken).Failure;
+        var failure = new Interpreter(fixture.Lower()).Run(Block(entries: [(false, 1)]), cancellationToken: TestContext.Current.CancellationToken).Failure;
 
         Assert.NotNull(failure);
         Assert.Contains("no entry", failure.Message, StringComparison.Ordinal);
@@ -168,10 +187,10 @@ public sealed class EvaluationRuleLoweringTests
     [Fact]
     public void ADeclaredFirstAnswersWithItsOtherwiseBodyWhenNoEntryApplies()
     {
-        var (rules, first) = FirstRules();
+        var (fixture, first) = FirstRules();
         Constant(first, "int", "0", EvaluationRuleLanguage.OtherwiseSlot);
 
-        Assert.Equal(new IntValue(0), Evaluate(rules, Block(entries: [(false, 1)])));
+        Assert.Equal(new IntValue(0), Evaluate(fixture.Lower(), Block(entries: [(false, 1)])));
     }
 
     [Fact]
@@ -240,7 +259,7 @@ public sealed class EvaluationRuleLoweringTests
     }
 
     /// <summary>The three rules a first body needs: a literal's value, a flag's value, and the block that walks entries.</summary>
-    private static (EvaluationRegistry Rules, Node First) FirstRules()
+    private static (Rules Rules, Node First) FirstRules()
     {
         var rules = new Rules(FirstLanguage.Concepts);
 
@@ -252,7 +271,7 @@ public sealed class EvaluationRuleLoweringTests
         Property(first, FirstLanguage.EnabledSlot, EvaluationRuleLanguage.WhenSlot);
         Property(first, FirstLanguage.OutcomeSlot, EvaluationRuleLanguage.ThenSlot);
 
-        return (rules.Lower(), first);
+        return (rules, first);
     }
 
     /// <summary>A block whose entries each carry an enabled flag and an outcome, which is the shape a first body walks.</summary>
