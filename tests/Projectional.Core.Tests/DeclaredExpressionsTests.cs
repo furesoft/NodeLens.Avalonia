@@ -207,7 +207,7 @@ public sealed class DeclaredExpressionsTests
         // folder a language with a name rather than a directory.
         var language = Language;
 
-        Assert.Equal("Expressions", language.Name);
+        Assert.Equal("DeclaredExpressions", language.Name);
         Assert.Equal("1.0.0", language.Version);
     }
 
