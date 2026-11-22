@@ -36,8 +36,10 @@ it - "it has nothing to read into" - and a declared rule fills properties and ch
 write-only (`DeclaredAtlasTests` pins the refusal), and `places` is the declared format that can be read: a map line
 and one line per place, with no entry and no stops, because those are references.
 
-Every aspect the framework knows is now declared here except the guard that keeps it that way, which arrives with the
-last slice and with this file.
+That is every aspect the framework knows, and `DeclaredAtlasTests.TheFullSampleDeclaresEveryAspectTheFrameworkKnows`
+keeps it that way: it reads `LanguageProject.AspectFolders` - the one list the explorer and the shell open - and refuses
+the folder if an aspect is missing, if a folder exists that the list does not name, or if an aspect lowered into
+nothing. So a new aspect in the framework is a red test here until this folder carries it.
 
 The three name sources are the three that mean something different here: `local` is the node's own children and
 siblings, `ancestors` is the children of each enclosing node, and `model` and `project` offer the **roots** of the

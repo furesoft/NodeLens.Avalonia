@@ -57,31 +57,28 @@ an aspect no shell could open (`typing/`). The rule is a test rather than a habi
 [Fact]
 public void TheFullSampleDeclaresEveryAspectTheFrameworkKnows()
 {
-    var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Atlas"), out var error);
+    var language = Language();                                  // opened with the base it stands on
+    var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
 
-    Assert.Null(error);
-    Assert.NotNull(language);
+    // The one list, so an aspect added to `AspectFolders` is an aspect this sample must carry.
+    Assert.DoesNotContain(LanguageProject.AspectFolders, aspect => !Directory.Exists(Path.Combine(folder, aspect)));
 
-    // The one list, so a folder added to LanguageProject.AspectFolders is a folder this test demands the sample holds.
-    var missing = LanguageProject.AspectFolders
-        .Where(folder => !Directory.Exists(Path.Combine(language.Directory, folder)))
-        .ToList();
+    // And the other direction: a folder the framework does not name is a folder nothing opens.
+    Assert.DoesNotContain(
+        Directory.EnumerateDirectories(folder).Select(Path.GetFileName),
+        aspect => aspect != TestRunner.Folder && !LanguageProject.AspectFolders.Contains(aspect!, StringComparer.Ordinal));
 
-    Assert.Empty(missing);
-
-    // And each aspect is not merely a folder: it lowered into something the language uses.
-    Assert.True(language.HasNotation);
-    Assert.True(language.HasTypes);
-    Assert.True(language.HasTyping);
-    Assert.True(language.HasConstraints);
-    Assert.True(language.HasScopes);
-    Assert.True(language.HasIntentions);
-    Assert.True(language.HasGenerators);
-    Assert.True(language.HasDeclaredImporters);
+    // A folder is not an aspect: each one has to have lowered into something the language uses.
+    Assert.True(language.HasNotation && language.HasTypes && language.HasTyping && language.HasConstraints);
+    Assert.True(language.HasScopes && language.HasIntentions && language.HasGenerators && language.HasDeclaredImporters);
     Assert.NotEmpty(language.Accessory);
-    Assert.Equal(2, language.Dependencies.Count);   // nothing, and Units
-}
-```
+
+    // The tests folder is beside the aspects rather than in that list, and it is an aspect all the same.
+    Assert.True(TestRunner.Run(language).Succeeded);
+
+    // And the root states the one language this one was built on.
+    Assert.Equal(["Units"], language.Dependencies.Select(dependency => dependency.Name));
+}```
 
 The first half is what makes the rule self-enforcing: `LanguageProject.AspectFolders` is the list the explorer draws
 and the shell opens, so an aspect added there turns this test red until the sample carries it. The second half is the
@@ -128,8 +125,13 @@ the sample is incomplete by design.
    `.mps` of every aspect with the shell's language, and an accessory document is written *in* the language being
    defined, so it opens with that language and never with the shell - the same reason the shell's list of definition
    kinds leaves the accessory out.
-6. **the guard test and the documentation** - `TheFullSampleDeclaresEveryAspectTheFrameworkKnows`, the README, a row in
-   `implemented.md`, and the sample added to `File > Open examples` by the build's copy rule.
+6. **the guard test and the documentation** - **delivered**: `TheFullSampleDeclaresEveryAspectTheFrameworkKnows` reads
+   `LanguageProject.AspectFolders` in both directions (no aspect without a folder, no folder the list does not name),
+   asserts that every aspect lowered into something the language uses rather than merely existing as a directory, runs
+   the sample's own tests, and states the one language it is built on. The README, this document and a row in
+   `implemented.md` were finished with it, and the build's copy rule is what puts the folder behind **File ▸ Open
+   examples**. It was proved by deleting `accessory/`: the guard goes red, together with the two tests that use the
+   library.
 
 Slices 2 to 6 are open. Until the last one lands the sample is incomplete on purpose, which is why the guard test
 arrives with it rather than now: a guard that had to be told which aspects are still missing would be a second list to

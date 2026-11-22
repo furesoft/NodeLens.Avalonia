@@ -353,6 +353,43 @@ public sealed class DeclaredAtlasTests
     }
 
     [Fact]
+    public void TheFullSampleDeclaresEveryAspectTheFrameworkKnows()
+    {
+        // The rule the plan in docs/architecture/full-sample.md states and this test enforces: an aspect added to the
+        // framework has to arrive here, or the sample stops being the folder that shows everything.
+        var language = Language();
+        var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
+
+        // The one list, so an aspect added to `AspectFolders` is an aspect this sample must carry.
+        Assert.DoesNotContain(LanguageProject.AspectFolders, aspect => !Directory.Exists(Path.Combine(folder, aspect)));
+
+        // And the other direction: a folder the sample ships that the framework does not name is a folder nothing
+        // opens, which is how `tests` would be forgotten if it were not named below.
+        Assert.DoesNotContain(
+            Directory.EnumerateDirectories(folder).Select(Path.GetFileName),
+            aspect => aspect != TestRunner.Folder && !LanguageProject.AspectFolders.Contains(aspect!, StringComparer.Ordinal));
+
+        // A folder is not an aspect: each one has to have lowered into something the language uses, which is what a
+        // `types/` directory holding nothing would not.
+        Assert.True(language.HasNotation);
+        Assert.True(language.HasTypes);
+        Assert.True(language.HasTyping);
+        Assert.True(language.HasConstraints);
+        Assert.True(language.HasScopes);
+        Assert.True(language.HasIntentions);
+        Assert.True(language.HasGenerators);
+        Assert.True(language.HasDeclaredImporters);
+        Assert.NotEmpty(language.Accessory);
+
+        // The tests folder is beside the aspects rather than in that list, and it is an aspect all the same.
+        Assert.NotEmpty(Directory.EnumerateFiles(Path.Combine(folder, TestRunner.Folder), "*.mps"));
+        Assert.True(TestRunner.Run(language).Succeeded);
+
+        // And the root states the one language this one was built on.
+        Assert.Equal(["Units"], language.Dependencies.Select(dependency => dependency.Name));
+    }
+
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
