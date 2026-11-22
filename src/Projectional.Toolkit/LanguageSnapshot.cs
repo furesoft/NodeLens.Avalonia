@@ -48,6 +48,12 @@ public static class LanguageSnapshot
     /// <param name="notations">The notation that projects it.</param>
     /// <param name="width">How many columns the picture has.</param>
     /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    /// <param name="types">The language's type rules, which a <c>TypeOf</c> cell draws.</param>
+    /// <param name="annotations">
+    /// Whether a <c>TypeOf</c> cell draws anything at all. <see langword="true"/> by default, because the annotation is
+    /// what tells an author their type rules are missing; a caller showing a model as an <em>example</em> turns it off,
+    /// and the cell is not built rather than built empty - the punctuation in front of it belongs to the annotation.
+    /// </param>
     /// <returns>The runs in the order they are drawn, each with its row, its column, its text and its kind.</returns>
     /// <remarks>
     /// The same drawing as <see cref="Render(Node, NotationRegistry, int, INotationChoice?)"/>, answered as pieces rather
@@ -58,12 +64,14 @@ public static class LanguageSnapshot
         Node node,
         NotationRegistry notations,
         int width,
-        INotationChoice? choice = null)
+        INotationChoice? choice = null,
+        TypeRegistry? types = null,
+        bool annotations = true)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(notations);
 
-        return LayoutSnapshot.Runs(node, notations, width, choice);
+        return LayoutSnapshot.Runs(node, notations, width, choice, types, annotations);
     }
 
     /// <summary>Renders every root of <paramref name="model"/> as classified runs.</summary>
@@ -75,12 +83,14 @@ public static class LanguageSnapshot
         Model model,
         NotationRegistry notations,
         int width,
-        INotationChoice? choice = null)
+        INotationChoice? choice = null,
+        TypeRegistry? types = null,
+        bool annotations = true)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
 
-        return LayoutSnapshot.Runs(model, notations, width, choice);
+        return LayoutSnapshot.Runs(model, notations, width, choice, types, annotations);
     }
 
     /// <summary>Renders every root of <paramref name="model"/>, stacked in model order.</summary>

@@ -33,6 +33,7 @@ public sealed class EditorTreeBuilder
     private readonly INotationChoice? _choice;
     private readonly IReadOnlySet<NodeId>? _collapsed;
     private readonly TypeRegistry _types;
+    private readonly bool _annotations;
 
     /// <summary>Builds trees with every concept drawn as <paramref name="choice"/> asks, default variants when it says nothing.</summary>
     /// <param name="notations">What each concept is drawn with.</param>
@@ -43,12 +44,19 @@ public sealed class EditorTreeBuilder
     /// The language's type rules, which is what a <see cref="TypeOfNotationCell"/> draws. Empty when omitted, and an
     /// annotation then says <c>unknown</c> - the honest answer for a language that declared none.
     /// </param>
+    /// <param name="annotations">
+    /// Whether a <see cref="TypeOfNotationCell"/> draws anything at all. <see langword="true"/> by default, because the
+    /// annotation is what tells a language author their type rules are missing; a renderer that shows a model as an
+    /// <em>example</em> rather than as a state of the editor turns it off, and the cell is then not built rather than
+    /// built empty - the notation around it (a colon, its spaces) belongs to the annotation and goes with it.
+    /// </param>
     public EditorTreeBuilder(
         NotationRegistry notations,
         ICellEmphasis? emphasis = null,
         INotationChoice? choice = null,
         IReadOnlySet<NodeId>? collapsed = null,
-        TypeRegistry? types = null)
+        TypeRegistry? types = null,
+        bool annotations = true)
     {
         ArgumentNullException.ThrowIfNull(notations);
         _notations = notations;
@@ -56,6 +64,7 @@ public sealed class EditorTreeBuilder
         _choice = choice;
         _collapsed = collapsed;
         _types = types ?? TypeRegistry.Empty;
+        _annotations = annotations;
     }
 
     /// <summary>Builds the tree for <paramref name="node"/>.</summary>
@@ -201,10 +210,30 @@ public sealed class EditorTreeBuilder
 
         for (var i = 0; i < cells.Count; i++)
         {
+            if (!_annotations && cells[i] is TypeOfNotationCell)
+            {
+                // Everything from the separator to the annotation goes: a notation writes `1 : int`, and dropping the
+                // cell alone would leave `1 : ` behind - or, worse, `1  ` when only some of it goes. Spaces and one
+                // punctuation directly before it are that separator; anything else before them is the language's own.
+                Drop(built, static cell => cell is SpaceCell);
+                Drop(built, static cell => cell is ConstantCell { Kind: ConstantKind.Punctuation });
+                Drop(built, static cell => cell is SpaceCell);
+
+                continue;
+            }
+
             built.AddRange(BuildInline(cells[i], node, emphasis));
         }
 
         return [.. built];
+
+        static void Drop(List<EditorCell> cells, Func<EditorCell, bool> matches)
+        {
+            while (cells.Count > 0 && matches(cells[^1]))
+            {
+                cells.RemoveAt(cells.Count - 1);
+            }
+        }
     }
 
     private EditorCell[] BuildInline(InlineNotationCell cell, Node node, TextEmphasis emphasis) => cell switch
@@ -222,6 +251,7 @@ public sealed class EditorTreeBuilder
         // The type is asked of the registry while the tree is built, exactly like a property value is read from the
         // model: the cell carries finished text, so a renderer needs no registry and an edit that changes the type
         // changes the annotation on the next build.
+        TypeOfNotationCell when !_annotations => [],
         TypeOfNotationCell =>
         [
             new ConstantCell(

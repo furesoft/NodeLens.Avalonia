@@ -107,6 +107,14 @@ public static class LanguageDocumentation
             pages.Add(new($"{folder}/index.html", LanguageIndexPage.Render(chain, each, $"{folder}/index.html")));
             pages.Add(new($"{folder}/aspects.html", AspectsPage.Render(chain, each, $"{folder}/aspects.html")));
 
+            // One page per aspect: the overview compares them, and each one is a page a reader can be sent.
+            foreach (var aspect in AspectPages.All)
+            {
+                var aspectPath = $"{folder}/{AspectNames.File(aspect)}";
+
+                pages.Add(new(aspectPath, AspectPages.Render(chain, each, aspectPath, aspect)));
+            }
+
             if (chain.Examples(each).Count > 0)
             {
                 pages.Add(new($"{folder}/examples.html", ExamplesPage.Render(chain, each, $"{folder}/examples.html")));

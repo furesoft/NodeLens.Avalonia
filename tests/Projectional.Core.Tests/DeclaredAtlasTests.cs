@@ -312,9 +312,11 @@ public sealed class DeclaredAtlasTests
         // starts with that model - which is what lets a document point at a library node and keep the pointer across a
         // save and a load.
         var language = Language();
-        var library = Assert.Single(language.Accessory);
+        var library = Assert.Single(language.Accessory, model => model.Name == "known-places");
 
-        Assert.Equal("known-places", library.Name);
+        // The base's library travels too, because an accessory is a model of the vocabulary and Atlas can name a
+        // `Units.Quantity` - which is why the assertion above selects by name instead of expecting one document.
+        Assert.Contains(language.Accessory, model => model.Name == "quantities");
         Assert.Equal(["summit", "valley", "ridge"], library.Roots.Select(place => place.GetOrNull("name")));
 
         // Two projects of the same language hold the library with the same identities, which is the whole point: a
@@ -330,7 +332,7 @@ public sealed class DeclaredAtlasTests
     public void TheRouteStartsAtAPlaceFromTheLibrary()
     {
         var language = Language();
-        var library = Assert.Single(language.Accessory);
+        var library = Assert.Single(language.Accessory, model => model.Name == "known-places");
         var summit = library.Roots[0];
         var model = ModelFile.Load(language.NewProject(), Document("route.mps"));
         var route = model.Roots[0];

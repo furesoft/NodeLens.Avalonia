@@ -1,6 +1,7 @@
 using System.Text;
 
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Languages;
 
 namespace Projectional.LanguageDocs;
@@ -69,6 +70,27 @@ internal sealed class DocumentationChain
         // The brand in the header names the set. For one language that is its name, because a reader who exported a
         // language's documentation is reading about that language; for several there is no one name to use.
         Title = _languages.Count == 1 ? _languages[0].Name : "Language documentation";
+
+        // One concept registry over every language of the chain, then one notation registry over that - which is the
+        // composition the shell performs and the only one a notation registry accepts: it refuses a drawing for a concept
+        // its registry does not hold, and no single language's registry holds another's.
+        var concepts = ConceptRegistry.Create([.. _languages.SelectMany(language => language.Declarations)]);
+        var notations = new NotationRegistry(concepts);
+
+        foreach (var each in _languages)
+        {
+            foreach (var notation in each.Notations.Notations)
+            {
+                // Base first, so a language that re-declares a variant keeps its own: the registry refuses a duplicate
+                // rather than replacing, and the most derived language is the one whose drawing answered in the editor.
+                if (!notations.TryGet(notation.ConceptKey, notation.Variant, out _))
+                {
+                    _ = notations.Add(notation);
+                }
+            }
+        }
+
+        Notations = notations;
     }
 
     /// <summary>Every language the documentation covers, base first.</summary>
@@ -76,6 +98,15 @@ internal sealed class DocumentationChain
 
     /// <summary>What the whole tree is called, which the header of every page names.</summary>
     internal string Title { get; }
+
+    /// <summary>One notation registry over every language of the chain, base first.</summary>
+    /// <remarks>
+    /// A document of a dependent language draws its base's concepts too - Invoice holds a <c>Units.Quantity</c> - and a
+    /// language's own registry holds only what it declares. The shell composes one registry from every language it holds
+    /// for exactly this reason, so the documentation must do the same or the picture shows
+    /// <c>&lt;no notation for Units.Quantity&gt;</c> where the editor shows a quantity.
+    /// </remarks>
+    internal NotationRegistry Notations { get; }
 
     /// <summary>The folder a language's pages live in, derived from its name.</summary>
     internal static string Folder(LanguageProject language) => Folder(language.Name);
@@ -120,7 +151,7 @@ internal sealed class DocumentationChain
 
         if (!_examples.TryGetValue(language, out var drawings))
         {
-            drawings = ExampleDocuments.Of(language);
+            drawings = ExampleDocuments.Of(this, language);
             _examples[language] = drawings;
         }
 

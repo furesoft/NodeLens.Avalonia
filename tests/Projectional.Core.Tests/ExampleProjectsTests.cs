@@ -1,3 +1,4 @@
+using Projectional.CSharp;
 using Projectional.Languages;
 using Projectional.Workbench;
 using Xunit;
@@ -142,6 +143,42 @@ public sealed class ExampleProjectsTests
         var reason = Assert.Single(refused);
 
         Assert.Contains("Units", reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EverySampleDeclaresAnAccessoryDocument()
+    {
+        // An accessory document is a model of the language itself - the vocabulary a reader of the documentation meets as
+        // an example, and the one thing a language can show without a document of its syntax. Every sample ships one, so
+        // a new sample that forgets arrives with a failing test instead of with a documentation page that is empty.
+        var catalogue = SampleCatalogue();
+        var language = new WorkbenchLanguage();
+
+        var needed = catalogue
+            .SelectMany(example => ExampleProjects.Needed(example, catalogue))
+            .DistinctBy(example => example.Name, StringComparer.Ordinal)
+            .ToArray();
+
+        var opened = ExampleProjects.Load(language, needed, out var refused);
+
+        Assert.Empty(refused);
+        Assert.NotEmpty(opened);
+
+        // C# is shipped rather than sampled: the shell builds it from its declarations (`LanguageProject.Shipped`, with no
+        // accessory), and the folder the C# package ships holds its definitions, not a sample of a language someone
+        // wrote. It is the one language the rule does not reach.
+        var samples = opened
+            .Where(sample => !string.Equals(sample.Name, CSharpLanguage.Name, StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(samples);
+
+        foreach (var sample in samples)
+        {
+            Assert.True(
+                sample.Accessory.Count > 0,
+                $"{sample.Name} declares no accessory document; it needs an 'accessory' folder with a model of itself");
+        }
     }
 
     /// <summary>The example folders this test build copied, which is the set the app ships.</summary>

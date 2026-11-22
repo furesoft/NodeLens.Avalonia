@@ -72,9 +72,10 @@ internal static class LayoutSnapshot
         Node node,
         NotationRegistry notations,
         INotationChoice? choice,
-        TypeRegistry? types) =>
+        TypeRegistry? types,
+        bool annotations = true) =>
         new CellLayouter(MonospaceTextMeasure.Instance).Layout(
-            new EditorTreeBuilder(notations, choice: choice, types: types).Build(node));
+            new EditorTreeBuilder(notations, choice: choice, types: types, annotations: annotations).Build(node));
 
     /// <summary>Renders a layout that has already been produced, e.g. the one an edit session holds.</summary>
     /// <param name="layout">The layout to draw.</param>
@@ -141,13 +142,14 @@ internal static class LayoutSnapshot
         NotationRegistry notations,
         int width,
         INotationChoice? choice = null,
-        TypeRegistry? types = null)
+        TypeRegistry? types = null,
+        bool annotations = true)
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        return Runs([LayoutOf(node, notations, choice, types)], width);
+        return Runs([LayoutOf(node, notations, choice, types, annotations)], width);
     }
 
     /// <summary>Renders every root of <paramref name="model"/> as classified runs.</summary>
@@ -161,13 +163,14 @@ internal static class LayoutSnapshot
         NotationRegistry notations,
         int width,
         INotationChoice? choice = null,
-        TypeRegistry? types = null)
+        TypeRegistry? types = null,
+        bool annotations = true)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(notations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
 
-        return Runs([.. model.Roots.Select(root => LayoutOf(root, notations, choice, types))], width);
+        return Runs([.. model.Roots.Select(root => LayoutOf(root, notations, choice, types, annotations))], width);
     }
 
     /// <summary>Walks the layouts into a run collector, with the same rows the character grid would use.</summary>

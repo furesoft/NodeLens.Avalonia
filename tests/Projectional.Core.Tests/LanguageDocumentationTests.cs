@@ -261,20 +261,26 @@ public sealed class LanguageDocumentationTests
     [Fact]
     public void ALanguageWithNoDocumentOfItsOwnGetsNoExamplesPage()
     {
-        var units = Units();
-        var atlas = Atlas(units);
+        // A language with structure and nothing to look at: no accessory document and no document beside `language.mps`,
+        // so a page saying "no documents" would be an empty room with a sign on the door.
+        using var temporary = new TemporaryDirectory();
 
-        var pages = LanguageDocumentation.Generate([units, atlas]);
+        // No dependency and no document: a language that owns nothing to draw. A base would matter, because an accessory
+        // travels through the chain - a language that stands on Units inherits Units' library and therefore has examples.
+        Write(temporary.Root, "Bare", declaredVersion: "1.0.0", dependency: null);
 
-        // Units ships a structure and nothing to look at, so a page saying "no documents" would be an empty room with a
-        // sign on the door - the entry does not exist at all, and the navigation does not offer it.
-        Assert.DoesNotContain(pages, page => page.Path == "Units/examples.html");
+        var bare = Assert.IsType<LanguageProject>(
+            LanguageProject.Open(temporary.Root, out var error) ?? Fail(error));
+
+        var pages = LanguageDocumentation.Generate([bare, Atlas()]);
+
+        Assert.DoesNotContain(pages, page => page.Path == "Bare/examples.html");
 
         // Asserted per language rather than per page: the tree carries every language of the set, so "Examples" appears on
-        // the Units page too - as Atlas' entry. What must not appear is an entry pointing at a page Units does not have.
+        // the Bare page too - as Atlas' entry. What must not appear is an entry pointing at a page Bare does not have.
         Assert.DoesNotContain(
-            "../Units/examples.html",
-            Assert.Single(pages, page => page.Path == "Units/index.html").Text,
+            "../Bare/examples.html",
+            Assert.Single(pages, page => page.Path == "Bare/index.html").Text,
             StringComparison.Ordinal);
 
         Assert.Contains(
@@ -290,16 +296,26 @@ public sealed class LanguageDocumentationTests
 
         var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Atlas/aspects.html");
 
-        foreach (var folder in LanguageProject.AspectFolders)
+        // Every folder the language has, and the one aspect that has no folder of its own because an enumeration is a
+        // declaration in `structure/` rather than a folder.
+        foreach (var folder in LanguageProject.AspectFolders.Where(folder => folder != LanguageProject.StructureFolder))
         {
             Assert.Contains($"<code>{folder}</code>", page.Text, StringComparison.Ordinal);
         }
 
-        // The structure row counts what the folder declares, and the Concepts section says how much of the registry
+        Assert.Contains("a declaration, not a folder of its own", page.Text, StringComparison.Ordinal);
+
+        // Each aspect's own count, and the Concepts section's honest split between what the folder declares and what
         // came from the chain - two numbers a reader needs and would otherwise have to subtract themselves.
-        Assert.Contains($"<td>{language.Declarations.Count}</td>", page.Text, StringComparison.Ordinal);
         Assert.Contains($"<td>{language.Notations.Notations.Count}</td>", page.Text, StringComparison.Ordinal);
         Assert.Contains("visible through the chain", page.Text, StringComparison.Ordinal);
+
+        // The concepts by kind, which is what the structure folder holds: an abstract set, its concrete kinds and the
+        // roots a document can start with.
+        Assert.Contains("<td>abstract</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<td>concrete</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<td>root</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("Atlas.Spot", page.Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -474,30 +490,51 @@ public sealed class LanguageDocumentationTests
     }
 
     [Fact]
-    public void TheAspectsPageCoversEveryFolderWithWhatItActuallyHolds()
+    public void EveryAspectHasAPageAndTheOverviewLinksIt()
     {
-        var language = Atlas();
+        var pages = LanguageDocumentation.Generate(Atlas());
 
-        var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Atlas/aspects.html");
+        var aspects = new[] { "enumerations", "notations", "types", "typing", "constraints", "scopes", "intentions", "generators", "importers", "accessory" };
 
-        // Every folder of a language has a section, including the one the concept page cannot show: an enumeration is
-        // not a concept, so it exists only here.
-        foreach (var heading in new[] { "Concepts", "Enumerations", "Notations", "Types", "Typing", "Constraints", "Scopes", "Intentions", "Generators", "Import", "Accessory models" })
+        // A reader looking for "which concepts generate text" wants the entry in the tree, not a heading to scroll to.
+        foreach (var aspect in aspects)
         {
-            Assert.Contains($"<h2>{heading}</h2>", page.Text, StringComparison.Ordinal);
+            Assert.Single(pages, page => page.Path == $"Atlas/{aspect}.html");
         }
 
-        // A notation is written out where it is listed, so a reader sees the shape without opening six concept pages.
-        Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;", page.Text, StringComparison.Ordinal);
+        var overview = Assert.Single(pages, page => page.Path == "Atlas/aspects.html");
+
+        foreach (var aspect in aspects)
+        {
+            Assert.Contains($"href=\"../Atlas/{aspect}.html\"", overview.Text, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void AnAspectPageHoldsWhatThatAspectDeclares()
+    {
+        var pages = LanguageDocumentation.Generate(Atlas());
+
+        // The notation is written out where it is listed, so a reader sees the shape without opening six concept pages.
+        var notations = Assert.Single(pages, page => page.Path == "Atlas/notations.html");
+
+        Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;", notations.Text, StringComparison.Ordinal);
 
         // A scope provider is asked per reference at scope time, so the page lists the concept's own reference slots
         // rather than claiming which ones the provider fills.
-        Assert.Contains("Reference slots of the concept", page.Text, StringComparison.Ordinal);
-        Assert.Contains("onMap, start", page.Text, StringComparison.Ordinal);
+        var scopes = Assert.Single(pages, page => page.Path == "Atlas/scopes.html");
+
+        Assert.Contains("Reference slots of the concept", scopes.Text, StringComparison.Ordinal);
+        Assert.Contains("onMap, start", scopes.Text, StringComparison.Ordinal);
 
         // The rule objects hold a check method, so the page counts them instead of inventing a name.
-        Assert.Contains("No rule applies everywhere.", page.Text, StringComparison.Ordinal);
-        Assert.Contains("can say that one is registered but not which offers it makes", page.Text, StringComparison.Ordinal);
+        var constraints = Assert.Single(pages, page => page.Path == "Atlas/constraints.html");
+
+        Assert.Contains("No rule applies everywhere.", constraints.Text, StringComparison.Ordinal);
+
+        var intentions = Assert.Single(pages, page => page.Path == "Atlas/intentions.html");
+
+        Assert.Contains("can say that much but not which offers it makes", intentions.Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -505,7 +542,7 @@ public sealed class LanguageDocumentationTests
     {
         var page = Assert.Single(
             LanguageDocumentation.Generate(Atlas()),
-            each => each.Path == "Atlas/aspects.html");
+            each => each.Path == "Atlas/generators.html");
 
         // The parts, read back: a slot as {name}, a conditional in brackets, and a list with the separator that joins it
         // - which is the one fact about a list a reader cannot guess from its name.
@@ -523,10 +560,42 @@ public sealed class LanguageDocumentationTests
         // pinned here is the section's honesty for a language that has none.
         var page = Assert.Single(
             LanguageDocumentation.Generate(Atlas()),
-            each => each.Path == "Atlas/aspects.html");
+            each => each.Path == "Atlas/enumerations.html");
 
-        Assert.Contains("<h2>Enumerations</h2>", page.Text, StringComparison.Ordinal);
         Assert.Contains("No property is declared over an enumeration.", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExampleIsDrawnWithoutTheEditorsTypeAnnotations()
+    {
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Expressions()),
+            each => each.Path == "Expressions/examples.html");
+
+        // The annotation is the editor telling a language author what its type rules are missing, and these samples
+        // declare none - so the cell is not built at all, and neither is the punctuation in front of it. A drawing that
+        // said `42 : unknown` would be a picture of the editor's complaint rather than of the language.
+        Assert.DoesNotContain("unknown", page.Text, StringComparison.Ordinal);
+        Assert.Contains("42", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExampleDrawsTheConceptOfTheLanguageItStandsOn()
+    {
+        var units = Units();
+        var invoice = Assert.IsType<LanguageProject>(
+            LanguageProject.Open(
+                Path.Combine(AppContext.BaseDirectory, "Invoice"),
+                new ResolvedLanguages(units),
+                out var error) ?? Fail(error));
+
+        var page = Assert.Single(LanguageDocumentation.Generate(invoice), each => each.Path == "Invoice/examples.html");
+
+        // The document holds a `Units.Quantity`, and its drawing lives in the language Invoice stands on - so the picture
+        // is composed from the chain the way the shell composes one registry from every language it holds. Without that,
+        // the page said `<no notation for Units.Quantity>` where the editor draws a quantity.
+        Assert.DoesNotContain("no notation for", page.Text, StringComparison.Ordinal);
+        Assert.Contains("kg", page.Text, StringComparison.Ordinal);
     }
 
     /// <summary>Every <c>href</c> and <c>src</c> a page writes, which is every path it asks a reader to follow.</summary>
@@ -557,12 +626,16 @@ public sealed class LanguageDocumentationTests
                 new ResolvedLanguages(units),
                 out var error) ?? Fail(error));
 
+    private static LanguageProject Expressions() =>
+        Assert.IsType<LanguageProject>(
+            LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Expressions"), out var error) ?? Fail(error));
+
     private static LanguageProject Units() =>
         Assert.IsType<LanguageProject>(
             LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Units"), out var error) ?? Fail(error));
 
     /// <summary>A language folder with one concept, used for the cases the sample cannot be bent into.</summary>
-    private static void Write(string root, string name, string declaredVersion)
+    private static void Write(string root, string name, string declaredVersion, string? dependency = "Units")
     {
         _ = Directory.CreateDirectory(Path.Combine(root, "structure"));
 
@@ -587,11 +660,14 @@ public sealed class LanguageDocumentationTests
         language.Set("name", name);
         language.Set(StructureLanguage.VersionSlot, "1.0.0");
 
-        var declaration = languageRoot
-            .NewChild(language, StructureLanguage.DependenciesSlot, StructureConceptKeys.Dependency);
+        if (dependency is not null)
+        {
+            var declaration = languageRoot
+                .NewChild(language, StructureLanguage.DependenciesSlot, StructureConceptKeys.Dependency);
 
-        declaration.Set("name", "Units");
-        declaration.Set(StructureLanguage.VersionSlot, declaredVersion);
+            declaration.Set("name", dependency);
+            declaration.Set(StructureLanguage.VersionSlot, declaredVersion);
+        }
 
         ModelFile.Save(languageRoot, Path.Combine(root, LanguageProject.LanguageFile));
     }
