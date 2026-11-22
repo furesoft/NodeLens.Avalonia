@@ -588,7 +588,12 @@ public sealed partial class MainWindow : Window, IDisposable
     {
         var model = PayrollSample.NewSampleModel();
 
-        OpenDocument(model, _language.Notations, emphasis: WorkbenchLanguage.Emphasis, typing: WorkbenchLanguage.Typing);
+        OpenDocument(
+            model,
+            _language.Notations,
+            emphasis: WorkbenchLanguage.Emphasis,
+            typing: WorkbenchLanguage.Typing,
+            scopes: WorkbenchLanguage.Scopes);
     }
 
     /// <summary>Opens <paramref name="model"/> in a new tab, or brings its tab forward when it is already open.</summary>
@@ -3252,7 +3257,11 @@ public sealed partial class MainWindow : Window, IDisposable
             return;
         }
 
-        OpenDocument(PayrollSample.NewEmptyModel(), _language.Notations, typing: WorkbenchLanguage.Typing);
+        OpenDocument(
+            PayrollSample.NewEmptyModel(),
+            _language.Notations,
+            typing: WorkbenchLanguage.Typing,
+            scopes: WorkbenchLanguage.Scopes);
     }
 
     /// <summary>Opens an empty document of <paramref name="module"/>, with the aspects that language declares.</summary>

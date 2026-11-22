@@ -158,9 +158,17 @@ public sealed class ExpressionsLanguageTests
     [Fact]
     public void ACallReadsAsTheApplicationItIs()
     {
-        var model = ExpressionsLanguage.NewProject().NewModel();
+        // The definition is a document of its own inside the same project, which is the resolution this test also proves:
+        // the callee draws the name of the node it points at, and a rename follows it.
+        var project = ExpressionsLanguage.NewProject();
+        var definitions = project.NewModel("definitions");
+        var function = definitions.NewNode(ExpressionsConceptKeys.Function);
+        function.Set("name", "f");
+        definitions.AddRoot(function);
+
+        var model = project.NewModel("use");
         var call = model.NewNode(ExpressionsConceptKeys.Call);
-        call.Set("callee", "f");
+        call.SetReference("callee", function);
         model.NewChild(call, ExpressionsLanguage.ArgumentsSlot, ExpressionsConceptKeys.IntLiteral).Set("value", 4);
         model.AddRoot(call);
 

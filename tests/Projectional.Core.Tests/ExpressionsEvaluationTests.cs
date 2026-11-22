@@ -100,8 +100,8 @@ public sealed class ExpressionsEvaluationTests
         // `f(x) = x ^ 2` applied to 4: the definition is a document of the model, the call resolves its name among those
         // documents, and the arguments are bound for the body - which is what the evaluation scope was added for.
         var model = NewModel();
-        Function(model, "square", ["x"], Binary(model, "^", Name(model, "x"), Int(model, 2)));
-        var call = Call(model, "square", Int(model, 4));
+        var square = Function(model, "square", ["x"], Binary(model, "^", Name(model, "x"), Int(model, 2)));
+        var call = Call(model, square, Int(model, 4));
 
         Assert.Equal(new IntValue(16), Run(model, call));
     }
@@ -110,12 +110,12 @@ public sealed class ExpressionsEvaluationTests
     public void ACallIsRefusedWhenItNamesNothingOrBringsTheWrongCount()
     {
         var model = NewModel();
-        Function(model, "square", ["x"], Binary(model, "^", Name(model, "x"), Int(model, 2)));
+        var square = Function(model, "square", ["x"], Binary(model, "^", Name(model, "x"), Int(model, 2)));
 
         // A call to a name no document declares is a message rather than a guess, and the count is compared because a
         // mismatch would otherwise surface as "the parameter has no value" two nodes deeper than the mistake.
-        Assert.NotNull(RunResult(model, Call(model, "cube", Int(model, 2))).Failure);
-        Assert.NotNull(RunResult(model, Call(model, "square", Int(model, 2), Int(model, 3))).Failure);
+        Assert.NotNull(RunResult(model, DanglingCall(model, "cube", Int(model, 2))).Failure);
+        Assert.NotNull(RunResult(model, Call(model, square, Int(model, 2), Int(model, 3))).Failure);
     }
     [Fact]
     public void AScopeBindsANameForTheNodeItEncloses()
@@ -313,10 +313,24 @@ public sealed class ExpressionsEvaluationTests
         return node;
     }
 
-    private static Node Call(Model model, string callee, params Node[] arguments)
+    private static Node Call(Model model, Node function, params Node[] arguments)
     {
         var node = model.NewNode(ExpressionsConceptKeys.Call);
-        node.Set("callee", callee);
+        node.SetReference("callee", function);
+
+        for (var index = 0; index < arguments.Length; index++)
+        {
+            node.InsertChild(ExpressionsLanguage.ArgumentsSlot, index, arguments[index]);
+        }
+
+        return node;
+    }
+
+    /// <summary>A call whose callee keeps the text it was given and resolves to nothing.</summary>
+    private static Node DanglingCall(Model model, string callee, params Node[] arguments)
+    {
+        var node = model.NewNode(ExpressionsConceptKeys.Call);
+        node.SetReference("callee", NodeId.New(), callee);
 
         for (var index = 0; index < arguments.Length; index++)
         {

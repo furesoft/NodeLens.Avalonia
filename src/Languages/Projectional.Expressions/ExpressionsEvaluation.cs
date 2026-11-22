@@ -123,21 +123,25 @@ public static class ExpressionsEvaluation
             : new IntValue((int)raised);
     }
 
-    /// <summary>Applies a function of the model to the values of the arguments.</summary>
+    /// <summary>Applies the function its callee points at to the values of the arguments.</summary>
     /// <remarks>
-    /// The callee is resolved among the documents of the model, by name, which is this vocabulary's own doctrine: a name
-    /// is what it means to whoever runs the model, and no reference slot has to exist for it. Two functions of one name
-    /// are therefore ambiguous rather than shadowed - the first in document order answers, and the constraint that would
-    /// report the pair is the language's next step rather than the interpreter's guess.
+    /// The reference is what says which function is meant. A call whose reference does not resolve is a message rather
+    /// than a search: a run must not pick a function by name and quietly disagree with the drawing, which resolves to
+    /// the node the author actually chose.
     /// </remarks>
     private static Value ApplyCall(EvaluationContext context)
     {
-        var callee = context.Node.GetOrNull("callee") is { Length: > 0 } name
-            ? name
-            : throw context.Error("A call must say which function it applies.");
+        var model = context.Node.Model;
 
-        var function = FunctionNamed(context, callee)
-            ?? throw context.Error($"No function of this model is called '{callee}'.");
+        if (context.Node.GetReference("callee") is not { } target || !target.IsResolvedIn(model.Project))
+        {
+            throw context.Error("A call must name a function of this project.");
+        }
+
+        var function = model.Roots.FirstOrDefault(root => root.Id.Equals(target.Target))
+            ?? throw context.Error("The function this call names is not a document of this model.");
+
+        var callee = function.GetOrNull("name") is { Length: > 0 } named ? named : "a function";
 
         var parameters = function.GetChildren(ExpressionsLanguage.ParametersSlot);
         var arguments = context.Node.GetChildren(ExpressionsLanguage.ArgumentsSlot);
@@ -170,12 +174,6 @@ public static class ExpressionsEvaluation
 
         return context.With(bound).Eval(body);
     }
-
-    private static Node? FunctionNamed(EvaluationContext context, string name) =>
-        context.Node.Model.Roots
-            .Where(root => root.Concept.IsKindOf(ExpressionsConceptKeys.Function))
-            .FirstOrDefault(root => string.Equals(root.GetOrNull("name"), name, StringComparison.Ordinal));
-
     private static BoolValue Logic(EvaluationContext context, Value left, Value right, bool and)
     {
         if (left is not BoolValue first || right is not BoolValue second)
