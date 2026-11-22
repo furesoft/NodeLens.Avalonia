@@ -30,16 +30,17 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of seventeen bodies: a value read from the node (`property`, `child`, `variable`), a
+- a `rule for <concept>` holding one of sixteen bodies: a value read from the node (`property`, `child`, `variable`), a
 question about the node's own shape (`has`, which asks whether a slot holds anything, and `count`, which says how many
 entries a child slot holds), the value of the node a reference points at (`reference`), a value written into the rule
 (`constant`), a total over a list (`sum over ... of ...`), a record of named values (`record`) and one field of one
 (`field ... of ...`), the values of a slot as a list (`list of ...`), arithmetic and logic over other bodies
 (`operator`), a choice (`choose` with `condition`, `then`, `otherwise`), the first entry of a slot whose condition holds
 (`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`), and a refusal with a sentence
-(`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
-*means*, because that is a computation and this repository has no language for computation: an `operator` body either
-writes its symbol itself or names the property that holds one, and `OperatorSemantics` answers whole-number arithmetic
+(`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand.
+What a body cannot say is what an operator *means*, because that is a computation and this repository has no language for
+computation: an `operator` body either writes its symbol itself or names the property that holds one, and
+`OperatorSemantics` answers whole-number arithmetic
 (including a power), the four comparisons, equality by value, the two logical operators, and `+` over two texts, which
 joins them - that last one because a declared rule has no way into C# at all, so a label built out of two parts would
 otherwise be inexpressible. Text is joined and not ordered: `<` over two texts is a decision about a culture rather than
