@@ -20,6 +20,7 @@ using Projectional.Expressions;
 using Projectional.Expressions.Intentions;
 using Projectional.Intentions;
 using Projectional.Language;
+using Projectional.LanguageDocs;
 using Projectional.LanguageExport;
 using Projectional.Languages;
 using Projectional.Persistence;
@@ -373,6 +374,7 @@ public sealed partial class MainWindow : Window, IDisposable
         NewDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.CreateModels);
         ImportDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Import);
         ExportLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
+        DocumentationItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
         PackageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
         RecentFilesItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
         SaveDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Save);
@@ -485,6 +487,7 @@ public sealed partial class MainWindow : Window, IDisposable
             return ValueTask.CompletedTask;
         });
         AddCommand("export", "Export Language", ShellCapability.Export, async target => await ExportLanguageAsync((LanguageProject)target!));
+        AddCommand("documentation", "Export Documentation", ShellCapability.Export, async target => await ExportDocumentationAsync((LanguageProject)target!));
 
         // Two commands rather than one with a question, because the answer is what the menu entry already says: the
         // sources and the assemblies are handed to different people, and the archive holds one or the other.
@@ -2753,6 +2756,17 @@ public sealed partial class MainWindow : Window, IDisposable
             opened.Count > 0
                 ? "Writes the generated C# and the compiled assembly of a language opened from a folder."
                 : "No language has been opened from a folder.");
+
+        DocumentationItem.IsEnabled = opened.Count > 0;
+        DocumentationItem.ItemsSource = opened
+            .Select(language => new MenuItem { Header = language.Name, Command = new ExportDocumentationCommand(this, language) })
+            .ToList();
+
+        ToolTip.SetTip(
+            DocumentationItem,
+            opened.Count > 0
+                ? "Writes a folder of pages about a language and the languages it stands on."
+                : "No language has been opened from a folder.");
     }
 
     /// <summary>A menu entry that exports one opened language.</summary>
@@ -2776,6 +2790,61 @@ public sealed partial class MainWindow : Window, IDisposable
         public bool CanExecute(object? parameter) => true;
 
         public void Execute(object? parameter) => _window.RunCommand("export", _language);
+    }
+
+    /// <summary>A menu entry that writes the documentation of one opened language.</summary>
+    private sealed class ExportDocumentationCommand : System.Windows.Input.ICommand
+    {
+        private readonly MainWindow _window;
+        private readonly LanguageProject _language;
+
+        internal ExportDocumentationCommand(MainWindow window, LanguageProject language)
+        {
+            _window = window;
+            _language = language;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _window.RunCommand("documentation", _language);
+    }
+
+    /// <summary>Writes one opened language as a folder of pages a reader can walk.</summary>
+    /// <remarks>
+    /// It offers the folder rather than a file because the output is a tree - one page per concept, one folder per
+    /// language of the chain - and because the pages link to each other with relative paths, which only resolves when
+    /// the tree stays together. The answer counts files rather than languages: what a reader checks first is that
+    /// something was written.
+    /// </remarks>
+    private async Task ExportDocumentationAsync(LanguageProject language)
+    {
+        _error = null;
+
+        var directory = await _dialogs.ChooseFolderAsync($"Choose where to write the documentation of {language.Name}");
+
+        if (directory is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var files = LanguageDocumentation.Write(language, directory);
+
+            _error = $"{language.Name} documented: {files} pages written to {directory}.";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _error = $"Could not write the documentation of {language.Name}: {exception.Message}";
+        }
+
+        UpdateStatus();
     }
 
     /// <summary>Writes one opened language as the C# a package is made of, compiling it on the way.</summary>

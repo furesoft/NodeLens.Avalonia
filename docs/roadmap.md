@@ -56,8 +56,7 @@ What is next, in order:
    on** - the chain is followed downward, base first, shipped bases included, with every link across languages resolved
    through one map ([language-docs.md](architecture/language-docs.md)). **The pages and the published site are
    delivered**: `src/Projectional.LanguageDocs`, the `--docs` switch, and a CI job that publishes C# and every example
-   language to GitHub Pages. Left: the notation spelling per concept and `examples.html` drawn by the headless renderer,
-   **File ▸ Export documentation…** in the shell, and the pages inside a package.
+   language to GitHub Pages. Left: the notation spelling per concept and `examples.html` drawn by the headless renderer, and the pages inside a package.
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, an instance

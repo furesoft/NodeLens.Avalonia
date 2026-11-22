@@ -336,6 +336,8 @@
         <!-- Filled from ExampleProjects.Catalogue: one entry per example a build placed beside the executable. -->
         <MenuItem x:Name="OpenExamplesItem" Header="Open e_xamples" />
         <MenuItem x:Name="ExportLanguageItem" Header="E_xport language to C#..." IsEnabled="False" />
+        <!-- Filled from the languages opened from a folder: the documentation is a folder of pages about the language. -->
+        <MenuItem x:Name="DocumentationItem" Header="Export _documentation..." IsEnabled="False" />
         <!-- Filled from the languages opened from a folder: one entry per language, each offering its sources or its assemblies. -->
         <MenuItem x:Name="PackageItem" Header="_Package..." IsEnabled="False" />
         <MenuItem x:Name="ImportDocumentItem" Header="_Import..." Click="OnImportDocument" />
