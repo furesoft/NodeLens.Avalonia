@@ -54,9 +54,10 @@ The folder's name is the language's name. The `structure` folder is required and
 other four are optional.
 
 `LanguageProject.AspectFolders` is the one ordered list of those folders - the reading order above, with `generator`
-and `import` last because their documents say what a model becomes rather than what it is. A host that shows or opens
-a language walks it: the project explorer draws it and the shell's **File ▸ Open language…** opens every document in
-it. Two copies of the list is how `generator/` came to be drawn in the explorer and never opened as a tab.
+and `import` last because their documents say what a model becomes rather than what it is. Everything that shows or
+opens a language walks it: the project explorer draws it, the shell's **File ▸ Open language…** opens every document in
+it, and module settings lists one row per folder. Two copies of the list is how `generator/` came to be drawn in the
+explorer and never opened as a tab, and how `typing/` and `accessory/` came to be missing from the settings dialog.
 
 The `tests` folder is not an aspect of the language: `LanguageProject.Open` does not read it, because a language does
 not depend on its own tests. `TestRunner` in `Projectional.Testing` reads it, in the same ordinal order, and runs the
