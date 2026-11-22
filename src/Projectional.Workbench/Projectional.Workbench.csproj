@@ -59,6 +59,7 @@
     <ProjectReference Include="..\..\src\Languages\Samples\Projectional.Samples\Projectional.Samples.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Testing\Projectional.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.EvaluationRules\Projectional.EvaluationRules.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
   </ItemGroup>
 
