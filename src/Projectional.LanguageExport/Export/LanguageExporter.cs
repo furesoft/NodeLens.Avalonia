@@ -94,7 +94,7 @@ public static class LanguageExporter
 
             files.AddRange(exported.Files);
             assemblies.AddRange(exported.Assemblies);
-            beside.Add(basis.Name);
+            beside.Add(ClassName(basis.Name) + VersionSuffix(basis.Version));
         }
 
         var own = Build(
@@ -186,7 +186,10 @@ public static class LanguageExporter
     /// own, but only the exported one documents the folder, so its neighbours are named in one README rather than one
     /// each - two <c>README.md</c> in one directory would be one file anyway.
     /// </param>
-    /// <param name="beside">The languages exported beside this one, named in the README, or <see langword="null"/>.</param>
+    /// <param name="beside">
+    /// The file names, without extension, exported beside this one - each a language and its declared version - named in
+    /// the README, or <see langword="null"/> when this file is alone.
+    /// </param>
     private static ExportResult Build(
         string name,
         IReadOnlyList<ConceptDeclaration> declarations,
@@ -210,10 +213,11 @@ public static class LanguageExporter
 
         var typing = typingRules ?? [];
         var className = ClassName(name);
+        var stem = className + VersionSuffix(metadata?.Version);
         var omitted = Omissions(hasTypes, hasGenerators, hasConstraints, hasScopes, hasIntentions, hasImport);
         var source = Source(name, className, namespaceName, declarations, notations, typing, omitted, metadata);
 
-        var files = new List<GeneratedFile>(2) { new($"{className}.cs", source) };
+        var files = new List<GeneratedFile>(2) { new($"{stem}.cs", source) };
 
         if (readme)
         {
@@ -224,7 +228,34 @@ public static class LanguageExporter
 
         return new ExportResult(
             files,
-            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(className, source)] : []);
+            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(stem, source)] : []);
+    }
+
+    /// <summary>The declared version as a file-name suffix: <c>-1.0.0</c>, or nothing when none is declared.</summary>
+    /// <param name="version">The version the root spelled, or <see langword="null"/>.</param>
+    /// <returns>
+    /// The suffix, including its leading dash, or the empty string. A version is free text, so whatever a file name
+    /// cannot hold becomes a dash - the same answer the writer gives a document whose name holds a slash.
+    /// </returns>
+    /// <remarks>
+    /// The suffix goes on the file and on the assembly, never on the class: a package's identity in C# is its type
+    /// name, and a type that changed name with every release would be a package nobody could upgrade.
+    /// </remarks>
+    public static string VersionSuffix(string? version)
+    {
+        if (version is not { Length: > 0 } declared)
+        {
+            return string.Empty;
+        }
+
+        var safe = new StringBuilder(declared.Length + 1).Append('-');
+
+        foreach (var character in declared)
+        {
+            safe.Append(char.IsLetterOrDigit(character) || character is '.' or '-' or '_' ? character : '-');
+        }
+
+        return safe.ToString();
     }
 
     private static List<string> Omissions(
@@ -502,9 +533,9 @@ public static class LanguageExporter
             lines.Add("its own assembly:");
             lines.Add(string.Empty);
 
-            foreach (var baseName in beside)
+            foreach (var file in beside)
             {
-                lines.Add($"- `{ClassName(baseName)}.cs` for {baseName}, and its assembly when one was compiled");
+                lines.Add($"- `{file}.cs` and, when the export compiled one, `{file}.dll`");
             }
         }
 

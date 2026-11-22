@@ -2868,11 +2868,12 @@ public sealed partial class MainWindow : Window, IDisposable
         _error = null;
 
         var name = LanguageExporter.NamespaceFor(language.Name);
+        var named = name + LanguageExporter.VersionSuffix(language.Version);
         var assemblies = content == PackageContent.Assemblies;
 
         var path = await _dialogs.ChooseFileToSaveAsync(
             assemblies ? $"Package the assemblies of {language.Name}" : $"Package the sources of {language.Name}",
-            assemblies ? $"{name}-assemblies.zip" : $"{name}-sources.zip",
+            assemblies ? $"{named}-assemblies.zip" : $"{named}-sources.zip",
             new ShellFileType("Zip archive", ["*.zip"]));
 
         if (path is null)

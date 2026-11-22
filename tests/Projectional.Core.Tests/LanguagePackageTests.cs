@@ -22,11 +22,11 @@ public sealed class LanguagePackageTests
 
         var zip = LanguagePackage.Zip(result, PackageContent.Sources);
 
-        Assert.Equal(["UnitsLanguage.cs", "InvoiceLanguage.cs", "README.md"], Names(zip));
+        Assert.Equal(["UnitsLanguage-1.0.0.cs", "InvoiceLanguage-1.0.0.cs", "README.md"], Names(zip));
 
         // Each file keeps the namespace the export chose for its language, which is what makes them compile side by side.
-        Assert.Contains("namespace Units;", Text(zip, "UnitsLanguage.cs"), StringComparison.Ordinal);
-        Assert.Contains("namespace Sample.Invoice;", Text(zip, "InvoiceLanguage.cs"), StringComparison.Ordinal);
+        Assert.Contains("namespace Units;", Text(zip, "UnitsLanguage-1.0.0.cs"), StringComparison.Ordinal);
+        Assert.Contains("namespace Sample.Invoice;", Text(zip, "InvoiceLanguage-1.0.0.cs"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -36,11 +36,11 @@ public sealed class LanguagePackageTests
 
         var zip = LanguagePackage.Zip(result, PackageContent.Assemblies);
 
-        Assert.Equal(["UnitsLanguage.dll", "InvoiceLanguage.dll"], Names(zip));
+        Assert.Equal(["UnitsLanguage-1.0.0.dll", "InvoiceLanguage-1.0.0.dll"], Names(zip));
 
         // The bytes in the archive are the ones the export compiled, not a second compilation.
-        Assert.Equal(result.Assemblies[0].Bytes, Bytes(zip, "UnitsLanguage.dll"));
-        Assert.Equal(result.Assemblies[1].Bytes, Bytes(zip, "InvoiceLanguage.dll"));
+        Assert.Equal(result.Assemblies[0].Bytes, Bytes(zip, "UnitsLanguage-1.0.0.dll"));
+        Assert.Equal(result.Assemblies[1].Bytes, Bytes(zip, "InvoiceLanguage-1.0.0.dll"));
     }
 
     [Fact]
