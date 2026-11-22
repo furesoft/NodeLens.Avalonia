@@ -78,6 +78,27 @@ public static class IntentionNotations
                 ed.Space,
                 ed.Keyword("instead of this node")));
 
+        notations.Add(
+            IntentionConceptKeys.Extract,
+            ed => ed.Line(
+                ed.Keyword("extract into"),
+                ed.Space,
+                ed.Property(IntentionLanguage.IntoConceptSlot, emptyText: "<concept>"),
+                ed.Punct("."),
+                ed.Property(IntentionLanguage.IntoChildSlot, emptyText: "<slot>"),
+                ed.Space,
+                ed.Keyword("as"),
+                ed.Space,
+                ed.Property(IntentionLanguage.AsConceptSlot, emptyText: "<concept>"),
+                ed.Space,
+                ed.Keyword("pointing back through"),
+                ed.Space,
+                ed.Property(IntentionLanguage.ReferenceSlot, emptyText: "<reference>"),
+                ed.Space,
+                ed.Keyword("named by"),
+                ed.Space,
+                ed.Property(IntentionLanguage.ExtractNameSlot, emptyText: "<nothing>")));
+
         notations.Add(IntentionConceptKeys.Delete, ed => ed.Line(ed.Keyword("delete")));
 
         notations.Add(IntentionConceptKeys.Move, ed => ed.Line(

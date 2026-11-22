@@ -61,6 +61,18 @@ public static class IntentionLanguage
     /// <summary>The reference slot whose target a node is a use of.</summary>
     public const string ReferenceSlot = "reference";
 
+    /// <summary>The concept of the ancestor an extract moves the node into.</summary>
+    public const string IntoConceptSlot = "into";
+
+    /// <summary>The child slot of that ancestor which receives the node.</summary>
+    public const string IntoChildSlot = "slot";
+
+    /// <summary>The concept of the node an extract leaves in place of the one it moves.</summary>
+    public const string AsConceptSlot = "as";
+
+    /// <summary>The property of that node which receives the moved node's name, or empty for none.</summary>
+    public const string ExtractNameSlot = "name";
+
     /// <summary>The property an intention writes on the node.</summary>
     public const string SetSlot = "slot";
 
@@ -167,6 +179,33 @@ public static class IntentionLanguage
             ],
             [IntentionConceptKeys.Action],
             description: "Replaces the node with a copy of what its own reference points at."),
+
+        new ConceptDeclaration(
+            IntentionConceptKeys.Extract,
+            [
+                new PropertySlot(
+                    IntoConceptSlot,
+                    PropertyType.String,
+                    description: "The concept of the ancestor that receives the node."),
+                new PropertySlot(
+                    IntoChildSlot,
+                    PropertyType.String,
+                    description: "That ancestor's child slot which holds it."),
+                new PropertySlot(
+                    AsConceptSlot,
+                    PropertyType.String,
+                    description: "The concept of the node left in its place, which points back at it."),
+                new PropertySlot(
+                    ReferenceSlot,
+                    PropertyType.String,
+                    description: "The reference slot of that node which points at it."),
+                new PropertySlot(
+                    ExtractNameSlot,
+                    PropertyType.String,
+                    description: "The property of that node which receives its name, or empty for none."),
+            ],
+            [IntentionConceptKeys.Action],
+            description: "Takes the node out into the place this names, and leaves a use of it behind."),
 
         new ConceptDeclaration(
             IntentionConceptKeys.Set,

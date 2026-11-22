@@ -73,9 +73,12 @@ public static class IntentionLowering
                 : EditSafety.Plain;
 
             // An insert only means something on an empty slot; anywhere else the offer would come back rejected.
-            Func<IntentionContext, bool>? place = action.Concept.Key == IntentionConceptKeys.Insert
-                ? context => context.Place is { } at && at.IsEmptySlot
-                : null;
+            Func<IntentionContext, bool>? place = action.Concept.Key switch
+            {
+                IntentionConceptKeys.Insert => context => context.Place is { } at && at.IsEmptySlot,
+                IntentionConceptKeys.Extract => Extractable(action),
+                _ => null,
+            };
 
             entries.Add(new DeclaredIntention(
                 new Intention(id, label, description, Create(action, label, subject, concepts), safety: safety),
@@ -100,6 +103,7 @@ public static class IntentionLowering
             IntentionConceptKeys.Move => Move(action),
             IntentionConceptKeys.Replace => Replace(action, subject, concepts),
             IntentionConceptKeys.Inline => Inline(action, subject),
+            IntentionConceptKeys.Extract => Extract(action, subject, concepts),
             IntentionConceptKeys.Insert => Insert(action, concepts),
             var other => throw new ConceptDefinitionException(
                 $"'{other}' is not an intention body; an intention wraps or sets."),
@@ -239,6 +243,140 @@ public static class IntentionLowering
             return EditProgram.Of(
                 new DeleteNodeAction(node.Id),
                 new InsertCopyAction(target.Id, parent.Id, place, node.IndexInParent));
+        };
+    }
+
+    /// <summary>Takes the node out into the place a rule names, and leaves a use of it behind.</summary>
+    /// <remarks>
+    /// <para>
+    /// The three facts only the language knows: which ancestor receives the node, what stands where it stood, and
+    /// which of that node's references points back at it. The framework supplies the edit itself, which is one
+    /// action rather than a program - a program cannot name the node an earlier step creates, and the reference has
+    /// to name exactly that node.
+    /// </para>
+    /// <para>
+    /// Checked here is what a declaration can be asked without a document: the concepts exist, the destination holds
+    /// the subject's concept, the use is a kind of the subject so it fits wherever that fits, the reference accepts
+    /// the subject, and the name property can hold text. Where the node actually stands is the caret's answer, and
+    /// that is the action's refusal.
+    /// </para>
+    /// </remarks>
+    private static Func<IntentionContext, EditAction?> Extract(Node action, Concept? subject, ConceptRegistry concepts)
+    {
+        var intoKey = Required(
+            action,
+            IntentionLanguage.IntoConceptSlot,
+            "An extract has to name the concept that receives the node.");
+
+        var intoSlot = Required(
+            action,
+            IntentionLanguage.IntoChildSlot,
+            $"An extract has to name the child slot of '{intoKey}' that holds the node.");
+
+        var useKey = Required(
+            action,
+            IntentionLanguage.AsConceptSlot,
+            "An extract has to name the concept of the node left in its place.");
+
+        var reference = Required(
+            action,
+            IntentionLanguage.ReferenceSlot,
+            "An extract has to name the reference slot that points back at the node.");
+
+        var nameSlot = Optional(action, IntentionLanguage.ExtractNameSlot);
+
+        if (!concepts.TryGet(intoKey, out var into))
+        {
+            throw new ConceptDefinitionException(
+                $"An extract names '{intoKey}', which is not a concept of this language.");
+        }
+
+        if (into.FindChild(intoSlot) is not { } destination)
+        {
+            throw new ConceptDefinitionException(
+                $"'{intoKey}' declares no child slot '{intoSlot}', so nothing could be extracted into it.");
+        }
+
+        if (subject is not null && !subject.IsKindOf(destination.ChildConceptKey))
+        {
+            throw new ConceptDefinitionException(
+                $"'{intoKey}.{intoSlot}' does not accept '{subject.Key}', so the extract could never run.");
+        }
+
+        if (!concepts.TryGet(useKey, out var use))
+        {
+            throw new ConceptDefinitionException(
+                $"An extract names '{useKey}', which is not a concept of this language.");
+        }
+
+        // A use takes the node's place, so it has to be able to stand wherever the node stands - which is exactly
+        // "a kind of the subject". A rule that leaves the concept empty is offered on every node and lets the action
+        // decide instead.
+        if (subject is not null && !use.IsKindOf(subject.Key))
+        {
+            throw new ConceptDefinitionException(
+                $"'{useKey}' is not a '{subject.Key}', so it could not stand where one stands.");
+        }
+
+        if (use.FindReference(reference) is not { } targets)
+        {
+            throw new ConceptDefinitionException(
+                $"'{useKey}' declares no reference named '{reference}', so the use could not point at what it stands for.");
+        }
+
+        if (subject is not null && !subject.IsKindOf(targets.TargetConceptKey))
+        {
+            throw new ConceptDefinitionException(
+                $"Reference '{reference}' of '{useKey}' cannot point at a '{subject.Key}', so the extract could never run.");
+        }
+
+        if (nameSlot is not null)
+        {
+            if (use.FindProperty(nameSlot) is not { } nameProperty)
+            {
+                throw new ConceptDefinitionException(
+                    $"'{useKey}' declares no property named '{nameSlot}', so the name has nowhere to go.");
+            }
+
+            if (!nameProperty.Type.Equals(PropertyType.String))
+            {
+                throw new ConceptDefinitionException(
+                    $"'{useKey}.{nameSlot}' holds {nameProperty.Type.Name}, and an extract writes text into it.");
+            }
+        }
+
+        return context => context.Node is { } node
+            ? new ExtractNodeAction(node.Id, intoKey, intoSlot, useKey, reference, nameSlot)
+            : null;
+    }
+
+    /// <summary>Whether the caret is somewhere an extract could run: an ancestor exists and the node is not there yet.</summary>
+    /// <remarks>
+    /// A declaration with no <c>into</c> or no slot answers "yes here" and never reaches a user, because lowering the
+    /// body itself refuses it while the language loads.
+    /// </remarks>
+    private static Func<IntentionContext, bool> Extractable(Node action)
+    {
+        var into = Optional(action, IntentionLanguage.IntoConceptSlot);
+        var slot = Optional(action, IntentionLanguage.IntoChildSlot);
+
+        return context =>
+        {
+            if (into is null || slot is null || context.Node is not { } node)
+            {
+                return true;
+            }
+
+            for (var above = node.Parent; above is not null; above = above.Parent)
+            {
+                if (above.Concept.IsKindOf(into))
+                {
+                    return !(ReferenceEquals(node.Parent, above)
+                        && string.Equals(node.ParentSlot, slot, StringComparison.Ordinal));
+                }
+            }
+
+            return false;
         };
     }
 
