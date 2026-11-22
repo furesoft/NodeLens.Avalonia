@@ -40,6 +40,7 @@ internal static class ConceptPage
         }
 
         body.Append(Html.Section("Slots", Slots(chain, concept, depth)));
+        body.Append(Html.Section("Held by", HeldBy(chain, concept, depth)));
 
         // The home crumb carries the tree's own name, so a reader who came in from a search engine knows what they are
         // inside and has one click back to the list of languages.
@@ -114,9 +115,13 @@ internal static class ConceptPage
 
     private static string Slots(DocumentationChain chain, Concept concept, int depth)
     {
+        // The slot that holds the name carries the convention beside it: the rule is about that slot, and a reader
+        // scanning the table should not have to match it up with a sentence higher on the page.
         var rows = concept.Slots.Select(slot => new List<string>
         {
-            $"<code>{Html.Escape(slot.Name)}</code>",
+            string.Equals(slot.Name, concept.NameSlot?.Name, StringComparison.Ordinal) && concept.NameRule is { } rule
+                ? $"<code>{Html.Escape(slot.Name)}</code> <span class=\"muted\">{Html.Escape(rule.Requirement)}</span>"
+                : $"<code>{Html.Escape(slot.Name)}</code>",
             Kind(slot),
             Target(chain, slot, depth),
             Range(slot),
@@ -127,6 +132,50 @@ internal static class ConceptPage
         return Html.Table(["Slot", "Kind", "Holds", "How often", "Default", "Description"], rows, "It declares no slot.");
     }
 
+    /// <summary>Every slot of the set that can hold <paramref name="concept"/>, exactly or as a kind of what it names.</summary>
+    /// <remarks>
+    /// <para>
+    /// The reverse of the slot table, and the question a language author actually has while editing a concept: who breaks
+    /// if I move it, and where may it appear. The Inheritance section answers "what is it" and this one answers "who
+    /// refers to it", which no page said before - a reader had to open every concept of the set and read its slots.
+    /// </para>
+    /// <para>
+    /// A slot declared over <c>Framework.BaseConcept</c> is left out: it holds any node at all, so listing it on every
+    /// concept page in the set would be true and empty at once. The exact matches come first, because "a slot names this
+    /// concept" is the stronger fact than "a slot names something it is a kind of".
+    /// </para>
+    /// </remarks>
+    private static string HeldBy(DocumentationChain chain, Concept concept, int depth)
+    {
+        var holders =
+            from language in chain.Languages
+            from owner in DocumentationChain.Own(language)
+            from slot in owner.Slots
+            let target = slot switch
+            {
+                ChildSlot child => child.ChildConceptKey,
+                ReferenceSlot reference => reference.TargetConceptKey,
+                _ => null,
+            }
+            where target is not null
+                && !DocumentationChain.IsFramework(target)
+                && (string.Equals(target, concept.Key, StringComparison.Ordinal) || concept.IsKindOf(target))
+            orderby !string.Equals(target, concept.Key, StringComparison.Ordinal), owner.Key, slot.Name
+            select (Owner: owner, Slot: slot, Target: target);
+
+        var rows = holders.Select(holder => new List<string>
+        {
+            chain.ConceptReference(depth, holder.Owner.Key),
+            $"<code>{Html.Escape(holder.Slot.Name)}</code>",
+            chain.ConceptReference(depth, holder.Target),
+            Range(holder.Slot),
+        });
+
+        return Html.Table(
+            ["In", "Slot", "Declared over", "How often"],
+            rows,
+            "No concept of this set declares a slot that can hold it.");
+    }
     private static string Kind(SlotDeclaration slot) => slot switch
     {
         PropertySlot => "property",

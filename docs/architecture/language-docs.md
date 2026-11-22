@@ -154,8 +154,8 @@ type - which is all the page said before - is a name for a class rather than for
 | Page | Content |
 | --- | --- |
 | `index.html` | the set: one row per language - name, version, how many concepts it declares, and what it stands on |
-| `<Language>/index.html` | what that language declares it stands on (name, relation, the version asked for and the version answered, with a mismatch marked), then its concepts grouped by inheritance root |
-| `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, and the concepts of the set that extend or implement it, the notation written out as the shape it spells (`map <name> at <entry>`, its body indented), every slot as a row (kind, key, type or target, cardinality, default) |
+| `<Language>/index.html` | what that language declares it stands on (name, relation, the version asked for and the version answered, with a mismatch marked), then its concepts grouped by inheritance root, each with the slot it is named by and the naming convention that slot is held to |
+| `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, and the concepts of the set that extend or implement it, the notation written out as the shape it spells (`map <name> at <entry>`, its body indented), every slot as a row (kind, key, type or target, cardinality, default) with the naming convention beside the name slot, then every slot of the set that can hold the concept - exactly or as a kind of what it names - so the page answers "who refers to it" as well as "what is it" |
 | `<Language>/aspects.html` | every aspect at a glance: the folder it comes from, how much the language declares, one sentence saying what that means, and a link to its page - plus the concepts by kind, which is what `structure/` holds |
 | `<Language>/enumerations.html` | the enumerations by the symbols they offer and the slots that hold them |
 | `<Language>/notations.html` | every notation *as the shape it spells* |
@@ -254,6 +254,12 @@ language in the chain, so the archive is the one place a reader gets a language 
    A reader took it for a missing `;` in the language itself, so the sentence that explains the placeholders names the
    case - punctuation the child owns belongs to the child and is not repeated beside it. The generators page had no
    legend at all and gets the same sentence for its own spelling, where the same confusion was possible.
+8. **A naming convention is named where it applies**, not only in the facts table. `NameRule` carries two words that are
+   not the same: `Text` is the identity a declaration is written with (`pascal`) and `Requirement` is the shape a finding
+   quotes (`PascalCase`). The pages show the shape, because a reader asks what a name looks like; the concept page keeps
+   the identity in its facts, which is what an author writes in `structure/`. It appears twice for that reason - as
+   a column of the concept list, where "how do names read in this language" is asked, and beside the name slot in the
+   slot table, where the rule belongs to one cell.
 7. **The picture is composed from the chain, like the shell's.** A document of a dependent language draws its base's
    concepts - Invoice holds a `Units.Quantity` - and a language's notation registry holds only what that language
    declares. So the chain builds one concept registry over every declaration and one notation registry over that, which
