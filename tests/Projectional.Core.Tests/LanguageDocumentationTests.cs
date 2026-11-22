@@ -185,6 +185,103 @@ public sealed class LanguageDocumentationTests
     }
 
     [Fact]
+    public void AConceptPageWritesOutTheNotationItIsDrawnWith()
+    {
+        var language = Atlas();
+
+        var place = Assert.Single(
+            LanguageDocumentation.Generate(language),
+            page => page.Path == "Atlas/concepts/Atlas.Place.html");
+
+        // The notation is a tree of cells, so the page writes what the cells spell: a keyword as itself and a slot as
+        // its name in angle brackets. Escaped, because a page shows the brackets rather than interpreting them.
+        Assert.Contains("<pre class=\"notation\">place &lt;name&gt; at &lt;at&gt;</pre>", place.Text, StringComparison.Ordinal);
+
+        var map = Assert.Single(
+            LanguageDocumentation.Generate(language),
+            page => page.Path == "Atlas/concepts/Atlas.Map.html");
+
+        // A concept whose notation has an indented body shows the body under it, two spaces per level - which is what
+        // makes the page answer "what does one of these look like" rather than "which cells exist".
+        Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;\n  &lt;routes...&gt;</pre>", map.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConceptWithNoNotationOfItsOwnSaysSoInsteadOfDrawingNothing()
+    {
+        var language = Atlas();
+
+        var spot = Assert.Single(
+            LanguageDocumentation.Generate(language),
+            page => page.Path == "Atlas/concepts/Atlas.Spot.html");
+
+        // An abstract concept needs no notation, and a page that silently left the section out would look like a
+        // concept nobody had finished rather than one that is declared not to draw itself.
+        Assert.DoesNotContain("<pre class=\"notation\">", spot.Text, StringComparison.Ordinal);
+        Assert.Contains("no notation of its own", spot.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheExamplesPageDrawsEveryDocumentALanguageShips()
+    {
+        var language = Atlas();
+
+        var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Atlas/examples.html");
+
+        // The three documents: the accessory one the language declares and the two saved beside `language.mps`.
+        Assert.Contains("<h2>known-places</h2>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<h2>map</h2>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<h2>route</h2>", page.Text, StringComparison.Ordinal);
+
+        // Drawn, not described: the document's own names and its indentation are in the page.
+        Assert.Contains("place", page.Text, StringComparison.Ordinal);
+        Assert.Contains("summit", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnExampleIsHighlightedWithTheKindsTheEditorPaints()
+    {
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Atlas()),
+            each => each.Path == "Atlas/examples.html");
+
+        // The classification is the renderer's own (`CellStyler`), which is what a palette in the editor turns into a
+        // colour: a keyword is a keyword, a resolved reference is a reference, and an empty slot is a placeholder.
+        Assert.Contains("<span class=\"s-keyword\">place</span>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-text\">summit</span>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-ref\">lake</span>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-placeholder\">&lt;none&gt;</span>", page.Text, StringComparison.Ordinal);
+
+        // A page that coloured text by looking at it would need no spans at all; this one never decides, it only maps.
+        Assert.DoesNotContain("<span class=\"s-keyword\">summit</span>", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageWithNoDocumentOfItsOwnGetsNoExamplesPage()
+    {
+        var units = Units();
+        var atlas = Atlas(units);
+
+        var pages = LanguageDocumentation.Generate([units, atlas]);
+
+        // Units ships a structure and nothing to look at, so a page saying "no documents" would be an empty room with a
+        // sign on the door - the entry does not exist at all, and the navigation does not offer it.
+        Assert.DoesNotContain(pages, page => page.Path == "Units/examples.html");
+
+        // Asserted per language rather than per page: the tree carries every language of the set, so "Examples" appears on
+        // the Units page too - as Atlas' entry. What must not appear is an entry pointing at a page Units does not have.
+        Assert.DoesNotContain(
+            "../Units/examples.html",
+            Assert.Single(pages, page => page.Path == "Units/index.html").Text,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "../Atlas/examples.html",
+            Assert.Single(pages, page => page.Path == "Atlas/index.html").Text,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheAspectsPageCountsWhatTheLanguageDeclares()
     {
         var language = Atlas();

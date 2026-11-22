@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Languages;
 
 namespace Projectional.LanguageDocs;
@@ -32,6 +33,12 @@ internal static class ConceptPage
 
         body.Append(Html.Section("Declaration", Declaration(language, concept)));
         body.Append(Html.Section("Inheritance", Inheritance(chain, concept, depth)));
+
+        if (language.Notations.TryGet(concept.Key, out var notation))
+        {
+            body.Append(Html.Section("How it is drawn", Drawn(notation)));
+        }
+
         body.Append(Html.Section("Slots", Slots(chain, concept, depth)));
 
         // The home crumb carries the tree's own name, so a reader who came in from a search engine knows what they are
@@ -61,6 +68,11 @@ internal static class ConceptPage
     }
 
     private static IReadOnlyList<string> Row(string fact, string value) => [Html.Escape(fact), value];
+
+    /// <summary>The notation written out as text, with the sentence that says what the placeholders mean.</summary>
+    private static string Drawn(Notation notation) =>
+        $"<pre class=\"notation\">{Html.Escape(NotationSpelling.Of(notation))}</pre>\n"
+        + Html.Paragraph("A slot is written as its name, so <name> holds one child or value and <name...> holds a list; further indentation is another level. This is the shape a document of the concept takes, not a document.");
 
     private static string Inheritance(DocumentationChain chain, Concept concept, int depth)
     {

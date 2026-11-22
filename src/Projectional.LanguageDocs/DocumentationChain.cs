@@ -22,6 +22,7 @@ internal sealed class DocumentationChain
 {
     private readonly Dictionary<string, LanguageProject> _folders = new(StringComparer.Ordinal);
     private readonly List<LanguageProject> _languages = [];
+    private readonly Dictionary<LanguageProject, IReadOnlyList<DocumentDrawing>> _examples = [];
 
     /// <summary>The chain of one language: the language and everything it stands on.</summary>
     internal DocumentationChain(LanguageProject language)
@@ -107,6 +108,24 @@ internal sealed class DocumentationChain
             .Select(declaration => language.Concepts.Get(declaration.Key))
             .OrderBy(concept => concept.Key, StringComparer.Ordinal),
     ];
+
+    /// <summary>The documents <paramref name="language"/> ships, drawn once per generation.</summary>
+    /// <remarks>
+    /// Cached because both the page and the navigation ask: the tree needs to know whether the entry exists at all, and
+    /// a per-page re-read of every document would make generating a site quadratic in its own pages.
+    /// </remarks>
+    internal IReadOnlyList<DocumentDrawing> Examples(LanguageProject language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        if (!_examples.TryGetValue(language, out var drawings))
+        {
+            drawings = ExampleDocuments.Of(language);
+            _examples[language] = drawings;
+        }
+
+        return drawings;
+    }
 
     /// <summary>Whether a language's own declarations name <paramref name="conceptKey"/>.</summary>
     internal static bool Declares(LanguageProject language, string conceptKey) =>

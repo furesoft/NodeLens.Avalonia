@@ -107,6 +107,11 @@ public static class LanguageDocumentation
             pages.Add(new($"{folder}/index.html", LanguageIndexPage.Render(chain, each, $"{folder}/index.html")));
             pages.Add(new($"{folder}/aspects.html", AspectsPage.Render(chain, each, $"{folder}/aspects.html")));
 
+            if (chain.Examples(each).Count > 0)
+            {
+                pages.Add(new($"{folder}/examples.html", ExamplesPage.Render(chain, each, $"{folder}/examples.html")));
+            }
+
             foreach (var concept in DocumentationChain.Own(each))
             {
                 var path = $"{folder}/concepts/{concept.Key}.html";

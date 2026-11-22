@@ -43,6 +43,46 @@ public static class LanguageSnapshot
         return LayoutSnapshot.Render(node, notations, width, choice);
     }
 
+    /// <summary>Renders one node as classified runs, for a caller that wants to colour the picture.</summary>
+    /// <param name="node">The node to render.</param>
+    /// <param name="notations">The notation that projects it.</param>
+    /// <param name="width">How many columns the picture has.</param>
+    /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    /// <returns>The runs in the order they are drawn, each with its row, its column, its text and its kind.</returns>
+    /// <remarks>
+    /// The same drawing as <see cref="Render(Node, NotationRegistry, int, INotationChoice?)"/>, answered as pieces rather
+    /// than as characters, because a caller that colours text needs to know where a keyword starts and where it ends -
+    /// and must not re-derive either from the characters, which is how a highlighter drifts from its editor.
+    /// </remarks>
+    public static IReadOnlyList<SnapshotRun> Runs(
+        Node node,
+        NotationRegistry notations,
+        int width,
+        INotationChoice? choice = null)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(notations);
+
+        return LayoutSnapshot.Runs(node, notations, width, choice);
+    }
+
+    /// <summary>Renders every root of <paramref name="model"/> as classified runs.</summary>
+    /// <param name="model">The model to render.</param>
+    /// <param name="notations">The notation that projects it.</param>
+    /// <param name="width">How many columns the picture has.</param>
+    /// <param name="choice">Which variant of each concept to draw; the default ones when omitted.</param>
+    public static IReadOnlyList<SnapshotRun> Runs(
+        Model model,
+        NotationRegistry notations,
+        int width,
+        INotationChoice? choice = null)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(notations);
+
+        return LayoutSnapshot.Runs(model, notations, width, choice);
+    }
+
     /// <summary>Renders every root of <paramref name="model"/>, stacked in model order.</summary>
     /// <param name="model">The model to render.</param>
     /// <param name="notations">The notation that projects it.</param>
