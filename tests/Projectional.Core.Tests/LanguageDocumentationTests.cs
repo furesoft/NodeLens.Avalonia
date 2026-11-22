@@ -1,7 +1,9 @@
+using System.IO.Compression;
 using System.Text.RegularExpressions;
 
 using Projectional.Core;
 using Projectional.LanguageDocs;
+using Projectional.LanguageExport;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Structures;
@@ -429,6 +431,46 @@ public sealed class LanguageDocumentationTests
             Assert.Contains(">Atlas.Stop</a>", page.Text, StringComparison.Ordinal);
             Assert.Contains(">Atlas</summary>", page.Text, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void ThePagesTravelInsideAPackage()
+    {
+        // What the shell's File > Package does with them: the whole set, under docs/, beside the code. The prefix is the
+        // packer's decision because the pages link to each other relatively and two languages cannot share one index.
+        var language = Atlas();
+        var pages = LanguageDocumentation.Generate(language);
+
+        var files = pages
+            .Select(page => new PackageFile($"docs/{page.Path}", System.Text.Encoding.UTF8.GetBytes(page.Text)))
+            .ToList();
+
+        var zip = LanguagePackage.Zip(
+            LanguageExporter.Export(language, "Sample.Atlas"),
+            PackageContent.Sources,
+            files);
+
+        using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+
+        var names = archive.Entries.Select(entry => entry.FullName).ToList();
+
+        Assert.Contains("docs/index.html", names);
+        Assert.Contains("docs/Atlas/index.html", names);
+        Assert.Contains("docs/Atlas/concepts/Atlas.Map.html", names);
+        Assert.Contains("docs/Atlas/examples.html", names);
+
+        // The chain travels too, so a reader of the archive can follow a link into the language it stands on.
+        Assert.Contains("docs/Units/index.html", names);
+
+        // And the code is still there, for the language and the one it stands on: the pages are added beside the export,
+        // never instead of it.
+        Assert.Contains("AtlasLanguage-1.0.0.cs", names);
+        Assert.Contains("UnitsLanguage-1.0.0.cs", names);
+
+        using var page = archive.GetEntry("docs/Atlas/examples.html")!.Open();
+        using var reader = new StreamReader(page);
+
+        Assert.Contains("s-keyword", reader.ReadToEnd(), StringComparison.Ordinal);
     }
 
     /// <summary>Every <c>href</c> and <c>src</c> a page writes, which is every path it asks a reader to follow.</summary>

@@ -1,9 +1,9 @@
 # Interactive language documentation
 
-**Status: slices 1, 2 and 3 are built** (`src/Projectional.LanguageDocs`, one test class, the shell's **File ▸ Export
-documentation…**, and a CI job that publishes the site to GitHub Pages). Slice 4 is not started: a package does not
-carry the pages. The dependency requirement below is **decided** rather than proposed: a language's documentation
-contains the documentation of every language it stands on.
+**Status: built, all four slices** (`src/Projectional.LanguageDocs`, one test class, the shell's **File ▸ Export
+documentation…** and **File ▸ Package…**, and a CI job that publishes the site to GitHub Pages). The dependency
+requirement below is **decided** rather than proposed: a language's documentation contains the documentation of every
+language it stands on.
 
 ## What it is for
 
@@ -160,8 +160,8 @@ for a folder rather than a file, because the output is a tree whose pages link t
 
 ## Packaged with the language
 
-**Decided: a package carries the documentation of every language it holds.** `File > Package...` already writes one
-package per language in the chain, so the archive is the one place a reader gets a language *and* its documentation:
+**A package carries the documentation of every language it holds.** `File > Package...` already writes one package per
+language in the chain, so the archive is the one place a reader gets a language *and* its documentation:
 
 - The generator runs once for the chain - the exported language and every language it was resolved against, base
   first, exactly the list the export already answers - and the tree above goes into the archive under `docs/`.
@@ -255,6 +255,10 @@ GitHub Actions**.
   page, because the tree carries every language of the set.
 - **`LanguageSnapshot.Runs` answers where a piece is and what it means** (in `Projectional.Toolkit`), which is the
   public half of the change and the reason a language author can colour a picture without reaching into the projection.
+- **The pages travel inside a package**: the archive holds the code of the chain and, after it, `docs/index.html`,
+  `docs/Atlas/concepts/…`, `docs/Atlas/examples.html` and the base's folder - so a reader of the one file can follow a
+  link into the language it stands on. `LanguagePackage.Zip` grew a list of extra files for this: the export layer takes
+  bytes and asks nothing about where they came from, which is what keeps two products from having to know each other.
 
 Not proven by a test, and checked by running it instead: the whole site - seven languages, 94 pages - was generated and
 opened from `file://`; the search box was typed into and read back through the DOM (one match visible, the other ninety
@@ -272,7 +276,8 @@ header, so the button that opened it was gone.
 2. ~~**The dependency proved.**~~ Built: the atlas tests are the dependency proof, and `declared-atlas` is the fixture.
 3. ~~**The pictures.**~~ Built: the notation spelling per concept, and `examples.html` with every shipped document
    drawn by the renderer and coloured by the kinds the editor paints.
-4. **Packaged.** `File > Package...` writes the tree under `docs/` in both variants, and the archive stays byte-stable.
+4. ~~**Packaged.**~~ Built: `File > Package...` writes the tree under `docs/` beside the code in all three variants, and
+   the archive stays reproducible - the pages carry no timestamp and the entries come in a fixed order.
 
 Two things moved out of the original plan and are worth recording, because both were decisions rather than slips:
 

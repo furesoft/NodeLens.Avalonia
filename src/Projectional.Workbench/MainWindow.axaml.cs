@@ -2968,11 +2968,17 @@ public sealed partial class MainWindow : Window, IDisposable
                 assemblies ? ExportOutput.Assembly : ExportOutput.Source,
                 layout);
 
-            File.WriteAllBytes(path, LanguagePackage.Zip(result, content));
+            // The documentation goes in beside the code, in both halves: a reader of a binary is the one who needs the
+            // pages most, and an archive holding the language and its pages is the one file a colleague can be handed.
+            var (documentation, complaint) = DocumentationOf(language);
+
+            File.WriteAllBytes(path, LanguagePackage.Zip(result, content, documentation));
 
             var packed = assemblies ? result.Assemblies.Count : result.Files.Count;
 
-            _error = $"{language.Name} packaged: {packed} files in {path}.";
+            _error = documentation.Count == 0
+                ? $"{language.Name} packaged: {packed} files in {path}.{complaint}"
+                : $"{language.Name} packaged: {packed} files and {documentation.Count} documentation pages in {path}.{complaint}";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ExportCompilationException or InvalidOperationException)
         {
@@ -2980,6 +2986,37 @@ public sealed partial class MainWindow : Window, IDisposable
         }
 
         UpdateStatus();
+    }
+
+    /// <summary>The documentation of <paramref name="language"/> as archive entries under <c>docs/</c>.</summary>
+    /// <remarks>
+    /// The prefix is the shell's decision rather than the generator's: the pages link to each other with relative paths,
+    /// so they only work as a tree that keeps its shape - and an archive that put one language's <c>index.html</c> at the
+    /// top would collide with the next one's. The bytes are the same UTF-8 without a BOM the exporter writes, because a
+    /// package is one artefact and its parts should not disagree about an encoding.
+    /// </remarks>
+    private static (IReadOnlyList<PackageFile> Files, string Complaint) DocumentationOf(LanguageProject language)
+    {
+        IReadOnlyList<DocumentationPage> pages;
+
+        try
+        {
+            pages = LanguageDocumentation.Generate(language);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // A package without pages is still a package: refusing to pack the language over one unreadable document
+            // would hide the code as well. The complaint rides on the answer instead of a console nobody is reading.
+            return ([], $" The documentation was left out: {exception.Message}");
+        }
+
+        var encoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        return
+        (
+            [.. pages.Select(page => new PackageFile($"docs/{page.Path}", encoding.GetBytes(page.Text)))],
+            string.Empty
+        );
     }
 
     /// <summary>A menu entry that packs one opened language into a zip archive.</summary>
