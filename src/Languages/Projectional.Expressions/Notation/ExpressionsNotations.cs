@@ -67,5 +67,24 @@ internal static class ExpressionsNotations
             ed.Keyword("else"),
             ed.Space,
             ed.ChildInline("else")));
+
+        // `f(x, y) = x ^ y`, one line, because that is how the definition reads as an equation.
+        notations.Add(ExpressionsConceptKeys.Function, ed => ed.Line(
+            ed.Property("name"),
+            ed.Punct("("),
+            ed.InlineCollection(ExpressionsLanguage.ParametersSlot, separator: ed.Punct(", ")),
+            ed.Punct(")"),
+            ed.Space,
+            ed.Punct("="),
+            ed.Space,
+            ed.ChildInline("body")));
+
+        notations.Add(ExpressionsConceptKeys.Parameter, ed => ed.Line(ed.Property("name")));
+
+        notations.Add(ExpressionsConceptKeys.Call, ed => ed.Line(
+            ed.Property("callee"),
+            ed.Punct("("),
+            ed.InlineCollection(ExpressionsLanguage.ArgumentsSlot, separator: ed.Punct(", ")),
+            ed.Punct(")")));
     }
 }

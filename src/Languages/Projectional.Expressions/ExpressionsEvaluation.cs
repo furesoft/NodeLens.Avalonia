@@ -1,3 +1,4 @@
+using Projectional.Core;
 using Projectional.Language;
 
 namespace Projectional.Expressions;
@@ -29,7 +30,9 @@ public static class ExpressionsEvaluation
         .Add(ExpressionsConceptKeys.Parenthesized, new DelegateEvaluationRule(context => context.EvalChild("inner")))
         .Add(ExpressionsConceptKeys.Unary, new DelegateEvaluationRule(ApplyUnary))
         .Add(ExpressionsConceptKeys.Binary, new DelegateEvaluationRule(ApplyBinary))
-        .Add(ExpressionsConceptKeys.If, new DelegateEvaluationRule(ChooseBranch));
+        .Add(ExpressionsConceptKeys.If, new DelegateEvaluationRule(ChooseBranch))
+        .Add(ExpressionsConceptKeys.Function, new DelegateEvaluationRule(context => context.EvalChild("body")))
+        .Add(ExpressionsConceptKeys.Call, new DelegateEvaluationRule(ApplyCall));
 
     private static Value ReadName(EvaluationContext context) =>
         context.Node.GetOrNull("name") is { Length: > 0 } name
@@ -119,6 +122,59 @@ public static class ExpressionsEvaluation
             ? throw context.Error($"{basis} to the power of {exponent} is beyond the whole numbers this language holds.")
             : new IntValue((int)raised);
     }
+
+    /// <summary>Applies a function of the model to the values of the arguments.</summary>
+    /// <remarks>
+    /// The callee is resolved among the documents of the model, by name, which is this vocabulary's own doctrine: a name
+    /// is what it means to whoever runs the model, and no reference slot has to exist for it. Two functions of one name
+    /// are therefore ambiguous rather than shadowed - the first in document order answers, and the constraint that would
+    /// report the pair is the language's next step rather than the interpreter's guess.
+    /// </remarks>
+    private static Value ApplyCall(EvaluationContext context)
+    {
+        var callee = context.Node.GetOrNull("callee") is { Length: > 0 } name
+            ? name
+            : throw context.Error("A call must say which function it applies.");
+
+        var function = FunctionNamed(context, callee)
+            ?? throw context.Error($"No function of this model is called '{callee}'.");
+
+        var parameters = function.GetChildren(ExpressionsLanguage.ParametersSlot);
+        var arguments = context.Node.GetChildren(ExpressionsLanguage.ArgumentsSlot);
+
+        if (parameters.Count != arguments.Count)
+        {
+            throw context.Error(
+                $"'{callee}' takes {parameters.Count} argument(s), but {arguments.Count} were given.");
+        }
+
+        Dictionary<string, Value> bound = new(StringComparer.Ordinal);
+
+        for (var index = 0; index < parameters.Count; index++)
+        {
+            if (parameters[index].GetOrNull("name") is not { Length: > 0 } parameter)
+            {
+                throw context.Error($"Parameter {index + 1} of '{callee}' has no name.");
+            }
+
+            if (!bound.TryAdd(parameter, context.Eval(arguments[index])))
+            {
+                throw context.Error($"'{callee}' declares '{parameter}' twice.");
+            }
+        }
+
+        // The body belongs to the function rather than to the call, so the node that is evaluated is the one the
+        // definition holds - inside the scope the arguments built.
+        var body = function.GetChild("body")
+            ?? throw context.Error($"function {callee} declares no body.");
+
+        return context.With(bound).Eval(body);
+    }
+
+    private static Node? FunctionNamed(EvaluationContext context, string name) =>
+        context.Node.Model.Roots
+            .Where(root => root.Concept.IsKindOf(ExpressionsConceptKeys.Function))
+            .FirstOrDefault(root => string.Equals(root.GetOrNull("name"), name, StringComparison.Ordinal));
 
     private static BoolValue Logic(EvaluationContext context, Value left, Value right, bool and)
     {

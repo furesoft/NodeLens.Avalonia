@@ -95,6 +95,29 @@ public sealed class ExpressionsEvaluationTests
     }
 
     [Fact]
+    public void ACallAppliesTheFunctionItNames()
+    {
+        // `f(x) = x ^ 2` applied to 4: the definition is a document of the model, the call resolves its name among those
+        // documents, and the arguments are bound for the body - which is what the evaluation scope was added for.
+        var model = NewModel();
+        Function(model, "square", ["x"], Binary(model, "^", Name(model, "x"), Int(model, 2)));
+        var call = Call(model, "square", Int(model, 4));
+
+        Assert.Equal(new IntValue(16), Run(model, call));
+    }
+
+    [Fact]
+    public void ACallIsRefusedWhenItNamesNothingOrBringsTheWrongCount()
+    {
+        var model = NewModel();
+        Function(model, "square", ["x"], Binary(model, "^", Name(model, "x"), Int(model, 2)));
+
+        // A call to a name no document declares is a message rather than a guess, and the count is compared because a
+        // mismatch would otherwise surface as "the parameter has no value" two nodes deeper than the mistake.
+        Assert.NotNull(RunResult(model, Call(model, "cube", Int(model, 2))).Failure);
+        Assert.NotNull(RunResult(model, Call(model, "square", Int(model, 2), Int(model, 3))).Failure);
+    }
+    [Fact]
     public void AScopeBindsANameForTheNodeItEncloses()
     {
         var model = NewModel();
@@ -261,6 +284,44 @@ public sealed class ExpressionsEvaluationTests
 
         node.Set("operator", symbol);
         node.InsertChild("operand", 0, operand);
+
+        return node;
+    }
+
+    private static Node Name(Model model, string name)
+    {
+        var node = model.NewNode(ExpressionsConceptKeys.Name);
+        node.Set("name", name);
+
+        return node;
+    }
+
+    private static Node Function(Model model, string name, string[] parameters, Node body)
+    {
+        var node = model.NewNode(ExpressionsConceptKeys.Function);
+        node.Set("name", name);
+
+        // A parameter is no concept that may start a document, so it is created as the child it is.
+        foreach (var each in parameters)
+        {
+            var parameter = model.NewChild(node, ExpressionsLanguage.ParametersSlot, ExpressionsConceptKeys.Parameter);
+            parameter.Set("name", each);
+        }
+
+        node.InsertChild("body", 0, body);
+
+        return node;
+    }
+
+    private static Node Call(Model model, string callee, params Node[] arguments)
+    {
+        var node = model.NewNode(ExpressionsConceptKeys.Call);
+        node.Set("callee", callee);
+
+        for (var index = 0; index < arguments.Length; index++)
+        {
+            node.InsertChild(ExpressionsLanguage.ArgumentsSlot, index, arguments[index]);
+        }
 
         return node;
     }

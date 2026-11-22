@@ -748,3 +748,15 @@ mechanisms being separate.
 `Projectional.Samples` (the toy rules language the standalone editor opens) is the
 working instance of that seam: two concepts of its own, one notation, and a condition
 slot it never fills in itself.
+A vocabulary of values needs a way to name one, and the language has had that since the
+call arrived: `Expressions.Function` is `f(x) = x ^ 2` - a document of its own, because a
+definition is not a value - and `Expressions.Call` is `f(4)`. The machinery that made that
+possible is the one thing the projection never needed and the interpreter did:
+`EvaluationContext.With` binds names for the subtree a rule is about to evaluate, so a call
+hands its arguments to the body. The scope is a value rather than a stack, because a rule
+that forgot to pop would leak the parameters of one call into the next.
+
+The callee is text, not a reference, for the reason `Name` is: this vocabulary resolves
+names when something runs the model. The cost is written down where it is paid - renaming a
+function does not follow into its calls - and it buys a sub-language a host can compose
+without a scope provider or a reference slot.

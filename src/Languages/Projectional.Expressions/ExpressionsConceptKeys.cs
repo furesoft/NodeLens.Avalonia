@@ -37,4 +37,13 @@ public static class ExpressionsConceptKeys
 
     /// <summary>A choice: a <c>condition</c>, the <c>then</c> expression and the <c>else</c> expression.</summary>
     public const string If = "Expressions.If";
+
+    /// <summary>A function definition: a name, its parameters and the expression it answers with.</summary>
+    public const string Function = "Expressions.Function";
+
+    /// <summary>One parameter of a <see cref="Function"/>, which is a name and nothing else.</summary>
+    public const string Parameter = "Expressions.Parameter";
+
+    /// <summary>An application: the name of a function and the arguments it is given.</summary>
+    public const string Call = "Expressions.Call";
 }
