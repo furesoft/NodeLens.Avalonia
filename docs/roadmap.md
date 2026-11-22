@@ -44,6 +44,12 @@ What is next, in order:
    drawn", which was the model's rule rather than a gap - a reference is single-valued, and a list of links is a
    child node per element ([language.md](architecture/language.md#notation)).
 
+4. **The full sample.** One declared language that holds every aspect at once - structure, editor, types, typing,
+   constraints, scopes, intentions, generator, import, accessory, tests and a root that names itself and borrows a
+   vocabulary - so the aspects are proven to compose instead of only to work one at a time, and a guard test that turns
+   red when a new aspect is not added to it ([full-sample.md](architecture/full-sample.md)). The per-axis samples stay:
+   they explain one thing, this one keeps them true.
+
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, an instance
 created from a typed alias, data flow, comments, an inspector, block-selection shrink and a
