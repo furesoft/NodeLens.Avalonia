@@ -206,6 +206,10 @@ public sealed class LanguageDocumentationTests
         // A concept whose notation has an indented body shows the body under it, two spaces per level - which is what
         // makes the page answer "what does one of these look like" rather than "which cells exist".
         Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;\n  &lt;routes...&gt;</pre>", map.Text, StringComparison.Ordinal);
+
+        // The legend says where a slot text comes from, because what a child owns it draws itself: a notation that
+        // reuses a statement shows one semicolon, not two, and a reader who does not know that reads a defect into it.
+        Assert.Contains("punctuation the child owns", place.Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -549,6 +553,10 @@ public sealed class LanguageDocumentationTests
         Assert.Contains("place {name} at {at}", page.Text, StringComparison.Ordinal);
         Assert.Contains("[if entry: at -&gt;entry]", page.Text, StringComparison.Ordinal);
         Assert.Contains("{places... separated by &quot;\\n&quot;}", page.Text, StringComparison.Ordinal);
+
+        // And the legend for a template, which needs it for the same reason: what a child contributes is its own
+        // template text, so a header field that is a statement brings the semicolon it ends with.
+        Assert.Contains("a field that reuses a statement prints that statement", page.Text, StringComparison.Ordinal);
     }
 
     [Fact]
