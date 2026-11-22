@@ -428,6 +428,14 @@ What export guarantees, and what it refuses to hide:
 - **The assembly is compiled in-process** (Roslyn, against the framework's trusted assemblies and
   the two projectional assemblies), so a caller needs no SDK, no temporary project and no shell,
   and emission is deterministic: the same language twice is the same bytes.
+- **What the root declares travels with the binary.** `language.mps`'s name, version and the
+  languages it stands on are written as assembly attributes - `Projectional.Language`,
+  `Projectional.LanguageVersion`, `Projectional.DependsOn` and `Projectional.Extends` - so a host
+  reads a package's identity without opening the language, and a folder name that differs from the
+  language's name cannot make the package anonymous. The declared version becomes the assembly's
+  *informational* version, the one free-form version field there is; its assembly version is left
+  alone, because that field is four numbers and nothing in the framework parses a version an author
+  typed.
 - Export is one-way by design: the declared model stays the source of truth
   ([ADR 0002](../adr/0002-model-as-source-of-truth.md)) and re-export overwrites the generated
   files. Editing generated code and re-exporting loses the edit, which is stated in the header of

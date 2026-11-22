@@ -55,6 +55,10 @@ public sealed class LanguageExporterTests
             using Projectional.Core;
             using Projectional.Language;
 
+            [assembly: System.Reflection.AssemblyMetadata("Projectional.Language", "Pipeline")]
+            [assembly: System.Reflection.AssemblyMetadata("Projectional.LanguageVersion", "1.0.0")]
+            [assembly: System.Reflection.AssemblyInformationalVersion("1.0.0")]
+
             namespace Sample.Language;
 
             /// <summary>The language <c>Pipeline</c> declares, as C#.</summary>
@@ -196,6 +200,65 @@ public sealed class LanguageExporterTests
 
         // The source is still there: the assembly is added to what the exporter answers, never a replacement.
         Assert.Equal("PipelineLanguage.cs", result.Files[0].Name);
+    }
+
+    [Fact]
+    public void TheRootsIdentityIsInTheSourceItWrites()
+    {
+        // The root is where a language says what it is, and the export is what turns it into a package, so the facts
+        // travel as assembly attributes: a host reads a package's identity without opening the language. The values
+        // are passed directly because this is the writer's test - the project overload is pinned by the file above.
+        var metadata = new LanguageMetadata(
+            "1.0.0",
+            ["Units 1.0.0"],
+            ["Units 1.0.0"]);
+
+        var source = LanguageExporter.Export(
+            "Invoice",
+            [],
+            [],
+            "Sample.Invoice",
+            metadata: metadata).Files[0].Text;
+
+        Assert.Contains(
+            $"""[assembly: System.Reflection.AssemblyMetadata("{LanguageExporter.LanguageKey}", "Invoice")]""",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"""[assembly: System.Reflection.AssemblyMetadata("{LanguageExporter.VersionKey}", "1.0.0")]""",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"""[assembly: System.Reflection.AssemblyMetadata("{LanguageExporter.DependsOnKey}", "Units 1.0.0")]""",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"""[assembly: System.Reflection.AssemblyMetadata("{LanguageExporter.ExtendsKey}", "Units 1.0.0")]""",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            """[assembly: System.Reflection.AssemblyInformationalVersion("1.0.0")]""",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheCompiledAssemblyStatesTheRootsIdentity()
+    {
+        // Read back off the binary, not off the source: the point of an attribute is that it survives the compile.
+        var result = LanguageExporter.Export(Declared(), "Sample.Language", ExportOutput.Assembly);
+
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+
+        var metadata = assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value, StringComparer.Ordinal);
+
+        Assert.Equal("Pipeline", metadata[LanguageExporter.LanguageKey]);
+        Assert.Equal("1.0.0", metadata[LanguageExporter.VersionKey]);
+        Assert.Equal(
+            "1.0.0",
+            assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion);
     }
 
     [Fact]

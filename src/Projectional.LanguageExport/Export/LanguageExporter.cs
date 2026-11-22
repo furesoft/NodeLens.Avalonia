@@ -3,6 +3,7 @@ using System.Text;
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.Languages;
+using Projectional.Structures;
 using Projectional.TypingRules;
 
 namespace Projectional.LanguageExport;
@@ -27,6 +28,18 @@ namespace Projectional.LanguageExport;
 /// </remarks>
 public static class LanguageExporter
 {
+    /// <summary>The metadata key naming the language, as its root declares it.</summary>
+    public const string LanguageKey = "Projectional.Language";
+
+    /// <summary>The metadata key holding the version the root declares.</summary>
+    public const string VersionKey = "Projectional.LanguageVersion";
+
+    /// <summary>The metadata key naming one language it builds on, repeated once per dependency.</summary>
+    public const string DependsOnKey = "Projectional.DependsOn";
+
+    /// <summary>The metadata key naming one language whose behaviour it inherits, repeated once per extension.</summary>
+    public const string ExtendsKey = "Projectional.Extends";
+
     /// <summary>Exports a language project, asking it which aspects it declares.</summary>
     /// <param name="language">The language a user opened.</param>
     /// <param name="namespaceName">The namespace to declare, or <c>null</c> to declare none.</param>
@@ -51,8 +64,20 @@ public static class LanguageExporter
             language.HasIntentions,
             language.DeclaredTypingRules,
             language.HasDeclaredImporters,
-            output);
+            output,
+            Metadata(language));
     }
+
+    /// <summary>What the root says about the language, in the shape the writer states it with.</summary>
+    private static LanguageMetadata Metadata(LanguageProject language) =>
+        new(
+            language.Version,
+            [.. language.Dependencies.Select(Dependency)],
+            [.. language.Extends.Select(Dependency)]);
+
+    /// <summary>One declared language as a metadata value: <c>Units</c>, or <c>Units 1.0.0</c> when it asked for one.</summary>
+    private static string Dependency(LanguageDependency dependency) =>
+        dependency.Version is null ? dependency.Name : $"{dependency.Name} {dependency.Version}";
 
     /// <summary>Builds the generated file and its README, in that order, and compiles the source on request.</summary>
     /// <param name="name">The language's name, which decides the class name and the file name.</param>
@@ -67,6 +92,10 @@ public static class LanguageExporter
     /// <param name="typingRules">The typing rules it declares, which this export writes out in full.</param>
     /// <param name="hasImport">Whether it declares an importer this export cannot write.</param>
     /// <param name="output">Whether to compile the generated source into an assembly as well.</param>
+    /// <param name="metadata">
+    /// What the language's root says about it - its version and the languages it stands on - written into the source as
+    /// assembly attributes, or <see langword="null"/> to write none.
+    /// </param>
     /// <exception cref="ExportCompilationException">The generated source does not compile.</exception>
     public static ExportResult Export(
         string name,
@@ -80,7 +109,8 @@ public static class LanguageExporter
         bool hasIntentions = false,
         IReadOnlyList<DeclaredTypingRule>? typingRules = null,
         bool hasImport = false,
-        ExportOutput output = ExportOutput.Source)
+        ExportOutput output = ExportOutput.Source,
+        LanguageMetadata? metadata = null)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -89,12 +119,12 @@ public static class LanguageExporter
         var typing = typingRules ?? [];
         var className = ClassName(name);
         var omitted = Omissions(hasTypes, hasGenerators, hasConstraints, hasScopes, hasIntentions, hasImport);
-        var source = Source(name, className, namespaceName, declarations, notations, typing, omitted);
+        var source = Source(name, className, namespaceName, declarations, notations, typing, omitted, metadata);
 
         return new ExportResult(
             [
                 new GeneratedFile($"{className}.cs", source),
-                new GeneratedFile("README.md", Readme(name, className, notations.Count > 0, typing.Count > 0, omitted)),
+                new GeneratedFile("README.md", Readme(name, className, notations.Count > 0, typing.Count > 0, omitted, metadata)),
             ],
             output == ExportOutput.Assembly ? AssemblyCompiler.Compile(className, source) : null);
     }
@@ -149,7 +179,8 @@ public static class LanguageExporter
         IReadOnlyList<ConceptDeclaration> declarations,
         IReadOnlyList<Notation> notations,
         IReadOnlyList<DeclaredTypingRule> typingRules,
-        List<string> omitted)
+        List<string> omitted,
+        LanguageMetadata? metadata)
     {
         var source = new SourceWriter();
         var stubs = omitted.Contains("types") || omitted.Contains("generator");
@@ -182,6 +213,12 @@ public static class LanguageExporter
         }
 
         source.Blank();
+
+        if (metadata is not null)
+        {
+            AssemblyMetadata(source, name, metadata);
+            source.Blank();
+        }
 
         if (!string.IsNullOrWhiteSpace(namespaceName))
         {
@@ -227,8 +264,40 @@ public static class LanguageExporter
         return source.ToString();
     }
 
-    private static void Notations(SourceWriter source, IReadOnlyList<Notation> notations)
+    /// <summary>States the language's own identity, which travels with the assembly the source compiles to.</summary>
+    /// <remarks>
+    /// <c>AssemblyMetadata</c> rather than <c>AssemblyTitle</c> and friends: what a root declares has no standard
+    /// attribute of its own, and a key/value pair is what a host can read without knowing this exporter. The one
+    /// exception is the version, which is also written as the informational version - the single free-form version
+    /// field an assembly has. The assembly version is left alone, because it is four numbers and nothing here parses a
+    /// version a user typed.
+    /// </remarks>
+    private static void AssemblyMetadata(SourceWriter source, string name, LanguageMetadata metadata)
     {
+        MetadataAttribute(source, LanguageKey, name);
+
+        if (metadata.Version is { Length: > 0 } version)
+        {
+            MetadataAttribute(source, VersionKey, version);
+            source.Line($"[assembly: System.Reflection.AssemblyInformationalVersion({SourceWriter.Literal(version)})]");
+        }
+
+        foreach (var dependency in metadata.DependsOn)
+        {
+            MetadataAttribute(source, DependsOnKey, dependency);
+        }
+
+        foreach (var inherited in metadata.Extends)
+        {
+            MetadataAttribute(source, ExtendsKey, inherited);
+        }
+    }
+
+    private static void MetadataAttribute(SourceWriter source, string key, string value) =>
+        source.Line(
+            $"[assembly: System.Reflection.AssemblyMetadata({SourceWriter.Literal(key)}, {SourceWriter.Literal(value)})]");
+
+    private static void Notations(SourceWriter source, IReadOnlyList<Notation> notations)    {
         source.Line("/// <summary>How those concepts are drawn.</summary>");
         source.Line("public static NotationRegistry CreateNotations(ConceptRegistry concepts)");
         source.Line("{");
@@ -263,7 +332,7 @@ public static class LanguageExporter
         }
     }
 
-    private static string Readme(string name, string className, bool hasNotations, bool hasTyping, List<string> omitted)
+    private static string Readme(string name, string className, bool hasNotations, bool hasTyping, List<string> omitted, LanguageMetadata? metadata)
     {
         var lines = new List<string>
         {
@@ -281,6 +350,42 @@ public static class LanguageExporter
             "order - that order is the language's answer to what a user most likely wants in an",
             "empty slot, so it is not sorted.",
         };
+
+        if (metadata is not null)
+        {
+            lines.Add(string.Empty);
+            lines.Add("## What the assembly says");
+            lines.Add(string.Empty);
+            lines.Add("The language's own identity - what `language.mps` declares - travels with the binary as assembly");
+            lines.Add("metadata, so a host can read what a package is without opening the language:");
+            lines.Add(string.Empty);
+            lines.Add("| Key | Value |");
+            lines.Add("| --- | --- |");
+            lines.Add($"| `{LanguageKey}` | `{name}` |");
+
+            if (metadata.Version is { Length: > 0 } version)
+            {
+                lines.Add($"| `{VersionKey}` | `{version}` |");
+            }
+
+            foreach (var dependency in metadata.DependsOn)
+            {
+                lines.Add($"| `{DependsOnKey}` | `{dependency}` |");
+            }
+
+            foreach (var inherited in metadata.Extends)
+            {
+                lines.Add($"| `{ExtendsKey}` | `{inherited}` |");
+            }
+
+            if (metadata.Version is { Length: > 0 })
+            {
+                lines.Add(string.Empty);
+                lines.Add("A declared version is a label: it becomes the assembly's informational version, the one");
+                lines.Add("free-form version field there is, and never its assembly version - that field is four");
+                lines.Add("numbers, and nothing in the framework parses a version an author typed.");
+            }
+        }
 
         if (hasNotations)
         {
