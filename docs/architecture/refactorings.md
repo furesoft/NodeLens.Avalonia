@@ -1,7 +1,7 @@
 # Refactorings: extract and inline
 
-*Rename, move and inline are delivered; extract is still a plan, and this document says why it is a
-plan rather than a patch.* They look like the same kind of feature as the rename that shipped with
+*Rename, move, inline and extract are delivered; this document is the record of why they were four
+problems rather than one patch.* They look like the same kind of feature as the rename that shipped with
 M6 - "the editor changes several places at once, inside one undo step" - and they are not, because
 the rename already knew what a name is and these two do not know what a definition is.
 
@@ -14,6 +14,7 @@ the rename already knew what a name is and these two do not know what a definiti
 | Move to a place | the standard intentions' `INT004`/`INT005` entries | the same move as a named destination - to the front, to the back - so one intention is one undo step |
 | Move across slots | planned, slices B-E of [node-moves.md](node-moves.md) | a node that changes parent: what indentation means in MPS |
 | Inline a use | `Intent.Inline` in `IntentionLowering`, `samples/declared-workflow/intentions/inline-a-call.mps` | replaces the node at the caret with a copy of what its own reference points at, in one transaction; the definition stays |
+| Extract a definition | `Intent.Extract` in `IntentionLowering`, `ExtractNodeAction`, `samples/declared-workflow/intentions/extract-to-library.mps` | moves the node into the place its rule declares and leaves a use of it where it stood, as one action and one undo step |
 
 Both delivered refactorings are **structural and reference-preserving**: they change where a node
 stands or what a slot says, and nothing about their meaning depends on the language. That is exactly
@@ -91,7 +92,7 @@ policy (what a definition is, and where it belongs).
 | --- | --- | --- |
 | R1 | **delivered.** The cross-parent move was already possible - `Node.InsertChild` detaches the node from wherever it stood inside one mutation, and `EditContext.MoveChild` takes any parent - but nothing proved it and no action stated a *place*. `MoveNodeToAction` is that action: a parent, a slot and an index instead of a direction, answered as a reason when the computed place has gone stale, because a program must not throw halfway through. `MoveNodeToActionTests` pins what the primitive promises (identity kept, the old slot emptied, one undo step, a reference into the moved subtree still resolving, and a program of a move plus an edit undone once) and what it refuses (a node that is gone, a slot the parent does not declare, a concept the slot does not hold, a one-child slot already filled, a node into itself) | - |
 | R2 | **delivered, with its subject.** `Intent.Inline` is a body: the declaration names the reference slot whose target stands for what the node means, and the edit is a program of `InsertCopyAction` (a copy of the target into the use's own place, new identities, the definition untouched) and `DeleteNodeAction` of the use - one undo step. It is `Destructive`, because replacing a node is. The subject is the **workflow sample**, which now has the shape the plan said nothing shipped: `Workflow.Call` extends `Workflow.Step` and references the step it runs, and `Workflow.Workflow.library` holds the reusable steps - so a call in the chain can be inlined into the commands of a step it shares. **The subject found a crash and a gap**: inlining a call whose target is an *ancestor* of the use builds a copy that contains the place it goes, and `Model.InsertCopy` recursed until the stack gave out - `InsertCopyAction` now refuses that with a reason, the way a move refuses a node into itself. What remains open is the plan's own question: whether inlining the last use should delete the definition | - / open: the cleanup |
-| R3 | `Intent.Extract`, shaped in the section below: five properties on the body, one action rather than a program, one rule in the workflow sample, and the refusals and load checks that go with them | 1-2 weeks |
+| R3 | **delivered**, and shaped in the section below: `Intent.Extract` is five properties on the body (`into`, `slot`, `as`, `reference`, `name`), a load check and a place condition, and one action rather than the program this plan guessed at - a program cannot name the node an earlier step creates. Its subject needed no new concept: `Workflow.Call` is exactly the use an extract leaves behind | - |
 | R4 | the shell's **Edit ▸ Refactor** submenu, once two refactorings exist to put in it | 2-3 days |
 
 **What measuring R1 found.** A session draws one root and `EditContext.NodeOf` walks from it, so a node of another
@@ -232,6 +233,25 @@ test that shows what either answer would change.
 already proved that a cross-parent move keeps identity. One action, one body with five properties, one sample
 rule, and the tests that pin them - the one-to-two-week estimate was for finding this shape.
 
+**What measuring R3 found.** Three things, and the first two changed the plan.
+
+*A single action is not wrapped in a transaction.* The session opens one for a **program** (`Apply(EditProgram)`)
+and not for an ordinary action, because an action is expected to be one edit. Three mutations written the obvious
+way therefore became three undo steps - the test that presses undo once is what said so, and the fix is the pattern
+`EditContext.AddChild` with a property already follows: the action opens its own. The refusal discipline follows
+from the same place, since a rejected result does not roll the model back.
+
+*A use has to be a kind of what it replaces.* That is not decoration: it is what makes the use fit everywhere the
+definition fit, and it is therefore the one thing a declaration can be checked against without a document. It also
+found the limit of the shared test fixture - adding a call that extends a step made every step replaceable by a
+call, and the standard intentions' "a replace is not offered where only its own concept could stand" turned red,
+while the fixture's declared parity twin would have had to grow with it. The extract tests therefore have their own
+small language, and `TestLanguage` is untouched.
+
+*The name needs the distinction `Node.Name` makes.* A definition that computes what it is called has no name slot
+to read, and a use still has a property to write: reading `Node.Name` - the concept's function first, the name slot
+second - covers both, and a definition with no name at all writes nothing rather than an empty value.
+
 ## What this plan deliberately leaves out
 
 | Left out | Why |
@@ -243,17 +263,15 @@ rule, and the tests that pin them - the one-to-two-week estimate was for finding
 
 ## Open questions
 
-- **Does `Intent.Inline` delete the declaration?** Inlining the last use leaves a definition nobody
-  points at. Deleting it is what MPS does, and it is what the user meant - but it makes the edit
-  destructive in a way `EditSafety.Destructive` describes, and there is a second obstacle the plan did not
-  know about: a declared rule's label is built once, when the language loads (`DeclaredIntentions` builds each
-  entry once and varies only availability per caret), so "Inline and remove 'build'" is not reachable through
-  a declaration. The label would have to become a function of the caret, in `Intention` and in every builder
-  that produces one.
-  Recommendation: **do not delete.** Extract and inline are then exact inverses, a refactoring never removes
-  something the user did not point at, and a definition nobody uses can be removed by the entry that already
-  exists for it ("Delete this step"). The computed label is a question about the offer list, not about this
-  body.
+- **Does an inline delete the definition?** *Decided: no.* Inlining the last use leaves a definition nobody
+  points at, and deleting it is what MPS does - but a refactoring that quietly tidied up would be the one edit in
+  the framework that removes something the user did not point at, and the entry that does remove it already exists
+  ("Delete this step"). Extract and inline are then exact inverses on one document, which
+  `DeclaredWorkflowSampleTests` now proves. A second obstacle the plan did not know about sits behind the same
+  answer: a declared rule's label is built once, when the language loads (`DeclaredIntentions` builds each entry
+  once and varies only availability per caret), so "Inline and remove 'build'" is not reachable through a
+  declaration at all - the label would have to become a function of the caret, in `Intention` and in every builder
+  that produces one. That is a question about the offer list, not about this body.
 - **May extract create a document?** A new file is outside one model's undo, so it is not one
   transaction. Recommendation: no; extract into the nearest enclosing declaration, and let "move to
   a new document" be its own feature once multi-document undo exists.
