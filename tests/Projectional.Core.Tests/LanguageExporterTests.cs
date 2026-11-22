@@ -39,7 +39,7 @@ public sealed class LanguageExporterTests
 
         var result = LanguageExporter.Export(language, "Sample.Language");
 
-        Assert.Equal(["PipelineLanguage.cs", "README.md"], result.Files.Select(file => file.Name));
+        Assert.Equal(["PipelineLanguage-1.0.0.cs", "README.md"], result.Files.Select(file => file.Name));
         Assert.Null(result.Assembly);
 
         Assert.Equal(
@@ -191,7 +191,7 @@ public sealed class LanguageExporterTests
         var result = LanguageExporter.Export(Declared(), "Sample.Language", ExportOutput.Assembly);
 
         Assert.NotNull(result.Assembly);
-        Assert.Equal("PipelineLanguage.dll", result.Assembly.Name);
+        Assert.Equal("PipelineLanguage-1.0.0.dll", result.Assembly.Name);
         Assert.True(result.Assembly.Bytes.Length > 0);
 
         // A PE image starts with "MZ": the bytes are an assembly, not a serialized error.
@@ -199,7 +199,7 @@ public sealed class LanguageExporterTests
         Assert.Equal((byte)'Z', result.Assembly.Bytes[1]);
 
         // The source is still there: the assembly is added to what the exporter answers, never a replacement.
-        Assert.Equal("PipelineLanguage.cs", result.Files[0].Name);
+        Assert.Equal("PipelineLanguage-1.0.0.cs", result.Files[0].Name);
     }
 
     [Fact]
@@ -269,9 +269,9 @@ public sealed class LanguageExporterTests
         // single `Assembly` is the language that was asked for - the last one.
         var result = LanguageExporter.Export(Invoice(), "Sample.Invoice", ExportOutput.Assembly);
 
-        Assert.Equal(["UnitsLanguage.cs", "InvoiceLanguage.cs", "README.md"], result.Files.Select(file => file.Name));
-        Assert.Equal(["UnitsLanguage.dll", "InvoiceLanguage.dll"], result.Assemblies.Select(assembly => assembly.Name));
-        Assert.Equal("InvoiceLanguage.dll", result.Assembly!.Name);
+        Assert.Equal(["UnitsLanguage-1.0.0.cs", "InvoiceLanguage-1.0.0.cs", "README.md"], result.Files.Select(file => file.Name));
+        Assert.Equal(["UnitsLanguage-1.0.0.dll", "InvoiceLanguage-1.0.0.dll"], result.Assemblies.Select(assembly => assembly.Name));
+        Assert.Equal("InvoiceLanguage-1.0.0.dll", result.Assembly!.Name);
 
         // The base's package says what it is, and the dependent's README names the file beside it.
         var units = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assemblies[0].Bytes));
@@ -280,7 +280,7 @@ public sealed class LanguageExporterTests
             .ToDictionary(attribute => attribute.Key, attribute => attribute.Value, StringComparer.Ordinal);
 
         Assert.Equal("Units", metadata[LanguageExporter.LanguageKey]);
-        Assert.Contains("UnitsLanguage.cs", result.Files[^1].Text, StringComparison.Ordinal);
+        Assert.Contains("UnitsLanguage-1.0.0.cs", result.Files[^1].Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public sealed class LanguageExporterTests
         var result = LanguageExporter.Export(Declared(), "Sample.Language", ExportOutput.Assembly);
 
         Assert.Single(result.Assemblies);
-        Assert.Equal(["PipelineLanguage.cs", "README.md"], result.Files.Select(file => file.Name));
+        Assert.Equal(["PipelineLanguage-1.0.0.cs", "README.md"], result.Files.Select(file => file.Name));
     }
 
     [Fact]

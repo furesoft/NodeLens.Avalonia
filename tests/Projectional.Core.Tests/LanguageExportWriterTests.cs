@@ -29,9 +29,11 @@ public sealed class LanguageExportWriterTests
         Assert.Equal(3, written.Count);
         Assert.All(written, path => Assert.True(File.Exists(path), path));
 
-        Assert.Equal(result.Files[0].Text, File.ReadAllText(Path.Combine(target, "PipelineLanguage.cs")));
-        Assert.Equal(result.Files[1].Text, File.ReadAllText(Path.Combine(target, "README.md")));
-        Assert.Equal(result.Assembly!.Bytes, File.ReadAllBytes(Path.Combine(target, "PipelineLanguage.dll")));
+        // The names come from the export rather than from the test, because a name is the exporter's answer and the
+        // writing rule under test is where the bytes land.
+        Assert.Equal(result.Files[0].Text, File.ReadAllText(Path.Combine(target, result.Files[0].Name)));
+        Assert.Equal(result.Files[1].Text, File.ReadAllText(Path.Combine(target, result.Files[1].Name)));
+        Assert.Equal(result.Assembly!.Bytes, File.ReadAllBytes(Path.Combine(target, result.Assembly.Name)));
     }
 
     [Fact]

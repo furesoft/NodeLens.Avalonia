@@ -448,6 +448,27 @@ What export guarantees, and what it refuses to hide:
   ([ADR 0002](../adr/0002-model-as-source-of-truth.md)) and re-export overwrites the generated
   files. Editing generated code and re-exporting loses the edit, which is stated in the header of
   every generated file.
+- **The declared version is part of the file name.** A language is written as `<ClassName>-<version>.cs` and compiled
+  to `<ClassName>-<version>.dll`, so two releases of one language can sit in a folder without a manifest; the class
+  keeps its unversioned name, because a package's C# identity is its type name and a type renamed on every release is
+  a package nobody can upgrade. A version is free text, so whatever a file name cannot hold becomes a dash, and a
+  language whose root declares none keeps its bare name.
+
+### What export still leaves to you
+
+Two declared aspects are still written as a stub rather than as code, and each is missing exactly one thing:
+
+- **`generator/` is writable as data; the registry cannot be read back.** Every part a template is made of -
+  `TextPart`, `PropertyPart`, `ChildPart`, `ChildrenPart`, `LoopPart`, `IndentPart`, `LineBreakPart`,
+  `ConditionalPart`, `WhenFilledPart`, `ParentPart`, `ReferencePart`, `SelfPart` - is a record in
+  `Projectional.Language`, which a package may reference, so a generator is a `new TextGenerator(name, templates)` the
+  export could write. What it cannot do today is enumerate `TemplateRegistry`: the registry answers
+  `TemplateFor(concept)` and `Add`, and an export needs the mappings. That enumeration is the whole missing piece.
+- **`types/` needs a code generator, not a printer.** `ITypeRule` is behaviour - `TypeFor(TypeContext)` - and the
+  declared vocabulary (fixed, child, switch, primitive, record, list, optional, named, ref, join, meet, widest,
+  equations, complain, supertypes, comparable, replacement) is a small language of its own;
+  `TypeRuleLowering` is 871 lines and an export has to mirror it. The registry also answers `RuleFor(concept)` and
+  `Add` only, so it has to be enumerable first.
 
 ## Slices
 
