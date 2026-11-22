@@ -1,6 +1,8 @@
 using Projectional.ConstraintRules;
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Editors;
+using Projectional.IntentionRules;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
@@ -8,6 +10,7 @@ using Projectional.Projection;
 using Projectional.ScopeRules;
 using Projectional.Semantics;
 using Projectional.Structures;
+using Projectional.TextGen;
 using Projectional.TypingRules;
 using Projectional.TypeRules;
 using Xunit;
@@ -202,6 +205,62 @@ public sealed class DeclaredAtlasTests
     }
 
     [Fact]
+    public void TheLanguageOffersTwoIntentions()
+    {
+        var language = Language();
+
+        Assert.True(language.HasIntentions);
+
+        var model = language.NewProject().NewModel("intentions");
+        var route = model.NewNode("Atlas.Route");
+
+        model.AddRoot(route);
+        route.Set("name", "loop");
+
+        // An empty `stops` slot is the one place "Add the first stop" means something.
+        Assert.Contains("Add the first stop", Offers(language, route, atEmptySlot: true));
+
+        var stop = model.NewChild(route, "stops", "Atlas.Stop");
+
+        Assert.Contains("Delete this stop", Offers(language, stop));
+        Assert.DoesNotContain("Add the first stop", Offers(language, route));
+    }
+    [Fact]
+    public void TheGeneratorWritesTheMapAsLines()
+    {
+        var language = Language();
+        var generator = Assert.Single(language.Generators);
+        var model = ModelFile.Load(language.NewProject(), Document("map.mps"));
+
+        var text = new Projectional.Semantics.Generator().Generate(model.Roots[0], generator).Text;
+
+        // The nested route has no map of its own, so its `on` clause is not written - a conditional part, not an
+        // empty reference in the text.
+        Assert.Equal(
+            """
+            map alpen at lake
+            place peak at 1500m
+            landmark lake at 410m
+            route loop
+            to peak
+            to lake
+            """,
+            text);
+    }
+
+    [Fact]
+    public void TheGeneratorWritesTheStandaloneRouteWithTheMapItLiesOn()
+    {
+        var language = Language();
+        var model = ModelFile.Load(language.NewProject(), Document("route.mps"));
+
+        var text = new Projectional.Semantics.Generator().Generate(model.Roots[0], Assert.Single(language.Generators)).Text;
+
+        // The route's template ends with a line break, because a route usually has stops under it; this one has none.
+        Assert.Equal("route detour on alpen\n", text);
+    }
+
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
@@ -215,6 +274,8 @@ public sealed class DeclaredAtlasTests
             AssertRoundTrips(Path.Combine(folder, LanguageProject.TypingFolder), new Project(TypingLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.ConstraintsFolder), new Project(ConstraintLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.ScopesFolder), new Project(ScopeLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.IntentionsFolder), new Project(IntentionLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.GeneratorFolder), new Project(TextGenLanguage.Concepts), temporary.FullName);
 
             // The root sits beside the aspect folders rather than in one, so it needs its own call.
             AssertRoundTrips(folder, new Project(StructureLanguage.Concepts), temporary.FullName, LanguageProject.LanguageFile);
@@ -247,6 +308,18 @@ public sealed class DeclaredAtlasTests
         }
     }
 
+    private static IReadOnlyList<string> Offers(LanguageProject language, Node node, bool atEmptySlot = false)
+    {
+        using var session = new EditorSession(node, language.Notations);
+
+        session.AddIntentions(language.Intentions, IntentionSource.Language);
+
+        var place = CaretPlaces.Of(session.Tree).First(each => each.Address.Owner == node.Id && (!atEmptySlot || each.IsEmptySlot));
+
+        session.Select(Selection.At(CaretPosition.At(place, 0)));
+
+        return [.. IntentionList.For(session).Select(offer => offer.Label)];
+    }
     private static string Document(string name) => Path.Combine(AppContext.BaseDirectory, "Atlas", name);
 
     private static LanguageProject Language()
