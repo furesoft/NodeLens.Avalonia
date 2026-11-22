@@ -39,7 +39,19 @@ internal static class SiteNav
             nav.Append("<summary>").Append(Html.Escape(language.Name)).Append("</summary>\n");
 
             Item(nav, depth, language, "index.html", "Overview", path);
-            Item(nav, depth, language, "aspects.html", "Aspects", path);
+
+            // The aspects are a folder, like the concepts: a language is eleven of them, and a reader looking for the
+            // generators should not have to open an overview to find a heading.
+            nav.Append("<details class=\"folder\"").Append(Open(path, $"{folder}/aspects.html") || IsAspectPage(path, folder) ? " open" : string.Empty).Append(">\n");
+            nav.Append("<summary>Aspects</summary>\n");
+            Item(nav, depth, language, "aspects.html", "Overview", path);
+
+            foreach (var aspect in AspectPages.All)
+            {
+                Item(nav, depth, language, AspectNames.File(aspect), AspectNames.Title(aspect), path);
+            }
+
+            nav.Append("</details>\n");
 
             if (chain.Examples(language).Count > 0)
             {
@@ -64,6 +76,10 @@ internal static class SiteNav
 
         return nav.ToString();
     }
+
+    /// <summary>Whether <paramref name="path"/> is one of the aspect pages, which keeps the folder open on them.</summary>
+    private static bool IsAspectPage(string path, string folder) =>
+        AspectPages.All.Any(aspect => string.Equals(path, $"{folder}/{AspectNames.File(aspect)}", StringComparison.Ordinal));
 
     /// <summary>Whether the current path sits under <paramref name="folder"/>, which is what opens a level.</summary>
     private static bool Open(string path, string folder) =>
