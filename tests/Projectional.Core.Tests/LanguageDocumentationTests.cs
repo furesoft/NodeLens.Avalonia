@@ -1,0 +1,403 @@
+using System.Text.RegularExpressions;
+
+using Projectional.Core;
+using Projectional.LanguageDocs;
+using Projectional.Languages;
+using Projectional.Persistence;
+using Projectional.Structures;
+using Xunit;
+
+namespace Projectional.Core.Tests;
+
+/// <summary>
+/// The interactive documentation: a folder of static pages, one per concept, covering the language and everything it
+/// stands on.
+/// </summary>
+/// <remarks>
+/// The tests are written as a reader's checks rather than a renderer's: every concept has a page, every link on every
+/// page points at a file that exists, and the dependency the sample declares is named on the root page and reachable
+/// from the concept that uses it. A page that passes those is a page a reader can walk.
+/// </remarks>
+public sealed class LanguageDocumentationTests
+{
+    [Fact]
+    public void EveryConceptOfTheChainHasItsOwnPage()
+    {
+        var language = Atlas();
+        var pages = LanguageDocumentation.Generate(language);
+
+        foreach (var each in language.Resolved.Append(language))
+        {
+            var folder = DocumentationChain.Folder(each);
+
+            Assert.Contains(pages, page => page.Path == $"{folder}/index.html");
+            Assert.Contains(pages, page => page.Path == $"{folder}/aspects.html");
+
+            foreach (var declaration in each.Declarations)
+            {
+                Assert.Contains(pages, page => page.Path == $"{folder}/concepts/{declaration.Key}.html");
+            }
+        }
+
+        // What a folder documents is what its own `structure/` declares, not the vocabulary it can see: `Units.Quantity`
+        // is in Atlas' registry because Atlas stands on Units, and documenting it in both folders would be two pages
+        // that can disagree.
+        Assert.DoesNotContain(pages, page => page.Path == "Atlas/concepts/Units.Quantity.html");
+        Assert.Contains(pages, page => page.Path == "Units/concepts/Units.Quantity.html");
+    }
+
+    [Fact]
+    public void EveryLinkPointsAtAFileTheFolderHolds()
+    {
+        var language = Atlas();
+
+        using var temporary = new TemporaryDirectory();
+
+        _ = LanguageDocumentation.Write(language, temporary.Root);
+
+        var pages = LanguageDocumentation.Generate(language);
+
+        // A link is only worth writing if the tree has the file it names, and a relative link is the one thing a
+        // static folder cannot check at run time - so the test does it once, for every link on every page.
+        foreach (var page in pages)
+        {
+            var folder = Path.GetDirectoryName(Path.Combine(temporary.Root, page.Path.Replace('/', Path.DirectorySeparatorChar)))!;
+
+            foreach (Match link in LinkPattern().Matches(page.Text))
+            {
+                var target = link.Groups[1].Value;
+
+                Assert.False(Path.IsPathRooted(target), $"{page.Path} links to an absolute path: {target}");
+
+                var resolved = Path.GetFullPath(Path.Combine(folder, target));
+
+                Assert.True(File.Exists(resolved), $"{page.Path} links to '{target}', which the folder does not hold.");
+            }
+        }
+    }
+
+    [Fact]
+    public void TwoRunsWriteTheSameBytes()
+    {
+        var language = Atlas();
+
+        using var first = new TemporaryDirectory();
+        using var second = new TemporaryDirectory();
+
+        _ = LanguageDocumentation.Write(language, first.Root);
+        _ = LanguageDocumentation.Write(language, second.Root);
+
+        foreach (var page in LanguageDocumentation.Generate(language))
+        {
+            var path = page.Path.Replace('/', Path.DirectorySeparatorChar);
+
+            Assert.Equal(
+                File.ReadAllBytes(Path.Combine(first.Root, path)),
+                File.ReadAllBytes(Path.Combine(second.Root, path)));
+        }
+
+        // Byte-stable also means no byte order mark and no CRLF, so the folder can be committed and diffed.
+        var root = File.ReadAllBytes(Path.Combine(first.Root, "index.html"));
+
+        Assert.NotEqual(0xEF, root[0]);
+        Assert.DoesNotContain((byte)'\r', root);
+    }
+
+    [Fact]
+    public void ALanguagePageNamesEveryDependencyWithTheVersionItAskedFor()
+    {
+        var language = Atlas();
+
+        var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Atlas/index.html");
+
+        Assert.Contains("<td>Units</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<td>depends on</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<td>1.0.0</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("href=\"../Units/index.html\"", page.Text, StringComparison.Ordinal);
+
+        // Nothing is marked, because the host answered exactly the version the language asked for.
+        Assert.DoesNotContain("mismatch", page.Text, StringComparison.Ordinal);
+
+        // The front door of the set lists the languages instead: a site documents many, and what one of them declares
+        // it stands on belongs on that one's page.
+        var root = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "index.html");
+
+        Assert.Contains("href=\"Units/index.html\"", root.Text, StringComparison.Ordinal);
+        Assert.Contains("href=\"Atlas/index.html\"", root.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAnswerThatIsNotTheVersionAskedForIsMarked()
+    {
+        // The loader refuses a language whose dependency nothing answered, so "declared but unresolved" cannot appear on
+        // a page. What can appear, and used to be silent, is a resolver that answered a different version: the host is
+        // asked by name only.
+        using var temporary = new TemporaryDirectory();
+
+        Write(temporary.Root, "Mismatched", declaredVersion: "9.9.9");
+
+        var units = Assert.IsType<LanguageProject>(
+            LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Units"), out var unitsError) ?? Fail(unitsError));
+
+        var language = Assert.IsType<LanguageProject>(
+            LanguageProject.Open(temporary.Root, new ResolvedLanguages(units), out var error) ?? Fail(error));
+
+        var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Mismatched/index.html");
+
+        Assert.Contains("class=\"mismatch\"", page.Text, StringComparison.Ordinal);
+        Assert.Contains("9.9.9", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheDocumentationOfTheSampleCarriesTheLanguageItStandsOn()
+    {
+        var language = Atlas();
+
+        // Atlas holds a child slot over `Units.Quantity`, which this folder never declares: the link has to leave the
+        // language and land in the base's pages, which is the whole reason a chain is documented instead of a language.
+        var place = Assert.Single(
+            LanguageDocumentation.Generate(language),
+            page => page.Path == "Atlas/concepts/Atlas.Place.html");
+
+        Assert.Contains("href=\"../../Units/concepts/Units.Quantity.html\"", place.Text, StringComparison.Ordinal);
+
+        var units = Assert.Single(LanguageDocumentation.Generate(language), page => page.Path == "Units/index.html");
+
+        Assert.Contains("Units.Quantity", units.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AConceptPageStatesEverySlotOfTheConcept()
+    {
+        var concept = Atlas().Concepts.Get("Atlas.Stop");
+
+        var page = Assert.Single(
+            LanguageDocumentation.Generate(Atlas()),
+            each => each.Path == "Atlas/concepts/Atlas.Stop.html");
+
+        foreach (var slot in concept.Slots)
+        {
+            Assert.Contains($"<code>{slot.Name}</code>", page.Text, StringComparison.Ordinal);
+        }
+
+        // A reference slot links to the concept it is declared over, so the page a reader needs is one click away.
+        Assert.Contains("href=\"../../Atlas/concepts/Atlas.Place.html\"", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheAspectsPageCountsWhatTheLanguageDeclares()
+    {
+        var language = Atlas();
+
+        var page = Assert.Single(LanguageDocumentation.Generate(language), each => each.Path == "Atlas/aspects.html");
+
+        foreach (var folder in LanguageProject.AspectFolders)
+        {
+            Assert.Contains($"<code>{folder}</code>", page.Text, StringComparison.Ordinal);
+        }
+
+        // The structure row counts what the folder declares, and the Concepts section says how much of the registry
+        // came from the chain - two numbers a reader needs and would otherwise have to subtract themselves.
+        Assert.Contains($"<td>{language.Declarations.Count}</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains($"<td>{language.Notations.Notations.Count}</td>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("visible through the chain", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ASetDocumentsEachLanguageExactlyOnce()
+    {
+        // A site is the whole project: Atlas and Units both, with Atlas' chain reaching Units. Documenting them as one
+        // set is what keeps Units to a single folder instead of one copy per language that stands on it.
+        var units = Units();
+        var atlas = Atlas(units);
+
+        var pages = LanguageDocumentation.Generate([units, atlas]);
+
+        Assert.Single(pages, page => page.Path == "Units/index.html");
+        Assert.Single(pages, page => page.Path == "Atlas/index.html");
+        Assert.Single(pages, page => page.Path == "Units/concepts/Units.Quantity.html");
+
+        // The front door is the set's, so it names itself as a set rather than as one of the languages.
+        var root = Assert.Single(pages, page => page.Path == "index.html");
+
+        Assert.Contains("<h1>Language documentation</h1>", root.Text, StringComparison.Ordinal);
+        Assert.Contains("2 languages, each documented once", root.Text, StringComparison.Ordinal);
+        Assert.Contains("href=\"Units/index.html\"", root.Text, StringComparison.Ordinal);
+        Assert.Contains("href=\"Atlas/index.html\"", root.Text, StringComparison.Ordinal);
+
+        // One search over every concept of the set, which is the reason a reader arrives here rather than at a language.
+        Assert.Contains("Atlas.Stop", root.Text, StringComparison.Ordinal);
+        Assert.Contains("Units.Quantity", root.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EveryLinkOfASetResolvesAcrossItsLanguages()
+    {
+        var units = Units();
+        var atlas = Atlas(units);
+
+        using var temporary = new TemporaryDirectory();
+
+        _ = LanguageDocumentation.Write([units, atlas], temporary.Root);
+
+        foreach (var page in LanguageDocumentation.Generate([units, atlas]))
+        {
+            var folder = Path.GetDirectoryName(Path.Combine(temporary.Root, page.Path.Replace('/', Path.DirectorySeparatorChar)))!;
+
+            foreach (Match link in LinkPattern().Matches(page.Text))
+            {
+                var target = link.Groups[1].Value;
+
+                Assert.False(Path.IsPathRooted(target), $"{page.Path} links to an absolute path: {target}");
+
+                Assert.True(
+                    File.Exists(Path.GetFullPath(Path.Combine(folder, target))),
+                    $"{page.Path} links to '{target}', which the set does not hold.");
+            }
+        }
+    }
+
+    [Fact]
+    public void ASetRefusesTwoLanguagesOfTheSameName()
+    {
+        var units = Units();
+        var atlas = Atlas(units);
+
+        // Two different folders answering one name would share a folder and one would overwrite the other's pages, so it
+        // is refused before anything is written instead of discovered in the browser.
+        using var temporary = new TemporaryDirectory();
+
+        Write(temporary.Root, "Units", declaredVersion: "1.0.0");
+
+        var impostor = Assert.IsType<LanguageProject>(
+            LanguageProject.Open(temporary.Root, new ResolvedLanguages(units), out var error) ?? Fail(error));
+
+        var refusal = Assert.Throws<ArgumentException>(() => LanguageDocumentation.Generate([atlas, impostor]));
+
+        Assert.Contains("Units", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EveryPageCarriesTheHeaderAndTheTreeAndMarksItself()
+    {
+        var units = Units();
+        var atlas = Atlas(units);
+
+        // The two assets are pages of the tree as well, and they are the only ones with no chrome of their own.
+        var pages = LanguageDocumentation.Generate([units, atlas]).Where(page => page.Path.EndsWith(".html", StringComparison.Ordinal));
+
+        using var temporary = new TemporaryDirectory();
+
+        _ = LanguageDocumentation.Write([units, atlas], temporary.Root);
+
+        foreach (var page in pages)
+        {
+            // The three parts of the shape a reader navigates by: one search in the header, the tree beside the content,
+            // and the entry for the page they are on marked rather than merely present.
+            Assert.Contains("<header class=\"top\">", page.Text, StringComparison.Ordinal);
+            Assert.Contains("<nav class=\"tree\" id=\"nav\"", page.Text, StringComparison.Ordinal);
+            Assert.Equal(1, Count(page.Text, "<input type=\"search\""));
+
+            if (page.Path == "index.html")
+            {
+                // The top of the tree has no entry of its own, so nothing is current - a page cannot link to itself.
+                Assert.DoesNotContain("aria-current=\"page\"", page.Text, StringComparison.Ordinal);
+
+                continue;
+            }
+
+            var current = Regex.Match(page.Text, "class=\"item current\" href=\"([^\"]+)\"");
+
+            Assert.True(current.Success, $"{page.Path} is in the tree but no entry marks it as the current page.");
+
+            var folder = Path.GetDirectoryName(Path.Combine(temporary.Root, page.Path.Replace('/', Path.DirectorySeparatorChar)))!;
+
+            Assert.Equal(
+                Path.GetFullPath(Path.Combine(temporary.Root, page.Path.Replace('/', Path.DirectorySeparatorChar))),
+                Path.GetFullPath(Path.Combine(folder, current.Groups[1].Value)));
+        }
+    }
+
+    [Fact]
+    public void TheTreeOffersEveryConceptOfTheSetFromEveryPage()
+    {
+        var units = Units();
+        var atlas = Atlas(units);
+
+        // The tree is how a reader walks the set, so it has to hold the whole set - a language that appears only on the
+        // front page is a language nobody finds from a concept page.
+        foreach (var page in LanguageDocumentation.Generate([units, atlas]).Where(page => page.Path.EndsWith(".html", StringComparison.Ordinal)))
+        {
+            Assert.Contains(">Units.Quantity</a>", page.Text, StringComparison.Ordinal);
+            Assert.Contains(">Atlas.Stop</a>", page.Text, StringComparison.Ordinal);
+            Assert.Contains(">Atlas</summary>", page.Text, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Every <c>href</c> and <c>src</c> a page writes, which is every path it asks a reader to follow.</summary>
+    private static Regex LinkPattern() => new("(?:href|src)=\"([^\"]+)\"", RegexOptions.CultureInvariant);
+
+    /// <summary>How often <paramref name="needle"/> appears in <paramref name="text"/>.</summary>
+    private static int Count(string text, string needle)
+    {
+        var count = 0;
+
+        for (var index = text.IndexOf(needle, StringComparison.Ordinal); index >= 0; index = text.IndexOf(needle, index + needle.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static LanguageProject Fail(string? error) =>
+        throw new InvalidOperationException(error ?? "the folder did not open, and said nothing about why");
+
+    private static LanguageProject Atlas() => Atlas(Units());
+
+    private static LanguageProject Atlas(LanguageProject units) =>
+        Assert.IsType<LanguageProject>(
+            LanguageProject.Open(
+                Path.Combine(AppContext.BaseDirectory, "Atlas"),
+                new ResolvedLanguages(units),
+                out var error) ?? Fail(error));
+
+    private static LanguageProject Units() =>
+        Assert.IsType<LanguageProject>(
+            LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Units"), out var error) ?? Fail(error));
+
+    /// <summary>A language folder with one concept, used for the cases the sample cannot be bent into.</summary>
+    private static void Write(string root, string name, string declaredVersion)
+    {
+        _ = Directory.CreateDirectory(Path.Combine(root, "structure"));
+
+        var definitions = new DefinitionBuilder();
+
+        definitions.Concept(
+            "Mismatched.Item",
+            slots: [definitions.Property("name", "string")],
+            nameSlot: "name",
+            description: "An item.");
+
+        foreach (var document in definitions.Documents)
+        {
+            var key = document.Roots[0].GetOrNull(StructureLanguage.KeySlot)!;
+
+            ModelFile.Save(document, Path.Combine(root, "structure", $"{key}.mps"));
+        }
+
+        var languageRoot = StructureLanguage.NewModel("language");
+        var language = languageRoot.NewNode(StructureConceptKeys.Language);
+
+        language.Set("name", name);
+        language.Set(StructureLanguage.VersionSlot, "1.0.0");
+
+        var declaration = languageRoot
+            .NewChild(language, StructureLanguage.DependenciesSlot, StructureConceptKeys.Dependency);
+
+        declaration.Set("name", "Units");
+        declaration.Set(StructureLanguage.VersionSlot, declaredVersion);
+
+        ModelFile.Save(languageRoot, Path.Combine(root, LanguageProject.LanguageFile));
+    }
+}

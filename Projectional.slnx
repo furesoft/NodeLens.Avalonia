@@ -6,6 +6,7 @@
     <Project Path="src/Projectional.Editing/Projectional.Editing.csproj" />
     <Project Path="src/Projectional.Intentions/Projectional.Intentions.csproj" />
     <Project Path="src/Projectional.Language/Projectional.Language.csproj" />
+    <Project Path="src/Projectional.LanguageDocs/Projectional.LanguageDocs.csproj" />
     <Project Path="src/Projectional.LanguageExport/Projectional.LanguageExport.csproj" />
     <Project Path="src/Projectional.Languages/Projectional.Languages.csproj" />
     <Project Path="src/Projectional.Persistence/Projectional.Persistence.csproj" />
