@@ -31,8 +31,6 @@ internal static class TypeWriter
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(types);
 
-        Refuse(types);
-
         // Named types first: a rule may name one, and the field has to exist before the member that uses it.
         var named = Named(types);
 
@@ -57,25 +55,11 @@ internal static class TypeWriter
             }
 
             source.Line($".WithSubtypes({Subtypes(types.Subtypes, named)})");
+            source.Line($".WithComparisons({Comparisons(types.Comparisons, named)})");
+            source.Line($".WithReplacements({Replacements(types.Replacements, named)})");
         }
 
         source.Line(";");
-    }
-
-    /// <summary>Refuses what this writer cannot spell, before it writes a file that would silently differ.</summary>
-    private static void Refuse(TypeRegistry types)
-    {
-        if (types.Comparisons.Count > 0)
-        {
-            throw new NotSupportedException(
-                "The language declares comparable pairs, which an export does not write yet; write its `Comparable` documents in this project's C#.");
-        }
-
-        if (types.Replacements.Count > 0)
-        {
-            throw new NotSupportedException(
-                "The language declares replacements, which an export does not write yet; write its `Replacement` documents in this project's C#.");
-        }
     }
 
     /// <summary>Every named type the rules mention, keyed by name, with the field each one gets.</summary>
@@ -92,6 +76,24 @@ internal static class TypeWriter
         {
             Collect(subtype, named);
             Collect(supertype, named);
+        }
+
+        foreach (var (left, right) in types.Comparisons.Pairs)
+        {
+            Collect(left, named);
+            Collect(right, named);
+        }
+
+        foreach (var replacement in types.Replacements)
+        {
+            Collect(replacement.Left, named);
+            Collect(replacement.Right, named);
+
+            foreach (var equation in replacement.Instead)
+            {
+                Collect(equation.Left, named);
+                Collect(equation.Right, named);
+            }
         }
 
         return named;
@@ -274,6 +276,42 @@ internal static class TypeWriter
 
         return expression;
     }
+
+    /// <summary>The interchangeable pairs the language stated.</summary>
+    private static string Comparisons(ComparisonRelation comparisons, Dictionary<string, NamedType> named)
+    {
+        var expression = "ComparisonRelation.Empty";
+
+        foreach (var (left, right) in comparisons.Pairs)
+        {
+            expression += $".Add({Type(left, named)}, {Type(right, named)})";
+        }
+
+        return expression;
+    }
+
+    /// <summary>The replacements the language stated, each as the claim it rewrites and what it proves instead.</summary>
+    private static string Replacements(IReadOnlyList<TypeReplacement> replacements, Dictionary<string, NamedType> named)
+    {
+        if (replacements.Count == 0)
+        {
+            return "[]";
+        }
+
+        var written = replacements.Select(replacement =>
+            $"new TypeReplacement(TypeEquationKind.{Claim(replacement.Claim)}, {Type(replacement.Left, named)}, {Type(replacement.Right, named)}, [{string.Join(", ", replacement.Instead.Select(equation => Equation(equation, named)))}])");
+
+        return $"[{string.Join(", ", written)}]";
+    }
+
+    /// <summary>A replacement's claim, which is never a <see cref="TypeEquationKind.Supertype"/>.</summary>
+    private static string Claim(TypeEquationKind claim) => claim switch
+    {
+        TypeEquationKind.Equal => "Equal",
+        TypeEquationKind.Subtype => "Subtype",
+        _ => throw new NotSupportedException(
+            $"The replacement claim '{claim}' has no export spelling; a replacement rewrites equal or subtype claims."),
+    };
 
     /// <summary>The field a named type gets, derived from its name so two exports are the same text.</summary>
     private static string Field(string name) =>
