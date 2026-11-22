@@ -13,6 +13,14 @@ internal static class Program
             return;
         }
 
+        // The second headless mode: the documentation CI publishes needs no window either, so it runs before Avalonia
+        // starts for the same reason the self check does.
+        if (DocsExport.IsRequested(args))
+        {
+            Environment.ExitCode = DocsExport.Run(args);
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

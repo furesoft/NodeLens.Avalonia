@@ -1,7 +1,8 @@
 # Interactive language documentation
 
-**Status: planned, not built.** This document is the design a session implements; nothing here exists yet beyond the
-inputs it reads. The dependency requirement below is **decided** rather than proposed: a language's documentation
+**Status: slices 1 and 2 are built** (`src/Projectional.LanguageDocs`, one test class, one CI job that publishes the
+site to GitHub Pages). Slices 3 and 4 are still design: there is no `<Language>/examples.html` yet, and a package does
+not carry the pages. The dependency requirement below is **decided** rather than proposed: a language's documentation
 contains the documentation of every language it stands on.
 
 ## What it is for
@@ -42,11 +43,11 @@ the documentation asks what a reader is looking at.
 concept key is only unique within its language by convention rather than by rule.
 
 ```
-docs/
-  index.html                  the chain: the language, what it stands on, one search over all of it
+_site/
+  index.html                  the set: one row per language, one search over all of them
   assets/docs.css, docs.js    one stylesheet and one script for the whole tree
   Atlas/
-    index.html                Atlas' concepts, grouped by inheritance root
+    index.html                what Atlas says it stands on, and its concepts grouped by inheritance root
     concepts/Atlas.Stop.html
     aspects.html
     examples.html
@@ -56,6 +57,14 @@ docs/
     aspects.html
     examples.html
 ```
+
+**A site is one set, not one tree per language.** `Generate(language)` documents that language and its chain.
+`Generate(languages)` documents many at once, which is what CI publishes: the same tree, with every language's folder
+present exactly once and one root page that lists them all. Doing it as one set rather than as one tree per language is
+what keeps a shared base to *one* folder - `Units` would otherwise be written under every language that stands on it, and
+each copy would be a page that can disagree with the others. The chain collects the union in base-first order, so the
+listing reads as the layering it is, and two different folders claiming one name are refused before anything is written
+rather than discovered in a browser.
 
 **Links cross languages, they never inline.** A concept page links to its super concepts, its interfaces, its slot
 targets and its reference targets wherever they live: `Atlas/concepts/Atlas.Stop.html` links to
@@ -73,24 +82,55 @@ it holds of its bases is the link, the dependency row, and the search entry.
 chain, with the language's name as a second column. A search that covered only the language the reader opened would
 fail exactly the reader who typed `Quantity` while reading about stops.
 
-**A declared dependency that nothing answered is a fact, not an omission.** The root page lists every name the root
-declares, with the version it asked for and whether the host resolved it. A dependency the host could not answer is a
-row saying so - never a silently missing section.
+**A dependency the host could not answer never reaches a page, and the loader is why.** `LanguageProject.Open` refuses a
+language whose declared dependency nothing answered ("open that language first, or give the host a resolver that answers
+it"), so a `LanguageProject` that exists has had every dependency answered; a page that offered an "unresolved" row would
+be a branch nothing can reach. The page therefore lists what the host *answered*, which is the other half of the same
+worry: a resolver is asked by name only, so it can answer `Units 2.0.0` to a language that wrote `Units 1.0.0`. That row
+is marked, because a reader told that 2.0.0 backs a 1.0.0 language is being told something the language author did not
+write.
 
 **A cycle is refused rather than walked.** Loading already refuses one; the generator asserts that no language appears
 twice in the chain and says which name closed the loop, because a generator that recursed would write pages until the
 disk filled.
 
+## The shape of a page
+
+Every page is the same three parts, so a reader learns one layout and then reads:
+
+- **A header** with the set's name, and **one search box**. It is in the header rather than on a front page, because a
+  reader who has already followed a link to a concept is exactly the one who now wants another one.
+- **A tree beside the content.** A language opens into its folders - `Overview`, `Aspects`, `Concepts` - and a folder
+  into what it holds, the way the project explorer opens a language's folders. The language and folder the current page
+  lives in start open and the entry for the page is marked, so arriving from a search engine shows where you are
+  instead of a tree with everything shut.
+- **The content**, under a breadcrumb.
+
+**The folding is the browser's.** The tree is `details`/`summary`, so it works with the script blocked, unloaded, or
+still loading - and a documentation folder that needs JavaScript to be *readable* would be a static site with a single
+point of failure. The script adds two things only: the filter, and the drawer.
+
+**The search filters the tree**, and it searches the whole set from every page, because every page carries the whole
+tree. Typing narrows it to the entries that match, opens the branches that hold them, and Enter goes to the first one.
+A language or folder whose own name matches keeps everything under it. Clearing the box restores the folds the reader
+had before typing rather than leaving every branch a search happened to open.
+
+**A narrow screen gets the drawer.** Under roughly 820 pixels the tree stops being a column and becomes a panel that
+slides in from the left over the content, with a backdrop, `Escape`, and the same button that opened it as the three
+ways out. It starts *below* the header rather than over it, so the search stays reachable while the drawer is open. The
+toggle is drawn as three lines in inline SVG so it needs no icon font, and `prefers-reduced-motion` turns the slide
+off. Tables scroll sideways rather than wrapping, because a slot table has six columns and half of them are keys.
+
 ## What it contains
 
 | Page | Content |
 | --- | --- |
-| `index.html` | the chain: the language's name and description, what it declares it stands on (with the version asked for and whether it resolved), a link into each language's pages, and a search box over every concept of the chain |
-| `<Language>/index.html` | that language's concepts grouped by inheritance root, with the search box filtered to it |
+| `index.html` | the set: one row per language - name, version, how many concepts it declares, and what it stands on |
+| `<Language>/index.html` | what that language declares it stands on (name, relation, the version asked for and the version answered, with a mismatch marked), then its concepts grouped by inheritance root |
 | `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, every slot as a row (kind, key, type or target, cardinality, default), and the notation that draws it in the notation language's own spelling |
 | `<Language>/aspects.html` | what lowering produced from each aspect folder: concepts, notations, type rules, constraints, scope rules, intentions, generators, importers - the same facts the module settings dialog shows, in a page a reader can link to |
 | `<Language>/examples.html` | one example per concept the language can root, rendered by the projection's headless snapshot renderer, so the page shows what the concept *looks like* rather than describing it |
-| `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script, both deterministic, both small enough to read |
+| `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script - the header, the tree, the drawer and the responsive rules; and the filter, the drawer toggle and Enter. Both deterministic, both small enough to read |
 
 Two rules come from the repository's own invariants:
 
@@ -102,17 +142,18 @@ Two rules come from the repository's own invariants:
 
 ## Where it lives
 
-`src/Projectional.LanguageDocs/` - a new package, because it is a product a host can reference and call
-(`LanguageDocumentation.Generate(language)` and `LanguageDocumentation.Write(language, directory)`), and because every
-project under `src/` is a package ([ADR 0022](../adr/0022-every-project-is-a-package.md)). Adding it means the CI
-`pack` job's package count moves from 34 to 35 in the same commit.
+`src/Projectional.LanguageDocs/` - a package, because it is a product a host can reference and call
+(`LanguageDocumentation.Generate`/`Write`, each overloaded for one language and for a set), and because every project
+under `src/` is a package ([ADR 0022](../adr/0022-every-project-is-a-package.md)). It moved the CI `pack` job's package
+count from 34 to 35 in the commit that added it.
 
 It references `Projectional.Languages` (the lowered project and its resolved chain) and `Projectional.Projection` (the
 snapshot renderer for the example pages) - both downward arrows, so nothing new points up. It must **not** reference
 Avalonia: documentation is generated by a build, a test, or a CLI, never by a window.
 
-The shell gets one command for it - **File ▸ Export documentation…** - written like `LanguageExportWriter`, which is
-the pattern this repository already has for "a menu entry that writes a folder".
+The shell still wants one command for it - **File ▸ Export documentation…** - written like `LanguageExportWriter`,
+which is the pattern this repository already has for "a menu entry that writes a folder". Until it exists the only
+caller is the headless switch below, which is what CI uses.
 
 ## Packaged with the language
 
@@ -136,9 +177,11 @@ package per language in the chain, so the archive is the one place a reader gets
 1. **SVG, not a bitmap.** The snapshot renderer produces a layout, not an image. Drawing the notation as inline SVG
    keeps the output text - diffable, searchable, no rendering backend - and keeps the product's premise that a drawing
    is derived from the model.
-2. **The search index is inlined** into the root page, capped. A separate `assets/index.json` would need a fetch, and
-   `file://` refuses fetches; a language with thousands of concepts is a language whose index needs its own file, and
-   that is a decision to take when one exists.
+2. **The search index is the tree**, which every page already carries, so there is no second index to keep in step and
+   nothing to fetch - `file://` refuses fetches, and a `<script>` that defines an array would be a copy of the tree. The
+   cost is that each page carries the whole set's entries: 94 pages of about 11 KB today. A set ten times larger would
+   want the entries in `assets/search.js` loaded only when the box is used, and that is a decision to take when one
+   exists.
 3. **The notation is drawn with placeholders**, the way the editor draws an empty slot, and the page says that it is
    the shape rather than a document. Synthesising children to fill a slot is impossible in general - a child slot with
    a minimum has no obvious content.
@@ -148,31 +191,75 @@ package per language in the chain, so the archive is the one place a reader gets
 5. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
    `https://` link into, and the shipped project has everything a page needs.
 
+## Published by CI
+
+The repository publishes its own documentation, so the generator is exercised by every merge instead of by whoever
+remembers to run it. The `docs` job in `ci.yml`:
+
+- builds the shell in `Release`, because the documented languages *are* the shell's: `CSharp` is shipped with it and
+  every example is a folder the build copies beside the executable;
+- runs the shell with `--docs _site`, a second headless switch next to `--self-check` (`DocsExport`). It runs before
+  Avalonia starts for exactly the reason the self check does - no display, so a build agent can do it;
+- asserts that `_site/index.html` exists, uploads the folder, and deploys it to GitHub Pages. Only a push to `main`
+  deploys; a pull request builds the site, which is the check that the generator still works.
+
+The switch takes the languages from the two places the shell itself takes them from - the shipped set and
+`ExampleProjects.Catalogue`, opened with the examples they stand on - so what is published cannot drift from what the
+app offers. An example that fails to open is printed and the rest is still published, and the step fails afterwards:
+a site that silently lost a language is worse than a failed job, but a job that publishes nothing because one example
+broke is worse than both.
+
+Turning this on needs one setting in the repository that no workflow can make: **Settings ▸ Pages ▸ Source =
+GitHub Actions**.
+
 ## How it is proven
 
-- A dependent fixture (`declared-atlas`, which depends on `Units` and borrows `Units.Quantity`) is generated into a
-  temporary directory, and the test asserts: the tree holds a folder per language of the chain, every concept of every
-  language has a page, every link in every page resolves to a file that exists **including the cross-language ones**, a
-  slot appears with its kind and its target, a concept with no notation says so, and two runs produce identical bytes.
-- One test reads the root page as text and asserts that each declared dependency appears with the version it asked for,
-  and that a declared dependency the resolver did not answer is shown as unresolved rather than left out.
-- One test reads the generated HTML as text and asserts that no `<script>` of ours runs before the search index is
-  defined - the failure mode of a static page with a script is a page whose search silently does nothing.
-- One test gives the generator a language whose chain contains a cycle and asserts the refusal names the language that
-  closed it.
-- A picture is not part of it: the output is HTML, and the repository's screenshot tool is for the editor and the shell.
+`tests/Projectional.Core.Tests/LanguageDocumentationTests.cs`, on `declared-atlas` and the `Units` it stands on:
+
+- **Every concept of the chain has its own page** - and the base's concept has *no* page in the dependent's folder,
+  which is the one-declaration rule read from the other side.
+- **Every link on every page resolves to a file that exists**, absolute paths included as a failure, for both a
+  one-language set and a set of two.
+- **Two runs write identical bytes**, and the bytes carry no byte-order mark and no CRLF.
+- **A language's page names each declared dependency** with the relation, the version asked for and a link to the
+  language it resolved to.
+- **A version the host answered that is not the version asked for is marked** - the reachable half of the dependency
+  worry, built on a generated one-concept language folder that declares `Units 9.9.9`.
+- **The link from `Atlas.Place` into `Units.Quantity` resolves**, which is the whole reason a chain is documented
+  instead of a language.
+- **A concept page states every slot** of the concept, and a slot over a concept of another language links there.
+- **The aspects page counts what the folder declares** and says how many further concepts are visible through the
+  chain.
+- **A set documents each language exactly once** and its root page names itself as a set rather than as a language.
+- **Two languages of the same name are refused** before anything is written.
+- **Every page carries the header, the tree and exactly one search**, and every page that has an entry in the tree marks
+  itself as current - resolved, not merely present, so the link it marks is the page it is.
+- **The tree offers every concept of the set from every page**, because a language that appears only on the front page
+  is a language nobody finds from a concept page.
+
+Not proven by a test, and checked by running it instead: the whole site - seven languages, 94 pages - was generated and
+opened from `file://`; the search box was typed into and read back through the DOM (one match visible, the other ninety
+hidden, the reader's folds restored when the box was cleared); and the layout was measured at a 390-pixel width, where
+the toggle appears, the tree is off-canvas until asked for, the backdrop and `aria-expanded` follow, and the page has no
+horizontal overflow. Two defects were found exactly that way and are invisible to a test that reads HTML as text: a
+`display` rule that beat the filter's own by specificity, so nothing was ever hidden, and a drawer that covered the
+header, so the button that opened it was gone.
 
 ## Slices
 
-1. **The chain, values first, proved on a language that stands on nothing.** `Generate(language)` answers the whole
-   chain from the first commit - the folder map, the per-language folders, the root page, the assets - because a
-   single-language generator would be a second code path for the one case that is not the rule. It is *proved* on
-   `declared-pipeline`, whose chain is itself: the concept pages, `aspects.html`, every link resolved, byte-stable.
-   `Write` and **File ▸ Export documentation…** on top of it.
-2. **The dependency proved.** The same generator on `declared-atlas`, whose chain holds `Units`: Atlas' output contains
-   Units' folder, the dependency table names `Units 1.0.0` as resolved, the search finds `Quantity`, and the link from
-   `Atlas.Stop` into `Units.Quantity` resolves to a file that exists. One test with a declared dependency nothing
-   answered asserts the unresolved row.
+1. ~~**The chain, values first, proved on a language that stands on nothing.**~~ Built: `Generate` answers the whole
+   chain from the first commit - the folder map, the per-language folders, the root page, the assets - and `Write` puts
+   those bytes on disk.
+2. ~~**The dependency proved.**~~ Built: the atlas tests are the dependency proof, and `declared-atlas` is the fixture.
 3. **The pictures.** The notation spelling per concept and `examples.html`, drawn from the `tests/` models when the
-   language has them.
+   language has them. This is the only part of the original design that is missing from the pages.
 4. **Packaged.** `File > Package...` writes the tree under `docs/` in both variants, and the archive stays byte-stable.
+
+Two things moved out of the original plan and are worth recording, because both were decisions rather than slips:
+
+- **The root page of a set does not carry a dependency table**, because a site has as many dependency tables as it has
+  languages. The facts live on each language's own page, so one rendering serves a one-language export and a site of a
+  dozen.
+- **`index.html` lists languages rather than the chain of one language.** For a one-language export the set *is* that
+  chain, so nothing is lost; a page that said "this documentation is for X" in one mode and "these are the languages" in
+  the other would be two pages pretending to be one.

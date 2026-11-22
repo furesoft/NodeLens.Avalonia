@@ -2,6 +2,8 @@
 [Bb]in/
 [Oo]bj/
 artifacts/
+# The documentation site the docs CI job generates and publishes; a local run uses the same folder.
+_site/
 *.binlog
 
 # Test results and coverage

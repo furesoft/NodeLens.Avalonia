@@ -51,11 +51,13 @@ What is next, in order:
    they explain one thing, this one keeps them true.
 
 5. **The interactive language documentation.** A `LanguageProject` turned into a folder of static HTML a team can open
-   in a browser, link into a wiki, or ship beside a package: one page per concept with its slots and its notation, the
-   aspect summary, examples drawn by the headless renderer, and one search over all of it. **A language's documentation
-   contains the documentation of every language it stands on** - the chain is followed downward, base first, shipped
-   bases included, with every link across languages resolved through one map and every declared dependency the host
-   could not answer shown as a fact rather than left out ([language-docs.md](architecture/language-docs.md)).
+   in a browser, link into a wiki, or ship beside a package: one page per concept with its slots, the aspect summary,
+   and one search over all of it. **A language's documentation contains the documentation of every language it stands
+   on** - the chain is followed downward, base first, shipped bases included, with every link across languages resolved
+   through one map ([language-docs.md](architecture/language-docs.md)). **The pages and the published site are
+   delivered**: `src/Projectional.LanguageDocs`, the `--docs` switch, and a CI job that publishes C# and every example
+   language to GitHub Pages. Left: the notation spelling per concept and `examples.html` drawn by the headless renderer,
+   **File ▸ Export documentation…** in the shell, and the pages inside a package.
 
 **Gaps against MPS, recorded rather than scheduled:** reading MPS' own tutorials and its "Commanding the
 editor" reference turned up aspects and gestures this framework does not have - accessory models, an instance

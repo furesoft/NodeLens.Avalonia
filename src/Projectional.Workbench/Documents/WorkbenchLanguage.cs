@@ -133,9 +133,23 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 hasIntentions: true),
         };
 
+        /// <summary>Every language the shell ships, which is what a documentation set starts from.</summary>
+        /// <remarks>
+        /// A documentation set documents what the repository publishes rather than what a user happened to open, and C#
+        /// is the only language that is always there - so the generator needs the list, not just the lookup a resolver
+        /// uses.
+        /// </remarks>
+        internal static IReadOnlyList<LanguageProject> Everything => [.. All.Values];
+
         internal static LanguageProject? Find(string name) =>
             All.TryGetValue(name, out var language) ? language : null;
     }
+
+    /// <summary>The languages the shell ships, in the order their names sort.</summary>
+    internal static IReadOnlyList<LanguageProject> Shipped =>
+    [
+        .. ShippedLanguages.Everything.OrderBy(language => language.Name, StringComparer.Ordinal),
+    ];
 
     /// <summary>The typing rules the shell ships, which are what a language without a <c>typing</c> aspect gets.</summary>
     internal static ITypingRules? Typing => RulesLanguage.TypingRules;

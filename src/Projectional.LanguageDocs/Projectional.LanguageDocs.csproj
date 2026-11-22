@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Languages\Projectional.Languages.csproj" />
+    <ProjectReference Include="..\Projectional.Projection\Projectional.Projection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Projectional.Core.Tests" />
+  </ItemGroup>
+
+</Project>
