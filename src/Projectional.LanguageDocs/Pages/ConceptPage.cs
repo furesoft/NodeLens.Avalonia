@@ -84,8 +84,33 @@ internal static class ConceptPage
             .Select(each => new List<string> { "extends", chain.ConceptReference(depth, each.Key) })
             .Concat(concept.Interfaces.Select(each => new List<string> { "implements", chain.ConceptReference(depth, each.Key) }));
 
-        return Html.Table(["Relation", "Concept"], supers, "It inherits from nothing: it is a root of the language.");
+        // The other direction, because a reader lands on a base concept with the opposite question: `CSharp.Member`
+        // is where "what may a class hold" is answered, and the answer is the five concepts that extend it. A page that
+        // only looked up would make the reader open every concept of the language to find them.
+        var derived = Related(chain, concept, extended: true)
+            .Select(each => new List<string> { "extended by", chain.ConceptReference(depth, each.Key) })
+            .Concat(Related(chain, concept, extended: false)
+                .Select(each => new List<string> { "implemented by", chain.ConceptReference(depth, each.Key) }));
+
+        return Html.Table(
+            ["Relation", "Concept"],
+            [.. supers, .. derived],
+            "Nothing in this set relates to it: it extends nothing, and nothing extends or implements it.");
     }
+
+    /// <summary>The concepts of the set that extend or implement <paramref name="concept"/>.</summary>
+    /// <remarks>
+    /// Sorted by key rather than left in declaration order, because a reader comparing two pages expects the same list -
+    /// and the set a page belongs to can hold a dozen languages, whose declarations no one order relates.
+    /// </remarks>
+    private static IEnumerable<Concept> Related(DocumentationChain chain, Concept concept, bool extended) =>
+        chain.Languages
+            .SelectMany(DocumentationChain.Own)
+            .Where(candidate => !string.Equals(candidate.Key, concept.Key, StringComparison.Ordinal)
+                && (extended ? candidate.Extensions : candidate.Interfaces)
+                    .Any(relation => string.Equals(relation.Key, concept.Key, StringComparison.Ordinal)))
+            .DistinctBy(candidate => candidate.Key)
+            .OrderBy(candidate => candidate.Key, StringComparer.Ordinal);
 
     private static string Slots(DocumentationChain chain, Concept concept, int depth)
     {

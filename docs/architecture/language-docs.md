@@ -155,7 +155,7 @@ type - which is all the page said before - is a name for a class rather than for
 | --- | --- |
 | `index.html` | the set: one row per language - name, version, how many concepts it declares, and what it stands on |
 | `<Language>/index.html` | what that language declares it stands on (name, relation, the version asked for and the version answered, with a mismatch marked), then its concepts grouped by inheritance root |
-| `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, the notation written out as the shape it spells (`map <name> at <entry>`, its body indented), every slot as a row (kind, key, type or target, cardinality, default) |
+| `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, and the concepts of the set that extend or implement it, the notation written out as the shape it spells (`map <name> at <entry>`, its body indented), every slot as a row (kind, key, type or target, cardinality, default) |
 | `<Language>/aspects.html` | every aspect at a glance: the folder it comes from, how much the language declares, one sentence saying what that means, and a link to its page - plus the concepts by kind, which is what `structure/` holds |
 | `<Language>/enumerations.html` | the enumerations by the symbols they offer and the slots that hold them |
 | `<Language>/notations.html` | every notation *as the shape it spells* |

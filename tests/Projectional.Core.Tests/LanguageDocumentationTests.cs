@@ -2,6 +2,11 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 
 using Projectional.Core;
+using Projectional.CSharp;
+using Projectional.CSharp.Checks;
+using Projectional.CSharp.Generation;
+using Projectional.CSharp.Intentions;
+using Projectional.CSharp.Notation;
 using Projectional.LanguageDocs;
 using Projectional.LanguageExport;
 using Projectional.Languages;
@@ -212,6 +217,32 @@ public sealed class LanguageDocumentationTests
         Assert.Contains("punctuation the child owns", place.Text, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AConceptPageNamesTheConceptsThatExtendAndImplementIt()
+    {
+        var pages = LanguageDocumentation.Generate(CSharp());
+
+        // The reverse relation, which is the one a reader on a base concept needs: `CSharp.Member` is where "what may a
+        // class hold" is answered, and the answer is the concepts that extend it. A page that only looked up would make
+        // the reader open every concept of the language to find them.
+        var member = Assert.Single(pages, page => page.Path == "CSharp/concepts/CSharp.Member.html");
+
+        Assert.Contains("extended by", member.Text, StringComparison.Ordinal);
+        Assert.Contains("CSharp.Method.html", member.Text, StringComparison.Ordinal);
+        Assert.Contains("CSharp.Field.html", member.Text, StringComparison.Ordinal);
+
+        // An interface is implemented rather than extended, and the page says which of the two it is.
+        var named = Assert.Single(pages, page => page.Path == "CSharp/concepts/CSharp.NamedDeclaration.html");
+
+        Assert.Contains("implemented by", named.Text, StringComparison.Ordinal);
+        Assert.Contains("CSharp.Parameter.html", named.Text, StringComparison.Ordinal);
+
+        // A concept nothing builds on says nothing about it rather than showing an empty direction.
+        var literal = Assert.Single(pages, page => page.Path == "CSharp/concepts/CSharp.IntLiteral.html");
+
+        Assert.DoesNotContain("extended by", literal.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("implemented by", literal.Text, StringComparison.Ordinal);
+    }
     [Fact]
     public void AConceptWithNoNotationOfItsOwnSaysSoInsteadOfDrawingNothing()
     {
@@ -661,6 +692,17 @@ public sealed class LanguageDocumentationTests
     private static LanguageProject Fail(string? error) =>
         throw new InvalidOperationException(error ?? "the folder did not open, and said nothing about why");
 
+    /// <summary>The base language as a project, which is the fixture whose inheritance is worth reversing.</summary>
+    private static LanguageProject CSharp() =>
+        LanguageProject.Shipped(
+            CSharpLanguage.Name,
+            version: null,
+            CSharpLanguage.ConceptDeclarations,
+            CSharpLanguage.Concepts,
+            CSharpNotations.CreateNotations(CSharpLanguage.Concepts),
+            CSharpConstraints.All,
+            CSharpIntentions.Provider,
+            [CSharpTextGenerators.Generator]);
     private static LanguageProject Atlas() => Atlas(Units());
 
     private static LanguageProject Atlas(LanguageProject units) =>
