@@ -353,6 +353,40 @@ public sealed class DeclaredAtlasTests
     }
 
     [Fact]
+    public void TheGeneratorIsDrawnOnePartPerLine()
+    {
+        // The staircase this replaced: the parts of a template were drawn side by side, so every part's own indent
+        // pushed the rest of the line right and a generator read as a diagonal. A template is a sequence of parts, so
+        // each one gets its own line and the nesting stays one level per step.
+        var model = ModelFile.Load(
+            new Project(TextGenLanguage.Concepts),
+            Path.Combine(AppContext.BaseDirectory, "Atlas", "generator", "atlas-text.mps"));
+
+        var lines = LayoutSnapshot.Render(model, TextGenNotations.Registry, width: 120).Split('\n');
+
+        Assert.Equal(
+            [
+                "generate AtlasText",
+                "  map Atlas.Map to",
+                "    template",
+                "      \"map \"",
+                "      $name",
+                "      when entry is filled:",
+                "        template",
+                "          \" at \"",
+                "          <entry>",
+                "        otherwise:",
+                "          template",
+                "            << ... >>",
+                "      newline",
+                "      [places] separated by",
+                "        template",
+                "          newline",
+            ],
+            lines.Take(16));
+    }
+
+    [Fact]
     public void TheFullSampleDeclaresEveryAspectTheFrameworkKnows()
     {
         // The rule the plan in docs/architecture/full-sample.md states and this test enforces: an aspect added to the

@@ -226,33 +226,33 @@ public sealed class StructureLoweringTests
         var notations = StructureNotations.Create();
 
         Assert.Equal(
-            string.Join('\n', "    enum Rules.Outcome", "      accept"),
+            string.Join('\n', "  enum Rules.Outcome", "    accept"),
             LayoutSnapshot.Render(outcome, notations, width: 120));
 
         Assert.Equal(
             string.Join(
                 '\n',
-                "      concept Rules.Rule",
+                "    concept Rules.Rule",
                 string.Empty,
-                "    instance can be root: true",
-                "    alias: <no alias>",
-                "    short description: <no short description>",
-                "    offered in completion: true",
-                "    named by:",
-                "    collapsed by:",
-                "    named by rule:",
+                "  instance can be root: true",
+                "  alias: <no alias>",
+                "  short description: <no short description>",
+                "  offered in completion: true",
+                "  named by:",
+                "  collapsed by:",
+                "  named by rule:",
                 string.Empty,
-                "    properties:",
-                "      name : string",
-                "        default:",
-                "        described as:",
-                "        described when filled: false",
+                "  properties:",
+                "    name : string",
+                "      default:",
+                "      described as:",
+                "      described when filled: false",
                 string.Empty,
-                "    children:",
-                "      << ... >>",
+                "  children:",
+                "    << ... >>",
                 string.Empty,
-                "    references:",
-                "      << ... >>"),
+                "  references:",
+                "    << ... >>"),
             LayoutSnapshot.Render(rule, notations, width: 120));
     }
 
@@ -267,7 +267,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120);
 
-        Assert.StartsWith("      abstract concept Rules.Element", drawn, StringComparison.Ordinal);
+        Assert.StartsWith("    abstract concept Rules.Element", drawn, StringComparison.Ordinal);
 
         // And the flag itself is not drawn as a value anywhere, which is the point of moving it into the header.
         Assert.DoesNotContain("is abstract", drawn, StringComparison.Ordinal);
@@ -282,7 +282,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(definition.Root, StructureNotations.Create(), width: 120);
 
-        Assert.StartsWith("      concept Rules.Rule", drawn, StringComparison.Ordinal);
+        Assert.StartsWith("    concept Rules.Rule", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("abstract", drawn, StringComparison.Ordinal);
     }
 
@@ -324,24 +324,24 @@ public sealed class StructureLoweringTests
         Assert.Equal(
             string.Join(
                 '\n',
-                "      concept Rules.Element",
+                "    concept Rules.Element",
                 string.Empty,
-                "    instance can be root: true",
-                "    alias: <no alias>",
-                "    short description: <no short description>",
-                "    offered in completion: true",
-                "    named by:",
-                "    collapsed by:",
-                "    named by rule:",
+                "  instance can be root: true",
+                "  alias: <no alias>",
+                "  short description: <no short description>",
+                "  offered in completion: true",
+                "  named by:",
+                "  collapsed by:",
+                "  named by rule:",
                 string.Empty,
-                "    properties:",
-                "      << ... >>",
+                "  properties:",
+                "    << ... >>",
                 string.Empty,
-                "    children:",
-                "      << ... >>",
+                "  children:",
+                "    << ... >>",
                 string.Empty,
-                "    references:",
-                "      << ... >>"),
+                "  references:",
+                "    << ... >>"),
             LayoutSnapshot.Render(empty, notations, width: 120));
 
         // The entries of `implements` line up under its word, because the keyword and the stacked list are two
@@ -349,8 +349,8 @@ public sealed class StructureLoweringTests
         Assert.StartsWith(
             string.Join(
                 '\n',
-                "      concept Rules.Comparison extends Rules.Element, Framework.Base",
-                "      implements Framework.Named",
+                "    concept Rules.Comparison extends Rules.Element, Framework.Base",
+                "    implements Framework.Named",
                 string.Empty),
             LayoutSnapshot.Render(comparison, notations, width: 120),
             StringComparison.Ordinal);
@@ -380,13 +380,13 @@ public sealed class StructureLoweringTests
 
         // One row syntax for all three kinds: the heading says which one it is, so a row only says the name, the
         // type and (for a child) the range. The option lines hang one step further in.
-        Assert.Contains("      name : string", lines);
-        Assert.Contains("      outcome : Rules.Outcome", lines);
-        Assert.Contains("      steps : Rules.Step[1]", lines);
-        Assert.Contains("      body : Rules.Body[1]", lines);
-        Assert.Contains("      condition : Rules.Condition", lines);
-        Assert.Contains("      other : Rules.Condition", lines);
-        Assert.Contains("        own subtree: false", lines);
+        Assert.Contains("    name : string", lines);
+        Assert.Contains("    outcome : Rules.Outcome", lines);
+        Assert.Contains("    steps : Rules.Step[1]", lines);
+        Assert.Contains("    body : Rules.Body[1]", lines);
+        Assert.Contains("    condition : Rules.Condition", lines);
+        Assert.Contains("    other : Rules.Condition", lines);
+        Assert.Contains("      own subtree: false", lines);
     }
 
     [Fact]
@@ -402,7 +402,7 @@ public sealed class StructureLoweringTests
 
         var drawn = LayoutSnapshot.Render(concept, notations, width: 120);
 
-        Assert.StartsWith("      concept Rules.Rule", drawn, StringComparison.Ordinal);
+        Assert.StartsWith("    concept Rules.Rule", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("extends", drawn, StringComparison.Ordinal);
         Assert.DoesNotContain("implements", drawn, StringComparison.Ordinal);
 
@@ -477,7 +477,7 @@ public sealed class StructureLoweringTests
         var outcome = definition.Enumeration("Rules.Outcome", "accept", "review");
 
         Assert.Equal(
-            string.Join('\n', "    enum Rules.Outcome", "      accept", "      review"),
+            string.Join('\n', "  enum Rules.Outcome", "    accept", "    review"),
             LayoutSnapshot.Render(outcome, StructureNotations.Create(), width: 120));
     }
 
@@ -707,18 +707,18 @@ public sealed class StructureLoweringTests
         var target = definition.Roots[0];
 
         Assert.StartsWith(
-            "      interface concept Rules.Target",
+            "    interface concept Rules.Target",
             LayoutSnapshot.Render(target, notations, width: 120),
             StringComparison.Ordinal);
 
         // An interface is abstract by definition, so the other word would say the same thing twice.
         Assert.DoesNotContain("abstract", LayoutSnapshot.Render(target, notations, width: 120), StringComparison.Ordinal);
         Assert.StartsWith(
-            "      abstract concept Rules.Base",
+            "    abstract concept Rules.Base",
             LayoutSnapshot.Render(definition.Roots[1], notations, width: 120),
             StringComparison.Ordinal);
         Assert.StartsWith(
-            "      concept Rules.Rule",
+            "    concept Rules.Rule",
             LayoutSnapshot.Render(definition.Roots[2], notations, width: 120),
             StringComparison.Ordinal);
     }
@@ -845,13 +845,13 @@ public sealed class StructureLoweringTests
 
         Assert.Equal(
             """
-                language Pipeline
-                  about: A build pipeline, as the steps it runs.
-                  version: 1.2.0
-                  depends on:
-                    Core <any version>
-                  extends:
-                    << ... >>
+              language Pipeline
+                about: A build pipeline, as the steps it runs.
+                version: 1.2.0
+                depends on:
+                  Core <any version>
+                extends:
+                  << ... >>
             """,
             LayoutSnapshot.Render(root, StructureNotations.Create(), width: 120));
     }
