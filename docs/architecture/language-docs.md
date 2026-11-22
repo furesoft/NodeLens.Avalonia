@@ -268,7 +268,12 @@ language in the chain, so the archive is the one place a reader gets a language 
    the editor draws a quantity.
 10. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
    `https://` link into, and the shipped project has everything a page needs.
-11. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
+11. **A shipped language gets pages when a reader can meet its concepts.** C# and the expression vocabulary both ship, and
+    both are registered as a `LanguageProject` even though neither has a folder - the documented set is the shell registry
+    rather than the folder tree. What that costs is a name: the folder of a language is its name, so a declared sample may
+    not take one a shipped language already has - which is why the sample that called itself "Expressions" is
+    `DeclaredExpressions` now, the word its own folder already uses.
+12. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
     constant nobody can read through the interface. A page that could only list class names would document the framework
     rather than the language. Most implementations satisfy both explicitly, so the class keeps the constant a test
     asserts against and the interface answers with it; each title is the class own summary, so the page cannot drift from

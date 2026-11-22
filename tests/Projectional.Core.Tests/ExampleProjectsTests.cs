@@ -59,7 +59,7 @@ public sealed class ExampleProjectsTests
         var catalogue = SampleCatalogue();
 
         Assert.Equal("Pipeline", Name(catalogue, "Declared"));
-        Assert.Equal("Expressions", Name(catalogue, "Expressions"));
+        Assert.Equal("DeclaredExpressions", Name(catalogue, "Expressions"));
         Assert.Equal("Invoice", Name(catalogue, "Invoice"));
         Assert.Equal("Units", Name(catalogue, "Units"));
         Assert.Equal("Workflow", Name(catalogue, "Workflow"));

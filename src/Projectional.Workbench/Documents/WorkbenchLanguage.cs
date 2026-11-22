@@ -5,6 +5,7 @@ using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.CSharp.Scopes;
+using Projectional.Expressions.Intentions;
 using Projectional.Semantics;
 using Projectional.CSharp.Types;
 using Projectional.ConstraintRules;
@@ -132,6 +133,24 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 scopes: CSharpScopes.Registry,
                 types: CSharpTypes.Registry,
                 checks: CSharpChecks.All,
+                hasIntentions: true),
+
+            // The expression sub-language ships for the same reason C# does: a DSL declares a slot over
+            // `Expressions.Expression` and gets the vocabulary, so a reader of a document may meet its concepts without
+            // having opened any language. Documenting it is what makes `Function`, `Call` and the rest findable.
+            [ExpressionsLanguage.Name] = LanguageProject.Shipped(
+                ExpressionsLanguage.Name,
+                version: null,
+                ExpressionsLanguage.ConceptDeclarations,
+                ExpressionsLanguage.Concepts,
+                ExpressionsLanguage.CreateNotations(ExpressionsLanguage.Concepts),
+                ExpressionsLanguage.Constraints,
+                ExpressionsIntentions.Provider,
+                [],
+                scopes: ExpressionsLanguage.Scopes,
+                types: ExpressionsLanguage.Types,
+                typing: ExpressionsLanguage.TypingRules,
+                hasTyping: true,
                 hasIntentions: true),
         };
 

@@ -721,7 +721,7 @@ public sealed class LanguageDocumentationTests
     {
         var page = Assert.Single(
             LanguageDocumentation.Generate(Expressions()),
-            each => each.Path == "Expressions/examples.html");
+            each => each.Path == "DeclaredExpressions/examples.html");
 
         // The annotation is the editor telling a language author what its type rules are missing, and these samples
         // declare none - so the cell is not built at all, and neither is the punctuation in front of it. A drawing that
