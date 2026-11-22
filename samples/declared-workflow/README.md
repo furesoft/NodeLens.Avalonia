@@ -6,6 +6,7 @@ reference in it), this one is the data demonstrator for the two aspects that arr
 
 | File | What it is |
 | --- | --- |
+| `language.mps` | the language itself: `Workflow`, version 1.0.0, standing on nothing |
 | `structure/` | `Workflow.Workflow` (a name and a first step) and `Workflow.Step` (a name, a command, the step to repeat on failure, and the next step) |
 | `editor/` | one line each: `workflow <name> -> <step>` and `<name> : <command> <onFailure> then <next>` |
 | `scopes/` | `Workflow.Step.onFailure` sees the steps above it - the chain a step is nested in |

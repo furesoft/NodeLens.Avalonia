@@ -200,6 +200,18 @@ public sealed class DeclaredExpressionsTests
     }
 
     [Fact]
+    public void TheFolderNamesItself()
+    {
+        // Without a root the language answers with the name the folder happens to have on this machine, so the app's
+        // example menu read `declared-expressions` where the sample calls itself something. The root is what makes the
+        // folder a language with a name rather than a directory.
+        var language = Language;
+
+        Assert.Equal("Expressions", language.Name);
+        Assert.Equal("1.0.0", language.Version);
+    }
+
+    [Fact]
     public void EveryDocumentOfTheSampleSavesBackByteIdentically()
     {
         // A sample ships documents as well as definitions, and they are the writer's bytes for the same reason: a
@@ -213,6 +225,10 @@ public sealed class DeclaredExpressionsTests
         {
             AssertRoundTripsIn(temporary.FullName, directory, Language.NewProject());
             AssertRoundTripsIn(temporary.FullName, Path.Combine(directory, TestRunner.Folder), TestingLanguage.NewProject());
+
+            // The root is the language rather than a document of it, so it is read with the structure language - and it
+            // is asserted here because a hand-written root that the writer would re-word is drift on the first save.
+            AssertByteIdentical(temporary.FullName, Path.Combine(directory, LanguageProject.LanguageFile), new Project(StructureLanguage.Concepts));
         }
         finally
         {
@@ -234,9 +250,16 @@ public sealed class DeclaredExpressionsTests
     }
 
     /// <summary>Round-trips the documents in <paramref name="folder"/> without descending into its own folders.</summary>
+    /// <remarks>
+    /// <c>language.mps</c> is skipped: it sits beside the aspect folders and is the language, not a document of it, so
+    /// it is read with the structure language by the caller that asserts it.
+    /// </remarks>
     private static void AssertRoundTripsIn(string temporary, string folder, Project project)
     {
-        var files = Directory.EnumerateFiles(folder, "*.mps", SearchOption.TopDirectoryOnly).ToList();
+        var files = Directory
+            .EnumerateFiles(folder, "*.mps", SearchOption.TopDirectoryOnly)
+            .Where(file => Path.GetFileName(file) != LanguageProject.LanguageFile)
+            .ToList();
 
         Assert.NotEmpty(files);
 

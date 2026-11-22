@@ -180,6 +180,17 @@ public sealed class DeclaredWorkflowSampleTests
     }
 
     [Fact]
+    public void TheFolderNamesItself()
+    {
+        // The sample shipped without a root, so the language answered with the folder's name on this machine and the
+        // app's example menu read `declared-workflow`. The root is what makes the folder a language with a name.
+        var language = Language();
+
+        Assert.Equal("Workflow", language.Name);
+        Assert.Equal("1.0.0", language.Version);
+    }
+
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Workflow");
@@ -191,21 +202,32 @@ public sealed class DeclaredWorkflowSampleTests
             AssertRoundTrips(Path.Combine(folder, "editor"), new Project(Projectional.Editors.EditorLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, "scopes"), new Project(Projectional.ScopeRules.ScopeLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, "intentions"), new Project(Projectional.IntentionRules.IntentionLanguage.Concepts), temporary.FullName);
+
+            // The root sits beside the aspect folders rather than in one, so it needs its own call.
+            AssertRoundTrips(
+                folder,
+                new Project(Projectional.Structures.StructureLanguage.Concepts),
+                temporary.FullName,
+                LanguageProject.LanguageFile);
         }
         finally
         {
             temporary.Delete(recursive: true);
         }
 
-        static void AssertRoundTrips(string folder, Project project, string target)
+        static void AssertRoundTrips(string folder, Project project, string target, string? file = null)
         {
-            foreach (var file in Directory.EnumerateFiles(folder, "*.mps"))
+            var files = file is null
+                ? Directory.EnumerateFiles(folder, "*.mps")
+                : [Path.Combine(folder, file)];
+
+            foreach (var source in files)
             {
-                var path = Path.Combine(target, Path.GetFileName(file));
+                var path = Path.Combine(target, Path.GetFileName(source));
 
-                ModelFile.Save(ModelFile.Load(project, file), path);
+                ModelFile.Save(ModelFile.Load(project, source), path);
 
-                Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(path));
+                Assert.Equal(File.ReadAllBytes(source), File.ReadAllBytes(path));
             }
         }
     }

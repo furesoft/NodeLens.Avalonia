@@ -53,17 +53,30 @@ public sealed class ExampleProjectsTests
     }
 
     [Fact]
-    public void AnExampleIsNamedByItsLanguageRootOrElseByItsFolder()
+    public void AnExampleIsNamedByItsLanguageRoot()
     {
-        // The shipped samples are the subject because a name is what `language.mps` says, and three of the five have
-        // no root at all - which is the case the folder has to answer, without the `declared-` prefix it shares.
         var catalogue = SampleCatalogue();
 
         Assert.Equal("Pipeline", Name(catalogue, "Declared"));
-        Assert.Equal("Units", Name(catalogue, "Units"));
-        Assert.Equal("Invoice", Name(catalogue, "Invoice"));
         Assert.Equal("Expressions", Name(catalogue, "Expressions"));
+        Assert.Equal("Invoice", Name(catalogue, "Invoice"));
+        Assert.Equal("Units", Name(catalogue, "Units"));
         Assert.Equal("Workflow", Name(catalogue, "Workflow"));
+    }
+
+    [Fact]
+    public void AnExampleWithoutARootIsNamedByItsFolder()
+    {
+        // The fallback, and the reason it exists: a folder is a language the moment it holds a `structure` folder, and
+        // the prefix the samples share is not part of the name a reader wants to meet.
+        using var folder = new TemporaryDirectory();
+
+        CreateExample(folder.Root, "declared-demo");
+
+        var example = Assert.Single(ExampleProjects.Catalogue(folder.Root));
+
+        Assert.Equal("Demo", example.Name);
+        Assert.Empty(example.StandsOn);
     }
 
     [Fact]
