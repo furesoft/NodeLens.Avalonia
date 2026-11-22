@@ -147,6 +147,11 @@ even if the build stays green.
 
 ## Working conventions (explicit user requirement)
 
+- **A new aspect extends `samples/declared-atlas`.** One declared sample holds every aspect the framework knows, so the
+  aspects are proven to compose; a guard test reads `LanguageProject.AspectFolders`, so an aspect not added there is a
+  red test rather than a feature nobody exercises ([full-sample.md](../../../docs/architecture/full-sample.md)). The
+  per-axis samples stay - they explain one thing at a time.
+
 - Every feature gets its own branch off `main`. Prefixes: `feat/`, `chore/`, `docs/`, `test/`.
 - Every subtask is its own meaningful commit - not one giant commit per branch.
 - Validate (build plus tests) **before** merging. Merge with `--no-ff` and the default
