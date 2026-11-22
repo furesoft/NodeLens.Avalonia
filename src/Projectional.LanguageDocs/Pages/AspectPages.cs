@@ -124,47 +124,53 @@ internal static class AspectPages
 
         body.Append(Html.Paragraph(Summary(language, aspect)));
 
-        switch (aspect)
+        // An aspect that holds nothing has already been answered by that sentence, and every table's own "nothing here"
+        // would say it a second time - on the constraints page, three times. So the body is the answer to a question
+        // only when there is something to answer with.
+        if (Count(language, aspect) > 0)
         {
-            case Aspect.Enumerations:
-                body.Append(EnumerationsTable(concepts));
-                break;
+            switch (aspect)
+            {
+                case Aspect.Enumerations:
+                    body.Append(EnumerationsTable(concepts));
+                    break;
 
-            case Aspect.Notations:
-                body.Append(Notations(chain, language, depth));
-                break;
+                case Aspect.Notations:
+                    body.Append(Notations(chain, language, depth));
+                    break;
 
-            case Aspect.Types:
-                body.Append(Types(language));
-                break;
+                case Aspect.Types:
+                    body.Append(Types(language));
+                    break;
 
-            case Aspect.Typing:
-                body.Append(Typing(language));
-                break;
+                case Aspect.Typing:
+                    body.Append(Typing(language));
+                    break;
 
-            case Aspect.Constraints:
-                body.Append(Constraints(language, concepts));
-                break;
+                case Aspect.Constraints:
+                    body.Append(Constraints(language, concepts));
+                    break;
 
-            case Aspect.Scopes:
-                body.Append(Scopes(language, concepts));
-                break;
+                case Aspect.Scopes:
+                    body.Append(Scopes(language, concepts));
+                    break;
 
-            case Aspect.Intentions:
-                body.Append(Intentions(language));
-                break;
+                case Aspect.Intentions:
+                    body.Append(Intentions(language));
+                    break;
 
-            case Aspect.Generators:
-                Generators(language, body);
-                break;
+                case Aspect.Generators:
+                    Generators(language, body);
+                    break;
 
-            case Aspect.Importers:
-                body.Append(Importers(language));
-                break;
+                case Aspect.Importers:
+                    body.Append(Importers(language));
+                    break;
 
-            case Aspect.Accessory:
-                body.Append(Accessory(language));
-                break;
+                case Aspect.Accessory:
+                    body.Append(Accessory(language));
+                    break;
+            }
         }
 
         body.Append(Html.MarkupParagraph($"{Html.Link(DocumentationChain.Link(depth, language, "aspects.html"), "All aspects of " + language.Name)}."));

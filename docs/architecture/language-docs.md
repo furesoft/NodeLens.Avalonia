@@ -168,7 +168,10 @@ Two rules come from the repository's own invariants:
   no hash-ordered lists. Languages in chain order, concept pages by key, slots by declaration order, because those are
   the orders the registry already promises.
 - **The pages never claim more than the model says.** A concept with no notation says so; a language with no
-  constraints lists none; a declared dependency nothing answered says that. An empty aspect is a fact, not an omission.
+  constraints lists none; a declared dependency nothing answered says that. An empty aspect is a fact, not an omission
+  - and it is said **once**: the page leads with a sentence saying how much the aspect holds, and when that is nothing
+  the tables below it would only repeat it, so they are not rendered at all. A page that led with "no property is
+  declared over an enumeration" and then repeated it in an empty table row read as a defect rather than as a fact.
 
 ## Where it lives
 
