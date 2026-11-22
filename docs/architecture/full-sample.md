@@ -119,8 +119,15 @@ the sample is incomplete by design.
    the entry and without the stops. Two smaller findings: a `TextGen.WhenFilled` is refused without an `otherwise`
    template even when the empty case writes nothing (an empty template is the answer), and a reference part writes
    `<none>` for an unset reference, so a conditional is what keeps that out of the text.
-5. **accessory + tests + `map.mps`** - the library nodes, one document, and the `tests/` folder with one assertion per
-   kind.
+5. **accessory + tests + `map.mps`** - **delivered**: `accessory/known-places.mps` is an ordinary model of the language
+   that every project starts with (three places, stable identities), the route document starts at one of them through
+   the `project` scope - the demonstration the scope table asked for - and `tests/` holds three of the framework's own
+   assertions (a round trip, the generated text of the map, and that the map reports no findings).
+   `TestRunner.Run(language)` is what the test asserts on, so the sample's assertions are the framework's, not a copy
+   of them. The accessory also made the shell's two sample guards skip a folder for the first time: they open every
+   `.mps` of every aspect with the shell's language, and an accessory document is written *in* the language being
+   defined, so it opens with that language and never with the shell - the same reason the shell's list of definition
+   kinds leaves the accessory out.
 6. **the guard test and the documentation** - `TheFullSampleDeclaresEveryAspectTheFrameworkKnows`, the README, a row in
    `implemented.md`, and the sample added to `File > Open examples` by the build's copy rule.
 

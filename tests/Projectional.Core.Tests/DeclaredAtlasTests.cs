@@ -8,6 +8,7 @@ using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
+using Projectional.Testing;
 using Projectional.ScopeRules;
 using Projectional.Semantics;
 using Projectional.Structures;
@@ -101,7 +102,7 @@ public sealed class DeclaredAtlasTests
 
         var rendered = LayoutSnapshot.Render(model, language.Notations, width: 120);
 
-        Assert.Contains("route detour on alpen", rendered, StringComparison.Ordinal);
+        Assert.Contains("route detour on alpen from summit", rendered, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -302,6 +303,56 @@ public sealed class DeclaredAtlasTests
         Assert.Null(map.GetReference("entry"));
     }
     [Fact]
+    public void TheLanguageShipsALibraryOfPlaces()
+    {
+        // An `accessory` folder is not a definition but an ordinary model of the language, and every project of it
+        // starts with that model - which is what lets a document point at a library node and keep the pointer across a
+        // save and a load.
+        var language = Language();
+        var library = Assert.Single(language.Accessory);
+
+        Assert.Equal("known-places", library.Name);
+        Assert.Equal(["summit", "valley", "ridge"], library.Roots.Select(place => place.GetOrNull("name")));
+
+        // Two projects of the same language hold the library with the same identities, which is the whole point: a
+        // reference stores an id, so a document's pointer into the library has to survive a reload.
+        var first = Assert.Single(language.NewProject().Models, model => model.Name == "known-places");
+        var second = Assert.Single(language.NewProject().Models, model => model.Name == "known-places");
+
+        Assert.Equal(first.Roots.Select(place => place.Id), second.Roots.Select(place => place.Id));
+        Assert.Equal(first.Roots[0].Id, library.Roots[0].Id);
+    }
+
+    [Fact]
+    public void TheRouteStartsAtAPlaceFromTheLibrary()
+    {
+        var language = Language();
+        var library = Assert.Single(language.Accessory);
+        var summit = library.Roots[0];
+        var model = ModelFile.Load(language.NewProject(), Document("route.mps"));
+        var route = model.Roots[0];
+
+        // The text the route was written with says which library place it starts at, and the reference itself resolves
+        // through the project - which is the source the library is visible from.
+        Assert.Equal(summit.Id, route.GetReference("start")?.Target);
+        Assert.Equal(summit.Id, language.Scopes.ScopeOf(route, "start").Resolve("summit").Entry.Node);
+    }
+
+    [Fact]
+    public void TheLanguagesOwnTestsPass()
+    {
+        // The `tests` aspect, run by the framework's own runner: these are the sample's assertions about itself, so a
+        // change to the notation, the generator or the findings fails here rather than in a reader's head.
+        var language = Language();
+        var report = TestRunner.Run(language);
+
+        Assert.True(report.Ran >= 3, $"only {report.Ran} assertions ran");
+        Assert.True(report.Succeeded, report.ToString());
+
+        Assert.Contains(report.Results, result => result.Succeeded);
+    }
+
+    [Fact]
     public void TheDefinitionsSaveBackByteIdentically()
     {
         var folder = Path.Combine(AppContext.BaseDirectory, "Atlas");
@@ -318,6 +369,8 @@ public sealed class DeclaredAtlasTests
             AssertRoundTrips(Path.Combine(folder, LanguageProject.IntentionsFolder), new Project(IntentionLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.GeneratorFolder), new Project(TextGenLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.ImportFolder), new Project(ImportLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.AccessoryFolder), new Project(Language().Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, Projectional.Testing.TestRunner.Folder), new Project(TestingLanguage.Concepts), temporary.FullName);
 
             // The root sits beside the aspect folders rather than in one, so it needs its own call.
             AssertRoundTrips(folder, new Project(StructureLanguage.Concepts), temporary.FullName, LanguageProject.LanguageFile);

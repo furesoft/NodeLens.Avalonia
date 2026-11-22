@@ -23,10 +23,12 @@ folder also proves that a language may be built on another language's concepts.
 | types | `types/` | a declared record type (`place`) and three rules that name it, so three concepts answer one type |
 | typing | `typing/` | two claims: letters in an empty slot are a place's name, and a landmark is claimed by the words it is usually called |
 | constraints | `constraints/` | two findings: a place that is still called `unnamed` (hint) and a stop that points nowhere (error) |
-| scopes | `scopes/` | three name sources: a map's entry is `local`, a stop's target comes from `ancestors`, a route names its map across the `project` |
+| scopes | `scopes/` | four name sources: a map's entry is `local`, a stop's target comes from `ancestors`, a route names its map and the place it starts at through the `project` - the second of those is a library node |
 | intentions | `intentions/` | two offers: add the first stop to an empty route, delete the stop under the caret |
 | generator | `generator/` | `AtlasText`, the language as lines: the map with its places and its route, one stop per line |
 | import | `import/` | `places`, a declared format that reads a map and its places back |
+| accessory | `accessory/` | `known-places`: three places every project of the language starts with, and a route that starts at one of them |
+| tests | `tests/` | the language's own assertions, run by the framework: a round trip, the generated text, and that the map reports nothing |
 
 `import/` reads a **different** spelling than the generator writes, and that is the interesting part: an importer
 cannot read a reference back. A generator's template may write one, but the importer derived from that template refuses
@@ -34,8 +36,8 @@ it - "it has nothing to read into" - and a declared rule fills properties and ch
 write-only (`DeclaredAtlasTests` pins the refusal), and `places` is the declared format that can be read: a map line
 and one line per place, with no entry and no stops, because those are references.
 
-The remaining aspects - accessory and the framework's own tests - arrive one slice at a time; each one is added here
-and in the plan's aspect table.
+Every aspect the framework knows is now declared here except the guard that keeps it that way, which arrives with the
+last slice and with this file.
 
 The three name sources are the three that mean something different here: `local` is the node's own children and
 siblings, `ancestors` is the children of each enclosing node, and `model` and `project` offer the **roots** of the

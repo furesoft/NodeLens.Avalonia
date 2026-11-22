@@ -76,6 +76,14 @@ public sealed class WorkbenchLanguageTests
                     continue;
                 }
 
+                // An accessory document is not a definition but an ordinary model of the language being defined, so it
+                // opens with that language and never with the shell's - which is the same reason the shell's list of
+                // definition kinds leaves it out.
+                if (aspect == LanguageProject.AccessoryFolder)
+                {
+                    continue;
+                }
+
                 Assert.True(
                     LanguageProject.AspectFolders.Contains(aspect, StringComparer.Ordinal),
                     $"'{sample}' ships a '{aspect}' folder the shell's one list of aspect folders does not name");
@@ -298,6 +306,13 @@ public sealed class WorkbenchLanguageTests
         {
             foreach (var folder in LanguageProject.AspectFolders)
             {
+                // An accessory document is a model of the language, not a definition of it: its roots are the
+                // language's concepts, so the shell can neither start nor read one.
+                if (folder == LanguageProject.AccessoryFolder)
+                {
+                    continue;
+                }
+
                 var path = Path.Combine(sample, folder);
 
                 if (!Directory.Exists(path))
