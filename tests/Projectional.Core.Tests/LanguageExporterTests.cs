@@ -169,6 +169,53 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
+    public void TheComparablePairsAndTheReplacementsSurviveTheExport()
+    {
+        // The two statements about types that are not rules: an interchange between two types, and a claim about two
+        // patterns that is proved by other claims instead. Both are declarations, so both are written - and the proof
+        // is the exported registry answering what the folder's registry answers.
+        var pair = new NamedType("left", PrimitiveType.Of(PropertyType.String));
+        var other = new NamedType("right", PrimitiveType.Of(PropertyType.String));
+        var element = new TypeVariable("a");
+
+        var types = TypeRegistry.Empty
+            .Add("Doc.Left", new FixedTypeRule(pair))
+            .WithComparisons(ComparisonRelation.Empty.Add(pair, other))
+            .WithReplacements(
+            [
+                new TypeReplacement(
+                    TypeEquationKind.Subtype,
+                    new ListType(element),
+                    new ListType(new TypeVariable("b")),
+                    [TypeEquation.Subtype(element, new TypeVariable("b"))]),
+            ]);
+
+        var result = LanguageExporter.Export("Doc", [], [], "Sample.Doc", types: types, output: ExportOutput.Assembly);
+        var source = result.Files.Single(file => file.Name.StartsWith("DocLanguage", StringComparison.Ordinal)).Text;
+
+        Assert.Contains(".WithComparisons(ComparisonRelation.Empty.Add(Left, Right))", source, StringComparison.Ordinal);
+        Assert.Contains("new TypeReplacement(TypeEquationKind.Subtype, new ListType(new TypeVariable(\"a\")), new ListType(new TypeVariable(\"b\"))", source, StringComparison.Ordinal);
+
+        var context = new AssemblyLoadContext("doc-relations", isCollectible: true);
+        var assembly = context.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+        var exported = (TypeRegistry)assembly
+            .GetType("Sample.Doc.DocLanguage", throwOnError: true)!
+            .GetProperty("Types", BindingFlags.Public | BindingFlags.Static)!
+            .GetValue(null)!;
+
+        var (left, right) = Assert.Single(exported.Comparisons.Pairs);
+
+        Assert.True(exported.Comparisons.IsComparableTo(left, right));
+
+        var replacement = Assert.Single(exported.Replacements);
+
+        Assert.Equal(TypeEquationKind.Subtype, replacement.Claim);
+        Assert.Single(replacement.Instead);
+        Assert.IsType<ListType>(replacement.Left);
+        Assert.IsType<TypeVariable>(((ListType)replacement.Left).Element);
+    }
+
+    [Fact]
     public void TheTypesAspectIsWrittenAndAConstraintIsTheOnlyThingLeftOut()
     {
         // What the export writes and what it cannot: a type rule is one of five objects in `Projectional.Language`, so

@@ -33,6 +33,13 @@ public sealed class ComparisonRelation
     /// <summary>How many pairs were declared, which is zero for <see cref="Empty"/>.</summary>
     public int Count => _pairs.Count;
 
+    /// <summary>The pairs this relation holds, in the order they were declared.</summary>
+    /// <remarks>
+    /// Readable for the same reason <see cref="SubtypeRelation.Edges"/> is: an interchange is a declaration, and an
+    /// export has to write the language's own pairs into the code it generates rather than describe them.
+    /// </remarks>
+    public IReadOnlyList<(IType Left, IType Right)> Pairs => _pairs;
+
     /// <summary>The same relation with one more pair declared: the two types may each be used for the other.</summary>
     /// <param name="left">One type.</param>
     /// <param name="right">The other.</param>

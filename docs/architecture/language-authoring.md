@@ -475,9 +475,11 @@ generated file needs no lambda. `TypeRegistry.Rules` and `SubtypeRelation.Edges`
 needs, exactly as `TemplateRegistry.Templates` was for generators. A named type is hoisted into a field of its own,
 because the lowering interns one instance per name and two rules naming `place` mean one type.
 
-Two things are still refused rather than written, and a language that declares them cannot be exported: **comparable
-pairs** (`Comparable`) and **replacements** (`Replacement`). Both are statements about types a rule already names, and
-both have no spelling in the generated file yet - the writer says so instead of dropping them.
+The two statements about types that are not rules are written too: **comparable pairs** (`Comparable`) as
+`ComparisonRelation.Empty.Add(...)` and **replacements** (`Replacement`) as `new TypeReplacement(claim, left, right,
+[equations])`, which is why `ComparisonRelation.Pairs` is readable beside `SubtypeRelation.Edges`. A variable in a
+replacement's pattern is written inline as `new TypeVariable("a")`, because a variable's identity is the instance and
+each rule holds its own - hoisting it would let two rules share one, which is what the patterns must not do.
 
 `generator/` is no longer on that list. Every part a template is made of is a record in `Projectional.Language`, so a
 generator is written as the data it is: one `new TextGenerator(name, TemplateRegistry.Empty.Add(concept, ...))` per
