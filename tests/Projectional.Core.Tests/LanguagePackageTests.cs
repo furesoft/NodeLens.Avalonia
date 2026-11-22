@@ -82,6 +82,42 @@ public sealed class LanguagePackageTests
         Assert.Contains("ExportOutput.Assembly", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ExtraFilesComeAfterWhatTheExportProduced()
+    {
+        // A package carries more than the code - documentation, a licence - and each of those is somebody else's product.
+        // The export layer takes the bytes and asks nothing about where they came from.
+        var result = LanguageExporter.Export(Invoice(), "Sample.Invoice");
+
+        var zip = LanguagePackage.Zip(
+            result,
+            PackageContent.Sources,
+            [
+                new PackageFile("docs/index.html", "<!DOCTYPE html>"u8.ToArray()),
+                new PackageFile("docs/Atlas/index.html", "<!DOCTYPE html>"u8.ToArray()),
+            ]);
+
+        Assert.Equal(
+            [.. Names(LanguagePackage.Zip(result, PackageContent.Sources)), "docs/index.html", "docs/Atlas/index.html"],
+            Names(zip));
+
+        Assert.Equal("<!DOCTYPE html>", Text(zip, "docs/Atlas/index.html"));
+    }
+
+    [Fact]
+    public void ExtraFilesKeepTheArchiveReproducible()
+    {
+        // The same reason the export itself is: an archive that differed by the day it was built would be a diff nobody
+        // made, and a page that carried a timestamp would do exactly that.
+        var result = LanguageExporter.Export(Invoice(), "Sample.Invoice");
+
+        IReadOnlyList<PackageFile> pages = [new PackageFile("docs/index.html", "<!DOCTYPE html>"u8.ToArray())];
+
+        Assert.Equal(
+            LanguagePackage.Zip(result, PackageContent.Sources, pages),
+            LanguagePackage.Zip(result, PackageContent.Sources, pages));
+    }
+
     private static IReadOnlyList<string> Names(byte[] zip)
     {
         using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
