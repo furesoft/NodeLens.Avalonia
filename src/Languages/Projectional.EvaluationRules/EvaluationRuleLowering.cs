@@ -162,23 +162,28 @@ public static class EvaluationRuleLowering
         };
     }
 
-    /// <summary>An operator body: the symbol from its property, the values from its one or two operand bodies.</summary>
+    /// <summary>An operator body: the symbol it names or the one its node holds, and the values of its operand bodies.</summary>
+    /// <remarks>
+    /// The symbol written on the body wins, which is what lets a rule compare against a constant - <c>points &gt;= 50</c> - on a
+    /// node that has no operator property at all. Leaving it empty is how a rule whose operator varies with the node is
+    /// written, and the property name then says where to read it.
+    /// </remarks>
     private static Func<EvaluationContext, Value> Operator(Node body)
     {
-        var symbol = SlotOf(body, EvaluationRuleLanguage.OperatorSlot);
+        var written = body.GetOrNull(EvaluationRuleLanguage.SymbolSlot);
+        var from = body.GetOrNull(EvaluationRuleLanguage.OperatorSlot);
         var left = Compile(Required(body, EvaluationRuleLanguage.LeftSlot));
         var right = body.GetChild(EvaluationRuleLanguage.RightSlot) is { } second ? Compile(second) : null;
 
+        string SymbolOf(EvaluationContext context) => written is { Length: > 0 }
+            ? written
+            : from is { Length: > 0 } slot && context.Node.GetOrNull(slot) is { Length: > 0 } held
+                ? held
+                : throw context.Error("this operator body names no symbol and its node holds none.");
+
         return right is null
-            ? context => OperatorSemantics.ApplyUnary(
-                context,
-                context.Node.GetOrNull(symbol) ?? throw context.Error($"'{symbol}' holds no operator."),
-                left(context))
-            : context => OperatorSemantics.Apply(
-                context,
-                context.Node.GetOrNull(symbol) ?? throw context.Error($"'{symbol}' holds no operator."),
-                left(context),
-                right(context));
+            ? context => OperatorSemantics.ApplyUnary(context, SymbolOf(context), left(context))
+            : context => OperatorSemantics.Apply(context, SymbolOf(context), left(context), right(context));
     }
 
     /// <summary>A choice: the condition's own value decides which body answers.</summary>
@@ -292,11 +297,13 @@ public static class EvaluationRuleLowering
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Operator))
         {
-            var symbol = SlotOf(body, EvaluationRuleLanguage.OperatorSlot);
+            var applied = body.GetOrNull(EvaluationRuleLanguage.SymbolSlot) is { Length: > 0 } written
+                ? $"Its {written} operator"
+                : "The operator of the node";
 
             return body.GetChild(EvaluationRuleLanguage.RightSlot) is null
-                ? $"Its {symbol} operator applied to the value of its left operand."
-                : $"Its {symbol} operator applied to the values of its two operands.";
+                ? $"{applied} applied to the value of its left operand."
+                : $"{applied} applied to the values of its two operands.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Choose))
