@@ -22,7 +22,7 @@ namespace Projectional.Expressions;
 /// </remarks>
 public static class ExpressionOperators
 {
-    private static readonly string[] BinarySymbols = ["+", "-", "*", "/", "==", "!=", "<", ">", "<=", ">=", "&&", "||"];
+    private static readonly string[] BinarySymbols = ["+", "-", "*", "/", "^", "==", "!=", "<", ">", "<=", ">=", "&&", "||"];
     private static readonly string[] UnarySymbols = ["-", "!"];
 
     /// <summary>The symbols a <see cref="ExpressionsConceptKeys.Binary"/> accepts.</summary>

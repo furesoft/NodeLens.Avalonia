@@ -62,7 +62,7 @@ public static class ExpressionsEvaluation
 
         return context.Node.GetOrNull("operator") switch
         {
-            "+" or "-" or "*" or "/" or "<" or ">" or "<=" or ">=" => Arithmetic(context, left, right),
+            "+" or "-" or "*" or "/" or "^" or "<" or ">" or "<=" or ">=" => Arithmetic(context, left, right),
             "==" => new BoolValue(Equals(left, right)),
             "!=" => new BoolValue(!Equals(left, right)),
             "&&" => Logic(context, left, right, and: true),
@@ -93,11 +93,31 @@ public static class ExpressionsEvaluation
             "*" => new IntValue(first.Content * second.Content),
             "/" when second.Content == 0 => throw context.Error("Division by zero has no value."),
             "/" => new IntValue(first.Content / second.Content),
+            "^" => Power(context, first.Content, second.Content),
             "<" => new BoolValue(first.Content < second.Content),
             ">" => new BoolValue(first.Content > second.Content),
             "<=" => new BoolValue(first.Content <= second.Content),
             _ => new BoolValue(first.Content >= second.Content),
         };
+    }
+
+    /// <summary>Raises a whole number to a whole power, refusing what this language cannot represent.</summary>
+    /// <remarks>
+    /// Only whole results, because the vocabulary has no fractional literal to write one in and a value nobody can
+    /// spell again would be a second kind of number the language does not admit to having.
+    /// </remarks>
+    private static IntValue Power(EvaluationContext context, int basis, int exponent)
+    {
+        if (exponent < 0)
+        {
+            throw context.Error("A power of a whole number needs an exponent of zero or more.");
+        }
+
+        var raised = Math.Pow(basis, exponent);
+
+        return raised is > int.MaxValue or < int.MinValue
+            ? throw context.Error($"{basis} to the power of {exponent} is beyond the whole numbers this language holds.")
+            : new IntValue((int)raised);
     }
 
     private static BoolValue Logic(EvaluationContext context, Value left, Value right, bool and)
