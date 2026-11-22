@@ -511,6 +511,32 @@ public sealed class DeclaredAtlasTests
         }
     }
 
+    [Fact]
+    public void TheFolderStatesWhatAMapAndAStopMean()
+    {
+        var language = Language();
+        var rules = Assert.IsType<EvaluationRegistry>(language.Evaluation);
+        var map = ModelFile.Load(language.NewProject(), Document("map.mps")).Roots[0];
+
+        // A map answers how many places it holds - the document it ships with holds two, a place and a landmark, and both
+        // are spots in the slot that is counted.
+        Assert.Equal(new IntValue(2), Run(rules, map));
+
+        // A stop answers whether it points anywhere, which is the same question the language's own constraint asks of it.
+        var route = map.GetChildren("routes")[0];
+
+        Assert.Equal(new BoolValue(true), Run(rules, route.GetChildren("stops")[0]));
+        Assert.Equal(new BoolValue(false), Run(rules, map.Model.NewChild(route, "stops", "Atlas.Stop")));
+    }
+    /// <summary>What the sample's declared rules answer for <paramref name="node"/>.</summary>
+    private static Value Run(EvaluationRegistry rules, Node node)
+    {
+        var result = new Interpreter(rules).Run(node, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Failure is null, result.Failure?.Message);
+
+        return result.Value!;
+    }
     private static IReadOnlyList<string> Offers(LanguageProject language, Node node, bool atEmptySlot = false)
     {
         using var session = new EditorSession(node, language.Notations);
