@@ -248,6 +248,12 @@ language in the chain, so the archive is the one place a reader gets a language 
    its type rules are missing, and `unknown` is that complaint - not part of the language's shape. The documentation
    therefore asks the renderer for the shape and gets no cell at all (`EditorTreeBuilder(annotations: false)`), together
    with the punctuation that separates it, because a cell dropped on its own leaves `1 :` behind.
+7. **A slot stands for what the child draws, punctuation included**, and both legends now say so. A notation spelled
+   `for (<initializer> <condition>; <increment>)` shows one semicolon although the printed line has two, because the
+   initializer is a statement and a statement draws its own: that is the reading cost of the placeholder rule above.
+   A reader took it for a missing `;` in the language itself, so the sentence that explains the placeholders names the
+   case - punctuation the child owns belongs to the child and is not repeated beside it. The generators page had no
+   legend at all and gets the same sentence for its own spelling, where the same confusion was possible.
 7. **The picture is composed from the chain, like the shell's.** A document of a dependent language draws its base's
    concepts - Invoice holds a `Units.Quantity` - and a language's notation registry holds only what that language
    declares. So the chain builds one concept registry over every declaration and one notation registry over that, which
