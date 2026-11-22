@@ -562,7 +562,11 @@ public sealed class LanguageDocumentationTests
             LanguageDocumentation.Generate(Atlas()),
             each => each.Path == "Atlas/enumerations.html");
 
-        Assert.Contains("No property is declared over an enumeration.", page.Text, StringComparison.Ordinal);
+        // One sentence, not two: the summary already answered "this language has none", so the table that would have
+        // said it again is not rendered at all. A page that led with the summary and then repeated it in the table's
+        // empty row read as a mistake, which is what this pins.
+        Assert.Contains("No property of this language is declared over an enumeration.", page.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("No property is declared over an enumeration.", page.Text, StringComparison.Ordinal);
     }
 
     [Fact]
