@@ -23,7 +23,9 @@ public sealed class ModuleFactsTests
         // here is what let two aspects go unlisted.
         Assert.Equal(LanguageProject.AspectFolders.Count + 1, facts.Aspects.Count);
         Assert.Contains(facts.Aspects, aspect => aspect.Name == "typing" && aspect.Documents == 0 && !aspect.IsPresent);
-        Assert.Contains(facts.Aspects, aspect => aspect.Name == "accessory" && aspect.Documents == 0 && !aspect.IsPresent);
+        // The sample ships an accessory document - a model of itself - so the aspect is present and holds one, which is
+        // the row the dialog needs to show rather than hide.
+        Assert.Contains(facts.Aspects, aspect => aspect.Name == "accessory" && aspect.Documents == 1 && aspect.IsPresent);
         Assert.Contains(facts.Aspects, aspect => aspect.Name == "structure" && aspect.Documents > 0 && aspect.IsPresent);
     }
 
@@ -54,8 +56,10 @@ public sealed class ModuleFactsTests
     {
         var facts = ModuleFacts.Of(Language());
 
+        // The accessory document's roots are the language's own concepts, so it belongs in the list; the order is the
+        // folder order the dialog and the explorer share.
         Assert.Equal(
-            ["structure", "editor", "constraints", "import", "generator", "tests"],
+            ["structure", "editor", "constraints", "accessory", "import", "generator", "tests"],
             facts.Roots);
     }
 
