@@ -115,7 +115,7 @@ public static class StructureNotations
 
             return ed.Indent(ed.Sequence(
                 ed.Line(ed.Keyword("language"), ed.Space, ed.Property("name")),
-                ed.Indent(facts)));
+                ed.Indent(ed.Indent(facts))));
         });
 
         // One dependency is one line, because that is what it is: a name and the version asked for, if any. The
@@ -245,7 +245,7 @@ public static class StructureNotations
 
         notations.Add(StructureConceptKeys.Enumeration, ed => ed.Indent(ed.Sequence(
             ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),
-            ed.Indent(ed.Children("symbols", NoSymbols, stacked: true)))));
+            ed.Indent(ed.Indent(ed.Children("symbols", NoSymbols, stacked: true))))));
 
         notations.Add(StructureConceptKeys.EnumSymbol, ed => ed.Line(ed.Property("symbol")));
     }

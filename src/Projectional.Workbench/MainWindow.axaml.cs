@@ -3282,6 +3282,32 @@ public sealed partial class MainWindow : Window, IDisposable
         return true;
     }
 
+    /// <summary>Opens the models <paramref name="language"/> owns, which are the documents a user works in.</summary>
+    /// <param name="language">The project, already taken into the shell's set.</param>
+    /// <remarks>
+    /// A language project's root holds its documents beside the aspect folders and <c>language.mps</c>, which is the
+    /// language itself rather than a document of it. Those are what an example is opened for; its definitions are what
+    /// <see cref="ShowDefinitions"/> opens, when the user asked to edit the language rather than to read it.
+    /// </remarks>
+    private void ShowDocuments(LanguageProject language)
+    {
+        if (language.Directory.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var file in System.IO.Directory
+            .EnumerateFiles(language.Directory, "*.mps", SearchOption.TopDirectoryOnly)
+            .Where(file => !string.Equals(Path.GetFileName(file), LanguageProject.LanguageFile, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(file => Path.GetFileName(file), StringComparer.Ordinal))
+        {
+            if (DocumentFile.TryLoad(file, language.NewProject(), out _) is { } model)
+            {
+                OpenDocument(model, language.Notations, file, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+            }
+        }
+    }
+
     /// <summary>Opens every definition document of <paramref name="language"/> as a tab.</summary>
     /// <param name="language">The project, already taken into the shell's set.</param>
     private void ShowDefinitions(LanguageProject language)
@@ -3320,9 +3346,12 @@ public sealed partial class MainWindow : Window, IDisposable
         var needed = ExampleProjects.Needed(example, Examples);
         var opened = ExampleProjects.Load(_language, needed, out var refused);
 
+        // A sample is a language to look at, not a language to rewrite: its own documents open, its definition files
+        // do not. Opening an aspect folder's documents is what "Open language" does, and a sample that arrived with
+        // forty definition tabs would bury the two documents it exists for.
         foreach (var project in opened)
         {
-            ShowDefinitions(project);
+            ShowDocuments(project);
         }
 
         ShowProject();
@@ -3343,10 +3372,9 @@ public sealed partial class MainWindow : Window, IDisposable
 
     /// <summary>Fills the examples submenu with one entry per example a build placed beside the executable.</summary>
     /// <remarks>
-    /// One entry per example rather than one command that opens all of them: a language project opens its definition
-    /// documents as tabs, and five projects at once would be several dozen tabs of definition files the user did not
-    /// ask for. The list comes from <see cref="ExampleProjects.Catalogue"/>, so the menu and the folder cannot
-    /// disagree about what ships.
+    /// One entry per example rather than one command that opens all of them, and an example opens its own documents
+    /// rather than its definition files: the list comes from <see cref="ExampleProjects.Catalogue"/>, so the menu and
+    /// the folder cannot disagree about what ships.
     /// </remarks>
     private void UpdateExampleMenu()
     {

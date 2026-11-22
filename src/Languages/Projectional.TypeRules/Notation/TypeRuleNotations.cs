@@ -47,7 +47,7 @@ public static class TypeRuleNotations
                 ed.Property(TypeRuleLanguage.ConceptKeySlot),
                 ed.Space,
                 ed.Keyword("is")),
-            ed.Indent(ed.Line(ed.ChildInline(TypeRuleLanguage.BodySlot)))));
+            ed.Indent(ed.Indent(ed.Line(ed.ChildInline(TypeRuleLanguage.BodySlot))))));
 
         notations.Add(TypeRuleConceptKeys.Fixed, ed => ed.Line(
             ed.Keyword("type"),

@@ -602,10 +602,10 @@ public sealed class EditorLoweringTests
             string.Join(
                 '\n',
                 "editor for concept Rules.Rule variant: default",
-                "node cell layout:",
-                "  [/",
-                "    [-rule- ; %name% empty: <<name>>]",
-                "  /]"),
+                "    node cell layout:",
+                "    [/",
+                "      [-rule- ; %name% empty: <<name>>]",
+                "    /]"),
             LayoutSnapshot.Render(notation.Root, EditorNotations.Create(), width: 120));
     }
 

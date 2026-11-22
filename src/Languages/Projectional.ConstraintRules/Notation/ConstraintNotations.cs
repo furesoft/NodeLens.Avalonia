@@ -56,7 +56,7 @@ public static class ConstraintNotations
                 ed.Keyword("for"),
                 ed.Space,
                 ed.Property(ConstraintLanguage.ConceptKeySlot, emptyText: EveryNode)),
-            ed.Indent(ed.Sequence(
+            ed.Indent(ed.Indent(ed.Sequence(
                 ed.Line(
                     ed.Keyword("when"),
                     ed.Space,
@@ -72,7 +72,7 @@ public static class ConstraintNotations
                     ed.Space,
                     ed.Keyword("as"),
                     ed.Space,
-                    ed.Property(ConstraintLanguage.CodeSlot, emptyText: NoCode))))));
+                    ed.Property(ConstraintLanguage.CodeSlot, emptyText: NoCode)))))));
 
         notations.Add(ConstraintConceptKeys.EmptySlot, ed => ed.Line(
             ed.Keyword("the slot"),
