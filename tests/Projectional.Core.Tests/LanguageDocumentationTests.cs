@@ -280,6 +280,33 @@ public sealed class LanguageDocumentationTests
     }
 
     [Fact]
+    public void AnEvaluationPageDrawsTheRulesAsTheyAreWritten()
+    {
+        // A sentence says what a rule computes and a drawing says how it says so, which is the half a language author copies.
+        // The notations are the rule language's own: drawing a rule with the language it describes would find no notation.
+        var page = Assert.Single(LanguageDocumentation.Generate(Units()), each => each.Path == "Units/evaluation.html");
+
+        // The file name is the heading, and the rule reads as the sentence it is - `rule for Units.Quantity`, then the record
+        // body with one field per line, which is what the drawing showed when the notation first flowed them onto one.
+        Assert.Contains("<h2>quantity</h2>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<pre class=\"example\">", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-keyword\">rule for</span>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-text\">Units.Quantity</span>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-keyword\">record</span>", page.Text, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"s-text\">value</span><span class=\"s-keyword\">:</span>", page.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEvaluationPageDrawsNothingForALanguageWhoseRulesItDoesNotHold()
+    {
+        // A shipped language hands over a registry and no documents, so the page states the sentences and has nothing to draw -
+        // which is not a failure: the rules of `Expressions` live in its assembly, not in a file a page could show.
+        var page = Assert.Single(LanguageDocumentation.Generate(ExpressionsProject()), each => each.Path == "Expressions/evaluation.html");
+
+        Assert.DoesNotContain("<pre class=\"example\">", page.Text, StringComparison.Ordinal);
+        Assert.Contains("Its operator applied to the values of its two operands.", page.Text, StringComparison.Ordinal);
+    }
+    [Fact]
     public void AnEvaluationPageStatesWhatALanguageWithoutMeaningHas()
     {
         var page = Assert.Single(

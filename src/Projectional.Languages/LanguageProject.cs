@@ -137,7 +137,8 @@ public sealed class LanguageProject
         bool hasIntentions,
         IReadOnlyList<ITextImporter> importers,
         CheckSet? checks,
-        EvaluationRegistry? evaluation)
+        EvaluationRegistry? evaluation,
+        IReadOnlyList<Model> evaluationDocuments)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
@@ -163,6 +164,7 @@ public sealed class LanguageProject
         DeclaredImporters = importers;
         Checks = checks;
         Evaluation = evaluation;
+        EvaluationDocuments = evaluationDocuments;
     }
 
     /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
@@ -432,11 +434,19 @@ public sealed class LanguageProject
 
     /// <summary>What the language states each of its concepts evaluates to, or <see langword="null"/> for none.</summary>
     /// <remarks>
-    /// The one aspect with no declared form: the others are languages a project writes in a folder, while an evaluation
-    /// rule is a computation and this repository has no model for one. So a shipped language hands its registry over and a
-    /// declared one has none, which is why the page says so rather than guessing from the concepts.
+    /// Lowered from <see cref="EvaluationDocuments"/> and merged with what the languages it extends declare. A shipped
+    /// language hands a registry over and has no documents, which is why the documentation page reports the rules it can
+    /// see rather than assuming a folder exists.
     /// </remarks>
     public EvaluationRegistry? Evaluation { get; }
+
+    /// <summary>The rules as they are written, in file order; empty when the language states no meaning.</summary>
+    /// <remarks>
+    /// Kept beside the registry for the reason <see cref="Accessory"/> is kept beside its lowered form: a page can only draw
+    /// what it still holds, and a sentence per concept is not the same thing as the rule a language author wrote. They are
+    /// models of <see cref="EvaluationRuleLanguage"/>, which is what a drawing has to use to read them.
+    /// </remarks>
+    public IReadOnlyList<Model> EvaluationDocuments { get; }
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -541,7 +551,8 @@ public sealed class LanguageProject
         bool hasIntentions = false,
         string? description = null,
         CheckSet? checks = null,
-        EvaluationRegistry? evaluation = null)
+        EvaluationRegistry? evaluation = null,
+        IReadOnlyList<Model>? evaluationDocuments = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -571,7 +582,8 @@ public sealed class LanguageProject
             hasIntentions,
             importers: [],
             checks: checks,
-            evaluation: evaluation);
+            evaluation: evaluation,
+            evaluationDocuments: evaluationDocuments ?? []);
     }
 
     /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
@@ -607,7 +619,12 @@ public sealed class LanguageProject
             var typing = LowerTypingRules(fullPath, concepts);
             var intentions = LowerIntentions(fullPath, concepts);
             var types = LowerTypes(fullPath, concepts);
-            var evaluation = LowerEvaluation(fullPath, concepts);
+            var evaluationRoots = Read(fullPath, EvaluationFolder, new Project(EvaluationRuleLanguage.Concepts));
+            var evaluation = LowerEvaluation(evaluationRoots, concepts);
+
+            // The same documents again as models, because a documentation page draws them: the reader hands back roots, and a
+            // root's model is the document it came from.
+            IReadOnlyList<Model> evaluationDocuments = [.. evaluationRoots.Select(root => root.Model)];
             var notation = LowerNotation(fullPath, concepts);
 
             EnsureOnlyOwnNotations(notation, declarations);
@@ -665,7 +682,8 @@ public sealed class LanguageProject
                 intentions.HasAny || bases.Extended.Any(language => language.HasIntentions),
                 LowerImporters(fullPath, concepts),
                 checks: null,
-                inheritedEvaluation);
+                inheritedEvaluation,
+                evaluationDocuments);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -965,15 +983,13 @@ public sealed class LanguageProject
     /// type per concept, and a complaint per concept that reports instead of typing. Reading twice would parse
     /// the same models twice for no gain.
     /// </remarks>
-    /// <summary>The rules the <c>evaluation</c> folder declares, or <see langword="null"/> when it holds none.</summary>
+    /// <summary>The rules <paramref name="documents"/> declare, or <see langword="null"/> when there are none.</summary>
     /// <remarks>
     /// Null rather than an empty registry, because "this language states no meaning" is a fact the documentation page and a
     /// host both report differently from "it states these three" - and an empty registry would say the second.
     /// </remarks>
-    private static EvaluationRegistry? LowerEvaluation(string directory, ConceptRegistry concepts)
+    private static EvaluationRegistry? LowerEvaluation(List<Node> documents, ConceptRegistry concepts)
     {
-        var documents = Read(directory, EvaluationFolder, new Project(EvaluationRuleLanguage.Concepts));
-
         return documents.Count == 0 ? null : EvaluationRuleLowering.CreateRegistry(documents, concepts);
     }
 
