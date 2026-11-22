@@ -1,9 +1,12 @@
+using Projectional.ConstraintRules;
 using Projectional.Core;
 using Projectional.Editors;
 using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
+using Projectional.ScopeRules;
+using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.TypingRules;
 using Projectional.TypeRules;
@@ -77,20 +80,24 @@ public sealed class DeclaredAtlasTests
         // inherited one for `Landmark` differs from the one `Place` declares.
         Assert.Contains("place peak at 1500m", rendered, StringComparison.Ordinal);
         Assert.Contains("landmark lake at 410m", rendered, StringComparison.Ordinal);
+
+        // The route is a child of the map rather than a second document, which is what lets its stops see the
+        // places around them.
+        Assert.Contains("route loop", rendered, StringComparison.Ordinal);
+        Assert.Contains("to peak", rendered, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TheRouteIsDrawnAsAHeaderOverItsStops()
+    public void TheStandaloneRouteNamesTheMapItLiesOn()
     {
+        // The second document is a route of its own, and the map it belongs to is named across documents - which is
+        // the reference a project-wide scope exists for.
         var language = Language();
         var model = ModelFile.Load(language.NewProject(), Document("route.mps"));
 
         var rendered = LayoutSnapshot.Render(model, language.Notations, width: 120);
 
-        Assert.Contains("route loop", rendered, StringComparison.Ordinal);
-
-        // Two stops, and every stop starts with the keyword its notation puts in front of the reference.
-        Assert.Equal(2, rendered.Split("to ", StringSplitOptions.None).Length - 1);
+        Assert.Contains("route detour on alpen", rendered, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -107,9 +114,9 @@ public sealed class DeclaredAtlasTests
         // Three concepts, one type: a place, a landmark and a stop are the same thing to anything that reads a
         // route, which is what separating a type from a concept is for.
         Assert.All(places, place => Assert.Equal("place", language.Types.TypeOf(place).Name));
-        Assert.Equal(
-            "place",
-            language.Types.TypeOf(ModelFile.Load(language.NewProject(), Document("route.mps")).Roots[0].GetChildren("stops")[0]).Name);
+        var route = ModelFile.Load(language.NewProject(), Document("map.mps")).Roots[0].GetChildren("routes")[0];
+
+        Assert.Equal("place", language.Types.TypeOf(route.GetChildren("stops")[0]).Name);
 
         // The claim is what makes typing create the node: letters in an empty slot are a place's name.
         var claim = Assert.IsType<TypingRule>(language.Typing.ClaimFor("Atlas.Place", "peak"));
@@ -119,6 +126,79 @@ public sealed class DeclaredAtlasTests
         // A landmark claims the words a landmark is usually called, and nothing else claims them.
         Assert.IsType<TypingRule>(language.Typing.ClaimFor("Atlas.Landmark", "lake"));
         Assert.Null(language.Typing.ClaimFor("Atlas.Landmark", "summit"));
+    }
+
+    [Fact]
+    public void TheLanguageStatesTwoFindingsAndTheGoodDocumentsHaveNeither()
+    {
+        var language = Language();
+
+        Assert.True(language.HasConstraints);
+
+        var engine = new ConstraintEngine(language.Constraints);
+
+        // The sample's own documents are clean: every place is named and every stop points somewhere.
+        Assert.Empty(engine.Check(ModelFile.Load(language.NewProject(), Document("map.mps"))));
+        Assert.Empty(engine.Check(ModelFile.Load(language.NewProject(), Document("route.mps"))));
+        Assert.True(language.HasScopes);
+
+        // Two things it refuses, one of each severity, both of them declared rather than built in.
+        var project = language.NewProject();
+        var model = project.NewModel("findings");
+        var map = model.NewNode("Atlas.Map");
+
+        model.AddRoot(map);
+
+        var place = model.NewChild(map, "places", "Atlas.Place");
+
+        place.Set("name", "unnamed");
+
+        var route = model.NewNode("Atlas.Route");
+
+        model.AddRoot(route);
+        model.NewChild(route, "stops", "Atlas.Stop");
+
+        var findings = engine.Check(model).ToDictionary(finding => finding.Code!, StringComparer.Ordinal);
+
+        Assert.Equal(2, findings.Count);
+        Assert.Equal(DiagnosticSeverity.Hint, findings["atlas.place.name"].Severity);
+        Assert.Equal(DiagnosticSeverity.Error, findings["atlas.stop.target"].Severity);
+    }
+
+    [Fact]
+    public void TheThreeNameSourcesResolveWhatTheySay()
+    {
+        var language = Language();
+
+        Assert.True(language.HasScopes);
+
+        // One document, because two of the three sources are about it: the map holds its places and a route whose
+        // stops point at them.
+        var project = language.NewProject();
+        var maps = ModelFile.Load(project, Document("map.mps"));
+        var routes = ModelFile.Load(project, Document("route.mps"));
+
+        var map = maps.Roots[0];
+        var places = map.GetChildren("places");
+        var landmark = places[1];
+        var stop = map.GetChildren("routes")[0].GetChildren("stops")[0];
+
+        // `local`: the entry is one of the map's own places, so the node's children are enough.
+        Assert.Equal(landmark.Id, language.Scopes.ScopeOf(map, "entry").Resolve("lake").Entry.Node);
+
+        // A name the map does not hold is not in its scope, which is what makes `local` local.
+        Assert.Equal(ScopeResolutionKind.Missing, language.Scopes.ScopeOf(map, "entry").Resolve("alp").Kind);
+
+        // `ancestors`: a stop is nested in a route which is nested in the map, so the places of that map are what its
+        // enclosing nodes hold - the source a nested reference almost always wants.
+        Assert.Equal(places[0].Id, language.Scopes.ScopeOf(stop, "to").Resolve("peak").Entry.Node);
+        Assert.Equal(landmark.Id, language.Scopes.ScopeOf(stop, "to").Resolve("lake").Entry.Node);
+
+        // `project`: the route of the other document names the map, and a project-wide scope is what makes a name
+        // of another document visible. Its roots are what it offers, which is why the map is reachable and a place
+        // inside it is not.
+        Assert.Equal(map.Id, language.Scopes.ScopeOf(routes.Roots[0], "onMap").Resolve("alpen").Entry.Node);
+        Assert.Equal(ScopeResolutionKind.Missing, language.Scopes.ScopeOf(routes.Roots[0], "onMap").Resolve("peak").Kind);
     }
 
     [Fact]
@@ -133,6 +213,8 @@ public sealed class DeclaredAtlasTests
             AssertRoundTrips(Path.Combine(folder, LanguageProject.EditorFolder), new Project(EditorLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.TypesFolder), new Project(TypeRuleLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.TypingFolder), new Project(TypingLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.ConstraintsFolder), new Project(ConstraintLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.ScopesFolder), new Project(ScopeLanguage.Concepts), temporary.FullName);
 
             // The root sits beside the aspect folders rather than in one, so it needs its own call.
             AssertRoundTrips(folder, new Project(StructureLanguage.Concepts), temporary.FullName, LanguageProject.LanguageFile);

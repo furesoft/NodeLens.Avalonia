@@ -22,6 +22,18 @@
                     <slot>name</slot>
                   </properties>
                 </node>
+                <node id="e1000000-0000-4000-8000-000000000011" concept="Editor.Space" />
+                <node id="e1000000-0000-4000-8000-000000000012" concept="Editor.Keyword" name="at">
+                  <properties>
+                    <text>at</text>
+                  </properties>
+                </node>
+                <node id="e1000000-0000-4000-8000-000000000013" concept="Editor.Space" />
+                <node id="e1000000-0000-4000-8000-000000000014" concept="Editor.Reference" name="entry">
+                  <properties>
+                    <slot>entry</slot>
+                  </properties>
+                </node>
               </children>
             </node>
             <node id="e1000000-0000-4000-8000-000000000007" concept="Editor.Indent">
@@ -29,6 +41,14 @@
                 <node id="e1000000-0000-4000-8000-000000000008" concept="Editor.Children" name="places">
                   <properties>
                     <slot>places</slot>
+                    <emptyText>&lt;none&gt;</emptyText>
+                    <spacing>1</spacing>
+                    <stacked>true</stacked>
+                  </properties>
+                </node>
+                <node id="e1000000-0000-4000-8000-000000000015" concept="Editor.Children" name="routes">
+                  <properties>
+                    <slot>routes</slot>
                     <emptyText>&lt;none&gt;</emptyText>
                     <spacing>1</spacing>
                     <stacked>true</stacked>

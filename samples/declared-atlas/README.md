@@ -18,14 +18,22 @@ folder also proves that a language may be built on another language's concepts.
 | Aspect | Folder | What it shows |
 | --- | --- | --- |
 | root | `language.mps` | the name, the version and one declared dependency |
-| structure | `structure/` | an abstract concept, inheritance, a reference, two root concepts, a borrowed concept |
+| structure | `structure/` | an abstract concept, inheritance, references, two root concepts (one of them nestable), a borrowed concept |
 | editor | `editor/` | a sequence with an indented child list, an inline line and a reference cell |
 | types | `types/` | a declared record type (`place`) and three rules that name it, so three concepts answer one type |
 | typing | `typing/` | two claims: letters in an empty slot are a place's name, and a landmark is claimed by the words it is usually called |
+| constraints | `constraints/` | two findings: a place that is still called `unnamed` (hint) and a stop that points nowhere (error) |
+| scopes | `scopes/` | three name sources: a map's entry is `local`, a stop's target comes from `ancestors`, a route names its map across the `project` |
 
-The remaining aspects - constraints, scopes, intentions, generator, import, accessory and the framework's own tests -
-arrive one slice at a time; each one is added here and in the plan's aspect table.
+The remaining aspects - intentions, generator, import, accessory and the framework's own tests - arrive one slice at a
+time; each one is added here and in the plan's aspect table.
+
+The three name sources are the three that mean something different here: `local` is the node's own children and
+siblings, `ancestors` is the children of each enclosing node, and `model` and `project` offer the **roots** of the
+document and of the project's other documents. A place nested in a map is therefore reachable through `local` or
+`ancestors` and never through `model`, which is why the sample uses the three it does.
 
 ## The documents
 
-`map.mps` is one map with a place and a landmark; `route.mps` is one route whose two stops point at them.
+`map.mps` is one map with two places and a route that stops at both of them; `route.mps` is a second route, in its own
+document, which names the map it belongs to across the project boundary.

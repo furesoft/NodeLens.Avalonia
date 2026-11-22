@@ -22,6 +22,18 @@
                     <slot>name</slot>
                   </properties>
                 </node>
+                <node id="e2000000-0000-4000-8000-000000000011" concept="Editor.Space" />
+                <node id="e2000000-0000-4000-8000-000000000012" concept="Editor.Keyword" name="on">
+                  <properties>
+                    <text>on</text>
+                  </properties>
+                </node>
+                <node id="e2000000-0000-4000-8000-000000000013" concept="Editor.Space" />
+                <node id="e2000000-0000-4000-8000-000000000014" concept="Editor.Reference" name="onMap">
+                  <properties>
+                    <slot>onMap</slot>
+                  </properties>
+                </node>
               </children>
             </node>
             <node id="e2000000-0000-4000-8000-000000000007" concept="Editor.Indent">

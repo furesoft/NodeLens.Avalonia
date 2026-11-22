@@ -29,6 +29,22 @@
             <cardinality>0..n</cardinality>
           </properties>
         </node>
+        <node id="b0000000-0000-4000-8000-000000000604" concept="Structure.ChildDecl" name="routes">
+          <properties>
+            <name>routes</name>
+            <childConceptKey>Atlas.Route</childConceptKey>
+            <cardinality>0..n</cardinality>
+          </properties>
+        </node>
+      </children>
+      <children role="references">
+        <node id="b0000000-0000-4000-8000-000000000603" concept="Structure.ReferenceDecl" name="entry">
+          <properties>
+            <name>entry</name>
+            <targetConceptKey>Atlas.Place</targetConceptKey>
+            <allowOwnSubtree>false</allowOwnSubtree>
+          </properties>
+        </node>
       </children>
     </node>
   </nodes>
