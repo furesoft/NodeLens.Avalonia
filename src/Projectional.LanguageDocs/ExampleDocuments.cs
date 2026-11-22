@@ -15,7 +15,9 @@ namespace Projectional.LanguageDocs;
 /// </para>
 /// <para>
 /// The picture comes from <see cref="LanguageSnapshot"/>, the public half of the headless renderer, so what the page
-/// shows is the layout the editor would produce, coloured by the same classification the editor paints with. The width is fixed rather than measured:
+/// shows is the layout the editor would produce, coloured by the same classification the editor paints with - without the
+/// type annotations, which are the editor telling a language author what its type rules are missing and not part of the
+/// language's own shape. The width is fixed rather than measured:
 /// the output has to be byte-stable, and a width taken from a font would make it depend on the machine.
 /// </para>
 /// </remarks>
@@ -25,15 +27,16 @@ internal static class ExampleDocuments
     internal const int Width = 96;
 
     /// <summary>Every document <paramref name="language"/> ships, ordered by name.</summary>
-    internal static IReadOnlyList<DocumentDrawing> Of(LanguageProject language)
+    internal static IReadOnlyList<DocumentDrawing> Of(DocumentationChain chain, LanguageProject language)
     {
+        ArgumentNullException.ThrowIfNull(chain);
         ArgumentNullException.ThrowIfNull(language);
 
         var drawings = new List<DocumentDrawing>();
 
         foreach (var model in language.Accessory)
         {
-            drawings.Add(Draw(model.Name ?? "accessory", () => HighlightedText.Of(LanguageSnapshot.Runs(model, language.Notations, Width))));
+            drawings.Add(Draw(model.Name ?? "accessory", () => HighlightedText.Of(LanguageSnapshot.Runs(model, chain.Notations, Width, annotations: false))));
         }
 
         if (language.Directory.Length == 0)
@@ -45,7 +48,7 @@ internal static class ExampleDocuments
         {
             var name = Path.GetFileNameWithoutExtension(file);
 
-            drawings.Add(Draw(name, () => HighlightedText.Of(LanguageSnapshot.Runs(Load(language, file), language.Notations, Width))));
+            drawings.Add(Draw(name, () => HighlightedText.Of(LanguageSnapshot.Runs(Load(language, file), chain.Notations, Width, annotations: false))));
         }
 
         return [.. drawings.OrderBy(drawing => drawing.Name, StringComparer.Ordinal)];
