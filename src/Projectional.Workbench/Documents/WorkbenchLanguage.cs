@@ -158,6 +158,18 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 hasTyping: true,
                 hasIntentions: true,
                 evaluation: ExpressionsEvaluation.Registry),
+
+            // The language a language project writes its meaning in, for the same reason the type rule language is
+            // documented: it is part of what a language author meets, and its five bodies are the whole vocabulary.
+            [EvaluationRuleLanguage.Name] = LanguageProject.Shipped(
+                EvaluationRuleLanguage.Name,
+                version: null,
+                EvaluationRuleLanguage.ConceptDeclarations,
+                EvaluationRuleLanguage.Concepts,
+                EvaluationRuleLanguage.CreateNotations(EvaluationRuleLanguage.Concepts),
+                ConstraintSet.Empty,
+                IntentionLowering.CreateProvider([], EvaluationRuleLanguage.Concepts),
+                []),
         };
 
         /// <summary>Every language the shell ships, which is what a documentation set starts from.</summary>

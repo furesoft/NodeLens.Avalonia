@@ -273,7 +273,9 @@ language in the chain, so the archive is the one place a reader gets a language 
     both are registered as a `LanguageProject` even though neither has a folder - the documented set is the shell registry
     rather than the folder tree. What that costs is a name: the folder of a language is its name, so a declared sample may
     not take one a shipped language already has - which is why the sample that called itself "Expressions" is
-    `DeclaredExpressions` now, the word its own folder already uses.
+    `DeclaredExpressions` now, the word its own folder already uses. A third shipped language joined for the same
+   reason: `EvaluationRules`, the language a rule is written in, because a language author meets its five bodies the way
+   they meet the type rule language.
 12. **A rule about meaning says what it computes.** `IEvaluationRule.Description` is nullable, because a sentence is for a
     reader and a rule that cannot summarise itself should say nothing rather than print its type name - but a language that
     wants its meaning documented writes one per rule, and the page lists exactly those. The evaluation aspect is the second

@@ -66,7 +66,7 @@ internal static class AspectsPage
         Aspect.Importers => LanguageProject.ImportFolder,
         Aspect.Accessory => LanguageProject.AccessoryFolder,
         Aspect.Checks => "no folder: a language takes them from the framework",
-        Aspect.Evaluation => "no folder: a language writes them in code",
+        Aspect.Evaluation => "no folder: a language hands its registry over",
         _ => "-",
     };
 

@@ -20,6 +20,14 @@ namespace Projectional.EvaluationRules;
 /// </remarks>
 public static class EvaluationRuleLanguage
 {
+    /// <summary>The language name a project and a documentation set call it by.</summary>
+    /// <remarks>
+    /// <c>EvaluationRules</c> rather than <c>Evaluation</c>: every language also has an <em>evaluation page</em> that says what
+    /// its own concepts mean, and one word for both would make the tree read as if the aspect and the language were the same
+    /// thing.
+    /// </remarks>
+    public const string Name = "EvaluationRules";
+
     /// <summary>The property naming the concept a rule answers for, such as <c>Expressions.Binary</c>.</summary>
     public const string ConceptKeySlot = "conceptKey";
 
@@ -115,7 +123,7 @@ public static class EvaluationRuleLanguage
                 new PropertySlot(RightSlot, PropertyType.String, description: "The child slot of the right operand, empty for a unary operator."),
             ],
             [EvaluationRuleConceptKeys.Body],
-            description: "An operator applied to the values of its operands.",
+            description: "An operator applied to the values of its operands: leave the right operand empty for a unary operator, and the rule applies the symbol to the left one alone.",
             nameSlot: OperatorSlot),
 
         new ConceptDeclaration(

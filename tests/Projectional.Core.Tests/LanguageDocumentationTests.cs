@@ -246,6 +246,29 @@ public sealed class LanguageDocumentationTests
         Assert.DoesNotContain("implemented by", literal.Text, StringComparison.Ordinal);
     }
     [Fact]
+    public void TheLanguageARuleIsWrittenInIsPartOfTheSet()
+    {
+        // A language author meets these concepts the way they meet the type rule language, so the five bodies are
+        // documented beside the rest - and a documentation set that dropped them would hide half the authoring model.
+        var language = LanguageProject.Shipped(
+            Projectional.EvaluationRules.EvaluationRuleLanguage.Name,
+            version: null,
+            Projectional.EvaluationRules.EvaluationRuleLanguage.ConceptDeclarations,
+            Projectional.EvaluationRules.EvaluationRuleLanguage.Concepts,
+            Projectional.EvaluationRules.EvaluationRuleLanguage.CreateNotations(Projectional.EvaluationRules.EvaluationRuleLanguage.Concepts),
+            Projectional.Semantics.ConstraintSet.Empty,
+            Projectional.IntentionRules.IntentionLowering.CreateProvider(
+                [],
+                Projectional.EvaluationRules.EvaluationRuleLanguage.Concepts),
+            []);
+
+        var pages = LanguageDocumentation.Generate(language);
+
+        Assert.Contains(pages, page => page.Path == "EvaluationRules/concepts/Evaluation.Operator.html");
+        Assert.Contains(pages, page => page.Path == "EvaluationRules/notations.html");
+    }
+
+    [Fact]
     public void AnEvaluationPageStatesWhatEachConceptMeans()
     {
         var pages = LanguageDocumentation.Generate(ExpressionsProject());
