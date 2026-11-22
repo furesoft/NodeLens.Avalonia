@@ -42,7 +42,7 @@ public static class TextGenNotations
                 ed.Keyword("generate", TextEmphasis.Bold),
                 ed.Space,
                 ed.Property(TextGenLanguage.NameSlot)),
-            ed.Indent(ed.Children(TextGenLanguage.MappingsSlot, NoEntries))));
+            ed.Indent(ed.Children(TextGenLanguage.MappingsSlot, NoEntries, stacked: true))));
 
         notations.Add(TextGenConceptKeys.Mapping, ed => ed.Sequence(
             ed.Line(
@@ -53,9 +53,11 @@ public static class TextGenNotations
                 ed.Keyword("to")),
             ed.Indent(ed.Line(ed.ChildInline(TextGenLanguage.TemplateSlot)))));
 
+        // One part per line: a template is a sequence of parts, and drawing them side by side made each part's own
+        // indent push the rest of the line right, which read as a staircase instead of as a template.
         notations.Add(TextGenConceptKeys.Template, ed => ed.Sequence(
             ed.Line(ed.Keyword("template")),
-            ed.Indent(ed.Children(TextGenLanguage.PartsSlot, NoEntries))));
+            ed.Indent(ed.Children(TextGenLanguage.PartsSlot, NoEntries, stacked: true))));
 
         notations.Add(TextGenConceptKeys.Ignore, ed => ed.Line(ed.Keyword("ignore")));
 

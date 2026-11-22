@@ -113,9 +113,9 @@ public static class StructureNotations
                 ed.Line(ed.Keyword("extends:")),
                 ed.Indent(ed.Children(StructureLanguage.ExtendsSlot, NoSection, stacked: true)));
 
-            return ed.Indent(ed.Indent(ed.Sequence(
+            return ed.Indent(ed.Sequence(
                 ed.Line(ed.Keyword("language"), ed.Space, ed.Property("name")),
-                ed.Indent(facts))));
+                ed.Indent(facts)));
         });
 
         // One dependency is one line, because that is what it is: a name and the version asked for, if any. The
@@ -143,10 +143,11 @@ public static class StructureNotations
         // it and a reader sees a list instead of a comma-separated run. That needs the block form of `WhenFilled`:
         // an unfilled row would leave the blank line it drew, and a concept that implements nothing has no such row
         // at all.
-        notations.Add(StructureConceptKeys.Concept, ed => ed.Indent(ed.Indent(ed.Sequence(
-            // The body sits two indents in from the page edge and the header one further in, which is the shape MPS
-            // draws: the page keeps a margin, the settings about the concept start there, and what the concept *is*
-            // stands apart from them.
+        notations.Add(StructureConceptKeys.Concept, ed => ed.Indent(ed.Sequence(
+            // The body sits one indent in from the page edge and the header one further in, which is the shape MPS
+            // draws: the settings about the concept start there, and what the concept *is* stands apart from them.
+            // One indent, not two: every definition language indents its content by the same amount, so a concept and
+            // a generator are read the same way.
             ed.Indent(ed.Line(
                 ed.Conditional(StructureLanguage.IsInterfaceProperty, "true", ed.Keyword("interface"), ed.Space),
                 ed.Conditional(
@@ -186,7 +187,7 @@ public static class StructureNotations
             ed.Indent(ed.Children(StructureLanguage.ChildrenSlot, NoSection, stacked: true)),
             ed.Line(),
             ed.Line(ed.Keyword("references:")),
-            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true))))));
+            ed.Indent(ed.Children(StructureLanguage.ReferencesSlot, NoSection, stacked: true)))));
 
         notations.Add(StructureConceptKeys.SuperType, ed => ed.Line(ed.Property("conceptKey")));
 
@@ -242,9 +243,9 @@ public static class StructureNotations
                 ed.Space,
                 ed.Property("allowOwnSubtree")))));
 
-        notations.Add(StructureConceptKeys.Enumeration, ed => ed.Indent(ed.Indent(ed.Sequence(
+        notations.Add(StructureConceptKeys.Enumeration, ed => ed.Indent(ed.Sequence(
             ed.Line(ed.Keyword("enum"), ed.Space, ed.Property(StructureLanguage.KeySlot)),
-            ed.Indent(ed.Children("symbols", NoSymbols, stacked: true))))));
+            ed.Indent(ed.Children("symbols", NoSymbols, stacked: true)))));
 
         notations.Add(StructureConceptKeys.EnumSymbol, ed => ed.Line(ed.Property("symbol")));
     }
