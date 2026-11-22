@@ -27,21 +27,14 @@ internal static class ProjectExplorer
 {
     /// <summary>The folders a language project is made of, in the order the editor documents them.</summary>
     /// <remarks>
-    /// The order is the reading order of a language: what it declares, how it is drawn, and then the aspects that
-    /// give it meaning, ending with the tests that prove it.
+    /// The aspects come from <see cref="LanguageProject.AspectFolders"/> rather than from a second list here: the
+    /// shell opens exactly the folders this panel shows, so a copy would be a place for the two to disagree. The
+    /// tests folder is the one row that is not an aspect, and it ends the list because it proves the language rather
+    /// than declares it.
     /// </remarks>
     private static readonly string[] Folders =
     [
-        LanguageProject.StructureFolder,
-        LanguageProject.EditorFolder,
-        LanguageProject.TypesFolder,
-        LanguageProject.ConstraintsFolder,
-        LanguageProject.ScopesFolder,
-        LanguageProject.TypingFolder,
-        LanguageProject.AccessoryFolder,
-        LanguageProject.IntentionsFolder,
-        LanguageProject.ImportFolder,
-        LanguageProject.GeneratorFolder,
+        .. LanguageProject.AspectFolders,
         TestRunner.Folder,
     ];
 

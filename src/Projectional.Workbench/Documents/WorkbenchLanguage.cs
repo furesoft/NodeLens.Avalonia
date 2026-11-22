@@ -22,6 +22,8 @@ using Projectional.Structures;
 using Projectional.Structures.Notation;
 using Projectional.Testing;
 using Projectional.TextGen;
+using Projectional.TypingRules;
+using Projectional.TypingRules.Notation;
 using Projectional.TypeRules;
 
 namespace Projectional.Workbench;
@@ -72,6 +74,12 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         .. TextGenLanguage.ConceptDeclarations,
         .. ConstraintLanguage.ConceptDeclarations,
         .. ScopeLanguage.ConceptDeclarations,
+
+        // The typing language too, for the reason the importer language is here and with the same consequence: a
+        // language project's typing/ folder is written in it, so a shell that does not declare it cannot open the
+        // rules an author writes to say what a burst of typing creates.
+        .. TypingLanguage.ConceptDeclarations,
+
         .. IntentionLanguage.ConceptDeclarations,
 
         // The test language too: a language project's tests/ folder holds documents of it, and a shell that cannot
@@ -494,6 +502,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         TextGenNotations.AddTo(notations);
         ConstraintNotations.AddTo(notations);
         ScopeNotations.AddTo(notations);
+        TypingNotations.AddTo(notations);
         IntentionNotations.AddTo(notations);
         TestingNotations.AddTo(notations);
         ImportNotations.AddTo(notations);
