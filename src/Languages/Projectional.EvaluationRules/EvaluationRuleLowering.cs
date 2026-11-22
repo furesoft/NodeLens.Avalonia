@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Projectional.Core;
 using Projectional.Language;
 
@@ -9,6 +11,11 @@ namespace Projectional.EvaluationRules;
 /// The twin of <c>TypeRuleLowering</c>, and the same bargain: every body becomes one <see cref="DelegateEvaluationRule"/>,
 /// which is exactly the delegate the C# path writes by hand. Nothing here evaluates anything - it reads a model and builds
 /// the rule - so a rule can be edited, diffed, merged and documented like every other aspect.
+/// </para>
+/// <para>
+/// Every body is compiled into a function rather than evaluated when the rule runs, because a body is part of the rule and
+/// not part of the document under it: <see cref="EvaluationRuleConceptKeys.Choose"/> holds two bodies, and asking the
+/// interpreter about them at run time would be asking it about nodes of the rule model, which have no value.
 /// </para>
 /// <para>
 /// A rule for a concept the model does not declare is a failure rather than a silent entry: the key is the whole link
@@ -23,7 +30,7 @@ public static class EvaluationRuleLowering
     /// <returns>The registry, in document order.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="documents"/> is <see langword="null"/>.</exception>
     /// <exception cref="ConceptDefinitionException">A rule names a concept the registry does not declare.</exception>
-    /// <exception cref="EvaluationRuleException">A body is not one this language can meaningfully build.</exception>
+    /// <exception cref="EvaluationRuleException">A rule or body is not one this language can meaningfully build.</exception>
     public static EvaluationRegistry CreateRegistry(IEnumerable<Node> documents, ConceptRegistry? concepts = null)
     {
         ArgumentNullException.ThrowIfNull(documents);
@@ -70,48 +77,65 @@ public static class EvaluationRuleLowering
     }
 
     /// <summary>One body as the function that answers with its value.</summary>
-    /// <remarks>
-    /// Recursive rather than a single delegate per body, because a choose body holds two bodies of its own: those arms are
-    /// part of the rule, not part of the document being evaluated, so they have to be built now and closed over - asking the
-    /// interpreter to evaluate them later would ask it about a node of the rule model, which has no value.
-    /// </remarks>
     /// <exception cref="EvaluationRuleException">The body is not one this language builds a rule from.</exception>
     private static Func<EvaluationContext, Value> Compile(Node body)
     {
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Property))
         {
-            return context => context.PropertyValue(Required(body, EvaluationRuleLanguage.SlotSlot, context));
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            return context => context.PropertyValue(slot);
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Child))
         {
-            return context => context.EvalChild(Required(body, EvaluationRuleLanguage.SlotSlot, context));
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            return context => context.EvalChild(slot);
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))
         {
-            return context => context.Variable(Required(body, EvaluationRuleLanguage.SlotSlot, context));
+            var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+            // The name is read from a property of the node, so a node without that property is a rule written against the
+            // wrong concept - a sentence rather than the framework's KeyNotFoundException, which names a slot the rule
+            // author never typed in this document.
+            return context => context.Node.Concept.FindProperty(slot) is null
+                ? throw context.Error($"'{slot}' is not a property of {context.Node.Concept.Key}, so this rule cannot say which name it reads.")
+                : context.Variable(context.Node.GetOrNull(slot) ?? string.Empty);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Constant))
+        {
+            return Constant(body);
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Operator))
         {
-            return context => ApplyOperator(body, context);
+            return Operator(body);
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Choose))
         {
-            var condition = SlotOf(body, EvaluationRuleLanguage.ConditionSlot);
-            var then = Compile(Arm(body, EvaluationRuleLanguage.ThenSlot));
-            var otherwise = Compile(Arm(body, EvaluationRuleLanguage.OtherwiseSlot));
+            return Choose(body);
+        }
 
-            return context =>
-            {
-                var chosen = context.EvalChild(condition) is BoolValue flag
-                    ? flag.Content
-                    : throw context.Error($"'{condition}' must hold a truth value to decide this rule.");
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))
+        {
+            return First(body);
+        }
 
-                return chosen ? then(context) : otherwise(context);
-            };
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Bind))
+        {
+            return Bind(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Fail))
+        {
+            var message = SlotOf(body, EvaluationRuleLanguage.MessageSlot);
+
+            return context => throw context.Error(message);
         }
 
         throw new EvaluationRuleException(
@@ -119,94 +143,200 @@ public static class EvaluationRuleLowering
             $"'{body.Concept.Key}' is not a body this language builds a rule from.");
     }
 
-    /// <summary>One arm of a choose body, which is a body of its own.</summary>
-    /// <exception cref="EvaluationRuleException">The arm is missing, so the rule cannot answer.</exception>
-    private static Node Arm(Node body, string slot) =>
-        body.GetChild(slot)
-            ?? throw new EvaluationRuleException(body, $"the '{slot}' arm of a choose body is missing.");
+    /// <summary>A value written into the rule: its kind decides how the text is read.</summary>
+    /// <exception cref="EvaluationRuleException">The text is not a value of the kind it claims.</exception>
+    private static Func<EvaluationContext, Value> Constant(Node body)
+    {
+        var kind = SlotOf(body, "kind");
+        var text = SlotOf(body, EvaluationRuleLanguage.ValueSlot);
 
-    /// <summary>The slot a body names, read while the rule is built.</summary>
-    /// <exception cref="EvaluationRuleException">The body names no slot.</exception>
+        return kind switch
+        {
+            "int" when int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) =>
+                _ => new IntValue(number),
+            "bool" when bool.TryParse(text, out var flag) => _ => new BoolValue(flag),
+            "string" => _ => new StringValue(text),
+            _ => throw new EvaluationRuleException(
+                body,
+                $"'{text}' is not a {kind} value, so this constant cannot answer with anything."),
+        };
+    }
+
+    /// <summary>An operator body: the symbol from its property, the values from its one or two operand bodies.</summary>
+    private static Func<EvaluationContext, Value> Operator(Node body)
+    {
+        var symbol = SlotOf(body, EvaluationRuleLanguage.OperatorSlot);
+        var left = Compile(Required(body, EvaluationRuleLanguage.LeftSlot));
+        var right = body.GetChild(EvaluationRuleLanguage.RightSlot) is { } second ? Compile(second) : null;
+
+        return right is null
+            ? context => OperatorSemantics.ApplyUnary(
+                context,
+                context.Node.GetOrNull(symbol) ?? throw context.Error($"'{symbol}' holds no operator."),
+                left(context))
+            : context => OperatorSemantics.Apply(
+                context,
+                context.Node.GetOrNull(symbol) ?? throw context.Error($"'{symbol}' holds no operator."),
+                left(context),
+                right(context));
+    }
+
+    /// <summary>A choice: the condition's own value decides which body answers.</summary>
+    private static Func<EvaluationContext, Value> Choose(Node body)
+    {
+        var condition = Compile(Required(body, EvaluationRuleLanguage.ConditionSlot));
+        var then = Compile(Required(body, EvaluationRuleLanguage.ThenSlot));
+        var otherwise = body.GetChild(EvaluationRuleLanguage.OtherwiseSlot) is { } arm ? Compile(arm) : null;
+
+        return context =>
+        {
+            if (condition(context) is not BoolValue flag)
+            {
+                throw context.Error("the condition of a choose body must be a truth value.");
+            }
+
+            return flag.Content
+                ? then(context)
+                : otherwise is null
+                    ? throw context.Error("the condition of this choose body is false and it has no otherwise body.")
+                    : otherwise(context);
+        };
+    }
+
+    /// <summary>The first entry that applies, answered by the body beside the condition, for that entry.</summary>
+    /// <remarks>
+    /// Both bodies are asked with the entry as their subject, which is the whole point: "the first rule that applies" is
+    /// useless unless what it answers is read from the rule that applied. See <see cref="EvaluationContext.For"/>.
+    /// </remarks>
+    private static Func<EvaluationContext, Value> First(Node body)
+    {
+        var over = SlotOf(body, EvaluationRuleLanguage.OverSlot);
+        var when = Compile(Required(body, EvaluationRuleLanguage.WhenSlot));
+        var then = Compile(Required(body, EvaluationRuleLanguage.ThenSlot));
+        var otherwise = body.GetChild(EvaluationRuleLanguage.OtherwiseSlot) is { } arm ? Compile(arm) : null;
+
+        return context =>
+        {
+            foreach (var entry in context.Node.GetChildren(over))
+            {
+                var subject = context.For(entry);
+
+                if (when(subject) is not BoolValue flag)
+                {
+                    throw context.Error($"the condition of a first body must be a truth value, and '{over}' answered with something else.");
+                }
+
+                if (flag.Content)
+                {
+                    return then(subject);
+                }
+            }
+
+            return otherwise is null
+                ? throw context.Error($"no entry of '{over}' applies, and this rule says nothing about that case.")
+                : otherwise(context);
+        };
+    }
+
+    /// <summary>A name bound to one body while another answers, which is a value computed once.</summary>
+    private static Func<EvaluationContext, Value> Bind(Node body)
+    {
+        var name = SlotOf(body, EvaluationRuleLanguage.NameSlot);
+        var value = Compile(Required(body, EvaluationRuleLanguage.ValueSlot));
+        var rest = Compile(Required(body, EvaluationRuleLanguage.BodySlot));
+
+        return context => rest(context.With(new Dictionary<string, Value>(StringComparer.Ordinal)
+        {
+            [name] = value(context),
+        }));
+    }
+
+    /// <summary>The child a body needs, which a half-written rule does not have.</summary>
+    private static Node Required(Node body, string slot) =>
+        body.GetChild(slot)
+            ?? throw new EvaluationRuleException(body, $"'{body.Concept.Key}' needs a child in '{slot}'.");
+
+    /// <summary>The slot or text a body names, read while the rule is built.</summary>
     private static string SlotOf(Node body, string slot) =>
         body.GetOrNull(slot) is { Length: > 0 } value
             ? value
             : throw new EvaluationRuleException(body, $"'{body.Concept.Key}' needs a value in '{slot}'.");
 
-    /// <summary>An operator body: the symbol from its property, the values from its one or two child slots.</summary>
-    private static Value ApplyOperator(Node body, EvaluationContext context)
-    {
-        var symbol = Required(body, EvaluationRuleLanguage.OperatorSlot, context);
-        var left = Required(body, EvaluationRuleLanguage.LeftSlot, context);
-        var right = body.GetOrNull(EvaluationRuleLanguage.RightSlot);
-
-        // An empty right operand is how a unary operator is written: one child, one symbol, one answer.
-        return string.IsNullOrWhiteSpace(right)
-            ? OperatorSemantics.ApplyUnary(
-                context,
-                context.Node.GetOrNull(symbol) ?? throw context.Error($"'{symbol}' holds no operator."),
-                context.EvalChild(left))
-            : OperatorSemantics.Apply(
-                context,
-                context.Node.GetOrNull(symbol) ?? throw context.Error($"'{symbol}' holds no operator."),
-                context.EvalChild(left),
-                context.EvalChild(right));
-    }
-
-    /// <summary>A choose body: the condition's own value decides which of the two bodies answers.</summary>
-    private static Value Choose(Node body, EvaluationContext context)
-    {
-        var condition = Required(body, EvaluationRuleLanguage.ConditionSlot, context);
-        var chosen = context.EvalChild(condition) is BoolValue flag
-            ? flag.Content
-            : throw context.Error($"'{condition}' must hold a truth value to decide this rule.");
-
-        var arm = body.GetChild(chosen ? EvaluationRuleLanguage.ThenSlot : EvaluationRuleLanguage.OtherwiseSlot)
-            ?? throw context.Error($"the {(chosen ? "then" : "otherwise")} body of this rule is missing.");
-
-        return context.Eval(arm);
-    }
-
-    /// <summary>The property value a body needs, which a half-written rule does not have.</summary>
-    private static string Required(Node body, string slot, EvaluationContext context) =>
-        body.GetOrNull(slot) is { Length: > 0 } value
-            ? value
-            : throw context.Error($"'{body.Concept.Key}' needs a value in '{slot}'.");
-
     /// <summary>What the body computes, in the one sentence a documentation page shows beside the concept.</summary>
     /// <remarks>
-    /// Holdings are written as <c>{slot}</c> so the sentence names the slot the rule reads rather than the value it happened
-    /// to have in this document, and hold for every document the rule applies to.
+    /// Holdings are written as the slot name the rule reads rather than the value it happened to have, so the sentence holds
+    /// for every document the rule applies to. A body whose sentence needs more than one clause gets one: a reader of the
+    /// page is choosing whether to trust the rule with their model.
     /// </remarks>
-    private static string Describe(Node body) => body.Concept switch
+    private static string Describe(Node body)
     {
-        var concept when concept.IsKindOf(EvaluationRuleConceptKeys.Property) =>
-            $"The value of its {Named(body, EvaluationRuleLanguage.SlotSlot)} property, read through its declared type.",
-        var concept when concept.IsKindOf(EvaluationRuleConceptKeys.Child) =>
-            $"The value of its {Named(body, EvaluationRuleLanguage.SlotSlot)} child.",
-        var concept when concept.IsKindOf(EvaluationRuleConceptKeys.Variable) =>
-            $"The value the run binds to the name in its {Named(body, EvaluationRuleLanguage.SlotSlot)} property.",
-        var concept when concept.IsKindOf(EvaluationRuleConceptKeys.Operator) =>
-            body.GetOrNull(EvaluationRuleLanguage.RightSlot) is { Length: > 0 } right
-                ? $"Its {Named(body, EvaluationRuleLanguage.OperatorSlot)} operator applied to the values of its "
-                    + $"{Named(body, EvaluationRuleLanguage.LeftSlot)} and {right} children."
-                : $"Its {Named(body, EvaluationRuleLanguage.OperatorSlot)} operator applied to the value of its "
-                    + $"{Named(body, EvaluationRuleLanguage.LeftSlot)} child.",
-        var concept when concept.IsKindOf(EvaluationRuleConceptKeys.Choose) =>
-            $"One of two bodies, decided by the truth value of its {Named(body, EvaluationRuleLanguage.ConditionSlot)} child.",
-        _ => string.Empty,
-    };
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Property))
+        {
+            return $"The value of its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} property, read through its declared type.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Child))
+        {
+            return $"The value of its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} child.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))
+        {
+            return $"The value the run binds to the name in its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} property.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Constant))
+        {
+            return $"The {SlotOf(body, "kind")} value written into the rule.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Operator))
+        {
+            var symbol = SlotOf(body, EvaluationRuleLanguage.OperatorSlot);
+
+            return body.GetChild(EvaluationRuleLanguage.RightSlot) is null
+                ? $"Its {symbol} operator applied to the value of its left operand."
+                : $"Its {symbol} operator applied to the values of its two operands.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Choose))
+        {
+            return "The body whose arm the condition chooses.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))
+        {
+            var otherwise = body.GetChild(EvaluationRuleLanguage.OtherwiseSlot) is null
+                ? " and refuses when none does"
+                : " and answers with the other body when none does";
+
+            return $"The answer of the first entry of its {SlotOf(body, EvaluationRuleLanguage.OverSlot)} children whose "
+                + $"condition holds{otherwise}.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Bind))
+        {
+            return $"The second body, with the name {SlotOf(body, EvaluationRuleLanguage.NameSlot)} bound to the first one's value.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Fail))
+        {
+            return "A refusal, with the sentence this rule states.";
+        }
+
+        return string.Empty;
+    }
 
     /// <summary><paramref name="root"/> and everything under it, in document order.</summary>
     /// <remarks>
     /// Local rather than <c>NodeWalk</c>, which lives one layer up: this package is a language definition and may reference
-    /// only the language layer, so the three lines it needs are written here instead of pulling the interpreter in.
+    /// only the language layer, so the few lines it needs are written here instead of pulling the interpreter in. Child
+    /// slots only, because asking a property slot for children is a question the node refuses.
     /// </remarks>
     private static IEnumerable<Node> Walk(Node root)
     {
         yield return root;
 
-        // Child slots only: asking GetChildren about a property is a question the node refuses, and a rule document holds
-        // both kinds in the same slot list.
         foreach (var declaration in root.Concept.Slots.OfType<ChildSlot>())
         {
             foreach (var child in root.GetChildren(declaration.Name))
@@ -218,8 +348,4 @@ public static class EvaluationRuleLowering
             }
         }
     }
-
-    /// <summary>A slot name as a sentence names it, read from the model so a page cannot drift from the rule.</summary>
-    private static string Named(Node body, string slot) =>
-        body.GetOrNull(slot) is { Length: > 0 } value ? value : $"<{slot}>";
 }

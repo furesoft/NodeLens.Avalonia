@@ -122,6 +122,22 @@ public sealed class EvaluationContext
             : throw Error($"'{slot}' of {Node.Concept.Key} must hold exactly one child to be evaluated, but holds {children.Count}.");
     }
 
+    /// <summary>The same run seen from <paramref name="node"/>, which is how a rule speaks about another node.</summary>
+    /// <param name="node">The node to answer for, such as an entry of a list the rule walks.</param>
+    /// <returns>A context for <paramref name="node"/> with the same runtime and the same bound names.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="node"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// A rule is about one node, and a rule that selects an entry of a list then has to say what <em>that</em> entry answers -
+    /// which is a different subject for the same body. Making it a context rather than a second evaluation path keeps the
+    /// budget, the trace and the bound names in one place: a nested subject is still one run.
+    /// </remarks>
+    public EvaluationContext For(Node node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        return new EvaluationContext(node, _runtime, Locals);
+    }
+
     /// <summary>The value of the variable <paramref name="name"/> in this run.</summary>
     /// <param name="name">The name a node reads, such as <c>amount</c>.</param>
     /// <exception cref="EvaluationException">The run binds no value to that name.</exception>

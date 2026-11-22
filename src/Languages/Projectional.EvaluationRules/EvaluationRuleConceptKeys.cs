@@ -2,10 +2,19 @@ namespace Projectional.EvaluationRules;
 
 /// <summary>The keys of the language an evaluation rule is written in, one per concept it declares.</summary>
 /// <remarks>
+/// <para>
 /// A rule is a model, so a language can ship its meaning the way it ships its structure, notation and constraints
-/// ([ADR 0014](../../../docs/adr/0014-both-authoring-paths-are-permanent.md)). The vocabulary is five bodies rather than a
+/// ([ADR 0014](../../../docs/adr/0014-both-authoring-paths-are-permanent.md)). The vocabulary is a set of bodies rather than a
 /// statement list, for the reason the type rules are: an imperative typesystem would mean shipping an interpreter for a
-/// language whose only job is to answer one question per node, and these five cover what a small vocabulary actually says.
+/// language whose only job is to answer one question per node.
+/// </para>
+/// <para>
+/// What the bodies are chosen to cover is an evaluator for a real DSL, not a demonstration: a value read from the node
+/// (<see cref="Property"/>, <see cref="Child"/>, <see cref="Variable"/>), a value written down (<see cref="Constant"/>),
+/// arithmetic and logic over other bodies (<see cref="Operator"/>), a choice between two bodies (<see cref="Choose"/>), the
+/// first entry of a list that applies followed by what that entry answers (<see cref="First"/>), a name bound for the rest
+/// of the rule (<see cref="Bind"/>), and a refusal with a sentence (<see cref="Fail"/>).
+/// </para>
 /// </remarks>
 public static class EvaluationRuleConceptKeys
 {
@@ -18,15 +27,27 @@ public static class EvaluationRuleConceptKeys
     /// <summary>The value of one of the node's properties, read through its declared type.</summary>
     public const string Property = "Evaluation.Property";
 
-    /// <summary>The value of the single child in a slot: how parentheses and a function body answer.</summary>
+    /// <summary>The value of the single child in a slot.</summary>
     public const string Child = "Evaluation.Child";
 
     /// <summary>The value the run bound to the name a property holds.</summary>
     public const string Variable = "Evaluation.Variable";
 
-    /// <summary>An operator applied to the values of one or two children.</summary>
+    /// <summary>A value written into the rule itself.</summary>
+    public const string Constant = "Evaluation.Constant";
+
+    /// <summary>An operator applied to the values of two other bodies, or of one for a unary operator.</summary>
     public const string Operator = "Evaluation.Operator";
 
-    /// <summary>One of two bodies, chosen by the truth value of a child slot's value.</summary>
+    /// <summary>One of two bodies, chosen by the truth value of a third.</summary>
     public const string Choose = "Evaluation.Choose";
+
+    /// <summary>The first entry of a list whose condition holds, answered by the body beside the condition.</summary>
+    public const string First = "Evaluation.First";
+
+    /// <summary>A name bound to one body while another one answers.</summary>
+    public const string Bind = "Evaluation.Bind";
+
+    /// <summary>A refusal: the rule says why it has no value instead of producing one.</summary>
+    public const string Fail = "Evaluation.Fail";
 }
