@@ -61,6 +61,20 @@
     <ProjectReference Include="..\..\src\Languages\Projectional.TypeRules\Projectional.TypeRules.csproj" />
   </ItemGroup>
 
+  <!--
+    The declared samples are what a user opens, so a build copies them beside the executable and File > Open examples
+    needs no file picker: the example a README talks about is the one the app shows. A publish does not copy them -
+    the single-file app has to be one file, and a sample is a project folder a reader looks at rather than runtime
+    data - so the menu hides itself when the folder is absent (`packaging.md`).
+  -->
+  <ItemGroup>
+    <None Include="..\..\samples\declared-expressions\**\*.mps" Link="Examples\declared-expressions\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="..\..\samples\declared-invoice\**\*.mps" Link="Examples\declared-invoice\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="..\..\samples\declared-pipeline\**\*.mps" Link="Examples\declared-pipeline\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="..\..\samples\declared-units\**\*.mps" Link="Examples\declared-units\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="..\..\samples\declared-workflow\**\*.mps" Link="Examples\declared-workflow\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Projectional.Core.Tests" />
     <!--
