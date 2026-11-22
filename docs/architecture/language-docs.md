@@ -121,6 +121,22 @@ ways out. It starts *below* the header rather than over it, so the search stays 
 toggle is drawn as three lines in inline SVG so it needs no icon font, and `prefers-reduced-motion` turns the slide
 off. Tables scroll sideways rather than wrapping, because a slot table has six columns and half of them are keys.
 
+## Where an aspect page stops
+
+Three parts of a language cannot be written out, and the page says so instead of inventing a name:
+
+- **A constraint** holds a `Check(ConstraintContext)` method. There is no name, no message and no summary to print, so
+  the page counts the rules and names the concepts they sit on - and says that no rule applies everywhere when none does.
+- **An intention** is a provider asked what it offers *at a caret*. The registry cannot be enumerated, so the page can
+  say that one is registered and nothing more.
+- **An enumeration** loses its key when lowering resolves it into the symbols a property may hold. What survives is
+  `enum(public, internal, private, protected)`, so that - plus the slots that hold it - is how the page names it. Two
+  enumerations with the same symbols in the same order are one type here, as they are everywhere.
+
+The generated text is the opposite case and is written out in full: a generator's template is a tree of parts, so the
+page spells it - `map {name}[if entry: at ->entry]`, a list with the separator that joins it - because the shape of what
+a language emits is what a reader wants before trusting it with a model.
+
 ## What it contains
 
 | Page | Content |
@@ -128,7 +144,7 @@ off. Tables scroll sideways rather than wrapping, because a slot table has six c
 | `index.html` | the set: one row per language - name, version, how many concepts it declares, and what it stands on |
 | `<Language>/index.html` | what that language declares it stands on (name, relation, the version asked for and the version answered, with a mismatch marked), then its concepts grouped by inheritance root |
 | `<Language>/concepts/<key>.html` | one page per concept: key, name slot, description, super concepts and interfaces with links, the notation written out as the shape it spells (`map <name> at <entry>`, its body indented), every slot as a row (kind, key, type or target, cardinality, default) |
-| `<Language>/aspects.html` | what lowering produced from each aspect folder: concepts, notations, type rules, constraints, scope rules, intentions, generators, importers - the same facts the module settings dialog shows, in a page a reader can link to |
+| `<Language>/aspects.html` | one section per aspect folder, written out where the lowered form still carries the author's words: the concepts by kind, the **enumerations** by the symbols they offer and the slots that hold them, every notation *as the shape it spells*, the type rules with subtypes, comparisons and replacements, the typing claims, the constraints per concept, the scope providers with their concept's reference slots, whether intentions exist, every generator *as the template it emits*, the import formats, and the accessory documents |
 | `<Language>/examples.html` | every document the language ships, drawn by the headless renderer and coloured by the kinds the editor paints - so the page shows what the language *looks like* rather than describing it. Omitted for a language that ships none |
 | `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script - the header, the tree, the drawer and the responsive rules; and the filter, the drawer toggle and Enter. Both deterministic, both small enough to read |
 

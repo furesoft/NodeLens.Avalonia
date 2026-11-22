@@ -2,15 +2,24 @@ using System.Globalization;
 using System.Text;
 
 using Projectional.Core;
+using Projectional.Language;
 using Projectional.Languages;
 
 namespace Projectional.LanguageDocs;
 
-/// <summary>One language's aspects page: what each of the eleven folders lowered into, counted and named.</summary>
+/// <summary>One language's aspects: what each folder of the language lowered into, written out where it can be read.</summary>
 /// <remarks>
-/// The point of this page is the count. A language that declares seven concepts and no notation is not wrong, but it
-/// is incomplete, and the aspect list is what says so at a glance - for the language itself and for the base language
-/// it stands on, whose concepts are on the chain and therefore have no notation of their own here.
+/// <para>
+/// The point of this page is that a language is eleven aspects and a reader should not have to open eleven documents to
+/// see which ones it has. Each section answers what the folder holds, and where the lowered form still carries the
+/// author's words it writes them out - a notation as the shape it spells, a generator as the template it emits.
+/// </para>
+/// <para>
+/// Where the lowered form has lost the words, the page says what it has instead of inventing a name: a constraint holds
+/// a <c>Check</c> method, so the page counts the rules and names the concepts they belong to; an intention is chosen at
+/// a caret, so the page can only say that a provider is registered. Pretending otherwise would be a page that reads
+/// better than the framework deserves.
+/// </para>
 /// </remarks>
 internal static class AspectsPage
 {
@@ -21,13 +30,13 @@ internal static class AspectsPage
         ArgumentNullException.ThrowIfNull(language);
 
         var depth = Html.Depth(path);
-
         var concepts = DocumentationChain.Own(language);
 
         var body = new StringBuilder();
 
         body.Append(Html.Section("Overview", Overview(language, concepts.Count)));
         body.Append(Html.Section("Concepts", Subsection(language, concepts)));
+        body.Append(Html.Section("Enumerations", Enumerations(concepts)));
         body.Append(Html.Section("Notations", Notations(chain, language, depth)));
         body.Append(Html.Section("Types", Types(language)));
         body.Append(Html.Section("Typing", Typing(language)));
@@ -96,17 +105,48 @@ internal static class AspectsPage
         return body.ToString();
     }
 
+    /// <summary>The enumerations the language's property slots are declared over.</summary>
+    /// <remarks>
+    /// Derived from the slots rather than from a declaration list, because lowering resolves an enumeration into the
+    /// symbols a property may hold and keeps no key for it: what the framework has after lowering is
+    /// <c>enum(a, b, c)</c>, so that - with the slots that hold it - is what the page can honestly name. A language
+    /// that declares two enumerations with the same symbols in the same order has one type, here as everywhere.
+    /// </remarks>
+    private static string Enumerations(IReadOnlyList<Concept> concepts)
+    {
+        var uses = concepts
+            .SelectMany(concept => concept.Slots
+                .OfType<PropertySlot>()
+                .Where(slot => slot.Type.Symbols.Count > 0)
+                .Select(slot => (Concept: concept, Slot: slot)))
+            .GroupBy(entry => entry.Slot.Type.Name, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal);
+
+        var rows = uses.Select(group => new List<string>
+        {
+            $"<code>{Html.Escape(group.Key)}</code>",
+            Html.Escape(string.Join(", ", group.First().Slot.Type.Symbols)),
+            Html.Escape(string.Join(", ", group
+                .Select(entry => $"{entry.Concept.Key}.{entry.Slot.Name}")
+                .Order(StringComparer.Ordinal))),
+        });
+
+        return Html.Table(["Symbols", "Values", "Held by"], rows, "No property is declared over an enumeration.");
+    }
+
     private static string Notations(DocumentationChain chain, LanguageProject language, int depth)
     {
         var rows = language.Notations.Notations
             .OrderBy(notation => notation.ConceptKey, StringComparer.Ordinal)
+            .ThenBy(notation => notation.Variant, StringComparer.Ordinal)
             .Select(notation => new List<string>
             {
                 chain.ConceptReference(depth, notation.ConceptKey),
                 $"<code>{Html.Escape(notation.Variant)}</code>",
+                $"<pre class=\"notation\">{Html.Escape(NotationSpelling.Of(notation))}</pre>",
             });
 
-        return Html.Table(["Concept", "Variant"], rows, "No concept has a notation of its own.");
+        return Html.Table(["Concept", "Variant", "Written as"], rows, "No concept has a notation of its own.");
     }
 
     private static string Types(LanguageProject language)
@@ -130,7 +170,7 @@ internal static class AspectsPage
                 $"<code>{Html.Escape(edge.Supertype.Name)}</code>",
             });
 
-        body.Append($"<h3>Subtypes</h3>\n");
+        body.Append("<h3>Subtypes</h3>\n");
         body.Append(Html.Table(["A value of", "is also a value of"], subtypes, "No subtype edge is declared."));
 
         var pairs = language.Types.Comparisons.Pairs
@@ -142,6 +182,18 @@ internal static class AspectsPage
 
         body.Append("<h3>Comparisons</h3>\n");
         body.Append(Html.Table(["Left", "Right"], pairs, "No comparison is declared."));
+
+        var replacements = language.Types.Replacements
+            .Select(replacement => new List<string>
+            {
+                Html.Escape(replacement.Claim.ToString()),
+                $"<code>{Html.Escape(replacement.Left.Name)}</code>",
+                $"<code>{Html.Escape(replacement.Right.Name)}</code>",
+                Html.Escape(string.Join(" ", replacement.Instead.Select(equation => equation.ToString()))),
+            });
+
+        body.Append("<h3>Replacements</h3>\n");
+        body.Append(Html.Table(["Claim", "Left", "Right", "Instead"], replacements, "No claim is replaced."));
 
         return body.ToString();
     }
@@ -159,18 +211,16 @@ internal static class AspectsPage
         return Html.Table(["Creates", "Claims", "Text", "Written into"], rows, "Nothing is claimed about typing.");
     }
 
-    /// <summary>Which concepts carry a constraint; the rules themselves hold no name a page could print.</summary>
+    /// <summary>Which concepts carry a constraint; a rule holds a check method, so it has no name a page could print.</summary>
     private static string Constraints(LanguageProject language, IReadOnlyList<Concept> concepts)
     {
         var body = new StringBuilder();
 
-        var everywhere = language.Constraints.EverywhereRules.Count;
-
-        body.Append(Html.Paragraph(everywhere switch
+        body.Append(Html.Paragraph(language.Constraints.EverywhereRules.Count switch
         {
             0 => "No rule applies everywhere.",
-            1 => "One rule applies to every node.",
-            _ => $"{everywhere.ToString(CultureInfo.InvariantCulture)} rules apply to every node.",
+            1 => "One rule applies to every node of every document.",
+            var count => $"{count.ToString(CultureInfo.InvariantCulture)} rules apply to every node of every document.",
         }));
 
         var rows = concepts
@@ -193,28 +243,52 @@ internal static class AspectsPage
         var rows = concepts
             .OrderBy(concept => concept.Key, StringComparer.Ordinal)
             .Where(concept => language.Scopes.ProviderFor(concept) is not null)
-            .Select(concept => new List<string> { $"<code>{Html.Escape(concept.Key)}</code>" });
+            .Select(concept => new List<string>
+            {
+                $"<code>{Html.Escape(concept.Key)}</code>",
+                Html.Escape(string.Join(", ", concept.Slots.OfType<ReferenceSlot>().Select(slot => slot.Name))),
+            });
 
-        return Html.Table(["Concept"], rows, "No concept provides a scope.");
+        // The concept's own reference slots, not "the references it answers for": a provider is asked per reference at
+        // scope time and says nothing in advance about which ones it will fill, so claiming that would be an inference
+        // dressed as a fact.
+        return Html.Table(["Concept", "Reference slots of the concept"], rows, "No concept provides a scope.");
     }
 
     /// <summary>Intentions are asked at a caret, so the registry can only be asked whether it has any.</summary>
     private static string Intentions(LanguageProject language) =>
         Html.Paragraph(language.HasIntentions
-            ? "The language offers intentions. They are chosen by caret, so this page can only say that a provider is registered, not which offers it makes."
+            ? "The language offers intentions. A provider is asked what it offers at a caret, so this page can say that one is registered but not which offers it makes."
             : "The language offers no intention.");
 
+    /// <summary>The generators, with the template each concept is written out by.</summary>
     private static string Generators(LanguageProject language)
     {
-        var rows = language.Generators
-            .OrderBy(generator => generator.Name, StringComparer.Ordinal)
-            .Select(generator => new List<string>
-            {
-                $"<code>{Html.Escape(generator.Name)}</code>",
-                generator.Templates.Count.ToString(CultureInfo.InvariantCulture),
-            });
+        var body = new StringBuilder();
 
-        return Html.Table(["Generator", "Templates"], rows, "The language generates no text.");
+        Body(language.Generators, body);
+
+        return body.ToString();
+
+        static void Body(IReadOnlyList<TextGenerator> generators, StringBuilder body)
+        {
+            foreach (var generator in generators.OrderBy(generator => generator.Name, StringComparer.Ordinal))
+            {
+                body.Append(CultureInfo.InvariantCulture, $"<h3><code>{Html.Escape(generator.Name)}</code></h3>\n");
+
+                var rows = generator.Templates.Templates
+                    .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                    .Select(entry => new List<string>
+                    {
+                        $"<code>{Html.Escape(entry.Key)}</code>",
+                        entry.Value.IsEmpty
+                            ? "<span class=\"muted\">empty, which writes nothing</span>"
+                            : $"<pre class=\"notation\">{Html.Escape(TemplateSpelling.Of(entry.Value))}</pre>",
+                    });
+
+                body.Append(Html.Table(["Concept", "Template"], rows, "The generator has no template, so it generates nothing."));
+            }
+        }
     }
 
     private static string Import(LanguageProject language)

@@ -61,6 +61,10 @@ internal static class ConceptPage
             Row("name slot", concept.NameSlot?.Name is { } name ? $"<code>{Html.Escape(name)}</code>" : "none"),
             Row("name rule", concept.NameRule?.Text ?? "none"),
             Row("notation", language.Notations.TryGet(concept.Key, out _) ? "a notation is registered for this concept" : "no notation of its own"),
+            Row("usable in", concept.Applicability.IsAnywhere
+                ? "any slot its type allows"
+                : Html.Escape(string.Join(", ", concept.Applicability.Places.Select(place => place.ToString())))),
+            Row("collapses to", concept.CollapseSlot?.Name is { } collapse ? $"<code>{Html.Escape(collapse)}</code>" : "nothing, so it never folds"),
             Row("type", language.Types.Rules.TryGetValue(concept.Key, out _) ? "a type rule is declared for this concept" : "no type rule of its own"),
         };
 
