@@ -34,6 +34,18 @@
                     <slot>onMap</slot>
                   </properties>
                 </node>
+                <node id="e2000000-0000-4000-8000-000000000021" concept="Editor.Space" />
+                <node id="e2000000-0000-4000-8000-000000000022" concept="Editor.Keyword" name="from">
+                  <properties>
+                    <text>from</text>
+                  </properties>
+                </node>
+                <node id="e2000000-0000-4000-8000-000000000023" concept="Editor.Space" />
+                <node id="e2000000-0000-4000-8000-000000000024" concept="Editor.Reference" name="start">
+                  <properties>
+                    <slot>start</slot>
+                  </properties>
+                </node>
               </children>
             </node>
             <node id="e2000000-0000-4000-8000-000000000007" concept="Editor.Indent">

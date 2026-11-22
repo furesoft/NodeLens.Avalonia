@@ -38,6 +38,13 @@
             <allowOwnSubtree>false</allowOwnSubtree>
           </properties>
         </node>
+        <node id="b0000000-0000-4000-8000-000000000504" concept="Structure.ReferenceDecl" name="start">
+          <properties>
+            <name>start</name>
+            <targetConceptKey>Atlas.Place</targetConceptKey>
+            <allowOwnSubtree>false</allowOwnSubtree>
+          </properties>
+        </node>
       </children>
     </node>
   </nodes>
