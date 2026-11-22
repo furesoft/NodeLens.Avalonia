@@ -81,6 +81,18 @@ public sealed class ExpressionsEvaluationTests
             new BoolValue(expected),
             Run(model, Binary(model, symbol, Bool(model, left), Bool(model, right))));
     }
+    [Theory]
+    [InlineData(2, 3, 8)]
+    [InlineData(3, 0, 1)]
+    [InlineData(2, 10, 1024)]
+    public void APowerRaisesAWholeNumber(int basis, int exponent, int expected)
+    {
+        var model = NewModel();
+
+        Assert.Equal(
+            new IntValue(expected),
+            Run(model, Binary(model, "^", Int(model, basis), Int(model, exponent))));
+    }
 
     [Fact]
     public void AUnaryOperatorAppliesToItsOperand()

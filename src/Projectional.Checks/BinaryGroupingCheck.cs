@@ -138,6 +138,7 @@ public sealed class BinaryGroupingCheck : ICheck
         "<" or ">" or "<=" or ">=" => 4,
         "+" or "-" => 5,
         "*" or "/" => 6,
+        "^" => 7,
         _ => null,
     };
 }

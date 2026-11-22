@@ -47,6 +47,30 @@ public sealed class BinaryGroupingCheckTests
 
         Assert.Empty(Check.Find(model));
     }
+    [Fact]
+    public void APowerBindsTighterThanAProduct()
+    {
+        // 2 ^ 3 * 4 reads as (2 ^ 3) * 4, so a power under a product needs nothing said about it.
+        var (model, rule) = Document();
+        var product = Binary(model, rule, "condition", "*");
+        var power = Binary(model, product, "left", "^");
+        Int(model, product, "right", 4);
+        Int(model, power, "left", 2);
+        Int(model, power, "right", 3);
+
+        Assert.Empty(Check.Find(model));
+
+        // The other way round the product is the looser one, and the drawing is what would mislead: 2 * 3 ^ 2 reads as
+        // 2 * (3 ^ 2), which is a different tree.
+        var other = Document();
+        var outer = Binary(other.Model, other.Rule, "condition", "^");
+        var inner = Binary(other.Model, outer, "left", "*");
+        Int(other.Model, outer, "right", 2);
+        Int(other.Model, inner, "left", 2);
+        Int(other.Model, inner, "right", 3);
+
+        Assert.Equal(inner.Id, Assert.Single(Check.Find(other.Model)).Diagnostic.Target);
+    }
 
     [Fact]
     public void AnEquallyTightLeftOperandIsNotReported()
