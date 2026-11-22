@@ -959,7 +959,7 @@ public sealed partial class MainWindow : Window, IDisposable
         var findings = DocumentFindings.Of(
             document.Model,
             fixes,
-            (document.Constraints ?? SampleConstraints.All).With(CSharpConstraints.All),
+            (document.Constraints ?? SampleConstraints.All).With(CSharpConstraints.All).With(ExpressionsLanguage.Constraints),
             document.Types ?? ExpressionsLanguage.Types,
             editor.Session?.Scopes,
             GenerationCoverage.Of(document.Model, document.Generators));

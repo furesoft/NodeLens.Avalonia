@@ -760,3 +760,8 @@ The callee is text, not a reference, for the reason `Name` is: this vocabulary r
 names when something runs the model. The cost is written down where it is paid - renaming a
 function does not follow into its calls - and it buys a sub-language a host can compose
 without a scope provider or a reference slot.
+The price of that is paid in the editor instead: `ExpressionsConstraints` reports the four
+facts only a run would otherwise resolve - a function declared twice (one finding, on the
+later one, because a call resolves to the first), a parameter declared twice, a call that
+names nothing, and a call whose argument count does not match. The interpreter keeps saying
+them too, because a model nobody opened has no editor to say them.
