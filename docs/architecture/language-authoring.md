@@ -436,6 +436,14 @@ What export guarantees, and what it refuses to hide:
   *informational* version, the one free-form version field there is; its assembly version is left
   alone, because that field is four numbers and nothing in the framework parses a version an author
   typed.
+- **The languages it stands on are exported with it.** A language ships as one package per language, so exporting a
+  folder writes one source - and, on request, one assembly - for each language it was resolved against, base first:
+  `UnitsLanguage.cs` and `UnitsLanguage.dll` before `InvoiceLanguage.cs` and `InvoiceLanguage.dll`, which is the order
+  a consumer installs in. Each keeps its own namespace and its own metadata, and the exported language's README names
+  the files beside it. A language that ships with the framework is skipped: it already is a package, and there is no
+  folder of a user's to write. **File ▸ Package…** turns that answer into one zip - the sources, or the assemblies -
+  so a language is handed on as a single file. The archive is reproducible: entries in export order and a fixed
+  timestamp, the same rule the generated files follow.
 - Export is one-way by design: the declared model stays the source of truth
   ([ADR 0002](../adr/0002-model-as-source-of-truth.md)) and re-export overwrites the generated
   files. Editing generated code and re-exporting loses the edit, which is stated in the header of

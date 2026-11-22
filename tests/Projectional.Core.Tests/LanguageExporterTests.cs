@@ -262,6 +262,39 @@ public sealed class LanguageExporterTests
     }
 
     [Fact]
+    public void ADependentLanguageExportsOnePackagePerLanguageItStandsOn()
+    {
+        // declared-invoice extends Units, and a folder holding only the dependent's file would be a package whose base
+        // the caller has to find elsewhere. Base first, because that is the order a consumer installs in, and the
+        // single `Assembly` is the language that was asked for - the last one.
+        var result = LanguageExporter.Export(Invoice(), "Sample.Invoice", ExportOutput.Assembly);
+
+        Assert.Equal(["UnitsLanguage.cs", "InvoiceLanguage.cs", "README.md"], result.Files.Select(file => file.Name));
+        Assert.Equal(["UnitsLanguage.dll", "InvoiceLanguage.dll"], result.Assemblies.Select(assembly => assembly.Name));
+        Assert.Equal("InvoiceLanguage.dll", result.Assembly!.Name);
+
+        // The base's package says what it is, and the dependent's README names the file beside it.
+        var units = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assemblies[0].Bytes));
+        var metadata = units
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value, StringComparer.Ordinal);
+
+        Assert.Equal("Units", metadata[LanguageExporter.LanguageKey]);
+        Assert.Contains("UnitsLanguage.cs", result.Files[^1].Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageThatStandsOnNothingIsOnePackage()
+    {
+        // The other side of the same rule: no dependency means no second file, and the archive the shell packs holds
+        // exactly what the language is.
+        var result = LanguageExporter.Export(Declared(), "Sample.Language", ExportOutput.Assembly);
+
+        Assert.Single(result.Assemblies);
+        Assert.Equal(["PipelineLanguage.cs", "README.md"], result.Files.Select(file => file.Name));
+    }
+
+    [Fact]
     public void TheCompiledAssemblyDeclaresTheSameLanguageAsTheFolder()
     {
         var language = Declared();
@@ -512,6 +545,25 @@ public sealed class LanguageExporterTests
         var second = LanguageExporter.Export(language, "Sample.Language", ExportOutput.Assembly).Assembly!;
 
         Assert.Equal(first.Bytes, second.Bytes);
+    }
+
+    /// <summary>The dependent sample, with the base it declares resolved.</summary>
+    private static LanguageProject Invoice()
+    {
+        var units = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Units"), out var unitsError);
+
+        Assert.Null(unitsError);
+        Assert.NotNull(units);
+
+        var invoice = LanguageProject.Open(
+            Path.Combine(AppContext.BaseDirectory, "Invoice"),
+            new ResolvedLanguages(units),
+            out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(invoice);
+
+        return invoice;
     }
 
     private static LanguageProject Declared()
