@@ -131,7 +131,8 @@ public sealed class LanguageProject
         IIntentionProvider intentions,
         bool hasIntentions,
         IReadOnlyList<ITextImporter> importers,
-        CheckSet? checks)
+        CheckSet? checks,
+        EvaluationRegistry? evaluation)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
@@ -156,6 +157,7 @@ public sealed class LanguageProject
         HasIntentions = hasIntentions;
         DeclaredImporters = importers;
         Checks = checks;
+        Evaluation = evaluation;
     }
 
     /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
@@ -422,6 +424,14 @@ public sealed class LanguageProject
     /// than a policy.
     /// </remarks>
     public CheckSet? Checks { get; }
+
+    /// <summary>What the language states each of its concepts evaluates to, or <see langword="null"/> for none.</summary>
+    /// <remarks>
+    /// The one aspect with no declared form: the others are languages a project writes in a folder, while an evaluation
+    /// rule is a computation and this repository has no model for one. So a shipped language hands its registry over and a
+    /// declared one has none, which is why the page says so rather than guessing from the concepts.
+    /// </remarks>
+    public EvaluationRegistry? Evaluation { get; }
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -525,7 +535,8 @@ public sealed class LanguageProject
         bool hasTyping = false,
         bool hasIntentions = false,
         string? description = null,
-        CheckSet? checks = null)
+        CheckSet? checks = null,
+        EvaluationRegistry? evaluation = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -554,7 +565,8 @@ public sealed class LanguageProject
             intentions,
             hasIntentions,
             importers: [],
-            checks: checks);
+            checks: checks,
+            evaluation: evaluation);
     }
 
     /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
@@ -637,7 +649,8 @@ public sealed class LanguageProject
                 ChainedIntentions.Of(intentionSets),
                 intentions.HasAny || bases.Extended.Any(language => language.HasIntentions),
                 LowerImporters(fullPath, concepts),
-                checks: null);
+                checks: null,
+                evaluation: null);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException

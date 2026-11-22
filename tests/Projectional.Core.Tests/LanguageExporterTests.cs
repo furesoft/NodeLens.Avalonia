@@ -256,7 +256,7 @@ public sealed class LanguageExporterTests
         // load into the default context.
         var context = new AssemblyLoadContext("generator", isCollectible: true);
         var assembly = context.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
-        var type = assembly.GetType("Sample.Expressions.ExpressionsLanguage", throwOnError: true)!;
+        var type = assembly.GetType("Sample.Expressions.DeclaredExpressionsLanguage", throwOnError: true)!;
 
         var exported = (IReadOnlyList<TextGenerator>)type
             .GetProperty("Generators", BindingFlags.Public | BindingFlags.Static)!
@@ -537,7 +537,7 @@ public sealed class LanguageExporterTests
 
         var result = LanguageExporter.Export(language, "Sample.Language", ExportOutput.Assembly);
         var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
-        var type = assembly.GetType("Sample.Language.ExpressionsLanguage", throwOnError: true);
+        var type = assembly.GetType("Sample.Language.DeclaredExpressionsLanguage", throwOnError: true);
 
         Assert.NotNull(type);
 

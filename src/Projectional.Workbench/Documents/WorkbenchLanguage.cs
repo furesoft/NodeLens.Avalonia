@@ -5,6 +5,8 @@ using Projectional.CSharp.Generation;
 using Projectional.CSharp.Intentions;
 using Projectional.CSharp.Notation;
 using Projectional.CSharp.Scopes;
+using Projectional.EvaluationRules;
+using Projectional.Expressions.Intentions;
 using Projectional.Semantics;
 using Projectional.CSharp.Types;
 using Projectional.ConstraintRules;
@@ -72,6 +74,10 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         .. StructureLanguage.ConceptDeclarations,
         .. EditorLanguage.ConceptDeclarations,
         .. TypeRuleLanguage.ConceptDeclarations,
+
+        // The evaluation rule language too: a language project writes its meaning in it, so a shell that does not declare
+        // it cannot open the file an author writes to say what a concept means.
+        .. EvaluationRuleLanguage.ConceptDeclarations,
         .. TextGenLanguage.ConceptDeclarations,
         .. ConstraintLanguage.ConceptDeclarations,
         .. ScopeLanguage.ConceptDeclarations,
@@ -133,6 +139,37 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 types: CSharpTypes.Registry,
                 checks: CSharpChecks.All,
                 hasIntentions: true),
+
+            // The expression sub-language ships for the same reason C# does: a DSL declares a slot over
+            // `Expressions.Expression` and gets the vocabulary, so a reader of a document may meet its concepts without
+            // having opened any language. Documenting it is what makes `Function`, `Call` and the rest findable.
+            [ExpressionsLanguage.Name] = LanguageProject.Shipped(
+                ExpressionsLanguage.Name,
+                version: null,
+                ExpressionsLanguage.ConceptDeclarations,
+                ExpressionsLanguage.Concepts,
+                ExpressionsLanguage.CreateNotations(ExpressionsLanguage.Concepts),
+                ExpressionsLanguage.Constraints,
+                ExpressionsIntentions.Provider,
+                [],
+                scopes: ExpressionsLanguage.Scopes,
+                types: ExpressionsLanguage.Types,
+                typing: ExpressionsLanguage.TypingRules,
+                hasTyping: true,
+                hasIntentions: true,
+                evaluation: ExpressionsEvaluation.Registry),
+
+            // The language a language project writes its meaning in, for the same reason the type rule language is
+            // documented: it is part of what a language author meets, and its five bodies are the whole vocabulary.
+            [EvaluationRuleLanguage.Name] = LanguageProject.Shipped(
+                EvaluationRuleLanguage.Name,
+                version: null,
+                EvaluationRuleLanguage.ConceptDeclarations,
+                EvaluationRuleLanguage.Concepts,
+                EvaluationRuleLanguage.CreateNotations(EvaluationRuleLanguage.Concepts),
+                ConstraintSet.Empty,
+                IntentionLowering.CreateProvider([], EvaluationRuleLanguage.Concepts),
+                []),
         };
 
         /// <summary>Every language the shell ships, which is what a documentation set starts from.</summary>
@@ -584,6 +621,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         StructureNotations.AddTo(notations);
         EditorNotations.AddTo(notations);
         TypeRuleNotations.AddTo(notations);
+        EvaluationRuleNotations.AddTo(notations);
         TextGenNotations.AddTo(notations);
         ConstraintNotations.AddTo(notations);
         ScopeNotations.AddTo(notations);

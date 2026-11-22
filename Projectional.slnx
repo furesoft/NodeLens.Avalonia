@@ -30,6 +30,7 @@
     <Project Path="src/Languages/Projectional.TextGen/Projectional.TextGen.csproj" />
     <Project Path="src/Languages/Projectional.Toml/Projectional.Toml.csproj" />
     <Project Path="src/Languages/Projectional.TypingRules/Projectional.TypingRules.csproj" />
+    <Project Path="src/Languages/Projectional.EvaluationRules/Projectional.EvaluationRules.csproj" />
     <Project Path="src/Languages/Projectional.TypeRules/Projectional.TypeRules.csproj" />
     <Project Path="src/Languages/Projectional.Xml/Projectional.Xml.csproj" />
     <Project Path="src/Languages/Projectional.Yaml/Projectional.Yaml.csproj" />

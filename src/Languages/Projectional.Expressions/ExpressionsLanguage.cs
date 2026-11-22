@@ -39,6 +39,14 @@ namespace Projectional.Expressions;
 /// </remarks>
 public static class ExpressionsLanguage
 {
+    /// <summary>The language name a project and a documentation set call it by.</summary>
+    /// <remarks>
+    /// One word, no version: the same name the concepts carry, which is what a reader of a page or a picker expects. A
+    /// declared sample that also calls itself "Expressions" would collide in one documentation set, which is why the
+    /// shipped declarations that demonstrate the same shape are named after the fact that they are declared.
+    /// </remarks>
+    public const string Name = "Expressions";
+
     /// <summary>Every concept this language declares, in declaration order.</summary>
     public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } = CreateDeclarations();
 

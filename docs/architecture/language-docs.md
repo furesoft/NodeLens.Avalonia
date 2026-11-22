@@ -167,6 +167,7 @@ type - which is all the page said before - is a name for a class rather than for
 | `<Language>/generators.html` | every generator *as the template it emits* |
 | `<Language>/importers.html` | per importer: the concepts a document may start with, then its rules - the anchor and the parts, in the words the import language draws - with the token classes they read, or, for a generator's inverse, the templates it reads the text back from - plus the codes a refusal carries |
 | `<Language>/accessory.html` | the documents that are models of the language itself |
+| `<Language>/evaluation.html` | what each concept evaluates to, in the sentence its rule carries - or, for a language whose meaning is not stated, that a document of it can be drawn and not run. The second aspect with no folder: a rule about meaning is a computation, and this repository has no model for one |
 | `<Language>/checks.html` | the checks a document of the language is checked for: the code each finding carries and one sentence saying what the check looks for. The one aspect with no folder - a check is framework code a language takes from the catalogue, and the page says so in its origin column |
 | `<Language>/examples.html` | every document the language ships, drawn by the headless renderer and coloured by the kinds the editor paints - so the page shows what the language *looks like* rather than describing it. Omitted for a language that ships none |
 | `assets/docs.css`, `assets/docs.js` | the one stylesheet and the one script - the header, the tree, the drawer and the responsive rules; and the filter, the drawer toggle and Enter. Both deterministic, both small enough to read |
@@ -268,7 +269,19 @@ language in the chain, so the archive is the one place a reader gets a language 
    the editor draws a quantity.
 10. **Shipped bases are documented, not linked out of the tree.** A reader of a zip has no repository to follow a
    `https://` link into, and the shipped project has everything a page needs.
-11. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
+11. **A shipped language gets pages when a reader can meet its concepts.** C# and the expression vocabulary both ship, and
+    both are registered as a `LanguageProject` even though neither has a folder - the documented set is the shell registry
+    rather than the folder tree. What that costs is a name: the folder of a language is its name, so a declared sample may
+    not take one a shipped language already has - which is why the sample that called itself "Expressions" is
+    `DeclaredExpressions` now, the word its own folder already uses. A third shipped language joined for the same
+   reason: `EvaluationRules`, the language a rule is written in, because a language author meets its five bodies the way
+   they meet the type rule language.
+12. **A rule about meaning says what it computes.** `IEvaluationRule.Description` is nullable, because a sentence is for a
+    reader and a rule that cannot summarise itself should say nothing rather than print its type name - but a language that
+    wants its meaning documented writes one per rule, and the page lists exactly those. The evaluation aspect is the second
+    with no folder, and for a stronger reason than checks: the others are languages a project writes in a folder, while a
+    rule about meaning is a computation and this repository has no model for one.
+13. **A check has to name itself**, which is why `ICheck` carries `Code` and `Title` instead of leaving each class with a
     constant nobody can read through the interface. A page that could only list class names would document the framework
     rather than the language. Most implementations satisfy both explicitly, so the class keeps the constant a test
     asserts against and the interface answers with it; each title is the class own summary, so the page cannot drift from
