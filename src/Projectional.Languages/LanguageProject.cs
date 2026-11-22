@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Checks;
 using Projectional.ConstraintRules;
 using Projectional.Editing;
 using Projectional.IntentionRules;
@@ -129,7 +130,8 @@ public sealed class LanguageProject
         IReadOnlyList<Model> accessory,
         IIntentionProvider intentions,
         bool hasIntentions,
-        IReadOnlyList<ITextImporter> importers)
+        IReadOnlyList<ITextImporter> importers,
+        CheckSet? checks)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
@@ -153,6 +155,7 @@ public sealed class LanguageProject
         Intentions = intentions;
         HasIntentions = hasIntentions;
         DeclaredImporters = importers;
+        Checks = checks;
     }
 
     /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
@@ -409,6 +412,16 @@ public sealed class LanguageProject
 
     /// <summary>Whether the project declared an intention of its own.</summary>
     public bool HasIntentions { get; }
+
+    /// <summary>The checks this language brings to every document written in it.</summary>
+    /// <remarks>
+    /// A declared language states its rules as constraints and brings none of these, which is why the list is empty
+    /// for one. A language written in C# can carry the standard catalogue, and that is the difference between the two:
+    /// a constraint is a rule the language spells out, while a check is one the framework derives from the
+    /// declarations - the name slots, the child slots, the property types - which is what makes it a library rather
+    /// than a policy.
+    /// </remarks>
+    public CheckSet? Checks { get; }
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -511,7 +524,8 @@ public sealed class LanguageProject
         ITypingRules? typing = null,
         bool hasTyping = false,
         bool hasIntentions = false,
-        string? description = null)
+        string? description = null,
+        CheckSet? checks = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -539,7 +553,8 @@ public sealed class LanguageProject
             accessory: [],
             intentions,
             hasIntentions,
-            importers: []);
+            importers: [],
+            checks: checks);
     }
 
     /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
@@ -621,7 +636,8 @@ public sealed class LanguageProject
                 ],
                 ChainedIntentions.Of(intentionSets),
                 intentions.HasAny || bases.Extended.Any(language => language.HasIntentions),
-                LowerImporters(fullPath, concepts));
+                LowerImporters(fullPath, concepts),
+                checks: null);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
