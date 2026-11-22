@@ -26,7 +26,7 @@ internal static class AspectsPage
 
         var body = new StringBuilder();
 
-        body.Append(Html.Paragraph($"Every folder of the language and what it lowered into. Each aspect has {Html.Link(DocumentationChain.Link(depth, language, "index.html"), "its own page")}, listed in the tree beside this one."));
+        body.Append(Html.MarkupParagraph($"Every folder of the language and what it lowered into. Each aspect has {Html.Link(DocumentationChain.Link(depth, language, "index.html"), "its own page")}, listed in the tree beside this one."));
 
         body.Append(Html.Section("Aspects", Aspects(language, depth)));
         body.Append(Html.Section("Concepts", Concepts(language, concepts)));

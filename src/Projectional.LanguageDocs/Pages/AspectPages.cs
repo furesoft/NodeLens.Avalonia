@@ -167,7 +167,7 @@ internal static class AspectPages
                 break;
         }
 
-        body.Append(Html.Paragraph($"{Html.Link(DocumentationChain.Link(depth, language, "aspects.html"), "All aspects of " + language.Name)}."));
+        body.Append(Html.MarkupParagraph($"{Html.Link(DocumentationChain.Link(depth, language, "aspects.html"), "All aspects of " + language.Name)}."));
 
         return body.ToString();
     }
