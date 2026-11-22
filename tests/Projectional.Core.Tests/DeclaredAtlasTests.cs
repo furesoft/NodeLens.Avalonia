@@ -530,6 +530,10 @@ public sealed class DeclaredAtlasTests
         Assert.Equal(new StringValue("peak"), Run(rules, stops[0]));
         Assert.Equal(new StringValue("lake"), Run(rules, stops[1]));
 
+        // A route answers the list of what its stops answer, in the order it stops there: the list body composes the reference
+        // and the place's own rule into one value.
+        Assert.Equal(new ListValue([new StringValue("peak"), new StringValue("lake")]), Run(rules, route));
+
         var unnamed = map.Model.NewChild(map, "places", "Atlas.Place");
 
         Assert.Equal(new StringValue("unnamed"), Run(rules, unnamed));

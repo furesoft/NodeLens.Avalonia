@@ -160,6 +160,8 @@ public static class OperatorSemantics
         BoolValue => "a truth value",
         StringValue => "text",
         DateValue => "a date",
+        RecordValue => "a record",
+        ListValue => "a list",
         _ => value.GetType().Name,
     };
 }

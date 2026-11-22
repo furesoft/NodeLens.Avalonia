@@ -498,6 +498,137 @@ public sealed class EvaluationRuleLoweringTests
         Assert.Equal(new StringValue("essay graded"), Evaluate(rules.Lower(), Report(points: 42, name: "essay").Model.Roots[0]));
     }
     [Fact]
+    public void ADeclaredRecordAnswersWithTheNamedValuesItStates()
+    {
+        var rules = new Rules(GradeLanguage.Concepts);
+        Record(
+            rules.Rule(GradeLanguage.Report),
+            EvaluationRuleLanguage.BodySlot,
+            ("name", field => Property(field, GradeLanguage.NameSlot, EvaluationRuleLanguage.ValueSlot)),
+            ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot)));
+
+        var expected = new RecordValue(
+        [
+            new("name", new StringValue("essay")),
+            new("points", new IntValue(42)),
+        ]);
+
+        Assert.Equal(expected, Evaluate(rules.Lower(), Report(points: 42, name: "essay").Model.Roots[0]));
+    }
+
+    [Fact]
+    public void ADeclaredRecordIsOneValueWhateverOrderItsFieldsWereWrittenIn()
+    {
+        // A record is a mapping, so the order a rule listed its fields in is not part of the answer - which is what makes the
+        // equality the field type carries rather than the list's identity.
+        var first = new Rules(GradeLanguage.Concepts);
+        Record(
+            first.Rule(GradeLanguage.Report),
+            EvaluationRuleLanguage.BodySlot,
+            ("name", field => Property(field, GradeLanguage.NameSlot, EvaluationRuleLanguage.ValueSlot)),
+            ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot)));
+
+        var second = new Rules(GradeLanguage.Concepts);
+        Record(
+            second.Rule(GradeLanguage.Report),
+            EvaluationRuleLanguage.BodySlot,
+            ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot)),
+            ("name", field => Property(field, GradeLanguage.NameSlot, EvaluationRuleLanguage.ValueSlot)));
+
+        var report = Report(points: 42, name: "essay").Model.Roots[0];
+
+        Assert.Equal(Evaluate(first.Lower(), report), Evaluate(second.Lower(), report));
+    }
+
+    [Fact]
+    public void ADeclaredRecordRefusesOneFieldNamedTwice()
+    {
+        // Refused while the rule is built: which of the two values survived would be an accident of ordering.
+        var rules = new Rules(GradeLanguage.Concepts);
+        Record(
+            rules.Rule(GradeLanguage.Report),
+            EvaluationRuleLanguage.BodySlot,
+            ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot)),
+            ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot)));
+
+        var exception = Assert.Throws<EvaluationRuleException>(() => rules.Lower());
+
+        Assert.Contains("twice", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredFieldReadsOneValueOutOfARecord()
+    {
+        var rules = new Rules(GradeLanguage.Concepts);
+        var rule = rules.Rule(GradeLanguage.Report);
+
+        Field(
+            rule,
+            GradeLanguage.PointsSlot,
+            from => Record(
+                from,
+                EvaluationRuleLanguage.FromSlot,
+                ("name", field => Property(field, GradeLanguage.NameSlot, EvaluationRuleLanguage.ValueSlot)),
+                ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot))));
+
+        Assert.Equal(new IntValue(42), Evaluate(rules.Lower(), Report(points: 42, name: "essay").Model.Roots[0]));
+    }
+
+    [Fact]
+    public void ADeclaredFieldRefusesANameTheRecordDoesNotHold()
+    {
+        var rules = new Rules(GradeLanguage.Concepts);
+        var rule = rules.Rule(GradeLanguage.Report);
+
+        Field(
+            rule,
+            "missing",
+            from => Record(from, EvaluationRuleLanguage.FromSlot, ("points", field => Property(field, GradeLanguage.PointsSlot, EvaluationRuleLanguage.ValueSlot))));
+
+        var failure = new Interpreter(rules.Lower()).Run(Report(points: 42).Model.Roots[0], cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("holds no field 'missing'", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredFieldRefusesAValueThatIsNotARecord()
+    {
+        var rules = new Rules(GradeLanguage.Concepts);
+        var rule = rules.Rule(GradeLanguage.Report);
+
+        Field(rule, GradeLanguage.PointsSlot, from => Property(from, GradeLanguage.NameSlot, EvaluationRuleLanguage.FromSlot));
+
+        var failure = new Interpreter(rules.Lower()).Run(Report(points: 42, name: "essay").Model.Roots[0], cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("is a field of a record", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredListAnswersWithTheValuesOfItsEntries()
+    {
+        var rules = new Rules(FirstLanguage.Concepts);
+        Property(rules.Rule(FirstLanguage.Entry), FirstLanguage.OutcomeSlot);
+        ListOf(rules.Rule(FirstLanguage.Container), FirstLanguage.EntriesSlot);
+
+        var expected = new ListValue([new IntValue(1), new IntValue(2), new IntValue(3)]);
+
+        Assert.Equal(expected, Evaluate(rules.Lower(), Block(entries: [(true, 1), (false, 2), (true, 3)])));
+    }
+
+    [Fact]
+    public void ADeclaredListRefusesASlotTheConceptDoesNotDeclare()
+    {
+        var rules = new Rules(FirstLanguage.Concepts);
+        ListOf(rules.Rule(FirstLanguage.Container), "stops");
+
+        var failure = new Interpreter(rules.Lower()).Run(Block(entries: [(true, 1)]), cancellationToken: TestContext.Current.CancellationToken).Failure;
+
+        Assert.NotNull(failure);
+        Assert.Contains("is not a child slot of", failure.Message, StringComparison.Ordinal);
+    }
+    [Fact]
     public void ARuleThatNamesNoConceptIsRefused()
     {
         var rules = new Rules();
@@ -603,6 +734,39 @@ public sealed class EvaluationRuleLoweringTests
         model.AddRoot(report);
 
         return (model, report);
+    }
+    /// <summary>A record body of named values, each written into the field it names.</summary>
+    private static Node Record(Node owner, string slot, params (string Name, Action<Node> Value)[] fields)
+    {
+        var record = Body(owner, slot, EvaluationRuleConceptKeys.Record);
+
+        foreach (var (name, value) in fields)
+        {
+            var field = Body(record, EvaluationRuleLanguage.FieldsSlot, EvaluationRuleConceptKeys.RecordField);
+            field.Set(EvaluationRuleLanguage.NameSlot, name);
+            value(field);
+        }
+
+        return record;
+    }
+
+    /// <summary>A field body reading <paramref name="name"/> out of whatever <paramref name="from"/> writes into its slot.</summary>
+    private static Node Field(Node owner, string name, Action<Node> from, string slot = EvaluationRuleLanguage.BodySlot)
+    {
+        var read = Body(owner, slot, EvaluationRuleConceptKeys.Field);
+        read.Set(EvaluationRuleLanguage.NameSlot, name);
+        from(read);
+
+        return read;
+    }
+
+    /// <summary>A list body over the child slot a property names.</summary>
+    private static Node ListOf(Node owner, string read, string slot = EvaluationRuleLanguage.BodySlot)
+    {
+        var list = Body(owner, slot, EvaluationRuleConceptKeys.List);
+        list.Set(EvaluationRuleLanguage.SlotSlot, read);
+
+        return list;
     }
     private static Node Body(Node owner, string slot, string conceptKey) =>
         owner.Model.NewChild(owner, slot, conceptKey);

@@ -10,6 +10,7 @@ one concept, one notation, one rule, no document of its own.
 | `structure/Units.Quantity.mps` | one concept: a `value` and the `unit` it is measured in |
 | `editor/Units.Quantity.mps` | how it is drawn: `12 in kg` |
 | `constraints/unit-whitespace.mps` | the rule it states about itself: a unit with surrounding whitespace |
+| `evaluation/quantity.mps` | what a quantity means: a record of its value and its unit |
 
 ## Why it exists
 

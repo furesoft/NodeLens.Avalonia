@@ -15,7 +15,8 @@ namespace Projectional.EvaluationRules;
 /// value written down (<see cref="Constant"/>),
 /// arithmetic and logic over other bodies (<see cref="Operator"/>), a choice between two bodies (<see cref="Choose"/>), the
 /// first entry of a list that applies followed by what that entry answers (<see cref="First"/>), the total of a list
-/// (<see cref="Sum"/>), a name bound for the rest
+/// (<see cref="Sum"/>), a record of named values (<see cref="Record"/>) and the values of a slot as a list
+/// (<see cref="List"/>), a name bound for the rest
 /// of the rule (<see cref="Bind"/>), and a refusal with a sentence (<see cref="Fail"/>).
 /// </para>
 /// </remarks>
@@ -44,6 +45,18 @@ public static class EvaluationRuleConceptKeys
 
     /// <summary>The total of what the entries of a slot answer.</summary>
     public const string Sum = "Evaluation.Sum";
+
+    /// <summary>A record value, built out of the fields the rule names.</summary>
+    public const string Record = "Evaluation.Record";
+
+    /// <summary>One named value inside a <see cref="Record"/>.</summary>
+    public const string RecordField = "Evaluation.RecordField";
+
+    /// <summary>The values of every entry of a child slot, as one list.</summary>
+    public const string List = "Evaluation.List";
+
+    /// <summary>One field of a record value the rule names.</summary>
+    public const string Field = "Evaluation.Field";
 
     /// <summary>The value the run bound to the name a property holds.</summary>
     public const string Variable = "Evaluation.Variable";

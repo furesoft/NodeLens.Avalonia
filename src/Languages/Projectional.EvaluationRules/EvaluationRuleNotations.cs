@@ -49,6 +49,32 @@ public static class EvaluationRuleNotations
             ed.Space,
             ed.Property(EvaluationRuleLanguage.SlotSlot)));
 
+        notations.Add(EvaluationRuleConceptKeys.List, ed => ed.Line(
+            ed.Keyword("list of"),
+            ed.Space,
+            ed.Property(EvaluationRuleLanguage.SlotSlot)));
+
+        notations.Add(EvaluationRuleConceptKeys.Field, ed => ed.Line(
+            ed.Keyword("field"),
+            ed.Space,
+            ed.Property(EvaluationRuleLanguage.NameSlot, emptyText: "<<name>>"),
+            ed.Space,
+            ed.Keyword("of"),
+            ed.Space,
+            ed.ChildInline(EvaluationRuleLanguage.FromSlot)));
+
+        // A record is a block rather than a line: one named value per line, indented, so a record of three fields still reads
+        // as the one answer it is.
+        notations.Add(EvaluationRuleConceptKeys.Record, ed => ed.Sequence(
+            ed.Line(ed.Keyword("record")),
+            ed.Indent(ed.Children(EvaluationRuleLanguage.FieldsSlot))));
+
+        notations.Add(EvaluationRuleConceptKeys.RecordField, ed => ed.Line(
+            ed.Property(EvaluationRuleLanguage.NameSlot, emptyText: "<<name>>"),
+            ed.Keyword(":"),
+            ed.Space,
+            ed.ChildInline(EvaluationRuleLanguage.ValueSlot)));
+
         notations.Add(EvaluationRuleConceptKeys.Variable, ed => ed.Line(
             ed.Keyword("variable"),
             ed.Space,

@@ -48,6 +48,29 @@ public sealed class EvaluationRegistry
         return new EvaluationRegistry(rules);
     }
 
+    /// <summary>The rules of both registries, with this one's rule winning where both answer for a concept.</summary>
+    /// <param name="other">The registry to add behind this one, such as a base language's.</param>
+    /// <returns>A registry that answers with this one's rules first and <paramref name="other"/>'s for what is left.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="other"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// The same shape <c>TypeRegistry.With</c> has, and for the same reason: a language that extends another inherits its
+    /// meanings unless it states one of its own, which is what "behaviour is inherited through extends" means
+    /// ([ADR 0027](../../../docs/adr/0027-behaviour-is-inherited-through-extends.md)).
+    /// </remarks>
+    public EvaluationRegistry With(EvaluationRegistry other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        var rules = new Dictionary<string, IEvaluationRule>(other._rules, StringComparer.Ordinal);
+
+        foreach (var (conceptKey, rule) in _rules)
+        {
+            rules[conceptKey] = rule;
+        }
+
+        return new EvaluationRegistry(rules);
+    }
+
     /// <summary>The rule that answers for <paramref name="concept"/>, or <see langword="null"/>.</summary>
     /// <param name="concept">The concept to ask about.</param>
     public IEvaluationRule? RuleFor(Concept concept)

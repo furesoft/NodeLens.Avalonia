@@ -30,10 +30,11 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of thirteen bodies: a value read from the node (`property`, `child`, `variable`), a
+- a `rule for <concept>` holding one of seventeen bodies: a value read from the node (`property`, `child`, `variable`), a
 question about the node's own shape (`has`, which asks whether a slot holds anything, and `count`, which says how many
 entries a child slot holds), the value of the node a reference points at (`reference`), a value written into the rule
-(`constant`), a total over a list (`sum over ... of ...`), arithmetic and logic over other bodies
+(`constant`), a total over a list (`sum over ... of ...`), a record of named values (`record`) and one field of one
+(`field ... of ...`), the values of a slot as a list (`list of ...`), arithmetic and logic over other bodies
 (`operator`), a choice (`choose` with `condition`, `then`, `otherwise`), the first entry of a slot whose condition holds
 (`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`), and a refusal with a sentence
 (`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand. What a body cannot say is what an operator
@@ -66,9 +67,12 @@ Three decisions are worth keeping:
   run where it stopped being meaningful.
 - **Nothing is cached.** Asking for the same child twice costs two steps and appears twice in the trace, which
   is what makes the trace a record of what happened rather than of what could have been shared.
-- **Values are records, not objects.** `IntValue`, `BoolValue`, `StringValue`, `DateValue` compare by content,
-  so an interpreter test is an assertion. `PropertyValue` maps a property through its declared
-  `PropertyType.TryParse`, which is the same authority the model validates writes with.
+- **Values are records, not objects.** `IntValue`, `FloatValue`, `BoolValue`, `StringValue`, `DateValue`, `RecordValue`
+  and `ListValue` compare by content, so an interpreter test is an assertion. The last two carry their comparison in a
+  field type of their own (`RecordFields`, `ValueSequence`), because a record's *generated* equality compares its fields and
+  a bare list of pairs or of values would compare by identity: a record is a mapping and compares by name whatever order it
+  was written in, a list compares entry by entry because its order is part of the answer. `PropertyValue` maps a property
+  through its declared `PropertyType.TryParse`, which is the same authority the model validates writes with.
 
 ### An evaluator for a language of your own
 
@@ -117,6 +121,12 @@ that is not a whole number and a total beyond what an `int` holds - a wrapped nu
 refusal, the same reason a power refuses one. The total of an empty list is zero, unlike a `first` with nothing that
 applies: an empty list has an answer and no rule is missing.
 
+A node with several properties answers with a record, and the two bodies that make one useful are `record` (named values,
+each of them any body) and `field <name> of <body>` (one value read back out of one). A quantity answers `{ value = 12, unit
+= kg }` this way, and an invoice line that holds one answers with the amount alone - which is the composition the third body,
+`list of <slot>`, completes: a route answers the list of what its stops answer, in the order it stops there. Both kinds are
+values like any other, so they compare by content, travel through `bind`, appear in the trace and can be compared with `==`.
+
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`
 writes the rule and pins the five answers and the refusal.
@@ -158,8 +168,7 @@ as well would need the interpreter to record a second event, and that is a diffe
 `NodeId` and not a caret address, because `Projectional.Semantics` references only `Core` and `Language`; the shell
 maps it to a `CellAddress`, exactly as the existing "click a trace row to move the caret" already does.
 
-Still open: value kinds for records and lists (they arrive with the first language that evaluates one), and the
-cross-check against generated code, which needs the generator first. The shell's side of stepping is delivered: the
+Still open: the cross-check against generated code, which needs the generator first. The shell's side of stepping is delivered: the
 menu's **Step** (F10) and **Step back** mark the row and put the caret on the node, enabled from whether the report in
 front carries a cursor. Step back has no gesture on purpose - Shift+F10 is the Windows context-menu key, and claiming it
 globally would take the context menu away from every control in the application.

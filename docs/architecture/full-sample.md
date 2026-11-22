@@ -34,7 +34,7 @@ map Berlin
 | `editor/` | one line per concept, the place list with a separator and a group gap, a conditional cell on `Kind`, a table for the map's own summary | the notation cells: lines, collections, conditionals, tables, placeholders |
 | `types/` | a fixed type, a switch over `Kind`, a `widest of` over two children, one complaint | type rules and a finding that comes from the type system rather than a constraint |
 | `typing/` | digits make a coordinate, `place`/`route` are claimed as aliases, `any of` for the two kinds | the four claims, including the alias the completion list also offers |
-| `evaluation/` | a place answers with its name or `unnamed`, a stop with what the place it points at answers, a map with how many places it holds | the declared evaluation bodies: a guard, a delegation through a reference, and a count over a slot |
+| `evaluation/` | a place answers with its name or `unnamed`, a stop with what the place it points at answers, a map with how many places it holds, a route with the list of its stops' answers | the declared evaluation bodies: a guard, a delegation through a reference, a count over a slot and a list of one |
 | `constraints/` | a route with fewer than two stops is reported; a landmark cannot be its own neighbour | the declared constraint bodies, with a condition that gates one of them |
 | `scopes/` | `neighbours` and a route's `stops` see the places of their own map, and the names the accessory model brings | scope providers: local, ancestor and a library |
 | `intentions/` | `Add a stop` (insert into a list) and `Mark as landmark` (set a property) | the intention bodies the declared form can state |

@@ -166,6 +166,21 @@ public static class EvaluationRuleLowering
             return Sum(body);
         }
 
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Record))
+        {
+            return Record(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Field))
+        {
+            return Field(body);
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.List))
+        {
+            return List(body);
+        }
+
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))
         {
             return First(body);
@@ -251,6 +266,50 @@ public static class EvaluationRuleLowering
                     ? throw context.Error("the condition of this choose body is false and it has no otherwise body.")
                     : otherwise(context);
         };
+    }
+
+    /// <summary>A record value, built from the named values the rule states.</summary>
+    /// <exception cref="EvaluationRuleException">Two fields share a name, or one states no value.</exception>
+    private static Func<EvaluationContext, Value> Record(Node body)
+    {
+        var fields = body.GetChildren(EvaluationRuleLanguage.FieldsSlot)
+            .Select(field => (Name: SlotOf(field, EvaluationRuleLanguage.NameSlot), Answer: Compile(Required(field, EvaluationRuleLanguage.ValueSlot))))
+            .ToArray();
+
+        // Refused while the rule is built rather than while it runs: two fields of one name are a field written twice, and which
+        // value survived would be the order of a dictionary rather than a decision the author made.
+        if (fields.GroupBy(field => field.Name, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1) is { } duplicate)
+        {
+            throw new EvaluationRuleException(body, $"this record names the field '{duplicate.Key}' twice.");
+        }
+
+        return context => new RecordValue(
+            fields.Select(field => new KeyValuePair<string, Value>(field.Name, field.Answer(context))));
+    }
+
+    /// <summary>One named value of a record the body answers.</summary>
+    /// <remarks>
+    /// Two refusals, because they are two different corrections: a value that is not a record is a rule that asked the wrong
+    /// body, and a name the record does not hold is a rule and a record that disagree about a field.
+    /// </remarks>
+    private static Func<EvaluationContext, Value> Field(Node body)
+    {
+        var name = SlotOf(body, EvaluationRuleLanguage.NameSlot);
+        var from = Compile(Required(body, EvaluationRuleLanguage.FromSlot));
+
+        return context => from(context) is RecordValue record
+            ? record.Field(name) ?? throw context.Error($"the record this rule reads holds no field '{name}'.")
+            : throw context.Error($"'{name}' is a field of a record, and this body answers with something else.");
+    }
+
+    /// <summary>Every entry of a child slot, as one list.</summary>
+    private static Func<EvaluationContext, Value> List(Node body)
+    {
+        var slot = SlotOf(body, EvaluationRuleLanguage.SlotSlot);
+
+        return context => context.Node.Concept.FindChild(slot) is null
+            ? throw context.Error($"'{slot}' is not a child slot of {context.Node.Concept.Key}, so this rule cannot list it.")
+            : new ListValue(context.Node.GetChildren(slot).Select(context.Eval));
     }
 
     /// <summary>The total of what the entries of a slot answer, each asked for itself.</summary>
@@ -407,6 +466,21 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Sum))
         {
             return $"The total of what each of its {SlotOf(body, EvaluationRuleLanguage.OverSlot)} entries answers.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Record))
+        {
+            return "A record of the named values this rule states.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Field))
+        {
+            return $"The field {SlotOf(body, EvaluationRuleLanguage.NameSlot)} of the record its body answers with.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.List))
+        {
+            return $"The values of its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} entries, as one list.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.First))
