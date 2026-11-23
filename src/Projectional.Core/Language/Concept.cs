@@ -28,7 +28,8 @@ public sealed class Concept
         NameRule? nameRule = null,
         Func<Node, string?>? nameFunction = null,
         string? alias = null,
-        bool isRoot = true)
+        bool isRoot = true,
+        bool nameIsExternal = false)
     {
         Key = key;
         SuperConcepts = superConcepts;
@@ -36,6 +37,7 @@ public sealed class Concept
         NameSlot = nameSlot;
         NameRule = nameRule;
         NameFunction = nameFunction;
+        NameIsExternal = nameIsExternal;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         Description = description;
@@ -112,6 +114,15 @@ public sealed class Concept
     /// "inherited".
     /// </remarks>
     public Func<Node, string?>? NameFunction { get; }
+
+    /// <summary>Whether this concept's name is computed by code this framework cannot run.</summary>
+    /// <remarks>
+    /// A declared language is data (ADR 0014), so a name written as C# is a function the editor does not have: there is
+    /// no <see cref="NameFunction"/> and this is the marker that says so. It inherits the way the function does - a
+    /// concept below an externally named one is named by the same code unless it says otherwise - so a reader that sees
+    /// the marker in a hierarchy sees the whole subtree.
+    /// </remarks>
+    public bool NameIsExternal { get; }
 
     /// <summary>What <paramref name="node"/> is called: the declared function, else the name slot, else nothing.</summary>
     /// <param name="node">A node of this concept.</param>

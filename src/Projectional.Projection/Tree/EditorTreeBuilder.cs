@@ -390,7 +390,12 @@ public sealed class EditorTreeBuilder
         return new ReferenceCell(
             address,
             slot,
-            target.Name ?? $"<{target.Concept.Key}>",
+            // A node this framework cannot name says where its name lives rather than showing a concept key that reads
+            // like "this node is unnamed": the name exists, in an assembly this layer never loads (ADR 0014). Nothing is
+            // invented - the text is derived, so it can never reach a file.
+            target.Name ?? (target.Concept.NameIsExternal
+                ? $"<{target.Concept.Key}: named in code>"
+                : $"<{target.Concept.Key}>"),
             ReferenceState.Resolved,
             target.Id,
             emphasis);

@@ -477,7 +477,8 @@ public sealed class ConceptRegistry
             nameRule,
             nameFunction,
             declaration.Alias,
-            declaration.IsRoot);
+            declaration.IsRoot,
+            declaration.NameIsExternal);
     }
 
     /// <summary>

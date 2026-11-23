@@ -383,6 +383,32 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Null(language.Values.ValuesOf(value, CSharpLanguage.MemberSlot));
     }
 
+    [Fact]
+    public void AConceptNamedInCSharpCarriesTheMarkerInsteadOfANameFunction()
+    {
+        // The decision the framework stands on (ADR 0014): a declared language is data and cannot execute anything, so
+        // the editor gets a marker rather than a delegate - which is what lets a reference say where the name lives
+        // instead of showing a concept key that reads like "unnamed".
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var link = language.Concepts.Get("Doc.Link");
+
+        Assert.True(link.NameIsExternal);
+        Assert.Null(link.NameFunction);
+
+        // Everything else keeps the ordinary answer: a concept without a behaviour has neither a function nor the
+        // marker, so the two can never be confused.
+        Assert.False(language.Concepts.Get("Doc.Item").NameIsExternal);
+    }
+
     private static IEnumerable<Node> Descendants(Node node) =>
         [node, .. node.ChildrenInDocumentOrder().SelectMany(Descendants)];
 
