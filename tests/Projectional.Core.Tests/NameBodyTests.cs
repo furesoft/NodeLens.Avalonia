@@ -13,6 +13,7 @@ public sealed class NameBodyTests
 {
     private const string Node = "Nb.Node";
     private const string Leaf = "Nb.Leaf";
+    private const string Named = "Nb.Named";
     private const string Link = "Nb.Link";
     private const string Loop = "Nb.Loop";
     private const string RingA = "Nb.RingA";
@@ -107,6 +108,40 @@ public sealed class NameBodyTests
         var model = ModelWith(new NameChildren("nothing", ", "));
 
         Assert.Throws<InvalidOperationException>(() => model.NewNode(Node).Name);
+    }
+
+    [Fact]
+    public void AResolveInfoAnswersTheTextTheReferenceStoredWhenTheTargetIsGone()
+    {
+        // The case a document that is loaded without the model it points into is in: the target cannot be asked, and the
+        // only text there is the name it had when the reference was written.
+        var model = ModelWith(new NameFallback(new NameReference("named"), new NameResolveInfo("named")));
+        var node = model.NewNode(Node);
+
+        node.SetReference("named", NodeId.New(), "peak");
+
+        Assert.Equal("peak", node.Name);
+    }
+
+    [Fact]
+    public void AResolveInfoStaysBehindTheTargetItStandsFor()
+    {
+        // After the target in a fallback, so a resolved reference answers the current name and the stored text is only the
+        // degraded answer - it is what the target was called once, not what it is called now.
+        var model = ModelWith(new NameFallback(new NameReference("named"), new NameResolveInfo("named")));
+        var target = model.NewNode(Named);
+
+        target.Set("amount", "current");
+        model.AddRoot(target);
+
+        var node = model.NewNode(Node);
+
+        node.SetReference("named", target);
+
+        // The stored text says what the target was called when the reference was written; the resolved one is asked.
+        node.SetReference("named", target.Id, "written-once");
+
+        Assert.Equal("current", node.Name);
     }
 
     [Fact]
@@ -257,6 +292,7 @@ public sealed class NameBodyTests
                     new PropertySlot("kind", PropertyType.String),
                     new ChildSlot("child", Leaf, Cardinality.One),
                     new ChildSlot("children", Leaf, Cardinality.Many),
+                    new ReferenceSlot("named", Named, allowOwnSubtree: true),
                     new ReferenceSlot("next", Node, allowOwnSubtree: true),
                 ],
                 nameOf: body.ToFunction()),
@@ -265,6 +301,11 @@ public sealed class NameBodyTests
             // answers rather than out of the parent's body asked again.
             new ConceptDeclaration(
                 Leaf,
+                [new PropertySlot("amount", PropertyType.String)],
+                nameOf: new NameProperty("amount").ToFunction()),
+
+            new ConceptDeclaration(
+                Named,
                 [new PropertySlot("amount", PropertyType.String)],
                 nameOf: new NameProperty("amount").ToFunction()),
 

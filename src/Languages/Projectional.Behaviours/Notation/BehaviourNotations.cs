@@ -70,6 +70,11 @@ public static class BehaviourNotations
             ed.Space,
             ed.Property(BehaviourConceptKeys.SlotSlot)));
 
+        notations.Add(BehaviourConceptKeys.ResolveInfo, ed => ed.Line(
+            ed.Keyword("resolveInfo"),
+            ed.Space,
+            ed.Property(BehaviourConceptKeys.SlotSlot)));
+
         notations.Add(BehaviourConceptKeys.Join, ed => ed.Line(
             ed.Keyword("join"),
             ed.Space,

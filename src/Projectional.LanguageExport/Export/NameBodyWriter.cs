@@ -26,6 +26,7 @@ internal static class NameBodyWriter
         NameProperty property => $"new NameProperty({SourceWriter.Literal(property.Slot)})",
         NameChild child => $"new NameChild({SourceWriter.Literal(child.Slot)})",
         NameReference reference => $"new NameReference({SourceWriter.Literal(reference.Slot)})",
+        NameResolveInfo resolveInfo => $"new NameResolveInfo({SourceWriter.Literal(resolveInfo.Slot)})",
         NameChildren children => $"new NameChildren({SourceWriter.Literal(children.Slot)}, {SourceWriter.Literal(children.Separator)})",
         NameJoin join => $"new NameJoin({SourceWriter.Literal(join.Separator)}, {Parts(join.Parts)})",
         NameFallback fallback => $"new NameFallback({Parts(fallback.Parts)})",

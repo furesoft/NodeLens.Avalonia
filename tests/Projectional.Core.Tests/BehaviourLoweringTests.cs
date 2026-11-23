@@ -78,6 +78,31 @@ public sealed class BehaviourLoweringTests
     }
 
     [Fact]
+    public void AResolveInfoBodyAnswersTheTextTheReferenceStored()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.ResolveInfo, "target");
+
+        var names = Lower(document);
+        var nodes = BehaviourTestLanguage.NewModel();
+        var node = nodes.NewNode(BehaviourTestLanguage.Node);
+
+        // A target the project does not hold is exactly the document this part exists for.
+        node.SetReference(BehaviourTestLanguage.TargetSlot, NodeId.New(), "peak");
+
+        Assert.Equal("peak", names[BehaviourTestLanguage.Node](node));
+    }
+
+    [Fact]
+    public void AResolveInfoBodyOnAPropertyIsRefused()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.ResolveInfo, "value");
+
+        Assert.Contains("is not a reference", Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
     public void AChildrenBodyJoinsTheNamesInAList()
     {
         var (behaviour, document) = Document(BehaviourTestLanguage.Node);
