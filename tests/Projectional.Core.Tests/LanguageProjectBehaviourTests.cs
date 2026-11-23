@@ -78,18 +78,47 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Equal("Bedrock", item.Name);
     }
 
+    [Fact]
+    public void ABehaviourOnAnAbstractConceptNamesEverySubtype()
+    {
+        // A name belongs to a concept, and a concept's subtypes inherit it - which is what makes one document enough for
+        // a whole family of nodes.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteBehaviour(folder.Root, conceptKey: "Doc.Spot", slot: "to");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var project = language.NewProject();
+        var item = project.NewModel("items").NewNode("Doc.Item");
+        item.Set("name", "Bedrock");
+
+        var place = project.NewModel("places").NewNode("Doc.Place");
+        place.SetReference("to", item);
+
+        Assert.Equal("Bedrock", place.Name);
+    }
+
     private static void WriteStructure(string directory)
     {
         var definition = new DefinitionBuilder();
 
         definition.Concept("Doc.Item", slots: [definition.Property("name", "string")], nameSlot: "name");
         definition.Concept("Doc.Link", slots: [definition.Reference("to", "Doc.Item")]);
+        definition.Concept("Doc.Spot", slots: [definition.Reference("to", "Doc.Item")], isAbstract: true);
+        definition.Concept("Doc.Place", supers: ["Doc.Spot"]);
 
         var structure = Path.Combine(directory, LanguageProject.StructureFolder);
 
         Directory.CreateDirectory(structure);
         ModelFile.Save(definition.Documents[0], Path.Combine(structure, "Doc.Item.mps"));
         ModelFile.Save(definition.Documents[1], Path.Combine(structure, "Doc.Link.mps"));
+        ModelFile.Save(definition.Documents[2], Path.Combine(structure, "Doc.Spot.mps"));
+        ModelFile.Save(definition.Documents[3], Path.Combine(structure, "Doc.Place.mps"));
     }
 
     private static void WriteBehaviour(string directory, string conceptKey, string slot)
