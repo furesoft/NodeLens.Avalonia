@@ -46,7 +46,8 @@ behaviour or a generator body need" rather than by C# grammar order.
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
 `Long`, `Double`, `String`, `Bool` and `Null` literals (not `Char`), `Name`, `This`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
-`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New` and **collection expressions**; namespaces are
+`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New`, **collection expressions** and **the node API**
+(`node<Concept>` and the nine reads a behaviour makes of a node, see "The node API"); namespaces are
 **file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
 `LocalDeclaration`, `Assignment` with the compound operators, `If`, `While`, `For`, `ForEach`,
 `Return`, `Break`, `Continue`, `Throw`, `Try` with its `Catch` handlers and optional `finally`, and
@@ -157,6 +158,70 @@ class that compiles; it is not enough to describe an existing codebase.
 | `unsafe`, `fixed`, stack allocation | the trust boundary already says we do not execute user code; there is no reason to also let it address memory |
 | preprocessor directives | a model has no compilation symbols |
 | expression-bodied members | a body is a `Block`; a one-statement block generates the same IL and one notation is one thing to maintain |
+
+## The node API
+
+A behaviour is C# that runs on a node, and C# has no idea what a node is. The base language therefore
+carries the two things a behaviour needs and a general-purpose language cannot state: **a type that says
+which concept a node is read as**, and **expressions that read what is inside one**. The spelling is
+MPS's, because that is where the idea comes from - the concept goes in angle brackets, a thing the node
+has of its own is a dotted word, and a part addressed by the name the concept gave it uses a slash on
+either side.
+
+| Drawn | Generated | Answers |
+| --- | --- | --- |
+| `node<Atlas.Stop>` | `Projectional.Core.Node` | the type of a node, read as that concept |
+| `node.name` | `.Name` | the node's name, through its concept's name function |
+| `node.parent` | `.Parent` | the node that holds it |
+| `node.index` | `.IndexInParent` | its position among its parent's children, **from zero** |
+| `node.concept` | `.Concept.Key` | the key of the concept it is an instance of |
+| `node/children/stops` | `.GetChildren("stops")` | the children a list slot holds |
+| `node/child/inner` | `.GetChild("inner")` | the child a single slot holds, or nothing |
+| `node/property/name` | `.GetOrNull("name")` | a property's value, as written, or nothing |
+| `node/reference/name` | `.GetReferenceTarget("name")` | what a reference points at, or nothing |
+| `node/resolveInfo/name` | `.GetReference("name")?.ResolveInfo` | the text a reference fell back to |
+
+`node` in that table is any node expression - in practice the parameter a behaviour method was given -
+so the reads chain: `node/parent.name` is a grandparent's parent's name, and `node/children/stops.Count`
+is a list's length.
+
+**The two halves are told apart by punctuation, not by spelling.** A thing the node has of its own is a
+dot; a part whose name comes from the concept is a slash on either side. That is not decoration: the
+second form takes a name and the first does not, and a reader who can see which one they are looking at
+does not have to remember which reads take an argument.
+
+**The concept in the brackets generates nothing.** Every node is one CLR type, so `node<Atlas.Stop>` and
+`node<Atlas.Route>` become the same `Projectional.Core.Node` - which is exactly why the concept is
+written in the model and drawn in the editor: which concept a node is read as is a fact the model holds,
+not one a compiled assembly can be asked for. The drawing and the generator therefore disagree in that
+one place, on purpose and in only that place. What a behaviour actually sees can still be asked at
+runtime with `node.concept`, which is what a predicate over "am I a `Stop`" is written as.
+
+**`index` is zero-based, and the language does not add one.** A behaviour that wants the number a reader
+counts with writes `node.index + 1`, which is C# saying what it does. Making the read answer one-based
+would put the difference between the model and the runtime in a place nobody reading the code can see.
+
+**The type is generated in full, and that is not verbosity for its own sake.** A generated file is
+compiled beside exactly the usings the model declares, and the model is free to declare none, so a bare
+`Node` would compile only sometimes - and would silently mean a different type the moment a host's
+namespace declared one. The same reasoning is why the reads are `Projectional.Core`'s own members rather
+than a helper class this language emitted: a helper would make every host reference it.
+
+**Nothing a node read answers is forgiven.** `parent`, `child`, `reference` and `property` answer nothing
+when the slot is empty or unresolvable, so a behaviour that hands one back as a `string` or a
+`node<X>` is a nullability warning, which this repository's build treats as an error. The author writes
+the test (`node.parent != null`) instead of the generator inserting a `!` behind their back. What is
+*not* modelled is nullability itself - the type system has no "or nothing" - so `node.name` claims `string`
+where the framework answers `string?`; that is the same bargain `As` already makes, and it is recorded
+here rather than hidden.
+
+**A behaviour's methods are static, and that is a consequence of the model being the whole truth.** MPS
+makes the behaviour class *be* the node's class, so a method reads `this`. This framework's node is the
+framework's type and cannot be subclassed by a language, so the node has to arrive as a parameter - and a
+behaviour that took it in a constructor would need a field and a constructor that the notation cannot
+draw. A member nobody can see in the editor must not appear in the generated file, so the method takes
+the node and the class holds no state: `public static string Name(Projectional.Core.Node node)`, which is
+also what a concept's `nameOf` delegate wants.
 
 ## Style rules, and the one thing the model cannot see
 
