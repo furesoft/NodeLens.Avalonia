@@ -3,6 +3,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 
+using Projectional.Behaviours;
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.LanguageExport;
@@ -10,6 +11,7 @@ using Projectional.Languages;
 using Projectional.TypingRules;
 using Projectional.Projection;
 using Projectional.Persistence;
+using Projectional.Structures;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -556,6 +558,117 @@ public sealed class LanguageExporterTests
                     exported.ClaimFor(concept, text)?.PropertySlot);
             }
         }
+    }
+
+    [Fact]
+    public void TheCompiledAssemblyAnswersTheSameNamesAsTheFolder()
+    {
+        // A name is data of the toolkit's own vocabulary, so unlike constraints or intentions the export can write it -
+        // and the parity that matters is behavioural: the compiled declarations have to call a node what the folder
+        // called it. The body here is a reference, the case a delegate could never have expressed.
+        using var folder = new TemporaryDirectory();
+
+        WriteBehaviourLanguage(folder.Root);
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var result = LanguageExporter.Export(language, "Sample.Doc", ExportOutput.Assembly);
+        var source = result.Files.Single(file => file.Name.EndsWith(".cs", StringComparison.Ordinal)).Text;
+
+        Assert.Contains("nameOf: new NameReference(\"to\").ToFunction()", source, StringComparison.Ordinal);
+
+        var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
+        var type = assembly.GetType("Sample.Doc.DocLanguage", throwOnError: true);
+
+        Assert.NotNull(type);
+
+        var declarations = Assert.IsAssignableFrom<IReadOnlyList<ConceptDeclaration>>(
+            type.GetProperty("ConceptDeclarations", BindingFlags.Public | BindingFlags.Static)?.GetValue(null));
+
+        var exported = new Project(ConceptRegistry.Create(declarations));
+
+        Assert.Equal("Bedrock", NameOfALink(language.NewProject()));
+        Assert.Equal(NameOfALink(language.NewProject()), NameOfALink(exported));
+    }
+
+    [Fact]
+    public void TheSamplesBehaviourIsWrittenIntoThePackageItExports()
+    {
+        // The one sample with a behaviour, exported whole. A generated package whose names were silently dropped would
+        // still compile and still draw - it would only call every node something else than the folder did, which is why
+        // the assertion is on the emitted declaration rather than on the export finishing.
+        var units = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "Units"), out var unitsError);
+
+        Assert.Null(unitsError);
+        Assert.NotNull(units);
+
+        var language = LanguageProject.Open(
+            Path.Combine(AppContext.BaseDirectory, "Atlas"),
+            new ResolvedLanguages(units),
+            out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var result = LanguageExporter.Export(language, "Sample.Atlas", ExportOutput.Assembly);
+        var atlas = result.Files.Single(file => file.Name.StartsWith("AtlasLanguage", StringComparison.Ordinal));
+
+        Assert.Contains("nameOf: new NameReference(\"to\").ToFunction()", atlas.Text, StringComparison.Ordinal);
+
+        // One assembly per language, the base included - both compiled, which is what proves the emitted body is C#.
+        Assert.Equal(["UnitsLanguage-1.0.0.dll", "AtlasLanguage-1.0.0.dll"], result.Assemblies.Select(assembly => assembly.Name));
+    }
+
+    private static string NameOfALink(Project project)
+    {
+        var item = project.NewModel("items").NewNode("Doc.Item");
+        item.Set("name", "Bedrock");
+
+        var link = project.NewModel("links").NewNode("Doc.Link");
+        link.SetReference("to", item);
+
+        return link.Name ?? string.Empty;
+    }
+
+    private static void WriteBehaviourLanguage(string directory)
+    {
+        var root = new Project(StructureLanguage.Concepts).NewModel("language");
+        var language = root.NewNode(StructureConceptKeys.Language);
+
+        language.Set("name", "Doc");
+        root.AddRoot(language);
+
+        ModelFile.Save(root, Path.Combine(directory, LanguageProject.LanguageFile));
+
+        var definition = new DefinitionBuilder();
+
+        definition.Concept("Doc.Item", slots: [definition.Property("name", "string")], nameSlot: "name");
+        definition.Concept("Doc.Link", slots: [definition.Reference("to", "Doc.Item")]);
+
+        var structure = Path.Combine(directory, LanguageProject.StructureFolder);
+
+        Directory.CreateDirectory(structure);
+        ModelFile.Save(definition.Documents[0], Path.Combine(structure, "Doc.Item.mps"));
+        ModelFile.Save(definition.Documents[1], Path.Combine(structure, "Doc.Link.mps"));
+
+        var model = BehaviourLanguage.NewModel("link");
+        var document = model.Roots[0];
+
+        document.Set(BehaviourConceptKeys.ConceptSlot, "Doc.Link");
+
+        var function = model.NewChild(document, BehaviourConceptKeys.FunctionsSlot, BehaviourConceptKeys.Function);
+        function.Set(BehaviourConceptKeys.KindSlot, BehaviourConceptKeys.NameKind);
+
+        var body = model.NewChild(function, BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Reference);
+        body.Set(BehaviourConceptKeys.SlotSlot, "to");
+
+        var behaviour = Path.Combine(directory, LanguageProject.BehaviourFolder);
+
+        Directory.CreateDirectory(behaviour);
+        ModelFile.Save(model, Path.Combine(behaviour, "link.mps"));
     }
 
     [Fact]

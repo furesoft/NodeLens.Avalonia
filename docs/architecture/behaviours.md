@@ -209,6 +209,12 @@ refused rather than dropped, because overriding an inherited name is the finding
 `samples/declared-atlas` carries one behaviour - a stop is called after the place it stops at, which is
 the case this whole vocabulary exists for.
 
+**The folder survives the export.** A name body is data of `Projectional.Language`'s vocabulary rather
+than a delegate, so `Projectional.LanguageExport` writes it into the generated declaration
+(`nameOf: new NameReference("to").ToFunction()`): a language exported as a package calls its nodes what
+the folder called them, and the compiled assembly is checked against the folder for the same names
+([language-authoring.md](language-authoring.md)).
+
 **`overrides` is a finding, not a word.** The screenshot draws `overrides ConceptFunction.getName()`
 because the Java class says which method it overrides. Our notation is data and cannot know the super
 concepts, so an author who redeclares a function their super concept already declares gets a
