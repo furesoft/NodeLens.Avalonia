@@ -422,6 +422,31 @@ public sealed class LanguageProjectBehaviourTests
         Assert.False(language.Concepts.Get("Doc.Item").NameIsExternal);
     }
 
+    [Fact]
+    public void AConceptBelowOneNamedInCSharpCarriesTheMarkerToo()
+    {
+        // The marker inherits the way the name function does, and this is the case that showed it did not: `Doc.Place`
+        // extends `Doc.Spot`, the behaviour names the super, and the subtype had no function to inherit - so it fell
+        // through to "nothing to say" and a reference to a place drew its concept key, as if it were unnamed.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Spot");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        Assert.True(language.Concepts.Get("Doc.Spot").NameIsExternal);
+        Assert.True(language.Concepts.Get("Doc.Place").NameIsExternal);
+        Assert.Null(language.Concepts.Get("Doc.Place").NameFunction);
+
+        // A concept that is not below the named one keeps the ordinary answer, so the marker is an inheritance and not
+        // a switch the whole language shares.
+        Assert.False(language.Concepts.Get("Doc.Item").NameIsExternal);
+    }
+
     private static IEnumerable<Node> Descendants(Node node) =>
         [node, .. node.ChildrenInDocumentOrder().SelectMany(Descendants)];
 

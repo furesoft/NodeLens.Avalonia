@@ -91,6 +91,108 @@ public sealed class ConceptRegistryTests
     }
 
     [Fact]
+    public void AnExternalNameIsInheritedLikeAnyOtherDesignation()
+    {
+        // The marker says where a name comes from, so it inherits the way the function does - and it was the one
+        // designation the registry did *not* walk the supers for: a concept below an externally named one had no function
+        // to inherit, so it fell through to "nothing to say" and the projection showed a concept key for a node that is
+        // named. One walk answers both questions, because they are one answer.
+        var registry = Create(
+            new ConceptDeclaration("Base", nameIsExternal: true),
+            new ConceptDeclaration("Leaf", superConcepts: ["Base"]));
+
+        var leaf = registry.Get("Leaf");
+
+        Assert.True(leaf.NameIsExternal);
+        Assert.Null(leaf.NameFunction);
+    }
+
+    [Fact]
+    public void AConceptBelowOneThatComputesItsNameInheritsThatFunction()
+    {
+        // The other half of the same walk, so the two cannot be resolved by two different rules.
+        var registry = Create(
+            new ConceptDeclaration("Base", nameOf: _ => "computed"),
+            new ConceptDeclaration("Leaf", superConcepts: ["Base"]));
+
+        Assert.Equal("computed", registry.Get("Leaf").NameFunction?.Invoke(null!));
+        Assert.False(registry.Get("Leaf").NameIsExternal);
+    }
+
+    [Fact]
+    public void ADeclarationCannotHaveTwoNameSourcesAtOnce()
+    {
+        // The pair made this representable, and a declaration that says a name is a function *and* code nobody here can
+        // run says two different things about where it comes from. Refused where a declaration refuses everything else,
+        // so no resolution rule has to decide which of the two a reader meant.
+        var refused = Assert.Throws<ArgumentException>(() =>
+            new ConceptDeclaration("Rules.Rule", nameOf: _ => "computed", nameIsExternal: true));
+
+        Assert.Contains("a name has one source", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACopiedDeclarationKeepsEverythingButItsNameSource()
+    {
+        // `WithNameOf` and `WithExternalName` rebuild a declaration from its eighteen properties, so the next property
+        // added arrives here as a failing equality rather than as a declaration that quietly lost it.
+        var declaration = new ConceptDeclaration(
+            "Rules.Rule",
+            [
+                new PropertySlot("name", PropertyType.String, "a rule", "What it is called."),
+                new ChildSlot("rules", "Rules.Rule", Cardinality.Many),
+            ],
+            superConcepts: ["Rules.Item"],
+            nameSlot: "name",
+            isAbstract: true,
+            isOfferedInCompletion: false,
+            description: "One rule.",
+            collapseSlot: "collapsed",
+            applicability: Applicability.Only(new ConceptPlace("Rules.Ruleset", "rules")),
+            triggers: [new ConceptTrigger("Rules.Ruleset", TriggerSide.Right, text => text.Length > 0, "rules")],
+            isInterface: true,
+            interfaces: ["Rules.Named"],
+            nameRule: NameRule.Pascal,
+            alias: "rule",
+            isRoot: false);
+
+        Func<Node, string?> computed = _ => "computed";
+
+        var withFunction = declaration.WithNameOf(computed);
+        var withMarker = declaration.WithExternalName();
+
+        AssertEverythingElseKept(declaration, withFunction);
+        AssertEverythingElseKept(declaration, withMarker);
+
+        // The two arguments the copy exists to change are the only two it changes.
+        Assert.Same(computed, withFunction.NameOf);
+        Assert.False(withFunction.NameIsExternal);
+
+        Assert.Null(withMarker.NameOf);
+        Assert.True(withMarker.NameIsExternal);
+    }
+
+    /// <summary>The seventeen properties a copy of a declaration has to carry over unchanged.</summary>
+    private static void AssertEverythingElseKept(ConceptDeclaration declaration, ConceptDeclaration copy)
+    {
+        Assert.Equal(declaration.Key, copy.Key);
+        Assert.Equal(declaration.Slots.Select(slot => slot.Name), copy.Slots.Select(slot => slot.Name));
+        Assert.Equal(declaration.SuperConcepts, copy.SuperConcepts);
+        Assert.Equal(declaration.Interfaces, copy.Interfaces);
+        Assert.Equal(declaration.NameSlot, copy.NameSlot);
+        Assert.Equal(declaration.IsAbstract, copy.IsAbstract);
+        Assert.Equal(declaration.IsOfferedInCompletion, copy.IsOfferedInCompletion);
+        Assert.Equal(declaration.Description, copy.Description);
+        Assert.Equal(declaration.CollapseSlot, copy.CollapseSlot);
+        Assert.Equal(declaration.Applicability, copy.Applicability);
+        Assert.Equal(declaration.Triggers, copy.Triggers);
+        Assert.Equal(declaration.IsInterface, copy.IsInterface);
+        Assert.Equal(declaration.NameRule, copy.NameRule);
+        Assert.Equal(declaration.Alias, copy.Alias);
+        Assert.Equal(declaration.IsRoot, copy.IsRoot);
+    }
+
+    [Fact]
     public void AConceptExposesItsSlotsInDeclarationOrder()
     {
         var registry = Create(new ConceptDeclaration(
