@@ -10,7 +10,8 @@ namespace Projectional.Language;
 /// </para>
 /// <para>
 /// The set is deliberately closed: whole-number arithmetic (including a power, because <c>x ^ 2</c> is how a function is
-/// written), the four comparisons, equality by value, the two short-circuiting logical operators, the two unary ones, and
+/// written), the four comparisons, equality by value, the two logical operators (evaluated eagerly here, because the trace
+/// records every operand, where C# short-circuits), the two unary ones, and
 /// <c>+</c> over two texts, which joins them. A language that needs more - dates, text *ordering*, which is a decision
 /// about a culture rather than about a value, division with a remainder - adds its own rule, which is the point of an
 /// aspect being an interface rather than a table.

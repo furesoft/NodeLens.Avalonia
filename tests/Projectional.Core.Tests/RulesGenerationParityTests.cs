@@ -31,6 +31,13 @@ namespace Projectional.Core.Tests;
 /// throws. The corpus states that as <see langword="null"/>, and both sides have to answer it: neither may invent a
 /// decision.
 /// </para>
+/// <para>
+/// Two divergences are deliberately <em>not</em> in the corpus, because the gate found them and a case would fail on
+/// a defect rather than pin a decision: <c>^</c> is a power in <see cref="OperatorSemantics"/> and C#'s XOR, and the
+/// interpreter evaluates both operands of <c>&amp;&amp;</c> and <c>||</c> while C# short-circuits, so a right operand
+/// that fails - a division by zero - is a finding in the editor and skipped in the generated code. Both are recorded
+/// under Risks in <c>docs/architecture/csharp.md</c>; neither can be fixed by a template.
+/// </para>
 /// </remarks>
 public sealed class RulesGenerationParityTests
 {
@@ -139,6 +146,7 @@ public sealed class RulesGenerationParityTests
                 int number => new IntValue(number),
                 bool truth => new BoolValue(truth),
                 string text => new StringValue(text),
+                DateOnly date => new DateValue(date),
                 _ => throw new InvalidOperationException(
                     $"The corpus has no interpreter value for '{parameter.Value.GetType().Name}'."),
             };
@@ -157,6 +165,16 @@ public sealed class RulesGenerationParityTests
         var sample = PayrollSample.NewSampleModel();
         var ordered = Ordered();
         var conjunction = Conjunction();
+        var text = StringEquality();
+        var different = StringInequality();
+        var concatenation = Concatenation();
+        var day = new DateOnly(2026, 11, 23);
+        var sameDay = Dates("==");
+        var otherDay = Dates("!=");
+        var division = Division();
+        var disjunction = Disjunction();
+        var atMost = AtMost();
+        var nested = Nested();
 
         return
         [
@@ -180,9 +198,158 @@ public sealed class RulesGenerationParityTests
             new("a negation", Negation(), [new Parameter("bool", "flag", false)], RuleOutcomes.Reject),
             new("a conditional expression", Conditional(), [new Parameter("int", "amount", 1500)], RuleOutcomes.Accept),
 
+            // Text: equality is by value on both sides, and `+` joins two texts before the comparison reads them.
+            new("a text equal to its literal", text, [new Parameter("string", "name", "Ada")], RuleOutcomes.Accept),
+            new("a text unequal to its literal", text, [new Parameter("string", "name", "Bob")], null),
+            new("a text that differs", different, [new Parameter("string", "name", "Bob")], RuleOutcomes.Accept),
+            new("two texts joined", concatenation, [new Parameter("string", "first", "Ada"), new Parameter("string", "last", "Lovelace")], RuleOutcomes.Accept),
+
+            // Dates: the framework compares them by value, and `System.DateOnly` compares the same way in C#.
+            new("two dates on the same day", sameDay, [new Parameter("System.DateOnly", "due", day), new Parameter("System.DateOnly", "deadline", day)], RuleOutcomes.Review),
+            new("two dates on different days", sameDay, [new Parameter("System.DateOnly", "due", day), new Parameter("System.DateOnly", "deadline", day.AddDays(1))], null),
+            new("two dates that differ", otherDay, [new Parameter("System.DateOnly", "due", day), new Parameter("System.DateOnly", "deadline", day.AddDays(1))], RuleOutcomes.Review),
+
+            // Whole-number division truncates on both sides, so 49 and 51 both answer 24 and 25 - a rounding
+            // implementation would disagree with one of them.
+            new("a quotient that truncates up", division, [new Parameter("int", "amount", 51)], RuleOutcomes.Accept),
+            new("a quotient that truncates down", division, [new Parameter("int", "amount", 49)], null),
+
+            // The remaining logical and comparison symbols.
+            new("a disjunction whose left operand is false", disjunction, [new Parameter("bool", "flag", false), new Parameter("int", "amount", 200)], RuleOutcomes.Review),
+            new("a disjunction whose operands are both false", disjunction, [new Parameter("bool", "flag", false), new Parameter("int", "amount", 50)], null),
+            new("a comparison at its bound", atMost, [new Parameter("int", "amount", 1000)], RuleOutcomes.Accept),
+            new("a comparison beyond its bound", atMost, [new Parameter("int", "amount", 1001)], null),
+
+            // Precedence again, with three levels: the sum is the product's left operand.
+            new("three levels of arithmetic", nested, [new Parameter("int", "amount", 50)], RuleOutcomes.Accept),
+
             // A ruleset with no rule at all: nothing can match, and neither implementation invents a decision.
             new("a ruleset with no rule", NoRules(), [], null),
         ];
+    }
+
+    /// <summary><c>rule Named when name == "Ada" then Accept</c>.</summary>
+    private static Model StringEquality()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "StringEquality");
+        var rule = Rule(model, ruleset, "Named", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "==");
+        Name(model, condition, "left", "name");
+        Text(model, condition, "right", "Ada");
+
+        return model;
+    }
+
+    /// <summary><c>rule Changed when name != "Ada" then Accept</c>.</summary>
+    private static Model StringInequality()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "StringInequality");
+        var rule = Rule(model, ruleset, "Changed", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "!=");
+        Name(model, condition, "left", "name");
+        Text(model, condition, "right", "Ada");
+
+        return model;
+    }
+
+    /// <summary><c>rule Joined when first + " " + last == "Ada Lovelace" then Accept</c>.</summary>
+    private static Model Concatenation()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "Concatenation");
+        var rule = Rule(model, ruleset, "Joined", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "==");
+        var joined = Binary(model, condition, "left", "+");
+        var spaced = Binary(model, joined, "left", "+");
+        Name(model, spaced, "left", "first");
+        Text(model, spaced, "right", " ");
+        Name(model, joined, "right", "last");
+        Text(model, condition, "right", "Ada Lovelace");
+
+        return model;
+    }
+
+    /// <summary><c>rule Due when due &lt;op&gt; deadline then Review</c>, for <c>==</c> and <c>!=</c>.</summary>
+    private static Model Dates(string comparison)
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "Dates");
+        var rule = Rule(model, ruleset, "Due", RuleOutcomes.Review);
+
+        var condition = Binary(model, rule, "condition", comparison);
+        Name(model, condition, "left", "due");
+        Name(model, condition, "right", "deadline");
+
+        return model;
+    }
+
+    /// <summary><c>rule Half when amount / 2 == 25 then Accept</c>.</summary>
+    private static Model Division()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "Division");
+        var rule = Rule(model, ruleset, "Half", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "==");
+        var quotient = Binary(model, condition, "left", "/");
+        Name(model, quotient, "left", "amount");
+        Int(model, quotient, "right", 2);
+        Int(model, condition, "right", 25);
+
+        return model;
+    }
+
+    /// <summary><c>rule Either when flag || amount &gt; 100 then Review</c>.</summary>
+    private static Model Disjunction()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "Disjunction");
+        var rule = Rule(model, ruleset, "Either", RuleOutcomes.Review);
+
+        var condition = Binary(model, rule, "condition", "||");
+        Name(model, condition, "left", "flag");
+        var comparison = Binary(model, condition, "right", ">");
+        Name(model, comparison, "left", "amount");
+        Int(model, comparison, "right", 100);
+
+        return model;
+    }
+
+    /// <summary><c>rule Small when amount &lt;= 1000 then Accept</c>.</summary>
+    private static Model AtMost()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "AtMost");
+        var rule = Rule(model, ruleset, "Small", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "<=");
+        Name(model, condition, "left", "amount");
+        Int(model, condition, "right", 1000);
+
+        return model;
+    }
+
+    /// <summary><c>rule Grown when (amount + 10) * 2 &gt; 100 then Accept</c>.</summary>
+    private static Model Nested()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "Nested");
+        var rule = Rule(model, ruleset, "Grown", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", ">");
+        var product = Binary(model, condition, "left", "*");
+        var sum = Binary(model, product, "left", "+");
+        Name(model, sum, "left", "amount");
+        Int(model, sum, "right", 10);
+        Int(model, product, "right", 2);
+        Int(model, condition, "right", 100);
+
+        return model;
     }
 
     /// <summary><c>rule Counted when amount + 100 &gt; 1000 then Accept</c>.</summary>
@@ -315,6 +482,14 @@ public sealed class RulesGenerationParityTests
     private static Node Int(Model model, Node parent, string slot, int value)
     {
         var node = model.NewChild(parent, slot, ExpressionsConceptKeys.IntLiteral);
+        node.Set("value", value);
+
+        return node;
+    }
+
+    private static Node Text(Model model, Node parent, string slot, string value)
+    {
+        var node = model.NewChild(parent, slot, ExpressionsConceptKeys.StringLiteral);
         node.Set("value", value);
 
         return node;
