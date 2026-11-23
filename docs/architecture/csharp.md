@@ -46,7 +46,9 @@ behaviour or a generator body need" rather than by C# grammar order.
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
 `Long`, `Double`, `String`, `Bool` and `Null` literals (not `Char`), `Name`, `This`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
-`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New`, **collection expressions**, **the node API**
+`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New`, **collection expressions**, **Lambdas**
+(`(parameters) => expression`, with `LambdaParameter` for a parameter whose type the target supplies),
+**the node API**
 (`node<Concept>` and the nine reads a behaviour makes of a node, see "The node API") and **the two
 enumeration spellings** (`enummember<Enum>` and `enum/Enum/.Symbol`, see "A behaviour's enumerations are
 the language's, not C#'s"); namespaces are
@@ -152,7 +154,7 @@ class that compiles; it is not enough to describe an existing codebase.
 
 | Left out | Why |
 | --- | --- |
-| LINQ query syntax | it is sugar over method calls; `CSharp.Call` already expresses the same tree |
+| LINQ query syntax | it is sugar over method calls, and since `CSharp.Lambda` exists the calls are writable: `values.Where(item => item > 0)` is what a language declares, and `from x in xs where …` would be a second grammar for the same tree. What the row said before the lambda landed - "`CSharp.Call` already expresses the same tree" - was true of the tree and not of the language |
 | pattern matching beyond `is` | every new pattern form is a new concept and a new generator branch, and `is` plus a cast covers the behaviour bodies people actually write |
 | `async`/`await`, `yield` | they change what the generator must emit around a body (state machine, iterator class), which is a large jump in generator complexity for a small jump in expressiveness |
 | attributes | they are metadata, not logic; a host that needs one can put it in a handwritten partial (see "Behaviour methods") |
@@ -160,6 +162,32 @@ class that compiles; it is not enough to describe an existing codebase.
 | `unsafe`, `fixed`, stack allocation | the trust boundary already says we do not execute user code; there is no reason to also let it address memory |
 | preprocessor directives | a model has no compilation symbols |
 | expression-bodied members | a body is a `Block`; a one-statement block generates the same IL and one notation is one thing to maintain |
+
+## Lambdas, and what they unlocked
+
+The subset could express every call except one whose argument is *code*, which is the shape all of LINQ has:
+`values.Where(item => item > 0)`. The plan's row for LINQ said the query syntax is out because a call "already
+expresses the same tree" - true of the tree, and not of the language, because there was no lambda to pass.
+
+Three decisions, each of which the first version of the concept got wrong:
+
+- **`LambdaParameter` is not `Parameter`.** A method's parameter declares its type; a lambda's is typed by the
+  delegate the target asks for. Reusing `Parameter` drew `(int item) => item`, which is legal C# 10 and not what
+  anyone writes. The lambda parameter is a name and nothing else, and it implements `NamedDeclaration` like every
+  other declaration - so the body sees it through the one scope rule the language states, with no second rule for
+  lambda scope.
+- **The parentheses are always drawn and always generated**, including the one-parameter form C# lets you shorten.
+  `(item) => item` is the same program as `item => item`, and no notation cell can say "exactly one"; drawing the
+  thing that is always right beats a cell that has to know how long a list is. The list sits inside a `WhenFilled`,
+  because an empty inline collection keeps one space for the caret - which would draw `( ) => 5` for a lambda that
+  takes nothing.
+- **The type is unknown.** A lambda is as wide as the delegate the target wants, which this language does not
+  model; answering nothing keeps a rule that reads it from inventing a type. An expression body and not a block,
+  for the same kind of reason: a statement-bodied lambda is a second shape, and nothing written so far needed one.
+
+The proof is a corpus document rather than a drawing test: `tests/.../Corpus/CSharp/linq.cs` holds one extension
+method with a single-parameter lambda and one with two, and the corpus test compiles it with warnings as errors -
+which is also what makes the "LINQ is sugar" claim checkable rather than assumed.
 
 ## The node API
 
