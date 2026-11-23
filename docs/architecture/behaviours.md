@@ -113,6 +113,15 @@ nothing to describe here, and copying its name would add a declaration that lowe
 A body is a closed set of parts, in the spirit of `TextPart` and the constraint language's four
 bodies. It reads and it chooses; it never computes, compares numbers or calls anything.
 
+**Navigation and reading are two levels.** A *path* answers which node (`parent`, `child <slot>`,
+`reference <slot>`, `nextSibling`, `previousSibling`, `self`), chained with dots
+(`parent.reference(start)`); a *reading* answers what of it (`name of`, `index of`). Splitting them is
+what keeps the vocabulary from growing a part per relation *and* per reading: `nextSibling` is one step,
+not another kind of name, and a two-hop name - "the name of the place the route above this stop starts
+at" - is one reading over two steps. `child <slot>`, `reference <slot>` and `resolveInfo <slot>` stay as
+the shorthand for the one-hop case, because that is the shape a name usually has.
+
+
 | Part | Emits |
 | --- | --- |
 | `Literal(text)` | a fixed word |
@@ -125,6 +134,8 @@ bodies. It reads and it chooses; it never computes, compares numbers or calls an
 | `Fallback(parts)` | the first non-empty part - how a concept says "the name, else the value, else `<anonymous>`" |
 | `Choose(property, value, then, else)` | one of two parts, by a property's value - the `Conditional` rule, one level up |
 | `WhenFilled(slot, part)` | the part, but only while the slot holds something - the question a `WhenFilled` cell asks in the notation, one level up; a `Choose` compares a *value*, so it cannot express "if anything was written" |
+| `NameOfPath(path)` | the `Name` of the node the path reaches - the reading every navigation ends in |
+| `IndexOfPath(path)` | the reached node's position among its siblings, counted from one |
 
 Two guarantees the lowering provides, because they cannot be left to the author:
 - **Total.** Every part answers a string; `Child` on an empty slot answers the empty string, which
