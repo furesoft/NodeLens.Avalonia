@@ -221,6 +221,41 @@ public sealed class EvaluationRuleLoweringTests
     }
 
     [Fact]
+    public void ADeclaredBoundReadsTheNameItsOwnBindWrote()
+    {
+        // The pair `bind`/`bound` on a node that carries no name at all: an `IntLiteral` has a `value` property and nothing
+        // else, so a body reading the name from the node could not find one. `bound` writes the name into the rule, which is
+        // what a binding introduced by the same rule needs.
+        var rules = new Rules();
+        var rule = rules.Rule(ExpressionsConceptKeys.IntLiteral);
+
+        var bind = Body(rule, EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Bind);
+        bind.Set(EvaluationRuleLanguage.NameSlot, "total");
+
+        Constant(bind, "int", "21", EvaluationRuleLanguage.ValueSlot);
+        Bound(bind, "total", EvaluationRuleLanguage.BodySlot);
+
+        var (model, literal) = Literal(42);
+
+        Assert.Equal(new IntValue(21), Evaluate(rules.Lower(), model, literal));
+    }
+
+    [Fact]
+    public void ADeclaredBoundWithoutANameIsRefusedWhileTheRuleIsBuilt()
+    {
+        // A body that names nothing cannot read anything, and the refusal comes while the rule is built rather than when a
+        // document is run: the name is written into the rule, so it is known before any node is.
+        var rules = new Rules();
+        var rule = rules.Rule(ExpressionsConceptKeys.IntLiteral);
+
+        _ = Body(rule, EvaluationRuleLanguage.BodySlot, EvaluationRuleConceptKeys.Bound);
+
+        var refused = Assert.Throws<EvaluationRuleException>(() => rules.Lower());
+
+        Assert.Contains("needs a value in 'name'", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AVariableWhoseNamePropertyTheNodeDoesNotHaveIsRefused()
     {
         // A rule written against the wrong concept: the node has no `slot` property for the rule to read a name from, and
@@ -804,6 +839,15 @@ public sealed class EvaluationRuleLoweringTests
 
     private static Node Variable(Node owner, string read, string slot = EvaluationRuleLanguage.BodySlot) =>
         Reading(owner, slot, EvaluationRuleConceptKeys.Variable, read);
+
+    /// <summary>A body that writes the name it reads into its own <c>name</c> property.</summary>
+    private static Node Bound(Node owner, string name, string slot = EvaluationRuleLanguage.BodySlot)
+    {
+        var body = Body(owner, slot, EvaluationRuleConceptKeys.Bound);
+        body.Set(EvaluationRuleLanguage.NameSlot, name);
+
+        return body;
+    }
 
     /// <summary>A body that names a slot of the node in its own <c>slot</c> property.</summary>
     private static Node Reading(Node owner, string slot, string conceptKey, string read)

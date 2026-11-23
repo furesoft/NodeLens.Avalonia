@@ -30,14 +30,15 @@ generated JSON records). That is the cheapest correctness net available for a la
 ### What is implemented
 
 **Two authoring paths, like every other aspect.** A rule is a model: `Projectional.EvaluationRules` declares the language
-- a `rule for <concept>` holding one of sixteen bodies: a value read from the node (`property`, `child`, `variable`), a
+- a `rule for <concept>` holding one of seventeen bodies: a value read from the node (`property`, `child`, `variable`), a
 question about the node's own shape (`has`, which asks whether a slot holds anything, and `count`, which says how many
 entries a child slot holds), the value of the node a reference points at (`reference`), a value written into the rule
 (`constant`), a total over a list (`sum over ... of ...`), a record of named values (`record`) and one field of one
 (`field ... of ...`), the values of a slot as a list (`list of ...`), arithmetic and logic over other bodies
 (`operator`), a choice (`choose` with `condition`, `then`, `otherwise`), the first entry of a slot whose condition holds
-(`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`), and a refusal with a sentence
-(`fail`) - and `EvaluationRuleLowering` turns each into the same `DelegateEvaluationRule` the C# path writes by hand.
+(`first` with `over`, `when`, `then`), a name bound while another body answers (`bind`) and the value read back under
+that name (`bound`), and a refusal with a sentence (`fail`) - and `EvaluationRuleLowering` turns each into the same
+`DelegateEvaluationRule` the C# path writes by hand.
 What a body cannot say is what an operator *means*, because that is a computation and this repository has no language for
 computation: an `operator` body either writes its symbol itself or names the property that holds one, and
 `OperatorSemantics` answers whole-number arithmetic
@@ -135,8 +136,8 @@ each of them any body) and `field <name> of <body>` (one value read back out of 
 = kg }` this way, and an invoice line that holds one answers with the amount alone. Both kinds are values like any other, so
 they compare by content, travel through `bind`, appear in the trace and can be compared with `==`.
 
-The four composed meanings in the samples are one chain each, and between them they use every body except the two that
-need a concept carrying a name (see below):
+The four composed meanings in the samples are one chain each, and between them they use every body except the three that
+handle a name rather than a value (see below):
 
 - **A total** - `Invoice.Bill` answers `sum over lines of (field value of (child quantity))`: a fold over a child slot, whose
   each-body reads one field of the record the base language answers with. Twelve and five and thirty are added, the units are
@@ -151,15 +152,18 @@ need a concept carrying a name (see below):
   test - `release.mps` keeps one step in its library and answers `dotnet build`, while `draft.mps` has no library at all and
   answers the refusal.
 
-**`bind` and `variable` are demonstrated in the lowering tests, not in a sample**, and the reason is a property of the
-vocabulary rather than a gap in the samples. `bind` writes the name it binds as a literal in the rule, while `variable`
-reads the name **from a slot of the node** - so the two only compose where the node's slot already holds exactly the name
-the rule wrote. The expression language's `Name` node is the concept where that is the point: its document's name *is* the
-name a run supplies, so a rule for `Name` that reads its own slot is right for every document, and that is why
-`EvaluationRuleLoweringTests` writes both bodies against it. A sample's name slots are labels rather than supplied names -
-a workflow's is `build` or `Release`, a step's own label - so a sample rule using the pair would have to hard-code a name
-and would then only be right for the one document whose label happened to match. The shipped samples therefore stop at the
-fourteen bodies that fit them, and the pair stays where it can be stated correctly.
+**Reading a name is two bodies, and the split is the point.** `bind` writes the name it binds as a literal in the rule, and
+`variable` reads a name **from a slot of the node** - so the two do not compose, and a rule that binds a value could not read
+it back. `bound` is the missing half: it writes the name it reads into the rule, so `bind` and `bound` agree on a name
+neither of them takes from the document. `variable` stays for the other case, a name the *run* supplies: the expression
+language's `Name` node is exactly that, so a rule for `Name` reads the run's value through the name its document carries.
+The first version of the vocabulary had only `variable`, and the pair `bind`/`variable` could only be written on a concept
+whose slot happened to hold the name the rule had already written - which is why the lowering test for `bind` had to reach
+for the expression vocabulary's `Name` to write it at all.
+
+None of the three appears in a shipped sample, and that is not a gap in the samples: a sample's name slots are labels
+(`build`, `Release`), not names a run supplies, and no sample rule needs the same value twice. The three bodies are
+demonstrated in `EvaluationRuleLoweringTests`, where a model can be built to say exactly what the body needs.
 
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`

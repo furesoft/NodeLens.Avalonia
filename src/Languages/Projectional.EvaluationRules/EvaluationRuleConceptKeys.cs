@@ -17,7 +17,8 @@ namespace Projectional.EvaluationRules;
 /// first entry of a list that applies followed by what that entry answers (<see cref="First"/>), the total of a list
 /// (<see cref="Sum"/>), a record of named values (<see cref="Record"/>) and the values of a slot as a list
 /// (<see cref="List"/>), a name bound for the rest
-/// of the rule (<see cref="Bind"/>), and a refusal with a sentence (<see cref="Fail"/>).
+/// of the rule (<see cref="Bind"/>) and the value read back under that name (<see cref="Bound"/>), and a refusal with a
+/// sentence (<see cref="Fail"/>).
 /// </para>
 /// </remarks>
 public static class EvaluationRuleConceptKeys
@@ -60,6 +61,9 @@ public static class EvaluationRuleConceptKeys
 
     /// <summary>The value the run bound to the name a property holds.</summary>
     public const string Variable = "Evaluation.Variable";
+
+    /// <summary>The value a bind introduced under the name this body writes.</summary>
+    public const string Bound = "Evaluation.Bound";
 
     /// <summary>A value written into the rule itself.</summary>
     public const string Constant = "Evaluation.Constant";
