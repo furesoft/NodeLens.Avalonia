@@ -738,7 +738,12 @@ public sealed class LanguageProject
             var named = declarations
                 .Select(declaration => names.TryGetValue(declaration.Key, out var name)
                     ? declaration.WithNameOf(name)
-                    : declaration)
+
+                    // Named by C#, which this framework cannot run (ADR 0014). The declaration carries the marker rather
+                    // than a delegate, so the editor can say where the name lives instead of pretending there is none.
+                    : csharp.Names.ContainsKey(declaration.Key)
+                        ? declaration.WithExternalName()
+                        : declaration)
                 .ToList();
 
             var concepts = ConceptRegistry.Create([.. inheritedDeclarations, .. named]);

@@ -156,6 +156,40 @@ public sealed class EditorTreeTests
     }
 
     [Fact]
+    public void AReferenceToANodeNamedInCodeSaysWhereTheNameLives()
+    {
+        // A declared language is data and cannot execute anything (ADR 0014), so a concept named by C# has no function
+        // the editor could call. The fallback used to be the concept key, which reads like "this node has no name" - and
+        // the name does exist, in an assembly this layer never loads. Saying so is the honest answer, and it invents no
+        // data: the text is derived, so it can never be written into a file.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration("Test.Source", [new ReferenceSlot("to", "Test.Stop")]),
+            new ConceptDeclaration("Test.Stop", [new PropertySlot("label", PropertyType.String)], nameIsExternal: true),
+        ]);
+        var notations = new NotationRegistry(concepts);
+        notations.Add("Test.Source", ed => ed.Line(ed.Reference("to")));
+        notations.Add("Test.Stop", ed => ed.Line(ed.Property("label")));
+
+        var model = new Project(concepts).NewModel("Stop");
+        var source = model.NewNode("Test.Source");
+        var stop = model.NewNode("Test.Stop");
+
+        source.SetReference("to", stop);
+
+        var reference = Assert.IsType<ReferenceCell>(
+            new EditorTreeBuilder(notations).Build(source).Root.Children[0]);
+
+        Assert.Equal(ReferenceState.Resolved, reference.State);
+        Assert.Equal("<Test.Stop: named in code>", reference.Text);
+
+        // The document has no name to give: the marker is a statement about where the name lives, not a name. Nothing
+        // is answered, so nothing can be persisted as a fallback.
+        Assert.True(stop.Concept.NameIsExternal);
+        Assert.Null(stop.Name);
+    }
+
+    [Fact]
     public void AResolvedReferenceCellNeedsATarget()
     {
         var address = CellAddress.OfSlot(NodeId.New(), "to");

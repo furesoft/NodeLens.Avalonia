@@ -26,7 +26,8 @@ public sealed class ConceptDeclaration
         NameRule? nameRule = null,
         Func<Node, string?>? nameOf = null,
         string? alias = null,
-        bool isRoot = true)
+        bool isRoot = true,
+        bool nameIsExternal = false)
     {
         if (!NameRules.IsValidConceptKey(key))
         {
@@ -125,6 +126,7 @@ public sealed class ConceptDeclaration
         NameSlot = nameSlot;
         NameRule = nameRule;
         NameOf = nameOf;
+        NameIsExternal = nameIsExternal;
         IsAbstract = isAbstract;
         IsOfferedInCompletion = isOfferedInCompletion;
         CollapseSlot = collapseSlot;
@@ -193,6 +195,23 @@ public sealed class ConceptDeclaration
     /// </remarks>
     public Func<Node, string?>? NameOf { get; }
 
+    /// <summary>
+    /// Whether what this concept's nodes are called is computed by code this framework cannot run.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A declared language is data and cannot execute anything (ADR 0014), so a name written as C# is a function the
+    /// editor does not have: <see cref="NameOf"/> stays <see langword="null"/> and this says why. It is not a claim that
+    /// the nodes are unnamed - they are named, by an assembly this framework never loads.
+    /// </para>
+    /// <para>
+    /// What reads it is the projection: a reference to such a node used to fall back to its concept key, which reads
+    /// like "this node has no name". Saying where the name lives instead is the honest answer, and it costs no data -
+    /// nothing is invented, so nothing can be written into a file.
+    /// </para>
+    /// </remarks>
+    public bool NameIsExternal { get; }
+
     /// <summary>This declaration with <paramref name="nameOf"/> as the function that names its nodes.</summary>
     /// <param name="nameOf">The function that computes what a node of this concept is called.</param>
     /// <returns>A copy of this declaration, carrying <paramref name="nameOf"/>.</returns>
@@ -224,8 +243,37 @@ public sealed class ConceptDeclaration
             NameRule,
             nameOf,
             Alias,
-            IsRoot);
+            IsRoot,
+            NameIsExternal);
     }
+
+    /// <summary>
+    /// This declaration with its name marked as one this framework cannot compute - code rather than data.
+    /// </summary>
+    /// <returns>A copy of this declaration, carrying the marker.</returns>
+    /// <remarks>
+    /// A marker and not a delegate, because there is nothing to call: the function exists in an assembly the framework
+    /// never loads. What the marker buys is honesty in the editor - a reference to such a node can say where the name
+    /// lives instead of showing a concept key that looks like an unnamed node.
+    /// </remarks>
+    public ConceptDeclaration WithExternalName() => new(
+        Key,
+        Slots,
+        SuperConcepts,
+        NameSlot,
+        IsAbstract,
+        IsOfferedInCompletion,
+        Description,
+        CollapseSlot,
+        Applicability,
+        Triggers,
+        IsInterface,
+        Interfaces,
+        NameRule,
+        NameOf,
+        Alias,
+        IsRoot,
+        nameIsExternal: true);
 
     /// <summary>
     /// What a name of this concept has to look like, or <see langword="null"/> to inherit what the super concept
