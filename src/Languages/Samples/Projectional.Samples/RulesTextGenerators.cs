@@ -69,9 +69,18 @@ public static class RulesTextGenerators
 
     /// <summary>The rule table as the body of a C# method, one <c>if</c> per rule.</summary>
     /// <remarks>
+    /// <para>
     /// A fragment, not a compilable class: the outcome and the operands are whatever the document says, and only the
     /// C# base language (<c>docs/architecture/csharp.md</c>) knows how a rule becomes a method with a signature. What
     /// it proves is the shape - a keyword, a child expansion, a property and the indentation of a block.
+    /// </para>
+    /// <para>
+    /// The <c>if</c> supplies the parentheses C# requires around a condition, because a template cannot ask what shape
+    /// its child has: without them a condition that is not a comparison - <c>!flag</c> - generated <c>if !flag</c>,
+    /// which is not C#. A comparison therefore reads with two pairs, one from the <c>if</c> and one the binary brings
+    /// for precedence, which is the same price the expression templates already pay. The parity gate
+    /// (<c>RulesGenerationParityTests</c>) found this, which is what it is for.
+    /// </para>
     /// </remarks>
     public static TextGenerator CSharp { get; } = new(CSharpName, Expressions(TemplateRegistry.Empty)
         .Add(RulesConceptKeys.Ruleset, TextTemplate.Of(
@@ -84,9 +93,9 @@ public static class RulesTextGenerators
                     TextTemplate.Of(LineBreakPart.Instance))))))
 
         .Add(RulesConceptKeys.Rule, TextTemplate.Of(
-            new TextPart("if "),
+            new TextPart("if ("),
             new ChildPart("condition"),
-            new TextPart(" { return \""),
+            new TextPart(") { return \""),
             new PropertyPart("outcome"),
             new TextPart("\"; }"))));
 

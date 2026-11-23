@@ -400,15 +400,26 @@ in the model.
 
 ## Verification
 
-Two levels, because the interesting failures are semantic, not textual:
+Three levels, because the interesting failures are semantic, not textual:
 
 1. **Golden files.** A corpus of models that each generate to a checked-in `.cs` file. A byte
    that moves is a change to the generator and must be reviewed, exactly like the `.mps`
    corpus: never regenerate a golden file to make a test pass.
 2. **The host's build.** CI generates the corpus and compiles it with `dotnet build` on the
    generated output. This is the only test that proves the text is C# and not merely stable.
+3. **The parity gate.** The same document is run twice: the M4 interpreter walks the model, and
+   the generated text is compiled and executed. Both have to reach the decision the corpus
+   states, or neither is evidence for the other. **Landed** for the pilot:
+   `RulesGenerationParityTests` holds one corpus of rulesets - a threshold either side,
+   arithmetic, rule order, a conjunction, a negation, a conditional expression and a ruleset
+   with no rule - wraps each generated fragment in the host's method, compiles it with
+   `AssemblyCompiler` and invokes it with the same arguments the interpreter was bound with. A
+   ruleset that matches nothing is stated as no decision: the interpreter reports a failure, the
+   host's method throws, and neither may invent an outcome. It found a defect on its first run -
+   a condition that is not a comparison generated `if !flag`, because only a binary expression
+   brought parentheses of its own - and the `if` now supplies the ones C# requires.
 
-Optional third level: a separate **`Projectional.CSharp.Check`** assembly that uses Roslyn to
+Optional fourth level: a separate **`Projectional.CSharp.Check`** assembly that uses Roslyn to
 compile the generated text in memory and report diagnostics against the traceability map. It is
 a separate assembly on purpose - core stays Roslyn-free, so the model layer never depends on a
 compiler, and a host that does not want Roslyn never restores it. Its value is error messages
@@ -447,7 +458,9 @@ against.
 
 **The gate:** the compiled generated code and the M4 interpreter produce identical results on
 the shared corpus. Two independent implementations agreeing is the only evidence that either is
-right; a generator that merely round-trips its own output proves nothing.
+right; a generator that merely round-trips its own output proves nothing. **Landed** for the
+pilot: `RulesGenerationParityTests` is the corpus and the comparison, and its first run found the
+`if !flag` defect that "Verification" records.
 
 ## Risks
 
