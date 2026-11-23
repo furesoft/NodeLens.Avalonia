@@ -115,14 +115,30 @@ public static class RulesTextGenerators
             new TextPart("\""),
             new PropertyPart("value"),
             new TextPart("\"")))
+        // `^` is a power in this vocabulary and XOR in C#, so it is the one symbol whose generated *shape* differs from
+        // the way it is written. A conditional part is the choice the declared generator language also has, so a
+        // declared C# generator can say the same thing and the two authoring paths stay one language (ADR 0014). The
+        // cast is checked, so a result beyond the whole numbers fails the way the interpreter fails; a negative
+        // exponent is the residual - the interpreter refuses it and `Math.Pow` answers a fraction, which truncates to
+        // zero (recorded in `docs/architecture/csharp.md` under Risks).
         .Add(ExpressionsConceptKeys.Binary, TextTemplate.Of(
-            new TextPart("("),
-            new ChildPart("left"),
-            new TextPart(" "),
-            new PropertyPart("operator"),
-            new TextPart(" "),
-            new ChildPart("right"),
-            new TextPart(")")))
+            new ConditionalPart(
+                "operator",
+                "^",
+                TextTemplate.Of(
+                    new TextPart("(checked((int)System.Math.Pow("),
+                    new ChildPart("left"),
+                    new TextPart(", "),
+                    new ChildPart("right"),
+                    new TextPart(")))")),
+                TextTemplate.Of(
+                    new TextPart("("),
+                    new ChildPart("left"),
+                    new TextPart(" "),
+                    new PropertyPart("operator"),
+                    new TextPart(" "),
+                    new ChildPart("right"),
+                    new TextPart(")")))))
         .Add(ExpressionsConceptKeys.Unary, TextTemplate.Of(
             new PropertyPart("operator"),
             new ChildPart("operand")))

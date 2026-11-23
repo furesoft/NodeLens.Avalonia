@@ -422,8 +422,11 @@ Three levels, because the interesting failures are semantic, not textual:
    ones C# requires. It also found a semantic divergence it first recorded and then closed: the
    interpreter evaluated both operands of `&&`/`||` where C# short-circuits, so
    `OperatorSemantics.ShortCircuits` now states the rule once for both the hand-written expression
-   rules and a declared operator body, and the corpus covers it. One divergence it still records
-   rather than covers: `^` is a power here and XOR in C# (under "Risks").
+   rules and a declared operator body, and the corpus covers it. It found a second one and closed it
+   too: `^` is a power here and XOR in C#, so the fragment maps that one symbol to `Math.Pow` through
+   a conditional part - the generated *shape* differs from the way the symbol is written, which is why
+   a symbol map alone could not have done it. The residual is a negative exponent, which the
+   interpreter refuses and the cast truncates (under "Risks").
 
 Optional fourth level: a separate **`Projectional.CSharp.Check`** assembly that uses Roslyn to
 compile the generated text in memory and report diagnostics against the traceability map. It is
@@ -473,7 +476,7 @@ pilot: `RulesGenerationParityTests` is the corpus and the comparison, and its fi
 | Risk | Mitigation |
 | --- | --- |
 | Two type systems disagree (model types vs C# types) | the model's `TypeReference` is a name, not a type; the compiler is the only authority and the interpreter mirrors it only for the subset in the corpus |
-| `^` means a power in the interpreter and XOR in C# | the fragment prints the operator symbol verbatim, and a template cannot map a symbol to an expression, so a rule that uses `^` generates different behaviour. Found by `RulesGenerationParityTests`, which therefore does not cover it; fixing it needs a part that maps a symbol, not a corpus case |
+| `^` with a negative exponent | the interpreter refuses it ("needs an exponent of zero or more") and `Math.Pow` answers a fraction, which the checked cast truncates to zero. Every other power agrees, including the overflow, where both fail. The guard would have to evaluate the exponent twice, so it is recorded rather than generated |
 | No overload resolution, so a call's meaning is invisible in the editor | accepted for M6: completion offers names, not overloads; a diagnostic for an unresolvable name is a later pass |
 | Statement notation is long on screen | that is what `Indent` and the caret-by-cell model are for; the measured caret path in the rules sample is the test that it stays navigable |
 | `Indent` blocks change how the caret moves | covered by the existing caret tests; a `Block` is a `Sequence` under an `Indent`, so it adds no new cell kind |
