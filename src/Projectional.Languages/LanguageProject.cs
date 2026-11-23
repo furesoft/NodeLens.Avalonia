@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Behaviours;
 using Projectional.Checks;
 using Projectional.EvaluationRules;
 using Projectional.ConstraintRules;
@@ -50,6 +51,15 @@ public sealed class LanguageProject
 
     /// <summary>The folder holding the concepts and enumerations, which every language project needs.</summary>
     public const string StructureFolder = "structure";
+
+    /// <summary>The folder holding what each concept is called, which a language may leave out.</summary>
+    /// <remarks>
+    /// The one aspect whose reading order is not its own: a name is part of a concept declaration, so the folder is
+    /// lowered before the registry is built from those declarations
+    /// ([behaviours.md](behaviours.md)). It sits after <c>structure</c> in the list because that is the order a reader
+    /// meets them - what a node is, then what it is called.
+    /// </remarks>
+    public const string BehaviourFolder = "behaviour";
 
     /// <summary>The folder holding the notation, which a language may leave out while it is being written.</summary>
     public const string EditorFolder = "editor";
@@ -105,6 +115,7 @@ public sealed class LanguageProject
     public static IReadOnlyList<string> AspectFolders { get; } =
     [
         StructureFolder,
+        BehaviourFolder,
         EditorFolder,
         TypesFolder,
         EvaluationFolder,
@@ -138,7 +149,8 @@ public sealed class LanguageProject
         IReadOnlyList<ITextImporter> importers,
         CheckSet? checks,
         EvaluationRegistry? evaluation,
-        IReadOnlyList<Model> evaluationDocuments)
+        IReadOnlyList<Model> evaluationDocuments,
+        IReadOnlyList<Model> behaviourDocuments)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
@@ -165,6 +177,7 @@ public sealed class LanguageProject
         Checks = checks;
         Evaluation = evaluation;
         EvaluationDocuments = evaluationDocuments;
+        BehaviourDocuments = behaviourDocuments;
     }
 
     /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
@@ -447,6 +460,15 @@ public sealed class LanguageProject
     /// models of <see cref="EvaluationRuleLanguage"/>, which is what a drawing has to use to read them.
     /// </remarks>
     public IReadOnlyList<Model> EvaluationDocuments { get; }
+
+    /// <summary>The <c>behaviour</c> documents, as models: what the language says each concept is called.</summary>
+    /// <remarks>
+    /// Kept beside the registry for the reason <see cref="EvaluationDocuments"/> is: the lowered form is a function per
+    /// concept, and a page that shows a name as it was written needs the document it was written in. They are models of
+    /// <see cref="BehaviourLanguage"/>, which is what a drawing has to use to read them. Empty is the ordinary case - a
+    /// language that names its nodes through a name slot declares no behaviour at all.
+    /// </remarks>
+    public IReadOnlyList<Model> BehaviourDocuments { get; }
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -583,7 +605,8 @@ public sealed class LanguageProject
             importers: [],
             checks: checks,
             evaluation: evaluation,
-            evaluationDocuments: evaluationDocuments ?? []);
+            evaluationDocuments: evaluationDocuments ?? [],
+            behaviourDocuments: []);
     }
 
     /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
@@ -610,10 +633,20 @@ public sealed class LanguageProject
             var bases = Resolve(languageRoot, resolver, fullPath);
             var definitions = Read(fullPath, StructureFolder, new Project(StructureLanguage.Concepts));
             var declarations = StructureLowering.Lower(definitions);
+            var inheritedDeclarations = bases.All.SelectMany(language => language.Declarations).ToList();
+
+            // A name is part of a declaration, so the behaviour folder is lowered before the registry exists and what it
+            // answers becomes the declaration the registry is built from. The lowering checks a body against the slots a
+            // concept has, which is why it is given a registry of the declarations as they stand
+            // (docs/architecture/behaviours.md).
+            var behaviourRoots = Read(fullPath, BehaviourFolder, new Project(BehaviourLanguage.Concepts));
+            var names = LowerBehaviour(behaviourRoots, inheritedDeclarations, declarations);
             var concepts = ConceptRegistry.Create(
             [
-                .. bases.All.SelectMany(language => language.Declarations),
-                .. declarations,
+                .. inheritedDeclarations,
+                .. declarations.Select(declaration => names.TryGetValue(declaration.Key, out var name)
+                    ? declaration.WithNameOf(name)
+                    : declaration),
             ]);
             var scopes = LowerScopeProviders(fullPath, concepts);
             var typing = LowerTypingRules(fullPath, concepts);
@@ -683,7 +716,8 @@ public sealed class LanguageProject
                 LowerImporters(fullPath, concepts),
                 checks: null,
                 inheritedEvaluation,
-                evaluationDocuments);
+                evaluationDocuments,
+                [.. behaviourRoots.Select(root => root.Model)]);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -992,6 +1026,48 @@ public sealed class LanguageProject
     {
         return documents.Count == 0 ? null : EvaluationRuleLowering.CreateRegistry(documents, concepts);
     }
+
+    /// <summary>The name function each concept of this project declares, by concept key.</summary>
+    /// <param name="documents">The documents of the <c>behaviour</c> folder.</param>
+    /// <param name="inherited">The declarations of the languages this one stands on.</param>
+    /// <param name="declarations">The declarations this project's own <c>structure</c> folder holds.</param>
+    /// <remarks>
+    /// A registry is built from the declarations as they stand, because a body is checked against the slots a concept
+    /// has and those are what the registry resolves - including the ones a super concept contributes. It is not the
+    /// registry the language ends up with: that one is built afterwards, from these same declarations carrying the
+    /// answers.
+    /// </remarks>
+    /// <exception cref="ConceptDefinitionException">
+    /// A body names a slot its concept does not have, or a document names a concept a base language declares. A name
+    /// belongs to the concept that declares it, so the copy below would otherwise drop it silently.
+    /// </exception>
+    private static IReadOnlyDictionary<string, Func<Node, string?>> LowerBehaviour(
+        List<Node> documents,
+        IReadOnlyList<ConceptDeclaration> inherited,
+        IReadOnlyList<ConceptDeclaration> declarations)
+    {
+        if (documents.Count == 0)
+        {
+            return NoNames;
+        }
+
+        var names = BehaviourLowering.Lower(documents, ConceptRegistry.Create([.. inherited, .. declarations]));
+
+        foreach (var key in names.Keys)
+        {
+            if (!declarations.Any(declaration => string.Equals(declaration.Key, key, StringComparison.Ordinal)))
+            {
+                throw new ConceptDefinitionException(
+                    $"'{key}' is declared by a language this one stands on, so this project cannot give it a name; a concept's behaviour belongs to the language that declares it.");
+            }
+        }
+
+        return names;
+    }
+
+    /// <summary>The answer for a language whose <c>behaviour</c> folder declares nothing, which is the ordinary case.</summary>
+    private static readonly IReadOnlyDictionary<string, Func<Node, string?>> NoNames =
+        new Dictionary<string, Func<Node, string?>>(StringComparer.Ordinal);
 
     private static TypeAspect LowerTypes(string directory, ConceptRegistry concepts)
     {

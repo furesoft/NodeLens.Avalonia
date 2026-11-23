@@ -43,6 +43,7 @@ internal sealed record ModuleFacts(
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [LanguageProject.StructureFolder] = "Structure",
+            [LanguageProject.BehaviourFolder] = "Behaviours",
             [LanguageProject.EditorFolder] = "Editor",
             [LanguageProject.TypesFolder] = "Types",
             [LanguageProject.EvaluationFolder] = "Evaluation",

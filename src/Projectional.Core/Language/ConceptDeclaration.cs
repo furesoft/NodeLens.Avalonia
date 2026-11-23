@@ -193,6 +193,40 @@ public sealed class ConceptDeclaration
     /// </remarks>
     public Func<Node, string?>? NameOf { get; }
 
+    /// <summary>This declaration with <paramref name="nameOf"/> as the function that names its nodes.</summary>
+    /// <param name="nameOf">The function that computes what a node of this concept is called.</param>
+    /// <returns>A copy of this declaration, carrying <paramref name="nameOf"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="nameOf"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// A copy, because a declaration is immutable and the registry is built from it: a name lowered from a
+    /// <c>behaviour</c> folder is read after the declarations exist and before the registry does, so the answer has to
+    /// reach the declaration the registry is about to be built from rather than be installed into a concept that
+    /// already exists. Everything else is carried over unchanged, which is what makes this safe to call on a
+    /// declaration that came from a base language's folder.
+    /// </remarks>
+    public ConceptDeclaration WithNameOf(Func<Node, string?> nameOf)
+    {
+        ArgumentNullException.ThrowIfNull(nameOf);
+
+        return new ConceptDeclaration(
+            Key,
+            Slots,
+            SuperConcepts,
+            NameSlot,
+            IsAbstract,
+            IsOfferedInCompletion,
+            Description,
+            CollapseSlot,
+            Applicability,
+            Triggers,
+            IsInterface,
+            Interfaces,
+            NameRule,
+            nameOf,
+            Alias,
+            IsRoot);
+    }
+
     /// <summary>
     /// What a name of this concept has to look like, or <see langword="null"/> to inherit what the super concept
     /// says - the same designation <see cref="NameSlot"/> is.

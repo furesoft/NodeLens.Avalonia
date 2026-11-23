@@ -179,6 +179,34 @@ public sealed class ModelXmlTests
     }
 
     [Fact]
+    public void ANodeWhoseNameIsComputedHasNoNameAttribute()
+    {
+        // The attribute exists so a file is greppable and a reference readable without chasing an id - it is not stored
+        // data. A name a concept computes is derived from the language that computes it, so writing it would put a
+        // stale answer in the file and make a document's bytes change when a name function does.
+        var concepts = ConceptRegistry.Create(
+        [
+            new ConceptDeclaration(
+                "Computed.Item",
+                [new PropertySlot("key", PropertyType.String)],
+                nameOf: node => $"computed-{node.GetOrNull("key")}"),
+        ]);
+
+        var model = new Project(concepts).NewModel();
+        var item = model.NewNode("Computed.Item");
+        item.Set("key", "seven");
+        model.AddRoot(item);
+
+        var document = ModelXml.Serialize(model);
+
+        Assert.Equal("computed-seven", item.Name);
+        Assert.Contains($"<node id=\"{item.Id}\" concept=\"Computed.Item\">", document, StringComparison.Ordinal);
+
+        // And the round trip is stable in both directions: nothing was dropped that a second save would invent.
+        Assert.Equal(document, ModelXml.Serialize(ModelXml.Deserialize(new Project(concepts), document)));
+    }
+
+    [Fact]
     public void OutputIsUtf8WithoutABomWithLineFeedsAndTwoSpaceIndent()
     {
         var model = BuildModel(TestLanguage.NewProject());

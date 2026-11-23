@@ -1,15 +1,16 @@
 # Concept behaviours
 
-Status: **B1 partly delivered** (M6) and **parked here by decision**. The seam exists:
+Status: **B1 delivered** (M6) and **parked here by decision**. The seam exists:
 `ConceptDeclaration(nameOf:)` and `Concept.NameOf(node)` answer "what is this node called" as a pure function of the
 node, `Node.Name` asks it first and the name slot second, and the body vocabulary a name is written in lives in
 `Projectional.Language/Names/` (`NameLiteral`, `NameProperty`, `NameChild`, `NameReference`, `NameJoin`,
 `NameFallback`, `NameChoice`, with a depth budget and empty-answering slots). The declared form of that vocabulary is
-its own language: `Projectional.Behaviours` declares the `behaviour` document (`BehaviourLanguage`), its notation
-(`BehaviourNotations`) and the lowering that answers the delegate a declaration takes (`BehaviourLowering`). What is
-**not** started: the `behaviour` folder in a language project - the lowering answers a map, nothing reads the folder
-yet -, `Describe`, the samples and the parity test, and the override finding. Further behaviour work is deliberately
-deferred; the seam and the vocabulary are what a language package uses in C# meanwhile.
+its own language and its own folder: `Projectional.Behaviours` declares the `behaviour` document
+(`BehaviourLanguage`), its notation (`BehaviourNotations`) and the lowering that answers the delegate a declaration
+takes (`BehaviourLowering`), and `LanguageProject` reads a `behaviour` folder before it builds the concept registry,
+so `behaviour for Atlas.Stop` is what a reference to a stop shows. What is **not** started: `Describe`, the samples
+and the parity test beyond the one the atlas carries, and the override finding. Further behaviour work is
+deliberately deferred.
 
 The nine consumers no longer each ask the slot: a reference cell (`EditorTreeBuilder`), sort by name (`ChildOrder`),
 the outline, the problems panel, the usages header, the scope index (`NameIndex`), ambiguity
@@ -171,14 +172,20 @@ only kind the lowering answers today. The lowering refuses a function for a conc
 not have, a concept that declares two names, a kind it does not lower yet, and a body naming a slot
 that does not exist or has the wrong kind.
 
-**The language is delivered; the folder is not.** `Projectional.Behaviours` declares the document
+**The language is delivered, and so is the folder.** `Projectional.Behaviours` declares the document
 (`Behaviour.Document`, one per concept, with `concept` and `functions`), the function (`kind`, `body`),
 and the seven body parts, drew them in the shape the definition languages use, and lowers a document to
-the delegate `ConceptDeclaration(nameOf:)` takes. Two steps remain before a language project reads a
-`behaviour` folder: `LanguageProject` has to lower it **before** it builds the registry - a name has to
-be part of the declaration, so it cannot be installed afterwards -, and the lowered map has to be handed
-to the declarations as `nameOf`. Until that wiring exists a language writes its names as
-`NameBody` records in C#, which is what the seam was built for.
+the delegate `ConceptDeclaration(nameOf:)` takes. `LanguageProject` reads the `behaviour` folder
+**before** it builds the registry - a name has to be part of the declaration, so it cannot be installed
+afterwards - and hands the answers over through `ConceptDeclaration.WithNameOf`, which answers a copy
+because a declaration is immutable and the registry is built from it. The lowering checks a body against
+a registry built from the declarations as they stand, which is what lets it refuse a slot that does not
+exist before the language is usable.
+
+A name belongs to the concept that declares it: a document naming a concept a base language declares is
+refused rather than dropped, because overriding an inherited name is the finding B4 plans.
+`samples/declared-atlas` carries one behaviour - a stop is called after the place it stops at, which is
+the case this whole vocabulary exists for.
 
 **`overrides` is a finding, not a word.** The screenshot draws `overrides ConceptFunction.getName()`
 because the Java class says which method it overrides. Our notation is data and cannot know the super
@@ -191,7 +198,7 @@ which concept this one inherits from, and the registry already knows.
 | Slice | Content | Effort |
 | --- | --- | --- |
 | B1 | `Concept.NameOf`, `Node.Name` routed through it, the seven body parts, `Projectional.Behaviours` with the declared document, its notation and its lowering - **delivered** | 1 week |
-| B1b | The `behaviour` folder in `LanguageProject`: lower it before the registry is built and hand the answers to the declarations as `nameOf`, plus the extended `samples/declared-atlas` | 2-3 days |
+| B1b | The `behaviour` folder in `LanguageProject`: lowered before the registry is built, handed to the declarations as `nameOf` through `ConceptDeclaration.WithNameOf`, with `samples/declared-atlas` carrying one - **delivered** | 2-3 days |
 | B2 | `Describe` with the two consumers (a trace row, a constraint message that interpolates it), only if both adopt it | 3-4 days |
 | B3 | `Projectional.Samples` and `samples/declared-pipeline` grow one behaviour each, proving the declared path, plus a parity test that a C# lambda and a declared body answer the same name for every node of the corpus | 3-4 days |
 | B4 | The override finding, an intention that removes a redeclaration, and refusing a name cycle the declarations show | 2 days |

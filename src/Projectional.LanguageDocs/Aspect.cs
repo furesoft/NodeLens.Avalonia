@@ -12,6 +12,9 @@ internal enum Aspect
     /// <summary>The enumerations the language's property slots are declared over.</summary>
     Enumerations,
 
+    /// <summary>What each concept is called, where a name slot cannot say it.</summary>
+    Behaviours,
+
     /// <summary>What draws each concept.</summary>
     Notations,
 
@@ -62,6 +65,7 @@ internal static class AspectNames
     internal static string File(Aspect aspect) => aspect switch
     {
         Aspect.Enumerations => "enumerations.html",
+        Aspect.Behaviours => "behaviours.html",
         Aspect.Notations => "notations.html",
         Aspect.Types => "types.html",
         Aspect.Typing => "typing.html",
@@ -80,6 +84,7 @@ internal static class AspectNames
     internal static string Title(Aspect aspect) => aspect switch
     {
         Aspect.Enumerations => "Enumerations",
+        Aspect.Behaviours => "Behaviours",
         Aspect.Notations => "Notations",
         Aspect.Types => "Types",
         Aspect.Typing => "Typing",

@@ -31,6 +31,7 @@ map Berlin
 | --- | --- | --- |
 | `language.mps` | name `Atlas`, version 1.0.0, `depends on Units` | the root: identity, a declared dependency, the vocabulary it borrows (`Units.Quantity` as a child slot type) |
 | `structure/` | `Atlas.Map` (root), `Atlas.Route` (root), an abstract `Atlas.Spot`, `Atlas.Place` and `Atlas.Landmark` extending it, an enumeration `Atlas.Kind` | concrete, abstract and enumerations; inheritance; a slot over an abstract concept; a slot typed by a borrowed concept |
+| `behaviour/` | one document: `Atlas.Stop` is called after the place it stops at, which is the name a reference to a stop shows | a computed name on a concept with no name slot, lowered before the registry exists |
 | `editor/` | one line per concept, the place list with a separator and a group gap, a conditional cell on `Kind`, a table for the map's own summary | the notation cells: lines, collections, conditionals, tables, placeholders |
 | `types/` | a fixed type, a switch over `Kind`, a `widest of` over two children, one complaint | type rules and a finding that comes from the type system rather than a constraint |
 | `typing/` | digits make a coordinate, `place`/`route` are claimed as aliases, `any of` for the two kinds | the four claims, including the alias the completion list also offers |
@@ -45,8 +46,9 @@ map Berlin
 | `map.mps` | a document that uses a place from the accessory, a route over two places and a landmark | what a user opens |
 
 Aspects a folder cannot hold are named rather than faked: an `Evaluate` rule, a hand-written `ICheck` and a behaviour
-method are C# beside the language (`Checks/`, `Intentions/`, a package), so the full sample does not claim them. Where
-one of those exists in the per-axis samples it stays there.
+*method* - the C# a concept's logic is written in, [csharp.md](csharp.md) - are C# beside the language (`Checks/`,
+`Intentions/`, a package), so the full sample does not claim them. Where one of those exists in the per-axis samples it
+stays there. A concept's *name* is not one of them: it is declared in `behaviour/`, and the sample carries one.
 
 ## The rule: a new aspect extends this sample
 

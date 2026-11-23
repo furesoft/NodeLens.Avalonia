@@ -48,7 +48,11 @@ As built, and worth knowing:
 - **The `name` attribute on `node` duplicates the name property.** It is written for
   greppability (`grep 'concept="Test.Rule"'` shows the name) but never read back: the
   property is authoritative, so the two can never disagree silently — a hand-edited
-  `name` is simply ignored.
+  `name` is simply ignored. It is written only for a concept that **stores** its name
+  in a name slot: a name a concept computes (`ConceptDeclaration(nameOf:)`, see
+  [behaviours.md](behaviours.md)) is derived from the language that computes it, so
+  writing it would put an answer in the file that a later change to a name function
+  would silently contradict.
 - **`version` and `imports` are not written yet.** `Model.Version` is a mutation
   counter, not a schema version, and import bookkeeping only becomes meaningful with
   the language module (M2). The reader tolerates their absence.
