@@ -194,6 +194,98 @@ public sealed class NameBodyTests
     }
 
     [Fact]
+    public void ANameOfPathNamesTheNodeTheStepsReach()
+    {
+        // `name of parent` is the counterpart of `child`: a child borrows its owner's half of the name and stores nothing.
+        var body = new NameJoin("/", new NameOfPath(new NodePath(PathStep.Parent)), new NameProperty("amount"));
+        var model = new Project(ConceptRegistry.Create([.. Nested(body)])).NewModel("nested");
+        var parent = model.NewNode(NestedNode);
+
+        parent.Set("amount", "loop");
+        model.AddRoot(parent);
+
+        var child = model.NewChild(parent, "items", NestedNode);
+
+        child.Set("amount", "peak");
+
+        Assert.Equal("loop", parent.Name);
+        Assert.Equal("loop/peak", child.Name);
+    }
+
+    [Fact]
+    public void APathChainsTwoSteps()
+    {
+        // The reason navigation and reading are two levels: the name of the place the route above this stop starts at is
+        // `parent` then `reference(start)` - a shape one part per relation could never express.
+        var stops = new NameOfPath(new NodePath(
+            PathStep.Parent,
+            next: new NodePath(PathStep.Reference, "named")));
+
+        var model = new Project(ConceptRegistry.Create([.. Nested(stops)])).NewModel("nested");
+        var place = model.NewNode(NestedLeaf);
+
+        place.Set("amount", "Bedrock");
+        model.AddRoot(place);
+
+        var route = model.NewNode(NestedNode);
+
+        route.SetReference("named", place);
+        model.AddRoot(route);
+
+        var stop = model.NewChild(route, "items", NestedNode);
+
+        // The stop has no amount of its own; its name is the start of the route it sits in, read through a reference.
+        Assert.Equal("Bedrock", stop.Name);
+    }
+
+    [Fact]
+    public void AnIndexOfPathCountsThePositionAmongSiblingsFromOne()
+    {
+        var body = new NameJoin(string.Empty, new NameLiteral("stop "), new IndexOfPath(new NodePath(PathStep.Self)));
+        var model = new Project(ConceptRegistry.Create([.. Nested(body)])).NewModel("nested");
+        var parent = model.NewNode(NestedNode);
+
+        model.AddRoot(parent);
+
+        var first = model.NewChild(parent, "items", NestedNode);
+        var second = model.NewChild(parent, "items", NestedNode);
+
+        Assert.Equal("stop 1", parent.Name);
+        Assert.Equal("stop 1", first.Name);
+        Assert.Equal("stop 2", second.Name);
+    }
+
+    [Fact]
+    public void ANameOfSelfAnswersNothingRatherThanRecursing()
+    {
+        // The budget is what stops it: `name of self` asks this very function again, so the honest answer is nothing.
+        var model = new Project(ConceptRegistry.Create([.. Nested(new NameOfPath(new NodePath(PathStep.Self)))])).NewModel("nested");
+
+        Assert.Equal(string.Empty, model.NewNode(NestedNode).Name);
+    }
+
+    private const string NestedNode = "Nb.Nested";
+    private const string NestedLeaf = "Nb.NestedLeaf";
+
+    private static IEnumerable<ConceptDeclaration> Nested(NameBody body) =>
+    [
+        new ConceptDeclaration(
+            NestedNode,
+            [
+                new PropertySlot("amount", PropertyType.String),
+                new ChildSlot("items", NestedNode, Cardinality.Many),
+                new ReferenceSlot("named", NestedLeaf, allowOwnSubtree: true),
+            ],
+            nameOf: body.ToFunction()),
+
+        // A reached node whose name is its own property, so a path test names something other than the body under test.
+        new ConceptDeclaration(
+            NestedLeaf,
+            [new PropertySlot("amount", PropertyType.String)],
+            nameOf: new NameProperty("amount").ToFunction()),
+    ];
+
+    [Fact]
     public void AJoinLeavesOutTheEmptyAnswersAndTheirSeparator()    {
         // The reason the join omits rather than concatenates: a half-written node must not be called `left.`.
         var model = ModelWith(new NameJoin(

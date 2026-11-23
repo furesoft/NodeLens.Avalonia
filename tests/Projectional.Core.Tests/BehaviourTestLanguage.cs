@@ -39,6 +39,9 @@ internal static class BehaviourTestLanguage
     /// <summary>The one reference, so that a name can be the name of what it points at.</summary>
     public const string TargetSlot = "target";
 
+    /// <summary>A reference to a leaf, whose name is its own property.</summary>
+    public const string PlaceSlot = "place";
+
     public static ConceptRegistry Concepts { get; } = ConceptRegistry.Create(
     [
         new ConceptDeclaration(
@@ -49,7 +52,8 @@ internal static class BehaviourTestLanguage
                 new PropertySlot(CountSlot, PropertyType.Integer, "0"),
                 new ChildSlot(InnerSlot, Leaf, Cardinality.One),
                 new ChildSlot(ItemsSlot, Leaf, Cardinality.Many),
-                new ReferenceSlot(TargetSlot, Node),
+                new ReferenceSlot(TargetSlot, Node, allowOwnSubtree: true),
+                new ReferenceSlot(PlaceSlot, Leaf, allowOwnSubtree: true),
             ],
             isRoot: true,
             nameSlot: ValueSlot,

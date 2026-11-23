@@ -78,6 +78,78 @@ public sealed class BehaviourLoweringTests
     }
 
     [Fact]
+    public void ANameOfAParentPathNamesTheNodeTheLeafSitsIn()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Leaf);
+        var nameOf = Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.NameOfPath, read: null);
+
+        Step(behaviour, nameOf, BehaviourConceptKeys.PathParent);
+
+        var names = Lower(document);
+        var nodes = BehaviourTestLanguage.NewModel();
+        var node = nodes.NewNode(BehaviourTestLanguage.Node);
+
+        var leaf = nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf);
+
+        Assert.Equal("seven", names[BehaviourTestLanguage.Leaf](leaf));
+    }
+
+    [Fact]
+    public void AChainedPathIsLoweredIntoACHAIN()
+    {
+        // `name of parent.reference(place)`: one reading over two steps, which is what the split buys.
+        var (behaviour, document) = Document(BehaviourTestLanguage.Leaf);
+        var nameOf = Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.NameOfPath, read: null);
+        var first = Step(behaviour, nameOf, BehaviourConceptKeys.PathParent);
+        var second = Step(behaviour, first, BehaviourConceptKeys.PathReference);
+
+        second.Set(BehaviourConceptKeys.SlotSlot, "place");
+
+        var names = Lower(document);
+        var nodes = BehaviourTestLanguage.NewModel();
+        var node = nodes.NewNode(BehaviourTestLanguage.Node);
+
+        // The place is a leaf, whose name is its own property - the parent's reference has to reach it for the path.
+        var place = nodes.NewChild(node, BehaviourTestLanguage.InnerSlot, BehaviourTestLanguage.Leaf);
+        place.Set(BehaviourTestLanguage.ValueSlot, "Bedrock");
+        node.SetReference(BehaviourTestLanguage.PlaceSlot, place);
+
+        var leaf = nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf);
+
+        Assert.Equal("Bedrock", names[BehaviourTestLanguage.Leaf](leaf));
+    }
+
+    [Fact]
+    public void AnIndexOfAPathCountsThePosition()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Leaf);
+        var indexOf = Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.IndexOfPath, read: null);
+
+        Step(behaviour, indexOf, BehaviourConceptKeys.PathSelf);
+
+        var names = Lower(document);
+        var nodes = BehaviourTestLanguage.NewModel();
+        var node = nodes.NewNode(BehaviourTestLanguage.Node);
+
+        nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf);
+        var second = nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf);
+
+        Assert.Equal("2", names[BehaviourTestLanguage.Leaf](second));
+    }
+
+    [Fact]
+    public void APathStepNamingAPropertyIsRefused()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Leaf);
+        var nameOf = Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.NameOfPath, read: null);
+        var step = Step(behaviour, nameOf, BehaviourConceptKeys.PathReference);
+
+        step.Set(BehaviourConceptKeys.SlotSlot, "value");
+
+        Assert.Contains("is not a reference", Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
     public void AWhenFilledBodyAnswersOnlyWhileTheSlotIsFilled()
     {
         var (behaviour, document) = Document(BehaviourTestLanguage.Node);
@@ -410,8 +482,16 @@ public sealed class BehaviourLoweringTests
         return part;
     }
 
-    private static Node LiteralPart(Model model, Node owner, string slot, string text)
-    {
+    /// <summary>One step of a path: the reading's own slot for the first, the chain's slot for any after it.</summary>
+    private static Node Step(Model model, Node owner, string conceptKey) =>
+        model.NewChild(
+            owner,
+            owner.Concept.Key is BehaviourConceptKeys.NameOfPath or BehaviourConceptKeys.IndexOfPath
+                ? BehaviourConceptKeys.PathSlot
+                : BehaviourConceptKeys.NextSlot,
+            conceptKey);
+
+    private static Node LiteralPart(Model model, Node owner, string slot, string text)    {
         var part = model.NewChild(owner, slot, BehaviourConceptKeys.Literal);
         part.Set(BehaviourConceptKeys.TextSlot, text);
 

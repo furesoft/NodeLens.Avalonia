@@ -153,6 +153,65 @@ public static class BehaviourLanguage
             description: "whenFilled <slot> (<part>)"),
 
         new ConceptDeclaration(
+            BehaviourConceptKeys.Path,
+            [new ChildSlot(BehaviourConceptKeys.NextSlot, BehaviourConceptKeys.Path, Cardinality.One, minimum: 0)],
+            isAbstract: true,
+            isRoot: false,
+            description: "Steps from a node to another one; the next slot chains them."),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.PathSelf,
+            superConcepts: [BehaviourConceptKeys.Path],
+            isRoot: false,
+            description: "self"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.PathParent,
+            superConcepts: [BehaviourConceptKeys.Path],
+            isRoot: false,
+            description: "parent"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.PathChild,
+            [new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The child slot to step into.")],
+            superConcepts: [BehaviourConceptKeys.Path],
+            isRoot: false,
+            description: "child <slot>"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.PathReference,
+            [new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The reference slot to follow.")],
+            superConcepts: [BehaviourConceptKeys.Path],
+            isRoot: false,
+            description: "reference <slot>"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.PathNextSibling,
+            superConcepts: [BehaviourConceptKeys.Path],
+            isRoot: false,
+            description: "nextSibling"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.PathPreviousSibling,
+            superConcepts: [BehaviourConceptKeys.Path],
+            isRoot: false,
+            description: "previousSibling"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.NameOfPath,
+            [new ChildSlot(BehaviourConceptKeys.PathSlot, BehaviourConceptKeys.Path, Cardinality.One)],
+            superConcepts: [BehaviourConceptKeys.Part],
+            isRoot: false,
+            description: "name of <path>"),
+
+        new ConceptDeclaration(
+            BehaviourConceptKeys.IndexOfPath,
+            [new ChildSlot(BehaviourConceptKeys.PathSlot, BehaviourConceptKeys.Path, Cardinality.One)],
+            superConcepts: [BehaviourConceptKeys.Part],
+            isRoot: false,
+            description: "index of <path>"),
+
+        new ConceptDeclaration(
             BehaviourConceptKeys.Choose,
             [
                 new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The property to read."),

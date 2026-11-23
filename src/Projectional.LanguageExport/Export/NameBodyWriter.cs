@@ -29,6 +29,8 @@ internal static class NameBodyWriter
         NameResolveInfo resolveInfo => $"new NameResolveInfo({SourceWriter.Literal(resolveInfo.Slot)})",
         NameChildren children => $"new NameChildren({SourceWriter.Literal(children.Slot)}, {SourceWriter.Literal(children.Separator)})",
         NameWhenFilled whenFilled => $"new NameWhenFilled({SourceWriter.Literal(whenFilled.Slot)}, {Text(whenFilled.Part)})",
+        NameOfPath ofPath => $"new NameOfPath({PathText(ofPath.Path)})",
+        IndexOfPath ofPath => $"new IndexOfPath({PathText(ofPath.Path)})",
         NameJoin join => $"new NameJoin({SourceWriter.Literal(join.Separator)}, {Parts(join.Parts)})",
         NameFallback fallback => $"new NameFallback({Parts(fallback.Parts)})",
         NameChoice choice => $"new NameChoice({SourceWriter.Literal(choice.Slot)}, {SourceWriter.Literal(choice.Value)}, {Text(choice.Then)}, {Text(choice.Otherwise)})",
@@ -38,4 +40,16 @@ internal static class NameBodyWriter
 
     private static string Parts(IReadOnlyList<NameBody> parts) =>
         string.Join(", ", parts.Select(Text));
+
+    /// <summary>The expression that builds <paramref name="path"/>, one link at a time.</summary>
+    private static string PathText(NodePath path)
+    {
+        var slot = path.Slot is { } named ? SourceWriter.Literal(named) : "null";
+
+        return path.Next is { } rest
+            ? $"new NodePath(PathStep.{path.Step}, {slot}, {PathText(rest)})"
+            : path.Slot is null
+                ? $"new NodePath(PathStep.{path.Step})"
+                : $"new NodePath(PathStep.{path.Step}, {slot})";
+    }
 }

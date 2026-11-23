@@ -41,6 +41,33 @@ public static class BehaviourConceptKeys
     /// <summary>A part answered only while a slot holds something.</summary>
     public const string WhenFilled = "Behaviour.WhenFilled";
 
+    /// <summary>A chain of steps to another node, which the two readings answer about.</summary>
+    public const string Path = "Behaviour.Path";
+
+    /// <summary>The path that stays put, for a reading about this node.</summary>
+    public const string PathSelf = "Behaviour.PathSelf";
+
+    /// <summary>The step to the node this one sits in.</summary>
+    public const string PathParent = "Behaviour.PathParent";
+
+    /// <summary>The step to the one child in a slot.</summary>
+    public const string PathChild = "Behaviour.PathChild";
+
+    /// <summary>The step to a reference's target.</summary>
+    public const string PathReference = "Behaviour.PathReference";
+
+    /// <summary>The step to the sibling after this one.</summary>
+    public const string PathNextSibling = "Behaviour.PathNextSibling";
+
+    /// <summary>The step to the sibling before this one.</summary>
+    public const string PathPreviousSibling = "Behaviour.PathPreviousSibling";
+
+    /// <summary>The name of the node a path reaches.</summary>
+    public const string NameOfPath = "Behaviour.NameOfPath";
+
+    /// <summary>The position of the node a path reaches, counted from one.</summary>
+    public const string IndexOfPath = "Behaviour.IndexOfPath";
+
     /// <summary>The first non-empty part.</summary>
     public const string Fallback = "Behaviour.Fallback";
 
@@ -79,6 +106,12 @@ public static class BehaviourConceptKeys
 
     /// <summary>The slot holding the part a <c>whenFilled</c> answers while the slot it asks about is filled.</summary>
     public const string PartSlot = "part";
+
+    /// <summary>The slot holding the steps a reading answers about.</summary>
+    public const string PathSlot = "path";
+
+    /// <summary>The slot holding the rest of a path, which is what chains two steps.</summary>
+    public const string NextSlot = "next";
 
     /// <summary>The slot holding the part a choice answers otherwise.</summary>
     public const string OtherwiseSlot = "otherwise";

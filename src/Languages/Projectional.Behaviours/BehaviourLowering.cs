@@ -128,6 +128,8 @@ public static class BehaviourLowering
         BehaviourConceptKeys.WhenFilled => new NameWhenFilled(
             AnySlot(part, concept).Name,
             Part(Required(part, BehaviourConceptKeys.PartSlot), concept)),
+        BehaviourConceptKeys.NameOfPath => new NameOfPath(PathOf(Required(part, BehaviourConceptKeys.PathSlot), concept, isFirst: true)),
+        BehaviourConceptKeys.IndexOfPath => new IndexOfPath(PathOf(Required(part, BehaviourConceptKeys.PathSlot), concept, isFirst: true)),
         BehaviourConceptKeys.Choose => Choice(part, concept),
         _ => throw new ConceptDefinitionException($"'{part.Concept.Key}' is not a body part."),
     };
@@ -161,6 +163,50 @@ public static class BehaviourLowering
         }
 
         return typed;
+    }
+
+    /// <summary>The chain of steps a reading navigates by, as the record that follows it.</summary>
+    /// <param name="path">The path node to read.</param>
+    /// <param name="concept">The concept of the node the body is for.</param>
+    /// <param name="isFirst">Whether this is the first step, whose concept is the only one known while the language loads.</param>
+    /// <remarks>
+    /// The first step is checked against the concept the body belongs to, because that is the one node the lowering knows.
+    /// Every later step runs on a node whose concept is only a document's answer, so the check happens when the step is
+    /// taken - and a step that cannot be taken answers nothing rather than throwing into a reference cell.
+    /// </remarks>
+    private static NodePath PathOf(Node path, Concept concept, bool isFirst)
+    {
+        var step = path.Concept.Key switch
+        {
+            BehaviourConceptKeys.PathSelf => PathStep.Self,
+            BehaviourConceptKeys.PathParent => PathStep.Parent,
+            BehaviourConceptKeys.PathNextSibling => PathStep.NextSibling,
+            BehaviourConceptKeys.PathPreviousSibling => PathStep.PreviousSibling,
+            BehaviourConceptKeys.PathChild => PathStep.Child,
+            BehaviourConceptKeys.PathReference => PathStep.Reference,
+            _ => throw new ConceptDefinitionException($"'{path.Concept.Key}' is not a step a path can take."),
+        };
+
+        string? slot = step switch
+        {
+            PathStep.Child => isFirst ? Slot<ChildSlot>(path, concept).Name : NamedSlot(path),
+            PathStep.Reference => isFirst ? Slot<ReferenceSlot>(path, concept).Name : NamedSlot(path),
+            _ => null,
+        };
+
+        var next = path.GetChild(BehaviourConceptKeys.NextSlot);
+
+        return new NodePath(step, slot, next is null ? null : PathOf(next, concept, isFirst: false));
+    }
+
+    /// <summary>The slot name a step past the first one carries, unvalidated because its concept is a document's answer.</summary>
+    private static string NamedSlot(Node step)
+    {
+        var name = step.GetOrNull(BehaviourConceptKeys.SlotSlot);
+
+        return name is { Length: > 0 }
+            ? name
+            : throw new ConceptDefinitionException($"a '{step.Concept.Key}' step must name the slot it reads.");
     }
 
     /// <summary>The slot a part asks about, of any kind, refused unless the concept declares it.</summary>
