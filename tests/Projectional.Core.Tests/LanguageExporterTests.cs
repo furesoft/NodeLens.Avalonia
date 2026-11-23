@@ -637,6 +637,32 @@ public sealed class LanguageExporterTests
         Assert.Equal(["UnitsLanguage-1.0.0.dll", "AtlasLanguage-1.0.0.dll"], result.Assemblies.Select(assembly => assembly.Name));
     }
 
+    [Fact]
+    public void APathIsWrittenAsTheStepsItIs()
+    {
+        // The path is data too, so an exported body keeps the navigation it declares - one link per step, in order.
+        IReadOnlyList<ConceptDeclaration> declarations =
+        [
+            new ConceptDeclaration(
+                "Doc.Node",
+                [new ChildSlot("child", "Doc.Node", Cardinality.One, minimum: 0)]),
+        ];
+
+        var names = new Dictionary<string, NameBody>(StringComparer.Ordinal)
+        {
+            ["Doc.Node"] = new NameOfPath(new NodePath(
+                PathStep.Parent,
+                next: new NodePath(PathStep.Child, "child"))),
+        };
+
+        var result = LanguageExporter.Export("Doc", declarations, [], names: names);
+
+        Assert.Contains(
+            "nameOf: new NameOfPath(new NodePath(PathStep.Parent, null, new NodePath(PathStep.Child, \"child\"))).ToFunction()",
+            result.Files[0].Text,
+            StringComparison.Ordinal);
+    }
+
     private static string NameOfALink(Project project)
     {
         var item = project.NewModel("items").NewNode("Doc.Item");

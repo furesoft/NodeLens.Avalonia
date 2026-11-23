@@ -88,6 +88,34 @@ public sealed class BehaviourNotationTests
     }
 
     [Fact]
+    public void AChainedPathDrawsItsDots()
+    {
+        // Navigation reads as a path on one line, and a step nobody chained shows no dot at all.
+        var model = BehaviourLanguage.NewModel();
+        var function = Function(model, model.Roots[0]);
+        var nameOf = Body(model, function, BehaviourConceptKeys.NameOfPath, read: null);
+        var parent = Step(model, nameOf, BehaviourConceptKeys.PathParent);
+
+        Step(model, parent, BehaviourConceptKeys.PathNextSibling);
+
+        Assert.Equal(
+            """
+              behaviour for
+                name: name of parent.nextSibling
+            """,
+            LayoutSnapshot.Render(model, BehaviourNotations.Registry, width: 60));
+    }
+
+    /// <summary>One step of a path: the reading's own slot for the first, the chain's slot for any after it.</summary>
+    private static Node Step(Model model, Node owner, string conceptKey) =>
+        model.NewChild(
+            owner,
+            owner.Concept.Key is BehaviourConceptKeys.NameOfPath or BehaviourConceptKeys.IndexOfPath
+                ? BehaviourConceptKeys.PathSlot
+                : BehaviourConceptKeys.NextSlot,
+            conceptKey);
+
+    [Fact]
     public void AWhenFilledPartDrawsItsSlotAndThePartInBrackets()
     {
         var model = BehaviourLanguage.NewModel();

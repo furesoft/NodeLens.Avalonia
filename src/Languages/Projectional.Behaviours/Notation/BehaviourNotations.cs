@@ -34,6 +34,40 @@ public static class BehaviourNotations
     {
         ArgumentNullException.ThrowIfNull(notations);
 
+        notations.Add(BehaviourConceptKeys.NameOfPath, ed => ed.Line(
+            ed.Keyword("name"),
+            ed.Space,
+            ed.Keyword("of"),
+            ed.Space,
+            ed.ChildInline(BehaviourConceptKeys.PathSlot)));
+
+        notations.Add(BehaviourConceptKeys.IndexOfPath, ed => ed.Line(
+            ed.Keyword("index"),
+            ed.Space,
+            ed.Keyword("of"),
+            ed.Space,
+            ed.ChildInline(BehaviourConceptKeys.PathSlot)));
+
+        notations.Add(BehaviourConceptKeys.PathSelf, ed => ed.Line(ed.Keyword("self"), ed.WhenFilled(BehaviourConceptKeys.NextSlot, ed.Punct("."), ed.ChildInline(BehaviourConceptKeys.NextSlot))));
+
+        notations.Add(BehaviourConceptKeys.PathParent, ed => ed.Line(ed.Keyword("parent"), ed.WhenFilled(BehaviourConceptKeys.NextSlot, ed.Punct("."), ed.ChildInline(BehaviourConceptKeys.NextSlot))));
+
+        notations.Add(BehaviourConceptKeys.PathChild, ed => ed.Line(
+            ed.Keyword("child"),
+            ed.Space,
+            ed.Property(BehaviourConceptKeys.SlotSlot),
+            ed.WhenFilled(BehaviourConceptKeys.NextSlot, ed.Punct("."), ed.ChildInline(BehaviourConceptKeys.NextSlot))));
+
+        notations.Add(BehaviourConceptKeys.PathReference, ed => ed.Line(
+            ed.Keyword("reference"),
+            ed.Space,
+            ed.Property(BehaviourConceptKeys.SlotSlot),
+            ed.WhenFilled(BehaviourConceptKeys.NextSlot, ed.Punct("."), ed.ChildInline(BehaviourConceptKeys.NextSlot))));
+
+        notations.Add(BehaviourConceptKeys.PathNextSibling, ed => ed.Line(ed.Keyword("nextSibling"), ed.WhenFilled(BehaviourConceptKeys.NextSlot, ed.Punct("."), ed.ChildInline(BehaviourConceptKeys.NextSlot))));
+
+        notations.Add(BehaviourConceptKeys.PathPreviousSibling, ed => ed.Line(ed.Keyword("previousSibling"), ed.WhenFilled(BehaviourConceptKeys.NextSlot, ed.Punct("."), ed.ChildInline(BehaviourConceptKeys.NextSlot))));
+
         notations.Add(BehaviourConceptKeys.Document, ed => ed.Sequence(
             ed.Indent(ed.Sequence(
                 ed.Line(
