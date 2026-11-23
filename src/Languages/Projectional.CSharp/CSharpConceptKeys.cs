@@ -83,6 +83,39 @@ public static class CSharpConceptKeys
     /// <summary><c>target[index]</c>: the element at a position.</summary>
     public const string Index = "CSharp.Index";
 
+    /// <summary><c>node&lt;Concept&gt;</c>: a node, read as a concept.</summary>
+    public const string NodeType = "CSharp.NodeType";
+
+    /// <summary>What every read of a node has in common: a node, and what is read from it. Abstract.</summary>
+    public const string NodeRead = "CSharp.NodeRead";
+
+    /// <summary><c>node.name</c>: what the node is called.</summary>
+    public const string NodeName = "CSharp.NodeName";
+
+    /// <summary><c>node.parent</c>: the node that holds it.</summary>
+    public const string NodeParent = "CSharp.NodeParent";
+
+    /// <summary><c>node.index</c>: where it sits among its parent's children.</summary>
+    public const string NodeIndex = "CSharp.NodeIndex";
+
+    /// <summary><c>node.concept</c>: the key of the concept it is an instance of.</summary>
+    public const string NodeConcept = "CSharp.NodeConcept";
+
+    /// <summary><c>node/children/slot</c>: the children a list slot holds.</summary>
+    public const string NodeChildren = "CSharp.NodeChildren";
+
+    /// <summary><c>node/child/slot</c>: the child a single slot holds, if any.</summary>
+    public const string NodeChild = "CSharp.NodeChild";
+
+    /// <summary><c>node/property/slot</c>: a property's value, as written.</summary>
+    public const string NodeProperty = "CSharp.NodeProperty";
+
+    /// <summary><c>node/reference/slot</c>: what a reference points at, if it resolves.</summary>
+    public const string NodeReference = "CSharp.NodeReference";
+
+    /// <summary><c>node/resolveInfo/slot</c>: the text a reference fell back to.</summary>
+    public const string NodeResolveInfo = "CSharp.NodeResolveInfo";
+
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 

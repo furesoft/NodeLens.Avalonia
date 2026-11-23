@@ -59,7 +59,18 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.Conditional, new SameAs(CSharpLanguage.WhenTrueSlot))
         .Add(CSharpConceptKeys.Cast, new SameAs("type"))
         .Add(CSharpConceptKeys.Is, new Constant(Bool))
-        .Add(CSharpConceptKeys.As, new SameAs("type"));
+        .Add(CSharpConceptKeys.As, new SameAs("type"))
+
+        // What a read of a node answers, where the framework's node API answers with a type this language knows: a name
+        // and a concept key are text, a position is a whole number, and a property's value is the text it was written
+        // as. The rest is deliberately not claimed - a parent, a child, a reference target and a list of children are
+        // nodes, and there is no type in this language for "a node of some concept": `node<Atlas.Stop>` is what the
+        // editor says instead, and it is drawn rather than evaluated.
+        .Add(CSharpConceptKeys.NodeName, new Constant(Text))
+        .Add(CSharpConceptKeys.NodeIndex, new Constant(Whole))
+        .Add(CSharpConceptKeys.NodeConcept, new Constant(Text))
+        .Add(CSharpConceptKeys.NodeProperty, new Constant(Text))
+        .Add(CSharpConceptKeys.NodeResolveInfo, new Constant(Text));
 
     /// <summary>
     /// A written type, mapped to the primitive it names.

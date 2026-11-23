@@ -56,6 +56,9 @@ public static class CSharpLanguage
     /// <summary>The property holding the member a <c>MemberAccess</c> reads.</summary>
     public const string MemberSlot = "member";
 
+    /// <summary>The property holding the name of the slot a read of a node addresses.</summary>
+    public const string SlotNameSlot = "slot";
+
     /// <summary>The property holding whether a unary operator follows its operand.</summary>
     public const string IsPostfixSlot = "isPostfix";
 
@@ -336,6 +339,113 @@ public static class CSharpLanguage
             superConcepts: [CSharpConceptKeys.Expression],
             isRoot: false,
             description: "target[index]"),
+
+        // The node API. A behaviour is C# that runs on a node, so the base language has to be able to say two things a
+        // plain C# subset cannot: what a node is read *as*, and how what is *in* a node is read. The spelling is MPS's,
+        // and the split between its two halves is the point.
+        //
+        // A type carries the concept in angle brackets, `node<Atlas.Stop>`, which is the only place the editor says
+        // which concept a node is - the generator writes the one CLR type every node is, so the concept stays a fact
+        // the model holds and the editor draws rather than something the compiled code could be asked for. The
+        // inherited `name` property is where the concept is written; the notation puts it between the brackets, exactly
+        // as it puts a type reference's name where that one is written.
+        //
+        // Defaults are what a slot's value is when the user has not said anything, and the concept key is left unset
+        // for the same reason a type reference's name is: there is no concept a node type can assume.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeType,
+            [],
+            superConcepts: [CSharpConceptKeys.TypeReference],
+            isRoot: false,
+            description: "node<Concept>: a node, read as a concept."),
+
+        // Every read of a node is one concept or another, and they all take the node they read as a child slot - so the
+        // operand is declared once, here, and the nine reads differ in what they are called and what they take beside
+        // it. It extends Expression because a read produces a value: without this super, `node.name` could not stand
+        // where a string is expected, which is what a behaviour body does with it.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeRead,
+            [new ChildSlot(CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Expression, Cardinality.One)],
+            isAbstract: true,
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "A read of a node: the node, and what is read from it."),
+
+        // Four things a node has of its own, so the notation can be the dotted word MPS writes for them. There is no
+        // child slot for the name because a node is named by its concept's name function, not by a slot the behaviour
+        // could also write - reading is all a read does.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeName,
+            [],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node.name: what the node is called."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeParent,
+            [],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node.parent: the node that holds it."),
+
+        // A position, and the framework's own zero-based one: a behaviour that wants the number a reader counts with
+        // writes `node.index + 1`, which is C# saying what it does rather than the language adding one behind it.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeIndex,
+            [],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node.index: where the node sits among its parent's children, from zero."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeConcept,
+            [],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node.concept: the key of the concept the node is an instance of."),
+
+        // Five more that address a part of the node by the name the *concept* gave it. The slot is a property and not a
+        // reference, because what a behaviour may read is decided by the concept it belongs to and not by anything in
+        // the document a reference could resolve to - and a name this language cannot check is better as text than as
+        // a dangling pointer. Slashes on both sides are how MPS spells an addressed part: `node/children/stops` says
+        // which of the two it is with a word rather than with a method signature.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeChildren,
+            [new PropertySlot(SlotNameSlot, PropertyType.String, description: "The list slot the read addresses.")],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node/children/slot: the children a list slot holds."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeChild,
+            [new PropertySlot(SlotNameSlot, PropertyType.String, description: "The single slot the read addresses.")],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node/child/slot: the child a single slot holds."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeProperty,
+            [new PropertySlot(SlotNameSlot, PropertyType.String, description: "The property slot the read addresses.")],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node/property/slot: a property's value, as written."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeReference,
+            [new PropertySlot(SlotNameSlot, PropertyType.String, description: "The reference slot the read addresses.")],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node/reference/slot: what a reference points at."),
+
+        // A separate read from the target, because an unresolved reference *has* no target and the fallback text is
+        // the thing that survives - which is what a name function needs in order to keep naming a node after the
+        // document it came from stopped resolving.
+        new ConceptDeclaration(
+            CSharpConceptKeys.NodeResolveInfo,
+            [new PropertySlot(SlotNameSlot, PropertyType.String, description: "The reference slot the read addresses.")],
+            superConcepts: [CSharpConceptKeys.NodeRead],
+            isRoot: false,
+            description: "node/resolveInfo/slot: the text a reference fell back to."),
 
         // A file is the namespaces it imports and the namespace it declares. The imports come first because that is
         // where C# 10's file-scoped form puts them, and they are a list because a file usually needs more than one.
