@@ -516,6 +516,70 @@ public static class CSharpTextGenerators
 
         .Add(CSharpConceptKeys.NullLiteral, TextTemplate.Of(new TextPart("null")))
         .Add(CSharpConceptKeys.This, TextTemplate.Of(new TextPart("this")))
+        // The node API. Everything it generates is a call on the framework's own node type, which is what makes the
+        // generated half compilable against `Projectional.Core` and nothing else: a base language that emitted a helper
+        // class of its own would make every host reference that class.
+        //
+        // The type is written out in full rather than as `Node`. A generated file is compiled beside whatever usings the
+        // model declares, and the model is free to declare none, so a bare type name would compile only sometimes.
+        //
+        // The concept in the angle brackets generates nothing: every node is one CLR type, and the concept is a fact the
+        // model holds, not one the runtime answers.
+        .Add(CSharpConceptKeys.NodeType, TextTemplate.Of(new TextPart("Projectional.Core.Node")))
+
+        .Add(CSharpConceptKeys.NodeName, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".Name")))
+
+        .Add(CSharpConceptKeys.NodeParent, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".Parent")))
+
+        // The framework's own position, which is zero-based: adding one here would make `node.index + 1` say something
+        // other than what it reads like.
+        .Add(CSharpConceptKeys.NodeIndex, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".IndexInParent")))
+
+        .Add(CSharpConceptKeys.NodeConcept, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".Concept.Key")))
+
+        .Add(CSharpConceptKeys.NodeChildren, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".GetChildren(\""),
+            new PropertyPart(CSharpLanguage.SlotNameSlot),
+            new TextPart("\")")))
+
+        .Add(CSharpConceptKeys.NodeChild, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".GetChild(\""),
+            new PropertyPart(CSharpLanguage.SlotNameSlot),
+            new TextPart("\")")))
+
+        // The slot-addressed reads answer what the slot holds, so they are the ones that must not throw on a slot the
+        // node left empty: `GetOrNull` and `GetChild` answer nothing there, and a behaviour that can tell the
+        // difference is the reason they are not `Get`.
+        .Add(CSharpConceptKeys.NodeProperty, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".GetOrNull(\""),
+            new PropertyPart(CSharpLanguage.SlotNameSlot),
+            new TextPart("\")")))
+
+        .Add(CSharpConceptKeys.NodeReference, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".GetReferenceTarget(\""),
+            new PropertyPart(CSharpLanguage.SlotNameSlot),
+            new TextPart("\")")))
+
+        // The reference itself, then its fallback: a reference that resolves may still carry the text it was written
+        // with, and that text is what a name falls back to.
+        .Add(CSharpConceptKeys.NodeResolveInfo, TextTemplate.Of(
+            new ChildPart(CSharpConceptKeys.OperandSlot),
+            new TextPart(".GetReference(\""),
+            new PropertyPart(CSharpLanguage.SlotNameSlot),
+            new TextPart("\")?.ResolveInfo")))
+
         .Add(CSharpConceptKeys.Index, TextTemplate.Of(
             new ChildPart(CSharpConceptKeys.TargetSlot),
             new TextPart("["),

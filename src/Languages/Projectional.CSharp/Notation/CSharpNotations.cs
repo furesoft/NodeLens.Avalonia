@@ -172,6 +172,71 @@ public static class CSharpNotations
             ed.ChildInline(CSharpConceptKeys.IndexSlot),
             ed.Punct("]")));
 
+        // The node API, in the shape MPS writes it: a type carries the concept between angle brackets, a thing the
+        // node has of its own is a dotted word, and a part addressed by the slot's name uses a slash on either side of
+        // the word that says which read it is. The two forms of read are deliberately told apart by punctuation rather
+        // than by their spelling alone, because one of them takes a name and the other does not.
+        notations.Add(CSharpConceptKeys.NodeType, ed => ed.Line(
+            ed.Keyword("node"),
+            ed.Punct("<"),
+            ed.Property(CSharpLanguage.NameSlot),
+            ed.Punct(">")));
+
+        notations.Add(CSharpConceptKeys.NodeName, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("."),
+            ed.Keyword("name")));
+
+        notations.Add(CSharpConceptKeys.NodeParent, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("."),
+            ed.Keyword("parent")));
+
+        notations.Add(CSharpConceptKeys.NodeIndex, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("."),
+            ed.Keyword("index")));
+
+        notations.Add(CSharpConceptKeys.NodeConcept, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("."),
+            ed.Keyword("concept")));
+
+        notations.Add(CSharpConceptKeys.NodeChildren, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("/"),
+            ed.Keyword("children"),
+            ed.Punct("/"),
+            ed.Property(CSharpLanguage.SlotNameSlot)));
+
+        notations.Add(CSharpConceptKeys.NodeChild, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("/"),
+            ed.Keyword("child"),
+            ed.Punct("/"),
+            ed.Property(CSharpLanguage.SlotNameSlot)));
+
+        notations.Add(CSharpConceptKeys.NodeProperty, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("/"),
+            ed.Keyword("property"),
+            ed.Punct("/"),
+            ed.Property(CSharpLanguage.SlotNameSlot)));
+
+        notations.Add(CSharpConceptKeys.NodeReference, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("/"),
+            ed.Keyword("reference"),
+            ed.Punct("/"),
+            ed.Property(CSharpLanguage.SlotNameSlot)));
+
+        notations.Add(CSharpConceptKeys.NodeResolveInfo, ed => ed.Line(
+            ed.ChildInline(CSharpConceptKeys.OperandSlot),
+            ed.Punct("/"),
+            ed.Keyword("resolveInfo"),
+            ed.Punct("/"),
+            ed.Property(CSharpLanguage.SlotNameSlot)));
+
         // A namespace, in either of C# 10's two forms, each spelled out in its own group of rows: the file-scoped one
         // ends the header with a semicolon and puts the classes at the same level, the block one opens a brace, moves
         // them in and closes it. The group the model did not choose leaves no row at all, which is what a conditional

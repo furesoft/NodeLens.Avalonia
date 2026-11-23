@@ -9,8 +9,8 @@ its own language and its own folder: `Projectional.Behaviours` declares the `beh
 (`BehaviourLanguage`), its notation (`BehaviourNotations`) and the lowering that answers the delegate a declaration
 takes (`BehaviourLowering`), and `LanguageProject` reads a `behaviour` folder before it builds the concept registry,
 so `behaviour for Atlas.Stop` is what a reference to a stop shows. What is **not** started: `Describe`, the samples
-and the parity test beyond the one the atlas carries, and the override finding. Further behaviour work is
-deliberately deferred.
+and the parity test beyond the one the atlas carries. Further behaviour work follows **Decided: a behaviour
+is C#** below rather than the declarative list alone.
 
 The nine consumers no longer each ask the slot: a reference cell (`EditorTreeBuilder`), sort by name (`ChildOrder`),
 the outline, the problems panel, the usages header, the scope index (`NameIndex`), ambiguity
@@ -244,6 +244,35 @@ which concept this one inherits from, and the registry already knows.
 | B2 | `Describe` with the two consumers (a trace row, a constraint message that interpolates it), only if both adopt it | 3-4 days |
 | B3 | `Projectional.Samples` and `samples/declared-pipeline` grow one behaviour each, proving the declared path, plus a parity test that a C# lambda and a declared body answer the same name for every node of the corpus | 3-4 days |
 | B4 | The override finding, and an intention that removes a redeclaration. A cycle the declarations show is **not** on this list: it is document-bounded and must not be refused (see Bounded above) | 2 days |
+
+## Decided: a behaviour is C#
+
+The declarative vocabulary above is the **simple default**, not the end state. The target is MPS' own
+shape: a concept's behaviour is **C# with bodies** - a constructor, a `virtual`/`abstract` method, real
+logic - and the C# text generator emits it into the `partial class` the host's other half merges with.
+`CSharp.Behaviour` and `CSharpBehaviourCompilationTests` are that seam, and the whole reason it can be
+C# rather than a second interpreter is that the C# base language now carries the **node API**
+(`docs/architecture/csharp.md`, "The node API"): `node<Concept>` as a type, and the nine reads
+(`name`, `parent`, `index`, `concept`, `children`, `child`, `property`, `reference`, `resolveInfo`) that
+answer what a name function ever needed, generated as `Projectional.Core`'s own members so a behaviour
+compiles against nothing else.
+
+What follows from the decision, in order:
+
+1. **Bind the generated class to the declaration.** A method of a `CSharp.Behaviour` becomes the
+   concept's `nameOf` delegate, so a language can choose per concept between the declarative body and a
+   C# method - and a C# method always wins, because it is the general form.
+2. **`Describe` (B2)** as the first real C# behaviour rather than the first declarative one
+   (`getTextualRepresentation()` is exactly it), which is also what gives the two consumers something to
+   interpolate.
+3. **Retire the declarative document** once the above carries the atlas sample without it: the folder,
+   `Projectional.Behaviours` and the `NameBody` vocabulary stay until a language has been written
+   entirely in C# behaviours, because deleting the simpler form before the general one works would leave
+   `nameOf:` with no authoring path at all.
+
+The nine reads are the vocabulary a *name* needed; a C# behaviour can say more, and that is the point of
+choosing the general form - a predicate over `node.concept`, a sort key, a value in a generator, an
+on-create default. The declarative language would have needed one part per idea; the C# body needs none.
 
 ## Non-goals
 
