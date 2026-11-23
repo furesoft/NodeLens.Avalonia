@@ -1165,6 +1165,97 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void ARecordDrawsItsThreeFormsAndGeneratesThem()
+    {
+        // A record is a class with two things a class does not have: a positional parameter list that becomes its
+        // properties, and a body that is optional. `record Point(int X, int Y);` ends in a semicolon; the same record with
+        // members ends in braces; and one keyword apart from the first is a `record struct`. The first two are one
+        // property (`hasBody`) because they hold the same slots and differ in one symbol - unlike a signature beside a
+        // method, which hold different slots and are therefore two concepts.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("records");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+
+        // public record Point(int X, int Y);
+        var point = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Record);
+        Coordinates(model, point, "Point");
+
+        // public record pair(int X, int Y) { public int Sum() { return X + Y; } }
+        var named = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Record);
+        Coordinates(model, named, "Pair");
+        named.Set(CSharpLanguage.HasBodySlot, true);
+        var sum = model.NewChild(named, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(sum, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(sum, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var add = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Binary);
+        var left = model.NewChild(add, "left", CSharpConceptKeys.Name);
+        var right = model.NewChild(add, "right", CSharpConceptKeys.Name);
+
+        sum.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        sum.Set(CSharpLanguage.NameSlot, "Sum");
+        returnType.Set(CSharpLanguage.NameSlot, "int");
+        add.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.Add);
+
+        // The record's own parameters are declarations, so the body reads them through the one scope rule the language
+        // states - a record adds no second rule for its primary constructor.
+        var primary = named.GetChildren(CSharpConceptKeys.ParametersSlot);
+
+        left.SetReference(CSharpConceptKeys.TargetSlot, primary[0]);
+        right.SetReference(CSharpConceptKeys.TargetSlot, primary[1]);
+
+        // public record struct Money(int Amount);
+        var money = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Record);
+        var amount = model.NewChild(money, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var amountType = model.NewChild(amount, "type", CSharpConceptKeys.TypeReference);
+
+        money.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        money.Set(CSharpLanguage.IsStructSlot, true);
+        money.Set(CSharpLanguage.NameSlot, "Money");
+        amount.Set(CSharpLanguage.NameSlot, "Amount");
+        amountType.Set(CSharpLanguage.NameSlot, "int");
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public record Point(int X, int Y);
+
+              public record Pair(int X, int Y)
+              {
+                public int Sum()
+                {
+                  return X + Y;
+                }
+              }
+
+              public record struct Money(int Amount);
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    /// <summary>A positional record's two parameters, which is what makes it a record rather than a class.</summary>
+    private static void Coordinates(Model model, Node record, string name)
+    {
+        foreach (var coordinate in new[] { "X", "Y" })
+        {
+            var parameter = model.NewChild(record, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+            var type = model.NewChild(parameter, "type", CSharpConceptKeys.TypeReference);
+
+            parameter.Set(CSharpLanguage.NameSlot, coordinate);
+            type.Set(CSharpLanguage.NameSlot, "int");
+        }
+
+        record.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        record.Set(CSharpLanguage.NameSlot, name);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

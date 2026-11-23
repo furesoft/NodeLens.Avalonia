@@ -41,6 +41,12 @@ public static class CSharpLanguage
     /// <summary>The property holding whether a class or a method is static.</summary>
     public const string IsStaticSlot = "isStatic";
 
+    /// <summary>The property holding whether a record is a <c>record struct</c> rather than a <c>record class</c>.</summary>
+    public const string IsStructSlot = "isStruct";
+
+    /// <summary>The property holding whether a record writes its members between braces rather than ending in <c>;</c>.</summary>
+    public const string HasBodySlot = "hasBody";
+
     /// <summary>The property holding whether a namespace is declared for the rest of the file.</summary>
     public const string IsFileScopedSlot = "isFileScoped";
 
@@ -594,6 +600,34 @@ public static class CSharpLanguage
             nameRule: NameRule.Pascal,
             isRoot: false,
             description: "A class: what it inherits and its members, in the order they were written."),
+
+        // A record, which is a class with two things a class does not have: a positional parameter list that becomes its
+        // properties, and a body that is optional - `record Point(int X, int Y);` ends in a semicolon, and the same
+        // record with members ends in braces. That choice is a property (`hasBody`) and not a second concept, unlike a
+        // signature beside a method: there the two hold *different slots*, and here they hold the same ones and differ in
+        // one symbol. It is the shape `Property` already has (`hasBodies`), including its cost - members written while
+        // the semicolon form holds are kept and not drawn, the way `var` keeps the type it hides.
+        //
+        // The parameters are `Parameter` nodes and not `LambdaParameter` ones, because a primary constructor *does*
+        // declare its types: `record Point(int X, int Y)`. Its type is not claimed - a `TypeReference` naming the record
+        // is unknown like a class's - and no scope work was needed: a record's parameters are declarations the body sees
+        // through the one rule the language states.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Record,
+            [
+                new PropertySlot(VisibilitySlot, VisibilityType, CSharpVisibility.Internal),
+                new PropertySlot(IsStructSlot, PropertyType.Boolean, "false", "Whether this is a `record struct`."),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The record's name."),
+                new ChildSlot(CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.InheritanceSlot, CSharpConceptKeys.Inheritance, Cardinality.One, minimum: 0),
+                new PropertySlot(HasBodySlot, PropertyType.Boolean, "false", "Whether the members are written between braces."),
+                new ChildSlot(CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Member, Cardinality.Many),
+            ],
+            superConcepts: [CSharpConceptKeys.TypeDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Pascal,
+            isRoot: false,
+            description: "A record: the parameters it carries, and its members when it writes them."),
 
         // An interface holds signatures, which is why the method's body is optional: the same concept serves a class and
         // an interface, and the rule that reports a bodyless method skips the one place it is the point.

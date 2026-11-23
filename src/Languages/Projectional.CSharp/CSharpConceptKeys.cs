@@ -149,6 +149,9 @@ public static class CSharpConceptKeys
     /// <summary>A class: its fields and its methods, in the order they were written.</summary>
     public const string Class = "CSharp.Class";
 
+    /// <summary>A record: the parameters it carries, and its members when it writes them.</summary>
+    public const string Record = "CSharp.Record";
+
     /// <summary>A type a namespace holds: a class, an interface or an enum. Abstract.</summary>
     public const string TypeDeclaration = "CSharp.TypeDeclaration";
 
