@@ -704,7 +704,10 @@ public sealed class LanguageProject
             // because it is the general form - but only the compiled language can run it, so the export is where the
             // binding is written down and the editor keeps answering with the declarative name.
             var behaviour = LowerBehaviour([.. behaviourRoots.Where(root => root.Concept.IsKindOf(BehaviourConceptKeys.Document))], inheritedDeclarations, declarations);
-            var csharp = BindBehaviour([.. behaviourRoots.Where(root => root.Concept.IsKindOf(CSharpConceptKeys.File))], declarations);
+            var csharp = BindBehaviour(
+                [.. behaviourRoots.Where(root => root.Concept.IsKindOf(CSharpConceptKeys.File))],
+                declarations,
+                StructureLowering.Enumerations(definitions));
             var names = behaviour.Names;
 
             // The declarations the registry is built from, and therefore the ones a language that depends on this one
@@ -1225,7 +1228,8 @@ public sealed class LanguageProject
     /// </exception>
     private static CSharpBehaviourAspect BindBehaviour(
         List<Node> documents,
-        IReadOnlyList<ConceptDeclaration> declarations)
+        IReadOnlyList<ConceptDeclaration> declarations,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> enumerations)
     {
         if (documents.Count == 0)
         {
@@ -1234,6 +1238,11 @@ public sealed class LanguageProject
 
         Dictionary<string, string> names = new(StringComparer.Ordinal);
         List<LanguageWarning> warnings = [];
+
+        foreach (var root in documents)
+        {
+            CloseEnumerationNames(root, enumerations);
+        }
 
         foreach (var (behaviour, space) in Behaviours(documents))
         {
@@ -1310,6 +1319,87 @@ public sealed class LanguageProject
 
     /// <summary>The method whose name the framework reads as "this is how the concept is called".</summary>
     private const string NameMethod = "Name";
+
+    /// <summary>
+    /// Closes the enumeration names a C# behaviour uses against the enumerations <c>structure</c> declares.
+    /// </summary>
+    /// <param name="document">One <c>CSharp.File</c> document of the <c>behaviour</c> folder.</param>
+    /// <param name="enumerations">The language's declared enumerations and their symbols, by key.</param>
+    /// <remarks>
+    /// <para>
+    /// A symbol of a language's enumeration is stored as text - <c>Node.GetOrNull</c> answers a <c>string</c> - so a
+    /// behaviour names it as text, and nothing in the C# language could check it. This is where it is checked: the name
+    /// is resolved against the language that declares the enumeration, which is the layer that has both.
+    /// </para>
+    /// <para>
+    /// A refusal rather than a warning, because a symbol that does not exist compiles into a comparison that can never
+    /// be true - the one kind of mistake a compiler cannot catch when the value is a string, and therefore the one this
+    /// layer has to.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ConceptDefinitionException">
+    /// A value names an enumeration this language does not declare, or a symbol that enumeration does not offer.
+    /// </exception>
+    private static void CloseEnumerationNames(
+        Node document,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> enumerations)
+    {
+        foreach (var node in All(document))
+        {
+            if (node.Concept.IsKindOf(CSharpConceptKeys.EnumMemberType))
+            {
+                Named(node.GetOrNull(CSharpLanguage.NameSlot), symbols => symbols.Count > 0, "type");
+
+                continue;
+            }
+
+            if (!node.Concept.IsKindOf(CSharpConceptKeys.EnumValue))
+            {
+                continue;
+            }
+
+            var key = node.GetOrNull(CSharpLanguage.EnumSlot);
+            var symbols = Named(key, symbols => symbols.Count > 0, "value");
+            var member = node.GetOrNull(CSharpLanguage.MemberSlot) ?? string.Empty;
+
+            if (!symbols.Contains(member, StringComparer.Ordinal))
+            {
+                throw new ConceptDefinitionException(
+                    $"'{member}' is not a symbol of the enumeration '{key}' this language declares, so 'enum/{key}/.{member}' can never match a property value.");
+            }
+        }
+
+        // One rule for both forms: an `enummember<X>` and an `enum/X/.Y` name the same enumeration the same way, so a
+        // name neither could resolve is reported once, with the spelling that was used.
+        IReadOnlyList<string> Named(string? key, Func<IReadOnlyList<string>, bool> exists, string form)
+        {
+            if (string.IsNullOrWhiteSpace(key) || !enumerations.TryGetValue(key, out var symbols) || !exists(symbols))
+            {
+                throw new ConceptDefinitionException(
+                    $"The {form} names the enumeration '{key}', which this language does not declare; a behaviour written in C# may only use the enumerations its own 'structure' folder declares.");
+            }
+
+            return symbols;
+        }
+    }
+
+    /// <summary>One node and everything below it, in document order.</summary>
+    /// <remarks>
+    /// Walked here rather than asked of the core, because the core's own walk is internal and this layer is not on its
+    /// friend list - the smaller answer is four lines, and reaching across an assembly boundary for it would be worse.
+    /// </remarks>
+    private static IEnumerable<Node> All(Node node)
+    {
+        yield return node;
+
+        foreach (var child in node.ChildrenInDocumentOrder())
+        {
+            foreach (var descendant in All(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
 
     /// <summary>The answer for a language that names none of its concepts in C#, which is the ordinary case.</summary>
     private static readonly IReadOnlyDictionary<string, string> NoNameMethods =

@@ -527,6 +527,18 @@ public static class CSharpTextGenerators
         // model holds, not one the runtime answers.
         .Add(CSharpConceptKeys.NodeType, TextTemplate.Of(new TextPart("Projectional.Core.Node")))
 
+        // Both name an enumeration of the language being defined, and a symbol of one is stored as text - `Node`'s
+        // property answer is a `string` - so the type is `string` and the value is the symbol's name as a literal. That
+        // is not a loss of meaning: the *model* says which enumeration and which symbol, which is what the definition
+        // layer checks and what completion offers, and C# only ever needs the text.
+        .Add(CSharpConceptKeys.EnumMemberType, TextTemplate.Of(new TextPart("string")))
+
+        // `enum/WeekDays/.Thu` is the editor's spelling of that text; C# writes the symbol's name and nothing else.
+        .Add(CSharpConceptKeys.EnumValue, TextTemplate.Of(
+            new TextPart("\""),
+            new PropertyPart(CSharpLanguage.MemberSlot),
+            new TextPart("\"")))
+
         .Add(CSharpConceptKeys.NodeName, TextTemplate.Of(
             new ChildPart(CSharpConceptKeys.OperandSlot),
             new TextPart(".Name")))

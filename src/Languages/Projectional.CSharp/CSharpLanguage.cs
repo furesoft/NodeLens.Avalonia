@@ -53,8 +53,11 @@ public static class CSharpLanguage
     /// <summary>The property holding a literal's text.</summary>
     public const string ValueProperty = "value";
 
-    /// <summary>The property holding the member a <c>MemberAccess</c> reads.</summary>
+    /// <summary>The property holding the member a <c>MemberAccess</c> reads, or the symbol an <c>EnumValue</c> names.</summary>
     public const string MemberSlot = "member";
+
+    /// <summary>The property holding the enumeration an <c>EnumValue</c> names, as the key <c>structure</c> declares it by.</summary>
+    public const string EnumSlot = "enum";
 
     /// <summary>The property holding the name of the slot a read of a node addresses.</summary>
     public const string SlotNameSlot = "slot";
@@ -358,6 +361,38 @@ public static class CSharpLanguage
             superConcepts: [CSharpConceptKeys.TypeReference],
             isRoot: false,
             description: "node<Concept>: a node, read as a concept."),
+
+        // The other half of MPS's vocabulary, and both halves name an ***enumeration of the language being defined***,
+        // not a C# enum: `structure/` declares them, the registry carries them only as a property's allowed symbols, and
+        // at run time a symbol *is* text - `Node.GetOrNull("day")` answers "Thu". So these two concepts are the model's
+        // way of saying "one symbol of the enumeration the language declares", and what they generate is a string.
+        //
+        // That is also why the enumeration is named as **text** and not as a reference: an enumeration lives in a
+        // `structure/` document of the language project, and a `behaviour` document is loaded in a project of its own,
+        // so there is no node here to point at. The name is closed again where both are known - `LanguageProject`
+        // refuses a behaviour that names an enumeration or a symbol the folder does not declare, which is the check a
+        // reference would have given.
+        //
+        // The name in the brackets is the inherited `name` property, exactly as it is for a node type: the enumeration
+        // is written where every type reference writes its name, which is why this concept needs no slot of its own.
+        new ConceptDeclaration(
+            CSharpConceptKeys.EnumMemberType,
+            [],
+            superConcepts: [CSharpConceptKeys.TypeReference],
+            isRoot: false,
+            description: "enummember<Enum>: one value of an enumeration of this language."),
+
+        // The value itself, addressed the way MPS addresses a member: the enumeration, then the symbol. Two properties
+        // rather than two references for the reason above; both are text the definition layer resolves.
+        new ConceptDeclaration(
+            CSharpConceptKeys.EnumValue,
+            [
+                new PropertySlot(EnumSlot, PropertyType.String, description: "The enumeration's key, as `structure` declares it."),
+                new PropertySlot(MemberSlot, PropertyType.String, description: "One symbol the enumeration offers."),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "enum/Enum/.Member: one symbol of an enumeration of this language."),
 
         // Every read of a node is one concept or another, and they all take the node they read as a child slot - so the
         // operand is declared once, here, and the nine reads differ in what they are called and what they take beside

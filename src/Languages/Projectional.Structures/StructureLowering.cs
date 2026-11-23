@@ -150,7 +150,14 @@ public static class StructureLowering
     }
 
     /// <summary>The declared enumerations, keyed by name, so a property can be declared over one.</summary>
-    private static Dictionary<string, IReadOnlyList<string>> Enumerations(IReadOnlyList<Node> roots)
+    /// <remarks>
+    /// Public because a second reader needs the same answer: a behaviour written in C# names an enumeration of the
+    /// language by text, and closing that name again - refusing one the folder does not declare, or a symbol the
+    /// enumeration does not offer - is exactly this map. It is one function rather than two walks for the reason
+    /// <see cref="Lower"/> gives: two would eventually disagree about what an enumeration is.
+    /// </remarks>
+    /// <exception cref="ConceptDefinitionException">An enumeration declares no symbol, or one key is declared twice.</exception>
+    public static Dictionary<string, IReadOnlyList<string>> Enumerations(IReadOnlyList<Node> roots)
     {
         var enums = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 

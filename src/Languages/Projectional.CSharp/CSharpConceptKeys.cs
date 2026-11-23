@@ -86,6 +86,12 @@ public static class CSharpConceptKeys
     /// <summary><c>node&lt;Concept&gt;</c>: a node, read as a concept.</summary>
     public const string NodeType = "CSharp.NodeType";
 
+    /// <summary><c>enummember&lt;Enum&gt;</c>: one value of an enumeration of the language being defined.</summary>
+    public const string EnumMemberType = "CSharp.EnumMemberType";
+
+    /// <summary><c>enum/Enum/.Member</c>: one symbol of an enumeration of the language being defined.</summary>
+    public const string EnumValue = "CSharp.EnumValue";
+
     /// <summary>What every read of a node has in common: a node, and what is read from it. Abstract.</summary>
     public const string NodeRead = "CSharp.NodeRead";
 

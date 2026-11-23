@@ -298,6 +298,54 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Contains("'Doc.Nope' is not a concept of this language", error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ACSharpBehaviourClosesItsEnumerationNamesAgainstTheLanguageItDefines()
+    {
+        // The point the two enum concepts exist for: the names refer to enumerations of the language *being defined*.
+        // `structure/` declares `Doc.WeekDays`, the behaviour names `enum/Doc.WeekDays/.Thu`, and what the name means
+        // is decided here - not by C#, which only ever sees the symbol as text.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link", enumeration: "Doc.WeekDays", symbol: "Thu");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+        Assert.Equal("Sample.LinkBehaviour.Name", language.CSharpNames["Doc.Link"]);
+    }
+
+    [Fact]
+    public void ACSharpBehaviourThatNamesAnEnumerationTheLanguageDoesNotDeclareIsRefused()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link", enumeration: "Doc.Weekday", symbol: "Thu");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains("names the enumeration 'Doc.Weekday', which this language does not declare", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACSharpBehaviourThatNamesASymbolItsEnumerationDoesNotOfferIsRefused()
+    {
+        // A symbol is text once it is generated, so a wrong one compiles into a comparison that can never be true -
+        // the one mistake a compiler cannot catch, and therefore the one this layer has to.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link", enumeration: "Doc.WeekDays", symbol: "Tursday");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains("is not a symbol of the enumeration 'Doc.WeekDays'", error, StringComparison.Ordinal);
+    }
+
     private static void WriteStructure(string directory)
     {
         var definition = new DefinitionBuilder();
@@ -306,6 +354,7 @@ public sealed class LanguageProjectBehaviourTests
         definition.Concept("Doc.Link", slots: [definition.Reference("to", "Doc.Item")]);
         definition.Concept("Doc.Spot", slots: [definition.Reference("to", "Doc.Item")], isAbstract: true);
         definition.Concept("Doc.Place", supers: ["Doc.Spot"]);
+        definition.Enumeration("Doc.WeekDays", "Mon", "Thu");
 
         var structure = Path.Combine(directory, LanguageProject.StructureFolder);
 
@@ -314,6 +363,7 @@ public sealed class LanguageProjectBehaviourTests
         ModelFile.Save(definition.Documents[1], Path.Combine(structure, "Doc.Link.mps"));
         ModelFile.Save(definition.Documents[2], Path.Combine(structure, "Doc.Spot.mps"));
         ModelFile.Save(definition.Documents[3], Path.Combine(structure, "Doc.Place.mps"));
+        ModelFile.Save(definition.Documents[4], Path.Combine(structure, "Doc.WeekDays.mps"));
     }
 
     private static void WriteBehaviour(string directory, string conceptKey, string slot, string file = "link")
@@ -337,13 +387,20 @@ public sealed class LanguageProjectBehaviourTests
 
     /// <summary>
     /// The same folder's other form: a C# behaviour class that names <paramref name="conceptKey"/> after what the node
-    /// API says about the node itself.
+    /// API says about the node itself - or, when an enumeration is named, after a symbol of it.
     /// </summary>
     /// <remarks>
     /// The body is <c>return node.concept;</c> - one read of the node API - because it is the one answer that cannot be
     /// mistaken for the declarative body's: the name of the node a reference reaches, against a fact about the node.
+    /// With <paramref name="enumeration"/>, the body is <c>return enum/…/…;</c> instead, which is what the definition
+    /// layer has to close against a `structure` enumeration.
     /// </remarks>
-    private static void WriteCSharpBehaviour(string directory, string conceptKey, string file = "csharp")
+    private static void WriteCSharpBehaviour(
+        string directory,
+        string conceptKey,
+        string file = "csharp",
+        string? enumeration = null,
+        string symbol = "Thu")
     {
         var model = new Project(CSharpLanguage.Concepts).NewModel("behaviour");
         var root = model.NewNode(CSharpConceptKeys.File);
@@ -355,8 +412,6 @@ public sealed class LanguageProjectBehaviourTests
         var nodeType = model.NewChild(parameter, "type", CSharpConceptKeys.NodeType);
         var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
         var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
-        var concept = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.NodeConcept);
-        var operand = model.NewChild(concept, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
 
         space.Set(CSharpLanguage.NameSlot, "Sample");
         behaviour.Set(CSharpConceptKeys.ConceptKeySlot, conceptKey);
@@ -367,7 +422,21 @@ public sealed class LanguageProjectBehaviourTests
         returnType.Set(CSharpLanguage.NameSlot, "string");
         nodeType.Set(CSharpLanguage.NameSlot, "Doc.Item");
         parameter.Set(CSharpLanguage.NameSlot, "node");
-        operand.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+
+        if (enumeration is null)
+        {
+            var concept = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.NodeConcept);
+            var operand = model.NewChild(concept, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+
+            operand.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+        }
+        else
+        {
+            var value = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.EnumValue);
+
+            value.Set(CSharpLanguage.EnumSlot, enumeration);
+            value.Set(CSharpLanguage.MemberSlot, symbol);
+        }
 
         model.AddRoot(root);
 

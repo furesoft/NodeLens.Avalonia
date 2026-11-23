@@ -182,6 +182,23 @@ public static class CSharpNotations
             ed.Property(CSharpLanguage.NameSlot),
             ed.Punct(">")));
 
+        // The enum pair. Both name an enumeration of the *language being defined*, so both generate text: a symbol is
+        // stored as its name, and that is what a behaviour compares against. A member type is drawn in the brackets MPS
+        // uses for it; a member value is addressed with slashes, and the dot in front of the symbol is MPS's way of
+        // saying "inside that enumeration".
+        notations.Add(CSharpConceptKeys.EnumMemberType, ed => ed.Line(
+            ed.Keyword("enummember"),
+            ed.Punct("<"),
+            ed.Property(CSharpLanguage.NameSlot),
+            ed.Punct(">")));
+
+        notations.Add(CSharpConceptKeys.EnumValue, ed => ed.Line(
+            ed.Keyword("enum"),
+            ed.Punct("/"),
+            ed.Property(CSharpLanguage.EnumSlot),
+            ed.Punct("/."),
+            ed.Property(CSharpLanguage.MemberSlot)));
+
         notations.Add(CSharpConceptKeys.NodeName, ed => ed.Line(
             ed.ChildInline(CSharpConceptKeys.OperandSlot),
             ed.Punct("."),
