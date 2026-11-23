@@ -32,6 +32,11 @@ namespace Projectional.Core.Tests;
 /// decision.
 /// </para>
 /// <para>
+/// A function needs a second fragment - its body, with the signature the host writes, because the language declares no
+/// return type - so it has a test of its own rather than a corpus row. Records are not reachable from here at all: a
+/// record is a value the evaluation-rule language produces, not an expression a rule's condition can hold.
+/// </para>
+/// <para>
 /// Both divergences the gate found are fixed and covered. <c>^</c> is a power in <see cref="OperatorSemantics"/> and
 /// XOR in C#, so the fragment maps it to <c>Math.Pow</c> through a conditional part - the one symbol whose generated
 /// <em>shape</em> differs from the way it is written - and a negative exponent is the residual recorded under Risks in
@@ -112,6 +117,68 @@ public sealed class RulesGenerationParityTests
         Assert.Empty(mismatches);
     }
 
+    /// <summary>
+    /// A rule whose condition calls a function: the interpreter resolves the call to the function document, and the
+    /// generated text has to run the same body.
+    /// </summary>
+    /// <remarks>
+    /// A function declares no return type, so the host writes the signature - the same division of labour the ruleset's
+    /// method already has, where the framework generates the body and the host says what it is a body of.
+    /// </remarks>
+    [Fact]
+    public void AGeneratedCallRunsTheFunctionTheInterpreterRan()
+    {
+        var model = RulesLanguage.NewProject().NewModel("call");
+        var ruleset = Ruleset(model, "Calling");
+        var rule = Rule(model, ruleset, "Large", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", ">");
+        var call = model.NewChild(condition, "left", ExpressionsConceptKeys.Call);
+        Name(model, call, ExpressionsLanguage.ArgumentsSlot, "amount");
+        Int(model, condition, "right", 100);
+
+        var function = model.NewNode(ExpressionsConceptKeys.Function);
+        function.Set("name", "Square");
+        model.AddRoot(function);
+        var parameter = model.NewChild(function, ExpressionsLanguage.ParametersSlot, ExpressionsConceptKeys.Parameter);
+        parameter.Set("name", "x");
+        var body = Binary(model, function, "body", "^");
+        Name(model, body, "left", "x");
+        Int(model, body, "right", 2);
+
+        call.SetReference("callee", function);
+
+        var interpreted = new Interpreter(RulesEvaluation.Registry)
+            .Run(ruleset, Variables(("amount", new IntValue(11))), cancellationToken: TestContext.Current.CancellationToken);
+
+        // 11 squared is 121, which is above the bound.
+        Assert.Equal(new StringValue(RuleOutcomes.Accept), interpreted.Value);
+
+        var generated = new Generator().Generate(ruleset, RulesTextGenerators.CSharp);
+        var generatedBody = new Generator().Generate(function, RulesTextGenerators.CSharp);
+
+        Assert.True(generated.Succeeded, "the ruleset generates");
+        Assert.True(generatedBody.Succeeded, "the function generates");
+
+        var source = string.Join(
+            '\n',
+            "public static class Rules",
+            "{",
+            $"  static int Square(int x) => {generatedBody.Text};",
+            "  public static string Decide(int amount)",
+            "  {",
+            generated.Text,
+            "    throw new System.InvalidOperationException(\"No rule matched, so the ruleset has no outcome.\");",
+            "  }",
+            "}");
+
+        var assembly = AssemblyCompiler.Compile("RulesCallParity", source);
+
+        var type = Assembly.Load(assembly.Bytes).GetType("Rules", throwOnError: true)!;
+
+        Assert.Equal(RuleOutcomes.Accept, type.GetMethod("Decide")!.Invoke(null, [11]));
+    }
+
     /// <summary>Wraps the generated fragment in the host's method, compiles it and invokes it.</summary>
     private static object? Invoke(ParityCase each, string fragment, int index)
     {
@@ -136,25 +203,32 @@ public sealed class RulesGenerationParityTests
     }
 
     /// <summary>The values the interpreter is bound with, in the order the signature declares them.</summary>
-    private static Dictionary<string, Value> Bindings(ParityCase each)
+    private static Dictionary<string, Value> Bindings(ParityCase each) =>
+        Variables([.. each.Parameters.Select(parameter => (parameter.Name, AsValue(parameter.Value)))]);
+
+    /// <summary>The values one run binds, named as the host's method names its parameters.</summary>
+    private static Dictionary<string, Value> Variables(params (string Name, Value Value)[] variables)
     {
         Dictionary<string, Value> bindings = new(StringComparer.Ordinal);
 
-        foreach (var parameter in each.Parameters)
+        foreach (var (name, value) in variables)
         {
-            bindings[parameter.Name] = parameter.Value switch
-            {
-                int number => new IntValue(number),
-                bool truth => new BoolValue(truth),
-                string text => new StringValue(text),
-                DateOnly date => new DateValue(date),
-                _ => throw new InvalidOperationException(
-                    $"The corpus has no interpreter value for '{parameter.Value.GetType().Name}'."),
-            };
+            bindings[name] = value;
         }
 
         return bindings;
     }
+
+    /// <summary>The interpreter's value for a corpus argument.</summary>
+    private static Value AsValue(object value) => value switch
+    {
+        int number => new IntValue(number),
+        bool truth => new BoolValue(truth),
+        string text => new StringValue(text),
+        DateOnly date => new DateValue(date),
+        _ => throw new InvalidOperationException(
+            $"The corpus has no interpreter value for '{value.GetType().Name}'."),
+    };
 
     private static string Show(string? outcome) => outcome is null ? "no decision" : $"\"{outcome}\"";
 
@@ -179,6 +253,7 @@ public sealed class RulesGenerationParityTests
         var powerOfZero = PowerOfZero();
         var atMost = AtMost();
         var nested = Nested();
+        var negated = NegatedSum();
 
         return
         [
@@ -236,6 +311,10 @@ public sealed class RulesGenerationParityTests
 
             // Precedence again, with three levels: the sum is the product's left operand.
             new("three levels of arithmetic", nested, [new Parameter("int", "amount", 50)], RuleOutcomes.Accept),
+
+            // A unary over a parenthesised sum: the two templates a condition can reach without a comparison inside.
+            new("a negated sum below its bound", negated, [new Parameter("int", "amount", 100)], RuleOutcomes.Accept),
+            new("a negated sum above its bound", negated, [new Parameter("int", "amount", 50)], null),
 
             // A ruleset with no rule at all: nothing can match, and neither implementation invents a decision.
             new("a ruleset with no rule", NoRules(), [], null),
@@ -380,6 +459,25 @@ public sealed class RulesGenerationParityTests
         Name(model, power, "left", "amount");
         Int(model, power, "right", 0);
         Int(model, condition, "right", 1);
+
+        return model;
+    }
+
+    /// <summary><c>rule Deep when -(amount + 10) &lt; -100 then Accept</c>, a unary over a parenthesised sum.</summary>
+    private static Model NegatedSum()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "NegatedSum");
+        var rule = Rule(model, ruleset, "Deep", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "<");
+        var negation = model.NewChild(condition, "left", ExpressionsConceptKeys.Unary);
+        negation.Set("operator", "-");
+        var grouped = model.NewChild(negation, "operand", ExpressionsConceptKeys.Parenthesized);
+        var sum = Binary(model, grouped, "inner", "+");
+        Name(model, sum, "left", "amount");
+        Int(model, sum, "right", 10);
+        Int(model, condition, "right", -100);
 
         return model;
     }

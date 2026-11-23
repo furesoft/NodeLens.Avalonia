@@ -426,7 +426,12 @@ Three levels, because the interesting failures are semantic, not textual:
    too: `^` is a power here and XOR in C#, so the fragment maps that one symbol to `Math.Pow` through
    a conditional part - the generated *shape* differs from the way the symbol is written, which is why
    a symbol map alone could not have done it. The residual is a negative exponent, which the
-   interpreter refuses and the cast truncates (under "Risks").
+   interpreter refuses and the cast truncates (under "Risks"). **Functions and calls** are covered
+   too: a function is a document of its own and declares no return type, so the gate generates its
+   body and the host writes the signature - `AGeneratedCallRunsTheFunctionTheInterpreterRan`
+   composes both fragments, compiles them and runs the call. **Records are not reachable here**: a
+   record is a value the evaluation-rule language produces, not an expression a rule's condition can
+   hold, so covering one needs a parity harness over a declared language rather than over the pilot.
 
 Optional fourth level: a separate **`Projectional.CSharp.Check`** assembly that uses Roslyn to
 compile the generated text in memory and report diagnostics against the traceability map. It is
