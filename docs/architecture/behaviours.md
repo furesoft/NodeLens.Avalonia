@@ -117,14 +117,13 @@ bodies. It reads and it chooses; it never computes, compares numbers or calls an
 | --- | --- |
 | `Literal(text)` | a fixed word |
 | `Property(slot)` | the value of a property slot, as text |
-| `Child(slot)` | the declared `Name` of the one child in that slot - **this is how a composite name is written** |
+| `Child(slot)` | the declared `Name` of the one child in that slot - **this is how a composite name is written**; the slot must hold one child, not a list |
 | `Reference(slot)` | the `Name` of the reference's target |
 | `Join(separator, parts)` | parts, one after another, empty ones left out |
 | `Fallback(parts)` | the first non-empty part - how a concept says "the name, else the value, else `<anonymous>`" |
 | `Choose(property, value, then, else)` | one of two parts, by a property's value - the `Conditional` rule, one level up |
 
 Two guarantees the lowering provides, because they cannot be left to the author:
-
 - **Total.** Every part answers a string; `Child` on an empty slot answers the empty string, which
   `Join` and `Fallback` then omit. A name function that could throw would make `ReferenceCell`'s build
   fail for a half-written document, which is the state a document is in most of the time.
@@ -134,6 +133,24 @@ Two guarantees the lowering provides, because they cannot be left to the author:
   `StackOverflowException`, which cannot be reported to a user. A cycle the declarations show is not
   rejected yet; refusing one needs the graph over concept keys that the lowering does not build, and it
   would have to be careful about targets declared over an abstract concept.
+
+The lowering also refuses four bodies that would answer something other than what their author meant,
+because a name is asked where nobody can see the document that produced it:
+
+- **A slot the concept does not have, or one of the wrong kind.** `property` reads a `PropertySlot`,
+  `child` a `ChildSlot`, `reference` a `ReferenceSlot`.
+- **A `child` part on a list.** `Child` means "the one child in that slot", and a list would answer its
+  first element - a name the author never asked for and cannot see. Naming a node after *all* children
+  has no part yet; the vocabulary would need a list-joining part for it, and this is the one shape a
+  composite name cannot be written in today.
+- **A `choose` value the property cannot hold.** `choose isCollapsed = yes` would answer the otherwise
+  arm for ever, with nothing visibly wrong in the document.
+- **A `choose` value the property would store differently.** A choice compares what the property
+  *stores*, which is the canonical spelling of its type, so `choose count = 01` never matches a stored
+  `1`. The refusal names the spelling to write instead.
+
+A name may be declared on an **abstract** concept, and then every subtype inherits it: one document
+names a whole family of nodes.
 
 ## What this must not become
 
