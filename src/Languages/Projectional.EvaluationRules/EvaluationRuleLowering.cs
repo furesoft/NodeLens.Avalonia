@@ -224,9 +224,16 @@ public static class EvaluationRuleLowering
 
     /// <summary>An operator body: the symbol it names or the one its node holds, and the values of its operand bodies.</summary>
     /// <remarks>
+    /// <para>
     /// The symbol written on the body wins, which is what lets a rule compare against a constant - <c>points &gt;= 50</c> - on a
     /// node that has no operator property at all. Leaving it empty is how a rule whose operator varies with the node is
     /// written, and the property name then says where to read it.
+    /// </para>
+    /// <para>
+    /// A logical symbol short-circuits here exactly as it does in the hand-written expression rules, through
+    /// <see cref="OperatorSemantics.ShortCircuits"/>: a declared language and a shipped one must not disagree about
+    /// whether the right operand ran.
+    /// </para>
     /// </remarks>
     private static Func<EvaluationContext, Value> Operator(Node body)
     {
@@ -243,7 +250,15 @@ public static class EvaluationRuleLowering
 
         return right is null
             ? context => OperatorSemantics.ApplyUnary(context, SymbolOf(context), left(context))
-            : context => OperatorSemantics.Apply(context, SymbolOf(context), left(context), right(context));
+            : context =>
+            {
+                var symbol = SymbolOf(context);
+                var first = left(context);
+
+                return OperatorSemantics.ShortCircuits(symbol, first)
+                    ? first
+                    : OperatorSemantics.Apply(context, symbol, first, right(context));
+            };
     }
 
     /// <summary>A choice: the condition's own value decides which body answers.</summary>

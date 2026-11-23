@@ -10,11 +10,10 @@ namespace Projectional.Language;
 /// </para>
 /// <para>
 /// The set is deliberately closed: whole-number arithmetic (including a power, because <c>x ^ 2</c> is how a function is
-/// written), the four comparisons, equality by value, the two logical operators (evaluated eagerly here, because the trace
-/// records every operand, where C# short-circuits), the two unary ones, and
-/// <c>+</c> over two texts, which joins them. A language that needs more - dates, text *ordering*, which is a decision
-/// about a culture rather than about a value, division with a remainder - adds its own rule, which is the point of an
-/// aspect being an interface rather than a table.
+/// written), the four comparisons, equality by value, the two logical operators, which short-circuit the way C# does, the
+/// two unary ones, and <c>+</c> over two texts, which joins them. A language that needs more - dates, text *ordering*,
+/// which is a decision about a culture rather than about a value, division with a remainder - adds its own rule, which is
+/// the point of an aspect being an interface rather than a table.
 /// </para>
 /// <para>
 /// Text is joined here rather than left to a language, because a **declared** rule has no escape hatch: it can name bodies
@@ -96,6 +95,30 @@ public static class OperatorSemantics
             _ => throw context.Error($"'{symbol}' is not a unary operator this framework applies."),
         };
     }
+
+    /// <summary>Whether <paramref name="left"/> already decides the logical <paramref name="symbol"/>.</summary>
+    /// <param name="symbol">The operator, which only <c>&amp;&amp;</c> and <c>||</c> can short-circuit.</param>
+    /// <param name="left">The value on the left, which the caller has evaluated.</param>
+    /// <returns>
+    /// <see langword="true"/> when the caller must answer with <paramref name="left"/> and must not evaluate the right
+    /// operand.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Stated here rather than at each caller because two of them exist - the hand-written expression rules and the
+    /// operator body a declared rule lowers to - and a language that spelled it a third way would disagree with C#
+    /// about which operands were evaluated.
+    /// </para>
+    /// <para>
+    /// A left operand that is not a truth value decides nothing, so this answers <see langword="false"/> and the caller
+    /// evaluates the right one: that is what lets <see cref="Apply"/> complain about both kinds rather than about the
+    /// left alone.
+    /// </para>
+    /// </remarks>
+    public static bool ShortCircuits(string symbol, Value left) =>
+        symbol is "&&" or "||"
+        && left is BoolValue flag
+        && (symbol == "&&" ? !flag.Content : flag.Content);
 
     /// <summary>The two logical symbols, which are about truth values and nothing else.</summary>
     private static BoolValue Logic(EvaluationContext context, string symbol, Value left, Value right)

@@ -79,13 +79,24 @@ public static class ExpressionsEvaluation
     }
 
     /// <summary>Its operator, applied to the values of its operands by the framework's one meaning for a symbol.</summary>
+    /// <remarks>
+    /// The logical operators short-circuit: the left operand decides whether the right one is evaluated at all, which is
+    /// what C# does and what makes a rule such as <c>flag || amount / zero == 0</c> mean the same thing in the editor and
+    /// in the code it generates. The trace therefore has no row for an operand that was never evaluated - it records what
+    /// happened, not what could have.
+    /// </remarks>
     private static Value ApplyBinary(EvaluationContext context)
     {
-        var left = context.EvalChild("left");
-        var right = context.EvalChild("right");
         var symbol = context.Node.GetOrNull("operator") ?? throw context.Error("A binary expression must say which operator it applies.");
 
-        return OperatorSemantics.Apply(context, symbol, left, right);
+        var left = context.EvalChild("left");
+
+        if (OperatorSemantics.ShortCircuits(symbol, left))
+        {
+            return left;
+        }
+
+        return OperatorSemantics.Apply(context, symbol, left, context.EvalChild("right"));
     }
 
     /// <summary>Applies the function its callee points at to the values of the arguments.</summary>
