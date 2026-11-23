@@ -1,5 +1,9 @@
+using System.Reflection;
+
 using Projectional.Behaviours;
 using Projectional.Core;
+using Projectional.CSharp;
+using Projectional.LanguageExport;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Structures;
@@ -192,6 +196,108 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Empty(language.Warnings);
     }
 
+    [Fact]
+    public void ACSharpBehaviourInTheSameFolderBindsTheNameTheCompiledLanguageWillCompute()
+    {
+        // The folder holds one aspect in its two forms: a body of data and a C# method, both for `Doc.Link`. The editor
+        // cannot run C#, so it keeps answering with the declarative body; what the folder does with the class is
+        // *bind* it, and the warning says so rather than leaving the author to wonder why the method changed nothing.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteBehaviour(folder.Root, conceptKey: "Doc.Link", slot: "to");
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        // The document is a model of the C# base language, which is what makes it editable as the C# it is - and it is
+        // not in BehaviourDocuments, because a C# file is not a declaration the lowering could read.
+        Assert.Single(language.CSharpDocuments);
+        Assert.Single(language.BehaviourDocuments);
+        Assert.Equal("Sample.LinkBehaviour.Name", language.CSharpNames["Doc.Link"]);
+
+        var warning = Assert.Single(language.Warnings);
+
+        Assert.Equal(LanguageProject.BehaviourFolder, warning.Aspect);
+        Assert.Contains("'Doc.Link' is named by 'Sample.LinkBehaviour.Name'", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("the editor cannot run", warning.Message, StringComparison.Ordinal);
+
+        // The editor's answer is the declarative one, because a method this layer cannot call is not an answer.
+        var project = language.NewProject();
+        var item = project.NewModel("items").NewNode("Doc.Item");
+        var link = project.NewModel("links").NewNode("Doc.Link");
+
+        item.Set("name", "Bedrock");
+        link.SetReference("to", item);
+
+        Assert.Equal("Bedrock", link.Name);
+    }
+
+    [Fact]
+    public void ACompiledLanguageAnswersWithTheCSharpMethodAndNotTheDeclarativeBody()
+    {
+        // What the binding is for. Both forms name `Doc.Link`, the folder binds the method, and the export writes the
+        // binding into the declaration - so the package answers what the C# computes while the folder keeps answering
+        // what the data says. The general form wins, which is the whole reason for offering it.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteBehaviour(folder.Root, conceptKey: "Doc.Link", slot: "to");
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var exported = LanguageExporter.Export(language, output: ExportOutput.Assembly);
+        var assembly = Assembly.Load(Assert.Single(exported.Assemblies).Bytes);
+
+        // The generated class is found by what it holds rather than by its name, because the naming rule is the
+        // export's business and a test that repeated it would pass while the export renamed things.
+        var generated = assembly.GetTypes().Single(type => type.GetProperty("ConceptDeclarations") is not null);
+        var declarations = Assert.IsAssignableFrom<IReadOnlyList<ConceptDeclaration>>(
+            generated.GetProperty("ConceptDeclarations")!.GetValue(null));
+
+        var declaration = declarations.Single(each => each.Key == "Doc.Link");
+        var nameOf = Assert.IsAssignableFrom<Func<Node, string?>>(declaration.NameOf);
+
+        var project = language.NewProject();
+        var item = project.NewModel("items").NewNode("Doc.Item");
+        var link = project.NewModel("links").NewNode("Doc.Link");
+
+        item.Set("name", "Bedrock");
+        link.SetReference("to", item);
+
+        // The body the method was compiled from answers the node's own concept key, so the two answers cannot be
+        // confused with one another: one is the name of the node the reference reaches, the other is a fact about the
+        // node itself.
+        Assert.Equal("Bedrock", link.Name);
+        Assert.Equal("Doc.Link", nameOf(link));
+
+        // The C# file travels into the package beside the declaration that names it, which is what lets the emitted
+        // source compile at all.
+        Assert.Contains(exported.Files, file => file.Name.EndsWith(".Behaviour.cs", StringComparison.Ordinal));
+        Assert.Contains("// behaviour Doc.Link", exported.Files.Single(file => file.Name.EndsWith(".Behaviour.cs", StringComparison.Ordinal)).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACSharpBehaviourForAConceptTheStructureDoesNotDeclareIsRefusedWhenTheFolderLoads()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Nope");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(language);
+        Assert.Contains("'Doc.Nope' is not a concept of this language", error, StringComparison.Ordinal);
+    }
+
     private static void WriteStructure(string directory)
     {
         var definition = new DefinitionBuilder();
@@ -227,5 +333,47 @@ public sealed class LanguageProjectBehaviourTests
 
         Directory.CreateDirectory(behaviour);
         ModelFile.Save(model, Path.Combine(behaviour, file + ".mps"));
+    }
+
+    /// <summary>
+    /// The same folder's other form: a C# behaviour class that names <paramref name="conceptKey"/> after what the node
+    /// API says about the node itself.
+    /// </summary>
+    /// <remarks>
+    /// The body is <c>return node.concept;</c> - one read of the node API - because it is the one answer that cannot be
+    /// mistaken for the declarative body's: the name of the node a reference reaches, against a fact about the node.
+    /// </remarks>
+    private static void WriteCSharpBehaviour(string directory, string conceptKey, string file = "csharp")
+    {
+        var model = new Project(CSharpLanguage.Concepts).NewModel("behaviour");
+        var root = model.NewNode(CSharpConceptKeys.File);
+        var space = model.NewChild(root, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var behaviour = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        var method = model.NewChild(behaviour, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var parameter = model.NewChild(method, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var nodeType = model.NewChild(parameter, "type", CSharpConceptKeys.NodeType);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var concept = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.NodeConcept);
+        var operand = model.NewChild(concept, CSharpConceptKeys.OperandSlot, CSharpConceptKeys.Name);
+
+        space.Set(CSharpLanguage.NameSlot, "Sample");
+        behaviour.Set(CSharpConceptKeys.ConceptKeySlot, conceptKey);
+        behaviour.Set(CSharpLanguage.NameSlot, conceptKey[(conceptKey.IndexOf('.') + 1)..] + "Behaviour");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.IsStaticSlot, true);
+        method.Set(CSharpLanguage.NameSlot, "Name");
+        returnType.Set(CSharpLanguage.NameSlot, "string");
+        nodeType.Set(CSharpLanguage.NameSlot, "Doc.Item");
+        parameter.Set(CSharpLanguage.NameSlot, "node");
+        operand.SetReference(CSharpConceptKeys.TargetSlot, parameter);
+
+        model.AddRoot(root);
+
+        var behaviourFolder = Path.Combine(directory, LanguageProject.BehaviourFolder);
+
+        Directory.CreateDirectory(behaviourFolder);
+        ModelFile.Save(model, Path.Combine(behaviourFolder, file + ".mps"));
     }
 }

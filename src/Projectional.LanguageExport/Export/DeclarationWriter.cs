@@ -25,10 +25,20 @@ internal static class DeclarationWriter
     /// The body each concept's name is written by, by concept key - the <c>behaviour</c> folder as data - or
     /// <see langword="null"/> when the language declares none.
     /// </param>
+    /// <param name="nameMethods">
+    /// The C# method each concept's name is computed by, by concept key - the <c>csharp</c> folder - or
+    /// <see langword="null"/> when no concept is named in C#.
+    /// </param>
+    /// <remarks>
+    /// Where a concept has both, the method wins: it is the general form of the same question, and the folder that
+    /// holds it is the one whose author reached for code. A declaration carries one <c>nameOf</c>, so writing both
+    /// would be a duplicate argument.
+    /// </remarks>
     public static void Write(
         SourceWriter source,
         IReadOnlyList<ConceptDeclaration> declarations,
-        IReadOnlyDictionary<string, NameBody>? names = null)
+        IReadOnlyDictionary<string, NameBody>? names = null,
+        IReadOnlyDictionary<string, string>? nameMethods = null)
     {
         source.Line("public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =");
         source.Line("[");
@@ -37,7 +47,7 @@ internal static class DeclarationWriter
         {
             foreach (var declaration in declarations)
             {
-                WriteConcept(source, declaration, names);
+                WriteConcept(source, declaration, names, nameMethods);
             }
         }
 
@@ -47,12 +57,13 @@ internal static class DeclarationWriter
     private static void WriteConcept(
         SourceWriter source,
         ConceptDeclaration declaration,
-        IReadOnlyDictionary<string, NameBody>? names)
+        IReadOnlyDictionary<string, NameBody>? names,
+        IReadOnlyDictionary<string, string>? nameMethods)
     {
         var body = new List<string> { SourceWriter.Literal(declaration.Key) + "," };
 
         body.AddRange(SlotLines(declaration.Slots));
-        body.AddRange(ArgumentLines(declaration, names));
+        body.AddRange(ArgumentLines(declaration, names, nameMethods));
 
         body[^1] = body[^1].TrimEnd(',');
 
@@ -95,7 +106,8 @@ internal static class DeclarationWriter
 
     private static List<string> ArgumentLines(
         ConceptDeclaration declaration,
-        IReadOnlyDictionary<string, NameBody>? names)
+        IReadOnlyDictionary<string, NameBody>? names,
+        IReadOnlyDictionary<string, string>? nameMethods)
     {
         var lines = new List<string>();
 
@@ -124,9 +136,14 @@ internal static class DeclarationWriter
             lines.Add($"nameRule: NameRule.{NameRuleMember(declaration.NameRule)},");
         }
 
-        // The one behavioural aspect a generated declaration can carry: a name body is data of the toolkit's own
-        // vocabulary, so it is written as the record it is rather than named as a delegate nothing could call.
-        if (names is not null && names.TryGetValue(declaration.Key, out var name))
+        // The two behavioural aspects a generated declaration can carry, and only ever one of them. A name body is data
+        // of the toolkit's own vocabulary, so it is written as the record it is; a C# name is the method's own name,
+        // because the method is compiled beside this file and a delegate is the declaration's whole point.
+        if (nameMethods is not null && nameMethods.TryGetValue(declaration.Key, out var method))
+        {
+            lines.Add($"nameOf: {method},");
+        }
+        else if (names is not null && names.TryGetValue(declaration.Key, out var name))
         {
             lines.Add($"nameOf: {NameBodyWriter.Text(name)}.ToFunction(),");
         }

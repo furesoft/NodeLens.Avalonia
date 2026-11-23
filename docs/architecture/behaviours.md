@@ -259,12 +259,15 @@ compiles against nothing else.
 
 What follows from the decision, in order:
 
-1. **Bind the generated class to the declaration.** A method of a `CSharp.Behaviour` becomes the
-   concept's `nameOf` delegate, so a language can choose per concept between the declarative body and a
-   C# method - and a C# method always wins, because it is the general form.
+1. **Bind the generated class to the declaration.** ~~A method of a `CSharp.Behaviour` becomes the
+   concept's `nameOf` delegate~~ - **delivered**: the `behaviour` folder holds both languages, a class
+   with a `conceptKey` and a `Name` method is that concept's name, and the export writes
+   `nameOf: <namespace>.<class>.Name` and compiles the class into the package. The editor cannot run it,
+   so it keeps the declarative answer and says so in a warning
+   ([csharp.md](csharp.md), "Binding a behaviour to a concept").
 2. **`Describe` (B2)** as the first real C# behaviour rather than the first declarative one
    (`getTextualRepresentation()` is exactly it), which is also what gives the two consumers something to
-   interpolate.
+   interpolate - and the second method name the convention reads.
 3. **Retire the declarative document** once the above carries the atlas sample without it: the folder,
    `Projectional.Behaviours` and the `NameBody` vocabulary stay until a language has been written
    entirely in C# behaviours, because deleting the simpler form before the general one works would leave

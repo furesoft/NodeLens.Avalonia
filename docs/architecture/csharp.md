@@ -223,6 +223,44 @@ draw. A member nobody can see in the editor must not appear in the generated fil
 the node and the class holds no state: `public static string Name(Projectional.Core.Node node)`, which is
 also what a concept's `nameOf` delegate wants.
 
+## Binding a behaviour to a concept
+
+A behaviour class is only worth writing if the framework calls it. The binding is a convention, and
+it lives in the folder that already answers the same question: **`behaviour/` holds two languages**.
+`Behaviour.Document` is the declarative form of "what is this node called" and `CSharp.File` is its
+general form, so a language puts a body of data and a C# class beside each other, in one folder, for
+the same concept or for different ones. That is not a second aspect, and it is why the folder did not
+grow a sibling: the question is one question, and the host that shows an aspect shows one row.
+
+This came out of a collision rather than out of a plan: a separate `csharp/` folder was tried first, and
+it is named like the golden text corpus at `Corpus/CSharp`, which the file system cannot tell apart from
+an aspect folder - which is exactly the kind of evidence that says the second folder did not belong.
+
+**The convention.** A class whose `conceptKey` names a concept of the language, holding a static
+method called **`Name`**, is that concept's name. Other methods are ordinary code the host's
+hand-written half may call - which is what a `partial` is for - so nothing is refused for holding
+more than the framework reads. A class that names no concept, or holds no `Name` method, is warned
+about rather than refused: the folder loads, and the author hears that the class does nothing.
+
+**What the folder does with it is bind, not lower.** There is no interpreter here, so the layer
+records *where* the answer comes from - `LanguageProject.CSharpNames`, a concept key mapped to
+`Atlas.Behaviours.StopBehaviour.Name` - and says so: the editor keeps answering with the declarative
+name (or the name slot), and a warning names the concept whose C# name it cannot run. Pretending
+otherwise would mean running compiled code in the editor, which is a decision this slice does not
+take.
+
+**What the export does with it is write the binding down.** The declaration gains
+`nameOf: Atlas.Behaviours.StopBehaviour.Name`, the C# document is generated into the package as a
+file of its own (`<stem>.Behaviour.cs`) and compiled together with the declarations, and the package
+therefore answers what the method computes. Where a concept has both forms, **the method wins**,
+because it is the general form - and because a declaration carries one `nameOf`, so writing both
+would be a duplicate argument rather than a preference.
+
+That is the whole reason to offer C# at all: a name written as data can say "the name of the node
+this reference reaches" and nothing else, while a method can ask anything the node API can answer -
+a predicate over `node.concept`, a position, a slot's absence. The declarative form is not replaced
+by it; it is the shorter way to say the common case.
+
 ## Style rules, and the one thing the model cannot see
 
 A checker that "checks C# code style" is a set of `IConstraint`s on the language's own concepts, in
@@ -373,12 +411,14 @@ type for both methods, so the claim being checked is the C# contract itself (two
 merging into one class) rather than the spelling of the generated text. Comparing strings would have pinned
 the text without ever asking whether the two halves are one class.
 
-That closes the slice. What is *not* closed is the next question it exposes: a behaviour method cannot yet
-name the node it is about. `Name` is a reference to a declaration in the model, and the node has no such
-declaration - in MPS the generated class holds it as `this`, and here the hand-written half would hold it in
-a field the model cannot point at. A behaviour method is therefore useful today for what its parameters
-carry, and reaching the node needs a decision (a declared node field, or a `This`-like concept for a
-behaviour) that this slice deliberately left open.
+That closes the slice. Two questions it exposed are now answered. The first was that a behaviour method
+could not name the node it was about - `Name` is a reference to a declaration in the model, and the node
+had no such declaration; MPS keeps it as `this`, and here the hand-written half would hold it in a field
+the model cannot point at. **The node API answers it**: the node arrives as a `node<Concept>` parameter,
+which is a declaration the model *can* point at, so `node.Name` is an ordinary reference and the class
+stays stateless. The second was what a behaviour class is *for*, given that nothing called it: **the
+`behaviour` folder binds it**, and the export writes `nameOf:` as the method's own name (see "Binding a
+behaviour to a concept").
 
 The part of the behaviour aspect that needs **no** code is planned separately and comes first:
 a node's `Name` and `Describe` as pure functions declared as data ([behaviours.md](behaviours.md)).

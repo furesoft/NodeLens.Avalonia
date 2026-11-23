@@ -1,6 +1,7 @@
 using Projectional.Core;
 using Projectional.Behaviours;
 using Projectional.Checks;
+using Projectional.CSharp;
 using Projectional.EvaluationRules;
 using Projectional.ConstraintRules;
 using Projectional.Editing;
@@ -54,10 +55,19 @@ public sealed class LanguageProject
 
     /// <summary>The folder holding what each concept is called, which a language may leave out.</summary>
     /// <remarks>
+    /// <para>
     /// The one aspect whose reading order is not its own: a name is part of a concept declaration, so the folder is
     /// lowered before the registry is built from those declarations
     /// ([behaviours.md](behaviours.md)). It sits after <c>structure</c> in the list because that is the order a reader
     /// meets them - what a node is, then what it is called.
+    /// </para>
+    /// <para>
+    /// The folder holds documents of **two** languages, and that is the point of the aspect rather than an accident:
+    /// <c>Behaviour.Document</c> is the declarative form of "what is this node called" and <c>CSharp.File</c> is its
+    /// general form, a C# method. They are one aspect because they answer one question
+    /// ([csharp.md](csharp.md), "The two ways logic attaches"), so a language may use either, or both for different
+    /// concepts, without a second folder to name in a host's toolbar.
+    /// </para>
     /// </remarks>
     public const string BehaviourFolder = "behaviour";
 
@@ -151,6 +161,8 @@ public sealed class LanguageProject
         EvaluationRegistry? evaluation,
         IReadOnlyList<Model> evaluationDocuments,
         IReadOnlyList<Model> behaviourDocuments,
+        IReadOnlyList<Model> csharpDocuments,
+        IReadOnlyDictionary<string, string> csharpNames,
         IReadOnlyList<LanguageWarning> warnings)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
@@ -179,6 +191,8 @@ public sealed class LanguageProject
         Evaluation = evaluation;
         EvaluationDocuments = evaluationDocuments;
         BehaviourDocuments = behaviourDocuments;
+        CSharpDocuments = csharpDocuments;
+        CSharpNames = csharpNames;
         Warnings = warnings;
     }
 
@@ -476,6 +490,29 @@ public sealed class LanguageProject
     /// </remarks>
     public IReadOnlyList<Model> BehaviourDocuments { get; }
 
+    /// <summary>The C# documents of the <c>behaviour</c> folder: the names this language writes as methods.</summary>
+    /// <remarks>
+    /// Models of <see cref="CSharpLanguage"/> rather than of a definition language, because the document *is* C#. Kept
+    /// beside the binding for the reason <see cref="BehaviourDocuments"/> is: what the folder says is a method this
+    /// layer cannot run, so the export is what turns it into code.
+    /// </remarks>
+    public IReadOnlyList<Model> CSharpDocuments { get; }
+
+    /// <summary>For each concept whose name a C# behaviour computes: the C# method that computes it.</summary>
+    /// <remarks>
+    /// <para>
+    /// A concept key mapped to the qualified name of a static method - <c>Atlas.Behaviours.StopBehaviour.Name</c> -
+    /// which is what the export writes into the declaration as its <c>nameOf</c>. It is text and not a delegate on
+    /// purpose: the method does not exist until the language is compiled, so what this layer knows is *where* the
+    /// answer comes from, not the answer.
+    /// </para>
+    /// <para>
+    /// The editor therefore keeps the declarative name while the compiled language takes this one - the general form
+    /// wins where both exist, which is the point of offering it.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> CSharpNames { get; }
+
     /// <summary>What the language does that works and that its author probably did not mean.</summary>
     /// <remarks>
     /// Empty is the ordinary answer. A warning is not an error: the language loaded and its documents open, so the host
@@ -622,6 +659,8 @@ public sealed class LanguageProject
             evaluation: evaluation,
             evaluationDocuments: evaluationDocuments ?? [],
             behaviourDocuments: [],
+            csharpDocuments: [],
+            csharpNames: NoNameMethods,
             warnings: []);
     }
 
@@ -655,8 +694,17 @@ public sealed class LanguageProject
             // answers becomes the declaration the registry is built from. The lowering checks a body against the slots a
             // concept has, which is why it is given a registry of the declarations as they stand
             // (docs/architecture/behaviours.md).
-            var behaviourRoots = Read(fullPath, BehaviourFolder, new Project(BehaviourLanguage.Concepts));
-            var behaviour = LowerBehaviour(behaviourRoots, inheritedDeclarations, declarations);
+            //
+            // The same folder holds the general form of the same answer - a C# method - so it is read with both
+            // languages in one registry. Nothing is ambiguous: the root of a document says which language it belongs
+            // to, and the two sets of concepts share no key.
+            var behaviourRoots = Read(fullPath, BehaviourFolder, BehaviourProject());
+
+            // What a body of data says, lowered; and what a C# method says, bound. A C# method wins where both exist,
+            // because it is the general form - but only the compiled language can run it, so the export is where the
+            // binding is written down and the editor keeps answering with the declarative name.
+            var behaviour = LowerBehaviour([.. behaviourRoots.Where(root => root.Concept.IsKindOf(BehaviourConceptKeys.Document))], inheritedDeclarations, declarations);
+            var csharp = BindBehaviour([.. behaviourRoots.Where(root => root.Concept.IsKindOf(CSharpConceptKeys.File))], declarations);
             var names = behaviour.Names;
 
             // The declarations the registry is built from, and therefore the ones a language that depends on this one
@@ -737,8 +785,10 @@ public sealed class LanguageProject
                 checks: null,
                 inheritedEvaluation,
                 evaluationDocuments,
-                [.. behaviourRoots.Select(root => root.Model)],
-                behaviour.Warnings);
+                [.. Declarative(behaviourRoots)],
+                [.. behaviourRoots.Where(root => root.Concept.IsKindOf(CSharpConceptKeys.File)).Select(root => root.Model)],
+                csharp.Names,
+                [.. behaviour.Warnings, .. csharp.Warnings]);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -1125,6 +1175,145 @@ public sealed class LanguageProject
     /// <summary>The answer for a language whose <c>behaviour</c> folder declares nothing, which is the ordinary case.</summary>
     private static readonly IReadOnlyDictionary<string, Func<Node, string?>> NoNames =
         new Dictionary<string, Func<Node, string?>>(StringComparer.Ordinal);
+
+    /// <summary>The models of the <c>behaviour</c> folder that are documents of the declarative behaviour language.</summary>
+    /// <remarks>
+    /// The folder holds two languages, and only one of them is a body the lowering can read: a C# file is bound rather
+    /// than lowered, and the property that carries the lowered documents must not carry it - the export re-lowers them,
+    /// and a C# file there would be asked for a <c>kind</c> it does not have.
+    /// </remarks>
+    private static IEnumerable<Model> Declarative(List<Node> roots) =>
+        roots
+            .Where(root => root.Concept.IsKindOf(BehaviourConceptKeys.Document))
+            .Select(root => root.Model);
+
+    /// <summary>The project a <c>behaviour</c> folder is read with: the declarative form and the C# one.</summary>
+    /// <remarks>
+    /// One registry rather than two reads, because the folder is one folder: a language puts both kinds of document in
+    /// it, and a reader that had to know which came first would be a second rule about the layout. Both sets of
+    /// declarations are complete on their own, so the registry is valid and no key is declared twice.
+    /// </remarks>
+    private static Project BehaviourProject() => new(BehaviourConcepts);
+
+    /// <summary>The concepts of both behaviour languages, validated once.</summary>
+    private static ConceptRegistry BehaviourConcepts { get; } =
+        ConceptRegistry.Create([.. BehaviourLanguage.ConceptDeclarations, .. CSharpLanguage.ConceptDeclarations]);
+
+    /// <summary>The two products of a language's C# behaviour documents: where each name comes from, and what to say.</summary>
+    private readonly record struct CSharpBehaviourAspect(
+        IReadOnlyDictionary<string, string> Names,
+        IReadOnlyList<LanguageWarning> Warnings);
+
+    /// <summary>Which concept each behaviour class in <paramref name="documents"/> names, and by which method.</summary>
+    /// <param name="documents">The <c>CSharp.File</c> documents of the <c>behaviour</c> folder.</param>
+    /// <param name="declarations">The declarations this project's own <c>structure</c> folder holds.</param>
+    /// <remarks>
+    /// <para>
+    /// The binding is a convention and nothing else: a class whose <c>conceptKey</c> names a concept of this language,
+    /// holding a method called <c>Name</c>, is that concept's name. A method with any other name is ordinary code the
+    /// host's hand-written half could call, which is what makes the class a partial in the first place - so nothing is
+    /// refused for holding more than the framework reads.
+    /// </para>
+    /// <para>
+    /// A name belongs to the concept that declares it, the same rule the <c>behaviour</c> folder follows: a class for a
+    /// concept a base language declares is refused, because this project's declarations are what the export writes and
+    /// naming a borrowed concept would silently do nothing.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ConceptDefinitionException">
+    /// A behaviour class names a concept this project does not declare, or two classes name the same concept.
+    /// </exception>
+    private static CSharpBehaviourAspect BindBehaviour(
+        List<Node> documents,
+        IReadOnlyList<ConceptDeclaration> declarations)
+    {
+        if (documents.Count == 0)
+        {
+            return new CSharpBehaviourAspect(NoNameMethods, []);
+        }
+
+        Dictionary<string, string> names = new(StringComparer.Ordinal);
+        List<LanguageWarning> warnings = [];
+
+        foreach (var (behaviour, space) in Behaviours(documents))
+        {
+            var key = behaviour.GetOrNull(CSharpConceptKeys.ConceptKeySlot);
+            var @class = behaviour.GetOrNull(CSharpLanguage.NameSlot) ?? "?";
+            var qualified = $"{space}.{@class}";
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                warnings.Add(new LanguageWarning(
+                    BehaviourFolder,
+                    $"'{qualified}' names no concept, so nothing uses it as a behaviour."));
+
+                continue;
+            }
+
+            if (!declarations.Any(declaration => string.Equals(declaration.Key, key, StringComparison.Ordinal)))
+            {
+                throw new ConceptDefinitionException(
+                    $"'{key}' is not a concept of this language, so '{qualified}' cannot be its behaviour; a concept's behaviour belongs to the language that declares it.");
+            }
+
+            if (names.ContainsKey(key))
+            {
+                throw new ConceptDefinitionException(
+                    $"'{key}' has two behaviour classes, which one class has to answer; keep '{qualified}' or the one already bound.");
+            }
+
+            // The one method name the framework reads. Anything else in the class is code the model cannot call yet,
+            // which is exactly what a partial class is for.
+            if (!behaviour.GetChildren(CSharpConceptKeys.MembersSlot)
+                .Any(method => string.Equals(method.GetOrNull(CSharpLanguage.NameSlot), NameMethod, StringComparison.Ordinal)))
+            {
+                warnings.Add(new LanguageWarning(
+                    BehaviourFolder,
+                    $"'{qualified}' declares no '{NameMethod}' method, so '{key}' gets no name from it."));
+
+                continue;
+            }
+
+            names[key] = $"{qualified}.{NameMethod}";
+
+            // The honest statement of the limit: this layer has a compiler only when the export runs one, so the editor
+            // keeps answering with the name slot while the compiled language answers with the method.
+            warnings.Add(new LanguageWarning(
+                BehaviourFolder,
+                $"'{key}' is named by '{qualified}.{NameMethod}', which the editor cannot run: until the language is compiled, its nodes keep the name their name slot holds."));
+        }
+
+        return new CSharpBehaviourAspect(names, warnings);
+
+        // Every behaviour class the folder holds, with the namespace it stands in: a behaviour is a type in a
+        // namespace, so the namespace is part of the name the export has to write.
+        IEnumerable<(Node Behaviour, string Space)> Behaviours(IReadOnlyList<Node> roots)
+        {
+            foreach (var root in roots)
+            {
+                if (root.GetChild(CSharpConceptKeys.NamespaceSlot) is not { } space
+                    || space.GetOrNull(CSharpLanguage.NameSlot) is not { Length: > 0 } spaceName)
+                {
+                    continue;
+                }
+
+                foreach (var type in space.GetChildren(CSharpConceptKeys.ClassesSlot))
+                {
+                    if (type.Concept.IsKindOf(CSharpConceptKeys.Behaviour))
+                    {
+                        yield return (type, spaceName);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>The method whose name the framework reads as "this is how the concept is called".</summary>
+    private const string NameMethod = "Name";
+
+    /// <summary>The answer for a language that names none of its concepts in C#, which is the ordinary case.</summary>
+    private static readonly IReadOnlyDictionary<string, string> NoNameMethods =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 
     private static TypeAspect LowerTypes(string directory, ConceptRegistry concepts)
     {
