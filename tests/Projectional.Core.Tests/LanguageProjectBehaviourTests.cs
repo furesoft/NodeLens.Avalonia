@@ -372,9 +372,22 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Equal(["Doc.WeekDays"], language.Values.ValuesOf(value, CSharpLanguage.EnumSlot));
         Assert.Equal(["Mon", "Thu"], language.Values.ValuesOf(value, CSharpLanguage.MemberSlot));
 
+        // The other spelling asks the same question from the brackets: `enummember<…>` names the enumeration where every
+        // type reference writes its name, so it is completed from the same map - otherwise the editor would offer the
+        // names in one place and leave the other silent, for one vocabulary.
+        var memberType = language.CSharpDocuments
+            .Single()
+            .Roots[0]
+            .ChildrenInDocumentOrder()
+            .SelectMany(Descendants)
+            .Single(node => node.Concept.Key == CSharpConceptKeys.EnumMemberType);
+
+        Assert.Equal(["Doc.WeekDays"], language.Values.ValuesOf(memberType, CSharpLanguage.NameSlot));
+
         // Nothing else is answered: every other slot keeps whatever its declared type says, which is what makes
         // installing the provider harmless.
         Assert.Null(language.Values.ValuesOf(value, "conceptKey"));
+        Assert.Null(language.Values.ValuesOf(memberType, "conceptKey"));
 
         // A half-written value offers nothing for its symbol, because there is no set to choose from until there is an
         // enumeration - which is the honest answer rather than an empty list that closes the door.
@@ -473,7 +486,15 @@ public sealed class LanguageProjectBehaviourTests
         var space = model.NewChild(root, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
         var behaviour = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
         var method = model.NewChild(behaviour, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
-        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+
+        // With an enumeration named, the return type is *the other spelling* of the same enumeration: a behaviour that
+        // answers one of its symbols is typed `enummember<…>`, which generates `string` like the value does - so one
+        // model holds both forms and the two lists are asserted together.
+        var returnType = model.NewChild(
+            method,
+            "returnType",
+            enumeration is null ? CSharpConceptKeys.TypeReference : CSharpConceptKeys.EnumMemberType);
+
         var parameter = model.NewChild(method, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
         var nodeType = model.NewChild(parameter, "type", CSharpConceptKeys.NodeType);
         var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
@@ -485,7 +506,7 @@ public sealed class LanguageProjectBehaviourTests
         method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
         method.Set(CSharpLanguage.IsStaticSlot, true);
         method.Set(CSharpLanguage.NameSlot, "Name");
-        returnType.Set(CSharpLanguage.NameSlot, "string");
+        returnType.Set(CSharpLanguage.NameSlot, enumeration ?? "string");
         nodeType.Set(CSharpLanguage.NameSlot, "Doc.Item");
         parameter.Set(CSharpLanguage.NameSlot, "node");
 
