@@ -69,6 +69,10 @@ internal sealed class DocumentTab : IDisposable
     /// <param name="scopes">
     /// The scope providers the language declares, or <see langword="null"/> for the default chain.
     /// </param>
+    /// <param name="values">
+    /// What the language offers for slots no declared type can answer - a behaviour naming an enumeration of the
+    /// language around it - or <see langword="null"/> for "the declared type answers".
+    /// </param>
     /// <param name="evaluation">
     /// The language's interpreter - the rules that give its concepts a meaning - or <see langword="null"/> when it
     /// defines none, in which case the document cannot be run at all.
@@ -94,6 +98,7 @@ internal sealed class DocumentTab : IDisposable
         TypeRegistry? types = null,
         ConstraintSet? constraints = null,
         IScopeProvider? scopes = null,
+        IValueProvider? values = null,
         IIntentionProvider? intentions = null,
         EvaluationRegistry? evaluation = null,
         IReadOnlyList<TextGenerator>? generators = null,
@@ -122,6 +127,10 @@ internal sealed class DocumentTab : IDisposable
         // A language that declares scopes replaces the chain for the references it names; every other slot still
         // falls through to the default, which is what makes installing it harmless.
         Session.Scopes = scopes ?? DefaultScopeProvider.Instance;
+
+        // The same shape, for the one list no declared type can answer: a behaviour written in C# names an enumeration
+        // of the language around it, and only the language project knows what those are.
+        Session.Values = values ?? DefaultValueProvider.Instance;
 
         // A declared entry is offered at every caret the language's rules match, so the provider is registered once
         // here rather than looked up per list.

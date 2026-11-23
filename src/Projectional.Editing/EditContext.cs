@@ -38,7 +38,8 @@ public sealed class EditContext
         Selection selection,
         IEditorClipboard clipboard,
         ITypingRules typing,
-        IScopeProvider scopes)
+        IScopeProvider scopes,
+        IValueProvider values)
     {
         _document = document;
         _places = CaretPlaces.Of(tree);
@@ -51,6 +52,7 @@ public sealed class EditContext
         Clipboard = clipboard;
         _typing = typing;
         Scopes = scopes;
+        Values = values;
     }
 
     /// <summary>The node being edited, which is the root of the tree.</summary>
@@ -61,6 +63,9 @@ public sealed class EditContext
     /// not what it means.
     /// </summary>
     public IScopeProvider Scopes { get; }
+
+    /// <summary>What a property slot offers when its declared type cannot say - see <see cref="IValueProvider"/>.</summary>
+    public IValueProvider Values { get; }
 
     /// <summary>The tree the caret was resolved against.</summary>
     public EditorTree Tree { get; }

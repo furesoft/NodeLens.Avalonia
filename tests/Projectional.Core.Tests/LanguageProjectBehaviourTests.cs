@@ -346,6 +346,46 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Contains("is not a symbol of the enumeration 'Doc.WeekDays'", error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheLanguageOffersItsOwnEnumerationsToABehaviourWrittenInCSharp()
+    {
+        // A behaviour names an enumeration by text, so no declared type can answer the list. The language project is
+        // what offers it: the enumerations `structure` declares for `enum/`, and the symbols of the one that was chosen
+        // for `/.` - which is how a projectional editor makes a name the user cannot see anywhere else completable.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteCSharpBehaviour(folder.Root, conceptKey: "Doc.Link", enumeration: "Doc.WeekDays", symbol: "Thu");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var value = language.CSharpDocuments
+            .Single()
+            .Roots[0]
+            .ChildrenInDocumentOrder()
+            .SelectMany(Descendants)
+            .Single(node => node.Concept.Key == CSharpConceptKeys.EnumValue);
+
+        Assert.Equal(["Doc.WeekDays"], language.Values.ValuesOf(value, CSharpLanguage.EnumSlot));
+        Assert.Equal(["Mon", "Thu"], language.Values.ValuesOf(value, CSharpLanguage.MemberSlot));
+
+        // Nothing else is answered: every other slot keeps whatever its declared type says, which is what makes
+        // installing the provider harmless.
+        Assert.Null(language.Values.ValuesOf(value, "conceptKey"));
+
+        // A half-written value offers nothing for its symbol, because there is no set to choose from until there is an
+        // enumeration - which is the honest answer rather than an empty list that closes the door.
+        value.Set(CSharpLanguage.EnumSlot, string.Empty);
+
+        Assert.Null(language.Values.ValuesOf(value, CSharpLanguage.MemberSlot));
+    }
+
+    private static IEnumerable<Node> Descendants(Node node) =>
+        [node, .. node.ChildrenInDocumentOrder().SelectMany(Descendants)];
+
     private static void WriteStructure(string directory)
     {
         var definition = new DefinitionBuilder();

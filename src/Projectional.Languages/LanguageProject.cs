@@ -163,6 +163,7 @@ public sealed class LanguageProject
         IReadOnlyList<Model> behaviourDocuments,
         IReadOnlyList<Model> csharpDocuments,
         IReadOnlyDictionary<string, string> csharpNames,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> enumerations,
         IReadOnlyList<LanguageWarning> warnings)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
@@ -193,6 +194,8 @@ public sealed class LanguageProject
         BehaviourDocuments = behaviourDocuments;
         CSharpDocuments = csharpDocuments;
         CSharpNames = csharpNames;
+        Enumerations = enumerations;
+        Values = new EnumerationValueProvider(enumerations);
         Warnings = warnings;
     }
 
@@ -513,6 +516,21 @@ public sealed class LanguageProject
     /// </remarks>
     public IReadOnlyDictionary<string, string> CSharpNames { get; }
 
+    /// <summary>The enumerations the <c>structure</c> folder declares, by key, with the symbols each offers.</summary>
+    /// <remarks>
+    /// Kept because two readers need the same answer: a behaviour written in C# names an enumeration by text and has to
+    /// be closed against this map, and the editor offers those names in an open list. One walk, one answer.
+    /// </remarks>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Enumerations { get; }
+
+    /// <summary>What the editor offers for the slots no declared type can answer.</summary>
+    /// <remarks>
+    /// The host installs this, not the language package: what it answers needs this project rather than the registry a
+    /// document was loaded with, and a language package cannot reference the editing layer
+    /// (<see cref="IValueProvider"/>).
+    /// </remarks>
+    public IValueProvider Values { get; }
+
     /// <summary>What the language does that works and that its author probably did not mean.</summary>
     /// <remarks>
     /// Empty is the ordinary answer. A warning is not an error: the language loaded and its documents open, so the host
@@ -661,6 +679,7 @@ public sealed class LanguageProject
             behaviourDocuments: [],
             csharpDocuments: [],
             csharpNames: NoNameMethods,
+            enumerations: NoEnumerations,
             warnings: []);
     }
 
@@ -688,6 +707,10 @@ public sealed class LanguageProject
             var bases = Resolve(languageRoot, resolver, fullPath);
             var definitions = Read(fullPath, StructureFolder, new Project(StructureLanguage.Concepts));
             var declarations = StructureLowering.Lower(definitions);
+
+            // Read once and kept: a behaviour written in C# names an enumeration by text, so the folder has to close
+            // those names against this map - and the editor offers them in an open list, which is the same answer.
+            var enumerations = StructureLowering.Enumerations(definitions);
             var inheritedDeclarations = bases.All.SelectMany(language => language.Declarations).ToList();
 
             // A name is part of a declaration, so the behaviour folder is lowered before the registry exists and what it
@@ -707,7 +730,7 @@ public sealed class LanguageProject
             var csharp = BindBehaviour(
                 [.. behaviourRoots.Where(root => root.Concept.IsKindOf(CSharpConceptKeys.File))],
                 declarations,
-                StructureLowering.Enumerations(definitions));
+                enumerations);
             var names = behaviour.Names;
 
             // The declarations the registry is built from, and therefore the ones a language that depends on this one
@@ -791,6 +814,7 @@ public sealed class LanguageProject
                 [.. Declarative(behaviourRoots)],
                 [.. behaviourRoots.Where(root => root.Concept.IsKindOf(CSharpConceptKeys.File)).Select(root => root.Model)],
                 csharp.Names,
+                enumerations,
                 [.. behaviour.Warnings, .. csharp.Warnings]);
         }
         catch (Exception exception) when (exception is ModelFormatException
@@ -1404,6 +1428,10 @@ public sealed class LanguageProject
     /// <summary>The answer for a language that names none of its concepts in C#, which is the ordinary case.</summary>
     private static readonly IReadOnlyDictionary<string, string> NoNameMethods =
         new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>The answer for a language that declares no enumeration, which is ordinary but not rare.</summary>
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> NoEnumerations =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
     private static TypeAspect LowerTypes(string directory, ConceptRegistry concepts)
     {

@@ -292,8 +292,16 @@ compiler cannot catch when the value is a string - so this is the layer that has
 
 **One type for both.** `enummember<WeekDays>` is `string` for the same reason `enum/WeekDays/.Thu` is, so
 `day == enum/WeekDays/.Thu` is a comparison the type rules can see rather than one they have to skip.
-What the *editor* gets out of the concept is the part C# cannot say: completion can offer the symbols, and
-a name that is not one of them is refused before anything is generated.
+
+**And the editor completes them.** The two names are the one slot in this language whose values no declared
+type can answer - the enumeration is named by text, so the list has to come from the language project
+rather than from the registry the document was opened with. That is a fourth source of completion values
+next to "the concepts below the child slot", "the scope" and "the property's declared symbols", and the
+host supplies it: `IValueProvider` is installed on the session the way `IScopeProvider` is, because a
+language package cannot reference the editing layer. `LanguageProject` is what answers - the enumerations
+`structure/` declares for `enum/`, and the symbols of whichever one the sibling slot names for `/.` - so a
+name the user could not otherwise see anywhere is one keystroke away, and a name that is not one of them
+was already refused when the folder loaded.
 
 ## Style rules, and the one thing the model cannot see
 

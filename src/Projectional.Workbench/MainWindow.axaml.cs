@@ -612,6 +612,7 @@ public sealed partial class MainWindow : Window, IDisposable
         TypeRegistry? types = null,
         ConstraintSet? constraints = null,
         IScopeProvider? scopes = null,
+        IValueProvider? values = null,
         IIntentionProvider? intentions = null,
         IReadOnlyList<TextGenerator>? generators = null,
         Projectional.Checks.CheckSet? checks = null)
@@ -643,6 +644,7 @@ public sealed partial class MainWindow : Window, IDisposable
             types,
             constraints,
             scopes,
+            values,
             intentions,
             WorkbenchLanguage.InterpreterFor(model),
             generators ?? WorkbenchLanguage.GeneratorsFor(model),
@@ -3443,7 +3445,16 @@ public sealed partial class MainWindow : Window, IDisposable
             {
                 if (DocumentFile.TryLoad(file, _language.NewProject(), out _) is { } model)
                 {
-                    OpenDocument(model, _language.Notations, file, WorkbenchLanguage.Emphasis, WorkbenchLanguage.Typing);
+                    // The language project, not the shell's registry, is what answers the one list no declared type
+                    // can: a behaviour written in C# names an enumeration of this language, so `enum/` offers the
+                    // enumerations `structure` declares and `/.` the symbols of the one that was chosen.
+                    OpenDocument(
+                        model,
+                        _language.Notations,
+                        file,
+                        WorkbenchLanguage.Emphasis,
+                        WorkbenchLanguage.Typing,
+                        values: language.Values);
                 }
             }
         }
