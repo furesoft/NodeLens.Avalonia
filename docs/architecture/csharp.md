@@ -404,9 +404,15 @@ Three levels, because the interesting failures are semantic, not textual:
 
 1. **Golden files.** A corpus of models that each generate to a checked-in `.cs` file. A byte
    that moves is a change to the generator and must be reviewed, exactly like the `.mps`
-   corpus: never regenerate a golden file to make a test pass.
-2. **The host's build.** CI generates the corpus and compiles it with `dotnet build` on the
-   generated output. This is the only test that proves the text is C# and not merely stable.
+   corpus: never regenerate a golden file to make a test pass. **Landed**: `CSharpCorpusTests`
+   generates `expressions.cs` and `statements.cs` from documents built in code, compares them
+   byte for byte, and asserts they are plain LF text without a byte-order mark.
+2. **The compiled corpus.** The generated text is compiled, which is the only test that proves it
+   is C# and not merely stable. It runs through `AssemblyCompiler` - the Roslyn compiler the
+   export uses, with warnings as errors - so every `dotnet test` proves it, rather than a CI job
+   that would have to generate the corpus and then build it. **Landed**: `EveryGoldenCompiles` in
+   `CSharpCorpusTests`, which is also why every corpus document is warning-free C# and not merely
+   valid C#.
 3. **The parity gate.** The same document is run twice: the M4 interpreter walks the model, and
    the generated text is compiled and executed. Both have to reach the decision the corpus
    states, or neither is evidence for the other. **Landed** for the pilot:

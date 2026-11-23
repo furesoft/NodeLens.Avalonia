@@ -48,6 +48,13 @@
   <ItemGroup>
     <None Update="Corpus\**\*.mps" CopyToOutputDirectory="PreserveNewest" />
     <!--
+      The C# goldens are data, not source: a test compares them byte for byte and compiles them at run time. Without
+      the Remove the SDK would compile them into the test assembly, and the fixture would become a second copy of the
+      generator's output that nobody compares.
+    -->
+    <Compile Remove="Corpus\**\*.cs" />
+    <None Include="Corpus\**\*.cs" CopyToOutputDirectory="PreserveNewest" />
+    <!--
       The text corpus is what the reference languages generate, so a round trip can be compared byte for byte.
       Never regenerate one of these files to make a test pass - a byte that moves is a language bug or a
       deliberate change with a note in the commit (docs/architecture/import.md).
