@@ -36,10 +36,39 @@ public static class BehaviourLowering
         IEnumerable<Node> documents,
         ConceptRegistry concepts)
     {
+        Dictionary<string, Func<Node, string?>> names = new(StringComparer.Ordinal);
+
+        foreach (var (key, body) in Bodies(documents, concepts))
+        {
+            names[key] = body.ToFunction();
+        }
+
+        return names;
+    }
+
+    /// <summary>The body each concept's name is written by, by concept key.</summary>
+    /// <param name="documents">The behaviour documents, one per concept.</param>
+    /// <param name="concepts">The concepts the names will be attached to, which is what the slots are checked against.</param>
+    /// <returns>The body of every concept that declares one, by concept key.</returns>
+    /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
+    /// <exception cref="ConceptDefinitionException">
+    /// A document names no concept, a concept the language does not have, a function that is not lowered yet, a concept
+    /// twice, a body part naming a slot that does not exist or has the wrong kind, a <c>child</c> part naming a list,
+    /// or a <c>choose</c> whose value the property cannot store in that spelling.
+    /// </exception>
+    /// <remarks>
+    /// The records rather than the delegates, because a delegate cannot be written out again: an export turns a folder
+    /// into source, and the vocabulary is the one form of a name that both runs and can be spelled as C#
+    /// (<c>Projectional.LanguageExport</c>).
+    /// </remarks>
+    public static IReadOnlyDictionary<string, NameBody> Bodies(
+        IEnumerable<Node> documents,
+        ConceptRegistry concepts)
+    {
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(concepts);
 
-        Dictionary<string, Func<Node, string?>> names = new(StringComparer.Ordinal);
+        Dictionary<string, NameBody> bodies = new(StringComparer.Ordinal);
 
         foreach (var document in documents)
         {
@@ -65,7 +94,7 @@ public static class BehaviourLowering
                         $"'{key}' declares a '{kind}' function, and only '{BehaviourConceptKeys.NameKind}' is lowered yet.");
                 }
 
-                if (names.ContainsKey(key))
+                if (bodies.ContainsKey(key))
                 {
                     throw new ConceptDefinitionException($"'{key}' declares more than one name function.");
                 }
@@ -73,11 +102,11 @@ public static class BehaviourLowering
                 var body = function.GetChild(BehaviourConceptKeys.BodySlot)
                     ?? throw new ConceptDefinitionException($"the name function of '{key}' must say what the node is called.");
 
-                names[key] = Part(body, concept).ToFunction();
+                bodies[key] = Part(body, concept);
             }
         }
 
-        return names;
+        return bodies;
     }
 
     /// <summary>One part of a body, as the vocabulary record it lowers to.</summary>

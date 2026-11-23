@@ -150,7 +150,8 @@ public sealed class LanguageProject
         CheckSet? checks,
         EvaluationRegistry? evaluation,
         IReadOnlyList<Model> evaluationDocuments,
-        IReadOnlyList<Model> behaviourDocuments)
+        IReadOnlyList<Model> behaviourDocuments,
+        IReadOnlyList<LanguageWarning> warnings)
     {
         Name = languageRoot?.Name ?? new DirectoryInfo(directory).Name;
         Directory = directory;
@@ -178,6 +179,7 @@ public sealed class LanguageProject
         Evaluation = evaluation;
         EvaluationDocuments = evaluationDocuments;
         BehaviourDocuments = behaviourDocuments;
+        Warnings = warnings;
     }
 
     /// <summary>The importers the <c>import</c> folder declares, which are the ones a generator cannot derive.</summary>
@@ -240,7 +242,12 @@ public sealed class LanguageProject
     /// </remarks>
     public IReadOnlyList<LanguageProject> Inherited { get; }
 
-    /// <summary>What the structure model declared, in the order it declared it.</summary>
+    /// <summary>What the structure model declared, in the order it declared it, carrying the names the folder lowered.</summary>
+    /// <remarks>
+    /// The declarations the registry was built from rather than the ones the file wrote: a name is part of a
+    /// declaration, so a language that depends on this one receives these and inherits its names with them
+    /// ([ADR 0026](../../docs/adr/0026-a-dependency-resolves-to-the-vocabulary.md)).
+    /// </remarks>
     public IReadOnlyList<ConceptDeclaration> Declarations { get; }
 
     /// <summary>
@@ -461,14 +468,22 @@ public sealed class LanguageProject
     /// </remarks>
     public IReadOnlyList<Model> EvaluationDocuments { get; }
 
-    /// <summary>The <c>behaviour</c> documents, as models: what the language says each concept is called.</summary>
-    /// <remarks>
+    /// <summary>The <c>behaviour</c> documents, as models: what the language says each concept is called.</summary>    /// <remarks>
     /// Kept beside the registry for the reason <see cref="EvaluationDocuments"/> is: the lowered form is a function per
     /// concept, and a page that shows a name as it was written needs the document it was written in. They are models of
     /// <see cref="BehaviourLanguage"/>, which is what a drawing has to use to read them. Empty is the ordinary case - a
     /// language that names its nodes through a name slot declares no behaviour at all.
     /// </remarks>
     public IReadOnlyList<Model> BehaviourDocuments { get; }
+
+    /// <summary>What the language does that works and that its author probably did not mean.</summary>
+    /// <remarks>
+    /// Empty is the ordinary answer. A warning is not an error: the language loaded and its documents open, so the host
+    /// is right to take it - what it must not do is stay quiet about it, because the consequence is a name that is not
+    /// the one the author thinks it is. Kept on the loaded project rather than returned beside the error so that a host
+    /// that already holds the project has one place to ask.
+    /// </remarks>
+    public IReadOnlyList<LanguageWarning> Warnings { get; }
     /// <summary>Whether the project declared any type rule at all.</summary>
     /// <remarks>
     /// A language without one loads: every node is <see cref="UnknownType"/>, which is the honest answer
@@ -606,7 +621,8 @@ public sealed class LanguageProject
             checks: checks,
             evaluation: evaluation,
             evaluationDocuments: evaluationDocuments ?? [],
-            behaviourDocuments: []);
+            behaviourDocuments: [],
+            warnings: []);
     }
 
     /// <summary>Opens the language in <paramref name="directory"/>, resolving its declared bases through the host.</summary>
@@ -640,14 +656,18 @@ public sealed class LanguageProject
             // concept has, which is why it is given a registry of the declarations as they stand
             // (docs/architecture/behaviours.md).
             var behaviourRoots = Read(fullPath, BehaviourFolder, new Project(BehaviourLanguage.Concepts));
-            var names = LowerBehaviour(behaviourRoots, inheritedDeclarations, declarations);
-            var concepts = ConceptRegistry.Create(
-            [
-                .. inheritedDeclarations,
-                .. declarations.Select(declaration => names.TryGetValue(declaration.Key, out var name)
+            var behaviour = LowerBehaviour(behaviourRoots, inheritedDeclarations, declarations);
+            var names = behaviour.Names;
+
+            // The declarations the registry is built from, and therefore the ones a language that depends on this one
+            // receives: a name is part of a declaration, so handing over the raw ones would lose it (ADR 0026).
+            var named = declarations
+                .Select(declaration => names.TryGetValue(declaration.Key, out var name)
                     ? declaration.WithNameOf(name)
-                    : declaration),
-            ]);
+                    : declaration)
+                .ToList();
+
+            var concepts = ConceptRegistry.Create([.. inheritedDeclarations, .. named]);
             var scopes = LowerScopeProviders(fullPath, concepts);
             var typing = LowerTypingRules(fullPath, concepts);
             var intentions = LowerIntentions(fullPath, concepts);
@@ -695,7 +715,7 @@ public sealed class LanguageProject
                 languageRoot,
                 bases.All,
                 bases.Extended,
-                declarations,
+                named,
                 concepts,
                 notation,
                 inheritedTypes,
@@ -717,7 +737,8 @@ public sealed class LanguageProject
                 checks: null,
                 inheritedEvaluation,
                 evaluationDocuments,
-                [.. behaviourRoots.Select(root => root.Model)]);
+                [.. behaviourRoots.Select(root => root.Model)],
+                behaviour.Warnings);
         }
         catch (Exception exception) when (exception is ModelFormatException
             or ConceptDefinitionException
@@ -1027,6 +1048,11 @@ public sealed class LanguageProject
         return documents.Count == 0 ? null : EvaluationRuleLowering.CreateRegistry(documents, concepts);
     }
 
+    /// <summary>The two products of a language's behaviour folder: the names, and what their author should hear about.</summary>
+    private readonly record struct BehaviourAspect(
+        IReadOnlyDictionary<string, Func<Node, string?>> Names,
+        IReadOnlyList<LanguageWarning> Warnings);
+
     /// <summary>The name function each concept of this project declares, by concept key.</summary>
     /// <param name="documents">The documents of the <c>behaviour</c> folder.</param>
     /// <param name="inherited">The declarations of the languages this one stands on.</param>
@@ -1041,17 +1067,19 @@ public sealed class LanguageProject
     /// A body names a slot its concept does not have, or a document names a concept a base language declares. A name
     /// belongs to the concept that declares it, so the copy below would otherwise drop it silently.
     /// </exception>
-    private static IReadOnlyDictionary<string, Func<Node, string?>> LowerBehaviour(
+    private static BehaviourAspect LowerBehaviour(
         List<Node> documents,
         IReadOnlyList<ConceptDeclaration> inherited,
         IReadOnlyList<ConceptDeclaration> declarations)
     {
         if (documents.Count == 0)
         {
-            return NoNames;
+            return new BehaviourAspect(NoNames, []);
         }
 
-        var names = BehaviourLowering.Lower(documents, ConceptRegistry.Create([.. inherited, .. declarations]));
+        var concepts = ConceptRegistry.Create([.. inherited, .. declarations]);
+        var names = BehaviourLowering.Lower(documents, concepts);
+        List<LanguageWarning> warnings = [];
 
         foreach (var key in names.Keys)
         {
@@ -1060,9 +1088,38 @@ public sealed class LanguageProject
                 throw new ConceptDefinitionException(
                     $"'{key}' is declared by a language this one stands on, so this project cannot give it a name; a concept's behaviour belongs to the language that declares it.");
             }
+
+            // The inherited function is what the concept would answer with, so declaring one here means the author has
+            // replaced an answer rather than given one - which works, and is why this is a warning and not a refusal.
+            // The supers are asked of the provisional registry, which does not carry this folder's answers, so a super
+            // that is named in this same folder is recognised through the map.
+            if (InheritedName(concepts.Get(key)) is { } inheritedName)
+            {
+                warnings.Add(new LanguageWarning(
+                    BehaviourFolder,
+                    $"'{key}' declares a name it inherits from '{inheritedName.Key}', so the inherited one is no longer used."));
+            }
         }
 
-        return names;
+        return new BehaviourAspect(names, warnings);
+
+        Concept? InheritedName(Concept concept)
+        {
+            foreach (var super in concept.SuperConcepts)
+            {
+                if (super.NameFunction is not null || names.ContainsKey(super.Key))
+                {
+                    return super;
+                }
+
+                if (InheritedName(super) is { } deeper)
+                {
+                    return deeper;
+                }
+            }
+
+            return null;
+        }
     }
 
     /// <summary>The answer for a language whose <c>behaviour</c> folder declares nothing, which is the ordinary case.</summary>
