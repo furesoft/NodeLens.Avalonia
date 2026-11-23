@@ -128,12 +128,15 @@ Two guarantees the lowering provides, because they cannot be left to the author:
 - **Total.** Every part answers a string; `Child` on an empty slot answers the empty string, which
   `Join` and `Fallback` then omit. A name function that could throw would make `ReferenceCell`'s build
   fail for a half-written document, which is the state a document is in most of the time.
-- **Bounded.** `Child` and `Reference` recurse into another concept's `Name`, so a cycle is writable
-  (`A` names itself after its child, the child names itself after its parent). The runtime keeps a
+- **Bounded.** `Child`, `Children` and `Reference` recurse into another concept's `Name`, so a cycle is
+  writable (`A` names itself after its child, the child names itself after its parent). The runtime keeps a
   depth budget for it (`NameBody.MaxDepth`), so the cycle answers the empty string instead of a
-  `StackOverflowException`, which cannot be reported to a user. A cycle the declarations show is not
-  rejected yet; refusing one needs the graph over concept keys that the lowering does not build, and it
-  would have to be careful about targets declared over an abstract concept.
+  `StackOverflowException`, which cannot be reported to a user. **A cycle the declarations show is not
+  refused, and must not be:** `A` names its child of `B` and `B` names its child of `A` is an ordinary
+  language whose recursion ends where the document ends - refusing it at load would forbid a document
+  that works. What can be infinite is a *reference* that comes back, and no declaration decides that: only
+  the document does, which is exactly why the budget is a runtime guard rather than a load-time check
+  (`NameBodyTests.ANameCycleTheDeclarationsShowEndsWhereTheDocumentEnds`).
 
 The lowering also refuses four bodies that would answer something other than what their author meant,
 because a name is asked where nobody can see the document that produced it:
@@ -221,7 +224,7 @@ which concept this one inherits from, and the registry already knows.
 | B1c | The refusals that keep a body from answering what it never meant (a `child` part on a list, a `choose` value the property would store differently), and `Children` as the eighth part, so a name over a list is writable - **delivered** | 2 days |
 | B2 | `Describe` with the two consumers (a trace row, a constraint message that interpolates it), only if both adopt it | 3-4 days |
 | B3 | `Projectional.Samples` and `samples/declared-pipeline` grow one behaviour each, proving the declared path, plus a parity test that a C# lambda and a declared body answer the same name for every node of the corpus | 3-4 days |
-| B4 | The override finding, an intention that removes a redeclaration, and refusing a name cycle the declarations show | 2 days |
+| B4 | The override finding, and an intention that removes a redeclaration. A cycle the declarations show is **not** on this list: it is document-bounded and must not be refused (see Bounded above) | 2 days |
 
 ## Non-goals
 

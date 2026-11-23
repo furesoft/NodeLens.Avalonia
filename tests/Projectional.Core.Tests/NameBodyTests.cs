@@ -15,6 +15,8 @@ public sealed class NameBodyTests
     private const string Leaf = "Nb.Leaf";
     private const string Link = "Nb.Link";
     private const string Loop = "Nb.Loop";
+    private const string RingA = "Nb.RingA";
+    private const string RingB = "Nb.RingB";
 
     [Fact]
     public void APropertyIsTheValueAndAnEmptySlotAnswersNothing()
@@ -156,8 +158,7 @@ public sealed class NameBodyTests
     }
 
     [Fact]
-    public void ACycleAnswersNothingRatherThanOverflowingTheStack()
-    {
+    public void ACycleAnswersNothingRatherThanOverflowingTheStack()    {
         // A name that reads its own reference target can come back to itself; the depth budget is what makes that a
         // short answer instead of a StackOverflowException nobody can be told about.
         var model = ModelWith(new NameProperty("amount"));
@@ -184,6 +185,66 @@ public sealed class NameBodyTests
         var model = ModelWith(new NameProperty("nothing"));
 
         Assert.Throws<InvalidOperationException>(() => model.NewNode(Node).Name);
+    }
+
+    [Fact]
+    public void ANameCycleTheDeclarationsShowEndsWhereTheDocumentEnds()
+    {
+        // A names its child of B and B names its child of A, so the declarations form a cycle - and the document does
+        // not: the recursion ends at the last child, which is why a language must not refuse this. Refusing it would
+        // forbid an ordinary document, and the depth budget below is what stops the cycle that is real.
+        var model = new Project(ConceptRegistry.Create([.. Ring()])).NewModel("ring");
+
+        var outer = model.NewNode(RingA);
+        outer.Set("amount", "one");
+
+        var middle = model.NewChild(outer, "next", RingB);
+        middle.Set("amount", "two");
+
+        var inner = model.NewChild(middle, "next", RingA);
+        inner.Set("amount", "three");
+
+        Assert.Equal("one.two.three", outer.Name);
+    }
+
+    [Fact]
+    public void AChainDeeperThanTheBudgetIsCutRatherThanCrashing()
+    {
+        // The budget is the one guarantee a document cannot outgrow: a chain longer than MaxDepth answers nothing at the
+        // point the budget runs out, which costs the tail of the name and never the process.
+        var model = new Project(ConceptRegistry.Create([.. Ring()])).NewModel("chain");
+
+        var root = model.NewNode(RingA);
+        root.Set("amount", "a");
+
+        var at = root;
+
+        for (var i = 0; i < NameBody.MaxDepth + 8; i++)
+        {
+            at = model.NewChild(at, "next", i % 2 == 0 ? RingB : RingA);
+            at.Set("amount", "a");
+        }
+
+        var segments = root.Name!.Split('.');
+
+        Assert.True(
+            segments.Length <= NameBody.MaxDepth,
+            $"a name answered {segments.Length} segments, and the budget is {NameBody.MaxDepth}");
+    }
+
+    private static IEnumerable<ConceptDeclaration> Ring()
+    {
+        var amount = new PropertySlot("amount", PropertyType.String);
+
+        yield return new ConceptDeclaration(
+            RingA,
+            [amount, new ChildSlot("next", RingB, Cardinality.One)],
+            nameOf: new NameJoin(".", new NameProperty("amount"), new NameChild("next")).ToFunction());
+
+        yield return new ConceptDeclaration(
+            RingB,
+            [new PropertySlot("amount", PropertyType.String), new ChildSlot("next", RingA, Cardinality.One)],
+            nameOf: new NameJoin(".", new NameProperty("amount"), new NameChild("next")).ToFunction());
     }
 
     private static Model ModelWith(NameBody body) =>
