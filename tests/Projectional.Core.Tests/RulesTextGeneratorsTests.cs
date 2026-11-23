@@ -38,7 +38,7 @@ public sealed class RulesTextGeneratorsTests
         Assert.Equal(
             """
             // Payroll
-              if (amount > 1000) { return "Accept"; }
+              if ((amount > 1000)) { return "Accept"; }
             """,
             result.Text);
     }
