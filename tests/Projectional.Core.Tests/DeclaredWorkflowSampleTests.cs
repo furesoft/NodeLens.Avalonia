@@ -1,8 +1,10 @@
 using Projectional.Core;
 using Projectional.Editing;
+using Projectional.Language;
 using Projectional.Languages;
 using Projectional.Persistence;
 using Projectional.Projection;
+using Projectional.Semantics;
 using Xunit;
 
 namespace Projectional.Core.Tests;
@@ -69,6 +71,31 @@ public sealed class DeclaredWorkflowSampleTests
 
         // The reference is unset in the sample, which draws its unset text rather than nothing.
         Assert.Contains("<none>", rendered, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheWorkflowStatesWhatItsLibraryMeans()
+    {
+        // The folder's evaluation document is the sample's worked example of the bodies that pick a value out of a list
+        // and refuse when there is none: `first` over the library, `when` a step runs a command, `then` that command,
+        // and `otherwise` a sentence. Two documents the folder already ships prove both halves, so the rule is checked
+        // against the language as a reader meets it rather than against a model built for the test.
+        var language = Language();
+        var rules = Assert.IsType<EvaluationRegistry>(language.Evaluation);
+
+        // `release.mps` keeps one step in its library, "shared build", and that step runs dotnet build.
+        var released = Document(language, "release.mps");
+
+        Assert.Equal(new StringValue("dotnet build"), Run(rules, released));
+
+        // `draft.mps` has no library at all, so nothing is tried and the refusal speaks instead of the framework's
+        // "no rule for this concept".
+        var failure = new Interpreter(rules)
+            .Run(Document(language, "draft.mps"), cancellationToken: TestContext.Current.CancellationToken)
+            .Failure;
+
+        Assert.NotNull(failure);
+        Assert.Equal("no step in the library runs a command, so there is nothing to do.", failure.Message);
     }
 
     [Fact]
@@ -282,6 +309,7 @@ public sealed class DeclaredWorkflowSampleTests
             AssertRoundTrips(Path.Combine(folder, "editor"), new Project(Projectional.Editors.EditorLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, "scopes"), new Project(Projectional.ScopeRules.ScopeLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, "intentions"), new Project(Projectional.IntentionRules.IntentionLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, "evaluation"), new Project(Projectional.EvaluationRules.EvaluationRuleLanguage.Concepts), temporary.FullName);
 
             // The root sits beside the aspect folders rather than in one, so it needs its own call.
             AssertRoundTrips(
@@ -320,6 +348,20 @@ public sealed class DeclaredWorkflowSampleTests
         Assert.NotNull(language);
 
         return language;
+    }
+
+    /// <summary>The root of the sample document <paramref name="name"/>, read from the folder the app reads.</summary>
+    private static Node Document(LanguageProject language, string name) =>
+        ModelFile.Load(language.NewProject(), Path.Combine(AppContext.BaseDirectory, "Workflow", name)).Roots[0];
+
+    /// <summary>What the sample's declared rules answer for <paramref name="node"/>.</summary>
+    private static Value Run(EvaluationRegistry rules, Node node)
+    {
+        var result = new Interpreter(rules).Run(node, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Failure is null, result.Failure?.Message);
+
+        return result.Value!;
     }
 
     /// <summary>Puts the caret in the first place of <paramref name="node"/>, which is how a gesture starts.</summary>
