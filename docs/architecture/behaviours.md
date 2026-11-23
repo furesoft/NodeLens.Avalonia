@@ -4,9 +4,12 @@ Status: **B1 partly delivered** (M6) and **parked here by decision**. The seam e
 `ConceptDeclaration(nameOf:)` and `Concept.NameOf(node)` answer "what is this node called" as a pure function of the
 node, `Node.Name` asks it first and the name slot second, and the body vocabulary a name is written in lives in
 `Projectional.Language/Names/` (`NameLiteral`, `NameProperty`, `NameChild`, `NameReference`, `NameJoin`,
-`NameFallback`, `NameChoice`, with a depth budget and empty-answering slots). What is **not** started: the declared
-`behaviour` folder, `Describe`, the samples and the parity test, and the override finding. Further behaviour work is
-deliberately deferred; the seam and the vocabulary are what a language package uses in C# meanwhile.
+`NameFallback`, `NameChoice`, with a depth budget and empty-answering slots). The declared form of that vocabulary is
+its own language: `Projectional.Behaviours` declares the `behaviour` document (`BehaviourLanguage`), its notation
+(`BehaviourNotations`) and the lowering that answers the delegate a declaration takes (`BehaviourLowering`). What is
+**not** started: the `behaviour` folder in a language project - the lowering answers a map, nothing reads the folder
+yet -, `Describe`, the samples and the parity test, and the override finding. Further behaviour work is deliberately
+deferred; the seam and the vocabulary are what a language package uses in C# meanwhile.
 
 The nine consumers no longer each ask the slot: a reference cell (`EditorTreeBuilder`), sort by name (`ChildOrder`),
 the outline, the problems panel, the usages header, the scope index (`NameIndex`), ambiguity
@@ -125,9 +128,11 @@ Two guarantees the lowering provides, because they cannot be left to the author:
   `Join` and `Fallback` then omit. A name function that could throw would make `ReferenceCell`'s build
   fail for a half-written document, which is the state a document is in most of the time.
 - **Bounded.** `Child` and `Reference` recurse into another concept's `Name`, so a cycle is writable
-  (`A` names itself after its child, the child names itself after its parent). The lowering rejects a
-  cycle it can see in the declarations, and the runtime keeps a depth budget for the one it cannot (a
-  reference that comes back). A `StackOverflowException` cannot be reported to a user.
+  (`A` names itself after its child, the child names itself after its parent). The runtime keeps a
+  depth budget for it (`NameBody.MaxDepth`), so the cycle answers the empty string instead of a
+  `StackOverflowException`, which cannot be reported to a user. A cycle the declarations show is not
+  rejected yet; refusing one needs the graph over concept keys that the lowering does not build, and it
+  would have to be careful about targets declared over an abstract concept.
 
 ## What this must not become
 
@@ -161,9 +166,19 @@ document is already this project's rule ([language-projects.md](language-project
 diff of one concept's behaviour a diff of one file.
 
 A behaviour document names its concept by key, exactly as a `TextGen.Generator` mapping names its
-concept, and holds one function per declared slot of that concept - the lowering refuses a function
-for a concept the language does not have, and a body naming a slot that does not exist or has the
-wrong kind.
+concept, and holds one function per kind - which is what the `kind` property says, `name` being the
+only kind the lowering answers today. The lowering refuses a function for a concept the language does
+not have, a concept that declares two names, a kind it does not lower yet, and a body naming a slot
+that does not exist or has the wrong kind.
+
+**The language is delivered; the folder is not.** `Projectional.Behaviours` declares the document
+(`Behaviour.Document`, one per concept, with `concept` and `functions`), the function (`kind`, `body`),
+and the seven body parts, drew them in the shape the definition languages use, and lowers a document to
+the delegate `ConceptDeclaration(nameOf:)` takes. Two steps remain before a language project reads a
+`behaviour` folder: `LanguageProject` has to lower it **before** it builds the registry - a name has to
+be part of the declaration, so it cannot be installed afterwards -, and the lowered map has to be handed
+to the declarations as `nameOf`. Until that wiring exists a language writes its names as
+`NameBody` records in C#, which is what the seam was built for.
 
 **`overrides` is a finding, not a word.** The screenshot draws `overrides ConceptFunction.getName()`
 because the Java class says which method it overrides. Our notation is data and cannot know the super
@@ -175,10 +190,11 @@ which concept this one inherits from, and the registry already knows.
 
 | Slice | Content | Effort |
 | --- | --- | --- |
-| B1 | `Concept.NameOf`, `Node.Name` routed through it, the seven body parts, `Projectional.Behaviours` with the `behaviour` folder, and the nine consumers moved to the one answer | 1 week |
+| B1 | `Concept.NameOf`, `Node.Name` routed through it, the seven body parts, `Projectional.Behaviours` with the declared document, its notation and its lowering - **delivered** | 1 week |
+| B1b | The `behaviour` folder in `LanguageProject`: lower it before the registry is built and hand the answers to the declarations as `nameOf`, plus the extended `samples/declared-atlas` | 2-3 days |
 | B2 | `Describe` with the two consumers (a trace row, a constraint message that interpolates it), only if both adopt it | 3-4 days |
 | B3 | `Projectional.Samples` and `samples/declared-pipeline` grow one behaviour each, proving the declared path, plus a parity test that a C# lambda and a declared body answer the same name for every node of the corpus | 3-4 days |
-| B4 | The override finding, and an intention that removes a redeclaration | 2 days |
+| B4 | The override finding, an intention that removes a redeclaration, and refusing a name cycle the declarations show | 2 days |
 
 ## Non-goals
 
