@@ -24,7 +24,70 @@ internal static class CSharpCorpus
         ("expressions", Expressions()),
         ("statements", Statements()),
         ("linq", Linq()),
+        ("records", Records()),
     ];
+
+    /// <summary>A record in its two forms, and a record struct - compiled, which is what says `record X(int Y);` is a program.</summary>
+    private static Model Records()
+    {
+        var (model, type) = NewFile("records", "Records");
+        var space = model.Roots[0].GetChildren(CSharpConceptKeys.NamespaceSlot)[0];
+
+        // The scaffold class `NewFile` makes is not part of this document: it holds records and an interface.
+        space.RemoveChild(CSharpConceptKeys.ClassesSlot, type);
+
+        // public record Point(int X, int Y);  - beside the class, because a record is a `TypeDeclaration` like any other.
+        var point = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Record);
+        Coordinates(model, point, "Point");
+
+        // public interface IMeasured { int Measure(); }
+        var measured = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Interface);
+        var signature = model.NewChild(measured, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Signature);
+        var measureType = model.NewChild(signature, "returnType", CSharpConceptKeys.TypeReference);
+
+        measured.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        measured.Set(CSharpLanguage.NameSlot, "IMeasured");
+        signature.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        signature.Set(CSharpLanguage.NameSlot, "Measure");
+        measureType.Set(CSharpLanguage.NameSlot, "int");
+
+        // public record Segment(int X, int Y) : IMeasured { public int Measure() { return X; } }
+        var segment = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Record);
+        Coordinates(model, segment, "Segment");
+
+        var inheritance = model.NewChild(segment, CSharpConceptKeys.InheritanceSlot, CSharpConceptKeys.Inheritance);
+        var entry = model.NewChild(inheritance, CSharpConceptKeys.EntriesSlot, CSharpConceptKeys.InheritanceEntry);
+
+        segment.Set(CSharpLanguage.HasBodySlot, true);
+        entry.SetReference(CSharpConceptKeys.TargetSlot, measured);
+
+        var measure = model.NewChild(segment, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(measure, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(measure, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var returned = Return(model, body);
+
+        measure.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        measure.Set(CSharpLanguage.NameSlot, "Measure");
+        returnType.Set(CSharpLanguage.NameSlot, "int");
+        NameOf(model, returned, "value", Parameter(segment, 0));
+
+        return model;
+    }
+
+    /// <summary>A positional record's two parameters - what makes a record a record rather than a class.</summary>
+    private static void Coordinates(Model model, Node record, string name)
+    {
+        foreach (var coordinate in new[] { "X", "Y" })
+        {
+            var parameter = model.NewChild(record, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+
+            Type(model, parameter, "type", "int");
+            parameter.Set(CSharpLanguage.NameSlot, coordinate);
+        }
+
+        record.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        record.Set(CSharpLanguage.NameSlot, name);
+    }
 
     /// <summary>The expression form that makes LINQ writable: a lambda handed to a call.</summary>
     /// <remarks>

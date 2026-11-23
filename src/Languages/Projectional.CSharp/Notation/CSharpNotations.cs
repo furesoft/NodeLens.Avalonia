@@ -330,6 +330,40 @@ public static class CSharpNotations
                 tightConcepts: CSharpMemberGroups.Tight)),
             ed.Line(ed.Punct("}"))));
 
+        // A record, in its two forms: one header line whose semicolon the `hasBody` property decides, and the members in
+        // a block only while it says they are written. The semicolon sits in a conditional *inside* the line and the
+        // braces in a conditional block after it, which is the same split `Namespace` makes for C# 10's two forms - a
+        // header that ends in a symbol, and rows that exist or do not.
+        //
+        // `record struct` is one word apart from `record class`, so it is a conditional in the line rather than a second
+        // concept: the two forms differ in a keyword and share every slot.
+        notations.Add(CSharpConceptKeys.Record, ed => ed.Sequence(
+            ed.Line(
+                ed.Property(CSharpLanguage.VisibilitySlot),
+                ed.Space,
+                ed.Keyword("record"),
+                ed.Conditional(CSharpLanguage.IsStructSlot, "true", ed.Space, ed.Keyword("struct")),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot),
+                ed.Punct("("),
+                ed.WhenFilled(
+                    CSharpConceptKeys.ParametersSlot,
+                    ed.InlineCollection(CSharpConceptKeys.ParametersSlot, ed.Punct(","), string.Empty)),
+                ed.Punct(")"),
+                ed.WhenFilled(CSharpConceptKeys.InheritanceSlot, ed.Space, ed.ChildInline(CSharpConceptKeys.InheritanceSlot)),
+                ed.Conditional(CSharpLanguage.HasBodySlot, "false", ed.Punct(";"))),
+            ed.ConditionalBlock(
+                CSharpLanguage.HasBodySlot,
+                "true",
+                ed.Line(ed.Punct("{")),
+                ed.Indent(ed.Children(
+                    CSharpConceptKeys.MembersSlot,
+                    "<no members>",
+                    stacked: true,
+                    gaps: ListGap.BetweenGroups,
+                    tightConcepts: CSharpMemberGroups.Tight)),
+                ed.Line(ed.Punct("}")))));
+
         // `: Base, IFoo` - the colon belongs to the list, so a class that inherits nothing draws no colon.
         notations.Add(CSharpConceptKeys.Inheritance, ed => ed.Line(
             ed.Punct(":"),

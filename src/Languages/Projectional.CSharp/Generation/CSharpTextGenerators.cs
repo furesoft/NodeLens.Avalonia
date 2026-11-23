@@ -127,6 +127,36 @@ public static class CSharpTextGenerators
             LineBreakPart.Instance,
             new TextPart("}")))
 
+        // The same two forms the notation draws, generated from the same property: the semicolon closes the header when
+        // no body is written, and the braces exist only when one is.
+        .Add(CSharpConceptKeys.Record, TextTemplate.Of(
+            new PropertyPart(CSharpLanguage.VisibilitySlot),
+            new TextPart(" record"),
+            new ConditionalPart(CSharpLanguage.IsStructSlot, "true", TextTemplate.Of(new TextPart(" struct"))),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart("("),
+            new ChildrenPart(CSharpConceptKeys.ParametersSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart(")"),
+            new WhenFilledPart(
+                CSharpConceptKeys.InheritanceSlot,
+                TextTemplate.Of(new TextPart(" "), new ChildPart(CSharpConceptKeys.InheritanceSlot))),
+            new ConditionalPart(CSharpLanguage.HasBodySlot, "false", TextTemplate.Of(new TextPart(";"))),
+            new ConditionalPart(CSharpLanguage.HasBodySlot, "true", TextTemplate.Of(
+                LineBreakPart.Instance,
+                new TextPart("{"),
+                new IndentPart(TextTemplate.Of(
+                    new WhenFilledPart(
+                        CSharpConceptKeys.MembersSlot,
+                        TextTemplate.Of(
+                            LineBreakPart.Instance,
+                            Members(
+                                CSharpConceptKeys.MembersSlot,
+                                ListGap.BetweenGroups,
+                                CSharpMemberGroups.Tight))))),
+                LineBreakPart.Instance,
+                new TextPart("}")))))
+
         .Add(CSharpConceptKeys.Inheritance, TextTemplate.Of(
             new TextPart(": "),
             new ChildrenPart(CSharpConceptKeys.EntriesSlot, TextTemplate.Of(new TextPart(", ")))))
