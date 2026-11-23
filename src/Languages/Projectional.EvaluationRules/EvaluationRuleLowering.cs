@@ -146,6 +146,15 @@ public static class EvaluationRuleLowering
                 : context.Variable(context.Node.GetOrNull(slot) ?? string.Empty);
         }
 
+        // A name the rule itself bound, read without asking the node: the name is written into the body, so a rule reads the
+        // value it named rather than a name the document happens to carry. This is the body `bind` composes with.
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Bound))
+        {
+            var name = SlotOf(body, EvaluationRuleLanguage.NameSlot);
+
+            return context => context.Variable(name);
+        }
+
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Constant))
         {
             return Constant(body);
@@ -455,6 +464,11 @@ public static class EvaluationRuleLowering
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Variable))
         {
             return $"The value the run binds to the name in its {SlotOf(body, EvaluationRuleLanguage.SlotSlot)} property.";
+        }
+
+        if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Bound))
+        {
+            return $"The value the enclosing bind introduced under the name {SlotOf(body, EvaluationRuleLanguage.NameSlot)}.";
         }
 
         if (body.Concept.IsKindOf(EvaluationRuleConceptKeys.Constant))

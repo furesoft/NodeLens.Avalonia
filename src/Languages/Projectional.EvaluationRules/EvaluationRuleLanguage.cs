@@ -173,6 +173,16 @@ public static class EvaluationRuleLanguage
             description: "The value the run bound to the name a property holds.",
             nameSlot: SlotSlot),
 
+        // The other half of `bind`, and the reason the pair composes: `bind` writes its name as a literal, so a body that
+        // reads it back has to write the same literal. `variable` cannot - it takes the name from a slot of the node, which
+        // is what a free name needs and what a binding does not.
+        new ConceptDeclaration(
+            EvaluationRuleConceptKeys.Bound,
+            [new PropertySlot(NameSlot, PropertyType.String, description: "The name the enclosing bind introduced, such as total.")],
+            [EvaluationRuleConceptKeys.Body],
+            description: "The value a bind introduced under the name this body writes.",
+            nameSlot: NameSlot),
+
         // Written in the rule rather than read from the node, which is what a rule that answers with an outcome needs: the
         // alternative was a node whose property happens to hold the same text.
         new ConceptDeclaration(

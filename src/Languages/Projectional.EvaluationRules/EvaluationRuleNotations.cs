@@ -82,6 +82,11 @@ public static class EvaluationRuleNotations
             ed.Space,
             ed.Property(EvaluationRuleLanguage.SlotSlot)));
 
+        notations.Add(EvaluationRuleConceptKeys.Bound, ed => ed.Line(
+            ed.Keyword("bound"),
+            ed.Space,
+            ed.Property(EvaluationRuleLanguage.NameSlot, emptyText: "<<name>>")));
+
         notations.Add(EvaluationRuleConceptKeys.Constant, ed => ed.Line(
             ed.Property("kind", emptyText: "<<kind>>"),
             ed.Space,
