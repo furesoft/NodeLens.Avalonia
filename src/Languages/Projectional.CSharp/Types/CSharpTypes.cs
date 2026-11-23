@@ -50,6 +50,7 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.Field, new SameAs("type"))
         .Add(CSharpConceptKeys.Parameter, new SameAs("type"))
         .Add(CSharpConceptKeys.LocalDeclaration, new LocalType())
+        .Add(CSharpConceptKeys.ForInitializer, new LocalType())
         .Add(CSharpConceptKeys.Property, new SameAs("type"))
         .Add(CSharpConceptKeys.Name, new NameType())
         .Add(CSharpConceptKeys.Parenthesized, new SameAs("inner"))
@@ -101,7 +102,8 @@ public static class CSharpTypes
     }
 
     /// <summary>
-    /// A local declaration is as wide as the type it writes, or as its initializer when it says <c>var</c>.
+    /// A local declaration - and the counter a <c>for</c> declares - is as wide as the type it writes, or as its
+    /// initializer when it says <c>var</c>.
     /// </summary>
     /// <remarks>
     /// <c>var</c> is not a type, it is the decision not to write one: the compiler takes the initializer's. Reading the

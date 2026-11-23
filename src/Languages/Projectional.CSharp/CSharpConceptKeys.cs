@@ -146,6 +146,13 @@ public static class CSharpConceptKeys
     /// <summary><c>Type name = value;</c></summary>
     public const string LocalDeclaration = "CSharp.LocalDeclaration";
 
+    /// <summary>The initializer of a <c>for</c>: a local declaration without its terminating <c>;</c>.</summary>
+    /// <remarks>
+    /// It is not a <c>Statement</c> on purpose. C# puts both semicolons of the header in the <c>for</c> itself, so a
+    /// statement here would draw a <c>;</c> of its own and double the header's first separator.
+    /// </remarks>
+    public const string ForInitializer = "CSharp.ForInitializer";
+
     /// <summary><c>target = value;</c></summary>
     public const string Assignment = "CSharp.Assignment";
 

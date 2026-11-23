@@ -264,7 +264,8 @@ public sealed class CSharpLanguageTests
     public void AForLoopAndAPostfixOperatorDrawAndGenerateTheSameShape()
     {
         // The two that belong together: `for (int i = 0; i < 3; i++)` is only writable because the increment is an
-        // expression. The initializer is a statement, and the semicolon it draws *is* the header's first separator.
+        // expression. The header draws both separators itself, so the initializer is a `ForInitializer` - a declaration
+        // with no `;` of its own - and the counter still resolves from the condition, the increment and the body.
         var model = new Project(CSharpLanguage.Concepts).NewModel("counting");
         var file = model.NewNode(CSharpConceptKeys.File);
         var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
@@ -273,7 +274,7 @@ public sealed class CSharpLanguageTests
         var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
         var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
         var loop = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.For);
-        var init = model.NewChild(loop, CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.LocalDeclaration);
+        var init = model.NewChild(loop, CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.ForInitializer);
         var initType = model.NewChild(init, "type", CSharpConceptKeys.TypeReference);
         var start = model.NewChild(init, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.IntLiteral);
         var condition = model.NewChild(loop, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
@@ -298,6 +299,15 @@ public sealed class CSharpLanguageTests
         increment.Set(CSharpLanguage.UnaryOperatorSlot, CSharpUnaryOperator.Increment);
         increment.Set(CSharpLanguage.IsPostfixSlot, "true");
         counter.SetReference(CSharpConceptKeys.TargetSlot, init);
+
+        // The counter is a declaration a `Name` resolves to, from the condition and from the increment - its siblings
+        // under the header - and not only from the body, which is what implementing `NamedDeclaration` buys.
+        Assert.Contains(
+            CSharpScopes.Registry.ScopeOf(left, CSharpConceptKeys.TargetSlot).Entries,
+            entry => entry.Name == "i");
+        Assert.Contains(
+            CSharpScopes.Registry.ScopeOf(counter, CSharpConceptKeys.TargetSlot).Entries,
+            entry => entry.Name == "i");
 
         const string Expected =
             """

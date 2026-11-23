@@ -661,6 +661,23 @@ public static class CSharpLanguage
             isRoot: false,
             description: "Type name = value;"),
 
+        // The counter a `for` declares. It carries the same four slots as a local declaration and no `;`, because the
+        // header draws that separator - and it is not a Statement, so it cannot be written where a statement belongs.
+        // It implements `NamedDeclaration` so a `Name` in the condition, the increment and the body resolves to it.
+        new ConceptDeclaration(
+            CSharpConceptKeys.ForInitializer,
+            [
+                new PropertySlot(IsVarSlot, PropertyType.Boolean, "false"),
+                new ChildSlot("type", CSharpConceptKeys.TypeReference, Cardinality.One, minimum: 0),
+                new PropertySlot(NameSlot, PropertyType.String, description: "The counter's name."),
+                new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One, minimum: 0),
+            ],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Camel,
+            isRoot: false,
+            description: "The initializer of a for loop: a local declaration without its semicolon."),
+
         new ConceptDeclaration(
             CSharpConceptKeys.Assignment,
             [
@@ -683,14 +700,14 @@ public static class CSharpLanguage
             isRoot: false,
             description: "if (condition) { ... } else { ... }"),
 
-        // `for` has three parts and two separators, and the initializer is a *statement* - which is what makes the
-        // notation work: a local declaration draws its own `;`, so that semicolon is the first separator rather than a
-        // terminator. The increment is an expression for the same reason: `i++` has no `;`, so it cannot close the
-        // header early.
+        // `for` has three parts and two separators, and both separators are the header's own - `for (;;)` is legal C#.
+        // The initializer is therefore a `ForInitializer` rather than a statement: the header draws both separators, so
+        // the child must not draw one of its own. The increment is an expression for the same reason: `i++` has no `;`,
+        // so it cannot close the header early.
         new ConceptDeclaration(
             CSharpConceptKeys.For,
             [
-                new ChildSlot(CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.Statement, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.ForInitializer, Cardinality.One),
                 new ChildSlot(CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Expression, Cardinality.One),
                 new ChildSlot(CSharpConceptKeys.IncrementSlot, CSharpConceptKeys.Expression, Cardinality.One),
                 new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block, Cardinality.One),

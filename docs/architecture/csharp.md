@@ -134,6 +134,11 @@ behaviour or a generator body need" rather than by C# grammar order.
 (all compound operators as an enum), `If` (with `else if` as a nested `If`), `While`, `For`
 (initializer, condition and increment), `ForEach`, `Return`, `Break`, `Continue`, `Throw`, `Try`.
 
+A `for`'s initializer is a concept of its own, `ForInitializer`, and not a `LocalDeclaration`: both
+semicolons of the header are the `for`'s, as `for (;;)` shows, so the initializer draws no terminator of
+its own. `ForInitializer` carries the same four slots and implements `NamedDeclaration`, which is what makes
+the shape the documentation spells the line the editor draws.
+
 **Types and declarations (T0, D0)**
 
 `TypeReference` (a name plus an optional arity, nothing more), `Method` (name, return type,
