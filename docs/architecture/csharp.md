@@ -410,14 +410,18 @@ Three levels, because the interesting failures are semantic, not textual:
 3. **The parity gate.** The same document is run twice: the M4 interpreter walks the model, and
    the generated text is compiled and executed. Both have to reach the decision the corpus
    states, or neither is evidence for the other. **Landed** for the pilot:
-   `RulesGenerationParityTests` holds one corpus of rulesets - a threshold either side,
-   arithmetic, rule order, a conjunction, a negation, a conditional expression and a ruleset
-   with no rule - wraps each generated fragment in the host's method, compiles it with
-   `AssemblyCompiler` and invokes it with the same arguments the interpreter was bound with. A
-   ruleset that matches nothing is stated as no decision: the interpreter reports a failure, the
-   host's method throws, and neither may invent an outcome. It found a defect on its first run -
-   a condition that is not a comparison generated `if !flag`, because only a binary expression
-   brought parentheses of its own - and the `if` now supplies the ones C# requires.
+   `RulesGenerationParityTests` holds one corpus of rulesets - whole numbers, text and dates: a
+   threshold either side, arithmetic at three levels, division's truncation, rule order, a
+   conjunction and a disjunction, a negation, a conditional expression, text equality and
+   concatenation, two dates, and a ruleset with no rule - wraps each generated fragment in the
+   host's method, compiles it with `AssemblyCompiler` and invokes it with the same arguments the
+   interpreter was bound with. A ruleset that matches nothing is stated as no decision: the
+   interpreter reports a failure, the host's method throws, and neither may invent an outcome. It
+   found a defect on its first run - a condition that is not a comparison generated `if !flag`,
+   because only a binary expression brought parentheses of its own - and the `if` now supplies the
+   ones C# requires. It also recorded two divergences it cannot pass and therefore does not cover:
+   `^` is a power here and XOR in C#, and the interpreter evaluates both operands of `&&`/`||`
+   where C# short-circuits (both under "Risks").
 
 Optional fourth level: a separate **`Projectional.CSharp.Check`** assembly that uses Roslyn to
 compile the generated text in memory and report diagnostics against the traceability map. It is
@@ -467,6 +471,8 @@ pilot: `RulesGenerationParityTests` is the corpus and the comparison, and its fi
 | Risk | Mitigation |
 | --- | --- |
 | Two type systems disagree (model types vs C# types) | the model's `TypeReference` is a name, not a type; the compiler is the only authority and the interpreter mirrors it only for the subset in the corpus |
+| `^` means a power in the interpreter and XOR in C# | the fragment prints the operator symbol verbatim, and a template cannot map a symbol to an expression, so a rule that uses `^` generates different behaviour. Found by `RulesGenerationParityTests`, which therefore does not cover it; fixing it needs a part that maps a symbol, not a corpus case |
+| The interpreter evaluates both operands of `&&`/`||`, C# short-circuits | a right operand that fails - a division by zero - is a finding in the editor and skipped in the generated code. The same gate found it and leaves it out of the corpus; making the interpreter short-circuit is a change to what a trace records, not to the generator |
 | No overload resolution, so a call's meaning is invisible in the editor | accepted for M6: completion offers names, not overloads; a diagnostic for an unresolvable name is a later pass |
 | Statement notation is long on screen | that is what `Indent` and the caret-by-cell model are for; the measured caret path in the rules sample is the test that it stays navigable |
 | `Indent` blocks change how the caret moves | covered by the existing caret tests; a `Block` is a `Sequence` under an `Indent`, so it adds no new cell kind |
