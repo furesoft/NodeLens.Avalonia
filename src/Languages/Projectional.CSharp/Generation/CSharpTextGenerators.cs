@@ -485,6 +485,16 @@ public static class CSharpTextGenerators
             new ChildPart("inner"),
             new TextPart(")")))
 
+        // The parentheses are generated for the same reason they are drawn: the shortening to `item => item` is a
+        // decision about a list of one, and the list is what this template expands.
+        .Add(CSharpConceptKeys.Lambda, TextTemplate.Of(
+            new TextPart("("),
+            new ChildrenPart(CSharpConceptKeys.ParametersSlot, TextTemplate.Of(new TextPart(", "))),
+            new TextPart(") => "),
+            new ChildPart(CSharpConceptKeys.BodySlot)))
+
+        .Add(CSharpConceptKeys.LambdaParameter, TextTemplate.Of(new PropertyPart(CSharpLanguage.NameSlot)))
+
         .Add(CSharpConceptKeys.New, TextTemplate.Of(
             new TextPart("new "),
             new ChildPart("type"),

@@ -1045,6 +1045,126 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void ALambdaIsCodeHandedToACallWhichIsWhatLinqNeeds()
+    {
+        // The expression form the subset was missing, and the one whose absence made "LINQ is sugar over method calls"
+        // true only on paper: `values.Where(item => item > 0)` is a call whose argument is *code*, and there was no code
+        // to pass. The parameters are ordinary `Parameter` nodes, which is what makes the body see them - the same
+        // scope that answers a method's parameters answers a lambda's.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("linq");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var parameters = model.NewChild(method, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var valuesType = model.NewChild(parameters, "type", CSharpConceptKeys.TypeReference);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var call = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Call);
+        var callee = model.NewChild(call, "callee", CSharpConceptKeys.MemberAccess);
+        var values = model.NewChild(callee, "target", CSharpConceptKeys.Name);
+        var lambda = model.NewChild(call, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Lambda);
+        var item = model.NewChild(lambda, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.LambdaParameter);
+        var comparison = model.NewChild(lambda, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Binary);
+        var use = model.NewChild(comparison, "left", CSharpConceptKeys.Name);
+        var zero = model.NewChild(comparison, "right", CSharpConceptKeys.IntLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Numbers");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Positive");
+        method.Set(CSharpLanguage.IsStaticSlot, true);
+        parameters.Set(CSharpLanguage.NameSlot, "values");
+        valuesType.Set(CSharpLanguage.NameSlot, "IEnumerable<int>");
+        returnType.Set(CSharpLanguage.NameSlot, "IEnumerable<int>");
+        callee.Set(CSharpLanguage.MemberSlot, "Where");
+        item.Set(CSharpLanguage.NameSlot, "item");
+        comparison.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.GreaterThan);
+        zero.Set(CSharpLanguage.ValueProperty, "0");
+
+        // `values` is the method's parameter and `item` the lambda's, and both resolve through the one rule the language
+        // declares - a name sees the declarations in the nodes that enclose it, nearest first.
+        values.SetReference(CSharpConceptKeys.TargetSlot, parameters);
+
+        var inLambda = CSharpScopes.Registry.ScopeOf(use, CSharpConceptKeys.TargetSlot).Entries;
+
+        Assert.Contains(inLambda, entry => entry.Name == "item" && entry.Fits(CSharpConceptKeys.NamedDeclaration, CSharpLanguage.Concepts));
+
+        use.SetReference(CSharpConceptKeys.TargetSlot, item);
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Numbers
+              {
+                public static IEnumerable<int> Positive(IEnumerable<int> values)
+                {
+                  return values.Where((item) => item > 0);
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // A lambda's type is the delegate the target asks for, which this language does not model - so the honest answer
+        // is unknown rather than a name for something the type system cannot describe.
+        Assert.IsType<UnknownType>(CSharpTypes.Registry.TypeOf(lambda));
+    }
+
+    [Fact]
+    public void ALambdaWithoutParametersDrawsItsEmptyPairOfParentheses()
+    {
+        // `() => 5`: the parentheses are always drawn, so the one-parameter shortening is the only thing given up - and
+        // an empty list draws nothing between them rather than a placeholder, because an empty pair is a real argument
+        // list in C#.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("no-parameters");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var call = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Call);
+        var callee = model.NewChild(call, "callee", CSharpConceptKeys.Name);
+        var lambda = model.NewChild(call, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Lambda);
+        var five = model.NewChild(lambda, CSharpConceptKeys.BodySlot, CSharpConceptKeys.IntLiteral);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Clock");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Run");
+        method.Set(CSharpLanguage.IsStaticSlot, true);
+        returnType.Set(CSharpLanguage.NameSlot, "void");
+        five.Set(CSharpLanguage.ValueProperty, "5");
+
+        callee.SetReference(CSharpConceptKeys.TargetSlot, NodeId.New(), "Later");
+
+        const string Expected =
+            """
+            namespace Sample
+            {
+              public class Clock
+              {
+                public static void Run()
+                {
+                  return Later(() => 5);
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Expected, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Expected + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing

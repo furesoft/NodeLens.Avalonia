@@ -23,7 +23,57 @@ internal static class CSharpCorpus
     [
         ("expressions", Expressions()),
         ("statements", Statements()),
+        ("linq", Linq()),
     ];
+
+    /// <summary>The expression form that makes LINQ writable: a lambda handed to a call.</summary>
+    /// <remarks>
+    /// The plan's row for LINQ says the query syntax is out because a call already expresses the same tree. That was
+    /// true of the tree and not of the language: a call whose argument is *code* needs code to pass, and there was no
+    /// lambda. This document is the check on the claim - two extension methods, one with a single parameter and one with
+    /// two, compiled by the corpus test with warnings as errors.
+    /// </remarks>
+    private static Model Linq()
+    {
+        var (model, type) = NewFile("linq", "Linq");
+
+        model.NewChild(model.Roots[0], CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using)
+            .Set(CSharpLanguage.NameSlot, "System.Collections.Generic");
+        model.NewChild(model.Roots[0], CSharpConceptKeys.UsingsSlot, CSharpConceptKeys.Using)
+            .Set(CSharpLanguage.NameSlot, "System.Linq");
+
+        // public IEnumerable<int> Positive(IEnumerable<int> values) { return values.Where((item) => item > 0); }
+        var positive = Method(model, type, "IEnumerable<int>", "Positive", ("IEnumerable<int>", "values"), out var positiveBody);
+        var where = model.NewChild(Return(model, positiveBody), CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Call);
+        var filtered = model.NewChild(where, "callee", CSharpConceptKeys.MemberAccess);
+        NameOf(model, filtered, "target", Parameter(positive, 0));
+        filtered.Set(CSharpLanguage.MemberSlot, "Where");
+
+        var test = model.NewChild(where, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Lambda);
+        var item = model.NewChild(test, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.LambdaParameter);
+        item.Set(CSharpLanguage.NameSlot, "item");
+        var positive0 = Binary(model, test, CSharpConceptKeys.BodySlot, CSharpBinaryOperator.GreaterThan);
+        NameOf(model, positive0, "left", item);
+        Number(model, positive0, "right", "0");
+
+        // public int Total(IEnumerable<int> values) { return values.Aggregate((left, right) => left + right); }
+        var total = Method(model, type, "int", "Total", ("IEnumerable<int>", "values"), out var totalBody);
+        var aggregate = model.NewChild(Return(model, totalBody), CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Call);
+        var summed = model.NewChild(aggregate, "callee", CSharpConceptKeys.MemberAccess);
+        NameOf(model, summed, "target", Parameter(total, 0));
+        summed.Set(CSharpLanguage.MemberSlot, "Aggregate");
+
+        var add = model.NewChild(aggregate, CSharpConceptKeys.ArgumentsSlot, CSharpConceptKeys.Lambda);
+        var left = model.NewChild(add, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.LambdaParameter);
+        var right = model.NewChild(add, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.LambdaParameter);
+        left.Set(CSharpLanguage.NameSlot, "left");
+        right.Set(CSharpLanguage.NameSlot, "right");
+        var sum = Binary(model, add, CSharpConceptKeys.BodySlot, CSharpBinaryOperator.Add);
+        NameOf(model, sum, "left", left);
+        NameOf(model, sum, "right", right);
+
+        return model;
+    }
 
     /// <summary>The expression forms: precedence, grouping, logic, a choice, a cast, a test, a collection and an index.</summary>
     private static Model Expressions()

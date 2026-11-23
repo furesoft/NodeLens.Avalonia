@@ -127,6 +127,23 @@ public static class CSharpNotations
             ed.ChildInline("inner"),
             ed.Punct(")")));
 
+        // A lambda always draws its parentheses, including the one-parameter form C# lets you shorten: `(item) => item`
+        // is the same program as `item => item`, and the notation has no way to say "exactly one" - so it says the
+        // thing that is always right rather than the thing that is usually prettier. The list is inside a `WhenFilled`
+        // so that an empty parameter list draws `()` rather than the one space an inline collection keeps for the caret.
+        notations.Add(CSharpConceptKeys.Lambda, ed => ed.Line(
+            ed.Punct("("),
+            ed.WhenFilled(
+                CSharpConceptKeys.ParametersSlot,
+                ed.InlineCollection(CSharpConceptKeys.ParametersSlot, ed.Punct(","), string.Empty)),
+            ed.Punct(")"),
+            ed.Space,
+            ed.Punct("=>"),
+            ed.Space,
+            ed.ChildInline(CSharpConceptKeys.BodySlot)));
+
+        notations.Add(CSharpConceptKeys.LambdaParameter, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
+
         notations.Add(CSharpConceptKeys.New, ed => ed.Line(
             ed.Keyword("new"),
             ed.Space,
