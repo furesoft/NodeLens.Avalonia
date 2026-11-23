@@ -120,6 +120,7 @@ bodies. It reads and it chooses; it never computes, compares numbers or calls an
 | `Child(slot)` | the declared `Name` of the one child in that slot - **this is how a composite name is written**; the slot must hold one child, not a list |
 | `Reference(slot)` | the `Name` of the reference's target |
 | `Join(separator, parts)` | parts, one after another, empty ones left out |
+| `Children(slot, separator)` | the `Name` of every child in that slot, empty ones left out - **this is how a name over a list is written** |
 | `Fallback(parts)` | the first non-empty part - how a concept says "the name, else the value, else `<anonymous>`" |
 | `Choose(property, value, then, else)` | one of two parts, by a property's value - the `Conditional` rule, one level up |
 
@@ -140,9 +141,8 @@ because a name is asked where nobody can see the document that produced it:
 - **A slot the concept does not have, or one of the wrong kind.** `property` reads a `PropertySlot`,
   `child` a `ChildSlot`, `reference` a `ReferenceSlot`.
 - **A `child` part on a list.** `Child` means "the one child in that slot", and a list would answer its
-  first element - a name the author never asked for and cannot see. Naming a node after *all* children
-  has no part yet; the vocabulary would need a list-joining part for it, and this is the one shape a
-  composite name cannot be written in today.
+  first element - a name the author never asked for and cannot see. Naming a node after *all* children is
+  `Children`, which says so.
 - **A `choose` value the property cannot hold.** `choose isCollapsed = yes` would answer the otherwise
   arm for ever, with nothing visibly wrong in the document.
 - **A `choose` value the property would store differently.** A choice compares what the property
@@ -161,7 +161,9 @@ names a whole family of nodes.
 - **Not cached.** `Node.Name` is asked once per reference cell, once per sort, once per browser row
   and once per scope entry. A cache would need invalidation on every property and child change, which
   is a second change-notification path. Computing a short string per call is cheaper, and a language
-  whose name is expensive should store it instead.
+  whose name is expensive should store it instead. `Children` is the one part that can make a name cost
+  more than a constant - it is proportional to the children it names - which is the author's decision
+  and is still bounded by the document.
 - **Not `alias`.** MPS' alias is *concept*-level data - the word completion offers and typing creates
   an instance of. `Name` is *node*-level. They are the two halves of one idea and they are declared in
   two places on purpose; implementing either by reusing the other would make a concept that offers a
@@ -191,7 +193,7 @@ that does not exist or has the wrong kind.
 
 **The language is delivered, and so is the folder.** `Projectional.Behaviours` declares the document
 (`Behaviour.Document`, one per concept, with `concept` and `functions`), the function (`kind`, `body`),
-and the seven body parts, drew them in the shape the definition languages use, and lowers a document to
+and the eight body parts, drew them in the shape the definition languages use, and lowers a document to
 the delegate `ConceptDeclaration(nameOf:)` takes. `LanguageProject` reads the `behaviour` folder
 **before** it builds the registry - a name has to be part of the declaration, so it cannot be installed
 afterwards - and hands the answers over through `ConceptDeclaration.WithNameOf`, which answers a copy
@@ -214,8 +216,9 @@ which concept this one inherits from, and the registry already knows.
 
 | Slice | Content | Effort |
 | --- | --- | --- |
-| B1 | `Concept.NameOf`, `Node.Name` routed through it, the seven body parts, `Projectional.Behaviours` with the declared document, its notation and its lowering - **delivered** | 1 week |
+| B1 | `Concept.NameOf`, `Node.Name` routed through it, the seven body parts the seam started with, `Projectional.Behaviours` with the declared document, its notation and its lowering - **delivered** | 1 week |
 | B1b | The `behaviour` folder in `LanguageProject`: lowered before the registry is built, handed to the declarations as `nameOf` through `ConceptDeclaration.WithNameOf`, with `samples/declared-atlas` carrying one - **delivered** | 2-3 days |
+| B1c | The refusals that keep a body from answering what it never meant (a `child` part on a list, a `choose` value the property would store differently), and `Children` as the eighth part, so a name over a list is writable - **delivered** | 2 days |
 | B2 | `Describe` with the two consumers (a trace row, a constraint message that interpolates it), only if both adopt it | 3-4 days |
 | B3 | `Projectional.Samples` and `samples/declared-pipeline` grow one behaviour each, proving the declared path, plus a parity test that a C# lambda and a declared body answer the same name for every node of the corpus | 3-4 days |
 | B4 | The override finding, an intention that removes a redeclaration, and refusing a name cycle the declarations show | 2 days |
