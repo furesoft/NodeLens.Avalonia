@@ -77,7 +77,7 @@ internal static class ConceptPage
     /// <summary>The notation written out as text, with the sentence that says what the placeholders mean.</summary>
     private static string Drawn(Notation notation) =>
         $"<pre class=\"notation\">{Html.Escape(NotationSpelling.Of(notation))}</pre>\n"
-        + Html.Paragraph("A slot is written as its name, so <name> holds one child or value and <name...> holds a list; further indentation is another level. A slot draws in its place whatever the child itself draws, so punctuation the child owns - the semicolon a statement ends with - belongs to that statement and is not repeated here. This is the shape a document of the concept takes, not a document.");
+        + Legends.Notation();
 
     private static string Inheritance(DocumentationChain chain, Concept concept, int depth)
     {

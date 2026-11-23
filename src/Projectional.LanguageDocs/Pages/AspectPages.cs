@@ -314,7 +314,8 @@ internal static class AspectPages
                 $"<pre class=\"notation\">{Html.Escape(NotationSpelling.Of(notation))}</pre>",
             });
 
-        return Html.Table(["Concept", "Variant", "Written as"], rows, "No concept has a notation of its own.");
+        return Html.Table(["Concept", "Variant", "Written as"], rows, "No concept has a notation of its own.")
+            + Legends.Notation();
     }
 
     private static string Types(LanguageProject language)
@@ -447,10 +448,7 @@ internal static class AspectPages
                 });
 
             body.Append(Html.Table(["Concept", "Template"], rows, "The generator has no template, so it generates nothing."));
-            body.Append(Html.MarkupParagraph(
-                "A slot is written as <code>{name}</code> whether it holds a value or a child, and a list as"
-                + " <code>{name...}</code>. A child contributes the text of its own template rather than a placeholder,"
-                + " so a field that reuses a statement prints that statement including the <code>;</code> it ends with."));
+            body.Append(Legends.Template());
         }
     }
 

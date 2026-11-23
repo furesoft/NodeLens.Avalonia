@@ -723,6 +723,10 @@ public sealed class LanguageDocumentationTests
 
         Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;", notations.Text, StringComparison.Ordinal);
 
+        // The page says how a shape is spelled for the same reason the concept page does: a slot stands for what the
+        // child draws, so a reader who expects the child's punctuation beside the placeholder reads a defect into it.
+        Assert.Contains("punctuation the child owns", notations.Text, StringComparison.Ordinal);
+
         // A scope provider is asked per reference at scope time, so the page lists the concept's own reference slots
         // rather than claiming which ones the provider fills.
         var scopes = Assert.Single(pages, page => page.Path == "Atlas/scopes.html");
