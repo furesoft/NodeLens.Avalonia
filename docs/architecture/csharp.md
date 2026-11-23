@@ -260,6 +260,13 @@ the name lives: a reference to such a node draws `<Atlas.Stop: named in code>` w
 it is worth stating plainly: the name is *not available* in the editor until the language is compiled, and
 the editor says so instead of inventing one.
 
+A name has **one source**, so the two are one designation and the registry resolves them in one walk over the
+supers: a concept below an externally named one is named by the same code, and a concept that declares its own
+function overrides it. Declaring both at once is refused by the constructor, because it is a declaration that
+says two different things about where one name comes from. Resolved separately - which is how it was written
+first - the marker was the one designation that did *not* inherit, and a subtype of a C#-named concept went
+back to drawing its concept key.
+
 **What the export does with it is write the binding down.** The declaration gains
 `nameOf: Atlas.Behaviours.StopBehaviour.Name`, the C# document is generated into the package as a
 file of its own (`<stem>.Behaviour.cs`) and compiled together with the declarations, and the package

@@ -455,10 +455,14 @@ public sealed class ConceptRegistry
         var nameRule = declaration.NameRule
             ?? supers.Select(super => super.NameRule).FirstOrDefault(rule => rule is not null);
 
-        // The third designation that inherits the same way, and for the same reason: a concept that computes its
-        // name stays computed below itself, and a language re-declares the function only to override it.
-        var nameFunction = declaration.NameOf
-            ?? supers.Select(super => super.NameFunction).FirstOrDefault(function => function is not null);
+        // The third designation that inherits the same way, and for the same reason: a concept that computes its name
+        // stays computed below itself, and a language re-declares it only to override it.
+        //
+        // A name has exactly *one* source - a function this framework can call, or code it cannot run (ADR 0014) - so
+        // the two are resolved together rather than each on its own. Resolved separately, a concept below an externally
+        // named one silently lost the marker: it had no function to inherit, so it fell through to "nothing to say" and
+        // the projection went back to showing a concept key for a node that is in fact named.
+        var (nameFunction, nameIsExternal) = NameSource(declaration, supers);
 
         return new Concept(
             declaration.Key,
@@ -478,7 +482,45 @@ public sealed class ConceptRegistry
             nameFunction,
             declaration.Alias,
             declaration.IsRoot,
-            declaration.NameIsExternal);
+            nameIsExternal);
+    }
+
+    /// <summary>Where a concept's name comes from: what it declares itself, else the nearest super that declares one.</summary>
+    /// <param name="declaration">The declaration being resolved.</param>
+    /// <param name="supers">Its super concepts, in the order the declaration named them.</param>
+    /// <remarks>
+    /// One walk over the supers rather than one per question, because the questions are one answer: "named by a function"
+    /// and "named by code" are alternatives, and a super that says the first must not be overruled by a later super that
+    /// says the second. The nearer super wins, which is the same rule the name slot and the name rule already follow.
+    /// </remarks>
+    private static (Func<Node, string?>? Function, bool IsExternal) NameSource(
+        ConceptDeclaration declaration,
+        IReadOnlyList<Concept> supers)
+    {
+        if (declaration.NameOf is { } own)
+        {
+            return (own, false);
+        }
+
+        if (declaration.NameIsExternal)
+        {
+            return (null, true);
+        }
+
+        foreach (var super in supers)
+        {
+            if (super.NameIsExternal)
+            {
+                return (null, true);
+            }
+
+            if (super.NameFunction is { } inherited)
+            {
+                return (inherited, false);
+            }
+        }
+
+        return (null, false);
     }
 
     /// <summary>

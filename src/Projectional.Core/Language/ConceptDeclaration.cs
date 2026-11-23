@@ -118,6 +118,16 @@ public sealed class ConceptDeclaration
             throw new ArgumentException($"'{collapseSlot}' is not a valid slot name.", nameof(collapseSlot));
         }
 
+        // A name has one source: a function this framework can call, or code it cannot run (ADR 0014). Both at once is
+        // not a preference to be resolved later - it is a declaration that says two different things about where a name
+        // comes from, so it is refused where every other contradiction in a declaration is.
+        if (nameOf is not null && nameIsExternal)
+        {
+            throw new ArgumentException(
+                $"Concept '{key}' declares a name function and an external name at once, but a name has one source.",
+                nameof(nameIsExternal));
+        }
+
         Key = key;
         Slots = slotList;
         SuperConcepts = superList;
@@ -227,24 +237,9 @@ public sealed class ConceptDeclaration
     {
         ArgumentNullException.ThrowIfNull(nameOf);
 
-        return new ConceptDeclaration(
-            Key,
-            Slots,
-            SuperConcepts,
-            NameSlot,
-            IsAbstract,
-            IsOfferedInCompletion,
-            Description,
-            CollapseSlot,
-            Applicability,
-            Triggers,
-            IsInterface,
-            Interfaces,
-            NameRule,
-            nameOf,
-            Alias,
-            IsRoot,
-            NameIsExternal);
+        // The function wins over a marker the declaration may carry: a name has one source, and this one is code the
+        // framework can call.
+        return Named(nameOf, nameIsExternal: false);
     }
 
     /// <summary>
@@ -256,7 +251,15 @@ public sealed class ConceptDeclaration
     /// never loads. What the marker buys is honesty in the editor - a reference to such a node can say where the name
     /// lives instead of showing a concept key that looks like an unnamed node.
     /// </remarks>
-    public ConceptDeclaration WithExternalName() => new(
+    public ConceptDeclaration WithExternalName() => Named(nameOf: null, nameIsExternal: true);
+
+    /// <summary>This declaration with its name taken from one of its two sources, everything else carried over.</summary>
+    /// <remarks>
+    /// One copy for both, because the two differ in exactly one argument and a copy written per property is how a
+    /// declaration quietly loses the ones nobody remembered - <see cref="ConceptDeclaration"/> has eighteen, and the
+    /// guard test next to it fails when a nineteenth arrives without this line.
+    /// </remarks>
+    private ConceptDeclaration Named(Func<Node, string?>? nameOf, bool nameIsExternal) => new(
         Key,
         Slots,
         SuperConcepts,
@@ -270,10 +273,10 @@ public sealed class ConceptDeclaration
         IsInterface,
         Interfaces,
         NameRule,
-        NameOf,
+        nameOf,
         Alias,
         IsRoot,
-        nameIsExternal: true);
+        nameIsExternal);
 
     /// <summary>
     /// What a name of this concept has to look like, or <see langword="null"/> to inherit what the super concept
