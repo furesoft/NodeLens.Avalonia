@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Behaviours;
 using Projectional.CSharp;
 using Projectional.CSharp.Checks;
 using Projectional.CSharp.Generation;
@@ -74,6 +75,10 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         .. StructureLanguage.ConceptDeclarations,
         .. EditorLanguage.ConceptDeclarations,
         .. TypeRuleLanguage.ConceptDeclarations,
+
+        // The behaviour language too: a language project's behaviour/ folder is written in it, so a shell that does not
+        // declare it cannot open the file an author writes to say what a concept is called.
+        .. BehaviourLanguage.ConceptDeclarations,
 
         // The evaluation rule language too: a language project writes its meaning in it, so a shell that does not declare
         // it cannot open the file an author writes to say what a concept means.
@@ -170,6 +175,18 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
                 ConstraintSet.Empty,
                 IntentionLowering.CreateProvider([], EvaluationRuleLanguage.Concepts),
                 []),
+
+            // And the language it writes what a concept is called in, documented for the same reason: a reader meeting
+            // `behaviour for Atlas.Stop` in a folder needs the page that says what the seven parts of a body are.
+            [BehaviourLanguage.Name] = LanguageProject.Shipped(
+                BehaviourLanguage.Name,
+                version: null,
+                BehaviourLanguage.ConceptDeclarations,
+                BehaviourLanguage.Concepts,
+                BehaviourNotations.Registry,
+                ConstraintSet.Empty,
+                IntentionLowering.CreateProvider([], BehaviourLanguage.Concepts),
+                []),
         };
 
         /// <summary>Every language the shell ships, which is what a documentation set starts from.</summary>
@@ -258,6 +275,10 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
     internal static DefinitionKind NotationKind { get; } = new(
         "notation", "Notation", LanguageProject.EditorFolder, EditorConceptKeys.Notation);
 
+    /// <summary>What one concept is called, which is the one thing a name slot cannot always say.</summary>
+    internal static DefinitionKind BehaviourKind { get; } = new(
+        "behaviour", "Behaviour", LanguageProject.BehaviourFolder, BehaviourConceptKeys.Document);
+
     /// <summary>One type rule, which is what a <c>types</c> folder is written of.</summary>
     internal static DefinitionKind TypeRuleKind { get; } = new(
         "type-rule", "Type rule", LanguageProject.TypesFolder, TypeRuleConceptKeys.Rule);
@@ -320,6 +341,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         ConceptKind,
         EnumerationKind,
         NotationKind,
+        BehaviourKind,
         TypeRuleKind,
         TypeNameKind,
         ConstraintKind,
@@ -626,6 +648,7 @@ internal sealed class WorkbenchLanguage : ILanguageResolver
         StructureNotations.AddTo(notations);
         EditorNotations.AddTo(notations);
         TypeRuleNotations.AddTo(notations);
+        BehaviourNotations.AddTo(notations);
         EvaluationRuleNotations.AddTo(notations);
         TextGenNotations.AddTo(notations);
         ConstraintNotations.AddTo(notations);

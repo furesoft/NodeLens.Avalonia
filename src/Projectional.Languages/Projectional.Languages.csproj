@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Projectional.Checks\Projectional.Checks.csproj" />
+    <ProjectReference Include="..\..\src\Languages\Projectional.Behaviours\Projectional.Behaviours.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.ConstraintRules\Projectional.ConstraintRules.csproj" />
     <ProjectReference Include="..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
     <ProjectReference Include="..\..\src\Languages\Projectional.Editors\Projectional.Editors.csproj" />

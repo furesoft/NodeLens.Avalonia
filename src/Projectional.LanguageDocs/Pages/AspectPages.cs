@@ -28,6 +28,7 @@ internal static class AspectPages
     internal static IReadOnlyList<Aspect> All { get; } =
     [
         Aspect.Enumerations,
+        Aspect.Behaviours,
         Aspect.Notations,
         Aspect.Types,
         Aspect.Typing,
@@ -66,6 +67,7 @@ internal static class AspectPages
         return aspect switch
         {
             Aspect.Enumerations => Enumerations(DocumentationChain.Own(language)).Count,
+            Aspect.Behaviours => language.BehaviourDocuments.Count,
             Aspect.Notations => language.Notations.Notations.Count,
             Aspect.Types => language.Types.Count,
             Aspect.Typing => language.DeclaredTypingRules.Count,
@@ -91,6 +93,11 @@ internal static class AspectPages
             Aspect.Enumerations => count == 0
                 ? "No property of this language is declared over an enumeration."
                 : $"{Html.Count(count, "enumeration")} the language's properties are declared over.",
+            Aspect.Behaviours => count == 0
+                ? "No concept computes its name, so every name this language shows is the value of a name slot."
+                : count == 1
+                    ? "One concept computes its own name, and a reference to one of its nodes shows it."
+                    : $"{Html.Count(count, "concept")} compute their own name, and a reference to one of their nodes shows it.",
             Aspect.Notations => count == 0
                 ? "No concept has a notation of its own."
                 : $"{Html.Count(count, "notation")}, one per concept that draws itself.",
@@ -150,6 +157,38 @@ internal static class AspectPages
 
         return Html.Table(["Concept", "Evaluates to"], rows, "It states none.");
     }
+    /// <summary>What each concept is called, as it was written, drawn with the language it is written in.</summary>
+    /// <remarks>
+    /// A drawing rather than a table of the answers, because the answers cannot be shown without a document to ask: a
+    /// name is computed from the node it is asked about, so the only thing a page can state is the function itself. That
+    /// is also the half a language author copies into their own folder.
+    /// </remarks>
+    private static string Behaviours(LanguageProject language)
+    {
+        var drawings = BehaviourDrawings.Of(language);
+
+        if (drawings.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var body = new StringBuilder();
+
+        body.Append(Html.MarkupParagraph(
+            "A body is a closed set of parts: <code>literal</code>, <code>property</code>, <code>child</code>,"
+            + " <code>reference</code>, <code>join</code>, <code>fallback</code> and <code>choose</code>. It reads and it"
+            + " chooses, and never computes - a name that needs arithmetic is a name that should be stored."));
+
+        foreach (var drawing in drawings)
+        {
+            body.Append(Html.Section(drawing.Name, drawing.Refusal is { Length: > 0 } refusal
+                ? Html.Paragraph($"It could not be drawn: {refusal}")
+                : $"<pre class=\"example\">{drawing.Html}</pre>\n"));
+        }
+
+        return body.ToString();
+    }
+
     /// <summary>The rules as they are written, drawn: a sentence says what a rule computes, a drawing says how it says so.</summary>
     /// <remarks>
     /// The table above is what a reader checks an answer against; this is what a language author copies from. The names are
@@ -228,6 +267,10 @@ internal static class AspectPages
 
                 case Aspect.Enumerations:
                     body.Append(EnumerationsTable(concepts));
+                    break;
+
+                case Aspect.Behaviours:
+                    body.Append(Behaviours(language));
                     break;
 
                 case Aspect.Notations:

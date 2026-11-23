@@ -56,6 +56,7 @@ internal static class AspectsPage
     private static string Folder(Aspect aspect) => aspect switch
     {
         Aspect.Enumerations => "structure (a declaration, not a folder of its own)",
+        Aspect.Behaviours => LanguageProject.BehaviourFolder,
         Aspect.Notations => LanguageProject.EditorFolder,
         Aspect.Types => LanguageProject.TypesFolder,
         Aspect.Typing => LanguageProject.TypingFolder,

@@ -19,6 +19,7 @@ folder also proves that a language may be built on another language's concepts.
 | --- | --- | --- |
 | root | `language.mps` | the name, the version and one declared dependency |
 | structure | `structure/` | an abstract concept, inheritance, references, two root concepts (one of them nestable), a borrowed concept |
+| behaviour | `behaviour/` | a stop is called after the place it stops at - a computed name on a concept with no name slot |
 | editor | `editor/` | a sequence with an indented child list, an inline line and a reference cell |
 | types | `types/` | a declared record type (`place`) and three rules that name it, so three concepts answer one type |
 | evaluation | `evaluation/` | four meanings: a place answers with its name and position as one label, a stop with the label of the place it points at, a map with how many places it holds, a route with the list of its stops' labels |

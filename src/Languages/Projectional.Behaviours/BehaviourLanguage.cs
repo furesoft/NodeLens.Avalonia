@@ -6,10 +6,10 @@ namespace Projectional.Behaviours;
 /// <summary>The language a concept's behaviour is written in: one document per concept, one function per name.</summary>
 /// <remarks>
 /// <para>
-/// The fifth definition language, and the only one whose lowering must reach the concept registry rather than a
-/// registry beside it: a name is asked by consumers that have no session (a reference cell, a sort), so it is a
-/// property of the concept (docs/architecture/behaviours.md). The <c>behaviour</c> folder is read before the registry is
-/// built, which is why <see cref="BehaviourLowering"/> answers the delegates rather than installing them.
+/// The one definition language whose lowering must reach the concept registry rather than a registry beside it: a name is
+/// asked by consumers that have no session (a reference cell, a sort), so it is a property of the concept
+/// (docs/architecture/behaviours.md). The <c>behaviour</c> folder is read before the registry is built, which is why
+/// <see cref="BehaviourLowering"/> answers the delegates rather than installing them.
 /// </para>
 /// <para>
 /// The vocabulary is closed: a part reads a slot, names a child or a target, joins, falls back or chooses. There is no
@@ -18,6 +18,9 @@ namespace Projectional.Behaviours;
 /// </remarks>
 public static class BehaviourLanguage
 {
+    /// <summary>The name the shell and the documentation give this language.</summary>
+    public const string Name = "Behaviours";
+
     private static PropertyType KindType { get; } = PropertyType.Enum([BehaviourConceptKeys.NameKind, BehaviourConceptKeys.DescribeKind]);
 
     /// <summary>The concepts of the language, in declaration order.</summary>
@@ -50,6 +53,7 @@ public static class BehaviourLanguage
                     description: "The key of the concept this behaviour is for."),
                 new ChildSlot(BehaviourConceptKeys.FunctionsSlot, BehaviourConceptKeys.Function, Cardinality.Many),
             ],
+            nameSlot: BehaviourConceptKeys.ConceptSlot,
             isRoot: true,
             description: "One concept's behaviour: the concept it is for and the functions it declares."),
 

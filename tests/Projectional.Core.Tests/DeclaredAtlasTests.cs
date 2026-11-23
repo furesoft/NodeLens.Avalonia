@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Projectional.Behaviours;
 using Projectional.ConstraintRules;
 using Projectional.Core;
 using Projectional.Editing;
@@ -469,6 +470,7 @@ public sealed class DeclaredAtlasTests
         try
         {
             AssertRoundTrips(Path.Combine(folder, LanguageProject.StructureFolder), new Project(StructureLanguage.Concepts), temporary.FullName);
+            AssertRoundTrips(Path.Combine(folder, LanguageProject.BehaviourFolder), new Project(BehaviourLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.EditorFolder), new Project(EditorLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.TypesFolder), new Project(TypeRuleLanguage.Concepts), temporary.FullName);
             AssertRoundTrips(Path.Combine(folder, LanguageProject.TypingFolder), new Project(TypingLanguage.Concepts), temporary.FullName);
@@ -509,6 +511,23 @@ public sealed class DeclaredAtlasTests
                 Assert.Equal(File.ReadAllBytes(source), File.ReadAllBytes(path));
             }
         }
+    }
+
+    [Fact]
+    public void TheBehaviourFolderNamesAStopAfterThePlaceItStopsAt()
+    {
+        var language = Language();
+
+        // The one behaviour the sample declares, lowered into the concept itself: a Stop has no name slot, so the name a
+        // reference to it displays is the name of the place it stops at.
+        Assert.Single(language.BehaviourDocuments);
+        Assert.NotNull(language.Concepts.Get("Atlas.Stop").NameFunction);
+
+        var map = ModelFile.Load(language.NewProject(), Document("map.mps")).Roots[0];
+        var stops = map.SelfAndDescendants().Where(node => node.Concept.Key == "Atlas.Stop").ToList();
+
+        // The document's two stops point at `peak` and at `lake`, and neither names itself.
+        Assert.Equal(["peak", "lake"], stops.Select(stop => stop.Name));
     }
 
     [Fact]
