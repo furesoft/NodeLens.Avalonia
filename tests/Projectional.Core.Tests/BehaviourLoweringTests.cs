@@ -78,6 +78,43 @@ public sealed class BehaviourLoweringTests
     }
 
     [Fact]
+    public void AWhenFilledBodyAnswersOnlyWhileTheSlotIsFilled()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        var whenFilled = Part(
+            behaviour,
+            Function(behaviour, document),
+            BehaviourConceptKeys.BodySlot,
+            BehaviourConceptKeys.WhenFilled,
+            "isFlag");
+
+        LiteralPart(behaviour, whenFilled, BehaviourConceptKeys.PartSlot, "flagged");
+
+        var names = Lower(document);
+        var node = BehaviourTestLanguage.NewModel().NewNode(BehaviourTestLanguage.Node);
+
+        // `isFlag` declares the default `false`, so it is filled from the first keystroke: a property with a default
+        // always holds a value, which is what "filled" means.
+        Assert.Equal("flagged", names[BehaviourTestLanguage.Node](node));
+    }
+
+    [Fact]
+    public void AWhenFilledBodyOnASlotTheConceptDoesNotHaveIsRefused()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        var whenFilled = Part(
+            behaviour,
+            Function(behaviour, document),
+            BehaviourConceptKeys.BodySlot,
+            BehaviourConceptKeys.WhenFilled,
+            "nope");
+
+        LiteralPart(behaviour, whenFilled, BehaviourConceptKeys.PartSlot, "x");
+
+        Assert.Contains("is not a slot", Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
     public void AResolveInfoBodyAnswersTheTextTheReferenceStored()
     {
         var (behaviour, document) = Document(BehaviourTestLanguage.Node);

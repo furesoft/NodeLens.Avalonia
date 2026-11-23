@@ -28,6 +28,7 @@ internal static class NameBodyWriter
         NameReference reference => $"new NameReference({SourceWriter.Literal(reference.Slot)})",
         NameResolveInfo resolveInfo => $"new NameResolveInfo({SourceWriter.Literal(resolveInfo.Slot)})",
         NameChildren children => $"new NameChildren({SourceWriter.Literal(children.Slot)}, {SourceWriter.Literal(children.Separator)})",
+        NameWhenFilled whenFilled => $"new NameWhenFilled({SourceWriter.Literal(whenFilled.Slot)}, {Text(whenFilled.Part)})",
         NameJoin join => $"new NameJoin({SourceWriter.Literal(join.Separator)}, {Parts(join.Parts)})",
         NameFallback fallback => $"new NameFallback({Parts(fallback.Parts)})",
         NameChoice choice => $"new NameChoice({SourceWriter.Literal(choice.Slot)}, {SourceWriter.Literal(choice.Value)}, {Text(choice.Then)}, {Text(choice.Otherwise)})",

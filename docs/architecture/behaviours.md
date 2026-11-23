@@ -124,6 +124,7 @@ bodies. It reads and it chooses; it never computes, compares numbers or calls an
 | `Children(slot, separator)` | the `Name` of every child in that slot, empty ones left out - **this is how a name over a list is written** |
 | `Fallback(parts)` | the first non-empty part - how a concept says "the name, else the value, else `<anonymous>`" |
 | `Choose(property, value, then, else)` | one of two parts, by a property's value - the `Conditional` rule, one level up |
+| `WhenFilled(slot, part)` | the part, but only while the slot holds something - the question a `WhenFilled` cell asks in the notation, one level up; a `Choose` compares a *value*, so it cannot express "if anything was written" |
 
 Two guarantees the lowering provides, because they cannot be left to the author:
 - **Total.** Every part answers a string; `Child` on an empty slot answers the empty string, which

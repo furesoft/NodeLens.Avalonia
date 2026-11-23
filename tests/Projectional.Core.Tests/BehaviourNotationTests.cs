@@ -88,6 +88,23 @@ public sealed class BehaviourNotationTests
     }
 
     [Fact]
+    public void AWhenFilledPartDrawsItsSlotAndThePartInBrackets()
+    {
+        var model = BehaviourLanguage.NewModel();
+        var function = Function(model, model.Roots[0]);
+        var whenFilled = Body(model, function, BehaviourConceptKeys.WhenFilled, "kind");
+
+        LiteralPart(model, whenFilled, BehaviourConceptKeys.PartSlot, "kind");
+
+        Assert.Equal(
+            """
+              behaviour for
+                name: whenFilled kind (literal kind)
+            """,
+            LayoutSnapshot.Render(model, BehaviourNotations.Registry, width: 60));
+    }
+
+    [Fact]
     public void AResolveInfoPartDrawsItsSlot()
     {
         var model = BehaviourLanguage.NewModel();

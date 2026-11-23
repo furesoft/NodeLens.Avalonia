@@ -100,6 +100,15 @@ public static class BehaviourNotations
             ed.Space,
             ed.Property(BehaviourConceptKeys.SeparatorSlot)));
 
+        notations.Add(BehaviourConceptKeys.WhenFilled, ed => ed.Line(
+            ed.Keyword("whenFilled"),
+            ed.Space,
+            ed.Property(BehaviourConceptKeys.SlotSlot),
+            ed.Space,
+            ed.Punct("("),
+            ed.ChildInline(BehaviourConceptKeys.PartSlot),
+            ed.Punct(")")));
+
         notations.Add(BehaviourConceptKeys.Choose, ed => ed.Line(
             ed.Keyword("choose"),
             ed.Space,
