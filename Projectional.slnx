@@ -18,6 +18,7 @@
   </Folder>
   <Folder Name="/src/Languages/">
     <Project Path="src/Languages/Projectional.CSharp/Projectional.CSharp.csproj" />
+    <Project Path="src/Languages/Projectional.Behaviours/Projectional.Behaviours.csproj" />
     <Project Path="src/Languages/Projectional.ConstraintRules/Projectional.ConstraintRules.csproj" />
     <Project Path="src/Languages/Projectional.Editors/Projectional.Editors.csproj" />
     <Project Path="src/Languages/Projectional.Expressions/Projectional.Expressions.csproj" />

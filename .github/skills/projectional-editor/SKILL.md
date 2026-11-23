@@ -227,7 +227,7 @@ prints the counts. The `single-file` CI job publishes for `win-x64` and `linux-x
 dotnet pack Projectional.slnx -o artifacts
 ```
 
-Every project under `src/` is packable, so this produces **36 packages** (`.nupkg` + `.snupkg`) and nothing
+Every project under `src/` is packable, so this produces **37 packages** (`.nupkg` + `.snupkg`) and nothing
 else; tests, the screenshot tool, the host sample and the language template opt out. `artifacts/` is gitignored.
 A local pack needs no tag and no credentials and produces prerelease versions - that is the correct answer,
 because nothing was released. The version is derived by GitVersion from the commits and the `v*` tags, so a
@@ -268,7 +268,7 @@ because `dotnet new` caches by identity, not by content.
   [packaging.md](../../../docs/architecture/packaging.md)). `IsPackable=true` is the repository default and the
   metadata lives in `Directory.Build.props`; only the four non-products opt out (`tests/`, the screenshot tool,
   the host sample, the language template). A new project is therefore a package unless it says otherwise, and
-  the CI `pack` job's "exactly 36 packages" assertion must be updated in the same commit that adds or removes
+  the CI `pack` job's "exactly 37 packages" assertion must be updated in the same commit that adds or removes
   one.
 - **The version comes from the repository, never from a literal.** `GitVersion.yml` derives it from the
   commits and the `v*` tags; `<Version>0.1.0</Version>` in `Directory.Build.props` is only the no-git
