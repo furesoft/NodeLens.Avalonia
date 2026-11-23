@@ -27,8 +27,14 @@ internal static class BehaviourTestLanguage
     /// <summary>A boolean property, which is what a choice can be decided on.</summary>
     public const string FlagSlot = "isFlag";
 
+    /// <summary>A whole-number property, whose stored spelling can differ from a parseable one.</summary>
+    public const string CountSlot = "count";
+
     /// <summary>The one child, so that a name can be made of another node's name.</summary>
     public const string InnerSlot = "inner";
+
+    /// <summary>A list of children, which has no single name to give.</summary>
+    public const string ItemsSlot = "items";
 
     /// <summary>The one reference, so that a name can be the name of what it points at.</summary>
     public const string TargetSlot = "target";
@@ -40,7 +46,9 @@ internal static class BehaviourTestLanguage
             [
                 new PropertySlot(ValueSlot, PropertyType.String, "seven"),
                 new PropertySlot(FlagSlot, PropertyType.Boolean, "false"),
+                new PropertySlot(CountSlot, PropertyType.Integer, "0"),
                 new ChildSlot(InnerSlot, Leaf, Cardinality.One),
+                new ChildSlot(ItemsSlot, Leaf, Cardinality.Many),
                 new ReferenceSlot(TargetSlot, Node),
             ],
             isRoot: true,

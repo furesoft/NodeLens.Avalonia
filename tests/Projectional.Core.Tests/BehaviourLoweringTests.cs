@@ -158,6 +158,53 @@ public sealed class BehaviourLoweringTests
     }
 
     [Fact]
+    public void AChoiceOnAValueThePropertyCannotHoldIsRefused()
+    {
+        // A value the type refuses would answer the otherwise arm for ever, with nothing visibly wrong in the document.
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Choice(behaviour, document, BehaviourTestLanguage.FlagSlot, "yes");
+
+        Assert.Contains(
+            "is not a value of 'bool'",
+            Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
+    public void AChoiceOnAValueThePropertyWouldStoreDifferentlyIsRefused()
+    {
+        // `01` parses as a number, and `count` stores it as `1` - so comparing against `01` would never match.
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Choice(behaviour, document, BehaviourTestLanguage.CountSlot, "01");
+
+        Assert.Contains(
+            "stores it as '1'",
+            Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
+    public void AChoiceWithoutAValueIsRefused()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Choice(behaviour, document, BehaviourTestLanguage.FlagSlot, value: null);
+
+        Assert.Contains(
+            "must name the value",
+            Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
+    public void AChildPartOnAListIsRefused()
+    {
+        // The slot would answer its first element, which is a name the author did not ask for and cannot see.
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Child, "items");
+
+        Assert.Contains(
+            "holds a list of children",
+            Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
     public void AConceptThatDeclaresTwoNamesIsRefused()
     {
         var (behaviour, document) = Document(BehaviourTestLanguage.Node);
@@ -219,6 +266,7 @@ public sealed class BehaviourLoweringTests
         var (behaviour, document) = Document(BehaviourTestLanguage.Node);
         var choose = Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Choose, read: null);
         choose.Set(BehaviourConceptKeys.SlotSlot, BehaviourTestLanguage.FlagSlot);
+        choose.Set(BehaviourConceptKeys.ValueSlot, "true");
         LiteralPart(behaviour, choose, BehaviourConceptKeys.ThenSlot, "flagged");
 
         Assert.Contains("needs its 'otherwise' part", Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
@@ -275,6 +323,22 @@ public sealed class BehaviourLoweringTests
         part.Set(BehaviourConceptKeys.TextSlot, text);
 
         return part;
+    }
+
+    private static Node Choice(Model model, Node document, string slot, string? value)
+    {
+        var choose = Part(model, Function(model, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Choose, read: null);
+        choose.Set(BehaviourConceptKeys.SlotSlot, slot);
+
+        if (value is not null)
+        {
+            choose.Set(BehaviourConceptKeys.ValueSlot, value);
+        }
+
+        LiteralPart(model, choose, BehaviourConceptKeys.ThenSlot, "flagged");
+        LiteralPart(model, choose, BehaviourConceptKeys.OtherwiseSlot, "plain");
+
+        return choose;
     }
 
     private static IReadOnlyDictionary<string, Func<Node, string?>> Lower(Node document) =>

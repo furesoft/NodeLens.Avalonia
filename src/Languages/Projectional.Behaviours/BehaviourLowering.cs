@@ -12,10 +12,12 @@ namespace Projectional.Behaviours;
 /// </para>
 /// <para>
 /// A refusal is a <see cref="ConceptDefinitionException"/>, the one type every aspect lowering in this repository
-/// throws and the one <c>LanguageProject</c> turns into the message it reports: a body naming a slot the concept does
-/// not have - or one of the wrong kind - is refused while the language loads rather than at the first reference cell
-/// that asks. Each message names the concept, and the slot where there is one, because that is what the author has to
-/// change.
+/// throws and the one <c>LanguageProject</c> turns into the message it reports. Every refusal is a body that could not
+/// answer what its author meant, and each is caught while the language loads rather than at the first reference cell
+/// that asks: a slot the concept does not have or one of the wrong kind, a <c>child</c> part naming a list (which would
+/// answer its first element), and a <c>choose</c> whose value the property would store differently from how it was
+/// written (which would answer the otherwise arm for ever). Each message names the concept, and the slot where there is
+/// one, because that is what the author has to change.
 /// </para>
 /// </remarks>
 public static class BehaviourLowering
@@ -27,7 +29,8 @@ public static class BehaviourLowering
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
     /// <exception cref="ConceptDefinitionException">
     /// A document names no concept, a concept the language does not have, a function that is not lowered yet, a concept
-    /// twice, or a body part whose slot does not exist or has the wrong kind.
+    /// twice, a body part naming a slot that does not exist or has the wrong kind, a <c>child</c> part naming a list,
+    /// or a <c>choose</c> whose value the property cannot store in that spelling.
     /// </exception>
     public static IReadOnlyDictionary<string, Func<Node, string?>> Lower(
         IEnumerable<Node> documents,
@@ -81,24 +84,33 @@ public static class BehaviourLowering
     private static NameBody Part(Node part, Concept concept) => part.Concept.Key switch
     {
         BehaviourConceptKeys.Literal => new NameLiteral(part.GetOrNull(BehaviourConceptKeys.TextSlot) ?? string.Empty),
-        BehaviourConceptKeys.Property => new NameProperty(Slot(part, concept, typeof(PropertySlot))),
-        BehaviourConceptKeys.Child => new NameChild(Slot(part, concept, typeof(ChildSlot))),
-        BehaviourConceptKeys.Reference => new NameReference(Slot(part, concept, typeof(ReferenceSlot))),
+        BehaviourConceptKeys.Property => new NameProperty(Slot<PropertySlot>(part, concept).Name),
+        BehaviourConceptKeys.Child => new NameChild(SingleChild(Slot<ChildSlot>(part, concept), concept).Name),
+        BehaviourConceptKeys.Reference => new NameReference(Slot<ReferenceSlot>(part, concept).Name),
         BehaviourConceptKeys.Join => new NameJoin(
             part.GetOrNull(BehaviourConceptKeys.SeparatorSlot) ?? " ",
             [.. part.GetChildren(BehaviourConceptKeys.PartsSlot).Select(each => Part(each, concept))]),
         BehaviourConceptKeys.Fallback => new NameFallback(
             [.. part.GetChildren(BehaviourConceptKeys.PartsSlot).Select(each => Part(each, concept))]),
-        BehaviourConceptKeys.Choose => new NameChoice(
-            Slot(part, concept, typeof(PropertySlot)),
-            part.GetOrNull(BehaviourConceptKeys.ValueSlot) ?? string.Empty,
-            Part(Required(part, BehaviourConceptKeys.ThenSlot), concept),
-            Part(Required(part, BehaviourConceptKeys.OtherwiseSlot), concept)),
+        BehaviourConceptKeys.Choose => Choice(part, concept),
         _ => throw new ConceptDefinitionException($"'{part.Concept.Key}' is not a body part."),
     };
 
+    /// <summary>One of two parts, by the value a property stores.</summary>
+    private static NameChoice Choice(Node part, Concept concept)
+    {
+        var slot = Slot<PropertySlot>(part, concept);
+
+        return new NameChoice(
+            slot.Name,
+            Value(part, slot),
+            Part(Required(part, BehaviourConceptKeys.ThenSlot), concept),
+            Part(Required(part, BehaviourConceptKeys.OtherwiseSlot), concept));
+    }
+
     /// <summary>The slot a part reads, refused unless the concept declares it as the kind the part needs.</summary>
-    private static string Slot(Node part, Concept concept, Type kind)
+    private static T Slot<T>(Node part, Concept concept)
+        where T : SlotDeclaration
     {
         var name = part.GetOrNull(BehaviourConceptKeys.SlotSlot);
 
@@ -107,12 +119,57 @@ public static class BehaviourLowering
             throw new ConceptDefinitionException($"a body part of '{concept.Key}' must name the slot it reads.");
         }
 
-        if (!concept.TryGetSlot(name, out var slot) || slot.GetType() != kind)
+        if (!concept.TryGetSlot(name, out var slot) || slot is not T typed)
         {
-            throw new ConceptDefinitionException($"'{name}' is not a {Word(kind)} of {concept.Key}.");
+            throw new ConceptDefinitionException($"'{name}' is not a {Word(typeof(T))} of {concept.Key}.");
         }
 
-        return name;
+        return typed;
+    }
+
+    /// <summary>
+    /// The child slot a <c>child</c> part names, refused when it holds a list.
+    /// </summary>
+    /// <remarks>
+    /// A list has no single name: reading the slot would silently answer with the first element, which is a name the
+    /// author did not ask for and cannot see in the document. Refusing it at the load says so once instead of producing
+    /// the wrong word at every reference cell.
+    /// </remarks>
+    private static ChildSlot SingleChild(ChildSlot slot, Concept concept) =>
+        slot.Cardinality == Cardinality.One
+            ? slot
+            : throw new ConceptDefinitionException(
+                $"'{slot.Name}' of {concept.Key} holds a list of children, and a 'child' part names the one child in a slot; a list has no single name.");
+
+    /// <summary>
+    /// The value a choice compares against, refused unless the property can hold it in exactly that spelling.
+    /// </summary>
+    /// <remarks>
+    /// A choice compares what the property <em>stores</em>, which is the canonical spelling its type writes, so a value
+    /// the type refuses - or one it would store differently, <c>01</c> for a number - would answer the otherwise arm for
+    /// ever without anything being visibly wrong. That is the kind of mistake a language should not let an author keep.
+    /// </remarks>
+    private static string Value(Node part, PropertySlot slot)
+    {
+        var text = part.GetOrNull(BehaviourConceptKeys.ValueSlot);
+
+        if (text is not { Length: > 0 })
+        {
+            throw new ConceptDefinitionException(
+                $"a 'choose' on '{slot.Name}' must name the value that picks the then part.");
+        }
+
+        if (!slot.Type.TryParse(text, out var parsed))
+        {
+            throw new ConceptDefinitionException($"'{text}' is not a value of '{slot.Type.Name}', the type of '{slot.Name}'.");
+        }
+
+        var stored = slot.Type.Format(parsed!);
+
+        return string.Equals(stored, text, StringComparison.Ordinal)
+            ? text
+            : throw new ConceptDefinitionException(
+                $"'{text}' is a '{slot.Type.Name}' value, but '{slot.Name}' stores it as '{stored}', and a choice compares what is stored.");
     }
 
     private static string Word(Type kind) =>
