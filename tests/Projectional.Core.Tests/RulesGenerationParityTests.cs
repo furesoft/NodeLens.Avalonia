@@ -32,12 +32,12 @@ namespace Projectional.Core.Tests;
 /// decision.
 /// </para>
 /// <para>
-/// One divergence is deliberately <em>not</em> in the corpus, because the gate found it and a case would fail on a
-/// defect: <c>^</c> is a power in <see cref="OperatorSemantics"/> and C#'s XOR, and the fragment prints the symbol
-/// verbatim. It is recorded under Risks in <c>docs/architecture/csharp.md</c>; fixing it needs a template part that maps
-/// a symbol. The other divergence the gate found - the interpreter evaluating both operands of <c>&amp;&amp;</c> and
-/// <c>||</c> where C# short-circuits - is fixed, and the corpus covers it: a left operand that decides skips the right
-/// one on both sides.
+/// Both divergences the gate found are fixed and covered. <c>^</c> is a power in <see cref="OperatorSemantics"/> and
+/// XOR in C#, so the fragment maps it to <c>Math.Pow</c> through a conditional part - the one symbol whose generated
+/// <em>shape</em> differs from the way it is written - and a negative exponent is the residual recorded under Risks in
+/// <c>docs/architecture/csharp.md</c>. The other, the interpreter evaluating both operands of <c>&amp;&amp;</c> and
+/// <c>||</c> where C# short-circuits, is closed by <c>OperatorSemantics.ShortCircuits</c>, and a left operand that
+/// decides now skips the right one on both sides.
 /// </para>
 /// </remarks>
 public sealed class RulesGenerationParityTests
@@ -175,6 +175,8 @@ public sealed class RulesGenerationParityTests
         var division = Division();
         var disjunction = Disjunction();
         var shortCircuit = ShortCircuit();
+        var power = Power();
+        var powerOfZero = PowerOfZero();
         var atMost = AtMost();
         var nested = Nested();
 
@@ -223,6 +225,12 @@ public sealed class RulesGenerationParityTests
             // A left operand that decides: the right one is not evaluated at all, so a division by zero there is no
             // finding - which is what C# does and what the interpreter now does too.
             new("a disjunction whose left operand decides", shortCircuit, [new Parameter("bool", "flag", true), new Parameter("int", "amount", 1), new Parameter("int", "zero", 0)], RuleOutcomes.Accept),
+
+            // `^` is a power here and XOR in C#, so the fragment maps it to `Math.Pow` - the one operator whose
+            // generated shape differs from the symbol it is written with.
+            new("a power", power, [new Parameter("int", "amount", 2)], RuleOutcomes.Accept),
+            new("a power that does not reach its bound", power, [new Parameter("int", "amount", 3)], null),
+            new("a power of zero", powerOfZero, [new Parameter("int", "amount", 7)], RuleOutcomes.Accept),
             new("a comparison at its bound", atMost, [new Parameter("int", "amount", 1000)], RuleOutcomes.Accept),
             new("a comparison beyond its bound", atMost, [new Parameter("int", "amount", 1001)], null),
 
@@ -340,6 +348,38 @@ public sealed class RulesGenerationParityTests
         Name(model, quotient, "left", "amount");
         Name(model, quotient, "right", "zero");
         Int(model, comparison, "right", 0);
+
+        return model;
+    }
+
+    /// <summary><c>rule Raised when amount ^ 3 == 8 then Accept</c>, the one symbol the fragment has to reshape.</summary>
+    private static Model Power()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "Power");
+        var rule = Rule(model, ruleset, "Raised", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "==");
+        var power = Binary(model, condition, "left", "^");
+        Name(model, power, "left", "amount");
+        Int(model, power, "right", 3);
+        Int(model, condition, "right", 8);
+
+        return model;
+    }
+
+    /// <summary><c>rule Always when amount ^ 0 == 1 then Accept</c>, whose exponent the interpreter allows.</summary>
+    private static Model PowerOfZero()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "PowerOfZero");
+        var rule = Rule(model, ruleset, "Always", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "==");
+        var power = Binary(model, condition, "left", "^");
+        Name(model, power, "left", "amount");
+        Int(model, power, "right", 0);
+        Int(model, condition, "right", 1);
 
         return model;
     }
