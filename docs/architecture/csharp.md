@@ -248,8 +248,17 @@ about rather than refused: the folder loads, and the author hears that the class
 records *where* the answer comes from - `LanguageProject.CSharpNames`, a concept key mapped to
 `Atlas.Behaviours.StopBehaviour.Name` - and says so: the editor keeps answering with the declarative
 name (or the name slot), and a warning names the concept whose C# name it cannot run. Pretending
-otherwise would mean running compiled code in the editor, which is a decision this slice does not
-take.
+otherwise would mean running compiled code in the editor, which is exactly what ADR 0014 forbids:
+*a declared language is data and cannot execute anything; that is a security property, not an
+implementation detail*.
+
+What the editor does instead of guessing is **mark the declaration**: `ConceptDeclaration.NameIsExternal`
+records that the name exists and is computed by code this framework never loads. `NameOf` stays null - the
+document has no name to give, so nothing can be persisted as a fallback - but the projection can say where
+the name lives: a reference to such a node draws `<Atlas.Stop: named in code>` where it used to draw
+`<Atlas.Stop>`, which read like "this node has no name". That is the whole of what the boundary costs, and
+it is worth stating plainly: the name is *not available* in the editor until the language is compiled, and
+the editor says so instead of inventing one.
 
 **What the export does with it is write the binding down.** The declaration gains
 `nameOf: Atlas.Behaviours.StopBehaviour.Name`, the C# document is generated into the package as a
