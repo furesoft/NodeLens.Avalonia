@@ -53,6 +53,46 @@ public sealed class ConceptNameTests
     }
 
     [Fact]
+    public void ADeclarationCopiedWithANameKeepsEverythingElseItSaid()
+    {
+        // The copy is how a name lowered from a `behaviour` folder reaches the registry, which is built from
+        // declarations - so the one thing it must not do is lose what the structure folder declared.
+        var declaration = new ConceptDeclaration(
+            "Copied.Item",
+            [
+                new PropertySlot("amount", PropertyType.String),
+                new PropertySlot("isCollapsed", PropertyType.Boolean, "false"),
+                new ChildSlot("inner", "Copied.Item", Cardinality.One),
+            ],
+            nameSlot: "amount",
+            description: "A declaration with something to lose.",
+            collapseSlot: "isCollapsed",
+            isOfferedInCompletion: false);
+
+        var copy = declaration.WithNameOf(node => $"copied {node.GetOrNull("amount")}");
+
+        Assert.Equal(declaration.Key, copy.Key);
+        Assert.Equal(declaration.Slots, copy.Slots);
+        Assert.Equal(declaration.SuperConcepts, copy.SuperConcepts);
+        Assert.Equal(declaration.NameSlot, copy.NameSlot);
+        Assert.Equal(declaration.NameRule, copy.NameRule);
+        Assert.Equal(declaration.Description, copy.Description);
+        Assert.Equal(declaration.CollapseSlot, copy.CollapseSlot);
+        Assert.Equal(declaration.IsRoot, copy.IsRoot);
+        Assert.Equal(declaration.IsAbstract, copy.IsAbstract);
+        Assert.Equal(declaration.IsOfferedInCompletion, copy.IsOfferedInCompletion);
+        Assert.Equal(declaration.IsInterface, copy.IsInterface);
+        Assert.Equal(declaration.Applicability, copy.Applicability);
+        Assert.Null(declaration.NameOf);
+        Assert.NotNull(copy.NameOf);
+
+        var node = new Project(ConceptRegistry.Create([copy])).NewModel("copy").NewNode("Copied.Item");
+        node.Set("amount", "5");
+
+        Assert.Equal("copied 5", node.Name);
+    }
+
+    [Fact]
     public void ASubconceptInheritsTheFunction()
     {
         var node = Model().NewNode(Derived);

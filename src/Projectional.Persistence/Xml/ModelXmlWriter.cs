@@ -64,8 +64,10 @@ internal static class ModelXmlWriter
         writer.WriteAttributeString(ModelXmlNames.Concept, node.Concept.Key);
 
         // The name is duplicated on purpose: it is what makes a file greppable and a reference
-        // readable without chasing an id. The property below stays authoritative.
-        if (node.Name is { } name)
+        // readable without chasing an id. The property below stays authoritative - and a name a
+        // concept *computes* is not written, because it is derived: the function that answered it
+        // is the language's, so the attribute would go stale the moment the language changed.
+        if (node.IsNamed && node.Name is { } name)
         {
             writer.WriteAttributeString(ModelXmlNames.Name, name);
         }
