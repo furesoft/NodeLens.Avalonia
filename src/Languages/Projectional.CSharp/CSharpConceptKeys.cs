@@ -131,8 +131,14 @@ public static class CSharpConceptKeys
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 
-    /// <summary>A behaviour class: the methods one concept's nodes answer with.</summary>
-    public const string Behaviour = "CSharp.Behaviour";
+    /// <summary>A C# class that carries one concept's behaviour: the concept's own type, in C#.</summary>
+    /// <remarks>
+    /// `ClassConcept` and not `Behaviour`, because what the node *is* is a C# class: the framework's behaviour concept is
+    /// the declarative one in <c>Projectional.Behaviours</c>, and this is the C# form of a concept - the type a host's
+    /// hand-written half merges with. The name says which language the element belongs to, which is the question a
+    /// reader of the C# base language is asking.
+    /// </remarks>
+    public const string ClassConcept = "CSharp.ClassConcept";
 
     /// <summary><c>using Name;</c>: a namespace the file can name without qualifying it.</summary>
     public const string Using = "CSharp.Using";

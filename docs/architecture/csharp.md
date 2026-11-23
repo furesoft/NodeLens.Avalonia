@@ -463,7 +463,7 @@ concept declares methods that belong to it, the generator emits them into
 when it needs something the model cannot express. That is what makes attributes, `unsafe` or a
 hand-tuned method possible without adding a concept for each.
 
-**Delivered: the concept and its two halves.** `CSharp.Behaviour` is a `TypeDeclaration` holding
+**Delivered: the concept and its two halves.** `CSharp.ClassConcept` is a `TypeDeclaration` holding
 `Method` children, so a behaviour class is declared in a namespace beside the classes it serves. Three
 decisions are worth the words:
 

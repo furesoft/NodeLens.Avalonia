@@ -1337,7 +1337,7 @@ public sealed class LanguageProject
 
                 foreach (var type in space.GetChildren(CSharpConceptKeys.ClassesSlot))
                 {
-                    if (type.Concept.IsKindOf(CSharpConceptKeys.Behaviour))
+                    if (type.Concept.IsKindOf(CSharpConceptKeys.ClassConcept))
                     {
                         yield return (type, spaceName);
                     }

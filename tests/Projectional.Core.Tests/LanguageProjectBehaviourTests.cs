@@ -509,7 +509,7 @@ public sealed class LanguageProjectBehaviourTests
         var model = new Project(CSharpLanguage.Concepts).NewModel("behaviour");
         var root = model.NewNode(CSharpConceptKeys.File);
         var space = model.NewChild(root, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
-        var behaviour = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        var behaviour = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.ClassConcept);
         var method = model.NewChild(behaviour, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
 
         // With an enumeration named, the return type is *the other spelling* of the same enumeration: a behaviour that

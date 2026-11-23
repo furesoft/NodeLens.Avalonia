@@ -250,7 +250,7 @@ which concept this one inherits from, and the registry already knows.
 The declarative vocabulary above is the **simple default**, not the end state. The target is MPS' own
 shape: a concept's behaviour is **C# with bodies** - a constructor, a `virtual`/`abstract` method, real
 logic - and the C# text generator emits it into the `partial class` the host's other half merges with.
-`CSharp.Behaviour` and `CSharpBehaviourCompilationTests` are that seam, and the whole reason it can be
+`CSharp.ClassConcept` and `CSharpBehaviourCompilationTests` are that seam, and the whole reason it can be
 C# rather than a second interpreter is that the C# base language now carries the **node API**
 (`docs/architecture/csharp.md`, "The node API"): `node<Concept>` as a type, and the nine reads
 (`name`, `parent`, `index`, `concept`, `children`, `child`, `property`, `reference`, `resolveInfo`) that
@@ -259,7 +259,7 @@ compiles against nothing else.
 
 What follows from the decision, in order:
 
-1. **Bind the generated class to the declaration.** ~~A method of a `CSharp.Behaviour` becomes the
+1. **Bind the generated class to the declaration.** ~~A method of a `CSharp.ClassConcept` becomes the
    concept's `nameOf` delegate~~ - **delivered**: the `behaviour` folder holds both languages, a class
    with a `conceptKey` and a `Name` method is that concept's name, and the export writes
    `nameOf: <namespace>.<class>.Name` and compiles the class into the package. The editor cannot run it,

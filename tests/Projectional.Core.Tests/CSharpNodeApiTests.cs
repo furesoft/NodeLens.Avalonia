@@ -67,7 +67,7 @@ public sealed class CSharpNodeApiTests
             .GetChildren(CSharpConceptKeys.ClassesSlot)[0];
 
         Assert.Equal("StopBehaviour", subject.Name);
-        Assert.Equal("CSharp.Behaviour", Call(behaviour, "Concept", subject));
+        Assert.Equal("CSharp.ClassConcept", Call(behaviour, "Concept", subject));
         Assert.Equal("stop.0", Call(behaviour, "Position", subject));
         Assert.Equal(true, Call(behaviour, "Named", subject));
         Assert.Equal(true, Call(behaviour, "HasParent", subject));
@@ -141,7 +141,7 @@ public sealed class CSharpNodeApiTests
         var model = new Project(CSharpLanguage.Concepts).NewModel("node-api");
         var file = model.NewNode(CSharpConceptKeys.File);
         var space = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
-        var behaviour = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        var behaviour = model.NewChild(space, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.ClassConcept);
 
         space.Set(CSharpLanguage.NameSlot, "Sample");
         behaviour.Set(CSharpConceptKeys.ConceptKeySlot, BehaviourOf);

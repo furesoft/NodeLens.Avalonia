@@ -60,7 +60,7 @@ public static class CSharpNotations
         // A behaviour class draws what it generates, the attachment comment included: the header line is the model's
         // statement about *which* concept this class is for, and the generated file has to carry that too, because the
         // host's hand-written partial beside it says nothing about the model it belongs to.
-        notations.Add(CSharpConceptKeys.Behaviour, ed => ed.Sequence(
+        notations.Add(CSharpConceptKeys.ClassConcept, ed => ed.Sequence(
             ed.Line(
                 ed.Punct("//"),
                 ed.Space,

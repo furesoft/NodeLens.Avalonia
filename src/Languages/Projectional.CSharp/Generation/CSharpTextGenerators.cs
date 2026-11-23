@@ -65,7 +65,7 @@ public static class CSharpTextGenerators
         // The attachment comment is generated, not only drawn: a behaviour file ends up in the host's build beside a
         // hand-written partial that says nothing about the model, so the generated half is where the "which concept"
         // fact has to survive.
-        .Add(CSharpConceptKeys.Behaviour, TextTemplate.Of(
+        .Add(CSharpConceptKeys.ClassConcept, TextTemplate.Of(
             new TextPart("// behaviour "),
             new PropertyPart(CSharpConceptKeys.ConceptKeySlot),
             LineBreakPart.Instance,
