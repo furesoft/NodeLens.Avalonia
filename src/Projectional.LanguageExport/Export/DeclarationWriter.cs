@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Language;
 
 namespace Projectional.LanguageExport;
 
@@ -18,7 +19,16 @@ namespace Projectional.LanguageExport;
 internal static class DeclarationWriter
 {
     /// <summary>Writes the <c>ConceptDeclarations</c> property into <paramref name="source"/>.</summary>
-    public static void Write(SourceWriter source, IReadOnlyList<ConceptDeclaration> declarations)
+    /// <param name="source">The file being written.</param>
+    /// <param name="declarations">The concepts to write, in declaration order.</param>
+    /// <param name="names">
+    /// The body each concept's name is written by, by concept key - the <c>behaviour</c> folder as data - or
+    /// <see langword="null"/> when the language declares none.
+    /// </param>
+    public static void Write(
+        SourceWriter source,
+        IReadOnlyList<ConceptDeclaration> declarations,
+        IReadOnlyDictionary<string, NameBody>? names = null)
     {
         source.Line("public static IReadOnlyList<ConceptDeclaration> ConceptDeclarations { get; } =");
         source.Line("[");
@@ -27,19 +37,22 @@ internal static class DeclarationWriter
         {
             foreach (var declaration in declarations)
             {
-                WriteConcept(source, declaration);
+                WriteConcept(source, declaration, names);
             }
         }
 
         source.Line("];");
     }
 
-    private static void WriteConcept(SourceWriter source, ConceptDeclaration declaration)
+    private static void WriteConcept(
+        SourceWriter source,
+        ConceptDeclaration declaration,
+        IReadOnlyDictionary<string, NameBody>? names)
     {
         var body = new List<string> { SourceWriter.Literal(declaration.Key) + "," };
 
         body.AddRange(SlotLines(declaration.Slots));
-        body.AddRange(ArgumentLines(declaration));
+        body.AddRange(ArgumentLines(declaration, names));
 
         body[^1] = body[^1].TrimEnd(',');
 
@@ -80,7 +93,9 @@ internal static class DeclarationWriter
         return lines;
     }
 
-    private static List<string> ArgumentLines(ConceptDeclaration declaration)
+    private static List<string> ArgumentLines(
+        ConceptDeclaration declaration,
+        IReadOnlyDictionary<string, NameBody>? names)
     {
         var lines = new List<string>();
 
@@ -107,6 +122,13 @@ internal static class DeclarationWriter
         if (declaration.NameRule is not null)
         {
             lines.Add($"nameRule: NameRule.{NameRuleMember(declaration.NameRule)},");
+        }
+
+        // The one behavioural aspect a generated declaration can carry: a name body is data of the toolkit's own
+        // vocabulary, so it is written as the record it is rather than named as a delegate nothing could call.
+        if (names is not null && names.TryGetValue(declaration.Key, out var name))
+        {
+            lines.Add($"nameOf: {NameBodyWriter.Text(name)}.ToFunction(),");
         }
 
         if (declaration.Description is not null)

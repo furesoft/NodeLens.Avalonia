@@ -2,6 +2,7 @@ using Projectional.Behaviours;
 using Projectional.Core;
 using Projectional.Languages;
 using Projectional.Persistence;
+using Projectional.Structures;
 
 using Xunit;
 
@@ -103,6 +104,94 @@ public sealed class LanguageProjectBehaviourTests
         Assert.Equal("Bedrock", place.Name);
     }
 
+    [Fact]
+    public void ADependentLanguageKeepsTheNamesItsBaseDeclares()
+    {
+        // A name is part of a declaration now, so a language that depends on another has to receive the named ones - the
+        // declaration the registry was built from, not the one the structure folder wrote.
+        using var folder = new TemporaryDirectory();
+        var baseFolder = Path.Combine(folder.Root, "Base");
+        var dependentFolder = Path.Combine(folder.Root, "Dependent");
+
+        WriteStructure(baseFolder);
+        WriteBehaviour(baseFolder, conceptKey: "Doc.Link", slot: "to");
+        WriteLanguageRoot(baseFolder, "Base");
+
+        WriteLanguageRoot(dependentFolder, "Dependent", dependsOn: "Base");
+
+        var structure = Path.Combine(dependentFolder, LanguageProject.StructureFolder);
+        Directory.CreateDirectory(structure);
+
+        var definition = new DefinitionBuilder();
+        definition.Concept("Dep.Thing", slots: [definition.Property("name", "string")], nameSlot: "name");
+        ModelFile.Save(definition.Documents[0], Path.Combine(structure, "Dep.Thing.mps"));
+
+        var baseLanguage = LanguageProject.Open(baseFolder, out var baseError);
+
+        Assert.Null(baseError);
+        Assert.NotNull(baseLanguage);
+
+        var dependent = LanguageProject.Open(dependentFolder, new ResolvedLanguages(baseLanguage), out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(dependent);
+        Assert.NotNull(dependent.Concepts.Get("Doc.Link").NameFunction);
+    }
+
+    private static void WriteLanguageRoot(string directory, string name, string? dependsOn = null)
+    {
+        var model = new Project(StructureLanguage.Concepts).NewModel("language");
+        var root = model.NewNode(StructureConceptKeys.Language);
+
+        root.Set("name", name);
+        model.AddRoot(root);
+
+        if (dependsOn is not null)
+        {
+            model.NewChild(root, "dependencies", StructureConceptKeys.Dependency).Set("name", dependsOn);
+        }
+
+        Directory.CreateDirectory(directory);
+        ModelFile.Save(model, Path.Combine(directory, LanguageProject.LanguageFile));
+    }
+
+    [Fact]
+    public void ANameThatShadowsTheOneItInheritsIsWarnedAboutRatherThanRefused()
+    {
+        // The language is usable - the subtype's own body wins - so this is not an error. It is also almost never what
+        // an author means, which is why the loaded project carries a warning rather than staying quiet.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteBehaviour(folder.Root, conceptKey: "Doc.Spot", slot: "to", file: "spot");
+        WriteBehaviour(folder.Root, conceptKey: "Doc.Place", slot: "to", file: "place");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var warning = Assert.Single(language.Warnings);
+
+        Assert.Equal(LanguageProject.BehaviourFolder, warning.Aspect);
+        Assert.Contains("'Doc.Place' declares a name it inherits from 'Doc.Spot'", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALanguageThatNamesEachConceptOnceWarnsAboutNothing()
+    {
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteBehaviour(folder.Root, conceptKey: "Doc.Link", slot: "to");
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+        Assert.Empty(language.Warnings);
+    }
+
     private static void WriteStructure(string directory)
     {
         var definition = new DefinitionBuilder();
@@ -121,7 +210,7 @@ public sealed class LanguageProjectBehaviourTests
         ModelFile.Save(definition.Documents[3], Path.Combine(structure, "Doc.Place.mps"));
     }
 
-    private static void WriteBehaviour(string directory, string conceptKey, string slot)
+    private static void WriteBehaviour(string directory, string conceptKey, string slot, string file = "link")
     {
         var model = BehaviourLanguage.NewModel("link");
         var document = model.Roots[0];
@@ -137,6 +226,6 @@ public sealed class LanguageProjectBehaviourTests
         var behaviour = Path.Combine(directory, LanguageProject.BehaviourFolder);
 
         Directory.CreateDirectory(behaviour);
-        ModelFile.Save(model, Path.Combine(behaviour, "link.mps"));
+        ModelFile.Save(model, Path.Combine(behaviour, file + ".mps"));
     }
 }

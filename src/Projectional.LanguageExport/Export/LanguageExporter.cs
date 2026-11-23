@@ -1,5 +1,6 @@
 using System.Text;
 
+using Projectional.Behaviours;
 using Projectional.Core;
 using Projectional.Language;
 using Projectional.Languages;
@@ -82,6 +83,7 @@ public static class LanguageExporter
             var exported = Build(
                 basis.Name,
                 basis.Declarations,
+                Bodies(basis),
                 basis.Notations.Notations,
                 NamespaceFor(basis.Name),
                 basis.Types,
@@ -107,6 +109,7 @@ public static class LanguageExporter
         var own = Build(
             language.Name,
             language.Declarations,
+            Bodies(language),
             language.Notations.Notations,
             namespaceName,
             language.Types,
@@ -133,9 +136,21 @@ public static class LanguageExporter
         return new ExportResult(files, assemblies);
     }
 
+    /// <summary>The name body each concept of <paramref name="language"/> declares, by concept key.</summary>
+    /// <returns>The bodies, or <see langword="null"/> when the language declares no behaviour at all.</returns>
+    /// <remarks>
+    /// Lowered again from the documents rather than read off the declarations, because a declaration carries the
+    /// delegate and a delegate cannot be written out: the vocabulary record is the one form that both runs and can be
+    /// spelled as C#. Re-lowering is also what the folder itself does, so a language whose behaviour does not lower is
+    /// already refused long before an export reaches it.
+    /// </remarks>
+    private static IReadOnlyDictionary<string, NameBody>? Bodies(LanguageProject language) =>
+        language.BehaviourDocuments.Count == 0
+            ? null
+            : BehaviourLowering.Bodies(language.BehaviourDocuments.SelectMany(model => model.Roots), language.Concepts);
+
     /// <summary>What the root says about the language, in the shape the writer states it with.</summary>
-    private static LanguageMetadata Metadata(LanguageProject language) =>
-        new(
+    private static LanguageMetadata Metadata(LanguageProject language) =>        new(
             language.Version,
             language.Description,
             [.. language.Dependencies.Select(Dependency)],
@@ -176,11 +191,13 @@ public static class LanguageExporter
         IReadOnlyList<DeclaredTypingRule>? typingRules = null,
         bool hasImport = false,
         ExportOutput output = ExportOutput.Source,
-        LanguageMetadata? metadata = null)
+        LanguageMetadata? metadata = null,
+        IReadOnlyDictionary<string, NameBody>? names = null)
     {
         var built = Build(
             name,
             declarations,
+            names,
             notations,
             namespaceName,
             types ?? TypeRegistry.Empty,
@@ -223,6 +240,7 @@ public static class LanguageExporter
     private static Built Build(
         string name,
         IReadOnlyList<ConceptDeclaration> declarations,
+        IReadOnlyDictionary<string, NameBody>? names,
         IReadOnlyList<Notation> notations,
         string? namespaceName,
         TypeRegistry types,
@@ -245,7 +263,7 @@ public static class LanguageExporter
         var className = ClassName(name);
         var stem = className + VersionSuffix(metadata?.Version);
         var omitted = Omissions(hasConstraints, hasScopes, hasIntentions, hasImport);
-        var source = Source(name, className, namespaceName, declarations, notations, generators ?? [], typing, types, omitted, metadata, informationalVersion);
+        var source = Source(name, className, namespaceName, declarations, names, notations, generators ?? [], typing, types, omitted, metadata, informationalVersion);
 
         var files = new List<GeneratedFile>(2) { new($"{stem}.cs", source) };
 
@@ -323,6 +341,7 @@ public static class LanguageExporter
         string className,
         string? namespaceName,
         IReadOnlyList<ConceptDeclaration> declarations,
+        IReadOnlyDictionary<string, NameBody>? names,
         IReadOnlyList<Notation> notations,
         IReadOnlyList<TextGenerator> generators,
         IReadOnlyList<DeclaredTypingRule> typingRules,
@@ -355,7 +374,7 @@ public static class LanguageExporter
         source.Line();
         source.Line("using Projectional.Core;");
 
-        if (notations.Count > 0 || types.Count > 0 || typing)
+        if (notations.Count > 0 || types.Count > 0 || typing || names is { Count: > 0 })
         {
             source.Line("using Projectional.Language;");
         }
@@ -380,7 +399,7 @@ public static class LanguageExporter
 
         using (source.Indent())
         {
-            DeclarationWriter.Write(source, declarations);
+            DeclarationWriter.Write(source, declarations, names);
 
             if (notations.Count > 0)
             {

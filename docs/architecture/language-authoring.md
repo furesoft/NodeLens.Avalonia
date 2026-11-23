@@ -411,13 +411,15 @@ assembly into the folder the user chooses.
 What export guarantees, and what it refuses to hide:
 
 - Every structure, notation and designated-slot decision is emitted as the equivalent builder
-  call, and so is every **typing** rule: `ITypingRules` and `TypingRuleRegistry` live in
-  `Projectional.Language`, and the four claims a declared rule can name are exactly the predicates a
-  hand-written language writes, so the export writes them out as the same lambdas (`text =>
-  text.All(char.IsAsciiDigit)`, `text is "true" or "false"`, ...) rather than naming the aspect as
-  lost. The output compiles against `Projectional.Toolkit` - the emitted assembly references
-  `Projectional.Core` and `Projectional.Language` and nothing else - and passes the same registry
-  dump, the same drawing and the same answers to a burst of typing as the source language.
+  call, and so are the two behavioural aspects whose vocabulary lives in `Projectional.Language`:
+  every **typing** rule (`ITypingRules` and `TypingRuleRegistry` are exactly the predicates a
+  hand-written language writes, so the export writes them as the same lambdas - `text =>
+  text.All(char.IsAsciiDigit)`, `text is "true" or "false"`, ...) and every **name** a `behaviour`
+  folder declares, written as the record it lowers to - `nameOf: new NameReference("to").ToFunction()`
+  - because the vocabulary is data, not a delegate. The output compiles against
+  `Projectional.Toolkit` - the emitted assembly references `Projectional.Core` and
+  `Projectional.Language` and nothing else - and passes the same registry dump, the same drawing, the
+  same answers to a burst of typing and the same name for every node as the source language.
 - **A behavioural aspect is stubbed, not dropped.** `types` and `generator` become a member that
   throws `NotSupportedException`, with a message naming the aspect and the folder to look in: a
   language that silently answered an empty `Types` would look exported and be wrong. `constraints`,
