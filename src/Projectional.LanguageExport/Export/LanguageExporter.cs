@@ -2,8 +2,11 @@ using System.Text;
 
 using Projectional.Behaviours;
 using Projectional.Core;
+using Projectional.CSharp;
+using Projectional.CSharp.Generation;
 using Projectional.Language;
 using Projectional.Languages;
+using Projectional.Semantics;
 using Projectional.Structures;
 using Projectional.TypingRules;
 
@@ -99,7 +102,9 @@ public static class LanguageExporter
                 // own version still travels as AssemblyMetadata, which allows the repetition.
                 informationalVersion: layout == AssemblyLayout.PerLanguage,
                 readme: false,
-                beside: null);
+                beside: null,
+                nameMethods: NameMethods(basis),
+                behaviours: Behaviours(basis));
 
             files.AddRange(exported.Files);
             beside.Add(exported.Stem);
@@ -122,7 +127,9 @@ public static class LanguageExporter
             Metadata(language),
             informationalVersion: true,
             readme: true,
-            beside);
+            beside,
+            nameMethods: NameMethods(language),
+            behaviours: Behaviours(language));
 
         files.AddRange(own.Files);
         sources.Add(own);
@@ -130,8 +137,8 @@ public static class LanguageExporter
         var assemblies = output != ExportOutput.Assembly
             ? []
             : layout == AssemblyLayout.Combined
-                ? [AssemblyCompiler.Compile(own.Stem, [.. sources.Select(source => source.Text)])]
-                : sources.Select(source => AssemblyCompiler.Compile(source.Stem, source.Text)).ToList();
+                ? [AssemblyCompiler.Compile(own.Stem, [.. sources.SelectMany(source => source.Sources)])]
+                : sources.Select(source => AssemblyCompiler.Compile(source.Stem, source.Sources)).ToList();
 
         return new ExportResult(files, assemblies);
     }
@@ -148,6 +155,40 @@ public static class LanguageExporter
         language.BehaviourDocuments.Count == 0
             ? null
             : BehaviourLowering.Bodies(language.BehaviourDocuments.SelectMany(model => model.Roots), language.Concepts);
+
+    /// <summary>The C# method that names each concept of <paramref name="language"/>, by concept key.</summary>
+    /// <returns>The methods, or <see langword="null"/> when no concept is named in C#.</returns>
+    /// <remarks>
+    /// Read off the language rather than re-derived, because it *is* a name and not a body: the folder bound the class
+    /// to the concept when it loaded, and re-walking the models would be a second answer to the same question.
+    /// </remarks>
+    private static IReadOnlyDictionary<string, string>? NameMethods(LanguageProject language) =>
+        language.CSharpNames.Count == 0 ? null : language.CSharpNames;
+
+    /// <summary>
+    /// The C# a language writes its behaviours in, generated as the package's own source: the documents are models of
+    /// the C# base language, so the base generator turns them back into the code a compiler reads.
+    /// </summary>
+    /// <remarks>
+    /// These are the files the emitted <c>nameOf: …</c> refers to. They are generated rather than copied because the
+    /// model is the truth: a host that edits the behaviour in the editor and copies the old text into the package would
+    /// be shipping a second answer.
+    /// </remarks>
+    private static IReadOnlyList<string> Behaviours(LanguageProject language)
+    {
+        if (language.CSharpDocuments.Count == 0)
+        {
+            return [];
+        }
+
+        var generator = new Generator();
+
+        return
+        [
+            .. language.CSharpDocuments.Select(document =>
+                string.Concat(document.Roots.Select(root => generator.Generate(root, CSharpTextGenerators.Generator).Text))),
+        ];
+    }
 
     /// <summary>What the root says about the language, in the shape the writer states it with.</summary>
     private static LanguageMetadata Metadata(LanguageProject language) =>        new(
@@ -214,14 +255,17 @@ public static class LanguageExporter
 
         return new ExportResult(
             built.Files,
-            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(built.Stem, built.Text)] : []);
+            output == ExportOutput.Assembly ? [AssemblyCompiler.Compile(built.Stem, built.Sources)] : []);
     }
 
     /// <summary>One language as files, as source text, and under the name its files carry.</summary>
-    /// <param name="Files">The source file and, when asked for, the README.</param>
+    /// <param name="Files">The source files and, when asked for, the README.</param>
     /// <param name="Stem">The file name without extension: the class name and the declared version.</param>
-    /// <param name="Text">The generated source, which an assembly layout may compile together with another's.</param>
-    private sealed record Built(IReadOnlyList<GeneratedFile> Files, string Stem, string Text);
+    /// <param name="Sources">
+    /// The generated source, which an assembly layout may compile together with another's - the declaration file first,
+    /// then one per C# behaviour document, because they are one compilation and a file is a unit with its own usings.
+    /// </param>
+    private sealed record Built(IReadOnlyList<GeneratedFile> Files, string Stem, IReadOnlyList<string> Sources);
 
     /// <summary>Builds one language's source and, on request, its README.</summary>
     /// <param name="informationalVersion">
@@ -253,7 +297,9 @@ public static class LanguageExporter
         LanguageMetadata? metadata,
         bool informationalVersion,
         bool readme,
-        IReadOnlyList<string>? beside)
+        IReadOnlyList<string>? beside,
+        IReadOnlyDictionary<string, string>? nameMethods = null,
+        IReadOnlyList<string>? behaviours = null)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(declarations);
@@ -263,9 +309,24 @@ public static class LanguageExporter
         var className = ClassName(name);
         var stem = className + VersionSuffix(metadata?.Version);
         var omitted = Omissions(hasConstraints, hasScopes, hasIntentions, hasImport);
-        var source = Source(name, className, namespaceName, declarations, names, notations, generators ?? [], typing, types, omitted, metadata, informationalVersion);
+        var source = Source(name, className, namespaceName, declarations, names, notations, generators ?? [], typing, types, omitted, metadata, informationalVersion, nameMethods);
 
-        var files = new List<GeneratedFile>(2) { new($"{stem}.cs", source) };
+        var files = new List<GeneratedFile>(3) { new($"{stem}.cs", source) };
+
+        // The C# a language writes its behaviours in: beside the declaration file and compiled with it, because the
+        // declaration names the methods it holds. One document is the ordinary case and takes the plain name; a second
+        // can only be told apart by a number, and the order is the folder's, so the names are stable between exports.
+        if (behaviours is { Count: > 0 })
+        {
+            for (var index = 0; index < behaviours.Count; index++)
+            {
+                var file = behaviours.Count == 1
+                    ? $"{stem}.Behaviour.cs"
+                    : $"{stem}.Behaviour.{index + 1}.cs";
+
+                files.Add(new GeneratedFile(file, behaviours[index]));
+            }
+        }
 
         if (readme)
         {
@@ -274,7 +335,7 @@ public static class LanguageExporter
                 Readme(name, className, notations.Count > 0, typing.Count > 0, omitted, metadata, beside)));
         }
 
-        return new Built(files, stem, source);
+        return new Built(files, stem, [source, .. behaviours ?? []]);
     }
 
     /// <summary>The declared version as a file-name suffix: <c>-1.0.0</c>, or nothing when none is declared.</summary>
@@ -348,7 +409,8 @@ public static class LanguageExporter
         TypeRegistry types,
         List<string> omitted,
         LanguageMetadata? metadata,
-        bool informationalVersion)
+        bool informationalVersion,
+        IReadOnlyDictionary<string, string>? nameMethods = null)
     {
         var source = new SourceWriter();
         var typing = typingRules.Count > 0;
@@ -399,7 +461,7 @@ public static class LanguageExporter
 
         using (source.Indent())
         {
-            DeclarationWriter.Write(source, declarations, names);
+            DeclarationWriter.Write(source, declarations, names, nameMethods);
 
             if (notations.Count > 0)
             {
