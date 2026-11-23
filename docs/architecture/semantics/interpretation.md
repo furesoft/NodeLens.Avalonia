@@ -135,7 +135,8 @@ each of them any body) and `field <name> of <body>` (one value read back out of 
 = kg }` this way, and an invoice line that holds one answers with the amount alone. Both kinds are values like any other, so
 they compare by content, travel through `bind`, appear in the trace and can be compared with `==`.
 
-The three composed meanings in the samples are one chain each, and between them they use every body:
+The four composed meanings in the samples are one chain each, and between them they use every body except the two that
+need a concept carrying a name (see below):
 
 - **A total** - `Invoice.Bill` answers `sum over lines of (field value of (child quantity))`: a fold over a child slot, whose
   each-body reads one field of the record the base language answers with. Twelve and five and thirty are added, the units are
@@ -144,6 +145,21 @@ The three composed meanings in the samples are one chain each, and between them 
   joined, one of them a constant the rule writes, so a language builds a phrase without a single line of C#.
 - **A list** - `Atlas.Route` answers `list of stops`, which is the labels of the places the route stops at, in order: the list
   body asks each stop, the stop's rule follows its reference, and the place's rule builds the label.
+- **A choice out of a list** - `Workflow.Workflow` answers `first over library when (has command) then (property command)
+  otherwise (fail "no step in the library runs a command.")`: the command of the first step in the library that runs one, and
+  a sentence when the library holds none. The two documents the folder ships prove both halves without a model built for the
+  test - `release.mps` keeps one step in its library and answers `dotnet build`, while `draft.mps` has no library at all and
+  answers the refusal.
+
+**`bind` and `variable` are demonstrated in the lowering tests, not in a sample**, and the reason is a property of the
+vocabulary rather than a gap in the samples. `bind` writes the name it binds as a literal in the rule, while `variable`
+reads the name **from a slot of the node** - so the two only compose where the node's slot already holds exactly the name
+the rule wrote. The expression language's `Name` node is the concept where that is the point: its document's name *is* the
+name a run supplies, so a rule for `Name` that reads its own slot is right for every document, and that is why
+`EvaluationRuleLoweringTests` writes both bodies against it. A sample's name slots are labels rather than supplied names -
+a workflow's is `build` or `Release`, a step's own label - so a sample rule using the pair would have to hard-code a name
+and would then only be right for the one document whose label happened to match. The shipped samples therefore stop at the
+fourteen bodies that fit them, and the pair stays where it can be stated correctly.
 
 The example lives as a fixture rather than as a shipped sample, because it exists to prove the path end to end on a
 language this repository does not otherwise need: `GradeLanguage` declares the two properties, `SampleEvaluatorTests`
