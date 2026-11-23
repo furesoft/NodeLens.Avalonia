@@ -92,6 +92,12 @@ public static class CSharpConceptKeys
     /// <summary><c>enum/Enum/.Member</c>: one symbol of an enumeration of the language being defined.</summary>
     public const string EnumValue = "CSharp.EnumValue";
 
+    /// <summary><c>(parameters) =&gt; expression</c>: code handed to something else to run.</summary>
+    public const string Lambda = "CSharp.Lambda";
+
+    /// <summary>One parameter of a lambda, whose type the target supplies rather than the declaration.</summary>
+    public const string LambdaParameter = "CSharp.LambdaParameter";
+
     /// <summary>What every read of a node has in common: a node, and what is read from it. Abstract.</summary>
     public const string NodeRead = "CSharp.NodeRead";
 

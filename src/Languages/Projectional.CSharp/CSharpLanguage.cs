@@ -394,6 +394,36 @@ public static class CSharpLanguage
             isRoot: false,
             description: "enum/Enum/.Member: one symbol of an enumeration of this language."),
 
+        // The expression form the subset was missing, and the one whose absence made "LINQ is sugar over calls" true
+        // only on paper: `values.Where(item => item > 0)` is a call whose argument is code, and there was no code to
+        // pass. An expression body and not a block: a statement-bodied lambda is a second shape with the same two
+        // parts, and every behaviour body that needed one so far reads better as a method.
+        //
+        // The parameters are `LambdaParameter` nodes and not `Parameter` ones, and the difference is C#'s: a method's
+        // parameter declares its type, while a lambda's is typed by the delegate the target asks for. Reusing the
+        // method's concept would draw `(int item) => item`, which is legal C# 10 and not what anyone writes.
+        //
+        // It implements `NamedDeclaration` like the other declarations, so the body sees it through the one scope rule
+        // the language states - no second rule for lambda scope.
+        new ConceptDeclaration(
+            CSharpConceptKeys.Lambda,
+            [
+                new ChildSlot(CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.LambdaParameter, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.BodySlot, CSharpConceptKeys.Expression, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            isRoot: false,
+            description: "(parameters) => expression"),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.LambdaParameter,
+            [new PropertySlot(NameSlot, PropertyType.String, description: "The parameter's name; its type is the delegate's.")],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Camel,
+            isRoot: false,
+            description: "One parameter of a lambda, typed by whatever the lambda is passed to."),
+
         // Every read of a node is one concept or another, and they all take the node they read as a child slot - so the
         // operand is declared once, here, and the nine reads differ in what they are called and what they take beside
         // it. It extends Expression because a read produces a value: without this super, `node.name` could not stand
