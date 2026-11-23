@@ -153,5 +153,17 @@ public static class RulesTextGenerators
             new ChildPart("then"),
             new TextPart(" : "),
             new ChildPart("else"),
+            new TextPart(")")))
+
+        // A function is a document, and what it contributes to the text is its body: the language declares no return
+        // type, so the host writes the signature - the same division of labour the ruleset's method body already has.
+        .Add(ExpressionsConceptKeys.Function, TextTemplate.Of(
+            new ChildPart("body")))
+
+        // The callee is a reference, so the call writes the name the editor draws and the two cannot disagree.
+        .Add(ExpressionsConceptKeys.Call, TextTemplate.Of(
+            new ReferencePart("callee"),
+            new TextPart("("),
+            new ChildrenPart(ExpressionsLanguage.ArgumentsSlot, TextTemplate.Of(new TextPart(", "))),
             new TextPart(")")));
 }
