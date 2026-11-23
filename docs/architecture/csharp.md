@@ -58,7 +58,8 @@ the language's, not C#'s"); namespaces are
 `Switch` with its `SwitchSection` sections (`case` or `default`);
 and `TypeReference`, `Method`, `Constructor`,
 `Property` (an auto-property, or one whose accessors have bodies, with `get` and `set`), `Indexer` (a member named `this`, so its own concept rather than a property with an empty name slot), `Signature` (a bodiless interface member),
-`Parameter`, `Field`, `Class`, `Interface` with its inheritance list, `Enum` with its `EnumMember` values,
+`Parameter`, `Field`, `Class`, `Record` (positional, or with a body, or a `record struct`),
+`Interface` with its inheritance list, `Enum` with its `EnumMember` values,
 `Behaviour` (a concept's behaviour class, a `TypeDeclaration` holding methods),
 `Using` (a file's imports, whose name is a property because a namespace is not a type), `Namespace` and `File`. It has no
 importer, so a document is written in the editor and the text is a derived artefact. Read the rest of
@@ -162,6 +163,29 @@ class that compiles; it is not enough to describe an existing codebase.
 | `unsafe`, `fixed`, stack allocation | the trust boundary already says we do not execute user code; there is no reason to also let it address memory |
 | preprocessor directives | a model has no compilation symbols |
 | expression-bodied members | a body is a `Block`; a one-statement block generates the same IL and one notation is one thing to maintain |
+
+## Records: one concept, two shapes
+
+A record is a class with two things a class does not have: a positional parameter list that becomes its
+properties (`record Point(int X, int Y)`), and a body that is optional - `record Point(int X, int Y);` ends in
+a semicolon, and the same record with members ends in braces.
+
+**Two shapes, one concept, one property.** `hasBody` decides between the semicolon and the braces, the way
+`isFileScoped` decides between C# 10's two namespace forms and `hasBodies` between a property's two forms. The
+reason is the same one that gave a `Signature` its own concept in the other direction: a signature beside a
+method holds *different slots* (no body slot at all), while these two hold the same slots and differ in one
+symbol. Members written while the semicolon form holds are kept and not drawn - the way `var` keeps the type it
+hides - so switching back shows the author what they wrote instead of nothing.
+
+**`record struct` is a conditional, not a concept.** `record class` and `record struct` differ in one keyword
+and share every slot, so a boolean (`isStruct`) draws the second word where it belongs.
+
+**The primary constructor's parameters are ordinary `Parameter` nodes**, unlike a lambda's: a record *does*
+declare the types of its positional properties. They are declarations, so a body reads them through the one
+scope rule the language states - `record Segment(int X, int Y) { public int Measure() => X }` needed no new
+scope entry. What is *not* expressible is the base-constructor call in an inheritance list
+(`record Student(string Name) : Person(Name)`), because the list holds references and a reference has no
+argument list; a record can name an interface, and a base class only where a parameterless call is enough.
 
 ## Lambdas, and what they unlocked
 
