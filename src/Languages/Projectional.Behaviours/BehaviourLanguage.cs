@@ -126,6 +126,16 @@ public static class BehaviourLanguage
             description: "fallback (<parts...>)"),
 
         new ConceptDeclaration(
+            BehaviourConceptKeys.Children,
+            [
+                new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The child slot whose names to join."),
+                new PropertySlot(BehaviourConceptKeys.SeparatorSlot, PropertyType.String, ", ", "The text between two names, empty ones left out."),
+            ],
+            superConcepts: [BehaviourConceptKeys.Part],
+            isRoot: false,
+            description: "children <slot> with <separator>"),
+
+        new ConceptDeclaration(
             BehaviourConceptKeys.Choose,
             [
                 new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The property to read."),

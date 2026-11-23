@@ -92,6 +92,9 @@ public static class BehaviourLowering
             [.. part.GetChildren(BehaviourConceptKeys.PartsSlot).Select(each => Part(each, concept))]),
         BehaviourConceptKeys.Fallback => new NameFallback(
             [.. part.GetChildren(BehaviourConceptKeys.PartsSlot).Select(each => Part(each, concept))]),
+        BehaviourConceptKeys.Children => new NameChildren(
+            Slot<ChildSlot>(part, concept).Name,
+            part.GetOrNull(BehaviourConceptKeys.SeparatorSlot) ?? ", "),
         BehaviourConceptKeys.Choose => Choice(part, concept),
         _ => throw new ConceptDefinitionException($"'{part.Concept.Key}' is not a body part."),
     };

@@ -78,6 +78,37 @@ public sealed class BehaviourLoweringTests
     }
 
     [Fact]
+    public void AChildrenBodyJoinsTheNamesInAList()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        var children = Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Children, "items");
+        children.Set(BehaviourConceptKeys.SeparatorSlot, " - ");
+
+        var names = Lower(document);
+        var nodes = BehaviourTestLanguage.NewModel();
+        var node = nodes.NewNode(BehaviourTestLanguage.Node);
+
+        nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf).Set(BehaviourTestLanguage.ValueSlot, "peak");
+        nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf).Set(BehaviourTestLanguage.ValueSlot, "lake");
+
+        // The third child has no name of its own yet, and a list leaves an empty answer out instead of adding a separator.
+        nodes.NewChild(node, BehaviourTestLanguage.ItemsSlot, BehaviourTestLanguage.Leaf).Set(BehaviourTestLanguage.ValueSlot, string.Empty);
+
+        Assert.Equal("peak - lake", names[BehaviourTestLanguage.Node](node));
+    }
+
+    [Fact]
+    public void AChildrenBodyOnAPropertyIsRefused()
+    {
+        var (behaviour, document) = Document(BehaviourTestLanguage.Node);
+        Part(behaviour, Function(behaviour, document), BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Children, "value");
+
+        Assert.Contains(
+            "is not a child",
+            Assert.Throws<ConceptDefinitionException>(() => Lower(document)).Message);
+    }
+
+    [Fact]
     public void AJoinPutsItsSeparatorBetweenThePartsThatSaySomething()
     {
         var (behaviour, document) = Document(BehaviourTestLanguage.Node);
