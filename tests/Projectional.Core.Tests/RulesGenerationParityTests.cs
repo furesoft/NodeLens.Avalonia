@@ -32,11 +32,12 @@ namespace Projectional.Core.Tests;
 /// decision.
 /// </para>
 /// <para>
-/// Two divergences are deliberately <em>not</em> in the corpus, because the gate found them and a case would fail on
-/// a defect rather than pin a decision: <c>^</c> is a power in <see cref="OperatorSemantics"/> and C#'s XOR, and the
-/// interpreter evaluates both operands of <c>&amp;&amp;</c> and <c>||</c> while C# short-circuits, so a right operand
-/// that fails - a division by zero - is a finding in the editor and skipped in the generated code. Both are recorded
-/// under Risks in <c>docs/architecture/csharp.md</c>; neither can be fixed by a template.
+/// One divergence is deliberately <em>not</em> in the corpus, because the gate found it and a case would fail on a
+/// defect: <c>^</c> is a power in <see cref="OperatorSemantics"/> and C#'s XOR, and the fragment prints the symbol
+/// verbatim. It is recorded under Risks in <c>docs/architecture/csharp.md</c>; fixing it needs a template part that maps
+/// a symbol. The other divergence the gate found - the interpreter evaluating both operands of <c>&amp;&amp;</c> and
+/// <c>||</c> where C# short-circuits - is fixed, and the corpus covers it: a left operand that decides skips the right
+/// one on both sides.
 /// </para>
 /// </remarks>
 public sealed class RulesGenerationParityTests
@@ -173,6 +174,7 @@ public sealed class RulesGenerationParityTests
         var otherDay = Dates("!=");
         var division = Division();
         var disjunction = Disjunction();
+        var shortCircuit = ShortCircuit();
         var atMost = AtMost();
         var nested = Nested();
 
@@ -217,6 +219,10 @@ public sealed class RulesGenerationParityTests
             // The remaining logical and comparison symbols.
             new("a disjunction whose left operand is false", disjunction, [new Parameter("bool", "flag", false), new Parameter("int", "amount", 200)], RuleOutcomes.Review),
             new("a disjunction whose operands are both false", disjunction, [new Parameter("bool", "flag", false), new Parameter("int", "amount", 50)], null),
+
+            // A left operand that decides: the right one is not evaluated at all, so a division by zero there is no
+            // finding - which is what C# does and what the interpreter now does too.
+            new("a disjunction whose left operand decides", shortCircuit, [new Parameter("bool", "flag", true), new Parameter("int", "amount", 1), new Parameter("int", "zero", 0)], RuleOutcomes.Accept),
             new("a comparison at its bound", atMost, [new Parameter("int", "amount", 1000)], RuleOutcomes.Accept),
             new("a comparison beyond its bound", atMost, [new Parameter("int", "amount", 1001)], null),
 
@@ -316,6 +322,24 @@ public sealed class RulesGenerationParityTests
         var comparison = Binary(model, condition, "right", ">");
         Name(model, comparison, "left", "amount");
         Int(model, comparison, "right", 100);
+
+        return model;
+    }
+
+    /// <summary><c>rule Either when flag || amount / zero == 0 then Accept</c>, whose right operand must not be read.</summary>
+    private static Model ShortCircuit()
+    {
+        var model = NewModel();
+        var ruleset = Ruleset(model, "ShortCircuit");
+        var rule = Rule(model, ruleset, "Either", RuleOutcomes.Accept);
+
+        var condition = Binary(model, rule, "condition", "||");
+        Name(model, condition, "left", "flag");
+        var comparison = Binary(model, condition, "right", "==");
+        var quotient = Binary(model, comparison, "left", "/");
+        Name(model, quotient, "left", "amount");
+        Name(model, quotient, "right", "zero");
+        Int(model, comparison, "right", 0);
 
         return model;
     }

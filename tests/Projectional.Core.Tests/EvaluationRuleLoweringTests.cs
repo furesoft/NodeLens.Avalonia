@@ -47,6 +47,30 @@ public sealed class EvaluationRuleLoweringTests
     }
 
     [Fact]
+    public void ADeclaredOperatorShortCircuitsLikeTheHandWrittenOne()
+    {
+        // `true || (1 / 0)`: a declared body has to skip the right operand for the same reason the expression rules do,
+        // or a language written as data would disagree with the one written in C# about what ran.
+        var rules = new Rules();
+        Property(rules.Rule(ExpressionsConceptKeys.BoolLiteral), "value");
+
+        var either = Operator(rules.Rule(ExpressionsConceptKeys.Binary), "operator");
+        Child(either, "left", EvaluationRuleLanguage.LeftSlot);
+
+        var failing = Body(either, EvaluationRuleLanguage.RightSlot, EvaluationRuleConceptKeys.Operator);
+        failing.Set(EvaluationRuleLanguage.SymbolSlot, "/");
+        Constant(failing, "int", "1", EvaluationRuleLanguage.LeftSlot);
+        Constant(failing, "int", "0", EvaluationRuleLanguage.RightSlot);
+
+        var model = ExpressionsLanguage.NewProject().NewModel("expressions");
+        var node = model.NewNode(ExpressionsConceptKeys.Binary);
+        node.Set("operator", "||");
+        model.NewChild(node, "left", ExpressionsConceptKeys.BoolLiteral).Set("value", true);
+
+        Assert.Equal(new BoolValue(true), Evaluate(rules.Lower(), model, node));
+    }
+
+    [Fact]
     public void ADeclaredOperatorRuleWithoutARightOperandIsUnary()
     {
         var rules = new Rules();

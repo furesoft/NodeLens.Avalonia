@@ -61,13 +61,18 @@ every node that produced a value in **post-order** (a child's line precedes the 
 it), counts steps, stops at `DefaultBudget` (10 000) or at the caller's token, and answers
 `InterpretationResult` - a value, or an `InterpretationFailure` naming the node it happened at.
 
-Three decisions are worth keeping:
+Four decisions are worth keeping:
 
 - **A concept with no rule has no value.** Unlike a type, there is no `UnknownValue` to fall back on: "nobody
   said what this means" is a failure with a message, not a value. A half-written document therefore stops the
   run where it stopped being meaningful.
 - **Nothing is cached.** Asking for the same child twice costs two steps and appears twice in the trace, which
   is what makes the trace a record of what happened rather than of what could have been shared.
+- **A logical operator does not evaluate what it does not need.** `false && x` and `true || x` answer without
+  evaluating `x`, which is what C# does and what makes a rule mean the same thing in the editor and in the code it
+  generates. The trace therefore has no row for an operand that was never evaluated - it is a record of what
+  happened, not of what could have been. `OperatorSemantics.ShortCircuits` states the rule once, so the
+  hand-written expression rules and a declared operator body cannot disagree about it.
 - **Values are records, not objects.** `IntValue`, `FloatValue`, `BoolValue`, `StringValue`, `DateValue`, `RecordValue`
   and `ListValue` compare by content, so an interpreter test is an assertion. The last two carry their comparison in a
   field type of their own (`RecordFields`, `ValueSequence`), because a record's *generated* equality compares its fields and

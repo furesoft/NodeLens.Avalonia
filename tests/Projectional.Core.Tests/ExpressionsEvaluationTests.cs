@@ -94,6 +94,34 @@ public sealed class ExpressionsEvaluationTests
             new BoolValue(expected),
             Run(model, Binary(model, symbol, Bool(model, left), Bool(model, right))));
     }
+
+    [Fact]
+    public void TheLogicalOperatorsShortCircuitSoTheRightOperandIsNeverEvaluated()
+    {
+        // `true || (1 / 0)` has no value on the right, and a short-circuiting `||` never asks for it. That is what C#
+        // does, and what makes a rule mean the same thing in the editor and in the code it generates.
+        var model = NewModel();
+
+        Assert.Equal(
+            new BoolValue(true),
+            Run(model, Binary(model, "||", Bool(model, true), Binary(model, "/", Int(model, 1), Int(model, 0)))));
+        Assert.Equal(
+            new BoolValue(false),
+            Run(model, Binary(model, "&&", Bool(model, false), Binary(model, "/", Int(model, 1), Int(model, 0)))));
+    }
+
+    [Fact]
+    public void AnOperandTheShortCircuitDoesNotSkipIsStillEvaluated()
+    {
+        // The mirror: when the left operand decides nothing, the right one runs and its failure is the run's failure -
+        // a short-circuit skips an operand rather than swallowing a mistake.
+        var model = NewModel();
+
+        var result = RunResult(model, Binary(model, "||", Bool(model, false), Binary(model, "/", Int(model, 1), Int(model, 0))));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Division by zero has no value.", result.Failure?.Message);
+    }
     [Theory]
     [InlineData(2, 3, 8)]
     [InlineData(3, 0, 1)]
