@@ -32,6 +32,9 @@ public static class BehaviourConceptKeys
     /// <summary>Parts one after another, with a separator, empty ones left out.</summary>
     public const string Join = "Behaviour.Join";
 
+    /// <summary>The names of the children in a slot, with a separator, empty ones left out.</summary>
+    public const string Children = "Behaviour.Children";
+
     /// <summary>The first non-empty part.</summary>
     public const string Fallback = "Behaviour.Fallback";
 

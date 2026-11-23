@@ -86,6 +86,15 @@ public static class BehaviourNotations
             ed.InlineCollection(BehaviourConceptKeys.PartsSlot, ed.Punct(",")),
             ed.Punct(")")));
 
+        notations.Add(BehaviourConceptKeys.Children, ed => ed.Line(
+            ed.Keyword("children"),
+            ed.Space,
+            ed.Property(BehaviourConceptKeys.SlotSlot),
+            ed.Space,
+            ed.Keyword("with"),
+            ed.Space,
+            ed.Property(BehaviourConceptKeys.SeparatorSlot)));
+
         notations.Add(BehaviourConceptKeys.Choose, ed => ed.Line(
             ed.Keyword("choose"),
             ed.Space,

@@ -12,6 +12,7 @@ namespace Projectional.Core.Tests;
 public sealed class NameBodyTests
 {
     private const string Node = "Nb.Node";
+    private const string Leaf = "Nb.Leaf";
     private const string Link = "Nb.Link";
     private const string Loop = "Nb.Loop";
 
@@ -38,7 +39,7 @@ public sealed class NameBodyTests
 
         var parent = model.NewNode(Node);
         parent.Set("amount", "left");
-        model.NewChild(parent, "child", Node).Set("amount", "right");
+        model.NewChild(parent, "child", Leaf).Set("amount", "right");
 
         Assert.Equal("left.right", parent.Name);
     }
@@ -59,8 +60,55 @@ public sealed class NameBodyTests
     }
 
     [Fact]
-    public void AJoinLeavesOutTheEmptyAnswersAndTheirSeparator()
+    public void AListOfChildrenIsNamedAfterAllOfThem()
     {
+        // The shape one child cannot express: a route called after the places it stops at.
+        var model = ModelWith(new NameChildren("children", " - "));
+        var parent = model.NewNode(Node);
+
+        model.NewChild(parent, "children", Leaf).Set("amount", "peak");
+        model.NewChild(parent, "children", Leaf).Set("amount", "lake");
+
+        Assert.Equal("peak - lake", parent.Name);
+    }
+
+    [Fact]
+    public void AListLeavesOutTheChildrenThatAreNotNamedYet()
+    {
+        // The same omission the join makes, so a half-written list does not end in a separator.
+        var model = ModelWith(new NameChildren("children", ", "));
+        var parent = model.NewNode(Node);
+
+        model.NewChild(parent, "children", Leaf).Set("amount", "peak");
+        model.NewChild(parent, "children", Leaf);
+
+        Assert.Equal("peak", parent.Name);
+    }
+
+    [Fact]
+    public void AListReadsASlotThatHoldsOneChildJustAsWell()
+    {
+        // `children` on a slot that stores one child answers the names it holds, which is none or one.
+        var model = ModelWith(new NameChildren("child", ", "));
+        var parent = model.NewNode(Node);
+
+        Assert.Equal(string.Empty, parent.Name);
+
+        model.NewChild(parent, "child", Leaf).Set("amount", "only");
+
+        Assert.Equal("only", parent.Name);
+    }
+
+    [Fact]
+    public void AListNamingASlotTheConceptDoesNotDeclareIsALanguageDefect()
+    {
+        var model = ModelWith(new NameChildren("nothing", ", "));
+
+        Assert.Throws<InvalidOperationException>(() => model.NewNode(Node).Name);
+    }
+
+    [Fact]
+    public void AJoinLeavesOutTheEmptyAnswersAndTheirSeparator()    {
         // The reason the join omits rather than concatenates: a half-written node must not be called `left.`.
         var model = ModelWith(new NameJoin(
             ".",
@@ -146,10 +194,18 @@ public sealed class NameBodyTests
                 [
                     new PropertySlot("amount", PropertyType.String),
                     new PropertySlot("kind", PropertyType.String),
-                    new ChildSlot("child", Node, Cardinality.One),
+                    new ChildSlot("child", Leaf, Cardinality.One),
+                    new ChildSlot("children", Leaf, Cardinality.Many),
                     new ReferenceSlot("next", Node, allowOwnSubtree: true),
                 ],
                 nameOf: body.ToFunction()),
+
+            // A child whose name is its own property, so a name built out of children is a name built out of their
+            // answers rather than out of the parent's body asked again.
+            new ConceptDeclaration(
+                Leaf,
+                [new PropertySlot("amount", PropertyType.String)],
+                nameOf: new NameProperty("amount").ToFunction()),
 
             new ConceptDeclaration(
                 Link,

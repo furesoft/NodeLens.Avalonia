@@ -87,6 +87,23 @@ public sealed class BehaviourNotationTests
                 .Select(concept => concept.Key));
     }
 
+    [Fact]
+    public void AChildrenPartDrawsTheSlotAndTheSeparator()
+    {
+        var model = BehaviourLanguage.NewModel();
+        var function = Function(model, model.Roots[0]);
+        var children = Body(model, function, BehaviourConceptKeys.Children, "items");
+
+        children.Set(BehaviourConceptKeys.SeparatorSlot, ",");
+
+        Assert.Equal(
+            """
+              behaviour for
+                name: children items with ,
+            """,
+            LayoutSnapshot.Render(model, BehaviourNotations.Registry, width: 60));
+    }
+
     private static Node Function(Model model, Node document)    {
         var function = model.NewChild(document, BehaviourConceptKeys.FunctionsSlot, BehaviourConceptKeys.Function);
         function.Set(BehaviourConceptKeys.KindSlot, BehaviourConceptKeys.NameKind);
