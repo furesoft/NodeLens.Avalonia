@@ -214,9 +214,25 @@ public sealed class LanguageDocumentationTests
         // makes the page answer "what does one of these look like" rather than "which cells exist".
         Assert.Contains("map &lt;name&gt; at &lt;entry&gt;\n  &lt;places...&gt;\n  &lt;routes...&gt;</pre>", map.Text, StringComparison.Ordinal);
 
-        // The legend says where a slot text comes from, because what a child owns it draws itself: a notation that
-        // reuses a statement shows one semicolon, not two, and a reader who does not know that reads a defect into it.
+        // The legend says where a slot text comes from, because what a child owns it draws itself: a notation whose
+        // child ends in its own punctuation shows it once, and a reader who does not know that reads a defect into it.
         Assert.Contains("punctuation the child owns", place.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheForHeaderDrawsBothOfItsSeparators()
+    {
+        var pages = LanguageDocumentation.Generate(CSharp());
+
+        var loop = Assert.Single(pages, page => page.Path == "CSharp/concepts/CSharp.For.html");
+
+        // Both semicolons of a header belong to the `for` itself - `for (;;)` is legal C# - so the shape spells both.
+        // While the initializer was a statement it drew its own `;` as the first separator, and the shape showed one
+        // semicolon although the drawn line has two; a reader read a defect into the language.
+        Assert.Contains(
+            "for (&lt;initializer&gt;; &lt;condition&gt;; &lt;increment&gt;)",
+            loop.Text,
+            StringComparison.Ordinal);
     }
 
     [Fact]

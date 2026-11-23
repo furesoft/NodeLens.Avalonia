@@ -250,12 +250,14 @@ language in the chain, so the archive is the one place a reader gets a language 
    its type rules are missing, and `unknown` is that complaint - not part of the language's shape. The documentation
    therefore asks the renderer for the shape and gets no cell at all (`EditorTreeBuilder(annotations: false)`), together
    with the punctuation that separates it, because a cell dropped on its own leaves `1 :` behind.
-7. **A slot stands for what the child draws, punctuation included**, and both legends now say so. A notation spelled
-   `for (<initializer> <condition>; <increment>)` shows one semicolon although the printed line has two, because the
-   initializer is a statement and a statement draws its own: that is the reading cost of the placeholder rule above.
-   A reader took it for a missing `;` in the language itself, so the sentence that explains the placeholders names the
-   case - punctuation the child owns belongs to the child and is not repeated beside it. The generators page had no
-   legend at all and gets the same sentence for its own spelling, where the same confusion was possible.
+7. **A slot stands for what the child draws, punctuation included**, and both legends now say so. A notation whose
+   `then` slot holds a block shows no braces of its own, because the block draws them: that is the reading cost of the
+   placeholder rule above, and the sentence that explains the placeholders names the case - punctuation the child owns
+   belongs to the child and is not repeated beside it. The generators page had no legend at all and gets the same
+   sentence for its own spelling, where the same confusion was possible. The `for` header was the one place the rule
+   cost a real separator: the initializer was a statement, whose own `;` was the header's first separator, so the
+   shape showed one semicolon although the drawn line has two. The initializer is a `ForInitializer` now - a
+   declaration without a terminator - and the header draws both, so shape and line agree.
 8. **A naming convention is named where it applies**, not only in the facts table. `NameRule` carries two words that are
    not the same: `Text` is the identity a declaration is written with (`pascal`) and `Requirement` is the shape a finding
    quotes (`PascalCase`). The pages show the shape, because a reader asks what a name looks like; the concept page keeps

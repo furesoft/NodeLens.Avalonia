@@ -412,6 +412,20 @@ public static class CSharpNotations
                 ed.ChildInline(CSharpConceptKeys.ValueSlot)),
             ed.Punct(";")));
 
+        // The same shape as a local declaration without its `;`: the `for` draws the separator, so the header keeps
+        // both of them whatever the initializer holds.
+        notations.Add(CSharpConceptKeys.ForInitializer, ed => ed.Line(
+            ed.Conditional(CSharpLanguage.IsVarSlot, "true", ed.Keyword("var")),
+            ed.Conditional(CSharpLanguage.IsVarSlot, "false", ed.ChildInline("type")),
+            ed.Space,
+            ed.Property(CSharpLanguage.NameSlot),
+            ed.WhenFilled(
+                CSharpConceptKeys.ValueSlot,
+                ed.Space,
+                ed.Punct("="),
+                ed.Space,
+                ed.ChildInline(CSharpConceptKeys.ValueSlot))));
+
         // The operator is a property, so `count = 1` and `count += 1` are one node with one difference.
         notations.Add(CSharpConceptKeys.Assignment, ed => ed.Line(
             ed.ChildInline("target"),
@@ -435,14 +449,16 @@ public static class CSharpNotations
                 ed.ChildInline(CSharpConceptKeys.OperandSlot),
                 ed.Property(CSharpLanguage.UnaryOperatorSlot))));
 
-        // `for (int i = 0; i < 3; i++)` - the initializer's own semicolon is the first separator, and the increment has
-        // none, which is why it is an expression.
+        // `for (int i = 0; i < 3; i++)` - both separators belong to the header, which is why the shape the
+        // documentation spells is the line the editor draws. The initializer draws no `;` of its own and the increment
+        // is an expression, so neither can close the header early.
         notations.Add(CSharpConceptKeys.For, ed => ed.Sequence(
             ed.Line(
                 ed.Keyword("for"),
                 ed.Space,
                 ed.Punct("("),
                 ed.ChildInline(CSharpConceptKeys.InitializerSlot),
+                ed.Punct(";"),
                 ed.Space,
                 ed.ChildInline(CSharpConceptKeys.ConditionSlot),
                 ed.Punct(";"),

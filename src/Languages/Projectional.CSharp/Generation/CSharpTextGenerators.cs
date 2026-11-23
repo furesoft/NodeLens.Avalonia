@@ -304,6 +304,18 @@ public static class CSharpTextGenerators
                 TextTemplate.Of(new TextPart(" = "), new ChildPart(CSharpConceptKeys.ValueSlot))),
             new TextPart(";")))
 
+        .Add(CSharpConceptKeys.ForInitializer, TextTemplate.Of(
+            new ConditionalPart(
+                CSharpLanguage.IsVarSlot,
+                "true",
+                TextTemplate.Of(new TextPart("var")),
+                TextTemplate.Of(new ChildPart("type"))),
+            new TextPart(" "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new WhenFilledPart(
+                CSharpConceptKeys.ValueSlot,
+                TextTemplate.Of(new TextPart(" = "), new ChildPart(CSharpConceptKeys.ValueSlot)))))
+
         .Add(CSharpConceptKeys.Assignment, TextTemplate.Of(
             new ChildPart("target"),
             new TextPart(" "),
@@ -322,7 +334,7 @@ public static class CSharpTextGenerators
         .Add(CSharpConceptKeys.For, TextTemplate.Of(
             new TextPart("for ("),
             new ChildPart(CSharpConceptKeys.InitializerSlot),
-            new TextPart(" "),
+            new TextPart("; "),
             new ChildPart(CSharpConceptKeys.ConditionSlot),
             new TextPart("; "),
             new ChildPart(CSharpConceptKeys.IncrementSlot),

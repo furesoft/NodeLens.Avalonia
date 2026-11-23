@@ -275,11 +275,11 @@ internal static class LanguageDocuments
         }
 
         // public void Repeat() { for (int i = 0; i < 3; i++) { Console.WriteLine(message); } } - the counted loop, whose
-        // header is only writable because the initializer is a statement (it draws the first `;`) and the increment is
-        // an expression (it draws none).
+        // header draws both `;` itself: the initializer is a `ForInitializer` (a declaration without a terminator) and
+        // the increment is an expression (it draws none).
         var repeat = Method(model, cls, "public", isStatic: false, "void", "Repeat", out var repeatBody);
         var loop = model.NewChild(repeatBody, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.For);
-        var local = model.NewChild(loop, CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.LocalDeclaration);
+        var local = model.NewChild(loop, CSharpConceptKeys.InitializerSlot, CSharpConceptKeys.ForInitializer);
         var localType = model.NewChild(local, "type", CSharpConceptKeys.TypeReference);
         var start = model.NewChild(local, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.IntLiteral);
         var bound = model.NewChild(loop, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
