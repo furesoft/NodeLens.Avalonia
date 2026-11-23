@@ -119,6 +119,7 @@ bodies. It reads and it chooses; it never computes, compares numbers or calls an
 | `Property(slot)` | the value of a property slot, as text |
 | `Child(slot)` | the declared `Name` of the one child in that slot - **this is how a composite name is written**; the slot must hold one child, not a list |
 | `Reference(slot)` | the `Name` of the reference's target |
+| `ResolveInfo(slot)` | the text the reference stored when it was written - what a document can still show when the model its target lives in is not loaded |
 | `Join(separator, parts)` | parts, one after another, empty ones left out |
 | `Children(slot, separator)` | the `Name` of every child in that slot, empty ones left out - **this is how a name over a list is written** |
 | `Fallback(parts)` | the first non-empty part - how a concept says "the name, else the value, else `<anonymous>`" |

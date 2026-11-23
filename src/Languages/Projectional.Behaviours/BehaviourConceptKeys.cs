@@ -29,6 +29,9 @@ public static class BehaviourConceptKeys
     /// <summary>The name of a reference's target.</summary>
     public const string Reference = "Behaviour.Reference";
 
+    /// <summary>The text a reference stored when it was written, for a document whose target is not loaded.</summary>
+    public const string ResolveInfo = "Behaviour.ResolveInfo";
+
     /// <summary>Parts one after another, with a separator, empty ones left out.</summary>
     public const string Join = "Behaviour.Join";
 

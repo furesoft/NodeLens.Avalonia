@@ -578,7 +578,10 @@ public sealed class LanguageExporterTests
         var result = LanguageExporter.Export(language, "Sample.Doc", ExportOutput.Assembly);
         var source = result.Files.Single(file => file.Name.EndsWith(".cs", StringComparison.Ordinal)).Text;
 
-        Assert.Contains("nameOf: new NameReference(\"to\").ToFunction()", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "nameOf: new NameFallback(new NameReference(\"to\"), new NameResolveInfo(\"to\")).ToFunction()",
+            source,
+            StringComparison.Ordinal);
 
         var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(result.Assembly!.Bytes));
         var type = assembly.GetType("Sample.Doc.DocLanguage", throwOnError: true);
@@ -592,6 +595,18 @@ public sealed class LanguageExporterTests
 
         Assert.Equal("Bedrock", NameOfALink(language.NewProject()));
         Assert.Equal(NameOfALink(language.NewProject()), NameOfALink(exported));
+
+        // And a link whose target the project does not hold falls back to the text the reference stored, on both sides.
+        Assert.Equal("peak", NameOfADanglingLink(language.NewProject()));
+        Assert.Equal(NameOfADanglingLink(language.NewProject()), NameOfADanglingLink(exported));
+    }
+
+    private static string NameOfADanglingLink(Project project)
+    {
+        var link = project.NewModel("links").NewNode("Doc.Link");
+        link.SetReference("to", NodeId.New(), "peak");
+
+        return link.Name ?? string.Empty;
     }
 
     [Fact]
@@ -662,8 +677,12 @@ public sealed class LanguageExporterTests
         var function = model.NewChild(document, BehaviourConceptKeys.FunctionsSlot, BehaviourConceptKeys.Function);
         function.Set(BehaviourConceptKeys.KindSlot, BehaviourConceptKeys.NameKind);
 
-        var body = model.NewChild(function, BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Reference);
-        body.Set(BehaviourConceptKeys.SlotSlot, "to");
+        // A fallback of the two ways a reference can be read, so the emitted source has to write both records.
+        var fallback = model.NewChild(function, BehaviourConceptKeys.BodySlot, BehaviourConceptKeys.Fallback);
+        var reference = model.NewChild(fallback, BehaviourConceptKeys.PartsSlot, BehaviourConceptKeys.Reference);
+        reference.Set(BehaviourConceptKeys.SlotSlot, "to");
+        var resolveInfo = model.NewChild(fallback, BehaviourConceptKeys.PartsSlot, BehaviourConceptKeys.ResolveInfo);
+        resolveInfo.Set(BehaviourConceptKeys.SlotSlot, "to");
 
         var behaviour = Path.Combine(directory, LanguageProject.BehaviourFolder);
 

@@ -116,6 +116,7 @@ public static class BehaviourLowering
         BehaviourConceptKeys.Property => new NameProperty(Slot<PropertySlot>(part, concept).Name),
         BehaviourConceptKeys.Child => new NameChild(SingleChild(Slot<ChildSlot>(part, concept), concept).Name),
         BehaviourConceptKeys.Reference => new NameReference(Slot<ReferenceSlot>(part, concept).Name),
+        BehaviourConceptKeys.ResolveInfo => new NameResolveInfo(Slot<ReferenceSlot>(part, concept).Name),
         BehaviourConceptKeys.Join => new NameJoin(
             part.GetOrNull(BehaviourConceptKeys.SeparatorSlot) ?? " ",
             [.. part.GetChildren(BehaviourConceptKeys.PartsSlot).Select(each => Part(each, concept))]),

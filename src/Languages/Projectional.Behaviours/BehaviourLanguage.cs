@@ -105,6 +105,13 @@ public static class BehaviourLanguage
             description: "reference <slot>"),
 
         new ConceptDeclaration(
+            BehaviourConceptKeys.ResolveInfo,
+            [new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The reference slot whose stored text to read.")],
+            superConcepts: [BehaviourConceptKeys.Part],
+            isRoot: false,
+            description: "resolveInfo <slot>"),
+
+        new ConceptDeclaration(
             BehaviourConceptKeys.Join,
             [
                 new PropertySlot(

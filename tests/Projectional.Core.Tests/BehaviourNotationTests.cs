@@ -88,6 +88,22 @@ public sealed class BehaviourNotationTests
     }
 
     [Fact]
+    public void AResolveInfoPartDrawsItsSlot()
+    {
+        var model = BehaviourLanguage.NewModel();
+        var function = Function(model, model.Roots[0]);
+
+        Body(model, function, BehaviourConceptKeys.ResolveInfo, "to");
+
+        Assert.Equal(
+            """
+              behaviour for
+                name: resolveInfo to
+            """,
+            LayoutSnapshot.Render(model, BehaviourNotations.Registry, width: 60));
+    }
+
+    [Fact]
     public void AChildrenPartDrawsTheSlotAndTheSeparator()
     {
         var model = BehaviourLanguage.NewModel();
