@@ -145,6 +145,55 @@ public sealed class NameBodyTests
     }
 
     [Fact]
+    public void AWhenFilledAsksWhetherTheSlotHoldsSomething()
+    {
+        var model = ModelWith(new NameJoin(
+            " ",
+            new NameProperty("amount"),
+            new NameWhenFilled("kind", new NameLiteral("kind"))));
+
+        var node = model.NewNode(Node);
+
+        node.Set("amount", "left");
+
+        Assert.Equal("left", node.Name);
+
+        node.Set("kind", "operation");
+
+        Assert.Equal("left kind", node.Name);
+    }
+
+    [Fact]
+    public void AWhenFilledCountsAChildAndAReferenceAsFilled()
+    {
+        // Filled is "the slot holds something", whatever kind of slot it is - and a dangling reference is set, because
+        // the author pointed somewhere even if the target is not in this project.
+        var withChild = ModelWith(new NameWhenFilled("child", new NameLiteral("has a child")));
+        var parent = withChild.NewNode(Node);
+
+        Assert.Equal(string.Empty, parent.Name);
+
+        withChild.NewChild(parent, "child", Leaf);
+
+        Assert.Equal("has a child", parent.Name);
+
+        var withReference = ModelWith(new NameWhenFilled("named", new NameLiteral("points")));
+        var pointing = withReference.NewNode(Node);
+
+        pointing.SetReference("named", NodeId.New());
+
+        Assert.Equal("points", pointing.Name);
+    }
+
+    [Fact]
+    public void AWhenFilledOnASlotTheConceptDoesNotDeclareIsALanguageDefect()
+    {
+        var model = ModelWith(new NameWhenFilled("nothing", new NameLiteral("x")));
+
+        Assert.Throws<InvalidOperationException>(() => model.NewNode(Node).Name);
+    }
+
+    [Fact]
     public void AJoinLeavesOutTheEmptyAnswersAndTheirSeparator()    {
         // The reason the join omits rather than concatenates: a half-written node must not be called `left.`.
         var model = ModelWith(new NameJoin(

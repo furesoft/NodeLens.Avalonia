@@ -125,6 +125,9 @@ public static class BehaviourLowering
         BehaviourConceptKeys.Children => new NameChildren(
             Slot<ChildSlot>(part, concept).Name,
             part.GetOrNull(BehaviourConceptKeys.SeparatorSlot) ?? ", "),
+        BehaviourConceptKeys.WhenFilled => new NameWhenFilled(
+            AnySlot(part, concept).Name,
+            Part(Required(part, BehaviourConceptKeys.PartSlot), concept)),
         BehaviourConceptKeys.Choose => Choice(part, concept),
         _ => throw new ConceptDefinitionException($"'{part.Concept.Key}' is not a body part."),
     };
@@ -158,6 +161,24 @@ public static class BehaviourLowering
         }
 
         return typed;
+    }
+
+    /// <summary>The slot a part asks about, of any kind, refused unless the concept declares it.</summary>
+    private static SlotDeclaration AnySlot(Node part, Concept concept)
+    {
+        var name = part.GetOrNull(BehaviourConceptKeys.SlotSlot);
+
+        if (name is not { Length: > 0 })
+        {
+            throw new ConceptDefinitionException($"a body part of '{concept.Key}' must name the slot it reads.");
+        }
+
+        if (!concept.TryGetSlot(name, out var slot))
+        {
+            throw new ConceptDefinitionException($"'{name}' is not a slot of {concept.Key}.");
+        }
+
+        return slot;
     }
 
     /// <summary>

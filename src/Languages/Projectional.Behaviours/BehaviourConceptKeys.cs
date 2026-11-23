@@ -38,6 +38,9 @@ public static class BehaviourConceptKeys
     /// <summary>The names of the children in a slot, with a separator, empty ones left out.</summary>
     public const string Children = "Behaviour.Children";
 
+    /// <summary>A part answered only while a slot holds something.</summary>
+    public const string WhenFilled = "Behaviour.WhenFilled";
+
     /// <summary>The first non-empty part.</summary>
     public const string Fallback = "Behaviour.Fallback";
 
@@ -73,6 +76,9 @@ public static class BehaviourConceptKeys
 
     /// <summary>The slot holding the part a choice answers while the property holds the value.</summary>
     public const string ThenSlot = "then";
+
+    /// <summary>The slot holding the part a <c>whenFilled</c> answers while the slot it asks about is filled.</summary>
+    public const string PartSlot = "part";
 
     /// <summary>The slot holding the part a choice answers otherwise.</summary>
     public const string OtherwiseSlot = "otherwise";

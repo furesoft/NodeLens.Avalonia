@@ -143,6 +143,16 @@ public static class BehaviourLanguage
             description: "children <slot> with <separator>"),
 
         new ConceptDeclaration(
+            BehaviourConceptKeys.WhenFilled,
+            [
+                new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The slot whose filledness is the question."),
+                new ChildSlot(BehaviourConceptKeys.PartSlot, BehaviourConceptKeys.Part, Cardinality.One),
+            ],
+            superConcepts: [BehaviourConceptKeys.Part],
+            isRoot: false,
+            description: "whenFilled <slot> (<part>)"),
+
+        new ConceptDeclaration(
             BehaviourConceptKeys.Choose,
             [
                 new PropertySlot(BehaviourConceptKeys.SlotSlot, PropertyType.String, description: "The property to read."),
