@@ -19,6 +19,8 @@ MyRules/
     Pipeline.Pipeline.mps         one concept
     Pipeline.Stage.mps            one concept
     Pipeline.Outcome.mps          one enumeration
+  behaviour/                      what each concept is called (Projectional.Behaviours)
+    Pipeline.Stage.mps            one concept's name, where a name slot cannot say it
   editor/                         notation, one per concept  (Projectional.Editors)
     Pipeline.Pipeline.mps
     Pipeline.Stage.mps
