@@ -70,7 +70,12 @@ public static class CSharpTypes
         .Add(CSharpConceptKeys.NodeIndex, new Constant(Whole))
         .Add(CSharpConceptKeys.NodeConcept, new Constant(Text))
         .Add(CSharpConceptKeys.NodeProperty, new Constant(Text))
-        .Add(CSharpConceptKeys.NodeResolveInfo, new Constant(Text));
+        .Add(CSharpConceptKeys.NodeResolveInfo, new Constant(Text))
+
+        // A symbol of an enumeration of the language being defined: stored as text, so that is its type as well.
+        // `enummember<X>` claims the same thing, which is why a value of one can be assigned to the other.
+        .Add(CSharpConceptKeys.EnumMemberType, new Constant(Text))
+        .Add(CSharpConceptKeys.EnumValue, new Constant(Text));
 
     /// <summary>
     /// A written type, mapped to the primitive it names.

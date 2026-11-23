@@ -46,8 +46,10 @@ behaviour or a generator body need" rather than by C# grammar order.
 **What is delivered today is smaller than what this section plans.** `Projectional.CSharp` holds `Int`,
 `Long`, `Double`, `String`, `Bool` and `Null` literals (not `Char`), `Name`, `This`, `MemberAccess`, `Call`,
 `Binary` with ten operators, `Unary` in both its prefix and its postfix form, `Conditional`,
-`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New`, **collection expressions** and **the node API**
-(`node<Concept>` and the nine reads a behaviour makes of a node, see "The node API"); namespaces are
+`Parenthesized`, `Cast`, `Is`, `As`, `Index`, `New`, **collection expressions**, **the node API**
+(`node<Concept>` and the nine reads a behaviour makes of a node, see "The node API") and **the two
+enumeration spellings** (`enummember<Enum>` and `enum/Enum/.Symbol`, see "A behaviour's enumerations are
+the language's, not C#'s"); namespaces are
 **file-scoped or braced** (one property, two forms); `Block`, `ExpressionStatement`,
 `LocalDeclaration`, `Assignment` with the compound operators, `If`, `While`, `For`, `ForEach`,
 `Return`, `Break`, `Continue`, `Throw`, `Try` with its `Catch` handlers and optional `finally`, and
@@ -260,6 +262,38 @@ That is the whole reason to offer C# at all: a name written as data can say "the
 this reference reaches" and nothing else, while a method can ask anything the node API can answer -
 a predicate over `node.concept`, a position, a slot's absence. The declarative form is not replaced
 by it; it is the shorter way to say the common case.
+
+## A behaviour's enumerations are the language's, not C#'
+
+MPS has two more spellings, and both name an **enumeration of the language being defined** rather than a
+C# `enum`:
+
+| Drawn | Generated |
+| --- | --- |
+| `enummember<WeekDays>` | `string` |
+| `enum/WeekDays/.Thu` | `"Thu"` |
+
+That looks like a demotion - a type becoming `string` and a value becoming a literal - and it is the truth
+of the runtime. `structure/` declares an enumeration as a named set of symbols, the registry carries it
+only as a property's allowed symbols (`PropertyType.Enum`), and a property's value is **text**:
+`node.GetOrNull("day")` answers `"Thu"`. So a behaviour that compares against a symbol compares strings,
+and these two concepts are how the model says *which* enumeration and *which* symbol instead of leaving a
+bare literal that could be anything.
+
+**Why the name is text and not a reference.** An enumeration lives in a `structure/` document of the
+language project, and the documents of one aspect folder are loaded in a project of their own - so from a
+`behaviour` document there is no node to point at. `node<Concept>` had the same constraint and solved it
+the same way, by writing the name where a name goes; what a reference would have given (rename,
+go-to-definition, a fallback) is given instead by **closing the name where both are known**:
+`LanguageProject` resolves every `enummember<X>` and every `enum/X/.Y` against the enumerations
+`structure/` declares and refuses one it does not, or a symbol the enumeration does not offer. A symbol
+that does not exist compiles into a comparison that can never be true, which is the one mistake a
+compiler cannot catch when the value is a string - so this is the layer that has to.
+
+**One type for both.** `enummember<WeekDays>` is `string` for the same reason `enum/WeekDays/.Thu` is, so
+`day == enum/WeekDays/.Thu` is a comparison the type rules can see rather than one they have to skip.
+What the *editor* gets out of the concept is the part C# cannot say: completion can offer the symbols, and
+a name that is not one of them is refused before anything is generated.
 
 ## Style rules, and the one thing the model cannot see
 

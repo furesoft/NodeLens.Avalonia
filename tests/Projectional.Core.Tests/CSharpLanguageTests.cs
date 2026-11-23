@@ -966,6 +966,85 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AValueOfAnEnumerationOfTheLanguageIsNamedInTheModelAndTextInTheCode()
+    {
+        // MPS' spelling for an enumeration value, in both of its forms - with one difference that is the whole point of
+        // the concepts: the enumeration is one of the *language being defined*, not one of C#. `structure/` declares it,
+        // the registry carries it only as a property's allowed symbols, and at run time a symbol is text, because
+        // `Node`'s property answer is a `string`. So the model says which enumeration and which symbol - which is what
+        // the definition layer closes and what completion offers - and the generated code is the symbol's name.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("enum-values");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var field = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Field);
+        var fieldType = model.NewChild(field, "type", CSharpConceptKeys.EnumMemberType);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var parameter = model.NewChild(method, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var parameterType = model.NewChild(parameter, "type", CSharpConceptKeys.EnumMemberType);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var value = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.EnumValue);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Calendar");
+        field.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Private);
+        field.Set(CSharpLanguage.NameSlot, "rest");
+        fieldType.Set(CSharpLanguage.NameSlot, "WeekDays");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Same");
+        returnType.Set(CSharpLanguage.NameSlot, "bool");
+        parameter.Set(CSharpLanguage.NameSlot, "day");
+        parameterType.Set(CSharpLanguage.NameSlot, "WeekDays");
+        value.Set(CSharpLanguage.EnumSlot, "WeekDays");
+        value.Set(CSharpLanguage.MemberSlot, "Thu");
+
+        // Drawn: the two forms of the model's own vocabulary.
+        const string Drawn =
+            """
+            namespace Sample
+            {
+              public class Calendar
+              {
+                private enummember<WeekDays> rest;
+
+                public bool Same(enummember<WeekDays> day)
+                {
+                  return enum/WeekDays/.Thu;
+                }
+              }
+            }
+            """;
+
+        // Generated: what C# accepts. A symbol is text, so the type is `string` and the value is its name.
+        const string Generated =
+            """
+            namespace Sample
+            {
+              public class Calendar
+              {
+                private string rest;
+
+                public bool Same(string day)
+                {
+                  return "Thu";
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Drawn, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Generated + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+
+        // Both forms are the same type, which is what makes `day == enum/WeekDays/.Thu` a comparison the rules can see
+        // - and that type is text, because a property value is stored as the text it was written with.
+        Assert.Equal("string", CSharpTypes.Registry.TypeOf(value).Name);
+        Assert.Equal("string", CSharpTypes.Registry.TypeOf(fieldType).Name);
+    }
+
+    [Fact]
     public void ALoopDrawsAndGeneratesTheSameShape()
     {
         // A loop is a header and a body, like `if`, so the notation and the generator agree without either knowing
