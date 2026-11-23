@@ -307,10 +307,11 @@ type can answer - the enumeration is named by text, so the list has to come from
 rather than from the registry the document was opened with. That is a fourth source of completion values
 next to "the concepts below the child slot", "the scope" and "the property's declared symbols", and the
 host supplies it: `IValueProvider` is installed on the session the way `IScopeProvider` is, because a
-language package cannot reference the editing layer. `LanguageProject` is what answers - the enumerations
-`structure/` declares for `enum/`, and the symbols of whichever one the sibling slot names for `/.` - so a
-name the user could not otherwise see anywhere is one keystroke away, and a name that is not one of them
-was already refused when the folder loaded.
+language package cannot reference the editing layer. `LanguageProject` is what answers, and it answers
+**both spellings from one map** - the enumerations `structure/` declares for `enum/` and for the brackets of
+`enummember<…>`, and the symbols of whichever one the sibling slot names for `/.` - so a name the user could
+not otherwise see anywhere is one keystroke away in both places, and a name that is not one of them was
+already refused when the folder loaded.
 
 ## Style rules, and the one thing the model cannot see
 

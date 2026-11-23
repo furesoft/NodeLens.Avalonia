@@ -14,9 +14,10 @@ namespace Projectional.Languages;
 /// not the language package.
 /// </para>
 /// <para>
-/// Two slots, two answers: the enumeration's own key, and then the symbols of whichever enumeration the sibling slot
-/// names. A half-written value - <c>enum/</c> with no enumeration yet - offers nothing for the member, which is the
-/// truth: there is no set to choose from until there is an enumeration.
+/// Three answers from one map, because both spellings name the same enumerations: the enumeration's own key for
+/// <c>enum/</c> and for the brackets of <c>enummember&lt;…&gt;</c>, and then the symbols of whichever enumeration the
+/// sibling slot names. A half-written value - <c>enum/</c> with no enumeration yet - offers nothing for the symbol,
+/// which is the truth: there is no set to choose from until there is an enumeration.
 /// </para>
 /// </remarks>
 internal sealed class EnumerationValueProvider(IReadOnlyDictionary<string, IReadOnlyList<string>> enumerations) : IValueProvider
@@ -25,6 +26,15 @@ internal sealed class EnumerationValueProvider(IReadOnlyDictionary<string, IRead
     public IReadOnlyList<string>? ValuesOf(Node owner, string slot)
     {
         ArgumentNullException.ThrowIfNull(owner);
+
+        // A member type names the enumeration where every type reference writes its name, so the list belongs on the
+        // `name` slot the concept inherited from `TypeReference` - the same names `enum/` offers, asked one slot over.
+        if (owner.Concept.IsKindOf(CSharpConceptKeys.EnumMemberType))
+        {
+            return string.Equals(slot, CSharpLanguage.NameSlot, StringComparison.Ordinal)
+                ? [.. enumerations.Keys]
+                : null;
+        }
 
         if (!owner.Concept.IsKindOf(CSharpConceptKeys.EnumValue))
         {
