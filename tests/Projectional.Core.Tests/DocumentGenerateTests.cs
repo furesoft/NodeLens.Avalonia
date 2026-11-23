@@ -26,7 +26,7 @@ public sealed class DocumentGenerateTests
         var model = new Project(CSharpLanguage.Concepts).NewModel("generated");
         var file = model.NewNode(CSharpConceptKeys.File);
         var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
-        var behaviour = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        var behaviour = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.ClassConcept);
 
         ns.Set(CSharpLanguage.NameSlot, "Sample");
         behaviour.Set(CSharpConceptKeys.ConceptKeySlot, "Rules.Rule");

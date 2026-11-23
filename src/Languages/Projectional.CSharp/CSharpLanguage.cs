@@ -627,9 +627,13 @@ public static class CSharpLanguage
             isRoot: false,
             description: "An enum: a type whose values are a closed set of names."),
 
-        // The MPS behaviour aspect in the only form this framework can honour: the model declares the methods that
-        // belong to one concept, the generator emits them into a partial class, and the host writes the other half of
-        // that partial by hand when it needs something a notation cannot express - an attribute, an `unsafe` block, a
+        // The C# form of a concept's behaviour: one concept's methods, in a class this base language declares. It is a
+        // `ClassConcept` and not a "behaviour", because that is what the node is - the behaviour concept is the
+        // declarative one (`Projectional.Behaviours`), and the two must not read alike in a registry that holds both.
+        //
+        // The shape is MPS' behaviour aspect in the only form this framework can honour: the model declares the methods
+        // that belong to one concept, the generator emits them into a partial class, and the host writes the other half
+        // of that partial by hand when it needs something a notation cannot express - an attribute, an `unsafe` block, a
         // method tuned by hand. That is what keeps "attributes are metadata, not logic" honest: the escape hatch is a
         // partial class rather than a concept per attribute.
         //
@@ -644,7 +648,7 @@ public static class CSharpLanguage
         // `Rules.Rule`. The key is also generated, as a comment: the host's hand-written half says nothing about the
         // model, so the generated half is where "which concept is this for" survives.
         new ConceptDeclaration(
-            CSharpConceptKeys.Behaviour,
+            CSharpConceptKeys.ClassConcept,
             [
                 new PropertySlot(
                     CSharpConceptKeys.ConceptKeySlot,

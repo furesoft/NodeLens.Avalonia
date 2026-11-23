@@ -1975,7 +1975,7 @@ public sealed class CSharpLanguageTests
         var model = new Project(CSharpLanguage.Concepts).NewModel("behaviour");
         var file = model.NewNode(CSharpConceptKeys.File);
         var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
-        var behaviour = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        var behaviour = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.ClassConcept);
         var method = model.NewChild(behaviour, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
         var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
         var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
@@ -2022,7 +2022,7 @@ public sealed class CSharpLanguageTests
         var file = model.NewNode(CSharpConceptKeys.File);
         var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
 
-        _ = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Behaviour);
+        _ = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.ClassConcept);
 
         ns.Set(CSharpLanguage.NameSlot, "Sample");
 
