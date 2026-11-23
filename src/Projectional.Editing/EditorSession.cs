@@ -205,6 +205,19 @@ public sealed class EditorSession : IDisposable
     /// </remarks>
     public IScopeProvider Scopes { get; set; } = DefaultScopeProvider.Instance;
 
+    /// <summary>What a property slot offers when its declared type cannot say.</summary>
+    /// <remarks>
+    /// <para>
+    /// Settable, and installed by the host for the reason <see cref="Scopes"/> is: a language package cannot reference
+    /// the editing layer, so what a language knows but its registry cannot say is the host's to wire.
+    /// </para>
+    /// <para>
+    /// Answers <see langword="null"/> for every slot until someone installs more, which leaves every list exactly what
+    /// the declared property type offers.
+    /// </para>
+    /// </remarks>
+    public IValueProvider Values { get; set; } = DefaultValueProvider.Instance;
+
     /// <summary>
     /// The completion list open at the caret, or <see langword="null"/> when none is.
     /// </summary>
@@ -940,7 +953,7 @@ public sealed class EditorSession : IDisposable
     /// that would let an entry open a list that never appears.
     /// </remarks>
     internal EditContext ContextFor(EditAction action) =>
-        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing, Scopes)
+        new(Document, Tree, Layout, Measure, PageHeight, Selection, Clipboard, Typing, Scopes, Values)
         {
             Completion = action is CompletionAction ? Completion : null,
 

@@ -95,7 +95,7 @@ internal static class CompletionSource
             return References(context, slot.Owner, reference.Slot);
         }
 
-        if (slot.Property is { } property && Values(property) is { } values)
+        if (slot.Property is { } property && (Provider(context, property) ?? Values(property)) is { } values)
         {
             return values;
         }
@@ -211,6 +211,34 @@ internal static class CompletionSource
         var current = IndexOf(symbols, property.Text);
 
         return current > 0 ? list.Move(current) : list;
+    }
+
+    /// <summary>
+    /// The values the host's provider has for <paramref name="property"/>, or <see langword="null"/> when it says
+    /// nothing about that slot.
+    /// </summary>
+    /// <remarks>
+    /// Asked before the declared type, because a slot whose values come from another layer has no type that could hold
+    /// them: a behaviour written in C# names an enumeration of the language around it. <see langword="null"/> means
+    /// "ask the type", so an installed provider that says nothing changes nothing - not even the order of a list a
+    /// declared enumeration would have answered.
+    /// </remarks>
+    private static CompletionList? Provider(EditContext context, PropertyCell property)
+    {
+        if (context.NodeOf(property.Address.Owner) is not { } owner
+            || context.Values.ValuesOf(owner, property.Slot) is not { Count: > 0 } values)
+        {
+            return null;
+        }
+
+        List<CompletionItem> items = [];
+
+        foreach (var value in values)
+        {
+            items.Add(CompletionItem.ForValue(value));
+        }
+
+        return new CompletionList(items);
     }
 
     private static int IndexOf(IReadOnlyList<string> symbols, string text)
