@@ -238,6 +238,18 @@ jobs:
           test -f _site/index.html
           echo "_site holds $(find _site -type f | wc -l) file(s)"
 
+      # The browser sample is the second half of the site: the documentation's header links to it at /editor/. A
+      # Blazor publish nests the served site in `wwwroot/`, so that folder - not its parent - is what is published.
+      - name: Publish the browser editor beside the documentation
+        shell: bash
+        run: |
+          dotnet publish samples/web-app/Projectional.Web.App --configuration Release --output _editor
+          test -f _editor/wwwroot/index.html
+          mkdir -p _site/editor
+          cp -R _editor/wwwroot/. _site/editor/
+          test -f _site/editor/index.html
+          echo "_site/editor holds $(find _site/editor -type f | wc -l) file(s)"
+
       # A pull request builds the site - that is the check that the generator still works - and only main publishes it.
       - name: Upload the pages
         if: github.ref == 'refs/heads/main'
