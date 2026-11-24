@@ -45,7 +45,7 @@ internal static class ShellShots
     /// The panel is shown and given a moment before the command starts, because a screen that is resized after it has
     /// content reflows that content, and a real user sees the panel before they type into it.
     /// </remarks>
-    private static async Task ShowTerminal(MainWindow window)
+    private static async Task ShowTerminal(WorkbenchView window)
     {
         window.ShowTerminalTool();
 
@@ -61,7 +61,7 @@ internal static class ShellShots
     /// The tab is selected rather than the panel rebuilt: the picture is of the browser the shell shows, and which tab
     /// the left column is on is a piece of the shell's own state.
     /// </remarks>
-    private static async Task ShowOutline(MainWindow window)
+    private static async Task ShowOutline(WorkbenchView window)
     {
         window.ShowOutlineTool();
 
@@ -82,7 +82,7 @@ internal static class ShellShots
     /// <summary>Shows the settings of the pipeline sample's module.</summary>
     private static async Task<Window> ShowModuleSettings(MainWindow window)
     {
-        var dialog = ModuleSettingsDialog.Open(window, OpenModules(window));
+        var dialog = ModuleSettingsDialog.Open(window, OpenModules(window.Shell));
 
         await Task.Delay(250);
 
@@ -107,7 +107,7 @@ internal static class ShellShots
     /// constraints, imports or generators - so a picture of the tree or of a module's settings holds the three projects
     /// the repository ships.
     /// </remarks>
-    private static LanguageProject OpenModules(MainWindow window)
+    private static LanguageProject OpenModules(WorkbenchView window)
     {
         LanguageProject? first = null;
 
@@ -132,7 +132,7 @@ internal static class ShellShots
     /// The documents they open are closed again: the picture is the tree, and thirty definition documents listed above it
     /// would push the folders out of view.
     /// </remarks>
-    private static async Task ShowProjectExplorer(MainWindow window)
+    private static async Task ShowProjectExplorer(WorkbenchView window)
     {
         OpenModules(window);
 
@@ -155,10 +155,10 @@ internal static class ShellShots
     /// <remarks>
     /// The file is the pipeline sample's ini variant, which no built-in format claims and no generator writes: the
     /// shell asks the opened language, its declared rule reads the text, and the picture is the document that comes
-    /// out. <see cref="MainWindow.ImportPath"/> is the command the picker calls, so the image cannot show a document
+    /// out. <see cref="WorkbenchView.ImportPath"/> is the command the picker calls, so the image cannot show a document
     /// the command does not produce.
     /// </remarks>
-    private static Task ShowImportedDocument(MainWindow window)
+    private static Task ShowImportedDocument(WorkbenchView window)
     {
         var directory = Path.Combine(AppContext.BaseDirectory, "declared-pipeline");
 
@@ -179,11 +179,11 @@ internal static class ShellShots
     /// <remarks>
     /// The language project is loaded from the copy of the sample in this tool's output, because a project is loaded
     /// from a folder and a picture of running a folder's tests has to run that folder. Everything else is the shell's
-    /// own gesture: <see cref="MainWindow.OpenLanguage"/> is what the folder picker calls, and the menu entry is
+    /// own gesture: <see cref="WorkbenchView.OpenLanguage"/> is what the folder picker calls, and the menu entry is
     /// clicked rather than the work being redone here - so the picture cannot show a panel state the command does not
     /// produce.
     /// </remarks>
-    private static async Task ShowTestRun(MainWindow window)
+    private static async Task ShowTestRun(WorkbenchView window)
     {
         var directory = Path.Combine(AppContext.BaseDirectory, "declared-pipeline");
 
@@ -208,7 +208,7 @@ internal static class ShellShots
     }
 
     /// <summary>Runs the sample ruleset against <c>amount=1500</c>, which accepts and leaves a trace.</summary>
-    private static async Task ShowRunOutput(MainWindow window)
+    private static async Task ShowRunOutput(WorkbenchView window)
     {
         window.RunInputs = "amount=1500";
 
@@ -218,7 +218,7 @@ internal static class ShellShots
     }
 
     /// <summary>Generates the document with its C# generator, so the rows are a code fragment.</summary>
-    private static async Task ShowGeneratedText(MainWindow window)
+    private static async Task ShowGeneratedText(WorkbenchView window)
     {
         var generate = window.FindControl<MenuItem>("GenerateItem")!;
 
@@ -239,7 +239,7 @@ internal static class ShellShots
     /// Both gestures are the real ones - Alt+F7 on the window, Ctrl+B on the editor - so the image is the state a user
     /// reaches, not one arranged by hand.
     /// </remarks>
-    private static async Task ShowFindUsagesAndDefinition(MainWindow window)
+    private static async Task ShowFindUsagesAndDefinition(WorkbenchView window)
     {
         window.OpenDocument(
             LanguageDocuments.StateMachine(),

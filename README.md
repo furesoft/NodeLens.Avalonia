@@ -25,6 +25,7 @@ The editor is designed to be embedded as a component in other .NET applications:
   - [4. Embed the Editor](#4-embed-the-editor-in-your-application)
   - [5. Save and Load](#5-save-and-load)
   - [6. Report a Problem](#6-report-a-problem-in-the-document)
+- [Try It in the Browser](#try-it-in-the-browser)
 - [What the Editor Does](#what-the-editor-does)
   - [Feature Gallery](#feature-gallery)
 - [Project Architecture](#projects-architecture)
@@ -187,6 +188,21 @@ The set is a snapshot, not a subscription: republish it after every change to th
 Hovering a mark opens a small box with the severity, the message, and the diagnostic's code. The box is drawn by the control rather than by a popup window, so it stays inside the control's own bounds and shows up in a screenshot like the rest of the document.
 
 ---
+
+## Try It in the Browser
+
+A Blazor WebAssembly sample runs the same editor on the same headless layers (`Core`, `Language`,
+`Projection`, `Editing`) and is published beside the language documentation:
+
+- **Online:** <https://furesoft.github.io/NodeLens.Avalonia/editor/>
+- **Locally:** `dotnet run --project samples/web-app/Projectional.Web.App`
+- **How it works, and what it does not do yet:** [docs/architecture/web-host.md](docs/architecture/web-host.md)
+
+It offers ten example languages (four declared in code, the six `samples/declared-*` folders as embedded
+resources), save/load in the browser plus download/upload of `.mps`, a project explorer with a model
+browser, the problems panel, completion, go to definition, undo/redo, and drag/word/value selection with
+the system clipboard. It is a sample, not a second product: the desktop workbench remains the full editor,
+and the linked document lists exactly what the page does not do yet.
 
 ## What the Editor Does
 

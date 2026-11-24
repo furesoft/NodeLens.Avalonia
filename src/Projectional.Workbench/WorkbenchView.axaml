@@ -1,0 +1,612 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:a="using:Avalonia.Automation"
+        xmlns:dock="using:Dock.Avalonia.Controls"
+        xmlns:local="using:Projectional.Workbench"
+        x:Class="Projectional.Workbench.WorkbenchView"
+        FontSize="{DynamicResource WorkbenchChromeFontSize}">
+
+  <!--
+    One block of surfaces, type sizes and icons rather than a font size beside every control: the shell is
+    read as one surface, and a chrome that mixes 11, 12 and 14 loses that without anyone deciding it should.
+    The brushes live in theme dictionaries, so they follow the variant the window requests.
+  -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <!--
+        The surfaces and the chrome's type size are shared with the module settings dialog, so they live in a dictionary
+        of their own rather than beside this window's icons - two windows that drew two palettes would drift apart.
+      -->
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Projectional.Workbench/Styles/WorkbenchPalette.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- Icons are strokes in a 16-unit box: one geometry, scaled by the style that draws it. -->
+      <StreamGeometry x:Key="IconDocument">M3,1.5 H9.5 L12.5,4.5 V14.5 H3 Z M9.5,1.5 V4.5 H12.5</StreamGeometry>
+      <StreamGeometry x:Key="IconFolder">M1,3.5 H6 L7.5,5.5 H15 V13 H1 Z</StreamGeometry>
+      <StreamGeometry x:Key="IconSave">M2.5,2.5 H11 L13.5,5 V13.5 H2.5 Z M5.5,2.5 V6.5 H10.5 V2.5 M5.5,13.5 V9.5 H10.5 V13.5</StreamGeometry>
+      <StreamGeometry x:Key="IconUndo">M6,3.5 L2.5,7 L6,10.5 M2.5,7 H10 A4,4 0 0 1 10,15 H7.5</StreamGeometry>
+      <StreamGeometry x:Key="IconRedo">M10,3.5 L13.5,7 L10,10.5 M13.5,7 H6 A4,4 0 0 0 6,15 H8.5</StreamGeometry>
+      <StreamGeometry x:Key="IconPlay">M4.5,2.5 L13,8 L4.5,13.5 Z</StreamGeometry>
+      <StreamGeometry x:Key="IconFind">M6.5,2.5 A3.9,3.9 0 1 0 6.5,10.3 A3.9,3.9 0 1 0 6.5,2.5 Z M9.4,9.4 L13.8,13.8</StreamGeometry>
+      <StreamGeometry x:Key="IconPen">M2.5,13.5 L3.5,10.2 L10.4,3.3 L12.7,5.6 L5.8,12.5 Z</StreamGeometry>
+      <StreamGeometry x:Key="IconClose">M3,3 L11,11 M11,3 L3,11</StreamGeometry>
+      <StreamGeometry x:Key="IconPlus">M8,3 V13 M3,8 H13</StreamGeometry>
+      <StreamGeometry x:Key="IconChevronRight">M6,4 L10,8 L6,12</StreamGeometry>
+      <StreamGeometry x:Key="IconChevronDown">M4,6 L8,10 L12,6</StreamGeometry>
+      <StreamGeometry x:Key="IconEye">M1.6,8 C3.6,4.6 6,3.1 8,3.1 C10,3.1 12.4,4.6 14.4,8 C12.4,11.4 10,12.9 8,12.9 C6,12.9 3.6,11.4 1.6,8 Z M8,6.2 A1.8,1.8 0 1 0 8,9.8 A1.8,1.8 0 1 0 8,6.2</StreamGeometry>
+      <StreamGeometry x:Key="IconKebab">M8,3.4 V3.9 M8,7.8 V8.3 M8,12.2 V12.7</StreamGeometry>
+
+      <!--
+        A document strip of its own: the stock TabControl theme puts the items presenter straight into a
+        DockPanel, so a strip with more tabs than the window is wide wraps into rows and eats the page. This
+        one scrolls sideways instead, and leaves a gap at the right end for the new-tab button that floats
+        over it.
+      -->
+      <ControlTheme x:Key="DocumentTabStripTheme" TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}">
+              <DockPanel>
+                <ScrollViewer
+                  DockPanel.Dock="Top"
+                  Margin="0,0,30,0"
+                  HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Disabled"
+                  Focusable="False">
+                  <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+                <Panel ClipToBounds="True">
+                  <ContentPresenter
+                    Name="PART_SelectedContentHost"
+                    Margin="{TemplateBinding Padding}"
+                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Panel>
+              </DockPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <!-- Typography: three sizes, each with one job. -->
+    <Style Selector="TextBlock.panelHeader">
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.statusText">
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.statusQuiet">
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchQuietTextBrush}" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+    <Style Selector="TextBlock.emptyTitle">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.emptyHint">
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchQuietTextBrush}" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- Surfaces: a panel has a face, a header has a different one, and the divider between them is visible. -->
+    <Style Selector="Border.panelSurface">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchDividerBrush}" />
+    </Style>
+    <Style Selector="Border.panelHeaderBar">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchDividerBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="8,3" />
+    </Style>
+    <Style Selector="Border.statusBar">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchDividerBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Padding" Value="8,3" />
+    </Style>
+    <Style Selector="Border.strip">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchDividerBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Menu.mainMenu">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+    <Style Selector="GridSplitter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+    <Style Selector="GridSplitter:pointerover">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchDividerBrush}" />
+    </Style>
+
+    <!-- Icons. -->
+    <Style Selector="Path.menuIcon">
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="StrokeThickness" Value="1.25" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+    </Style>
+    <Style Selector="Path.inlineIcon">
+      <Setter Property="Width" Value="12" />
+      <Setter Property="Height" Value="12" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="StrokeThickness" Value="1.25" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Path.closeIcon">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="StrokeThickness" Value="1.4" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+    </Style>
+
+    <!-- Close buttons: a target a pointer can hit, not a 11-pixel glyph. -->
+    <Style Selector="Button.tabClose">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="22" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Opacity" Value="0.65" />
+    </Style>
+    <Style Selector="Button.tabClose:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.tabClose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <Style Selector="Button.tabPlus">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="24" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="Button.tabPlus:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.tabPlus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <!--
+      The docking layout draws the strips, so their surfaces are named here: Dock's own theme is a window background
+      lighter than the page, and a tab strip that disappears into the document is a tab strip nobody can find.
+    -->
+    <Style Selector="DocumentTabStrip">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+    <Style Selector="DocumentTabStripItem">
+      <Setter Property="FontSize" Value="{DynamicResource WorkbenchChromeFontSize}" />
+    </Style>
+    <Style Selector="DocumentTabStripItem TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchIconBrush}" />
+    </Style>
+    <Style Selector="ToolTabStrip">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+    <Style Selector="ToolTabStripItem">
+      <Setter Property="FontSize" Value="{DynamicResource WorkbenchChromeFontSize}" />
+    </Style>
+    <Style Selector="ToolTabStripItem TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchIconBrush}" />
+    </Style>
+    <Style Selector="ToolChromeControl">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHeaderBrush}" />
+    </Style>
+
+    <!-- An action in a tool window's header: a flat icon button, not a chrome-heavy one. -->
+    <Style Selector="Button.toolAction">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="22" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="Button.toolAction:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.toolAction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+
+    <!-- A status-bar item that is a command: flat, quiet, and a pointer cursor. -->
+    <Style Selector="Button.statusAction">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="Foreground" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+    <Style Selector="Button.statusAction:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- A tree row: chevron, icon, text, and the dirty star the rest of the shell uses. -->
+    <Style Selector="Button.chevron">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="16" />
+      <Setter Property="MinHeight" Value="16" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style Selector="Button.chevron:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource WorkbenchHoverBrush}" />
+    </Style>
+    <Style Selector="Path.treeIcon">
+      <Setter Property="Width" Value="13" />
+      <Setter Property="Height" Value="13" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchIconBrush}" />
+      <Setter Property="StrokeThickness" Value="1.2" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Path.chevronGlyph">
+      <Setter Property="Width" Value="9" />
+      <Setter Property="Height" Value="9" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{DynamicResource WorkbenchQuietTextBrush}" />
+      <Setter Property="StrokeThickness" Value="1.5" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="3,0" />
+    </Style>
+
+    <!-- The two lists share one row height, so a panel row is the same size wherever it stands. -->
+    <Style Selector="ListBox.panelList ListBoxItem">
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Padding" Value="6,1" />
+    </Style>
+
+    <!-- The tab strips: the document's tabs are bigger than the panel's. -->
+    <Style Selector="TabControl.documentsTabStrip TabItem">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="TabControl.panelTabStrip TabItem">
+      <Setter Property="FontSize" Value="{StaticResource WorkbenchChromeFontSize}" />
+      <Setter Property="Padding" Value="8,2" />
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+  </UserControl.Styles>
+
+  <!--
+    The variant is requested here rather than on a window, because a host decides the theme of the shell and the
+    browser has no window to ask: everything the shell draws is inside this scope.
+  -->
+  <ThemeVariantScope x:Name="ThemeScope">
+  <DockPanel>
+    <Menu DockPanel.Dock="Top" Classes="mainMenu">
+      <MenuItem x:Name="FileMenu" Header="_File">
+        <!--
+          Two ways a session starts, then one entry per kind of definition document: those are how a language is
+          declared, not how a session starts, and ten flat entries would be most of the menu for something rare. The
+          definition entries are built from WorkbenchLanguage.Definitions, so the menu cannot offer a kind the command
+          registry does not know.
+        -->
+        <MenuItem x:Name="NewDocumentItem" Header="_New">
+          <MenuItem Header="_Document" HotKey="Ctrl+N" InputGesture="Ctrl+N" Click="OnNewDocument" />
+          <MenuItem Header="Document of an _opened language" Click="OnNewLanguageDocument" />
+          <Separator />
+          <MenuItem x:Name="NewDefinitionItem" Header="Language _definition" />
+        </MenuItem>
+        <Separator />
+        <MenuItem x:Name="OpenDocumentItem" Header="_Open..." HotKey="Ctrl+O" InputGesture="Ctrl+O" Click="OnOpenDocument">
+          <MenuItem.Icon>
+            <Path Classes="menuIcon" Data="{StaticResource IconFolder}" />
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem x:Name="OpenLanguageItem" Header="Open _language..." Click="OnOpenLanguage" />
+        <!-- Filled from ExampleProjects.Catalogue: one entry per example a build placed beside the executable. -->
+        <MenuItem x:Name="OpenExamplesItem" Header="Sample _languages" />
+        <MenuItem x:Name="ExportLanguageItem" Header="E_xport language to C#..." IsEnabled="False" />
+        <!-- Filled from the languages opened from a folder: the documentation is a folder of pages about the language. -->
+        <MenuItem x:Name="DocumentationItem" Header="Export _documentation..." IsEnabled="False" />
+        <!-- Filled from the languages opened from a folder: one entry per language, each offering its sources or its assemblies. -->
+        <MenuItem x:Name="PackageItem" Header="_Package..." IsEnabled="False" />
+        <MenuItem x:Name="DownloadPackageItem" Header="_Download package..." Click="OnDownloadPackage" />
+        <MenuItem x:Name="ImportDocumentItem" Header="_Import..." Click="OnImportDocument" />
+        <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />
+        <Separator />
+        <MenuItem x:Name="SaveDocumentItem" Header="_Save" HotKey="Ctrl+S" InputGesture="Ctrl+S" Click="OnSaveDocument">
+          <MenuItem.Icon>
+            <Path Classes="menuIcon" Data="{StaticResource IconSave}" />
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem x:Name="SaveAsItem" Header="Save _as..." HotKey="Ctrl+Shift+S" InputGesture="Ctrl+Shift+S" Click="OnSaveDocumentAs" />
+        <MenuItem x:Name="SaveGeneratedItem" Header="Save _generated text as..." IsEnabled="False" Click="OnSaveGenerated" />
+        <Separator />
+        <MenuItem x:Name="CloseDocumentItem" Header="_Close document" HotKey="Ctrl+W" InputGesture="Ctrl+W" Click="OnCloseDocument" />
+        <Separator />
+        <MenuItem Header="E_xit" Click="OnExit" />
+      </MenuItem>
+
+      <MenuItem x:Name="EditMenu" Header="_Edit">
+        <!--
+          The gestures are printed rather than registered as HotKeys: the editor control answers Ctrl+Z,
+          Ctrl+A/C/X/V itself while it has the focus, and a window-level binding would be a second owner of
+          the same key. The entries exist so that the commands can be found and used from the menu too.
+        -->
+        <MenuItem x:Name="UndoItem" Header="_Undo" InputGesture="Ctrl+Z" Click="OnUndo">
+          <MenuItem.Icon>
+            <Path Classes="menuIcon" Data="{StaticResource IconUndo}" />
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem x:Name="RedoItem" Header="_Redo" InputGesture="Ctrl+Shift+Z" Click="OnRedo">
+          <MenuItem.Icon>
+            <Path Classes="menuIcon" Data="{StaticResource IconRedo}" />
+          </MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <MenuItem x:Name="CutItem" Header="Cu_t" InputGesture="Ctrl+X" Click="OnCut" />
+        <MenuItem x:Name="CopyItem" Header="_Copy" InputGesture="Ctrl+C" Click="OnCopy" />
+        <MenuItem x:Name="PasteItem" Header="_Paste" InputGesture="Ctrl+V" Click="OnPaste" />
+        <MenuItem x:Name="SelectAllItem" Header="Select _all" InputGesture="Ctrl+A" Click="OnSelectAll" />
+        <Separator />
+        <MenuItem x:Name="FindItem" Header="_Find..." HotKey="Ctrl+F" InputGesture="Ctrl+F" Click="OnFindText">
+          <MenuItem.Icon>
+            <Path Classes="menuIcon" Data="{StaticResource IconFind}" />
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem x:Name="ReplaceItem" Header="_Replace..." InputGesture="Ctrl+H" Click="OnFindReplace" />
+        <MenuItem x:Name="FindUsagesItem" Header="Find _usages" InputGesture="Alt+F7" Click="OnFindUsages" />
+        <Separator />
+        <!--
+          The project-wide rename lives here rather than in the intention list: an intention produces an edit action
+          from the caret and cannot ask a question, and the new name has to come from somewhere. The caret's own
+          Rename entry (INT001) stays what it always was - a jump into the name slot, so typing edits the name.
+        -->
+        <MenuItem x:Name="RenameDocumentItem" Header="_Rename..." InputGesture="Shift+F6" Click="OnRename">
+          <MenuItem.Icon>
+            <Path Classes="menuIcon" Data="{StaticResource IconPen}" />
+          </MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+
+      <MenuItem x:Name="RunMenu" Header="_Run">
+        <!--
+          The gesture is displayed rather than registered: the shell's own tunnelling handler owns F5, so the
+          run cannot be claimed by whichever control happens to have focus, and the menu must not claim it a
+          second time.
+        -->
+        <MenuItem x:Name="RunDocumentItem" Header="_Run document" InputGesture="F5" Click="OnRunDocument" />
+        <MenuItem x:Name="StepItem" Header="_Step" InputGesture="F10" IsEnabled="False" Click="OnStepForward" />
+        <MenuItem x:Name="StepBackItem" Header="Step _back" IsEnabled="False" Click="OnStepBack" />
+        <MenuItem x:Name="RunTestsItem" Header="Run _tests" IsEnabled="False" Click="OnRunTests" />
+        <MenuItem x:Name="GenerateItem" Header="_Generate text" IsEnabled="False" />
+        <Separator />
+        <MenuItem x:Name="ClearOutputItem" Header="_Clear output" Click="OnClearOutput" />
+      </MenuItem>
+
+      <MenuItem Header="_View">
+        <MenuItem x:Name="ViewFindItem" Header="_Find..." InputGesture="Ctrl+F" Click="OnFindText" />
+        <MenuItem x:Name="ViewFindUsagesItem" Header="Find _usages" InputGesture="Alt+F7" Click="OnFindUsages" />
+        <Separator />
+        <!--
+          The panels can be closed from their own headers now, so the menu is the way back: an entry is checked
+          while its panel is in the area and disabled while it has nothing to show, which is the same rule the
+          panel itself follows.
+        -->
+        <MenuItem Header="_Panels">
+          <MenuItem x:Name="OutputPanelItem" Header="_Output" ToggleType="CheckBox" Click="OnToggleOutputPanel" />
+          <MenuItem x:Name="ProblemsPanelItem" Header="_Problems" ToggleType="CheckBox" Click="OnToggleProblemsPanel" />
+          <MenuItem x:Name="UsagesPanelItem" Header="_Usages" ToggleType="CheckBox" Click="OnToggleUsagesPanel" />
+          <MenuItem x:Name="TerminalPanelItem" Header="_Terminal" ToggleType="CheckBox" Click="OnToggleTerminalPanel" />
+        </MenuItem>
+        <Separator />
+        <MenuItem x:Name="Representations" Header="_Representation" />
+        <MenuItem Header="Reset column _widths" Click="OnResetColumnWidths" />
+        <Separator />
+        <MenuItem
+          x:Name="LineNumbersItem"
+          Header="Line _numbers"
+          ToggleType="CheckBox"
+          Click="OnToggleLineNumbers" />
+        <Separator />
+        <!--
+          The gesture is written into the header rather than declared as a HotKey: the key that types
+          "+" is OemPlus with Shift, so one registered gesture cannot match both the shifted and the
+          unshifted press, and KeyGesture would print the enum name ("Ctrl+OemPlus") to the user.
+        -->
+        <MenuItem Header="_Increase font size (Ctrl+=)" Click="OnIncreaseFontSize" />
+        <MenuItem Header="_Decrease font size (Ctrl+-)" Click="OnDecreaseFontSize" />
+        <MenuItem Header="_Reset font size (Ctrl+0)" Click="OnResetFontSize" />
+        <Separator />
+        <!--
+          One group of three rather than three toggles, because the choice is exclusive and "follow the
+          system" is one of the choices - a checkbox would let a user tick two themes at once.
+        -->
+        <MenuItem
+          x:Name="FollowSystemItem"
+          GroupName="Theme"
+          Header="Follow _system theme"
+          ToggleType="Radio"
+          IsChecked="True"
+          Click="OnFollowSystemTheme" />
+        <MenuItem
+          x:Name="LightThemeItem"
+          GroupName="Theme"
+          Header="_Light theme"
+          ToggleType="Radio"
+          Click="OnLightTheme" />
+        <MenuItem
+          x:Name="DarkThemeItem"
+          GroupName="Theme"
+          Header="_Dark theme"
+          ToggleType="Radio"
+          Click="OnDarkTheme" />
+      </MenuItem>
+    </Menu>
+
+    <!--
+      The find bar is a strip rather than a dialog: a search is repeated, so it must not take the caret
+      away from the document it searches - and the match count stays visible while the user reads. The
+      replace row is folded away until it is asked for, because a user who only searches does not need it.
+    -->
+    <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="strip" IsVisible="False">
+      <StackPanel Margin="8,6" Spacing="4">
+        <Grid ColumnDefinitions="Auto,240,Auto,Auto,Auto,*">
+          <TextBlock
+            Grid.Column="0"
+            Text="Find"
+            FontSize="{StaticResource WorkbenchChromeFontSize}"
+            VerticalAlignment="Center"
+            Margin="0,0,8,0" />
+          <TextBox
+            x:Name="FindInput"
+            Grid.Column="1"
+            a:AutomationProperties.Name="Search text"
+            TextChanged="OnFindQueryChanged"
+            KeyDown="OnFindKeyDown" />
+          <TextBlock
+            x:Name="FindCount"
+            Grid.Column="2"
+            FontSize="{StaticResource WorkbenchChromeFontSize}"
+            VerticalAlignment="Center"
+            Margin="8,0" />
+          <CheckBox
+            x:Name="FindCase"
+            Grid.Column="3"
+            Content="Match case"
+            a:AutomationProperties.Name="Match case"
+            VerticalAlignment="Center"
+            IsCheckedChanged="OnFindQueryChanged" />
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0">
+            <ToggleButton
+              x:Name="ReplaceToggle"
+              Content="Replace"
+              a:AutomationProperties.Name="Show the replace row"
+              IsCheckedChanged="OnReplaceToggle" />
+            <Button
+              Content="Previous"
+              a:AutomationProperties.Name="Previous match"
+              Click="OnFindPrevious" />
+            <Button
+              Content="Next"
+              a:AutomationProperties.Name="Next match"
+              Click="OnFindNext" />
+          </StackPanel>
+        </Grid>
+        <Grid x:Name="ReplaceRow" ColumnDefinitions="Auto,240,Auto" Margin="0" IsVisible="False">
+          <TextBlock
+            Grid.Column="0"
+            Text="Replace"
+            FontSize="{StaticResource WorkbenchChromeFontSize}"
+            VerticalAlignment="Center"
+            Margin="0,0,8,0" />
+          <TextBox
+            x:Name="ReplaceInput"
+            Grid.Column="1"
+            a:AutomationProperties.Name="Replacement text" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0" Spacing="4">
+            <Button
+              Content="Replace"
+              a:AutomationProperties.Name="Replace the current match"
+              Click="OnReplace" />
+            <Button
+              Content="Replace all"
+              a:AutomationProperties.Name="Replace every match"
+              Click="OnReplaceAll" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!--
+      The rename bar is a strip like the find bar: the name comes from the user, and a modal dialog would take the
+      document away for a question that is one line long. It closes on Enter, Escape or Cancel, and applying it is
+      one edit - one undo step, with the references' fallback text refreshed beside the name.
+    -->
+    <Border x:Name="RenameBar" DockPanel.Dock="Top" Classes="strip" IsVisible="False">
+      <Grid Margin="8,6" ColumnDefinitions="Auto,240,Auto,Auto">
+        <TextBlock
+          Grid.Column="0"
+          Text="Rename"
+          FontSize="{StaticResource WorkbenchChromeFontSize}"
+          VerticalAlignment="Center"
+          Margin="0,0,8,0" />
+        <TextBox
+          x:Name="RenameInput"
+          Grid.Column="1"
+          a:AutomationProperties.Name="New name"
+          KeyDown="OnRenameKeyDown" />
+        <Button Grid.Column="2" Content="Rename" Margin="8,0,0,0" Click="OnRenameApply" />
+        <Button Grid.Column="3" Content="Cancel" Margin="4,0,0,0" Click="OnRenameCancel" />
+      </Grid>
+    </Border>
+
+    <!--
+      One line, and three groups: what is open and whether it is saved on the left, the answer to the last
+      command in the middle, and the caret, the language, the theme and the size on the right. The right-hand
+      group is one string rather than a row of blocks, so it never grows a separator for a part it does not have.
+    -->
+    <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Classes="statusBar">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <TextBlock x:Name="StatusDocument" Grid.Column="0" Classes="statusText" />
+        <!--
+          The count is only worth a word while the problems tab is closed: with the tab open the number is in its
+          header, and a second copy would be noise. Pressing it is the way back to the list.
+        -->
+        <Button
+          x:Name="StatusProblems"
+          Grid.Column="1"
+          Classes="statusAction"
+          IsVisible="False"
+          Click="OnShowProblemsPanel"
+          a:AutomationProperties.Name="Show the problems panel" />
+        <TextBlock
+          x:Name="StatusText"
+          Grid.Column="2"
+          Classes="statusQuiet"
+          TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="StatusDetail" Grid.Column="3" Classes="statusText" />
+      </Grid>
+    </Border>
+
+    <!--
+      The window's work area is a docking layout rather than a grid: every panel is a dockable the user can drag to
+      another edge, float as its own window, or close, and the documents are the layout's document dock. The tree of
+      areas is built in ShellLayout, because a tree of dockables is a model and not markup.
+    -->
+    <dock:DockControl x:Name="Dock" a:AutomationProperties.Name="Workspace" />
+  </DockPanel>
+  </ThemeVariantScope>
+</UserControl>

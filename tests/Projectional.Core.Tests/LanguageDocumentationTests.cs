@@ -596,6 +596,24 @@ public sealed class LanguageDocumentationTests
     }
 
     [Fact]
+    public void TheHeaderLinksToTheEditorOnlyWhenTheSiteWasToldWhereItIs()
+    {
+        var language = Atlas();
+
+        // A packaged folder or an export into a user's directory has no editor beside it, so it gets no link.
+        Assert.All(
+            LanguageDocumentation.Generate(language).Where(page => page.Path.EndsWith(".html", StringComparison.Ordinal)),
+            page => Assert.DoesNotContain("editor-link", page.Text, StringComparison.Ordinal));
+
+        foreach (var page in LanguageDocumentation.Generate(language, "editor/").Where(page => page.Path.EndsWith(".html", StringComparison.Ordinal)))
+        {
+            var depth = page.Path.Count(character => character == '/');
+            var expected = string.Concat(Enumerable.Repeat("../", depth)) + "editor/";
+
+            Assert.Contains($"class=\"editor-link\" href=\"{expected}\"", page.Text, StringComparison.Ordinal);
+        }
+    }
+    [Fact]
     public void EveryPageCarriesTheHeaderAndTheTreeAndMarksItself()
     {
         var units = Units();

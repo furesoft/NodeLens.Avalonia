@@ -57,6 +57,16 @@ public sealed class NotationEditor
     /// </remarks>
     public TypeOfNotationCell TypeOf() => TypeOfNotationCell.Instance;
 
+    /// <summary>A read-only annotation drawn where the notation puts it, which the caret never stops on.</summary>
+    /// <param name="text">What the annotation says.</param>
+    /// <param name="emphasis">How the text is decorated wherever this notation shows it.</param>
+    /// <remarks>
+    /// The same constant kind <see cref="TypeOf"/> uses, because the two are the same thing to a reader: a fact about
+    /// the node that nobody types into. A keyword would be a caret stop, and an annotation is not a place to edit.
+    /// </remarks>
+    public ConstantNotationCell Annotation(string text, TextEmphasis emphasis = TextEmphasis.None) =>
+        new(text, ConstantKind.Annotation, emphasis);
+
     /// <summary>Inline cells that are drawn only while <paramref name="slot"/> holds <paramref name="value"/>.</summary>
     /// <param name="slot">The property the condition reads.</param>
     /// <param name="value">The text it has to equal, in the type's stored spelling.</param>

@@ -33,6 +33,11 @@ internal static class DocumentationAssets
                      height: var(--top); padding: 0 .8rem; background: var(--bg); border-bottom: 1px solid var(--line); }
         header.top .brand { font-weight: 650; color: var(--ink); text-decoration: none; white-space: nowrap;
                             overflow: hidden; text-overflow: ellipsis; }
+        /* The link to the browser editor, present only on a site published beside it. */
+        header.top .editor-link { margin-left: .35rem; padding: .2rem .55rem; font-size: .82rem; font-weight: 600;
+                                  color: var(--accent); text-decoration: none; white-space: nowrap;
+                                  border: 1px solid currentColor; border-radius: .35rem; }
+        header.top .editor-link:hover { background: var(--hover); }
         header.top input[type="search"] { margin-left: auto; width: min(24rem, 42vw); padding: .35rem .6rem;
                                           font: inherit; color: inherit; background: var(--panel);
                                           border: 1px solid var(--line); border-radius: .35rem; }

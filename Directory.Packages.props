@@ -32,6 +32,15 @@
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
 
+  <ItemGroup Label="Web">
+    <!--
+      The browser backend: the same Avalonia the desktop uses, drawn to a canvas by Skia over WebAssembly. The version
+      tracks Avalonia's, because the backend implements the platform interfaces of exactly that version.
+    -->
+    <PackageVersion Include="Avalonia.Browser" Version="12.1.6" />
+  </ItemGroup>
+
+
   <ItemGroup Label="Build">
     <!--
       Derives the package version from the git history and the `v*` tags (GitVersion.yml) instead of a

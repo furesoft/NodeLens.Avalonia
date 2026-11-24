@@ -1,0 +1,36 @@
+html,
+body,
+#out {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #1e1e1e;
+}
+
+/* The shell is a canvas: Avalonia sizes it to the element it was told to fill. */
+#out canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.pn-boot {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-family: system-ui, sans-serif;
+    color: #d4d4d4;
+}
+
+.pn-boot-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.pn-boot-note {
+    font-size: 13px;
+    opacity: 0.7;
+}

@@ -87,4 +87,28 @@ public sealed class NotationWriterTests
             source.ToString(),
             ignoreLineEndingDifferences: true);
     }
+
+    [Fact]
+    public void AnAnnotationIsWrittenBackOutAsAnAnnotation()
+    {
+        // An annotation is drawn but is not a caret stop, so the kind has to survive the export: written back as
+        // punctuation it would become a word the reader steps through, which is what the cell exists to avoid.
+        var notations = new NotationRegistry(
+            ConceptRegistry.Create(
+                [new ConceptDeclaration("Export.Hint", [new PropertySlot("value", PropertyType.String)])]));
+
+        notations.Add("Export.Hint", ed => ed.Line(ed.Property("value"), ed.Space, ed.Annotation("@type@")));
+
+        var source = new SourceWriter();
+
+        NotationWriter.Write(source, notations.Notations);
+
+        Assert.Equal(
+            """
+            notations.Add("Export.Hint", ed => ed.Line(ed.Property("value"), ed.Space, ed.Annotation("@type@")));
+
+            """,
+            source.ToString(),
+            ignoreLineEndingDifferences: true);
+    }
 }

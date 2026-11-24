@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Projectional editor - Avalonia</title>
+    <!--
+        Relative, not "/": the same build is served from the site root during development and from a sub-folder
+        (the documentation's /editor/) on GitHub Pages. A root-absolute base would break the second.
+    -->
+    <base href="./" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <script type="importmap"></script>
+    <script type='module' src="main.js"></script>
+    <link rel="stylesheet" href="./app.css" />
+</head>
+
+<body>
+    <div id="out">
+        <div class="pn-boot">
+            <span class="pn-boot-title">Projectional editor</span>
+            <span class="pn-boot-note">loading the .NET runtime&hellip;</span>
+        </div>
+    </div>
+</body>
+
+</html>

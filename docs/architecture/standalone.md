@@ -642,7 +642,7 @@ review or documentation pipeline.
 
 | Artifact | Form | Milestone |
 | --- | --- | --- |
-| Developer build | `dotnet run --project src/Projectional.Workbench` | M1 |
+| Developer build | `dotnet run --project src/Projectional.Workbench --framework net10.0` | M1 |
 | Self-contained single file | one executable, no .NET install required | M2, done |
 | Per-OS installer | `.msi`/`.dmg`/`.AppImage`, file association for `.prj` | M7 |
 | Scoop / winget / Homebrew | package manifest | M7 |
@@ -655,7 +655,7 @@ should be frozen before the language format settles.
 ### The single file
 
 ```powershell
-dotnet publish src/Projectional.Workbench -c Release -r win-x64 -p:PublishSingleFile=true -o publish
+dotnet publish src/Projectional.Workbench -c Release -f net10.0 -r win-x64 -p:PublishSingleFile=true -o publish
 ```
 
 The bundle is a **publish** shape, not a build shape: a normal build stays framework-dependent and

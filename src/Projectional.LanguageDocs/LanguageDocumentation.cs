@@ -28,11 +28,11 @@ public static class LanguageDocumentation
     /// <summary>Renders every page of <paramref name="language"/>'s documentation in the order they are written.</summary>
     /// <param name="language">The language to document, with its chain already resolved.</param>
     /// <returns>The pages, the root first, then the assets, then each language of the chain base first.</returns>
-    public static IReadOnlyList<DocumentationPage> Generate(LanguageProject language)
+    public static IReadOnlyList<DocumentationPage> Generate(LanguageProject language, string? editorHref = null)
     {
         ArgumentNullException.ThrowIfNull(language);
 
-        return Render(new DocumentationChain(language), language);
+        return Render(new DocumentationChain(language, editorHref), language);
     }
 
     /// <summary>Renders one documentation set covering all of <paramref name="languages"/>.</summary>
@@ -46,11 +46,11 @@ public static class LanguageDocumentation
     /// <paramref name="languages"/> is empty, or two of its languages call themselves the same thing while living in
     /// different folders.
     /// </exception>
-    public static IReadOnlyList<DocumentationPage> Generate(IReadOnlyList<LanguageProject> languages)
+    public static IReadOnlyList<DocumentationPage> Generate(IReadOnlyList<LanguageProject> languages, string? editorHref = null)
     {
         ArgumentNullException.ThrowIfNull(languages);
 
-        return Render(new DocumentationChain(languages), primary: null);
+        return Render(new DocumentationChain(languages, editorHref), primary: null);
     }
 
     /// <summary>Writes the documentation into <paramref name="directory"/>, creating it and its subfolders.</summary>
@@ -62,14 +62,15 @@ public static class LanguageDocumentation
     /// byte-stable: the output is meant to be diffed and committed. A stale page from an earlier run is left alone
     /// rather than deleted, because the folder is the user's and this function does not know what else is in it.
     /// </remarks>
-    public static int Write(LanguageProject language, string directory) => Write(Generate(language), directory);
+    public static int Write(LanguageProject language, string directory, string? editorHref = null) =>
+        Write(Generate(language, editorHref), directory);
 
     /// <summary>Writes one documentation set covering all of <paramref name="languages"/>.</summary>
     /// <param name="languages">The languages to document, each with its chain already resolved.</param>
     /// <param name="directory">The folder to write into; an existing one is filled, nothing is deleted.</param>
     /// <returns>How many files were written.</returns>
-    public static int Write(IReadOnlyList<LanguageProject> languages, string directory) =>
-        Write(Generate(languages), directory);
+    public static int Write(IReadOnlyList<LanguageProject> languages, string directory, string? editorHref = null) =>
+        Write(Generate(languages, editorHref), directory);
 
     /// <summary>The single sentence a host shows once the folder is written.</summary>
     /// <param name="languages">The languages that were written.</param>

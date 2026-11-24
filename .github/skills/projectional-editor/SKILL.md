@@ -52,6 +52,14 @@ those documents as the target shape, and add M2 features to `MainWindow` rather 
 through the registry (`RunCommand("name")`); do not add a capability check to the handler body, because
 the registry is the one enforcement point.
 
+A second frontend ships as a **sample**, not as a product: `samples/web-app` is an Avalonia WebAssembly head
+that hosts the same `WorkbenchView` the desktop window hosts, so the browser gets the real shell rather than a
+reimplementation (`Projectional.Browser` is the head; the shell is `src/Projectional.Workbench`, which
+multi-targets for the browser). It is not a package, it is deployed beside the documentation at `/editor/`, and
+[web-host.md](../../../docs/architecture/web-host.md) records how it boots, what the head supplies and what still
+differs from the desktop. Do not grow a second command registry or a second set of editing rules there: the
+browser consumes the shell's one.
+
 ## Status and where the truth lives
 
 - `docs/roadmap.md` - milestones M0-M8 with acceptance gates and effort estimates (M8 is after 1.0). It holds the **scope** of each milestone and what is left, not a status report; a finished milestone is removed from it.
@@ -208,7 +216,7 @@ properties in the Workbench csproj are guarded by `'$(PublishSingleFile)' == 'tr
 build stays framework-dependent and multi-file:
 
 ```powershell
-dotnet publish src/Projectional.Workbench -c Release -r win-x64 -p:PublishSingleFile=true -o publish
+dotnet publish src/Projectional.Workbench -c Release -f net10.0 -r win-x64 -p:PublishSingleFile=true -o publish
 ./publish/Projectional.Workbench.exe --self-check
 ```
 

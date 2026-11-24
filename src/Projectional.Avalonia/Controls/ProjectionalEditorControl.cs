@@ -496,6 +496,13 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>Entries a host appends to the document's context menu, after the editor's own.</summary>
+    /// <remarks>
+    /// A shell's own commands are shell facts - re-projecting after a language change, storing the document somewhere
+    /// else - so they arrive as entries rather than as a second menu: the keyboard and the pointer stay one promise.
+    /// </remarks>
+    public IReadOnlyList<EditorMenuEntry> ExtraMenuEntries { get; set; } = [];
+
     /// <summary>The colour selected text is painted over.</summary>
     public IBrush HighlightBrush { get; set; }
 
@@ -2298,7 +2305,7 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
 
         _menu?.Close();
-        _menu = EditorMenuPresenter.Menu(EditorMenu.For(session), AfterMenuCommand);
+        _menu = EditorMenuPresenter.Menu([.. EditorMenu.For(session), .. ExtraMenuEntries], AfterMenuCommand);
         _menu.Open(this);
 
         e.Handled = true;

@@ -135,9 +135,14 @@ internal static class NotationWriter
 
     private static string Constant(ConstantNotationCell constant)
     {
-        var call = constant.Kind == ConstantKind.Keyword
-            ? $"ed.Keyword({SourceWriter.Literal(constant.Text)}"
-            : $"ed.Punct({SourceWriter.Literal(constant.Text)}";
+        // The kind is part of what the author wrote: an annotation is drawn but is not a caret stop, so exporting it
+        // as punctuation would turn a type hint into a word the reader has to step through.
+        var call = constant.Kind switch
+        {
+            ConstantKind.Annotation => $"ed.Annotation({SourceWriter.Literal(constant.Text)}",
+            ConstantKind.Keyword => $"ed.Keyword({SourceWriter.Literal(constant.Text)}",
+            _ => $"ed.Punct({SourceWriter.Literal(constant.Text)}",
+        };
 
         return constant.Emphasis == TextEmphasis.None
             ? $"{call})"
