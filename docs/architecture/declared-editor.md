@@ -94,7 +94,10 @@ node cell layout:
 The brackets say what a reviewer needs to know before running anything: `[/ ... /]` stacks, `[> ... <]` stacks one
 level deeper, `[ ... ]` is one row, and each cell carries its own glyph - `-word-` for a keyword, `%slot%` for a
 property, `( slot )` for a single child, `{ slot }` for a list, `< slot >` for a reference, `;` for a gap, and
-`@type@` for the cell that shows the node's type. A
+`@type@` for the cell that shows the node's type. That last one is drawn as an annotation rather than a keyword, so
+reading a definition with the arrow keys walks the slots the author fills in and steps over it: it is a fact the
+projection computes, not a word anybody types.
+A
 structure that deep reads top to bottom, and the definition of a language looks like the language it defines.
 
 **One compromise, and P5 removed it.** In MPS the inline cells of a line sit *on* the line. Here a line's

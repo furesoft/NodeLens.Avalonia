@@ -1,4 +1,5 @@
 using Projectional.Core;
+using Projectional.Editing;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
 using Projectional.Language;
@@ -607,6 +608,34 @@ public sealed class EditorLoweringTests
                 "        [-rule- ; %name% empty: <<name>>]",
                 "      /]"),
             LayoutSnapshot.Render(notation.Root, EditorNotations.Create(), width: 120));
+    }
+
+    [Fact]
+    public void ATypeOfCellInADefinitionIsDrawnButTheCaretStepsOverIt()
+    {
+        // `@type@` in an editor model says "the type is computed", so it is an annotation and not a word the author
+        // types. The drawing still shows it - it is part of how the notation reads - but the arrow keys walk the
+        // cells the author actually fills in, which is the property beside it.
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("Rules.Rule");
+        var root = notation.SetRoot(declared, EditorConceptKeys.Line);
+        var property = notation.Cell(root, EditorConceptKeys.Property);
+
+        property.Set("slot", "name");
+        notation.Cell(root, EditorConceptKeys.Space);
+        notation.Cell(root, EditorConceptKeys.TypeOf);
+
+        var tree = new EditorTreeBuilder(EditorNotations.Create()).Build(notation.Root);
+        var places = CaretPlaces.Of(tree);
+        var typeOf = Assert.Single(tree.Cells().OfType<ConstantCell>(), cell => cell.Text == "@type@");
+
+        // Drawn, and skipped: the cell is in the tree and not in the list the arrow keys walk.
+        Assert.DoesNotContain(places, place => place.Cell == typeOf);
+        Assert.Contains(places, place => place.Cell is PropertyCell);
+
+        Assert.Contains(tree.Cells().OfType<ConstantCell>(), cell => cell.Text == "@type@");
+        Assert.DoesNotContain(places, place => place.Cell is ConstantCell { Kind: ConstantKind.Annotation });
+        Assert.Contains(places, place => place.Cell is PropertyCell);
     }
 
     [Fact]

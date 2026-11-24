@@ -53,7 +53,7 @@ public static class EditorNotations
 
         // The one cell that draws what the model means rather than what the notation says, so it gets a marker of its
         // own: `@type@` reads as "this is computed" in a line that otherwise only spells out literal text.
-        notations.Add(EditorConceptKeys.TypeOf, ed => ed.Line(ed.Keyword("@type@")));
+        notations.Add(EditorConceptKeys.TypeOf, ed => ed.Line(ed.Annotation("@type@")));
 
         // `[ cells ]`: the brackets beside the cells, on one row - which is what the horizontal cell is for. Without
         // it the bracket would have to be a line of its own above the cells.
