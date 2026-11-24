@@ -42,6 +42,7 @@ internal static class Program
 
         Console.WriteLine();
         Console.WriteLine("layout and every time are milliseconds; findings are the constraints' answers, fixes the checks'.");
+        Console.WriteLine("tree is the projection's cells, arrange is measuring and placing them, layout is both inside a session.");
         Console.WriteLine("subtree is one node rechecked alone - the seam a partial recheck would use.");
 
         return 0;

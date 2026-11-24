@@ -15,6 +15,17 @@ internal sealed class Measurement
     /// <summary>How many nodes the built document holds, which is what makes two scenarios comparable.</summary>
     public required int Nodes { get; init; }
 
+    /// <summary>Milliseconds to build the editor tree - the projection's cells - for the whole document.</summary>
+    public required double Tree { get; init; }
+
+    /// <summary>Milliseconds to measure and place a tree that is already built.</summary>
+    /// <remarks>
+    /// Separate from <see cref="Tree"/> because the two are different work in different layers: the tree asks the
+    /// notation registry and the model, layout only asks the text measure. A keystroke pays both, and the number that
+    /// says which of them is the one to attack is this pair rather than their sum.
+    /// </remarks>
+    public required double Arrange { get; init; }
+
     /// <summary>Milliseconds to build tree and layout for the whole document.</summary>
     public required double Layout { get; init; }
 

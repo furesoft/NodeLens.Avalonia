@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Projectional.Editing;
+using Projectional.Projection;
 using Projectional.Semantics;
 
 namespace Projectional.Benchmarks;
@@ -20,12 +21,21 @@ internal static class Benchmark
         var engine = new ConstraintEngine(scenario.Constraints, DefaultScopeProvider.Instance, scenario.Types);
         var checks = scenario.Checks;
 
+        // The same inputs `EditorSession` builds its own builder and layouter from - no emphasis, no types - so the two
+        // extra phases add up to the end-to-end number beside them instead of measuring a different projection.
+        var builder = new EditorTreeBuilder(scenario.Notations);
+        var tree = builder.Build(root);
+        var layouter = new CellLayouter(MonospaceTextMeasure.Instance);
+        layouter.Layout(tree);
+
         return new Measurement
         {
             Units = units,
             Nodes = model.Nodes.Count(),
             Findings = engine.Check(model).Count,
             Fixes = checks.Find(model).Count,
+            Tree = Best(repetitions, () => builder.Build(root)),
+            Arrange = Best(repetitions, () => layouter.Layout(tree)),
             Layout = Best(repetitions, () =>
             {
                 using var session = new EditorSession(root, scenario.Notations);
