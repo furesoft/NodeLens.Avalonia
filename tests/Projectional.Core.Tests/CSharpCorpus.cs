@@ -135,6 +135,25 @@ internal static class CSharpCorpus
         NameOf(model, sum, "left", left);
         NameOf(model, sum, "right", right);
 
+        // public IEnumerable<int> Ordered(IEnumerable<int> values) { return from item in values where item > 0
+        //   orderby item descending select item; }
+        // The other spelling of the same calls, and the reason the language declares it: the range variable is named
+        // once, so every clause reads it and no clause repeats a parameter list.
+        var ordered = Method(model, type, "IEnumerable<int>", "Ordered", ("IEnumerable<int>", "values"), out var orderedBody);
+        var query = model.NewChild(Return(model, orderedBody), CSharpConceptKeys.ValueSlot, CSharpConceptKeys.QueryExpression);
+        query.Set(CSharpLanguage.NameSlot, "item");
+        NameOf(model, query, CSharpConceptKeys.SourceSlot, Parameter(ordered, 0));
+
+        var filter = model.NewChild(query, CSharpConceptKeys.ClausesSlot, CSharpConceptKeys.WhereClause);
+        var comparison = Binary(model, filter, CSharpConceptKeys.ConditionSlot, CSharpBinaryOperator.GreaterThan);
+        NameOf(model, comparison, "left", query);
+        Number(model, comparison, "right", "0");
+
+        var orderBy = model.NewChild(query, CSharpConceptKeys.ClausesSlot, CSharpConceptKeys.OrderByClause);
+        orderBy.Set(CSharpConceptKeys.DescendingSlot, true);
+        NameOf(model, orderBy, CSharpConceptKeys.ValueSlot, query);
+        NameOf(model, query, CSharpConceptKeys.SelectSlot, query);
+
         return model;
     }
 

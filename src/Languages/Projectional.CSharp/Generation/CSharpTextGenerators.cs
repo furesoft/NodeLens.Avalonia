@@ -525,6 +525,37 @@ public static class CSharpTextGenerators
 
         .Add(CSharpConceptKeys.LambdaParameter, TextTemplate.Of(new PropertyPart(CSharpLanguage.NameSlot)))
 
+        // A query, written as the notation draws it: the source after `from`, one clause per line, the answer last -
+        // the clauses and the answer one indent in, because the notation puts each on its own line. C# allows a line
+        // break between clauses, so the text and the drawing are the same query.
+        .Add(CSharpConceptKeys.QueryExpression, TextTemplate.Of(
+            new TextPart("from "),
+            new PropertyPart(CSharpLanguage.NameSlot),
+            new TextPart(" in "),
+            new ChildPart(CSharpConceptKeys.SourceSlot),
+            new IndentPart(TextTemplate.Of(
+                new WhenFilledPart(
+                    CSharpConceptKeys.ClausesSlot,
+                    TextTemplate.Of(
+                        LineBreakPart.Instance,
+                        new ChildrenPart(CSharpConceptKeys.ClausesSlot, TextTemplate.Of(LineBreakPart.Instance)),
+                        LineBreakPart.Instance),
+                    TextTemplate.Of(LineBreakPart.Instance)),
+                new TextPart("select "),
+                new ChildPart(CSharpConceptKeys.SelectSlot)))))
+
+        .Add(CSharpConceptKeys.WhereClause, TextTemplate.Of(
+            new TextPart("where "),
+            new ChildPart(CSharpConceptKeys.ConditionSlot)))
+
+        .Add(CSharpConceptKeys.OrderByClause, TextTemplate.Of(
+            new TextPart("orderby "),
+            new ChildPart(CSharpConceptKeys.ValueSlot),
+            new ConditionalPart(
+                CSharpConceptKeys.DescendingSlot,
+                "true",
+                TextTemplate.Of(new TextPart(" descending")))))
+
         .Add(CSharpConceptKeys.New, TextTemplate.Of(
             new TextPart("new "),
             new ChildPart("type"),

@@ -108,7 +108,7 @@ questions are about how far that goes, not whether to do it.
 | 44 | Is a behaviour class generated per concept, or per concept and DSL? | Leaning | Per concept. A concept key is unique within a project, so the generated class name is unique and the host's hand-written partial never has to disambiguate. | M6 |
 | 45 | Should the editor ever know C# specifically? | Decided by design | No. Everything C#-specific lives in the language package and its generator, so a host that ships its own base language replaces the package without touching the core. | - |
 | 46 | Does the framework ever compile the projected logic? | Open | No. It generates source and the host's build compiles it, which is also what keeps the roadmap's "no user-defined executable logic" exclusion meaningful - see [csharp.md](architecture/csharp.md). Running a DSL inside the editor is the M4 interpreter, not this. | M6 |
-| 47 | How much of C# is enough? | Open | Expressions plus statements plus methods and classes, with query syntax, `async`, attributes and generic declaration left out. The list is in [csharp.md](architecture/csharp.md) and should be revised by what the pilot DSL actually needs, not by grammar order. | M6 |
+| 47 | How much of C# is enough? | Open | Expressions plus statements plus methods and classes, with `async`, attributes and generic declaration left out. The list is in [csharp.md](architecture/csharp.md) and should be revised by what the pilot DSL actually needs, not by grammar order. | M6 |
 
 ## Text import
 

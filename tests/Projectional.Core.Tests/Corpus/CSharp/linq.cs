@@ -14,5 +14,13 @@ namespace Sample
     {
       return values.Aggregate((left, right) => left + right);
     }
+
+    public IEnumerable<int> Ordered(IEnumerable<int> values)
+    {
+      return from item in values
+        where item > 0
+        orderby item descending
+        select item;
+    }
   }
 }

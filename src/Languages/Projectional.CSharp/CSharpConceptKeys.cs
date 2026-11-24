@@ -128,6 +128,18 @@ public static class CSharpConceptKeys
     /// <summary><c>node/resolveInfo/slot</c>: the text a reference fell back to.</summary>
     public const string NodeResolveInfo = "CSharp.NodeResolveInfo";
 
+    /// <summary><c>from x in source ... select value</c>: a query over a collection, in C#'s query syntax.</summary>
+    public const string QueryExpression = "CSharp.QueryExpression";
+
+    /// <summary>What every clause of a query expression has in common. Abstract.</summary>
+    public const string QueryClause = "CSharp.QueryClause";
+
+    /// <summary><c>where condition</c>: the entries a query keeps.</summary>
+    public const string WhereClause = "CSharp.WhereClause";
+
+    /// <summary><c>orderby value</c>: the order a query answers in, ascending unless it says otherwise.</summary>
+    public const string OrderByClause = "CSharp.OrderByClause";
+
     /// <summary>One document: a namespace and what it holds. The root.</summary>
     public const string File = "CSharp.File";
 
@@ -347,4 +359,13 @@ public static class CSharpConceptKeys
 
     /// <summary>The property saying whether a switch section is the <c>default</c> one.</summary>
     public const string IsDefaultSlot = "isDefault";
+
+    /// <summary>The slot holding a query expression's clauses, in the order they are written.</summary>
+    public const string ClausesSlot = "clauses";
+
+    /// <summary>The slot holding what a query expression answers with.</summary>
+    public const string SelectSlot = "select";
+
+    /// <summary>The property saying whether an ordering runs from the highest value down.</summary>
+    public const string DescendingSlot = "descending";
 }
