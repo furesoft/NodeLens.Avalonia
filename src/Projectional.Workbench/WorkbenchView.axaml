@@ -342,6 +342,7 @@
         <MenuItem x:Name="DocumentationItem" Header="Export _documentation..." IsEnabled="False" />
         <!-- Filled from the languages opened from a folder: one entry per language, each offering its sources or its assemblies. -->
         <MenuItem x:Name="PackageItem" Header="_Package..." IsEnabled="False" />
+        <MenuItem x:Name="DownloadPackageItem" Header="_Download package..." Click="OnDownloadPackage" />
         <MenuItem x:Name="ImportDocumentItem" Header="_Import..." Click="OnImportDocument" />
         <MenuItem x:Name="RecentFilesItem" Header="Recent" IsEnabled="False" />
         <Separator />

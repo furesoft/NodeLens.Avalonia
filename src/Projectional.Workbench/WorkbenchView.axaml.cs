@@ -106,6 +106,7 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
     /// </remarks>
     private readonly AvaloniaClipboard _clipboard;
     private readonly IShellStorage _storage;
+    private readonly Action? _downloadPackage;
     private readonly IShellDialogs _dialogs;
     private readonly TextRecentFilesStore _recentStore;
 
@@ -194,6 +195,7 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
 
         _capabilities = options.Capabilities;
         _storage = options.Storage;
+        _downloadPackage = options.DownloadPackage;
 
         // Resolved when the shell asks, not when it is constructed: a control has no top level until it is attached,
         // and the desktop window it will be hosted in is the one that owns the pickers.
@@ -294,6 +296,28 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
         RebuildRecentMenu();
     }
 
+    /// <summary>Re-projects every open document, so a change that is not in the model shows up.</summary>
+    /// <remarks>
+    /// A session rebuilds its tree from the model, never from text: what this catches is a document whose language
+    /// changed underneath it - a notation or a concept edited in the same shell - which the model cannot record as an
+    /// edit to the document. All tabs are refreshed, because a language change is not about one document.
+    /// </remarks>
+    private void RefreshEditors()
+    {
+        foreach (var (document, tab) in _tabs)
+        {
+            if (EditorOf(tab) is not { } editor)
+            {
+                continue;
+            }
+
+            editor.Refresh();
+            PublishFindings(document, editor);
+        }
+
+        UpdateStatus();
+    }
+
     /// <summary>Whether closing now would lose a document the user has not dealt with.</summary>
     /// <remarks>
     /// The window asks this before it cancels a close, because a control has no closing event of its own: the
@@ -382,6 +406,7 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
         // The examples are a folder beside the executable. A publish does not ship it, so the entry goes rather than
         // offering a submenu with nothing in it.
         OpenExamplesItem.IsVisible = _capabilities.Allows(ShellCapability.OpenFiles);
+        DownloadPackageItem.IsVisible = _downloadPackage is not null;
         NewDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.CreateModels);
         ImportDocumentItem.IsVisible = _capabilities.Allows(ShellCapability.Import);
         ExportLanguageItem.IsVisible = _capabilities.Allows(ShellCapability.Export);
@@ -636,6 +661,16 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
         }
 
         var editor = new ProjectionalEditorControl();
+
+        // The shell's own entry in the document's context menu: a language definition can change while its documents
+        // are open, and re-projecting them is a shell decision rather than an editor one.
+        editor.ExtraMenuEntries =
+        [
+            EditorMenuItem.Run(
+                "Refresh editors",
+                RefreshEditors,
+                description: "Rebuilds every open document's projection, so a change to its language shows up."),
+        ];
 
         // Before the tab is built, not after: the session takes its measure from the control, so a size
         // applied afterwards would have to rebuild a layout that was already laid out at 14.
@@ -3941,6 +3976,8 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
     }
 
     private void OnExit(object? sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnDownloadPackage(object? sender, RoutedEventArgs e) => _downloadPackage?.Invoke();
 
     private void OnIncreaseFontSize(object? sender, RoutedEventArgs e) => ApplyFontSize(_fontSize + FontSizeStep);
 

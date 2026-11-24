@@ -25,15 +25,22 @@ internal sealed partial class Program
         await JSHost.ImportAsync("shell", "../js/shell.js");
 
         ExampleLanguages.Extract();
+        BrowserShellStorage.RestoreFiles();
 
         App.SingleViewOptions = () => new ShellOptions
         {
             Capabilities = ShellCapabilities.Standalone & ~ShellCapability.Terminal,
             Storage = new BrowserShellStorage(),
             Dialogs = new BrowserShellDialogs(),
+            DownloadPackage = BrowserPackage.Download,
         };
 
-        App.SingleViewCreated = shell => shell.FileSaved += (_, path) => BrowserFiles.Download(path);
+        App.SingleViewCreated = shell => shell.FileSaved += (_, path) =>
+        {
+            // Both halves of what a save means here: the document survives a reload, and the user gets the file.
+            BrowserShellStorage.SaveFile(path);
+            BrowserFiles.Download(path);
+        };
 
         await BuildAvaloniaApp().StartBrowserAppAsync("out");
     }

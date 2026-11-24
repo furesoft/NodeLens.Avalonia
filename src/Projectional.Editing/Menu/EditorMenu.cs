@@ -53,8 +53,15 @@ public static class EditorMenu
 
     /// <summary>The entries the context menu shows for <paramref name="session"/>.</summary>
     /// <param name="session">The session whose caret and history the menu describes.</param>
+    /// <param name="extra">
+    /// Entries a host appends after the document's own, or <see langword="null"/> for none. A host's own commands are
+    /// host facts - re-projecting after a language change, storing the document somewhere else - so the list arrives
+    /// from outside rather than being guessed here.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="session"/> is <see langword="null"/>.</exception>
-    public static IReadOnlyList<EditorMenuEntry> For(EditorSession session)
+    public static IReadOnlyList<EditorMenuEntry> For(
+        EditorSession session,
+        IReadOnlyList<EditorMenuEntry>? extra = null)
     {
         ArgumentNullException.ThrowIfNull(session);
 
@@ -142,6 +149,12 @@ public static class EditorMenu
         {
             entries.Add(EditorMenuSeparator.Instance);
             entries.Add(EditorMenuItem.Submenu("Representation", representations));
+        }
+
+        if (extra is { Count: > 0 })
+        {
+            entries.Add(EditorMenuSeparator.Instance);
+            entries.AddRange(extra);
         }
 
         return entries;

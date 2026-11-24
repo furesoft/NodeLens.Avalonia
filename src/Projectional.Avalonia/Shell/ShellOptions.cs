@@ -39,6 +39,15 @@ public sealed record ShellOptions
     public IShellStorage Storage { get; init; } = FileShellStorage.Default;
 
     /// <summary>
+    /// What File ▸ Download package runs, or <see langword="null"/> when this host has no such notion.
+    /// </summary>
+    /// <remarks>
+    /// A host whose documents are not files - a page that keeps everything in memory - is the only one that can say
+    /// what "the whole package" is. The entry is hidden where the hook is absent, so the desktop menu is unchanged.
+    /// </remarks>
+    public Action? DownloadPackage { get; init; }
+
+    /// <summary>
     /// What the shell asks the user with, or <see langword="null"/> for the desktop dialogs of the window it is in.
     /// </summary>
     /// <remarks>

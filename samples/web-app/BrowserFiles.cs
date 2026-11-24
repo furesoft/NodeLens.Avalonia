@@ -55,13 +55,15 @@ internal static partial class BrowserFiles
     /// <summary>Sends the file at <paramref name="path"/> to the browser as a download.</summary>
     internal static void Download(string path)
     {
-        if (!File.Exists(path))
+        if (File.Exists(path))
         {
-            return;
+            DownloadBytes(Path.GetFileName(path), File.ReadAllBytes(path));
         }
-
-        Save(Path.GetFileName(path), Convert.ToBase64String(File.ReadAllBytes(path)));
     }
+
+    /// <summary>Sends bytes to the browser as a download, which is what "save" means here.</summary>
+    internal static void DownloadBytes(string name, byte[] content) =>
+        Save(name, Convert.ToBase64String(content));
 
     private static async Task<string> CopyAsync(IStorageFile file, string path)
     {

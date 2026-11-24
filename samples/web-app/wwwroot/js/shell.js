@@ -6,6 +6,10 @@ export function setItem(key, value) {
   window.localStorage.setItem(key, value);
 }
 
+export function keys() {
+  return JSON.stringify(Object.keys(window.localStorage));
+}
+
 export function download(name, base64) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
