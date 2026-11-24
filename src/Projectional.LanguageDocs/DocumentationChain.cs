@@ -26,8 +26,8 @@ internal sealed class DocumentationChain
     private readonly Dictionary<LanguageProject, IReadOnlyList<DocumentDrawing>> _examples = [];
 
     /// <summary>The chain of one language: the language and everything it stands on.</summary>
-    internal DocumentationChain(LanguageProject language)
-        : this([language])
+    internal DocumentationChain(LanguageProject language, string? editorHref = null)
+        : this([language], editorHref)
     {
     }
 
@@ -46,9 +46,11 @@ internal sealed class DocumentationChain
     /// <paramref name="languages"/> is empty, or two of its languages call themselves the same thing while living in
     /// different folders - they would share one folder and overwrite each other's pages.
     /// </exception>
-    internal DocumentationChain(IReadOnlyList<LanguageProject> languages)
+    internal DocumentationChain(IReadOnlyList<LanguageProject> languages, string? editorHref = null)
     {
         ArgumentNullException.ThrowIfNull(languages);
+
+        EditorHref = editorHref;
 
         if (languages.Count == 0)
         {
@@ -98,6 +100,16 @@ internal sealed class DocumentationChain
 
     /// <summary>What the whole tree is called, which the header of every page names.</summary>
     internal string Title { get; }
+
+    /// <summary>
+    /// The browser editor the header links to, relative to the site root, or <see langword="null"/> for a folder that
+    /// has none.
+    /// </summary>
+    /// <remarks>
+    /// Only a site that is published beside the editor sets it. A packaged language folder or a documentation export
+    /// into a user's directory does not, which is what keeps those from carrying a link to a page nothing serves.
+    /// </remarks>
+    internal string? EditorHref { get; }
 
     /// <summary>One notation registry over every language of the chain, base first.</summary>
     /// <remarks>
@@ -215,6 +227,11 @@ internal sealed class DocumentationChain
 
     /// <summary>A link to the root page, which is where the search and the set live.</summary>
     internal static string HomeLink(int depth) => $"{Up(depth)}index.html";
+
+    /// <summary>The link to the browser editor, relative to a page this deep.</summary>
+    /// <param name="depth">How many folders the page sits below the site root.</param>
+    /// <param name="href">The editor's location relative to the site root, ending in a slash.</param>
+    internal static string EditorLink(int depth, string href) => $"{Up(depth)}{href}";
 
     /// <summary>A link to the assets folder.</summary>
     internal static string AssetLink(int depth, string file) => $"{Up(depth)}assets/{file}";

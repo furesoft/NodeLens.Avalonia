@@ -40,6 +40,11 @@ internal static class Html
         page.Append("<a class=\"brand\" href=\"").Append(DocumentationChain.HomeLink(depth)).Append("\">")
             .Append(Escape(chain.Title))
             .Append("</a>\n");
+
+        if (chain.EditorHref is { Length: > 0 } editorHref)
+        {
+            page.Append("<a class=\"editor-link\" href=\"").Append(DocumentationChain.EditorLink(depth, editorHref)).Append("\">Open the editor</a>\n");
+        }
         page.Append("<input type=\"search\" id=\"find\" placeholder=\"Search concepts\" aria-label=\"Search concepts\" autocomplete=\"off\">\n");
         page.Append("</header>\n");
 

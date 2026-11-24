@@ -73,7 +73,7 @@ internal static class DocsExport
 
             IReadOnlyList<LanguageProject> documented = [.. WorkbenchLanguage.Shipped, .. opened];
 
-            var files = LanguageDocumentation.Write(documented, directory);
+            var files = LanguageDocumentation.Write(documented, directory, "editor/");
 
             Console.WriteLine(LanguageDocumentation.Summarise(documented, files));
 
