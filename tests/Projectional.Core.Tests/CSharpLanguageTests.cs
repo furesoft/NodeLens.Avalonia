@@ -1165,6 +1165,98 @@ public sealed class CSharpLanguageTests
     }
 
     [Fact]
+    public void AQueryDrawsAndGeneratesTheQuerySyntax()
+    {
+        // The query syntax the lambda made writable: `from item in values where item > 0 select item` is the same tree
+        // as `values.Where(item => item > 0)`, written the way C# lets an author write it. The range variable is the
+        // query's own name, so the query is a `NamedDeclaration` and a name inside a clause resolves through the one
+        // scope rule the language states - no second rule for query scope.
+        var model = new Project(CSharpLanguage.Concepts).NewModel("query");
+        var file = model.NewNode(CSharpConceptKeys.File);
+        var ns = model.NewChild(file, CSharpConceptKeys.NamespaceSlot, CSharpConceptKeys.Namespace);
+        var cls = model.NewChild(ns, CSharpConceptKeys.ClassesSlot, CSharpConceptKeys.Class);
+        var method = model.NewChild(cls, CSharpConceptKeys.MembersSlot, CSharpConceptKeys.Method);
+        var parameters = model.NewChild(method, CSharpConceptKeys.ParametersSlot, CSharpConceptKeys.Parameter);
+        var valuesType = model.NewChild(parameters, "type", CSharpConceptKeys.TypeReference);
+        var returnType = model.NewChild(method, "returnType", CSharpConceptKeys.TypeReference);
+        var body = model.NewChild(method, CSharpConceptKeys.BodySlot, CSharpConceptKeys.Block);
+        var @return = model.NewChild(body, CSharpConceptKeys.StatementsSlot, CSharpConceptKeys.Return);
+        var query = model.NewChild(@return, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.QueryExpression);
+        var source = model.NewChild(query, CSharpConceptKeys.SourceSlot, CSharpConceptKeys.Name);
+        var where = model.NewChild(query, CSharpConceptKeys.ClausesSlot, CSharpConceptKeys.WhereClause);
+        var comparison = model.NewChild(where, CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Binary);
+        var use = model.NewChild(comparison, "left", CSharpConceptKeys.Name);
+        var zero = model.NewChild(comparison, "right", CSharpConceptKeys.IntLiteral);
+        var orderBy = model.NewChild(query, CSharpConceptKeys.ClausesSlot, CSharpConceptKeys.OrderByClause);
+        var ordered = model.NewChild(orderBy, CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Name);
+        var select = model.NewChild(query, CSharpConceptKeys.SelectSlot, CSharpConceptKeys.Name);
+
+        ns.Set(CSharpLanguage.NameSlot, "Sample");
+        cls.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        cls.Set(CSharpLanguage.NameSlot, "Numbers");
+        method.Set(CSharpLanguage.VisibilitySlot, CSharpVisibility.Public);
+        method.Set(CSharpLanguage.NameSlot, "Positive");
+        method.Set(CSharpLanguage.IsStaticSlot, true);
+        parameters.Set(CSharpLanguage.NameSlot, "values");
+        valuesType.Set(CSharpLanguage.NameSlot, "IEnumerable<int>");
+        returnType.Set(CSharpLanguage.NameSlot, "IEnumerable<int>");
+        query.Set(CSharpLanguage.NameSlot, "item");
+        comparison.Set(CSharpLanguage.OperatorSlot, CSharpBinaryOperator.GreaterThan);
+        zero.Set(CSharpLanguage.ValueProperty, "0");
+        orderBy.Set(CSharpConceptKeys.DescendingSlot, true);
+
+        source.SetReference(CSharpConceptKeys.TargetSlot, parameters);
+        use.SetReference(CSharpConceptKeys.TargetSlot, query);
+        ordered.SetReference(CSharpConceptKeys.TargetSlot, query);
+        select.SetReference(CSharpConceptKeys.TargetSlot, query);
+
+        var inWhere = CSharpScopes.Registry.ScopeOf(use, CSharpConceptKeys.TargetSlot).Entries;
+
+        Assert.Contains(inWhere, entry => entry.Name == "item" && entry.Fits(CSharpConceptKeys.NamedDeclaration, CSharpLanguage.Concepts));
+
+        // Drawn: every clause hangs under the `from` it follows, and the `;` the return owns stands after the block -
+        // which the layout pads to the widest row, because the caret could stand on any of them.
+        const string Drawn =
+            """
+            namespace Sample
+            {
+              public class Numbers
+              {
+                public static IEnumerable<int> Positive(IEnumerable<int> values)
+                {
+                  return from item in values
+                         where item > 0
+                         orderby item descending
+                         select item            ;
+                }
+              }
+            }
+            """;
+
+        // Generated: the clauses take one indent level, which is what the template says and what C# accepts - a query
+        // may break between its clauses, so the text is the query the drawing shows.
+        const string Generated =
+            """
+            namespace Sample
+            {
+              public class Numbers
+              {
+                public static IEnumerable<int> Positive(IEnumerable<int> values)
+                {
+                  return from item in values
+                    where item > 0
+                    orderby item descending
+                    select item;
+                }
+              }
+            }
+            """;
+
+        Assert.Equal(Drawn, LayoutSnapshot.Render(model, CSharpNotations.CreateNotations(CSharpLanguage.Concepts), width: 120));
+        Assert.Equal(Generated + "\n", new Generator().Generate(model.Roots[0], CSharpTextGenerators.Generator).Text);
+    }
+
+    [Fact]
     public void ARecordDrawsItsThreeFormsAndGeneratesThem()
     {
         // A record is a class with two things a class does not have: a positional parameter list that becomes its

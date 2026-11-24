@@ -144,6 +144,36 @@ public static class CSharpNotations
 
         notations.Add(CSharpConceptKeys.LambdaParameter, ed => ed.Line(ed.Property(CSharpLanguage.NameSlot)));
 
+        // A query: the source on the header line, one clause per row beneath it, and the answer last. The rows are
+        // stacked rather than run together because the order of the clauses is the meaning, and one row per clause is
+        // how the order is read. The list draws its own placeholder while it is empty, so a query with no clause at all
+        // is still a query the caret can enter.
+        notations.Add(CSharpConceptKeys.QueryExpression, ed => ed.Sequence(
+            ed.Line(
+                ed.Keyword("from"),
+                ed.Space,
+                ed.Property(CSharpLanguage.NameSlot),
+                ed.Space,
+                ed.Keyword("in"),
+                ed.Space,
+                ed.ChildInline(CSharpConceptKeys.SourceSlot)),
+            ed.Children(CSharpConceptKeys.ClausesSlot, "<no clause>", stacked: true),
+            ed.Line(
+                ed.Keyword("select"),
+                ed.Space,
+                ed.ChildInline(CSharpConceptKeys.SelectSlot))));
+
+        notations.Add(CSharpConceptKeys.WhereClause, ed => ed.Line(
+            ed.Keyword("where"),
+            ed.Space,
+            ed.ChildInline(CSharpConceptKeys.ConditionSlot)));
+
+        notations.Add(CSharpConceptKeys.OrderByClause, ed => ed.Line(
+            ed.Keyword("orderby"),
+            ed.Space,
+            ed.ChildInline(CSharpConceptKeys.ValueSlot),
+            ed.Conditional(CSharpConceptKeys.DescendingSlot, "true", ed.Space, ed.Keyword("descending"))));
+
         notations.Add(CSharpConceptKeys.New, ed => ed.Line(
             ed.Keyword("new"),
             ed.Space,

@@ -430,6 +430,58 @@ public static class CSharpLanguage
             isRoot: false,
             description: "One parameter of a lambda, typed by whatever the lambda is passed to."),
 
+        // C#'s query syntax, which is sugar for the method calls the lambda made writable: `from item in values where
+        // item > 0 select item` is `values.Where(item => item > 0)`. It is a concept of its own rather than a notation
+        // over the calls, because the range variable is not a lambda parameter: it is named once and read by every
+        // clause, which is what makes a query shorter than the call it stands for.
+        //
+        // The range variable is the query's own name, so the query implements `NamedDeclaration` and the one scope rule
+        // the language states resolves it - the same arrangement a `catch` uses for the exception it binds. A clause
+        // takes the query as its parent and the query's name as its declaration, so no clause needs its own scope.
+        new ConceptDeclaration(
+            CSharpConceptKeys.QueryExpression,
+            [
+                new PropertySlot(NameSlot, PropertyType.String, "item", "The range variable every clause reads."),
+                new ChildSlot(CSharpConceptKeys.SourceSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new ChildSlot(CSharpConceptKeys.ClausesSlot, CSharpConceptKeys.QueryClause, Cardinality.Many),
+                new ChildSlot(CSharpConceptKeys.SelectSlot, CSharpConceptKeys.Expression, Cardinality.One),
+            ],
+            superConcepts: [CSharpConceptKeys.Expression],
+            interfaces: [CSharpConceptKeys.NamedDeclaration],
+            nameSlot: NameSlot,
+            nameRule: NameRule.Camel,
+            isRoot: false,
+            description: "from item in source ... select item"),
+
+        // The clauses are one concept family because a query's clause list holds them in the order they are written and
+        // the order is the meaning: `where` before `select` narrows, and a second `where` narrows again. The base is
+        // abstract and holds nothing, so a new clause is a concept plus a notation and no change to the query.
+        new ConceptDeclaration(
+            CSharpConceptKeys.QueryClause,
+            isAbstract: true,
+            isRoot: false,
+            description: "One clause of a query expression."),
+
+        new ConceptDeclaration(
+            CSharpConceptKeys.WhereClause,
+            [new ChildSlot(CSharpConceptKeys.ConditionSlot, CSharpConceptKeys.Expression, Cardinality.One)],
+            superConcepts: [CSharpConceptKeys.QueryClause],
+            isRoot: false,
+            description: "where condition"),
+
+        // The ordering is ascending unless the property says otherwise, so the concept carries the direction as a
+        // boolean rather than as two concepts: `orderby` and `orderby ... descending` differ in one word and share
+        // every slot, which is the same split `record class` and `record struct` make.
+        new ConceptDeclaration(
+            CSharpConceptKeys.OrderByClause,
+            [
+                new ChildSlot(CSharpConceptKeys.ValueSlot, CSharpConceptKeys.Expression, Cardinality.One),
+                new PropertySlot(CSharpConceptKeys.DescendingSlot, PropertyType.Boolean, "false", "Whether the order runs from the highest value down."),
+            ],
+            superConcepts: [CSharpConceptKeys.QueryClause],
+            isRoot: false,
+            description: "orderby value [descending]"),
+
         // Every read of a node is one concept or another, and they all take the node they read as a child slot - so the
         // operand is declared once, here, and the nine reads differ in what they are called and what they take beside
         // it. It extends Expression because a read produces a value: without this super, `node.name` could not stand

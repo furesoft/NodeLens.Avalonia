@@ -133,6 +133,8 @@ behaviour or a generator body need" rather than by C# grammar order.
 | `CSharp.Is` | `operand is Type` |
 | `CSharp.New` | `new Type(args)` |
 | `CSharp.Index` | `target[index]` |
+| `CSharp.QueryExpression` | `from item in source`, then one clause per line, then `select value` |
+| `CSharp.QueryClause` | abstract; `WhereClause` (`where condition`) and `OrderByClause` (`orderby value [descending]`) below it |
 
 **Statements (S0)**
 
@@ -155,7 +157,6 @@ class that compiles; it is not enough to describe an existing codebase.
 
 | Left out | Why |
 | --- | --- |
-| LINQ query syntax | it is sugar over method calls, and since `CSharp.Lambda` exists the calls are writable: `values.Where(item => item > 0)` is what a language declares, and `from x in xs where …` would be a second grammar for the same tree. What the row said before the lambda landed - "`CSharp.Call` already expresses the same tree" - was true of the tree and not of the language |
 | pattern matching beyond `is` | every new pattern form is a new concept and a new generator branch, and `is` plus a cast covers the behaviour bodies people actually write |
 | `async`/`await`, `yield` | they change what the generator must emit around a body (state machine, iterator class), which is a large jump in generator complexity for a small jump in expressiveness |
 | attributes | they are metadata, not logic; a host that needs one can put it in a handwritten partial (see "Behaviour methods") |
@@ -212,6 +213,45 @@ Three decisions, each of which the first version of the concept got wrong:
 The proof is a corpus document rather than a drawing test: `tests/.../Corpus/CSharp/linq.cs` holds one extension
 method with a single-parameter lambda and one with two, and the corpus test compiles it with warnings as errors -
 which is also what makes the "LINQ is sugar" claim checkable rather than assumed.
+
+## Query syntax: the same calls, with the name written once
+
+C# offers a second spelling for the calls LINQ is made of. `values.Where(item => item > 0)` and
+`from item in values where item > 0 select item` are the same tree, and the plan originally said so to leave the
+query syntax out. The lambda changed the answer: it made the *call* writable, and the query is what an author
+reaches for when the predicate is longer than the name - the range variable is bound once at the top and read by
+every clause, which is exactly what a chain of lambdas cannot give.
+
+It is a concept of its own rather than a notation over the calls because of the one thing the tree does not share:
+in `values.Where(item => item > 0)` the `item` is a parameter of *that* lambda, and a second `Where` would need a
+second name; in a query it is the query's name and every clause reads it. That decides the shape:
+
+- **The range variable is the query's own name.** `QueryExpression` implements `NamedDeclaration`, so a name inside
+  a clause resolves through the one scope rule the language states, exactly as a `catch` binds its exception - no
+  second rule for query scope and no scope entry per clause. A clause has no name slot of its own: it hangs under
+  the query, so the ordinary parent walk reaches the declaration.
+- **A clause is a concept family, not a concept.** `QueryClause` is abstract and holds nothing; `WhereClause` and
+  `OrderByClause` are its two concrete concepts. The clause list is `Many` and its order is the meaning - `where`
+  before `select` narrows, and a second `where` narrows again - so a new clause costs a concept, a notation and a
+  template, and no change to `QueryExpression`.
+- **`descending` is a property, not a concept.** `orderby value` and `orderby value descending` differ in one word
+  and hold the same slot, which is the split `record class`/`record struct` makes; two concepts would duplicate
+  every slot to change one keyword.
+- **The type is unknown**, for the same reason a lambda's is: a query answers a sequence whose element type is the
+  selector's, and this language models no delegate or generic inference. A rule that reported one would be guessing.
+- **The drawing and the text share one indentation shape, not one byte.** The clauses and `select` are drawn one
+  line each, hanging under the `from`; the template breaks and indents them one level, which C# accepts between
+  clauses. When the query stands in a longer line the two are therefore not byte-identical - the drawing aligns
+  after `return ` and the text indents from the line's start - but they are the same query.
+
+The proof is two levels. `CSharpLanguageTests.AQueryDrawsAndGeneratesTheQuerySyntax` pins the drawing and the text
+separately and asserts that the `item` a clause reads resolves to the query through `CSharpScopes`;
+`Corpus/CSharp/linq.cs` holds a query with a `where` and a descending `orderby`, and the corpus test compiles it
+with warnings as errors - which is what says the generated spelling is C# and not merely stable.
+
+What stays out is the rest of the query grammar: `join`, `let`, `group ... by`, `into` and a second `from`. Each is
+another concept on the one clause family above, so it arrives without touching what exists - and until a behaviour
+body needs one, two clauses are what a reader of the subset can write.
 
 ## The node API
 
