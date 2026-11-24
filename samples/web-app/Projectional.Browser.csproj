@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <!--
+    The browser head: Avalonia's WebAssembly backend hosting the same `WorkbenchView` the desktop window shows. It is a
+    sample rather than a product - not packed, and deliberately thin - because everything a browser needs beyond the
+    shell is a host decision: the storage, the dialogs and which capabilities the page offers.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-browser</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      Skia and HarfBuzz ship as static WebAssembly libraries, so the build relinks the runtime with them; without this
+      the page loads and then fails when the first control is painted. Trimming stays off because the export compiles
+      generated C# with Roslyn, whose reflection the trimmer cannot see; the size that costs is the price of shipping
+      the whole workbench rather than an editor-only page.
+    -->
+    <WasmBuildNative>true</WasmBuildNative>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Projectional.Workbench\Projectional.Workbench.csproj"
+                      SetTargetFramework="TargetFramework=net10.0-browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The declared samples the page offers, embedded so the shell's Examples menu has them without a folder beside the
+      executable. One group per language keeps the language's folder in the name, which is how a dependency is found.
+    -->
+    <EmbeddedResource Include="..\..\samples\declared-atlas\**\*.mps" LogicalName="Examples/declared-atlas/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\samples\declared-expressions\**\*.mps" LogicalName="Examples/declared-expressions/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\samples\declared-invoice\**\*.mps" LogicalName="Examples/declared-invoice/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\samples\declared-pipeline\**\*.mps" LogicalName="Examples/declared-pipeline/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\samples\declared-units\**\*.mps" LogicalName="Examples/declared-units/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\samples\declared-workflow\**\*.mps" LogicalName="Examples/declared-workflow/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <!--
+      No fingerprinting: `main.js` is referenced by the page and `js/shell.js` is imported by .NET, and neither name can
+      be discovered by the other side when it is hashed. A browser revalidates a script on reload, which is enough here.
+    -->
+  </ItemGroup>
+
+</Project>

@@ -44,13 +44,14 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/host-app/HostApp.csproj" />
-    <Project Path="samples/web-app/Projectional.Web.App/Projectional.Web.App.csproj" />
-    <Project Path="samples/web-app/Projectional.Web/Projectional.Web.csproj" />
+    <Project Path="samples/web-app/Projectional.Browser.csproj" />
+
+
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Projectional.Core.Tests/Projectional.Core.Tests.csproj" />
     <Project Path="tests/Projectional.Toolkit.Tests/Projectional.Toolkit.Tests.csproj" />
-    <Project Path="tests/Projectional.Web.Tests/Projectional.Web.Tests.csproj" />
+
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Projectional.Benchmarks/Projectional.Benchmarks.csproj" />

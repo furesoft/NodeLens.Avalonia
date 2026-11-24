@@ -75,7 +75,7 @@ internal static class ShellCapture
     /// rather than a wrong image. Both are reported the way the shots are, because the log is what a run leaves behind
     /// and a check that failed silently would be a check nobody has.
     /// </remarks>
-    private static async Task<bool> CheckAsync(string name, Func<MainWindow, Task> check, List<string> log)
+    private static async Task<bool> CheckAsync(string name, Func<WorkbenchView, Task> check, List<string> log)
     {
         try
         {
@@ -100,7 +100,7 @@ internal static class ShellCapture
     /// The window is shown for the same reason a shot's is: a row's chevron is part of a template the theme supplies, and
     /// a window that was never shown has no rows to press.
     /// </remarks>
-    private static async Task RunCheckAsync(Func<MainWindow, Task> check)
+    private static async Task RunCheckAsync(Func<WorkbenchView, Task> check)
     {
         var window = new MainWindow
         {
@@ -116,7 +116,7 @@ internal static class ShellCapture
             window.Show();
             await SettleAsync();
 
-            await check(window);
+            await check(window.Shell);
         }
         finally
         {
@@ -131,7 +131,7 @@ internal static class ShellCapture
     /// exception, no log line, a chevron that ignored the pointer. Reading the source is what makes it work, and the
     /// row is read back afterwards so that "the folder shut" is what was observed rather than what was assumed.
     /// </remarks>
-    private static async Task CheckProjectChevronAsync(MainWindow window)
+    private static async Task CheckProjectChevronAsync(WorkbenchView window)
     {
         var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "declared-pipeline"), out var error)
             ?? throw new InvalidOperationException(error);
@@ -165,7 +165,7 @@ internal static class ShellCapture
     /// The same correction as the project explorer's, so the same check: the handler reads the row from the event's
     /// source, and the row is read back afterwards rather than assumed to have changed.
     /// </remarks>
-    private static async Task CheckOutlineChevronAsync(MainWindow window)
+    private static async Task CheckOutlineChevronAsync(WorkbenchView window)
     {
         window.OpenDocument(
             LanguageDocuments.StateMachine(),
@@ -199,7 +199,7 @@ internal static class ShellCapture
     /// in a declared language got a ruleset. A document that opens is a document either way, which is why this is a
     /// gesture check and not a picture.
     /// </remarks>
-    private static async Task CheckNewDocumentAsync(MainWindow window)
+    private static async Task CheckNewDocumentAsync(WorkbenchView window)
     {
         var language = LanguageProject.Open(Path.Combine(AppContext.BaseDirectory, "declared-pipeline"), out var error)
             ?? throw new InvalidOperationException(error);
@@ -265,7 +265,7 @@ internal static class ShellCapture
             window.Show();
             await SettleAsync();
 
-            Click(window.FindControl<MenuItem>("LightThemeItem")!);
+            Click(window.Shell.FindControl<MenuItem>("LightThemeItem")!);
             await SettleAsync();
 
             dialog = await shot.Open(window);
@@ -309,10 +309,10 @@ internal static class ShellCapture
 
             // The window follows the desktop by default, and the gallery is light: one press of the
             // View menu's entry is how a user makes the same choice.
-            Click(window.FindControl<MenuItem>("LightThemeItem")!);
+            Click(window.Shell.FindControl<MenuItem>("LightThemeItem")!);
             await SettleAsync();
 
-            await shot.Arrange(window);
+            await shot.Arrange(window.Shell);
 
             // Without this the caret would blink, and a picture taken 200 ms later would show a caret the next
             // run does not: focus is what starts the blink timer, so the shot is taken with none.

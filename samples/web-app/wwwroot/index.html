@@ -4,33 +4,25 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Projectional editor - browser shell</title>
+    <title>Projectional editor - Avalonia</title>
     <!--
         Relative, not "/": the same build is served from the site root during development and from a sub-folder
         (the documentation's /editor/) on GitHub Pages. A root-absolute base would break the second.
     -->
     <base href="./" />
     <link rel="icon" type="image/svg+xml" href="icon.svg" />
-    <link rel="preload" id="webassembly" />
-    <link rel="stylesheet" href="css/app.css" />
     <script type="importmap"></script>
+    <script type='module' src="main.js"></script>
+    <link rel="stylesheet" href="./app.css" />
 </head>
 
 <body>
-    <div id="app">
+    <div id="out">
         <div class="pn-boot">
             <span class="pn-boot-title">Projectional editor</span>
             <span class="pn-boot-note">loading the .NET runtime&hellip;</span>
         </div>
     </div>
-
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">&#215;</span>
-    </div>
-
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>
 
 </html>

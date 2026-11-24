@@ -1,8 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <!--
+      Two heads, one shell (ADR 0015): the desktop build is the standalone executable, and the browser build is the
+      library the Avalonia WebAssembly head references. The browser has no `Window`, so its entry point lives in
+      `samples/web-app` and this assembly is a library there.
+    -->
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
+    <OutputType Condition="'$(TargetFramework)' == 'net10.0-browser'">Library</OutputType>
+    <OutputType Condition="'$(TargetFramework)' != 'net10.0-browser'">WinExe</OutputType>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
+    <!-- The desktop entry point starts Avalonia through a window lifetime, which the browser does not have. -->
+    <Compile Remove="Program.cs" />
+  </ItemGroup>
 
   <!--
     The self-contained single file is a publish shape, not a build shape: a normal build stays
@@ -24,8 +36,12 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" />
-    <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <!--
+      The desktop backends: Win32, X11 and macOS. They are the one part of the window a browser cannot use, so the
+      browser build leaves the package out and Avalonia.Browser supplies its own backend instead.
+    -->
+    <PackageReference Include="Avalonia.Desktop" Condition="'$(TargetFramework)' != 'net10.0-browser'" />
     <!--
       The window is a docking layout: panels are dockables the user can move, float and close, and the document area is
       the layout's document dock rather than a hand-built tab strip.

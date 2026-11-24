@@ -33,6 +33,11 @@ internal sealed class TerminalProcess : IDisposable
     /// </remarks>
     private void StartReading()
     {
+        if (OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
         _ = ReadAsync(_process.StandardOutput.BaseStream);
         _ = ReadAsync(_process.StandardError.BaseStream);
     }
@@ -67,6 +72,14 @@ internal sealed class TerminalProcess : IDisposable
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(exited);
+
+        if (OperatingSystem.IsBrowser())
+        {
+            // The browser has no child processes at all. The shell does not offer the terminal there, so this is the
+            // message a caller that ignores the capability set gets rather than a PlatformNotSupportedException from
+            // somewhere inside the runtime.
+            throw new PlatformNotSupportedException("a browser cannot start a program, so the terminal has no session.");
+        }
 
         var info = new ProcessStartInfo(command.FileName)
         {
@@ -111,7 +124,7 @@ internal sealed class TerminalProcess : IDisposable
     }
 
     /// <summary>Whether the program is still running.</summary>
-    internal bool IsRunning => !_process.HasExited;
+    internal bool IsRunning => !OperatingSystem.IsBrowser() && !_process.HasExited;
 
     /// <summary>Sends bytes to the program's standard input.</summary>
     /// <param name="bytes">The bytes, which are what the keys the user pressed mean.</param>
@@ -121,6 +134,11 @@ internal sealed class TerminalProcess : IDisposable
     /// </remarks>
     internal void Write(ReadOnlySpan<byte> bytes)
     {
+        if (OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
         if (bytes.IsEmpty || _process.HasExited)
         {
             return;
@@ -140,6 +158,11 @@ internal sealed class TerminalProcess : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        if (OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
         _disposed = true;
 
         _stop.Cancel();
@@ -169,6 +192,11 @@ internal sealed class TerminalProcess : IDisposable
     /// </remarks>
     private void ReportExit()
     {
+        if (OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
         if (_disposed)
         {
             return;

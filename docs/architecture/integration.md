@@ -179,7 +179,7 @@ The application has its own distribution channel, separate from the packages:
 
 | Artifact | Form | Milestone |
 | --- | --- | --- |
-| developer build | `dotnet run --project src/Projectional.Workbench` | M1 |
+| developer build | `dotnet run --project src/Projectional.Workbench --framework net10.0` | M1 |
 | self-contained single file | one executable, no .NET install required | M2 |
 | installers + file association (`.prj`) | `.msi` / `.dmg` / `.AppImage`, plus winget/Homebrew | M7 |
 

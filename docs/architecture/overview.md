@@ -46,7 +46,7 @@ Consequences that drive the whole design:
 
 Dependency rule: **arrows point downward only.** `Projection` and `Editing` must not
 reference Avalonia, so that layout and editing behaviour are testable headlessly and
-a second front end (Blazor) stays possible. `Core` must not reference `Language`;
+a second front end (the Avalonia browser head) stays possible. `Core` must not reference `Language`;
 languages are registered into Core's registries from above. `Workbench` sits *above*
 the public boundary: it sees exactly what any host application sees, which is what
 makes it a usable test of the integration surface

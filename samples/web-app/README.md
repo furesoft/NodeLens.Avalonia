@@ -1,54 +1,41 @@
 # The browser sample
 
-A Blazor WebAssembly page that edits the same projectional documents the desktop workbench edits, built
-on the same headless layers. It is a **sample**, not a product: it is not packed, and it is deployed
-beside the language documentation at `/editor/`.
+The Avalonia WebAssembly head: it hosts the **same shell** the desktop app shows - `WorkbenchView` from
+`src/Projectional.Workbench` - so the page has the tabs, docking layout, project explorer, outline, problems,
+menus and status bar, not a second, thinner shell. It is a **sample**, not a product: it is not packed, and it is
+deployed beside the language documentation at `/editor/`.
 
-Read [docs/architecture/web-host.md](../../docs/architecture/web-host.md) before changing it - it
-records how the page paints and takes input, and the features that are still missing compared with the
-desktop shell.
+Read [docs/architecture/web-host.md](../../docs/architecture/web-host.md) before changing it - it records how the
+Avalonia shell reaches a page, which decisions this head makes, and what still differs from the desktop.
 
 ## Run it
 
 ```powershell
-dotnet run --project samples/web-app/Projectional.Web.App
+dotnet workload install wasm-tools   # Emscripten, for relinking Skia and HarfBuzz
+dotnet run --project samples/web-app/Projectional.Browser.csproj
 ```
 
-The development server prints the URL. Everything (documents, tabs, the active tab) is kept in the
-browser's `localStorage`; `File ▸ Download .mps` and `File ▸ Open .mps…` move a document in and out.
+The development server prints the URL. Building for the browser requires the `wasm-tools` workload, and the
+publish relinks the runtime (`WasmBuildNative`); trimming is off because the export compiles generated C# with
+Roslyn.
 
 ## What is in the box
 
-- **10 languages**: Rules, StateMachine, FeatureModel, SqlSchema (built in code), and the declared
-  samples Atlas, DeclaredExpressions, Invoice, Pipeline, Units, Workflow (embedded resources, opened with
-  `LanguageProject.Open` in the runtime's file system).
-- **The editor**: painted from `EditorFrame`, caret and hit test from the same layout, completion,
-  go to definition, undo/redo, drag/word/value selection, copy/cut/paste with the system clipboard.
-- **The shell**: tabs, menus, status bar, project explorer with a model browser, problems panel.
-- **Persistence**: autosave, explicit save, download/upload.
+- **The desktop shell**: menus, docking panels (project explorer, outline, problems, usages), tabs, status bar -
+  the same `WorkbenchView` the window hosts.
+- **The editor**: caret, selection, completion, quick fixes, intentions, find usages, undo/redo, clipboard.
+- **Languages**: the built-in ones (Rules, StateMachine, FeatureModel, SqlSchema) and the declared samples
+  (Atlas, DeclaredExpressions, Invoice, Pipeline, Units, Workflow), embedded in the head and written into the
+  runtime's file system at startup.
+- **Storage**: the shell's recent list lives in `localStorage`; documents live in the in-memory file system.
+  Opening a file copies it in; saving downloads it.
+- **Not offered**: the terminal (`Process` is unsupported in WebAssembly) and modal dialogs such as module
+  settings. The unsaved-changes prompt is a flyout.
 
-## Test it
-
-```powershell
-dotnet test tests/Projectional.Web.Tests
-```
-
-The tests cover the host's pure logic (keys, markup, storage, workspace, languages, outline). The page's
-browser behaviour - focus, gestures, clipboard, the deploy sub-path - is checked by hand.
-
-## Publish it
+## Publish
 
 ```powershell
-dotnet publish samples/web-app/Projectional.Web.App --configuration Release --output artifacts/editor
+dotnet publish samples/web-app/Projectional.Browser.csproj --configuration Release --output _editor
 ```
 
-A Blazor publish nests the site in `wwwroot/`, so the served folder is `artifacts/editor/wwwroot`.
-`wwwroot/index.html` uses `<base href="./" />`, which is what lets the same build work at `/` and under
-`/editor/`.
-
-## Layout
-
-| Folder | What |
-| --- | --- |
-| `Projectional.Web/` | the headless host: languages, documents, workspace, markup, key map, storage, outline |
-| `Projectional.Web.App/` | the Blazor page: shell component, interop seam, CSS and `js/editor.js` |
+The served site is `_editor/wwwroot/`; a static server rooted there (or a copy to `_site/editor/`) is enough.

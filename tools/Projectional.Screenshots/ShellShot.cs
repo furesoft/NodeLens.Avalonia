@@ -9,11 +9,11 @@ namespace Projectional.Screenshots;
 /// <param name="Height">The height the window is shown at.</param>
 /// <remarks>
 /// A shell feature is a panel of the window rather than a state of one control, so these shots are taken of
-/// <see cref="MainWindow"/> instead of the editor control. The window is cropped by nothing: the menu bar, the
+/// <see cref="WorkbenchView"/> instead of the editor control. The window is cropped by nothing: the menu bar, the
 /// outline, the document and the panel are the picture, and cutting the page away would cut away the shell.
 /// </remarks>
 internal sealed record ShellShot(
     string FileName,
-    Func<MainWindow, Task> Arrange,
+    Func<WorkbenchView, Task> Arrange,
     double Width = 980,
     double Height = 400);

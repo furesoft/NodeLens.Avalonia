@@ -75,9 +75,9 @@ records what was actually verified.
 35. [Distribution and updates](architecture/distribution.md) - installing the app and updating it, with Velopack.
 36. [The onboarding tour](architecture/onboarding-tour.md) - explaining the IDE inside the IDE.
 
-37. [The browser editor](architecture/web-host.md) — the same headless core behind a Blazor
-    WebAssembly page, how it paints and takes input, and where it still differs from the desktop
-    workbench (delivered; sample).
+37. [The browser editor](architecture/web-host.md) — the desktop shell hosted in a page by Avalonia's
+    WebAssembly backend: how it boots, what the browser head supplies, and where it still differs from the
+    desktop workbench (delivered; sample).
 
 Decision records live in [adr/](adr/) and are frozen once accepted; revised
 decisions get a new number and supersede the old one.
