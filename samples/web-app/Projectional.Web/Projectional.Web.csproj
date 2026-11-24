@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The headless half of the browser sample: the shell's document model, the key map, the markup a page is painted
+    with and the storage codec. It has no Blazor in it on purpose, so the logic that is easy to get wrong - the
+    translation of a key, the escaping of painted text, the workspace's save and restore - is testable in an
+    ordinary test project, and the Razor component is only the wiring around it.
+
+    A sample, not a product: the app beside it is what a reader runs (ADR 0022's list of non-products).
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Projectional.Core\Projectional.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Editing\Projectional.Editing.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Intentions\Projectional.Intentions.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Language\Projectional.Language.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Languages\Projectional.Languages.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Persistence\Projectional.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Projection\Projectional.Projection.csproj" />
+    <ProjectReference Include="..\..\..\src\Projectional.Semantics\Projectional.Semantics.csproj" />
+    <ProjectReference Include="..\..\..\src\Languages\Projectional.Expressions\Projectional.Expressions.csproj" />
+    <ProjectReference Include="..\..\..\src\Languages\Projectional.Structures\Projectional.Structures.csproj" />
+    <ProjectReference Include="..\..\..\src\Languages\Samples\Projectional.Samples\Projectional.Samples.csproj" />
+    <ProjectReference Include="..\..\..\src\Languages\Samples\Projectional.Samples.FeatureModel\Projectional.Samples.FeatureModel.csproj" />
+    <ProjectReference Include="..\..\..\src\Languages\Samples\Projectional.Samples.SqlSchema\Projectional.Samples.SqlSchema.csproj" />
+    <ProjectReference Include="..\..\..\src\Languages\Samples\Projectional.Samples.StateMachine\Projectional.Samples.StateMachine.csproj" />
+  </ItemGroup>
+
+  <!--
+    The declared sample languages are folders of models, not code, so a browser cannot read them from the file
+    system it does not have. They travel as embedded resources and are written to the runtime's in-memory file
+    system on first use, which is what lets the page open every example the desktop shell can open.
+
+    `%(RecursiveDir)` uses the build machine's separator; the loader normalizes it, because a manifest name is not
+    allowed to depend on which OS the sample was packed on.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\samples\declared-atlas\**\*.mps" LogicalName="Examples/declared-atlas/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\..\samples\declared-expressions\**\*.mps" LogicalName="Examples/declared-expressions/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\..\samples\declared-invoice\**\*.mps" LogicalName="Examples/declared-invoice/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\..\samples\declared-pipeline\**\*.mps" LogicalName="Examples/declared-pipeline/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\..\samples\declared-units\**\*.mps" LogicalName="Examples/declared-units/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\..\samples\declared-workflow\**\*.mps" LogicalName="Examples/declared-workflow/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

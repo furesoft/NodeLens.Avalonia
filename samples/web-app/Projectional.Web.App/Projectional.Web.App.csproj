@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    The browser shell: the Razor page around Projectional.Web. It is a sample rather than a product, so it is not
+    packed, and it is deliberately thin - every decision that can be tested without a browser lives in the library
+    beside it.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!--
+      The page's asset links carry `#[.{fingerprint}]` so a cached script is invalidated by a new build. The SDK
+      replaces the placeholder when this is on; without it the literal token would be served.
+    -->
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Projectional.Web\Projectional.Web.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -32,6 +32,16 @@
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
 
+  <ItemGroup Label="Web">
+    <!--
+      The browser sample's runtime and its development server. Both follow the SDK's band: the sample is a
+      demonstration of the framework in a browser, not a second product with a support window of its own.
+    -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.14" />
+  </ItemGroup>
+
+
   <ItemGroup Label="Build">
     <!--
       Derives the package version from the git history and the `v*` tags (GitVersion.yml) instead of a
