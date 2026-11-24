@@ -52,6 +52,14 @@ those documents as the target shape, and add M2 features to `MainWindow` rather 
 through the registry (`RunCommand("name")`); do not add a capability check to the handler body, because
 the registry is the one enforcement point.
 
+A second frontend ships as a **sample**, not as a product: `samples/web-app` is a Blazor WebAssembly page
+that reuses `Core`, `Language`, `Projection` and `Editing` unchanged and reimplements only the chrome
+(`Projectional.Web` holds the headless host, `Projectional.Web.App` the page). It is not a package, it is
+deployed beside the documentation at `/editor/`, and [web-host.md](../../../docs/architecture/web-host.md)
+records how it paints and takes input plus its gaps against the desktop shell. Do not grow a second
+command registry or a second set of editing rules there: if the shell is extracted (M6), the web shell
+consumes it.
+
 ## Status and where the truth lives
 
 - `docs/roadmap.md` - milestones M0-M8 with acceptance gates and effort estimates (M8 is after 1.0). It holds the **scope** of each milestone and what is left, not a status report; a finished milestone is removed from it.
