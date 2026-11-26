@@ -55,6 +55,24 @@ public static class EditorNotations
         // own: `@type@` reads as "this is computed" in a line that otherwise only spells out literal text.
         notations.Add(EditorConceptKeys.TypeOf, ed => ed.Line(ed.Annotation("@type@")));
 
+        // `[> image "key"` reads as the inline cell it is, and the box is named rather than implied for the same
+        // reason `empty:` and `spacing:` are: an author needs to see which number is the width and which the height,
+        // and `line` is what an unset one means.
+        notations.Add(EditorConceptKeys.Image, ed => ed.Line(
+            ed.Punct("[>"),
+            ed.Space,
+            ed.Keyword("image"),
+            ed.Space,
+            ed.Property("key"),
+            ed.Space,
+            ed.Keyword("width:"),
+            ed.Space,
+            ed.Property("width", emptyText: "line"),
+            ed.Space,
+            ed.Keyword("height:"),
+            ed.Space,
+            ed.Property("height", emptyText: "line")));
+
         // `[ cells ]`: the brackets beside the cells, on one row - which is what the horizontal cell is for. Without
         // it the bracket would have to be a line of its own above the cells.
         notations.Add(EditorConceptKeys.Line, ed => ed.Horizontal(

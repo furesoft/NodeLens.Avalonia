@@ -111,4 +111,33 @@ public sealed class NotationWriterTests
             source.ToString(),
             ignoreLineEndingDifferences: true);
     }
+
+    [Fact]
+    public void APictureIsWrittenBackOutWithOnlyTheBoxItsAuthorGave()
+    {
+        // An icon has no box of its own - a side left at zero means "as tall as the line" - so writing `0, 0` back would
+        // turn a decision the notation never made into a number a later reader has to interpret.
+        var notations = new NotationRegistry(
+            ConceptRegistry.Create(
+                [new ConceptDeclaration("Export.Mark", [new PropertySlot("value", PropertyType.String)])]));
+
+        notations.Add("Export.Mark", ed => ed.Line(
+            ed.Image("key"),
+            ed.Space,
+            ed.Property("value"),
+            ed.Space,
+            ed.Image("logo", 6, 3)));
+
+        var source = new SourceWriter();
+
+        NotationWriter.Write(source, notations.Notations);
+
+        Assert.Equal(
+            """
+            notations.Add("Export.Mark", ed => ed.Line(ed.Image("key"), ed.Space, ed.Property("value"), ed.Space, ed.Image("logo", 6, 3)));
+
+            """,
+            source.ToString(),
+            ignoreLineEndingDifferences: true);
+    }
 }

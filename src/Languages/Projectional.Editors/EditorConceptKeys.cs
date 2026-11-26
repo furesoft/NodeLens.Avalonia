@@ -43,6 +43,9 @@ public static class EditorConceptKeys
     /// <summary>The type of the node, drawn as an annotation rather than as part of the document.</summary>
     public const string TypeOf = "Editor.TypeOf";
 
+    /// <summary>A picture drawn from a key the host resolves.</summary>
+    public const string Image = "Editor.Image";
+
     /// <summary>A word the notation itself provides.</summary>
     public const string Keyword = "Editor.Keyword";
 

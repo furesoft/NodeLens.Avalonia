@@ -33,6 +33,7 @@ with its **type hierarchy** - `ed.Line(ed.Indent(...))` does not compile - carri
 | `Editor.Horizontal` | `cells` over `Editor.BlockCell` | the same blocks, in one row |
 | `Editor.Space` | - | a gap |
 | `Editor.TypeOf` | - | the node's type, as an annotation |
+| `Editor.Image` | `key`, `width`, `height` | a picture the host draws, in a box the notation sizes |
 | `Editor.Keyword` | `text` | a word the notation provides |
 | `Editor.Punct` | `text` | a symbol the notation provides |
 | `Editor.Property` | `slot` | a property's text |
@@ -96,7 +97,9 @@ level deeper, `[ ... ]` is one row, and each cell carries its own glyph - `-word
 property, `( slot )` for a single child, `{ slot }` for a list, `< slot >` for a reference, `;` for a gap, and
 `@type@` for the cell that shows the node's type. That last one is drawn as an annotation rather than a keyword, so
 reading a definition with the arrow keys walks the slots the author fills in and steps over it: it is a fact the
-projection computes, not a word anybody types.
+projection computes, not a word anybody types. A picture has a marker of its own, because it is the one cell whose
+content is not in the model at all: `[> image "key" width: 4 height: 3`, where the box is in layout units and an
+unset side reads `line` - as tall as the line, which is what an icon is.
 A
 structure that deep reads top to bottom, and the definition of a language looks like the language it defines.
 
