@@ -46,4 +46,14 @@ internal sealed class Measurement
 
     /// <summary>Milliseconds to recheck one unit of the document - the incremental seam's cost.</summary>
     public required double Subtree { get; init; }
+
+    /// <summary>Milliseconds to build the tree again after a change to one node - the projection's share of a keystroke.</summary>
+    /// <remarks>
+    /// The counterpart of <see cref="Tree"/>: the same document, rebuilt after a change to one node, with the
+    /// projections the change did not invalidate reused. The two together are the answer to "did the cache help", and
+    /// the ratio between them is what a language with references gives up, because a subtree that shows one is never
+    /// reused. It is not the end-to-end cost of a keystroke: the session also resolves the caret's position after a
+    /// rebuild, and that work is not the projection's.
+    /// </remarks>
+    public required double Rebuild { get; init; }
 }

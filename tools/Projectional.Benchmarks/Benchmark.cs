@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Projectional.Core;
 using Projectional.Editing;
 using Projectional.Projection;
 using Projectional.Semantics;
@@ -48,7 +49,30 @@ internal static class Benchmark
                 checks.Find(model);
             }),
             Subtree = Best(repetitions, () => engine.Check(representative)),
+            Rebuild = RebuildAfterChange(repetitions, builder, root, scenario.EditTarget(root)),
         };
+    }
+
+    /// <summary>
+    /// Milliseconds to build the tree again after a change to one node - the projection's share of a keystroke.
+    /// </summary>
+    /// <remarks>
+    /// The builder's cache is already warm from the <see cref="Measurement.Tree"/> phase, so this is the number the
+    /// cache changes: the changed node and its ancestors are dirty and everything beside them is reused. It is
+    /// deliberately not the end-to-end cost of a keystroke, because the session does work outside the rebuild that the
+    /// projection does not own - resolving the caret's position, for one - and folding that in would credit the cache
+    /// with a saving it does not make.
+    /// </remarks>
+    private static double RebuildAfterChange(int repetitions, EditorTreeBuilder builder, Node root, Node changed)
+    {
+        var dirty = new HashSet<NodeId>();
+
+        for (var node = changed; node is not null; node = node.Parent)
+        {
+            dirty.Add(node.Id);
+        }
+
+        return Best(repetitions, () => builder.Build(root, dirty));
     }
 
     private static double Best(int repetitions, Action body)

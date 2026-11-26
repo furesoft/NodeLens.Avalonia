@@ -62,4 +62,6 @@ internal sealed class FeatureScenario : Scenario
     /// this scenario exists for.
     /// </remarks>
     public override Node Representative(Node root) => root.GetChildren(FeatureModelLanguage.ConstraintsSlot)[0];
+
+    public override Node EditTarget(Node root) => root.GetChildren(FeatureModelLanguage.FeaturesSlot)[^1];
 }
