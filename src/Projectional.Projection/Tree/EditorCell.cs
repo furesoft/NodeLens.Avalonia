@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -27,6 +29,17 @@ public abstract class EditorCell
 
     /// <summary>Where this cell sits in the model, and therefore what the caret can name it by.</summary>
     public CellAddress Address { get; }
+
+    /// <summary>
+    /// How the cell is decorated, copied from the notation cell that produced it, or <see langword="null"/> for a
+    /// cell drawn plainly.
+    /// </summary>
+    /// <remarks>
+    /// The builder copies the notation's paint onto the cell so that layout and the frame read one object instead of
+    /// reaching back into the notation. It is set by the builder and not by a host: a decoration is notation, and a
+    /// host that wants to restyle a projection does it through the palette, not by mutating cells.
+    /// </remarks>
+    public CellPaint? Paint { get; internal set; }
 
     /// <summary>The cell this one is arranged inside, or <see langword="null"/> for a tree root.</summary>
     public EditorCell? Parent { get; internal set; }

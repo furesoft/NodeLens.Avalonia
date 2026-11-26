@@ -48,7 +48,13 @@ internal static class SqlSchemaNotations
 
         notations.Add(SqlConceptKeys.Column, ed => ed.Line(ed.Property("name")));
 
+        // The key is drawn, not typed: an icon says "this line is about a key" in one glance, which is the job a
+        // glyph like a padlock does badly in a font that may not have one. The name is a key and not a path - the
+        // shell's image palette is what draws "key" (see ImagePalette.KeyKey), and a host that does not know it
+        // shows a placeholder box instead of leaving a gap.
         notations.Add(SqlConceptKeys.ForeignKey, ed => ed.Line(
+            ed.Image("key"),
+            ed.Space,
             ed.Keyword("foreign", TextEmphasis.Italic),
             ed.Space,
             ed.Keyword("key", TextEmphasis.Italic),

@@ -152,6 +152,57 @@ public sealed class CellLayout
 
     public override string ToString() => $"{Tree} laid out at {Size}";
 
+    /// <summary>
+    /// Where a table's header row is, as one band across the grid's content width, or <see langword="null"/> when
+    /// the layout placed no header cells.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One band rather than one region per header cell, because a column is as wide as its widest cell and a header is
+    /// only as wide as its own text: a region per header would stop short of the column it names. The extent across
+    /// is therefore the table's own width, minus the room its own decoration takes, and the extent down is the height
+    /// of the tallest header cell.
+    /// </para>
+    /// <para>
+    /// This is geometry, not policy: a table with no <see cref="TableCell.HeaderFill"/> still has a header row, and
+    /// the caller that wants a band asks for both.
+    /// </para>
+    /// </remarks>
+    public LayoutRect? HeaderBandOf(TableCell table)
+    {
+        ArgumentNullException.ThrowIfNull(table);
+
+        if (BoundsOf(table) is not { } tableBounds)
+        {
+            return null;
+        }
+
+        var top = double.MaxValue;
+        var bottom = double.MinValue;
+
+        foreach (var header in table.Headers)
+        {
+            if (BoundsOf(header) is { } bounds)
+            {
+                top = Math.Min(top, bounds.Y);
+                bottom = Math.Max(bottom, bounds.Bottom);
+            }
+        }
+
+        if (bottom <= top)
+        {
+            return null;
+        }
+
+        var inset = table.Paint?.Inset ?? CellEdges.Zero;
+
+        return new LayoutRect(
+            tableBounds.X + inset.Left,
+            top,
+            tableBounds.Width - inset.Horizontal,
+            bottom - top);
+    }
+
     private Dictionary<EditorCell, LayoutRect> BoundsByCell()
     {
         var bounds = new Dictionary<EditorCell, LayoutRect>(Cells.Count);

@@ -69,22 +69,32 @@ public sealed class CellLayouter
         var index = placed.Count;
         placed.Add(default);
 
+        // A decoration is room the cell keeps around its content, so the content is arranged inside it and the cell
+        // grows by exactly what the decoration takes. The border sits outside the padding, which is why the inset is
+        // the sum of both - and why the cell's own bounds, not its content's, are what the caret and hit-testing see.
+        var inset = cell.Paint?.Inset ?? CellEdges.Zero;
+        var contentX = x + inset.Left;
+        var contentY = y + inset.Top;
+
         var size = cell switch
         {
-            TextCell line => TextSize(line, x, text),
-            ContainerCell { Orientation: CellOrientation.Horizontal } line => ArrangeInline(line.Content, x, y, placed, text),
-            ContainerCell stack => ArrangeStacked(stack, x, y, placed, text),
+            TextCell line => TextSize(line, contentX, text),
+            ImageCell image => ImageSize(image),
+            ContainerCell { Orientation: CellOrientation.Horizontal } line => ArrangeInline(line.Content, contentX, contentY, placed, text),
+            ContainerCell stack => ArrangeStacked(stack, contentX, contentY, placed, text),
             ChildCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
-            ChildCell { IsStacked: true } stacked => ArrangeVertical(stacked.Content, x, x, y, placed, text, stacked.BlankLineBefore),
-            ChildCell child => ArrangeInline(child.Content, x, y, placed, text),
+            ChildCell { IsStacked: true } stacked => ArrangeVertical(stacked.Content, contentX, contentX, contentY, placed, text, stacked.BlankLineBefore),
+            ChildCell child => ArrangeInline(child.Content, contentX, contentY, placed, text),
             CollectionCell { IsEmpty: true } empty => SingleLineSize(empty.EmptyText),
-            CollectionCell collection => ArrangeInline(collection.Content, x, y, placed, text),
-            TableCell table => ArrangeTable(table, x, y, placed, text),
+            CollectionCell collection => ArrangeInline(collection.Content, contentX, contentY, placed, text),
+            TableCell table => ArrangeTable(table, contentX, contentY, placed, text),
             _ => throw new ProjectionException($"The cell {cell} is of a kind that layout does not know."),
         };
 
-        placed[index] = new PlacedCell(cell, new LayoutRect(x, y, size.Width, size.Height));
-        return size;
+        var outer = new LayoutSize(size.Width + inset.Horizontal, size.Height + inset.Vertical);
+
+        placed[index] = new PlacedCell(cell, new LayoutRect(x, y, outer.Width, outer.Height));
+        return outer;
     }
 
     private LayoutSize ArrangeInline(
@@ -328,4 +338,17 @@ public sealed class CellLayouter
 
         return new LayoutSize(width, _measure.LineHeight);
     }
+
+    /// <summary>
+    /// The room a picture takes: the box its notation asked for, and the line's height where it asked for none.
+    /// </summary>
+    /// <remarks>
+    /// A side left at zero means "as tall as the line", so an icon follows the font instead of pinning a size the
+    /// notation would have to guess. Nothing is measured here and no bitmap is consulted: the box is a number the
+    /// notation wrote down, which is what keeps a picture's size out of the host and the layout's hands.
+    /// </remarks>
+    private LayoutSize ImageSize(ImageCell image) =>
+        new(
+            image.Width > 0 ? image.Width : _measure.LineHeight,
+            image.Height > 0 ? image.Height : _measure.LineHeight);
 }

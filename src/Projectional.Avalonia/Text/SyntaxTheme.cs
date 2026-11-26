@@ -146,6 +146,14 @@ public sealed class SyntaxTheme
     /// </remarks>
     public CompletionPalette Lists => field ??= IsDark ? CompletionPalette.Dark : CompletionPalette.Light;
 
+    /// <summary>The artwork the notation's picture keys are drawn with.</summary>
+    /// <remarks>
+    /// Part of the theme for the same reason <see cref="Lists"/> is, and lazy for the same reason: the presets are
+    /// vector pictures built from a <see cref="StreamGeometry"/>, which needs a rendering platform. A host that
+    /// themes the page but not its pictures has shipped a bug the user can see - a light icon set on a dark page.
+    /// </remarks>
+    public ImagePalette Images => field ??= IsDark ? ImagePalette.Dark : ImagePalette.Light;
+
     /// <summary>The colours of the marker tooltip, which is the other box drawn over the page.</summary>
     public MarkerTipPalette Tip { get; }
 

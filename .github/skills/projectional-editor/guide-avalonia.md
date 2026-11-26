@@ -130,13 +130,22 @@ Invariants that are cheap now and expensive later:
   re-projection would mean the palette had leaked into meaning.
 - **A theme carries the overlays too, not only the text.** `SyntaxTheme` is the one object a host
   passes for "make this dark", so it holds `Palette`, `Background`, `Chrome`, `Caret`, `Highlight`,
-  `Gutter`, `LineNumber`, `Markers`, `Lists` (the completion and quick-fix lists), `Tip` (the marker
-  tooltip) and `Bulb`. Anything painted *over* the document is read against it: a host that themes
-  the page and forgets an overlay ships a white box on a dark page, which is what happened before
-  `Lists`, `Tip` and `Bulb` were added. `Lists` is built lazily (`field ??=`) because a
-  `CompletionPalette` carries vector icons and a `StreamGeometry` needs a rendering platform -
-  constructing it eagerly made `SyntaxTheme`'s static initializer require a window and broke every
-  headless test that compares themes. Keep `SyntaxTheme` free of anything that needs a platform.
+  `Gutter`, `LineNumber`, `Markers`, `Lists` (the completion and quick-fix lists), `Images` (the artwork a
+  notation's picture keys are drawn with), `Tip` (the marker tooltip) and `Bulb`. Anything painted *over*
+  the document is read against it: a host that themes the page and forgets an overlay ships a white box on
+  a dark page, which is what happened before `Lists`, `Tip` and `Bulb` were added - and a light icon set on
+  a dark page is the same bug one layer down. `Lists` and `Images` are built lazily (`field ??=`) because
+  both carry vector icons and a `StreamGeometry` needs a rendering platform - constructing one eagerly made
+  `SyntaxTheme`'s static initializer require a window and broke every headless test that compares themes.
+  Keep `SyntaxTheme` free of anything that needs a platform.
+- **A picture cell is a region and a key, never a bitmap.** `EditorFrame.Images` is the third display list
+  beside `Paints` and `TextRuns`, and the control resolves a key through `ImagePalette`. Two things are
+  deliberate there: an unknown key draws a placeholder box rather than nothing (a missing picture must look
+  missing), and the artwork is *fitted* rather than stretched (`FitImage`) because a path scaled by two
+  different factors is distorted along with its stroke. A preset is a **stroke**, not a fill: the paths are
+  the open outlines an icon set is written in, and filling one paints the area between its ends - a key's
+  shaft closed into a wedge. The completion list's diamonds are closed shapes and stay filled, which is why
+  `GeometryImage` takes a fill, a pen, or both.
 
 ### Three tooltips, one pointer
 

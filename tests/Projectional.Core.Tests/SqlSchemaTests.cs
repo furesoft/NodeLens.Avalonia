@@ -48,6 +48,8 @@ public sealed class SqlSchemaTests
     [Fact]
     public void ATableIsDrawnAsAGridOfItsColumnsWithItsKeysUnderIt()
     {
+        // The key's line starts with a picture, which the text grid draws as its room: one unit for the icon and
+        // one for the space after it, so the line is two columns further in than the grid above it.
         Assert.Equal(
             """
             schema shop {
@@ -56,7 +58,7 @@ public sealed class SqlSchemaTests
                 id      int
                 name    text
                 city_id int
-                foreign key city_id references id
+                  foreign key city_id references id
               }
               table city {
                 column type

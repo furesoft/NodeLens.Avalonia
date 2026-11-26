@@ -24,20 +24,35 @@ namespace Projectional.Avalonia;
 internal sealed class GeometryImage : IImage
 {
     private readonly Geometry _geometry;
-    private readonly IBrush _brush;
+    private readonly IBrush? _fill;
+    private readonly IPen? _pen;
+
     private readonly Point _origin;
 
     /// <summary>Creates the picture.</summary>
     /// <param name="geometry">The shape, in whatever coordinates it was authored.</param>
-    /// <param name="brush">What it is filled with.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="geometry"/> or <paramref name="brush"/> is <see langword="null"/>.</exception>
-    public GeometryImage(Geometry geometry, IBrush brush)
+    /// <param name="fill">What the shape is filled with, or <see langword="null"/> to draw it as an outline.</param>
+    /// <param name="pen">
+    /// The outline, or <see langword="null"/> for a filled shape. An icon set is usually drawn as strokes - the
+    /// shapes are open paths, and filling one paints the area between its ends rather than the line they describe -
+    /// while a marker such as the completion list's diamond is a closed shape and is filled.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="geometry"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">Neither a fill nor a pen was given.</exception>
+    public GeometryImage(Geometry geometry, IBrush? fill = null, IPen? pen = null)
     {
         ArgumentNullException.ThrowIfNull(geometry);
-        ArgumentNullException.ThrowIfNull(brush);
+
+        if (fill is null && pen is null)
+        {
+            throw new ArgumentException(
+                "A picture needs something to draw with: pass a fill, a pen, or both.",
+                nameof(fill));
+        }
 
         _geometry = geometry;
-        _brush = brush;
+        _fill = fill;
+        _pen = pen;
         _origin = geometry.Bounds.TopLeft;
         Size = geometry.Bounds.Size;
     }
@@ -67,7 +82,7 @@ internal sealed class GeometryImage : IImage
         using (context.PushClip(destRect))
         using (context.PushTransform(transform))
         {
-            context.DrawGeometry(_brush, null, _geometry);
+            context.DrawGeometry(_fill, _pen, _geometry);
         }
     }
 

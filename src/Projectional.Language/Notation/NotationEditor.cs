@@ -152,11 +152,46 @@ public sealed class NotationEditor
         int spacing = 1) =>
         new(slot) { Separator = separator, EmptyText = emptyText, Spacing = spacing };
 
+    /// <summary>
+    /// A picture on the line: an icon before a name, a logo beside a value.
+    /// </summary>
+    /// <param name="key">The name of the picture, which the host resolves - never a path.</param>
+    /// <param name="width">The box's width in layout units, or zero for the line's height.</param>
+    /// <param name="height">The box's height in layout units, or zero for the line's height.</param>
+    /// <remarks>
+    /// The box defaults to the line's height so that an icon scales with the font and sits on the line instead of
+    /// forcing it to grow; a photograph passes its own box, because it is not a piece of typography. The artwork is
+    /// the host's: a key the host does not know is drawn as a placeholder, so a missing picture reads as missing.
+    /// </remarks>
+    public ImageNotationCell Image(string key, double width = 0, double height = 0) =>
+        new(key, width, height);
+
     public TableColumn Column(string slot, InlineNotationCell header, string emptyText = "<empty>") =>
         new(slot, header) { EmptyText = emptyText };
 
     public TableNotationCell Table(string slot, params ReadOnlySpan<TableColumn> columns) =>
         new(slot, columns);
+
+    /// <summary>
+    /// A table that is boxed, with a filled header row.
+    /// </summary>
+    /// <param name="slot">The child slot to draw as rows.</param>
+    /// <param name="paint">The room, border and fill around the whole grid.</param>
+    /// <param name="headerFill">What the header row's band is filled with.</param>
+    /// <param name="emptyText">What an empty table shows in place of its first row.</param>
+    /// <param name="columns">The columns, left to right.</param>
+    /// <remarks>
+    /// The two decorations are separate arguments because they are two different regions: the paint is a box around
+    /// the grid, and the header fill is a band across its first row, so a table can want either one alone. A header
+    /// is not a box - a column is as wide as its widest cell, and a box per header would stop where its text ends.
+    /// </remarks>
+    public TableNotationCell Table(
+        string slot,
+        CellPaint paint,
+        PaintRole headerFill,
+        string emptyText = "<empty>",
+        params ReadOnlySpan<TableColumn> columns) =>
+        new(slot, columns) { EmptyText = emptyText, Paint = paint, HeaderFill = headerFill };
 
     /// <summary>
     /// A table whose empty state says something more useful than the default placeholder.

@@ -111,7 +111,7 @@ public sealed class EditorTreeBuilder
     {
         var address = rootAddress ?? new CellAddress(node.Id);
 
-        return cell switch
+        EditorCell built = cell switch
         {
             LineNotationCell line => new ContainerCell(
                 address,
@@ -164,6 +164,16 @@ public sealed class EditorTreeBuilder
             _ => throw new ProjectionException(
                 $"The notation of '{node.Concept.Key}' uses a block cell of unknown kind '{cell.GetType().Name}'."),
         };
+
+        // The decoration travels with the notation cell, so the one place that knows both the notation and the cell it
+        // produced is where the copy happens. Layout and the frame then read the cell alone, exactly as they already
+        // read its address and its emphasis.
+        if (cell.Paint is { } paint)
+        {
+            built.Paint = paint;
+        }
+
+        return built;
     }
 
     private EditorCell[] BuildBlocks(IReadOnlyList<BlockNotationCell> cells, Node node, TextEmphasis emphasis)
@@ -247,6 +257,10 @@ public sealed class EditorTreeBuilder
                 emphasis | constant.Emphasis),
         ],
         SpaceNotationCell => [new SpaceCell(new CellAddress(node.Id))],
+
+        // A picture carries its key and its box and nothing else: what a unit is belongs to the measure, and which
+        // artwork a key names belongs to the host. The builder therefore copies the notation and asks no question.
+        ImageNotationCell image => [new ImageCell(new CellAddress(node.Id), image.Key, image.Width, image.Height)],
 
         // The type is asked of the registry while the tree is built, exactly like a property value is read from the
         // model: the cell carries finished text, so a renderer needs no registry and an edit that changes the type
@@ -594,7 +608,14 @@ public sealed class EditorTreeBuilder
             built[r] = cells;
         }
 
-        return new TableCell(address, slot, notation.EmptyText, headers, built, CellAddress.OfSlot(node.Id, slot));
+        return new TableCell(
+            address,
+            slot,
+            notation.EmptyText,
+            headers,
+            built,
+            CellAddress.OfSlot(node.Id, slot),
+            notation.HeaderFill);
     }
 
     /// <summary>Projects one column of one row, which is a property, a single child or a reference of the row.</summary>

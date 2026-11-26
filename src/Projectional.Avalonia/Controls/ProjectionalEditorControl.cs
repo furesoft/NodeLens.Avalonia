@@ -155,6 +155,8 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
 
     private CompletionPalette _listPalette = CompletionPalette.Light;
 
+    private ImagePalette _imagePalette = ImagePalette.Light;
+
     // The rows the gutter numbers, kept between paints because counting them walks the whole document
     // rather than the visible part of it. The layout is a new object after every rebuild, so its identity
     // is the invalidation: a different layout or a different measure means the numbers are stale.
@@ -534,9 +536,33 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>The artwork the notation's picture keys are drawn with.</summary>
+    /// <remarks>
+    /// A notation says a picture <em>is</em> a key and never a path, so the artwork is the host's: the presets draw
+    /// theirs as vector paths (no binary asset, sharp at any scale), and a host with its own icon set passes
+    /// <c>Bitmap</c>s. A key this palette does not know is drawn as a placeholder box rather than skipped, so a
+    /// picture the host is missing looks missing instead of leaving an unexplained gap on the line.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public ImagePalette ImagePalette
+    {
+        get => _imagePalette;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_imagePalette, value))
+            {
+                return;
+            }
+
+            _imagePalette = value;
+            InvalidateVisual();
+        }
+    }
+
     /// <summary>The colour of the caret bar.</summary>
     public IBrush CaretBrush { get; set; }
-
     /// <summary>Whether the rows of the document are numbered down the left edge.</summary>
     /// <remarks>
     /// <para>
@@ -1297,6 +1323,42 @@ public sealed class ProjectionalEditorControl : Control, ILogicalScrollable
         // In the margin rather than in the page, so it is painted with the gutter and does not scroll
         // sideways with the text: the bulb names a line, not a column.
         PaintBulb(context, session);
+
+        // Decorations first: a fill or a border belongs under the text it surrounds, and under the selection that
+        // covers it. The frame hands them over as regions and roles, so the renderer never learns what a table is.
+        foreach (var paint in frame.Paints)
+        {
+            var bounds = ToControl(frame, paint.Bounds);
+            var rounded = new RoundedRect(bounds, paint.Paint.CornerRadius);
+
+            if (paint.Paint.Fill is { } fill)
+            {
+                context.DrawRectangle(_palette.BrushOf(fill), null, rounded);
+            }
+
+            if (paint.Paint.Border.IsVisible)
+            {
+                context.DrawRectangle(null, _palette.PenOf(paint.Paint.Border.Role, paint.Paint.Border.Thickness), rounded);
+            }
+        }
+
+        // Pictures next: an icon belongs over its cell's fill and under the selection, and the frame hands it over as
+        // a box and a name so the control needs no idea which concept asked for it.
+        foreach (var image in frame.Images)
+        {
+            var bounds = ToControl(frame, image.Bounds);
+
+            if (_imagePalette.ImageOf(image.Key) is { } picture)
+            {
+                context.DrawImage(picture, bounds);
+            }
+            else
+            {
+                // A key the host has no artwork for still keeps its room, drawn as an empty box: a picture that
+                // vanished without a trace would read as a notation that forgot to draw anything.
+                context.DrawRectangle(null, _palette.PenOf(PaintRole.Warning, 1), bounds);
+            }
+        }
 
         foreach (var highlight in frame.Highlights)
         {

@@ -2539,6 +2539,7 @@ public sealed partial class WorkbenchView : UserControl, IDisposable
         // The overlays as well, or a dark page gets white boxes on it: the completion list, the quick-fix
         // list, the marker tooltip and the bulb are painted over the document and are read against it.
         editor.ListPalette = theme.Lists;
+        editor.ImagePalette = theme.Images;
         editor.TipPalette = theme.Tip;
         editor.BulbBrush = theme.Bulb;
     }

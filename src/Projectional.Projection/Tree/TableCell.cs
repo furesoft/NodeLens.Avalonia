@@ -1,3 +1,5 @@
+using Projectional.Language;
+
 namespace Projectional.Projection;
 
 /// <summary>
@@ -34,7 +36,8 @@ public sealed class TableCell : StructureCell
         string emptyText,
         IReadOnlyList<EditorCell> headers,
         IReadOnlyList<IReadOnlyList<EditorCell>> rows,
-        CellAddress? slotAddress = null)
+        CellAddress? slotAddress = null,
+        PaintRole? headerFill = null)
         : base(address, Flatten(slotAddress ?? address, slot, emptyText, headers, rows))
     {
         ArgumentException.ThrowIfNullOrEmpty(slot);
@@ -46,6 +49,7 @@ public sealed class TableCell : StructureCell
         EmptyText = emptyText;
         Headers = headers;
         Rows = rows;
+        HeaderFill = headerFill;
     }
 
     public string Slot { get; }
@@ -64,6 +68,15 @@ public sealed class TableCell : StructureCell
 
     /// <summary>Whether the slot holds nothing and is showing the affordance row instead.</summary>
     public bool IsEmpty => Rows.Count == 0;
+
+    /// <summary>
+    /// The role the header row is filled with, or <see langword="null"/> for a header that is only text.
+    /// </summary>
+    /// <remarks>
+    /// Layout reports where the band goes rather than drawing it, and a painter turns the role into a colour, so a
+    /// table says "this is my header" and nothing in the projection layer knows what a brush is.
+    /// </remarks>
+    public PaintRole? HeaderFill { get; }
 
     internal override string Describe() => $"table {Slot}";
 

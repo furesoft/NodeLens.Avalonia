@@ -25,11 +25,19 @@ public sealed class SampleTableVariantTests
     [Fact]
     public void ARulesetReadAsATablePutsItsRulesInRowsUnderTheirHeaders()
     {
+        // The table is boxed and padded, so the text form shows the room the box keeps and nothing of the box
+        // itself: a snapshot is a grid of characters and has no line to draw. The columns are what this test is
+        // about, and they still line up.
         Assert.Equal(
             """
             ruleset Payroll
-              rule     then   when
-              Approved Accept amount > 1000
+
+
+
+
+
+                   rule     then   when
+                   Approved Accept amount > 1000
             """,
             LayoutSnapshot.Render(PayrollSample.NewSampleModel(), Notations, width: 60, AsTable));
     }
@@ -45,8 +53,13 @@ public sealed class SampleTableVariantTests
         Assert.Equal(
             """
             ruleset Empty
-              rule   then when
-              + rule
+
+
+
+
+
+                   rule   then when
+                   + rule
             """,
             LayoutSnapshot.Render(model, Notations, width: 60, AsTable));
     }
