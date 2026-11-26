@@ -538,14 +538,67 @@ no number. The plan is [markers.md](markers.md).
 
 ## Incremental invalidation
 
-On a change event:
+The tree is rebuilt on every committed change and that is what a keystroke costs: on a 40 001-node
+document the builder takes 67 ms and measuring and placing the cells it produced takes 15 ms
+([constraints.md](semantics/constraints.md#what-a-full-recheck-costs)). Rebuilding only the part a
+change touched is the larger of the two available wins, and the scheme below is what the layer
+implements.
 
-1. Invalidate editor trees of the changed node and its ancestors up to the model root.
-2. Invalidate layout boxes for the same range, plus the enclosing table column if the
-   node is a table cell.
-3. Recompute only the visible viewport during the next render pass.
-4. Preserve scroll offset by anchoring on the node at the top of the viewport. Anchoring
-   on a node ID (not a line index) keeps the view stable when lines above change height.
+**The unit is a node's projection, not a cell.** A node's projection is a tree; the parent's
+`ChildCell` holds its root cell. "Rebuild the projection of a changed node" therefore means "rebuild
+that node's own cells and reuse its children's projections" - the parent merely nests them.
+`EditorTreeBuilder` keeps the projections it produced in a `ProjectionCache`, keyed by node id, and
+`EditorSession` hands it the set of nodes a change invalidated.
+
+A projection is reused as a whole only when all three hold:
+
+1. the node is not dirty - the change did not name it, and the change did not name a descendant,
+   because dirtying the ancestor of every changed node is what makes "not dirty" mean "the whole
+   subtree is clean";
+2. its address is unchanged - an element address names the parent and the position, so inserting a
+   sibling moves the address and the cached cell cannot be reused;
+3. its subtree shows no value the node does not own - no `ReferenceCell` and no type annotation.
+
+The third rule is the honest one. A `ReferenceCell` draws the *target's* name and a type annotation
+asks the type registry, so a change elsewhere can invalidate the text without naming this node. Rather
+than invent a dependency graph for the first slice, a subtree that shows either is never cached: the
+builder marks the node and every ancestor it is building and drops the entry. The result is graceful
+degradation - a document without references or annotations gets the whole win, and one with them gets
+it everywhere the dependency does not reach. It costs more than it sounds: a reference in a leaf makes
+the path to the root uncacheable, so a reference-heavy document rebuilds its spine on every change.
+
+**Dirty means "this node's own projection".** A change dirties the node and its ancestors up to the
+root, because an ancestor's projection nests the changed node's cells and its own content changes
+with them. Everything hanging off that path is reused, so a property edit on a 40 001-node document
+rebuilds the path from the root to the edited node and nothing beside it.
+
+**The change set is the input.** `EditorSession` subscribes to `Model.Changed` and collects the
+targets of the changes a transaction published - the node itself, and for a `NodeAdded`/`NodeRemoved`
+the parent as well, since the parent's child list changed. The next `Rebuild` hands that set to the
+builder and clears it. Undo and redo publish the same event, so a restored document is rebuilt by the
+same rule as an edited one. A removal drops the whole cache, because a kept projection for a removed
+node's descendant would never be reached again and forgetting is cheaper than finding the orphans.
+
+**A program rebuilds from notation.** An `EditProgram` keeps one transaction open across its steps, so
+the change event - and the set it fills - does not arrive until the program commits. A rebuild between
+steps would therefore trust an empty set and hand back the very projections the step just invalidated.
+The session marks the program as running and forces those rebuilds to build from notation; the commit's
+set is then dropped, because the last step that changed something already rebuilt the tree to describe
+the committed state. A program is a handful of steps, so the lost incrementality is not worth plumbing
+the open transaction's journal into the builder.
+
+**View state is not a change.** Choosing a variant or folding a node recreates the builder, which
+starts with an empty cache. That is deliberate: those are not model changes, and the cache's key does
+not cover them.
+
+**Layout is not incremental.** `CellLayouter` measures and places every cell of the tree it is given,
+reused or not, so a reused subtree saves its construction and not its arrangement. That is the smaller
+lever (15 ms against 67 ms) and stays a separate slice.
+
+**What is still not incremental.** The tree is the first slice. Layout boxes are rebuilt for the whole
+tree, the viewport is not narrowed to what is visible, and the scroll offset is not anchored on a node
+id across a rebuild. Those stay open, in that order, and the measurement in
+[constraints.md](semantics/constraints.md#what-a-full-recheck-costs) is what ranks them.
 
 ## Headless rendering for tests
 

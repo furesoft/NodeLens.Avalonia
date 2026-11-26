@@ -13,12 +13,12 @@ internal static class Table
     public static void Write(IEnumerable<Measurement> rows)
     {
         Console.WriteLine(
-            $"{"units",7}  {"nodes",7}  {"layout",9}  {"constraints",12}  {"findings",8}  {"checks",8}  {"fixes",5}  {"together",9}  {"subtree",8}");
+            $"{"units",7}  {"nodes",7}  {"tree",8}  {"arrange",8}  {"layout",9}  {"rebuild",9}  {"constraints",12}  {"findings",8}  {"checks",8}  {"fixes",5}  {"together",9}  {"subtree",8}");
 
         foreach (var row in rows)
         {
             Console.WriteLine(
-                $"{row.Units,7}  {row.Nodes,7}  {Ms(row.Layout),9}  {Ms(row.Constraints),12}  {row.Findings,8}  {Ms(row.Checks),8}  {row.Fixes,5}  {Ms(row.Together),9}  {Ms(row.Subtree),8}");
+                $"{row.Units,7}  {row.Nodes,7}  {Ms(row.Tree),8}  {Ms(row.Arrange),8}  {Ms(row.Layout),9}  {Ms(row.Rebuild),9}  {Ms(row.Constraints),12}  {row.Findings,8}  {Ms(row.Checks),8}  {row.Fixes,5}  {Ms(row.Together),9}  {Ms(row.Subtree),8}");
         }
     }
 

@@ -15,6 +15,17 @@ internal sealed class Measurement
     /// <summary>How many nodes the built document holds, which is what makes two scenarios comparable.</summary>
     public required int Nodes { get; init; }
 
+    /// <summary>Milliseconds to build the editor tree - the projection's cells - for the whole document.</summary>
+    public required double Tree { get; init; }
+
+    /// <summary>Milliseconds to measure and place a tree that is already built.</summary>
+    /// <remarks>
+    /// Separate from <see cref="Tree"/> because the two are different work in different layers: the tree asks the
+    /// notation registry and the model, layout only asks the text measure. A keystroke pays both, and the number that
+    /// says which of them is the one to attack is this pair rather than their sum.
+    /// </remarks>
+    public required double Arrange { get; init; }
+
     /// <summary>Milliseconds to build tree and layout for the whole document.</summary>
     public required double Layout { get; init; }
 
@@ -35,4 +46,14 @@ internal sealed class Measurement
 
     /// <summary>Milliseconds to recheck one unit of the document - the incremental seam's cost.</summary>
     public required double Subtree { get; init; }
+
+    /// <summary>Milliseconds to build the tree again after a change to one node - the projection's share of a keystroke.</summary>
+    /// <remarks>
+    /// The counterpart of <see cref="Tree"/>: the same document, rebuilt after a change to one node, with the
+    /// projections the change did not invalidate reused. The two together are the answer to "did the cache help", and
+    /// the ratio between them is what a language with references gives up, because a subtree that shows one is never
+    /// reused. It is not the end-to-end cost of a keystroke: the session also resolves the caret's position after a
+    /// rebuild, and that work is not the projection's.
+    /// </remarks>
+    public required double Rebuild { get; init; }
 }

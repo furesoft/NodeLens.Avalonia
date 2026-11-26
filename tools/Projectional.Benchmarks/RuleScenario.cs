@@ -49,4 +49,6 @@ internal sealed class RuleScenario : Scenario
     }
 
     public override Node Representative(Node root) => root.GetChildren(RulesLanguage.RulesSlot)[0];
+
+    public override Node EditTarget(Node root) => root.GetChildren(RulesLanguage.RulesSlot)[^1];
 }

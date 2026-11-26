@@ -37,4 +37,11 @@ internal abstract class Scenario
 
     /// <summary>One unit of the built document, which is the subtree an incremental caller would recheck.</summary>
     public abstract Node Representative(Node root);
+
+    /// <summary>The node an incremental edit would touch, deep in the document so the rebuild has a path to follow.</summary>
+    /// <remarks>
+    /// The <em>last</em> unit rather than the first, because the last one is the far end of the document's child list:
+    /// an edit there dirties the path from the root down to it, which is the most a single property change can cost.
+    /// </remarks>
+    public abstract Node EditTarget(Node root);
 }

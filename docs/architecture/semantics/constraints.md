@@ -139,6 +139,30 @@ column is a load-dependent wall-clock number that was recorded while the machine
 would still optimise the smaller of two costs. A change that made the table worse is therefore visible as a change in
 the *shape* of a column - its growth against node count - which is what this table is for.
 
+**Measured again on 2026-11-24, with the rebuild split in two.** `EditorSession` builds the editor tree and then
+arranges it, and the benchmark now times those two phases separately, because "the tree and the layout" was one
+number and the next decision needs two. Same machine, same corpus, best of five:
+
+| rules | nodes | tree | arrange | layout (session) |
+| --- | --- | --- | --- | --- |
+| 100 | 201 | 0.3 | 0.2 | 0.9 |
+| 1 000 | 2 001 | 2.1 | 1.6 | 7.2 |
+| 5 000 | 10 001 | 13.1 | 3.3 | 43.5 |
+| 20 000 | 40 001 | 67.4 | 14.9 | 125.6 |
+
+| features | nodes | tree | arrange | layout (session) |
+| --- | --- | --- | --- | --- |
+| 100 | 151 | 0.1 | 0.0 | 0.1 |
+| 500 | 751 | 0.3 | 0.1 | 0.6 |
+| 2 000 | 3 001 | 1.1 | 0.4 | 2.4 |
+| 5 000 | 7 501 | 2.1 | 1.3 | 5.5 |
+
+The split answers the question the earlier tables could not: **the tree is the cost and the arrangement is a fifth of
+it.** At 40 001 nodes the builder takes 67 ms against 15 ms of measuring and placing, so a cache that keeps an
+unchanged subtree's *cells* buys several times what one that keeps their *sizes* does. The `layout` column stays
+beside them as the end-to-end number a keystroke pays - it carries the session's own construction too, and it remains
+the load-dependent one, which is why the two columns beside it are the ones to compare against each other.
+
 So what is left is not the dependency sets. A full recheck now costs 6.6 ms (rules) and 3.3 ms
 (features) against a rebuild of 123 ms and 15.1 ms on the same keystroke, so incremental
 *validation* would optimise the smaller of two costs; what that rebuild is spent on is the tree and

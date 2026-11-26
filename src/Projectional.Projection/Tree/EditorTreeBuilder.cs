@@ -35,6 +35,16 @@ public sealed class EditorTreeBuilder
     private readonly TypeRegistry _types;
     private readonly bool _annotations;
 
+    // What a previous build already produced, so a rebuild can hand back the subtrees the change did not touch.
+    private readonly ProjectionCache _cache = new();
+
+    // The nodes the change invalidated for the build in progress, or null when the whole tree is rebuilt.
+    private IReadOnlySet<NodeId>? _dirty;
+
+    // Whether the subtree being built shows a reference or a type annotation - a value it does not own and a
+    // change elsewhere can therefore invalidate. Such a subtree is never cached.
+    private bool _showsExternal;
+
     /// <summary>Builds trees with every concept drawn as <paramref name="choice"/> asks, default variants when it says nothing.</summary>
     /// <param name="notations">What each concept is drawn with.</param>
     /// <param name="emphasis">What decorates a cell besides its concept's notation, or <see langword="null"/> for nothing.</param>
@@ -67,20 +77,79 @@ public sealed class EditorTreeBuilder
         _annotations = annotations;
     }
 
-    /// <summary>Builds the tree for <paramref name="node"/>.</summary>
-    public EditorTree Build(Node node)
-    {
-        ArgumentNullException.ThrowIfNull(node);
-        return new EditorTree(node, BuildNode(node, new CellAddress(node.Id), TextEmphasis.None));
-    }
+    /// <summary>Builds the tree for <paramref name="node"/>, rebuilding every projection.</summary>
+    public EditorTree Build(Node node) => Build(node, null);
 
     /// <summary>
-    /// Builds one node. <paramref name="inherited"/> is what the nodes above already asked for, and it
-    /// is passed on to every cell of this node so that a decoration applies to a whole subtree.
+    /// Builds the tree for <paramref name="node"/>, reusing the projections the change did not invalidate.
+    /// </summary>
+    /// <param name="node">The node to project.</param>
+    /// <param name="dirty">
+    /// The nodes whose projection the change invalidated, or <see langword="null"/> to rebuild everything.
+    /// A node that is not in the set and whose stored projection still stands is handed back instead of being
+    /// built again, so a change rebuilds the path from the root to what it touched and nothing beside it.
+    /// </param>
+    public EditorTree Build(Node node, IReadOnlySet<NodeId>? dirty)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        _dirty = dirty;
+        _showsExternal = false;
+
+        try
+        {
+            return new EditorTree(node, BuildNode(node, new CellAddress(node.Id), TextEmphasis.None));
+        }
+        finally
+        {
+            _dirty = null;
+        }
+    }
+
+    /// <summary>Forgets every projection this builder kept, so the next build starts from notation.</summary>
+    public void ClearCache() => _cache.Clear();
+
+    /// <summary>
+    /// Builds one node, or hands back the projection a previous build kept for it when the change did not
+    /// invalidate it. <paramref name="inherited"/> is what the nodes above already asked for, and it is passed
+    /// on to every cell of this node so that a decoration applies to a whole subtree.
     /// </summary>
     private EditorCell BuildNode(Node node, CellAddress rootAddress, TextEmphasis inherited)
     {
         var emphasis = inherited | (_emphasis?.EmphasisOf(node) ?? TextEmphasis.None);
+
+        if (_dirty is not null &&
+            !_dirty.Contains(node.Id) &&
+            _cache.TryReuse(node.Id, rootAddress, emphasis, out var reused))
+        {
+            return reused;
+        }
+
+        var outer = _showsExternal;
+        _showsExternal = false;
+
+        var cell = BuildFresh(node, rootAddress, emphasis);
+
+        var shows = _showsExternal;
+        _showsExternal = outer | shows;
+
+        if (shows)
+        {
+            // A projection kept from an earlier build would still show the value this node no longer owns, so
+            // it is dropped rather than replaced: nothing may be reused for a subtree that shows one.
+            _cache.Forget(node.Id);
+        }
+        else
+        {
+            _cache.Store(node.Id, rootAddress, emphasis, cell);
+        }
+
+        return cell;
+    }
+
+    /// <summary>Builds a node's projection from its notation, without consulting the cache.</summary>
+    private EditorCell BuildFresh(Node node, CellAddress rootAddress, TextEmphasis emphasis)
+    {
         var notation = _notations.FindFor(node.Concept, _choice);
 
         if (notation is null)
@@ -96,6 +165,16 @@ public sealed class EditorTreeBuilder
         }
 
         return BuildBlock(notation.Root, node, emphasis, rootAddress);
+    }
+
+    /// <summary>
+    /// Marks the subtree being built as showing a value the node does not own, so it is never cached.
+    /// </summary>
+    private EditorCell ShowExternal(EditorCell cell)
+    {
+        _showsExternal = true;
+
+        return cell;
     }
 
     /// <summary>
@@ -254,14 +333,15 @@ public sealed class EditorTreeBuilder
         TypeOfNotationCell when !_annotations => [],
         TypeOfNotationCell =>
         [
-            new ConstantCell(
-                new CellAddress(node.Id),
-                _types.TypeOf(node).ToString() ?? UnknownType.Instance.Name,
-                ConstantKind.Annotation,
-                emphasis),
+            ShowExternal(
+                new ConstantCell(
+                    new CellAddress(node.Id),
+                    _types.TypeOf(node).ToString() ?? UnknownType.Instance.Name,
+                    ConstantKind.Annotation,
+                    emphasis)),
         ],
         PropertyNotationCell property => [BuildProperty(property, node, emphasis)],
-        ReferenceNotationCell reference => [BuildReference(reference, node, emphasis)],
+        ReferenceNotationCell reference => [ShowExternal(BuildReference(reference, node, emphasis))],
         SingleChildNotationCell single =>
             [BuildChildren(single.Slot, single.EmptyText, node, emphasis, rootAddress: null, spacing: 0)],
         InlineCollectionNotationCell inlineCollection =>
@@ -621,7 +701,7 @@ public sealed class EditorTreeBuilder
         // drawn, so a table column must not be a second reading of a reference.
         if (row.Concept.FindReference(column.Slot) is not null)
         {
-            return BuildReferenceCell(row, column.Slot, column.EmptyText, emphasis);
+            return ShowExternal(BuildReferenceCell(row, column.Slot, column.EmptyText, emphasis));
         }
 
         throw new ProjectionException(

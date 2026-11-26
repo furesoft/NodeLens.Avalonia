@@ -39,6 +39,19 @@ public sealed class EditorSession : IDisposable
 
     private EditorTreeBuilder _builder;
 
+    // The model the document belongs to, and the nodes a committed change invalidated since the last rebuild.
+    // The set is what lets a rebuild hand back every projection the change did not touch, so it is collected
+    // here and handed to the builder; nothing is rebuilt from the change handler itself.
+    private readonly Model _model;
+    private readonly HashSet<NodeId> _dirty = [];
+    private bool _removed;
+
+    // How many programs are running right now. A program keeps one transaction open across its steps, so the
+    // change event - which is what fills _dirty - has not been published yet while its steps rebuild. The
+    // rebuild is therefore forced to build from notation instead of trusting an empty set, and the commit's
+    // set is dropped afterwards because the tree already describes what was committed.
+    private int _programDepth;
+
     // View state, like Choice: which nodes are folded, keyed by the stable id so the set survives every
     // rebuild and an undo that moves nodes around.
     private CollapsedNodeSet _collapsed = CollapsedNodeSet.Empty;
@@ -97,7 +110,9 @@ public sealed class EditorSession : IDisposable
         Document = document;
         _measure = measure ?? MonospaceTextMeasure.Instance;
         _types = types ?? TypeRegistry.Empty;
-        History = new UndoHistory(document.Model);
+        _model = document.Model;
+        _model.Changed += OnModelChanged;
+        History = new UndoHistory(_model);
 
         _notations = notations;
         _emphasis = emphasis;
@@ -688,30 +703,54 @@ public sealed class EditorSession : IDisposable
         }
 
         var selection = Selection;
-
-        using var transaction = Document.Model.BeginTransaction();
-
         var result = EditResult.Unchanged(Selection);
 
-        foreach (var step in program.Steps)
+        _programDepth++;
+
+        try
         {
-            result = ApplyCore(step, ContextFor(step), coalescingKey: null);
+            using var transaction = Document.Model.BeginTransaction();
 
-            if (result.Outcome == EditOutcome.Rejected)
+            foreach (var step in program.Steps)
             {
-                // Rolling back restores the model, not the session: the tree and the layout still describe
-                // the edits that were just taken back, and the selection still points into them.
-                transaction.Dispose();
-                Rebuild();
-                Settle(selection);
+                result = ApplyCore(step, ContextFor(step), coalescingKey: null);
 
-                return result;
+                if (result.Outcome == EditOutcome.Rejected)
+                {
+                    // Rolling back restores the model, not the session: the tree and the layout still describe
+                    // the edits that were just taken back, and the selection still points into them. The cache
+                    // goes too, because its projections were built while the steps were being applied and
+                    // describe a state the rollback has just left.
+                    transaction.Dispose();
+                    _builder.ClearCache();
+                    _removed = false;
+                    Rebuild();
+                    Settle(selection);
+
+                    return result;
+                }
             }
+
+            transaction.Complete();
+
+            // The commit published the changes the program made, and the tree already describes them: the last
+            // step that changed something rebuilt it. The set is dropped rather than replayed, so the next
+            // rebuild stays incremental against a tree that is already current. A removal still has to forget
+            // the projections of the nodes it took with it.
+            if (_removed)
+            {
+                _builder.ClearCache();
+                _removed = false;
+            }
+
+            _dirty.Clear();
+
+            return result;
         }
-
-        transaction.Complete();
-
-        return result;
+        finally
+        {
+            _programDepth--;
+        }
     }
 
     /// <summary>Answers the offers gesture: a list of what can be done here, or nothing at all.</summary>
@@ -1145,11 +1184,55 @@ public sealed class EditorSession : IDisposable
     }
 
     /// <summary>Stops listening to the model's changes.</summary>
-    public void Dispose() => History.Dispose();
+    public void Dispose()
+    {
+        _model.Changed -= OnModelChanged;
+        History.Dispose();
+    }
+
+    /// <summary>
+    /// Collects the nodes a committed change invalidated, so the next rebuild can hand back every projection
+    /// the change did not touch.
+    /// </summary>
+    /// <remarks>
+    /// Nothing is rebuilt here. The event arrives while the model is being written, and rebuilding from a change
+    /// handler would project a half-applied edit - and would be a subscriber that mutates state the editor owns,
+    /// which the change backbone does not allow. The set is consumed by the next <see cref="Rebuild"/>.
+    /// </remarks>
+    private void OnModelChanged(object? sender, ModelChangedEventArgs e)
+    {
+        foreach (var change in e.Changes)
+        {
+            _removed |= change is NodeRemoved;
+
+            // A removed node cannot be found any more, so its parent is where the walk starts; every other
+            // change names a node that is still there. An ancestor's projection contains the changed node's
+            // cells, so it is rebuilt too - which is what makes the rebuild follow the path to the change.
+            var start = change is NodeRemoved removed ? removed.Parent : change.Target;
+
+            for (var node = start is { } id ? _model.Project.FindNode(id) : null; node is not null; node = node.Parent)
+            {
+                _dirty.Add(node.Id);
+            }
+        }
+    }
 
     private void Rebuild()
     {
-        Tree = _builder.Build(Document);
+        if (_removed)
+        {
+            // A removal takes the node's descendants with it, and a projection kept for a descendant would
+            // outlive the node it belongs to. Forgetting everything is cheaper than finding the orphans.
+            _builder.ClearCache();
+            _removed = false;
+        }
+
+        // A program's steps rebuild while its transaction is still open, so the change event has not published
+        // the set yet and _dirty is empty: trusting it would hand back every projection, including the ones the
+        // steps just invalidated. The steps are few and the tree is built from notation instead; the commit's
+        // set is dropped by Apply(EditProgram) once the tree already describes what was committed.
+        Tree = _builder.Build(Document, _programDepth > 0 ? null : _dirty);
+        _dirty.Clear();
         Layout = _layouter.Layout(Tree);
 
         // The offer named a caret line of the layout that has just been replaced.
