@@ -37,11 +37,19 @@ and nothing about it lives on `Concept` - Core must not know that projection exi
 - **The runtime editor tree is a different vocabulary.** Notation cells are `…NotationCell`
   (`ConstantNotationCell`, `PropertyNotationCell`, `SingleChildNotationCell`,
   `ChildNotationCell`, `CollectionNotationCell`, `ConditionalNotationCell`, `WhenFilledNotationCell`,
-  `WhenFilledBlockNotationCell`,
+  `WhenFilledBlockNotationCell`, `ImageNotationCell`,
   `LineNotationCell`, `SequenceNotationCell`, `IndentNotationCell`, `HorizontalNotationCell`,
   `SpaceNotationCell`) precisely so they cannot be
   confused with the runtime cells `docs/architecture/projection.md` names (`ConstantCell`,
   `PropertyCell`, ...).
+- **A picture is a cell, not a glyph and not a decoration.** `ed.Image("key")` draws artwork the *host*
+  supplies: the notation writes a key (never a path - a language naming `logo.png` names a file on the
+  reader's disk), `ImagePalette` maps it to an `IImage`, and an unknown key is a placeholder box rather than
+  a silent gap. The box is layout units and a side left at zero means "as tall as the line", so an inline
+  icon follows the font; a photograph passes its own `ed.Image("logo", 64, 48)`. Do not reach for a text cell
+  with a glyph like `🔑`: it depends on the font the line is shaped in and changes width when the font falls
+  back, and it occupies no predictable room. A picture is also not a `CellPaint` - a decoration fills a
+  rectangle the notation already had, while a picture is content of its own.
 - **`ConditionalNotationCell` is the only cell that may draw nothing.** It holds a property name, the
   text that property must equal, and inline cells; when the condition does not hold the builder emits
   *no cells at all* for it. Never "fix" that into an empty or zero-width cell - a zero-width cell is a
@@ -184,6 +192,22 @@ notation is registered per concept **and** variant
   can draw one. The lowering goes through the same `TableNotationCell`/`TableColumn` the C# path
   uses; a column's `header` is lowered as an inline cell, so a header naming a slot is refused by
   `TableColumn` rather than answered by whichever row came first.
+- **`Editor.Image` makes a picture declarable**: `key`, and `width`/`height` in layout units where zero means
+  "as tall as the line", which is what an inline icon wants. It is an inline cell, so it goes in a `Line`
+  exactly where `ed.Image(...)` would. The box is validated while the notation is lowered (`-'2'` is a
+  `ConceptDefinitionException` naming the cell and the slot) rather than left to the cell, which would throw
+  for a parameter name the author has never seen. **A declared table still cannot be boxed**: padding,
+  border and fill are on the C# `BlockNotationCell.Paint` and have no declared cell yet, so a language
+  written as a project draws a plain grid.
+- **A table has two decoration surfaces and they are different regions.** `BlockNotationCell.Paint`
+  (reachable through `ed.Table(slot, paint, headerFill, ...)`) boxes the whole grid with the same
+  padding-and-border semantics every block has; `TableNotationCell.HeaderFill` is a `PaintRole` for the
+  band behind the header row and nothing else, because a band is a background, not a box, and room
+  around it would only move the fill off the row it describes. Never paint each header cell instead: a
+  column is as wide as its widest cell while a header is only as wide as its own text, so a fill per
+  header stops short of the column it names. `CellLayout.HeaderBandOf` is the one place that answers
+  where the band goes. Decorating a block other than a table needs its own builder overload - `Paint`
+  is `init`-only on purpose, so a registered notation cannot be changed after the fact.
 
 ## How concept triggers work
 
