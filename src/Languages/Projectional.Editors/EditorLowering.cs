@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Projectional.Core;
 using Projectional.Language;
 
@@ -163,6 +165,7 @@ public static class EditorLowering
         {
             EditorConceptKeys.Space => ed.Space,
             EditorConceptKeys.TypeOf => ed.TypeOf(),
+            EditorConceptKeys.Image => ed.Image(Required(cell, "key"), Size(cell, "width"), Size(cell, "height")),
             EditorConceptKeys.Keyword => ed.Keyword(Required(cell, "text")),
             EditorConceptKeys.Punct => ed.Punct(Required(cell, "text")),
             EditorConceptKeys.Property => ed.Property(
@@ -192,6 +195,32 @@ public static class EditorLowering
     private static int Spacing(Node cell) =>
         int.TryParse(cell.GetOrNull("spacing"), out var spacing) ? spacing : 1;
 
+    /// <summary>
+    /// The side of a picture's box, in layout units; zero when the notation left it out.
+    /// </summary>
+    /// <remarks>
+    /// Checked here rather than left to <see cref="ImageNotationCell"/>, which refuses a negative side: the cell's
+    /// exception names a parameter, and the message an author can act on has to name the notation and the slot -
+    /// the same reason a notation naming an undeclared concept is refused here.
+    /// </remarks>
+    private static double Size(Node cell, string slot)
+    {
+        var text = cell.GetOrNull(slot);
+
+        if (text is not { Length: > 0 })
+        {
+            return 0;
+        }
+
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) || size < 0)
+        {
+            throw new ConceptDefinitionException(
+                $"A '{cell.Concept.Key}' cell has '{text}' for its '{slot}', which is not a size; leave it out for a picture as tall as the line.");
+        }
+
+        return size;
+    }
+
     /// <summary>Whether a boolean property of <paramref name="cell"/> is on, which an unset one never is.</summary>
     private static bool IsTrue(Node cell, string slot) =>
         string.Equals(cell.GetOrNull(slot), "true", StringComparison.Ordinal);
@@ -199,11 +228,17 @@ public static class EditorLowering
     private static ConceptDefinitionException NotACell(Node cell, string conceptKey, string reason) =>
         new($"The notation of '{conceptKey}' holds a '{cell.Concept.Key}', which is {reason}.");
 
+    /// <summary>A slot a cell cannot be lowered without.</summary>
+    /// <remarks>
+    /// The message names the cell's own concept, not the notation's <c>conceptKey</c>: the node doing the asking is a
+    /// cell, which declares no such slot, so reading it would throw a <see cref="KeyNotFoundException"/> out of the
+    /// error path and hide the message an author has to act on.
+    /// </remarks>
     private static string Required(Node node, string slot) =>
         node.GetOrNull(slot) is { Length: > 0 } value
             ? value
             : throw new ConceptDefinitionException(
-                $"The notation of '{node.GetOrNull(EditorLanguage.ConceptKeySlot) ?? "?"}' leaves out its '{slot}'.");
+                $"A '{node.Concept.Key}' cell leaves out its '{slot}'.");
 
     private static string? Optional(Node node, string slot) =>
         node.GetOrNull(slot) is { Length: > 0 } value ? value : null;

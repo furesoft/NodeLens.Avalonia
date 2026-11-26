@@ -8,6 +8,9 @@ namespace Projectional.Samples;
 /// </summary>
 internal static class RulesNotations
 {
+    /// <summary>The room the boxed table keeps around its grid, in layout units.</summary>
+    private const double TablePadding = 4;
+
     internal static void AddTo(NotationRegistry notations)
     {
         ArgumentNullException.ThrowIfNull(notations);
@@ -23,7 +26,9 @@ internal static class RulesNotations
             ed.Line(ed.Keyword("ruleset", TextEmphasis.Bold), ed.Space, ed.Property("name")),
             ed.Indent(ed.Table(
                 "rules",
-                "+ rule",
+                new CellPaint(padding: CellEdges.All(TablePadding), border: new CellBorder(1)),
+                PaintRole.Muted,
+                emptyText: "+ rule",
                 ed.Column("name", ed.Keyword("rule")),
                 ed.Column("outcome", ed.Keyword("then")),
                 ed.Column("condition", ed.Keyword("when"))))));

@@ -385,6 +385,129 @@ what the columns are before there is anything in them; `TableCell` refuses a tab
 columns and every row's column count with a `ProjectionException`, so even a table built by
 hand fails at the first projection instead of painting half a grid.
 
+## Decorations
+
+A table is a grid of cells, and a grid needs a box: a line between columns, a fill behind a header, room
+around a value. None of that is text, so it cannot come from a text cell - and the renderer must not learn
+what a table is in order to draw one. A decoration is the third vocabulary: a block cell may carry a
+`CellPaint`, layout turns its padding and border into size, and the frame hands its fill and border to the
+painter as a region and a meaning.
+
+- **A decoration is notation, not a renderer.** `CellPaint` (in `Projectional.Language`) carries a
+  `CellEdges` padding, a `CellBorder` and a `PaintRole` fill. It is set on the *notation* cell
+  (`BlockNotationCell.Paint`), so a language declares a boxed table without a line of host code, and the
+  builder copies it onto the runtime cell it builds. A decoration is therefore cached with the projection
+  like any other part of it, and the sample's ruleset gains its box by naming one in
+  `RulesNotations`. A *declared* language cannot ask for one yet: the declared editor's cell set
+  has no paint cell, so a decoration reaches the notation through C# until that aspect is extended.
+- **A role, not a colour.** `PaintRole` stops at meaning - `Neutral`, `Muted`, `Accent`, `Warning`,
+  `Danger` - exactly as `TextStyleKind` stops at meaning for text. The palette decides what a role looks
+  like, so a light and a dark palette draw the same notation without the notation knowing either exists.
+- **The inset is the border outside the padding.** `CellPaint.Inset` is the padding plus the border on each
+  side, and it is the one number layout and the frame both use: layout grows the cell by it and places the
+  content inside it, the frame reports the region over the cell's own bounds. A consumer that recomputed
+  the inset would disagree with layout the first time a border changed.
+- **One thickness, all round.** A `CellBorder` is one width on all four sides. A table's grid is not a
+  partial border: it is the same decoration on every cell, which is why a table's notation paints each
+  column's cell rather than the table drawing lines between its own children. The table's own paint boxes
+  the whole grid.
+- **A table has two decoration surfaces, not one.** `ed.Table(slot, paint, headerFill, …)` takes the box
+  around the grid (`BlockNotationCell.Paint`, padding and border as everywhere else) and, separately, what
+  the header row is filled with (`TableNotationCell.HeaderFill`). They are two regions, so a language can
+  ask for either alone. The header is a **band across the grid's content width**, not a region per header
+  cell: a column is as wide as its widest cell and a header is only as wide as its own text, so a fill per
+  header would stop short of the column it names. `CellLayout.HeaderBandOf` answers that band, combining the
+  table's own bounds, its own inset, and the height of the tallest header cell - and because it is asked for
+  after the table's box, the band is drawn on top of the grid's fill instead of under it.
+- **A band carries a role and no padding.** A header fill is a background under the header cells, not a box
+  around them, so it is a `PaintRole` rather than a `CellPaint`: room around a band would only move the fill
+  off the row it describes. Nothing is silently ignored, because the surface never offers what the region
+  cannot honour.
+- **The renderer stays generic.** The frame carries `PlacedPaint` entries - a region and a `CellPaint` -
+  beside the text runs, and the control fills and strokes them before it draws text. It never asks what
+  the cell is: a table, a heading and a warning box are each a rectangle with a role.
+- **A snapshot shows the room, not the box.** Padding and border are geometry, so the headless renderer's
+  text grid shifts by them; the fill and the line are not text, so a snapshot cannot show them. A
+  decoration's *layout* is pinned by a layout test and its *painting* by a frame test, both in
+  `CellPaintTests`; the sample's own table variant is pinned beside them in `SampleTableVariantTests`. The
+  picture is the proof that a user sees it: `docs/images/feature-table-view.png` is the sample's ruleset
+  read as a table, generated from the shipping control.
+
+### What M1 implements
+
+| Layer | Type | Job |
+| --- | --- | --- |
+| Language | `CellEdges` | the room on each of the four sides, in layout units |
+| Language | `CellBorder` | one line width and the role it is drawn in |
+| Language | `CellPaint` | padding, border and fill for one region, and the `Inset` they add up to |
+| Language | `BlockNotationCell.Paint` | where a notation asks for a decoration |
+| Language | `TableNotationCell.HeaderFill` | where a notation asks for a band behind the header row |
+| Language | `NotationEditor.Table` | the builder overload that gives a table its box and its header role |
+| Projection | `EditorCell.Paint` | the decoration the builder copied onto the runtime cell |
+| Projection | `TableCell.HeaderFill` | the header role the builder copied onto the runtime table |
+| Projection | `CellLayout.HeaderBandOf` | where a table's header row is, as one band |
+| Layout | `CellLayouter.Arrange` | grows the cell by the inset and places the content inside it |
+| Editing | `PlacedPaint` | one decoration in the frame, in layout coordinates |
+| Editing | `EditorFrame.Paints` | the decorations of the visible cells, then the header bands, before the text runs |
+| Avalonia | `SyntaxPalette` | the brush and the pen a `PaintRole` is drawn with |
+
+Images and icons are a separate vocabulary rather than a fourth part of this one: a decoration fills and strokes a
+rectangle the notation already had, while a picture is content of its own that the host draws from a key. They are
+the same *question* - a region the notation asks for and the renderer draws without knowing what it means - and the
+section below is where they are answered.
+
+Images and icons are an **inline** cell of their own, `ImageNotationCell`, and the section below says why they are
+not a decoration: a decoration fills and strokes a rectangle the notation already had, while a picture is its own
+content, drawn by the host from a name.
+
+## Pictures
+
+A line sometimes needs a picture rather than a word: a key before `foreign key`, a warning triangle on a rule that
+rejects, a small mark beside a concept. That cannot be a text cell - a glyph typed into a line depends on the font
+the line is shaped in, and comes out as a box or off the baseline the moment the font falls back - so it is a cell of
+its own, built from the same three-part division decoration uses.
+
+- **The notation names the picture, the host owns the artwork.** `ed.Image("key")` writes a key, never a path: a
+  language that wrote `logo.png` would be naming a file on the reader's disk and would stop drawing its icons the
+  moment a host kept its artwork somewhere else. `ImagePalette` (in `Projectional.Avalonia`) maps a key to an
+  `IImage` - the preset keys are vector paths, so no binary asset is committed, and a host with a real icon set
+  passes `Bitmap`s. This is the seam the completion list already used, reused rather than reinvented.
+- **A key the host does not know is drawn as a placeholder box**, not skipped. A picture that vanished would read as
+  a notation that forgot to draw anything, which is exactly the failure this repository refuses elsewhere
+  (an unresolved reference degrades visibly, it does not disappear).
+- **The box is the notation's, and it is room, not pixels.** `ed.Image("key", 64, 48)` sizes a photograph; a side
+  left at zero means "as tall as the line", so an inline icon follows the font instead of pinning a size the
+  notation would have to guess. Layout reserves that box and measures nothing: no bitmap is consulted, so the
+  projection layer stays free of image decoding and a snapshot needs no artwork.
+- **A picture is carried as a region and a key, never as an image.** `EditorFrame.Images` holds `PlacedImage`
+  entries beside the text runs and the decorations, which is what keeps `Editing` free of Avalonia: the control
+  resolves the key and draws it. The control **fits** the picture into its box rather than stretching it - the
+  scale is the smaller of the two and the result is centred - because a path stretched to fill a box is distorted
+  along with its stroke.
+- **It draws nothing as text.** `CellText.Of` answers the empty string for an `ImageCell`, so the headless snapshot
+  shows the picture's *room* and invents no glyph for it. That is the same honesty the fill and the border get
+  there, and it is why a picture's layout is pinned by a layout test and its presence by a frame test.
+- **A picture is declarable, and a decoration is not yet.** `Editor.Image` is a cell of the declared editor
+  language (`key`, plus `width`/`height` in layout units where zero means "as tall as the line"), so a language
+  written as a project draws its icons - and the lowering goes through `ed.Image(...)`, which is what
+  `NotationWriter` writes back out. Padding, border and fill are **not** declarable: they live on the C#
+  `BlockNotationCell.Paint` and the declared editor has no cell for them, so a declared table is a plain grid.
+  Extending that is a vocabulary of its own (a role an author picks from an enumeration, a thickness, four
+  paddings), not one more property.
+
+### What M1 implements
+
+| Layer | Type | Job |
+| --- | --- | --- |
+| Language | `ImageNotationCell` | a picture's key and the box it is drawn into, on the line |
+| Language | `NotationEditor.Image` | where a notation asks for a picture |
+| Projection | `ImageCell` | the key and the box, with no pixels and no bitmap |
+| Layout | `CellLayouter.ImageSize` | the box, with the line's height standing in for a side left at zero |
+| Editing | `PlacedImage` | one picture in the frame, as a region and a key |
+| Editing | `EditorFrame.Images` | the pictures of the visible cells, before the text runs |
+| Avalonia | `ImagePalette` | the artwork a key is drawn with, and the preset keys |
+| Avalonia | `FitImage` | keeps a picture's shape when the box is not the shape of its artwork |
+
 ## Rendering in Avalonia
 
 - One custom `Control` owning a `ScrollViewer` with `ILogicalScrollable` implemented by

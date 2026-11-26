@@ -3,6 +3,7 @@ using Projectional.Editing;
 using Projectional.Editors;
 using Projectional.Editors.Rendering;
 using Projectional.Language;
+using Projectional.Persistence;
 using Projectional.Projection;
 using Xunit;
 
@@ -382,6 +383,131 @@ public sealed class EditorLoweringTests
 
         // A value the type would refuse can never hold, so the group could never be drawn.
         Assert.Throws<NotationException>(() => EditorLowering.CreateRegistry(notation.Roots, concepts));
+    }
+
+    [Fact]
+    public void ADeclaredImageDrawsAPictureFromItsKeyAndBox()
+    {
+        // The declared path and the hand-written one must produce the same cell, or a language written as a project
+        // would be a weaker kind of language. `width`/`height` left out mean "as tall as the line", which is what the
+        // notation's `line` placeholder says.
+        var concepts = ConceptRegistry.Create([new ConceptDeclaration("C.Rule")]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.Image, ("key", "key"));
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("C.Rule");
+
+        var tree = new EditorTreeBuilder(notations).Build(rule);
+        var image = Assert.IsType<ImageCell>(tree.Root.Children[0]);
+
+        Assert.Equal("key", image.Key);
+        Assert.Equal(0, image.Width);
+        Assert.Equal(0, image.Height);
+
+        // A picture draws no text, so the text grid shows its room and no glyph.
+        Assert.Equal(string.Empty, CellText.Of(image));
+        Assert.Equal(string.Empty, LayoutSnapshot.Render(rule, notations, width: 20).Trim());
+    }
+
+    [Fact]
+    public void ADeclaredImageKeepsTheBoxItsAuthorWrote()
+    {
+        var concepts = ConceptRegistry.Create([new ConceptDeclaration("C.Rule")]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.Image, ("key", "logo"), ("width", "6"), ("height", "3"));
+
+        var notations = EditorLowering.CreateRegistry(notation.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var rule = model.NewNode("C.Rule");
+
+        model.AddRoot(rule);
+
+        var layout = new CellLayouter(MonospaceTextMeasure.Instance).Layout(
+            new EditorTreeBuilder(notations).Build(rule));
+
+        // The box is the one the author wrote, and layout keeps it rather than measuring the artwork - which is the
+        // whole reason a picture needs no bitmap seam in the projection layer.
+        var image = Assert.Single(layout.Cells, placed => placed.Cell is ImageCell);
+
+        Assert.Equal(6, image.Bounds.Width);
+        Assert.Equal(3, image.Bounds.Height);
+        Assert.Equal("logo", Assert.IsType<ImageCell>(image.Cell).Key);
+    }
+
+    [Fact]
+    public void ADeclaredImageWithoutAKeyIsRefused()
+    {
+        var concepts = ConceptRegistry.Create([new ConceptDeclaration("C.Rule")]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.Image);
+
+        var error = Assert.Throws<ConceptDefinitionException>(
+            () => EditorLowering.CreateRegistry(notation.Roots, concepts));
+
+        Assert.Contains("'key'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredImageWithANegativeBoxIsRefusedRatherThanLayouted()
+    {
+        // Refused while the notation is lowered, so the message names the picture and the slot. Left to the cell it
+        // would throw for a parameter name the author has never seen.
+        var concepts = ConceptRegistry.Create([new ConceptDeclaration("C.Rule")]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.Image, ("key", "logo"), ("width", "-2"));
+
+        var error = Assert.Throws<ConceptDefinitionException>(
+            () => EditorLowering.CreateRegistry(notation.Roots, concepts));
+
+        Assert.Contains("'width'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADeclaredImageSurvivesASaveAndLoad()
+    {
+        // The cell is stored like any other editor cell, so a language written as a project keeps its pictures through
+        // a save. Pinned here rather than left to the corpus tests because those round-trip the samples they happen to
+        // hold, which is not the same as knowing a new cell persists.
+        var concepts = ConceptRegistry.Create([new ConceptDeclaration("C.Rule")]);
+
+        var notation = new NotationBuilder();
+        var declared = notation.Notation("C.Rule");
+        var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        notation.Cell(line, EditorConceptKeys.Image, ("key", "logo"), ("width", "6"), ("height", "3"));
+
+        var document = notation.Documents[0];
+        var stored = ModelXml.Serialize(document);
+
+        Assert.Equal(stored, ModelXml.Serialize(ModelXml.Deserialize(EditorLanguage.NewProject(), stored)));
+
+        var reloaded = ModelXml.Deserialize(EditorLanguage.NewProject(), stored);
+        var notations = EditorLowering.CreateRegistry(reloaded.Roots, concepts);
+        var model = new Project(concepts).NewModel();
+        var image = Assert.IsType<ImageCell>(
+            new EditorTreeBuilder(notations).Build(model.NewNode("C.Rule")).Root.Children[0]);
+
+        Assert.Equal("logo", image.Key);
+        Assert.Equal(6, image.Width);
+        Assert.Equal(3, image.Height);
     }
 
     /// <summary>A language with one concept holding a list of arguments, which is what a call looks like.</summary>

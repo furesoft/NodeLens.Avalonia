@@ -59,7 +59,7 @@ public sealed class CompletionIcon
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(brush);
 
-        return new CompletionIcon(new GeometryImage(StreamGeometry.Parse(path), brush), size);
+        return new CompletionIcon(new GeometryImage(StreamGeometry.Parse(path), fill: brush), size);
     }
 
     /// <inheritdoc />

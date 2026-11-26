@@ -49,6 +49,48 @@ public sealed class LanguageProjectTests
     }
 
     [Fact]
+    public void APictureWrittenInAProjectFolderReachesTheEditor()
+    {
+        // The whole path a user takes: write a picture cell into an editor document of a real project folder, open the
+        // folder, and project a node of that language. Nothing here is a test double - the notation comes off disk
+        // through LanguageProject, so this is the check that a declared picture is not only a unit-test shape.
+        using var folder = new TemporaryDirectory();
+
+        WriteStructure(folder.Root);
+        WriteNotationWithPicture(folder.Root);
+
+        var language = LanguageProject.Open(folder.Root, out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(language);
+
+        var model = language.NewModel();
+        var rule = model.NewNode("Rules.Rule");
+
+        model.AddRoot(rule);
+        rule.Set("name", "Approved");
+
+        var layout = new CellLayouter(MonospaceTextMeasure.Instance).Layout(
+            new EditorTreeBuilder(language.Notations).Build(rule));
+
+        var picture = Assert.Single(layout.Cells, placed => placed.Cell is ImageCell);
+
+        Assert.Equal("key", Assert.IsType<ImageCell>(picture.Cell).Key);
+        Assert.Equal(4, picture.Bounds.Width);
+        Assert.Equal(2, picture.Bounds.Height);
+
+        // The picture is room on the line and nothing else. It is two units tall, and a cell taller than a line
+        // pushes the rest of the row down by the difference - the way a block nested in a line reads - so the text
+        // sits on the second row, after the four units the box keeps.
+        Assert.Equal(
+            """
+
+                 rule Approved
+            """,
+            LayoutSnapshot.Render(rule, language.Notations, width: 40));
+    }
+
+    [Fact]
     public void ADocumentOfADeclaredLanguageSurvivesARoundTrip()
     {
         using var folder = new TemporaryDirectory();
@@ -538,9 +580,26 @@ public sealed class LanguageProjectTests
     /// <summary>Writes the notation of that concept: the keyword <c>rule</c>, a gap, the name.</summary>
     private static void WriteNotation(string directory)
     {
+        WriteNotation(directory, withPicture: false);
+    }
+
+    /// <summary>The same notation, with a picture of a declared box in front of the keyword.</summary>
+    private static void WriteNotationWithPicture(string directory)
+    {
+        WriteNotation(directory, withPicture: true);
+    }
+
+    private static void WriteNotation(string directory, bool withPicture)
+    {
         var notation = new NotationBuilder();
         var declared = notation.Notation("Rules.Rule");
         var line = notation.SetRoot(declared, EditorConceptKeys.Line);
+
+        if (withPicture)
+        {
+            notation.Cell(line, EditorConceptKeys.Image, ("key", "key"), ("width", "4"), ("height", "2"));
+            notation.Cell(line, EditorConceptKeys.Space);
+        }
 
         notation.Word(line, EditorConceptKeys.Keyword, "rule");
         notation.Cell(line, EditorConceptKeys.Space);

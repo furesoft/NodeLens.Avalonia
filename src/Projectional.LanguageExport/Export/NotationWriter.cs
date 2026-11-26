@@ -117,6 +117,7 @@ internal static class NotationWriter
         SingleChildNotationCell single => single.EmptyText == "<empty>"
             ? $"ed.ChildInline({SourceWriter.Literal(single.Slot)})"
             : $"ed.ChildInline({SourceWriter.Literal(single.Slot)}, emptyText: {SourceWriter.Literal(single.EmptyText)})",
+        ImageNotationCell image => Image(image),
         ChildNotationCell children => Children(children),
         CollectionNotationCell collection => Collection(collection),
         InlineCollectionNotationCell inline => InlineCollection(inline),
@@ -243,4 +244,29 @@ internal static class NotationWriter
 
     private static string Join(IEnumerable<NotationCell> cells) =>
         string.Join(", ", cells.Select(Flat));
+
+    /// <summary>
+    /// A picture, as the builder call that draws it - and only the arguments the author actually gave, so a round trip
+    /// of an icon does not turn the line's height into a number that is then kept forever.
+    /// </summary>
+    private static string Image(ImageNotationCell image)
+    {
+        var call = $"ed.Image({SourceWriter.Literal(image.Key)}";
+
+        if (image.Width == 0 && image.Height == 0)
+        {
+            return $"{call})";
+        }
+
+        if (image.Height == 0)
+        {
+            return $"{call}, {Number(image.Width)})";
+        }
+
+        return $"{call}, {Number(image.Width)}, {Number(image.Height)})";
+    }
+
+    /// <summary>A layout distance, written the way C# writes a number rather than the way the culture does.</summary>
+    private static string Number(double value) =>
+        value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 }

@@ -274,6 +274,10 @@ do this:
 `GeometryImage` subtracts the geometry's own `Bounds.TopLeft`, scales it into the destination
 rectangle and clips to it, and therefore behaves the same on the first row and the seventh. It
 is `internal`: a host passes an `IImage` and never needs to know how the built-in one is made.
+It takes a fill, a pen, or both, because the completion set is drawn as closed shapes that are
+filled while the editor's own picture set (`ImagePalette`) is drawn as the open outlines an icon
+set is written in - filling one of those would paint the area between its ends rather than the line
+they describe.
 
 Keeping the built-in icons as geometry is what lets the repository ship **no binary asset** for
 them — no licence question, no per-DPI variant, no file that has to be copied to output — while

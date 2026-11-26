@@ -202,6 +202,7 @@ internal static class NotationSpelling
         ReferenceNotationCell reference => $"<{reference.Slot}>",
         TableNotationCell table => $"<{table.Slot}: table of {string.Join(" | ", table.Columns.Select(column => column.Slot))}>",
         TypeOfNotationCell => " : Type",
+        ImageNotationCell image => $"<image {image.Key}>",
         WhenFilledNotationCell whenFilled => Bracket($"when {whenFilled.Slot} is filled", string.Concat(whenFilled.Content.Select(Inline))),
         ConditionalNotationCell conditional => Bracket($"if {conditional.Slot} is \"{conditional.Value}\"", string.Concat(conditional.Content.Select(Inline))),
         _ => $"<{cell}>",

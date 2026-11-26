@@ -30,6 +30,8 @@ public sealed class EditorFrame
     private EditorFrame(
         LayoutViewport viewport,
         ITextMeasure measure,
+        IReadOnlyList<PlacedPaint> paints,
+        IReadOnlyList<PlacedImage> images,
         IReadOnlyList<TextRun> textRuns,
         IReadOnlyList<LayoutRect> highlights,
         LayoutRect? caretRect,
@@ -37,6 +39,8 @@ public sealed class EditorFrame
     {
         Viewport = viewport;
         Measure = measure;
+        Paints = paints;
+        Images = images;
         TextRuns = textRuns;
         Highlights = highlights;
         CaretRect = caretRect;
@@ -51,6 +55,28 @@ public sealed class EditorFrame
 
     /// <summary>The measure that produced the geometry, needed to draw text at the same widths.</summary>
     public ITextMeasure Measure { get; }
+
+    /// <summary>
+    /// The decorations to draw, in document order and before the text, so a background or a border is never
+    /// painted over the content it belongs to.
+    /// </summary>
+    /// <remarks>
+    /// A painter draws these first and the text runs after. Each entry is a region and what it asks for, never a
+    /// colour: the palette turns a <see cref="Projectional.Language.PaintRole"/> into a brush, so a notation that
+    /// boxes a table gets a box in whatever palette the host chose.
+    /// </remarks>
+    public IReadOnlyList<PlacedPaint> Paints { get; }
+
+    /// <summary>
+    /// The pictures to draw, in document order, after the decorations and before the text.
+    /// </summary>
+    /// <remarks>
+    /// A picture is a region and the key the notation wrote, never a bitmap: the host decides what a key looks
+    /// like, so the same document draws its icons from the artwork of whichever host shows it - and a key the host
+    /// has no artwork for is drawn as a placeholder, which is what keeps a missing picture visible rather than
+    /// silent.
+    /// </remarks>
+    public IReadOnlyList<PlacedImage> Images { get; }
 
     /// <summary>The text to draw, in document order.</summary>
     /// <remarks>
@@ -100,14 +126,65 @@ public sealed class EditorFrame
         return new EditorFrame(
             window,
             measure,
+            PaintsOf(window),
+            ImagesOf(window),
             TextRunsOf(window, layout, styler ?? CellStyler.Default, measure),
             SelectionRects.Of(places, layout, selection, measure),
             CaretBounds.Of(places, layout, selection.Caret, measure),
             selection.Caret);
     }
 
+    /// <summary>The decorations the viewport can see, in document order.</summary>
+    /// <remarks>
+    /// A cell with no paint, or with a paint that draws nothing, contributes no entry - which is what keeps a
+    /// notation that never decorates anything from paying for a list of empty regions.
+    /// </remarks>
+    internal static List<PlacedPaint> PaintsOf(LayoutViewport viewport)
+    {
+        var paints = new List<PlacedPaint>();
+
+        foreach (var placed in viewport.Cells)
+        {
+            if (placed.Cell.Paint is { IsEmpty: false } paint)
+            {
+                paints.Add(new PlacedPaint(placed.Cell, placed.Bounds, paint));
+            }
+
+            // A table's header is a band behind its first row, so it is asked for after the table's own box - the same
+            // region, drawn on top of it - and only a table that named a role for it contributes one.
+            if (placed.Cell is TableCell { HeaderFill: { } headerFill } table
+                && viewport.Layout.HeaderBandOf(table) is { } band)
+            {
+                paints.Add(new PlacedPaint(table, band, new CellPaint(fill: headerFill)));
+            }
+        }
+
+        return paints;
+    }
+
     public override string ToString() =>
-        $"{TextRuns.Count} runs, {Highlights.Count} highlights, caret at {Caret} in {Viewport}";
+        $"{TextRuns.Count} runs, {Images.Count} image(s), {Highlights.Count} highlights, caret at {Caret} in {Viewport}";
+
+    /// <summary>The pictures the viewport can see, in document order.</summary>
+    /// <remarks>
+    /// A picture is a cell that draws nothing as text, so the frame reports it as a region and a key and leaves the
+    /// artwork to the host. Nothing is measured here: the box came from the notation and layout already placed it,
+    /// which is what keeps a bitmap out of the frame and the frame out of Avalonia.
+    /// </remarks>
+    internal static List<PlacedImage> ImagesOf(LayoutViewport viewport)
+    {
+        var images = new List<PlacedImage>();
+
+        foreach (var placed in viewport.Cells)
+        {
+            if (placed.Cell is ImageCell image)
+            {
+                images.Add(new PlacedImage(image, placed.Bounds, image.Key));
+            }
+        }
+
+        return images;
+    }
 
     /// <summary>One run per drawn line, so a cell that wraps is painted line by line.</summary>
     /// <remarks>

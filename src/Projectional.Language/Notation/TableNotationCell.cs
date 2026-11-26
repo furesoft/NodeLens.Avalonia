@@ -60,5 +60,22 @@ public sealed class TableNotationCell : BlockNotationCell
     /// <summary>What to show when the slot holds no rows.</summary>
     public string EmptyText { get; init; } = "<empty>";
 
+    /// <summary>
+    /// What the header row is filled with, or <see langword="null"/> for a header that is only text.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The header row is a band across the whole grid rather than a box around each header cell, because the cells
+    /// of a column are not all as wide as the column: a fill on each header would stop where its text ends and leave
+    /// the rest of the column unmarked. The band spans the grid's content width, which layout is what knows.
+    /// </para>
+    /// <para>
+    /// A role and no padding, unlike <see cref="BlockNotationCell.Paint"/>: a band is a background under the header
+    /// cells, not a box around them, so room around a band would only move the fill off the row it describes. The box
+    /// around the whole table is what <see cref="BlockNotationCell.Paint"/> is for.
+    /// </para>
+    /// </remarks>
+    public PaintRole? HeaderFill { get; init; }
+
     public override string ToString() => $"table {Slot} ({Columns.Count} column(s))";
 }

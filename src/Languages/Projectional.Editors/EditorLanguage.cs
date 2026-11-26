@@ -118,6 +118,35 @@ public static class EditorLanguage
             superConcepts: [EditorConceptKeys.InlineCell],
             description: "The type of the node this notation draws, shown as an annotation."),
 
+        // A picture is a key and a box: the notation names what it is, and the host owns the artwork, so a language
+        // written as a project draws its icons without carrying a binary asset. `width`/`height` are layout units and
+        // zero means "as tall as the line", which is what an inline icon wants - the box follows the font instead of
+        // pinning a size the notation would have to guess.
+        new ConceptDeclaration(
+            EditorConceptKeys.Image,
+            [
+                new PropertySlot(
+                    "key",
+                    PropertyType.String,
+                    description: "The name of the picture, which the host resolves - never a path.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "width",
+                    PropertyType.Integer,
+                    "0",
+                    "How wide the box is, in layout units; zero means as tall as the line.",
+                    showDescriptionWhenFilled: true),
+                new PropertySlot(
+                    "height",
+                    PropertyType.Integer,
+                    "0",
+                    "How tall the box is, in layout units; zero means as tall as the line.",
+                    showDescriptionWhenFilled: true),
+            ],
+            [EditorConceptKeys.InlineCell],
+            nameSlot: "key",
+            description: "A picture on the line, drawn by the host from a key."),
+
         new ConceptDeclaration(
             EditorConceptKeys.Keyword,
             [
